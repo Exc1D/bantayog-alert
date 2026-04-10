@@ -12,10 +12,12 @@
  */
 
 import { registerBase, loginBase } from '@/shared/services/auth.service'
+import { getDocument } from '@/shared/services/firestore.service'
 import type {
   AuthResult,
   MunicipalAdminCredentials,
   UserProfile,
+  Municipality,
 } from '@/shared/types'
 
 /**
@@ -33,6 +35,19 @@ export async function registerMunicipalAdmin(
   // Validate municipality is present
   if (!credentials.municipality) {
     throw new Error('Municipality assignment is required for municipal admins')
+  }
+
+  // CRITICAL: Verify municipality exists
+  const municipality = await getDocument<Municipality>(
+    'municipalities',
+    credentials.municipality
+  )
+
+  if (!municipality) {
+    throw new Error(
+      `Municipality "${credentials.municipality}" does not exist. Please select a valid municipality.`,
+      { cause: { code: 'MUNICIPALITY_NOT_FOUND' } }
+    )
   }
 
   const additionalData: Partial<UserProfile> = {

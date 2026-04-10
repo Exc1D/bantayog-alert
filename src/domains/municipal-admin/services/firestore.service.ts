@@ -18,6 +18,7 @@ import type {
   ReportOps,
   Responder,
   Alert,
+  UserProfile,
 } from '@/shared/types'
 
 /**
@@ -149,6 +150,28 @@ export async function assignToResponder(
   adminUid: string
 ): Promise<void> {
   try {
+    // CRITICAL: Verify responder and report are in same municipality
+    const report = await getDocument<Report>('reports', reportId)
+    if (!report) {
+      throw new Error('Report not found')
+    }
+
+    const responder = await getDocument<UserProfile>('users', responderUid)
+    if (!responder) {
+      throw new Error('Responder not found')
+    }
+
+    // Check if responder is assigned to the same municipality as the report
+    const reportMunicipality = report.approximateLocation.municipality
+    const responderMunicipality = responder.municipality
+
+    if (!responderMunicipality || responderMunicipality !== reportMunicipality) {
+      throw new Error(
+        `Cannot assign responder: Cross-municipality assignment not allowed. Report is in "${reportMunicipality}" but responder is assigned to "${responderMunicipality || 'no municipality'}"`,
+        { cause: { code: 'CROSS_MUNICIPALITY_ASSIGNMENT_NOT_ALLOWED' } }
+      )
+    }
+
     const now = Date.now()
 
     // Update operational report
