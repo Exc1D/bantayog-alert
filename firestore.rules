@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Placeholder rules - Phase 1 will implement proper security
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
