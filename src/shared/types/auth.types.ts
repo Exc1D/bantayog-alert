@@ -93,6 +93,7 @@ export interface UserProfile {
 
   // Role-specific fields
   phoneNumber?: string // For responders
+  phoneVerified?: boolean // For responders - phone verification status
   municipality?: string // For municipal admins
   mfaSettings?: MFASettings // For provincial superadmins
 

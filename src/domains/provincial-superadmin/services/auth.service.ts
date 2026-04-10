@@ -49,7 +49,9 @@ export async function registerProvincialSuperadmin(
   const additionalData: Partial<UserProfile> = {
     displayName: credentials.displayName,
     mfaSettings: {
-      enabled: false, // Will be enabled after enrollment
+      enabled: false, // Must enroll in MFA before accessing system
+      enrollmentTime: undefined,
+      lastVerified: undefined,
     },
   }
 
@@ -181,6 +183,9 @@ export async function verifyMFA(verificationCode: string): Promise<void> {
  *
  * Email/password login followed by MFA verification.
  * MFA is MANDATORY for provincial superadmins.
+ *
+ * @throws {Error} If MFA is not enrolled
+ * @throws {Error} If MFA verification is required during login
  */
 export async function loginProvincialSuperadmin(
   email: string,
@@ -190,33 +195,31 @@ export async function loginProvincialSuperadmin(
     // First factor: email/password
     const result = await loginBase(email, password)
 
-    // Check if MFA is required
-    const user = auth.currentUser
-    if (!user) {
-      throw new Error('No authenticated user')
-    }
-
-    // Check if user has MFA enrolled
+    // CRITICAL: Enforce MFA enrollment requirement
     const profile = result.user
     if (!profile.mfaSettings?.enabled) {
-      return {
-        ...result,
-        requiresMFAEnrollment: true,
-      }
+      throw new Error(
+        'Multi-factor authentication (MFA) is required for provincial superadmins. Please enroll in MFA before logging in.',
+        { cause: { code: 'MFA_ENROLLMENT_REQUIRED' } }
+      )
     }
 
+    // If MFA is enrolled, Firebase will automatically trigger MFA challenge
+    // The caller must handle the MFA_REQUIRED exception and complete verification
     return result
   } catch (error: unknown) {
-    // Check if error is due to MFA requirement
+    // Check if error is due to MFA requirement (from Firebase Auth)
     if ((error as { code?: string })?.code === 'auth/multi-factor-auth-required') {
       const resolver = getMultiFactorResolver(error)
 
-      // Return special result indicating MFA verification is needed
-      throw {
-        code: 'MFA_REQUIRED',
-        message: 'Multi-factor authentication required',
-        resolver,
+      // Throw special error indicating MFA verification is needed
+      const mfaError = new Error('MFA verification required') as Error & {
+        code: string
+        resolver: typeof resolver
       }
+      mfaError.code = 'MFA_REQUIRED'
+      mfaError.resolver = resolver
+      throw mfaError
     }
 
     throw error

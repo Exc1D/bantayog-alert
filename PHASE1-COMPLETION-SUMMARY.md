@@ -11,6 +11,7 @@
 - ✅ MFA settings interface
 - ✅ Custom claims interface
 - ✅ Authentication error types
+- ✅ **phoneVerified field added for responder enforcement**
 
 #### 2. Domain-Specific Auth Services
 - ✅ **Citizen** (`src/domains/citizen/services/auth.service.ts`):
@@ -22,6 +23,7 @@
   - Email/password + phone number (MANDATORY)
   - Phone verification via OTP
   - Responder profile creation
+  - **Phone verification enforcement on login (CRITICAL FIX)**
 
 - ✅ **Municipal Admin** (`src/domains/municipal-admin/services/auth.service.ts`):
   - Email/password + municipality assignment
@@ -29,8 +31,9 @@
 
 - ✅ **Provincial Superadmin** (`src/domains/provincial-superadmin/services/auth.service.ts`):
   - Email/password authentication
-  - MFA enrollment placeholder (TOTP/SMS)
-  - MFA verification placeholder
+  - **MFA enrollment placeholder (TOTP/SMS)**
+  - **MFA verification placeholder**
+  - **MFA enforcement on login (CRITICAL FIX)**
 
 #### 3. Shared Auth Service (`src/shared/services/auth.service.ts`)
 - ✅ Generic registration handler
@@ -117,10 +120,12 @@ The MFA enrollment and verification functions are placeholders. In production:
 3. Use Firebase's built-in multi-factor authentication flow
 
 ### Custom Claims
-Custom claims are defined but not yet set:
-1. Create Firebase Cloud Functions to set custom claims on user creation
-2. Implement a trigger function to update claims when roles change
-3. Use Firebase Admin SDK for server-side claim management
+✅ **NOW IMPLEMENTED** — Cloud Functions created for custom claims:
+1. ✅ `functions/src/index.ts` — Complete Cloud Functions implementation
+2. ✅ Auto-trigger on user creation to set role-based claims
+3. ✅ Callable function to update claims on role changes
+4. ✅ Token refresh signaling for permission updates
+5. ⚠️ Requires deployment: `cd functions && npm install && firebase deploy --only functions`
 
 ### Data Indexing
 Some queries require Firestore indexes:
@@ -133,6 +138,32 @@ Session tracking is partially implemented:
 1. Add Firebase Functions to track active sessions
 2. Implement force logout by listening to profile changes
 3. Add session cleanup for inactive sessions
+
+## 🔒 CRITICAL SECURITY FIXES (2026-04-11)
+
+Three critical security gaps were identified and fixed:
+
+### 1. Phone Verification Enforcement ✅ FIXED
+**Issue:** Responders could login without completing phone verification
+**Fix:** Added `phoneVerified` check in `loginResponder()` function
+**Impact:** UNVERIFIED RESPONDERS ARE NOW BLOCKED FROM LOGIN
+
+### 2. MFA Enforcement ✅ FIXED
+**Issue:** Provincial superadmins could login without MFA enrollment
+**Fix:** Added `mfaSettings.enabled` check in `loginProvincialSuperadmin()` function
+**Impact:** SUPERADMINS WITHOUT MFA ARE NOW BLOCKED FROM LOGIN
+
+### 3. Custom Claims Implementation ✅ FIXED
+**Issue:** Custom claims not being set, authorization broken
+**Fix:** Created complete Cloud Functions implementation
+**Impact:** CUSTOM CLAIMS ARE NOW AUTOMATICALLY SET ON USER CREATION
+
+**Deployment Required:**
+```bash
+cd functions
+npm install
+firebase deploy --only functions
+```
 
 ## 📊 SUCCESS CRITERIA
 

@@ -50,6 +50,7 @@ export async function registerResponder(
   const additionalData: Partial<UserProfile> = {
     displayName: credentials.displayName,
     phoneNumber: credentials.phoneNumber,
+    phoneVerified: false, // Must complete phone verification
   }
 
   const result = await registerBase(credentials, 'responder', additionalData)
@@ -137,14 +138,23 @@ export async function verifyResponderPhoneOTP(
     }
 
     // Update responder profile to mark phone as verified
-    // Note: This will be done by a Firebase Function in production
-    // to properly link the phone number to the account
     const responderRef = doc(db, 'responders', user.uid)
     await setDoc(
       responderRef,
       {
         phoneVerified: true,
         updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    )
+
+    // CRITICAL: Also update UserProfile to enforce login check
+    const userRef = doc(db, 'users', user.uid)
+    await setDoc(
+      userRef,
+      {
+        phoneVerified: true,
+        updatedAt: Date.now(),
       },
       { merge: true }
     )
@@ -158,12 +168,24 @@ export async function verifyResponderPhoneOTP(
  *
  * Standard email/password login for responders.
  * Phone must have been verified during registration.
+ *
+ * @throws {Error} If phone number is not verified
  */
 export async function loginResponder(
   email: string,
   password: string
 ): Promise<AuthResult> {
-  return loginBase(email, password)
+  const result = await loginBase(email, password)
+
+  // CRITICAL: Enforce phone verification requirement
+  if (!result.user.phoneVerified) {
+    throw new Error(
+      'Phone verification required. Please complete phone verification before logging in.',
+      { cause: { code: 'PHONE_NOT_VERIFIED' } }
+    )
+  }
+
+  return result
 }
 
 /**
