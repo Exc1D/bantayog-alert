@@ -149,29 +149,29 @@ export async function assignToResponder(
   responderUid: string,
   adminUid: string
 ): Promise<void> {
+  // CRITICAL: Verify responder and report are in same municipality
+  const report = await getDocument<Report>('reports', reportId)
+  if (!report) {
+    throw new Error('Report not found', { cause: { code: 'REPORT_NOT_FOUND' } })
+  }
+
+  const responder = await getDocument<UserProfile>('users', responderUid)
+  if (!responder) {
+    throw new Error('Responder not found', { cause: { code: 'RESPONDER_NOT_FOUND' } })
+  }
+
+  // Check if responder is assigned to the same municipality as the report
+  const reportMunicipality = report.approximateLocation.municipality
+  const responderMunicipality = responder.municipality
+
+  if (!responderMunicipality || responderMunicipality !== reportMunicipality) {
+    throw new Error(
+      `Cannot assign responder: Cross-municipality assignment not allowed. Report is in "${reportMunicipality}" but responder is assigned to "${responderMunicipality || 'no municipality'}"`,
+      { cause: { code: 'CROSS_MUNICIPALITY_ASSIGNMENT_NOT_ALLOWED' } }
+    )
+  }
+
   try {
-    // CRITICAL: Verify responder and report are in same municipality
-    const report = await getDocument<Report>('reports', reportId)
-    if (!report) {
-      throw new Error('Report not found')
-    }
-
-    const responder = await getDocument<UserProfile>('users', responderUid)
-    if (!responder) {
-      throw new Error('Responder not found')
-    }
-
-    // Check if responder is assigned to the same municipality as the report
-    const reportMunicipality = report.approximateLocation.municipality
-    const responderMunicipality = responder.municipality
-
-    if (!responderMunicipality || responderMunicipality !== reportMunicipality) {
-      throw new Error(
-        `Cannot assign responder: Cross-municipality assignment not allowed. Report is in "${reportMunicipality}" but responder is assigned to "${responderMunicipality || 'no municipality'}"`,
-        { cause: { code: 'CROSS_MUNICIPALITY_ASSIGNMENT_NOT_ALLOWED' } }
-      )
-    }
-
     const now = Date.now()
 
     // Update operational report
@@ -194,7 +194,7 @@ export async function assignToResponder(
       status: 'assigned',
     })
   } catch (error) {
-    throw new Error('Failed to assign to responder', { cause: error })
+    throw new Error('Failed to update documents', { cause: error })
   }
 }
 
