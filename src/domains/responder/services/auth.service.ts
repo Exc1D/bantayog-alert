@@ -22,8 +22,10 @@ import {
   doc,
   setDoc,
   serverTimestamp,
+  where,
 } from 'firebase/firestore'
 import { db } from '@/app/firebase/config'
+import { getCollection } from '@/shared/services/firestore.service'
 import type {
   AuthResult,
   ResponderCredentials,
@@ -45,6 +47,18 @@ export async function registerResponder(
   // Validate phone number is present
   if (!credentials.phoneNumber) {
     throw new Error('Phone number is required for responders')
+  }
+
+  // CRITICAL: Check phone number uniqueness
+  const existingUsers = await getCollection<UserProfile>('users', [
+    where('phoneNumber', '==', credentials.phoneNumber),
+  ])
+
+  if (existingUsers.length > 0) {
+    throw new Error(
+      'This phone number is already registered to another responder. Please use a different phone number or contact administrator.',
+      { cause: { code: 'PHONE_ALREADY_IN_USE' } }
+    )
   }
 
   const additionalData: Partial<UserProfile> = {
