@@ -1,9 +1,290 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Placeholder rules - Phase 1 will implement proper security
-    match /{document=**} {
-      allow read, write: if false;
+
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Get user role from custom claims
+    function getRole() {
+      return request.auth.token.role;
+    }
+
+    // Get user's municipality from custom claims (for municipal admins)
+    function getMunicipality() {
+      return request.auth.token.municipality;
+    }
+
+    // Check if user has a specific role
+    function hasRole(role) {
+      return getRole() == role;
+    }
+
+    // Check if user is a municipal admin for the specified municipality
+    function isMunicipalAdminFor(municipality) {
+      return hasRole('municipal_admin') && getMunicipality() == municipality;
+    }
+
+    // Check if user owns this document
+    function isOwner(ownerId) {
+      return isAuthenticated() && request.auth.uid == ownerId;
+    }
+
+    // Check if account is active
+    function isAccountActive() {
+      return request.auth.token.isActive == true;
+    }
+
+    // Check if user is verified (municipal admins and superadmins)
+    function isUserVerified() {
+      return request.auth.token.emailVerified == true;
+    }
+
+    // ============================================================
+    // GLOBAL RULES
+    // ============================================================
+
+    // All operations require authentication and active account
+    allow read, write: if !isAuthenticated();
+    allow read, write: if !isAccountActive();
+
+    // ============================================================
+    // USERS COLLECTION
+    // ============================================================
+
+    match /users/{userId} {
+      // Citizens can read their own profile
+      allow read: if hasRole('citizen') && isOwner(userId);
+
+      // Responders can read their own profile
+      allow read: if hasRole('responder') && isOwner(userId);
+
+      // Municipal admins can read all users in their municipality
+      allow read: if hasRole('municipal_admin');
+
+      // Provincial superadmins can read all users
+      allow read: if hasRole('provincial_superadmin');
+
+      // Users can update their own profile (limited fields)
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['role', 'municipality', 'mfaSettings', 'isActive']);
+
+      // Only superadmins can modify role-related fields
+      allow update, create: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // REPORTS COLLECTION (Public Tier)
+    // ============================================================
+
+    match /reports/{reportId} {
+      // All authenticated users can read public reports
+      allow read: if isAuthenticated();
+
+      // Citizens can create reports
+      allow create: if hasRole('citizen');
+
+      // Municipal admins can update reports in their municipality
+      allow update: if hasRole('municipal_admin')
+        && resource.data.approximateLocation.municipality == getMunicipality();
+
+      // Provincial superadmins can update any report
+      allow update: if hasRole('provincial_superadmin');
+
+      // Only admins can delete reports
+      allow delete: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // REPORT_PRIVATE COLLECTION (Private Tier)
+    // ============================================================
+
+    match /report_private/{privateId} {
+      // Municipal admins can read private data in their municipality
+      allow read: if hasRole('municipal_admin')
+        && exists(/databases/$(database)/documents/$(privateId))
+        && get(/databases/$(database)/documents/reports/$(privateId)).data.approximateLocation.municipality == getMunicipality();
+
+      // Provincial superadmins can read all private data
+      allow read: if hasRole('provincial_superadmin');
+
+      // Only admins can create/update private data
+      allow create, update: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
+
+      // Only superadmins can delete private data
+      allow delete: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // REPORT_OPS COLLECTION (Operational Tier)
+    // ============================================================
+
+    match /report_ops/{opsId} {
+      // Municipal admins can read ops data in their municipality
+      allow read: if hasRole('municipal_admin')
+        && exists(/databases/$(database)/documents/reports/$(opsId))
+        && get(/databases/$(database)/documents/reports/$(opsId)).data.approximateLocation.municipality == getMunicipality();
+
+      // Responders can read ops data for reports assigned to them
+      allow read: if hasRole('responder')
+        && resource.data.assignedTo == request.auth.uid;
+
+      // Provincial superadmins can read all ops data
+      allow read: if hasRole('provincial_superadmin');
+
+      // Only admins can update ops data
+      allow update: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
+
+      // Responders can add timeline entries for their assigned reports
+      allow update: if hasRole('responder')
+        && resource.data.assignedTo == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeline']);
+
+      // Only superadmins can delete ops data
+      allow delete: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // INCIDENTS COLLECTION
+    // ============================================================
+
+    match /incidents/{incidentId} {
+      // Municipal admins can read incidents in their municipality
+      allow read: if hasRole('municipal_admin')
+        && resource.data.location.municipality == getMunicipality();
+
+      // Responders can read incidents they're assigned to
+      allow read: if hasRole('responder')
+        && resource.data.reportIds.toValues().any(reportId =>
+          exists(/databases/$(database)/documents/report_ops/$(reportId))
+          && get(/databases/$(database)/documents/report_ops/$(reportId)).data.assignedTo == request.auth.uid
+        );
+
+      // Provincial superadmins can read all incidents
+      allow read: if hasRole('provincial_superadmin');
+
+      // Only admins can create incidents
+      allow create: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
+
+      // Municipal admins can update incidents in their municipality
+      allow update: if hasRole('municipal_admin')
+        && resource.data.location.municipality == getMunicipality();
+
+      // Provincial superadmins can update any incident
+      allow update: if hasRole('provincial_superadmin');
+
+      // Only superadmins can delete incidents
+      allow delete: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // RESPONDERS COLLECTION
+    // ============================================================
+
+    match /responders/{responderId} {
+      // Responders can read their own profile
+      allow read: if hasRole('responder') && isOwner(responderId);
+
+      // Municipal admins can read responders in their municipality
+      allow read: if hasRole('municipal_admin');
+
+      // Provincial superadmins can read all responders
+      allow read: if hasRole('provincial_superadmin');
+
+      // Responders can update their own availability status
+      allow update: if isOwner(responderId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['isAvailable', 'lastKnownLocation']);
+
+      // Municipal admins can update responders in their municipality
+      allow update: if hasRole('municipal_admin');
+
+      // Provincial superadmins can update any responder
+      allow update: if hasRole('provincial_superadmin');
+
+      // Only superadmins can delete responders
+      allow delete: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // MUNICIPALITIES COLLECTION
+    // ============================================================
+
+    match /municipalities/{municipalityId} {
+      // All authenticated users can read municipality data
+      allow read: if isAuthenticated();
+
+      // Municipal admins can update their own municipality
+      allow update: if hasRole('municipal_admin')
+        && getMunicipality() == municipalityId;
+
+      // Provincial superadmins can create/update any municipality
+      allow create, update: if hasRole('provincial_superadmin');
+
+      // Only superadmins can delete municipalities
+      allow delete: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // ALERTS COLLECTION
+    // ============================================================
+
+    match /alerts/{alertId} {
+      // Users can read alerts targeted to them
+      allow read: if isAuthenticated()
+        && (resource.data.targetAudience == 'all'
+          || (resource.data.targetAudience == 'municipality' && resource.data.targetMunicipality == getMunicipality())
+          || (resource.data.targetAudience == 'role' && resource.data.targetRole == getRole()));
+
+      // Municipal admins can create alerts for their municipality
+      allow create: if hasRole('municipal_admin')
+        && request.resource.data.targetMunicipality == getMunicipality();
+
+      // Provincial superadmins can create any alert
+      allow create: if hasRole('provincial_superadmin');
+
+      // Only admins can update alerts
+      allow update: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
+
+      // Only superadmins can delete alerts
+      allow delete: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // AUDIT LOGS COLLECTION
+    // ============================================================
+
+    match /audit_logs/{logId} {
+      // Provincial superadmins can read all audit logs
+      allow read: if hasRole('provincial_superadmin');
+
+      // Only system can create audit logs (via Firebase Functions)
+      allow create: if false;
+
+      // Audit logs are immutable
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // ARCHIVED_REPORTS COLLECTION
+    // ============================================================
+
+    match /archived_reports/{archiveId} {
+      // Provincial superadmins can read archived reports
+      allow read: if hasRole('provincial_superadmin');
+
+      // Only system can create archived reports (via scheduled function)
+      allow create: if false;
+
+      // Only superadmins can delete archived reports
+      allow delete: if hasRole('provincial_superadmin');
     }
   }
 }
