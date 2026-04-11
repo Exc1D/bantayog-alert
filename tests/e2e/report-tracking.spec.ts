@@ -37,12 +37,6 @@ test.describe('Anonymous Report Tracking', () => {
     // Navigate to profile
     await page.getByRole('link', { name: /profile/i }).click()
 
-    // Dismiss location-error overlay if it appears and blocks the UI
-    const overlay = page.locator('[data-testid="location-error"]')
-    if (await overlay.isVisible()) {
-      await overlay.locator('button').click()
-    }
-
     // Check if the report tracking input exists (skip if not implemented)
     const inputExists = await page.locator('[placeholder*="report id" i]').count() > 0
     if (!inputExists) {
@@ -55,18 +49,12 @@ test.describe('Anonymous Report Tracking', () => {
     // Submit lookup
     await page.getByRole('button', { name: /track|lookup|check/i }).first().click()
 
-    // Should show report status
-    await expect(page.getByText(/status/i)).toBeVisible({ timeout: 5000 })
+    // Should show a report entry with a status badge
+    await expect(page.getByTestId(/^user-report-/).first()).toBeVisible({ timeout: 5000 })
   })
 
   test('should show error for invalid Report ID format', async ({ page }) => {
     await page.getByRole('link', { name: /profile/i }).click()
-
-    // Dismiss location-error overlay if it appears
-    const overlay = page.locator('[data-testid="location-error"]')
-    if (await overlay.isVisible()) {
-      await overlay.locator('button').click()
-    }
 
     const inputExists = await page.locator('[placeholder*="report id" i]').count() > 0
     if (!inputExists) {

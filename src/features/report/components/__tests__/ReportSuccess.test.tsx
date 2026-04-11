@@ -46,8 +46,6 @@ describe('ReportSuccess', () => {
   })
 
   it('renders success message with Report ID', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     expect(screen.getByText('Report submitted successfully!')).toBeInTheDocument()
@@ -55,8 +53,6 @@ describe('ReportSuccess', () => {
   })
 
   it('shows success icon', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     const icon = screen.getByRole('img', { name: /success checkmark/i })
@@ -64,16 +60,12 @@ describe('ReportSuccess', () => {
   })
 
   it('displays municipality in info text', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     expect(screen.getByText(/Your report from Daet/)).toBeInTheDocument()
   })
 
   it('shows share button and calls onShare callback', async () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     const shareButton = screen.getByRole('button', { name: /share this alert/i })
@@ -86,8 +78,6 @@ describe('ReportSuccess', () => {
   })
 
   it('shows create account button for anonymous users', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     const createAccountButton = screen.getByRole('button', { name: /create account to track/i })
@@ -95,8 +85,6 @@ describe('ReportSuccess', () => {
   })
 
   it('calls onCreateAccount callback when button clicked', async () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     const createAccountButton = screen.getByRole('button', { name: /create account to track/i })
@@ -119,8 +107,6 @@ describe('ReportSuccess', () => {
   })
 
   it('shows navigation button when onNavigate provided', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     const navButton = screen.getByRole('button', { name: /return to feed\/map/i })
@@ -128,8 +114,6 @@ describe('ReportSuccess', () => {
   })
 
   it('calls onNavigate callback when navigation button clicked', async () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     const navButton = screen.getByRole('button', { name: /return to feed\/map/i })
@@ -140,8 +124,6 @@ describe('ReportSuccess', () => {
   })
 
   it('does not show navigation button when onNavigate not provided', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     const props = { ...defaultProps, onNavigate: undefined }
     render(<ReportSuccess {...props} />)
 
@@ -150,8 +132,6 @@ describe('ReportSuccess', () => {
   })
 
   it('formats report ID with # prefix', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     const reportIdElement = screen.getByTestId('report-id')
@@ -159,8 +139,6 @@ describe('ReportSuccess', () => {
   })
 
   it('displays tracking message for anonymous users', () => {
-    mockUseAuth.mockReturnValue({ user: null, loading: false })
-
     render(<ReportSuccess {...defaultProps} />)
 
     expect(screen.getByText(/Create an account to track updates/)).toBeInTheDocument()
@@ -179,15 +157,12 @@ describe('ReportSuccess', () => {
 
   describe('Push Notification Prompt', () => {
     it('does not show notification prompt when isFirstReport is false', () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
-
       render(<ReportSuccess {...defaultProps} isFirstReport={false} />)
 
       expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
     })
 
     it('does not show notification prompt when permission is already granted', () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
       mockUsePushNotifications.mockReturnValue({
         permission: 'granted',
         isSupported: true,
@@ -200,7 +175,6 @@ describe('ReportSuccess', () => {
     })
 
     it('does not show notification prompt when notifications are not supported', () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
       mockUsePushNotifications.mockReturnValue({
         permission: 'denied',
         isSupported: false,
@@ -213,7 +187,6 @@ describe('ReportSuccess', () => {
     })
 
     it('shows notification prompt when isFirstReport and permission not granted', () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
       mockUsePushNotifications.mockReturnValue({
         permission: 'default',
         isSupported: true,
@@ -228,7 +201,6 @@ describe('ReportSuccess', () => {
     })
 
     it('calls requestPermission when enable notifications button is clicked', async () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
       const mockRequestPermission = vi.fn().mockResolvedValue('granted')
       mockUsePushNotifications.mockReturnValue({
         permission: 'default',
@@ -245,86 +217,30 @@ describe('ReportSuccess', () => {
     })
   })
 
-  describe('Notification Prompt', () => {
-    it('should show notification prompt when isFirstReport is true', () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
-      mockUsePushNotifications.mockReturnValue({
-        permission: 'default',
-        isSupported: true,
-        requestPermission: vi.fn(),
-      })
+  describe('isQueued', () => {
+    it('shows queued heading when isQueued is true', () => {
+      render(<ReportSuccess {...defaultProps} isQueued />)
 
-      render(
-        <ReportSuccess
-          reportId="2024-DAET-0471"
-          municipality="Daet"
-          isFirstReport={true}
-        />
-      )
-
-      expect(screen.getByTestId('notification-prompt')).toBeInTheDocument()
-      expect(screen.getByText(/get notified when your report is verified/i)).toBeInTheDocument()
+      expect(screen.getByText('Report queued for submission')).toBeInTheDocument()
+      expect(screen.queryByText('Report submitted successfully!')).not.toBeInTheDocument()
     })
 
-    it('should call requestPermission when Enable Notifications is clicked', async () => {
-      const user = userEvent.setup()
-      const requestPermissionMock = vi.fn()
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
-      mockUsePushNotifications.mockReturnValue({
-        permission: 'default',
-        requestPermission: requestPermissionMock,
-        isSupported: true,
-      })
+    it('shows queued info text when isQueued is true', () => {
+      render(<ReportSuccess {...defaultProps} isQueued />)
 
-      render(
-        <ReportSuccess
-          reportId="2024-DAET-0471"
-          municipality="Daet"
-          isFirstReport={true}
-        />
-      )
-
-      await user.click(screen.getByTestId('enable-notifications-button'))
-
-      expect(requestPermissionMock).toHaveBeenCalledOnce()
+      expect(
+        screen.getByText(/Your report from Daet has been queued and will be submitted automatically/i)
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(/Your report from Daet has been submitted and will be reviewed/)
+      ).not.toBeInTheDocument()
     })
 
-    it('should not show notification prompt when permission is already granted', () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
-      mockUsePushNotifications.mockReturnValue({
-        permission: 'granted',
-        requestPermission: vi.fn(),
-        isSupported: true,
-      })
+    it('shows report queued icon label when isQueued is true', () => {
+      render(<ReportSuccess {...defaultProps} isQueued />)
 
-      render(
-        <ReportSuccess
-          reportId="2024-DAET-0471"
-          municipality="Daet"
-          isFirstReport={true}
-        />
-      )
-
-      expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
-    })
-
-    it('should not show notification prompt when isFirstReport is false', () => {
-      mockUseAuth.mockReturnValue({ user: null, loading: false })
-      mockUsePushNotifications.mockReturnValue({
-        permission: 'default',
-        isSupported: true,
-        requestPermission: vi.fn(),
-      })
-
-      render(
-        <ReportSuccess
-          reportId="2024-DAET-0471"
-          municipality="Daet"
-          isFirstReport={false}
-        />
-      )
-
-      expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
+      const icon = screen.getByRole('img', { name: /report queued/i })
+      expect(icon).toBeInTheDocument()
     })
   })
 })
