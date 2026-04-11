@@ -177,5 +177,26 @@ describe('AlertCard', () => {
       expect(severityIcon).toBeInTheDocument()
     })
   })
+
+  describe('Offline/Cached State', () => {
+    it('should show cached indicator when isCached is true', () => {
+      render(<AlertCard alert={mockAlert} isCached />)
+
+      expect(screen.getByTestId('cached-indicator')).toBeInTheDocument()
+      expect(screen.getByText('(cached)')).toBeInTheDocument()
+    })
+
+    it('should not show cached indicator when isCached is false', () => {
+      render(<AlertCard alert={mockAlert} isCached={false} />)
+
+      expect(screen.queryByTestId('cached-indicator')).not.toBeInTheDocument()
+    })
+
+    it('should not show cached indicator when isCached is not provided', () => {
+      render(<AlertCard alert={mockAlert} />)
+
+      expect(screen.queryByTestId('cached-indicator')).not.toBeInTheDocument()
+    })
+  })
 })
 

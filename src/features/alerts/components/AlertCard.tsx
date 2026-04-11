@@ -12,6 +12,8 @@ import { formatTimeAgo } from '@/shared/utils/formatTimeAgo'
 
 export interface AlertCardProps {
   alert: Alert
+  /** Whether this alert was loaded from cache (offline) */
+  isCached?: boolean
 }
 
 const SEVERITY_ICON: Record<Alert['severity'], React.ElementType> = {
@@ -38,7 +40,7 @@ const SEVERITY_COLOR: Record<Alert['severity'], string> = {
   emergency: 'text-red-500',
 }
 
-export function AlertCard({ alert }: AlertCardProps) {
+export function AlertCard({ alert, isCached = false }: AlertCardProps) {
   const { title, message, severity, createdAt, linkUrl } = alert
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -75,6 +77,9 @@ export function AlertCard({ alert }: AlertCardProps) {
         </div>
         <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
           {formatTimeAgo(createdAt)}
+          {isCached && (
+            <span className="ml-1 text-gray-400" data-testid="cached-indicator">(cached)</span>
+          )}
         </span>
       </div>
 
