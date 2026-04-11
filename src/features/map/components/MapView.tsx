@@ -4,7 +4,7 @@ import { useLeafletMap } from '../hooks/useLeafletMap'
 import { useGeolocation } from '@/shared/hooks/useGeolocation'
 import { useDisasterReports } from '../hooks/useDisasterReports'
 import { useMapControls } from '../hooks/useMapControls'
-import { useSeverityFilter } from '../hooks/useSeverityFilter'
+import { useReportFilters } from '../hooks/useReportFilters'
 import { createUserLocationIcon, USER_LOCATION_MARKER_CSS } from '../utils/markerIcons'
 import {
   createDisasterMarkerIcon,
@@ -52,13 +52,13 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
     error: reportsError,
   } = useDisasterReports()
 
-  // Severity filter
-  const severityFilter = useSeverityFilter()
+  // Report filters (severity and time)
+  const reportFilters = useReportFilters()
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
-  // Filter reports based on selected severities
+  // Filter reports based on selected filters
   const filteredReports = disasterReports
-    ? severityFilter.filterReports(disasterReports)
+    ? reportFilters.filterReports(disasterReports)
     : []
 
   const disasterMarkersRef = useRef<L.Marker[]>([])
@@ -211,8 +211,8 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
         <div className="absolute top-4 left-4 z-[1000]">
           <FilterButton
             onClick={() => setIsFilterOpen(true)}
-            activeFilterCount={severityFilter.filterCount}
-            aria-label={`Filter by severity (${severityFilter.filterCount} filters active)`}
+            activeFilterCount={reportFilters.filterCount}
+            aria-label={`Filter reports (${reportFilters.filterCount} filters active)`}
           />
         </div>
       )}
@@ -390,10 +390,12 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       <SeverityFilterSheet
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
-        selectedSeverities={severityFilter.selectedSeverities}
-        onToggleSeverity={severityFilter.toggleSeverity}
-        onClearFilters={severityFilter.clearFilters}
+        selectedSeverities={reportFilters.selectedSeverities}
+        onToggleSeverity={reportFilters.toggleSeverity}
+        onClearFilters={reportFilters.clearFilters}
         reports={disasterReports || []}
+        selectedTimeRange={reportFilters.selectedTimeRange}
+        onSetTimeRange={reportFilters.setTimeRange}
       />
     </div>
   )

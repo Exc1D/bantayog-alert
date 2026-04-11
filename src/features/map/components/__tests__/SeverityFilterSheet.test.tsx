@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SeverityFilterSheet } from '../SeverityFilterSheet'
 import type { DisasterReport } from '../../types'
+import type { TimeRange } from '../../utils/timeFilters'
 
 describe('SeverityFilterSheet', () => {
   const mockReports: DisasterReport[] = [
@@ -54,19 +55,89 @@ describe('SeverityFilterSheet', () => {
     onToggleSeverity: vi.fn(),
     onClearFilters: vi.fn(),
     reports: mockReports,
+    selectedTimeRange: 'all' as TimeRange,
+    onSetTimeRange: vi.fn(),
   }
 
   it('should render when open', () => {
     render(<SeverityFilterSheet {...defaultProps} />)
 
-    expect(screen.getByText('Filter by Severity')).toBeInTheDocument()
+    expect(screen.getByText('Filter Reports')).toBeInTheDocument()
     expect(screen.getByTestId('severity-filter-sheet')).toBeInTheDocument()
   })
 
   it('should not render when closed', () => {
     render(<SeverityFilterSheet {...defaultProps} isOpen={false} />)
 
-    expect(screen.queryByText('Filter by Severity')).not.toBeInTheDocument()
+    expect(screen.queryByText('Filter Reports')).not.toBeInTheDocument()
+  })
+
+  it('should display time range options', () => {
+    render(<SeverityFilterSheet {...defaultProps} />)
+
+    expect(screen.getByText('Time Range')).toBeInTheDocument()
+    expect(screen.getByText('1H')).toBeInTheDocument()
+    expect(screen.getByText('24H')).toBeInTheDocument()
+    expect(screen.getByText('7D')).toBeInTheDocument()
+    expect(screen.getByText('30D')).toBeInTheDocument()
+    expect(screen.getByText('ALL')).toBeInTheDocument()
+  })
+
+  it('should show ALL time range selected by default', () => {
+    render(<SeverityFilterSheet {...defaultProps} />)
+
+    const allButton = screen.getByTestId('time-range-button-all')
+    expect(allButton).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('should call onSetTimeRange when time range button clicked', async () => {
+    const user = userEvent.setup()
+    const onSetTimeRange = vi.fn()
+
+    render(
+      <SeverityFilterSheet
+        {...defaultProps}
+        onSetTimeRange={onSetTimeRange}
+      />
+    )
+
+    const oneHourButton = screen.getByTestId('time-range-button-1h')
+    await user.click(oneHourButton)
+
+    // Should update local state but not call parent yet
+    expect(onSetTimeRange).not.toHaveBeenCalled()
+
+    // Apply to trigger the callback
+    await user.click(screen.getByTestId('apply-filters-button'))
+
+    expect(onSetTimeRange).toHaveBeenCalledWith('1h')
+  })
+
+  it('should apply time range filter when Apply button clicked', async () => {
+    const user = userEvent.setup()
+    const onSetTimeRange = vi.fn()
+
+    render(
+      <SeverityFilterSheet
+        {...defaultProps}
+        onSetTimeRange={onSetTimeRange}
+      />
+    )
+
+    // Select time range
+    await user.click(screen.getByTestId('time-range-button-24h'))
+
+    // Apply filters
+    await user.click(screen.getByTestId('apply-filters-button'))
+
+    expect(onSetTimeRange).toHaveBeenCalledWith('24h')
+    expect(defaultProps.onClose).toHaveBeenCalled()
+  })
+
+  it('should display severity section label', () => {
+    render(<SeverityFilterSheet {...defaultProps} />)
+
+    expect(screen.getByText('Severity')).toBeInTheDocument()
   })
 
   it('should display report count summary', () => {
@@ -152,22 +223,25 @@ describe('SeverityFilterSheet', () => {
 
   it('should call onClose when Apply button clicked', async () => {
     const user = userEvent.setup()
-    render(<SeverityFilterSheet {...defaultProps} />)
+    const onClose = vi.fn()
+    render(<SeverityFilterSheet {...defaultProps} onClose={onClose} />)
 
     const applyButton = screen.getByTestId('apply-filters-button')
     await user.click(applyButton)
 
-    expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('should apply selected filters when Apply button clicked', async () => {
     const user = userEvent.setup()
     const onToggleSeverity = vi.fn()
+    const onSetTimeRange = vi.fn()
 
     render(
       <SeverityFilterSheet
         {...defaultProps}
         onToggleSeverity={onToggleSeverity}
+        onSetTimeRange={onSetTimeRange}
       />
     )
 
@@ -175,12 +249,40 @@ describe('SeverityFilterSheet', () => {
     await user.click(screen.getByTestId('severity-checkbox-critical'))
     await user.click(screen.getByTestId('severity-checkbox-high'))
 
+    // Select time range
+    await user.click(screen.getByTestId('time-range-button-7d'))
+
     // Apply filters
     await user.click(screen.getByTestId('apply-filters-button'))
 
     expect(onToggleSeverity).toHaveBeenCalledWith('critical')
     expect(onToggleSeverity).toHaveBeenCalledWith('high')
+    expect(onSetTimeRange).toHaveBeenCalledWith('7d')
     expect(defaultProps.onClose).toHaveBeenCalled()
+  })
+
+  it('should clear time range when Clear All button clicked', async () => {
+    const user = userEvent.setup()
+    const onClearFilters = vi.fn()
+
+    render(
+      <SeverityFilterSheet
+        {...defaultProps}
+        selectedTimeRange="1h"
+        onClearFilters={onClearFilters}
+      />
+    )
+
+    // Clear filters
+    await user.click(screen.getByTestId('clear-filters-button'))
+
+    expect(onClearFilters).toHaveBeenCalled()
+
+    // Local state should reset to ALL
+    const allButton = screen.getByTestId('time-range-button-all')
+    await waitFor(() => {
+      expect(allButton).toHaveAttribute('aria-pressed', 'true')
+    })
   })
 
   it('should close modal when backdrop clicked', async () => {

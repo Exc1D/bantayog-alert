@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Modal } from '@/shared/components/Modal'
 import type { IncidentSeverity } from '@/shared/types/firestore.types'
 import type { DisasterReport } from '../types'
+import type { TimeRange } from '../utils/timeFilters'
+import { TIME_RANGE_LABELS } from '../utils/timeFilters'
 
 const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
   critical: 'Critical',
@@ -30,11 +32,16 @@ export interface SeverityFilterSheetProps {
   onClearFilters: () => void
   /** All disaster reports (for counting) */
   reports: DisasterReport[]
+  /** Current selected time range */
+  selectedTimeRange: TimeRange
+  /** Callback to set time range */
+  onSetTimeRange: (timeRange: TimeRange) => void
 }
 
 /**
  * Severity filter bottom sheet with checkboxes and report counts.
  * Shows count of reports per severity and allows multi-select filtering.
+ * Also includes time range filtering.
  *
  * @param isOpen - Whether the sheet is visible
  * @param onClose - Callback when sheet closes
@@ -42,6 +49,8 @@ export interface SeverityFilterSheetProps {
  * @param onToggleSeverity - Toggle severity on/off
  * @param onClearFilters - Clear all selected filters
  * @param reports - All disaster reports for counting
+ * @param selectedTimeRange - Currently selected time range
+ * @param onSetTimeRange - Set time range filter
  */
 export function SeverityFilterSheet({
   isOpen,
@@ -50,13 +59,17 @@ export function SeverityFilterSheet({
   onToggleSeverity,
   onClearFilters,
   reports,
+  selectedTimeRange,
+  onSetTimeRange,
 }: SeverityFilterSheetProps) {
   const [localSelection, setLocalSelection] = useState<IncidentSeverity[]>(selectedSeverities)
+  const [localTimeRange, setLocalTimeRange] = useState<TimeRange>(selectedTimeRange)
 
-  // Update local selection when prop changes
-  useState(() => {
+  // Update local selections when props change
+  useEffect(() => {
     setLocalSelection(selectedSeverities)
-  })
+    setLocalTimeRange(selectedTimeRange)
+  }, [selectedSeverities, selectedTimeRange])
 
   // Count reports per severity
   const severityCounts = useMemo(() => {
@@ -102,27 +115,66 @@ export function SeverityFilterSheet({
         onToggleSeverity(severity)
       }
     })
+    // Apply time range
+    onSetTimeRange(localTimeRange)
     onClose()
   }
 
   const handleClearAll = () => {
     setLocalSelection([])
+    setLocalTimeRange('all')
     onClearFilters()
   }
 
   const totalReports = reports.length
-  const hasActiveFilters = localSelection.length > 0
+  const hasActiveFilters = localSelection.length > 0 || localTimeRange !== 'all'
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Filter by Severity">
+    <Modal isOpen={isOpen} onClose={onClose} title="Filter Reports">
       <div className="flex flex-col gap-4" data-testid="severity-filter-sheet">
         {/* Report count summary */}
         <div className="text-sm text-gray-600">
           {totalReports} {totalReports === 1 ? 'report' : 'reports'} in your area
         </div>
 
+        {/* Time range filter */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">Time Range</label>
+          <div
+            className="flex bg-gray-100 rounded-lg p-1"
+            role="group"
+            aria-label="Time range filters"
+          >
+            {(Object.keys(TIME_RANGE_LABELS) as TimeRange[]).map((range) => {
+              const isSelected = localTimeRange === range
+              return (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setLocalTimeRange(range)}
+                  className={`
+                    flex-1 py-2 px-3 rounded-md text-sm font-medium
+                    transition-all duration-150
+                    ${
+                      isSelected
+                        ? 'bg-white text-primary-blue shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-200'
+                    }
+                  `}
+                  data-testid={`time-range-button-${range}`}
+                  aria-pressed={isSelected}
+                >
+                  {TIME_RANGE_LABELS[range]}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Severity options */}
-        <div className="flex flex-col gap-2" role="group" aria-label="Severity filters">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">Severity</label>
+          <div className="flex flex-col gap-2" role="group" aria-label="Severity filters">
           {(Object.keys(SEVERITY_LABELS) as IncidentSeverity[]).map((severity) => {
             const count = severityCounts[severity]
             const isSelected = isSeveritySelected(severity)
@@ -159,6 +211,7 @@ export function SeverityFilterSheet({
               </label>
             )
           })}
+          </div>
         </div>
 
         {/* Action buttons */}
