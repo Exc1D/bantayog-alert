@@ -17,6 +17,7 @@ import { MapControls } from './MapControls'
 import { LocationSearch } from './LocationSearch'
 import { SeverityFilterSheet } from './SeverityFilterSheet'
 import { FilterButton } from '@/shared/components/FilterButton'
+import { RefreshButton } from './RefreshButton'
 import 'leaflet/dist/leaflet.css'
 
 // Camarines Norte coordinates
@@ -49,7 +50,10 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
   const {
     data: disasterReports,
     isLoading: isLoadingReports,
+    isRefetching,
     error: reportsError,
+    refetch,
+    lastUpdated,
   } = useDisasterReports()
 
   // Report filters (severity and time)
@@ -224,6 +228,17 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
         data-testid="map-view"
         style={{ height: '100vh', width: '100%' }}
       />
+
+      {/* Refresh button - positioned below map controls */}
+      {isReady && (
+        <div className="absolute top-[220px] right-4 z-[1000]" data-testid="refresh-button-container">
+          <RefreshButton
+            isRefreshing={isLoadingReports || isRefetching}
+            onRefresh={refetch}
+            lastUpdated={lastUpdated}
+          />
+        </div>
+      )}
 
       {/* Location error state */}
       {isReady && locationError && (

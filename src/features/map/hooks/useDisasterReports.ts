@@ -4,15 +4,24 @@ import { where, orderBy } from 'firebase/firestore'
 import { DisasterReport } from '../types'
 import { Report } from '@/shared/types/firestore.types'
 
+export interface DisasterReportsResult {
+  data: DisasterReport[] | undefined
+  isLoading: boolean
+  isRefetching: boolean
+  error: unknown
+  refetch: () => void
+  lastUpdated: number | null
+}
+
 /**
  * Fetches verified disaster reports from Firestore.
  * Filters for verified and active reports only.
  *
  * @param enabled - Whether the query should be enabled
- * @returns Query result with disaster reports
+ * @returns Query result with disaster reports and refresh controls
  */
-export function useDisasterReports(enabled = true) {
-  return useQuery({
+export function useDisasterReports(enabled = true): DisasterReportsResult {
+  const query = useQuery({
     queryKey: ['disaster-reports'],
     queryFn: async () => {
       // Fetch verified reports that are not resolved or false alarm
@@ -31,6 +40,19 @@ export function useDisasterReports(enabled = true) {
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   })
+
+  // Track last successful fetch timestamp
+  const lastUpdated =
+    query.dataUpdatedAt > 0 ? query.dataUpdatedAt : query.data ? Date.now() : null
+
+  return {
+    data: query.data,
+    isLoading: query.isLoading,
+    isRefetching: query.isRefetching,
+    error: query.error,
+    refetch: query.refetch,
+    lastUpdated,
+  }
 }
 
 /**

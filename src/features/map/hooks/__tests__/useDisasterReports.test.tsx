@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 import { useDisasterReports } from '../useDisasterReports'
 import { getCollection } from '@/shared/services/firestore.service'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -81,7 +81,7 @@ describe('useDisasterReports', () => {
       expect(result.current.isLoading).toBe(true)
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true)
+        expect(result.current.isLoading).toBe(false)
       })
 
       expect(getCollection).toHaveBeenCalledWith('reports', expect.any(Array))
@@ -94,7 +94,7 @@ describe('useDisasterReports', () => {
       const { result } = renderHook(() => useDisasterReports(true), { wrapper })
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true)
+        expect(result.current.isLoading).toBe(false)
       })
 
       const disasterReports = result.current.data
@@ -133,7 +133,7 @@ describe('useDisasterReports', () => {
       const { result } = renderHook(() => useDisasterReports(true), { wrapper })
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true)
+        expect(result.current.isLoading).toBe(false)
       })
 
       expect(result.current.data).toEqual([])
@@ -146,7 +146,7 @@ describe('useDisasterReports', () => {
       const { result } = renderHook(() => useDisasterReports(true), { wrapper })
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true)
+        expect(result.current.error).toBeTruthy()
       }, { timeout: 5000 })
 
       expect(result.current.error).toBeTruthy()
@@ -168,7 +168,7 @@ describe('useDisasterReports', () => {
 
       const { result } = renderHook(() => useDisasterReports(false), { wrapper })
 
-      expect(result.current.fetchStatus).toBe('idle')
+      expect(result.current.data).toBeUndefined()
     })
   })
 
@@ -195,12 +195,47 @@ describe('useDisasterReports', () => {
       const { result } = renderHook(() => useDisasterReports(true), { wrapper })
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true)
+        expect(result.current.isLoading).toBe(false)
       })
 
       // Data should be fresh for 2 minutes
-      expect(result.current.isFetching).toBe(false)
+      expect(result.current.isRefetching).toBe(false)
       // staleTime is not exposed in the query result, so we skip this check
+    })
+
+    it('should expose refetch function', async () => {
+      vi.mocked(getCollection).mockResolvedValue(mockReports)
+
+      const { result } = renderHook(() => useDisasterReports(true), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      expect(typeof result.current.refetch).toBe('function')
+
+      // Trigger refetch - should not throw
+      await expect(async () => {
+        await result.current.refetch()
+      }).not.toThrow()
+    })
+
+    it('should track last updated timestamp', async () => {
+      vi.mocked(getCollection).mockResolvedValue(mockReports)
+
+      const { result } = renderHook(() => useDisasterReports(true), { wrapper })
+
+      // Initially, lastUpdated should be null
+      expect(result.current.lastUpdated).toBeNull()
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // After data loads, lastUpdated should be set
+      expect(result.current.lastUpdated).toBeTruthy()
+      expect(typeof result.current.lastUpdated).toBe('number')
     })
   })
 })
+
