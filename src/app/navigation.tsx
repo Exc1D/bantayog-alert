@@ -31,14 +31,24 @@ export function Navigation() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="relative -top-4 flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary-red to-red-600 text-white shadow-lg border-4 border-white"
+                  className="relative -top-5 flex items-center justify-center w-20 h-16"
+                  style={{
+                    clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+                  }}
+                  aria-label={`Report ${item.label}`}
                 >
-                  <Icon size={28} />
-                  <span className="text-xs font-semibold mt-1">{item.label}</span>
+                  <div className="absolute inset-0 bg-gradient-to-b from-primary-red to-red-700" />
+                  <div className="relative z-10 flex flex-col items-center justify-center pt-2">
+                    <Icon size={24} className="text-white drop-shadow-md" />
+                    <span className="text-[10px] font-bold mt-0.5 text-white drop-shadow-md uppercase tracking-wide">
+                      {item.label}
+                    </span>
+                  </div>
                   {queueSize > 0 && (
                     <span
                       data-testid="queue-badge"
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse"
+                      className="absolute -top-1 right-4 w-5 h-5 bg-yellow-400 text-red-900 text-xs font-bold rounded-full flex items-center justify-center animate-pulse border-2 border-white"
+                      aria-label={`${queueSize} reports waiting to sync`}
                     >
                       {queueSize > 9 ? '9+' : queueSize}
                     </span>
