@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { useFeedReports } from '../hooks/useFeedReports'
 import { FeedCardSkeleton } from './FeedCardSkeleton'
+import { FeedCard } from './FeedCard'
 import { Button } from '@/shared/components/Button'
 
 export interface FeedListProps {
@@ -38,7 +39,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
           fetchNextPage()
         }
       },
-      { threshold: 1.0 }
+      { threshold: 0, rootMargin: '100px' }
     )
 
     const currentTarget = observerTarget.current
@@ -112,7 +113,9 @@ export function FeedList({ enabled = true }: FeedListProps) {
     )
   }
 
-  // Empty state
+  // Empty state (guard: don't show empty message when feed is intentionally disabled)
+  if (!enabled) return null
+
   if (!data || data.length === 0) {
     return (
       <div className="min-h-screen bg-gray-100 pb-20" data-testid="feed-list">
@@ -179,57 +182,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
         {/* Report cards */}
         <div className="p-4 space-y-4" data-testid="feed-reports">
           {data.map((report) => (
-            <div
-              key={report.id}
-              className="bg-white rounded-lg p-4 shadow-sm"
-              data-testid={`feed-report-${report.id}`}
-            >
-              {/* Report header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary-blue rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">
-                      {report.typeDisplay.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900 text-sm">
-                        {report.typeDisplay}
-                      </span>
-                      {report.isVerified && (
-                        <span
-                          className="text-xs px-2 py-0.5 bg-status-verified text-white rounded-full"
-                          data-testid="verified-badge"
-                        >
-                          Verified
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">{report.timeAgo}</div>
-                  </div>
-                </div>
-                <div
-                  className={`text-xs font-bold px-2 py-1 rounded ${getSeverityColor(report.severity)}`}
-                  data-testid="severity-badge"
-                >
-                  {report.severity.toUpperCase()}
-                </div>
-              </div>
-
-              {/* Report content */}
-              <p className="text-gray-800 text-sm mb-3" data-testid="report-description">
-                {report.description}
-              </p>
-
-              {/* Report footer */}
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span data-testid="report-location">{report.locationDisplay}</span>
-                <span className="capitalize" data-testid="report-status">
-                  {report.status.replace('_', ' ')}
-                </span>
-              </div>
-            </div>
+            <FeedCard key={report.id} report={report} />
           ))}
 
           {/* Loading more indicator */}
@@ -246,20 +199,4 @@ export function FeedList({ enabled = true }: FeedListProps) {
       </div>
     </div>
   )
-}
-
-/**
- * Gets the color class for severity badge
- *
- * @param severity - Incident severity level
- * @returns Tailwind color classes
- */
-function getSeverityColor(severity: string): string {
-  const colors = {
-    low: 'bg-gray-100 text-gray-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    high: 'bg-orange-100 text-orange-800',
-    critical: 'bg-red-100 text-red-800',
-  }
-  return colors[severity as keyof typeof colors] || colors.low
 }
