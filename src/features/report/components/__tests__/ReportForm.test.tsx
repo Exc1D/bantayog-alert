@@ -445,4 +445,94 @@ describe('ReportForm', () => {
       })
     })
   })
+
+  describe('Description Validation', () => {
+    it('shows required indicator for description field', () => {
+      render(<ReportForm />)
+
+      const descLabel = screen.getByLabelText(/description/i)
+      expect(descLabel).toBeInTheDocument()
+      // Verify there's a required marker somewhere (the asterisk)
+      expect(screen.getAllByText(/\*/i).length).toBeGreaterThan(0)
+    })
+
+    it('validates minimum length on blur', async () => {
+      const user = userEvent.setup()
+      render(<ReportForm />)
+
+      const descInput = screen.getByLabelText(/description/i)
+      await user.type(descInput, 'Short') // Only 5 characters
+      await user.tab() // trigger blur
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument()
+        expect(screen.getByRole('alert')).toHaveTextContent(/at least 10 characters/i)
+      })
+    })
+
+    it('accepts descriptions with 10 or more characters', async () => {
+      const user = userEvent.setup()
+      render(<ReportForm />)
+
+      const descInput = screen.getByLabelText(/description/i)
+      await user.type(descInput, 'Valid description') // 17 characters
+      await user.tab() // trigger blur
+
+      // Should not show error
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('prevents submission with too short description', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      // Fill with short description
+      await user.type(screen.getByLabelText(/description/i), 'Brief')
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+
+      // Try to submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      // Should not submit
+      expect(onSubmit).not.toHaveBeenCalled()
+
+      // Should show error
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument()
+        expect(screen.getByRole('alert')).toHaveTextContent(/at least 10 characters/i)
+      })
+    })
+
+    it('clears error when description is fixed', async () => {
+      const user = userEvent.setup()
+      render(<ReportForm />)
+
+      const descInput = screen.getByLabelText(/description/i)
+
+      // Type short description
+      await user.type(descInput, 'Hi')
+      await user.tab()
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument()
+      })
+
+      // Fix by typing more
+      await user.click(descInput)
+      await user.type(descInput, ' there, this is a valid description')
+      await user.tab()
+
+      // Error should be cleared
+      await waitFor(() => {
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      })
+    })
+  })
 })

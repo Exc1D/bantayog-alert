@@ -98,6 +98,17 @@ function validateEmail(value: string): string | null {
   return null
 }
 
+// Minimum description length validation
+const MIN_DESCRIPTION_CHARS = 10
+
+function validateDescription(value: string): string | null {
+  const trimmed = value.trim()
+  if (trimmed.length > 0 && trimmed.length < MIN_DESCRIPTION_CHARS) {
+    return `Description must be at least ${MIN_DESCRIPTION_CHARS} characters`
+  }
+  return null
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -125,6 +136,7 @@ export function ReportForm({
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [descriptionError, setDescriptionError] = useState<string | null>(null)
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [injuriesConfirmed, setInjuriesConfirmed] = useState<boolean | undefined>(undefined)
   const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
@@ -150,6 +162,10 @@ export function ReportForm({
     setEmailError(validateEmail(email))
   }
 
+  function handleDescriptionBlur() {
+    setDescriptionError(validateDescription(description))
+  }
+
   function handleMunicipalityChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setMunicipality(e.target.value)
     setBarangay('') // reset barangay when municipality changes
@@ -169,9 +185,16 @@ export function ReportForm({
     e.preventDefault()
 
     // Re-validate phone before submission
-    const error = validatePhone(phone)
-    if (error) {
-      setPhoneError(error)
+    const phoneError = validatePhone(phone)
+    if (phoneError) {
+      setPhoneError(phoneError)
+      return
+    }
+
+    // Validate description
+    const descError = validateDescription(description)
+    if (descError) {
+      setDescriptionError(descError)
       return
     }
 
@@ -356,17 +379,21 @@ export function ReportForm({
       {/* Description field                                                    */}
       {/* ------------------------------------------------------------------ */}
       <div>
-        <label htmlFor="report-description">Description</label>
+        <label htmlFor="report-description">Description *</label>
         <textarea
           id="report-description"
           value={description}
           onChange={(e) => setDescription(e.target.value.slice(0, MAX_DESCRIPTION_CHARS))}
+          onBlur={handleDescriptionBlur}
           maxLength={MAX_DESCRIPTION_CHARS}
           rows={4}
         />
-        <span>
-          {description.length}/{MAX_DESCRIPTION_CHARS}
-        </span>
+        <div className="flex items-center justify-between">
+          <span className={descriptionError ? 'text-red-600' : ''}>
+            {description.length}/{MAX_DESCRIPTION_CHARS}
+          </span>
+          {descriptionError && <span role="alert" className="text-red-600 text-sm">{descriptionError}</span>}
+        </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
