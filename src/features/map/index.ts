@@ -1,3 +1,7 @@
 export { MapView } from './components/MapView'
 export type { MapViewProps } from './components/MapView'
+export { MapControls } from './components/MapControls'
+export type { MapControlsProps } from './components/MapControls'
 export { useLeafletMap } from './hooks/useLeafletMap'
+export { useMapControls } from './hooks/useMapControls'
+export type { MapControlsOptions, UseMapControlsReturn } from './hooks/useMapControls'

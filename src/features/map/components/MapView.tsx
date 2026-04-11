@@ -3,6 +3,7 @@ import L from 'leaflet'
 import { useLeafletMap } from '../hooks/useLeafletMap'
 import { useGeolocation } from '@/shared/hooks/useGeolocation'
 import { useDisasterReports } from '../hooks/useDisasterReports'
+import { useMapControls } from '../hooks/useMapControls'
 import { createUserLocationIcon, USER_LOCATION_MARKER_CSS } from '../utils/markerIcons'
 import {
   createDisasterMarkerIcon,
@@ -11,6 +12,7 @@ import {
   DISASTER_MARKER_CSS,
 } from '../utils/disasterMarkers'
 import { ReportDetailModal } from './ReportDetailModal'
+import { MapControls } from './MapControls'
 import 'leaflet/dist/leaflet.css'
 
 // Camarines Norte coordinates
@@ -48,6 +50,12 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
 
   const disasterMarkersRef = useRef<L.Marker[]>([])
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
+
+  // Map controls
+  const mapControls = useMapControls(mapInstanceRef.current, {
+    minZoom: 8,
+    maxZoom: 18,
+  })
 
   // Inject custom CSS for user location marker and disaster markers
   useEffect(() => {
@@ -328,14 +336,19 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
         </div>
       )}
 
-      {/* Placeholder for disaster layer controls */}
-      {isReady && (
-        <div
-          className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-4"
-          data-testid="map-controls-placeholder"
-        >
-          <p className="text-sm text-gray-600">Disaster layer controls coming soon</p>
-        </div>
+      {/* Map controls */}
+      {isReady && mapInstanceRef.current && (
+        <MapControls
+          map={mapInstanceRef.current}
+          onZoomIn={mapControls.zoomIn}
+          onZoomOut={mapControls.zoomOut}
+          onLocate={mapControls.locate}
+          onLayerToggle={mapControls.toggleLayer}
+          currentZoom={mapControls.currentZoom}
+          layerType={mapControls.layerType}
+          minZoom={8}
+          maxZoom={18}
+        />
       )}
 
       {/* Report detail modal */}
