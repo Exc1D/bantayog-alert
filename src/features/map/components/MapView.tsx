@@ -4,6 +4,7 @@ import { useLeafletMap } from '../hooks/useLeafletMap'
 import { useGeolocation } from '@/shared/hooks/useGeolocation'
 import { useDisasterReports } from '../hooks/useDisasterReports'
 import { useMapControls } from '../hooks/useMapControls'
+import { useSeverityFilter } from '../hooks/useSeverityFilter'
 import { createUserLocationIcon, USER_LOCATION_MARKER_CSS } from '../utils/markerIcons'
 import {
   createDisasterMarkerIcon,
@@ -14,6 +15,8 @@ import {
 import { ReportDetailModal } from './ReportDetailModal'
 import { MapControls } from './MapControls'
 import { LocationSearch } from './LocationSearch'
+import { SeverityFilterSheet } from './SeverityFilterSheet'
+import { FilterButton } from '@/shared/components/FilterButton'
 import 'leaflet/dist/leaflet.css'
 
 // Camarines Norte coordinates
@@ -48,6 +51,15 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
     isLoading: isLoadingReports,
     error: reportsError,
   } = useDisasterReports()
+
+  // Severity filter
+  const severityFilter = useSeverityFilter()
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+
+  // Filter reports based on selected severities
+  const filteredReports = disasterReports
+    ? severityFilter.filterReports(disasterReports)
+    : []
 
   const disasterMarkersRef = useRef<L.Marker[]>([])
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
@@ -134,8 +146,8 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
     disasterMarkersRef.current = []
 
     // Add markers for each disaster report
-    if (disasterReports && disasterReports.length > 0) {
-      disasterReports.forEach((report) => {
+    if (filteredReports && filteredReports.length > 0) {
+      filteredReports.forEach((report) => {
         const markerLatLng: L.LatLngExpression = [report.location.latitude, report.location.longitude]
 
         const marker = L.marker(markerLatLng, {
@@ -172,7 +184,7 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       })
       disasterMarkersRef.current = []
     }
-  }, [isReady, mapInstanceRef, disasterReports])
+  }, [isReady, mapInstanceRef, filteredReports])
 
   return (
     <div className="relative w-full h-screen">
@@ -192,6 +204,17 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       {/* Location search */}
       {isReady && mapInstanceRef.current && (
         <LocationSearch map={mapInstanceRef.current} />
+      )}
+
+      {/* Filter button */}
+      {isReady && (
+        <div className="absolute top-4 left-4 z-[1000]">
+          <FilterButton
+            onClick={() => setIsFilterOpen(true)}
+            activeFilterCount={severityFilter.filterCount}
+            aria-label={`Filter by severity (${severityFilter.filterCount} filters active)`}
+          />
+        </div>
       )}
 
       {/* Map container */}
@@ -361,6 +384,16 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       <ReportDetailModal
         reportId={selectedReportId}
         onClose={() => setSelectedReportId(null)}
+      />
+
+      {/* Severity filter sheet */}
+      <SeverityFilterSheet
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        selectedSeverities={severityFilter.selectedSeverities}
+        onToggleSeverity={severityFilter.toggleSeverity}
+        onClearFilters={severityFilter.clearFilters}
+        reports={disasterReports || []}
       />
     </div>
   )

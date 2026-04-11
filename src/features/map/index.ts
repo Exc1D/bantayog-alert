@@ -4,6 +4,8 @@ export { MapControls } from './components/MapControls'
 export type { MapControlsProps } from './components/MapControls'
 export { LocationSearch } from './components/LocationSearch'
 export type { LocationSearchProps } from './components/LocationSearch'
+export { SeverityFilterSheet } from './components/SeverityFilterSheet'
+export type { SeverityFilterSheetProps } from './components/SeverityFilterSheet'
 export { useLeafletMap } from './hooks/useLeafletMap'
 export { useMapControls } from './hooks/useMapControls'
 export type { MapControlsOptions, UseMapControlsReturn } from './hooks/useMapControls'
@@ -12,3 +14,5 @@ export type {
   LocationSearchResult,
   UseLocationSearchReturn,
 } from './hooks/useLocationSearch'
+export { useSeverityFilter } from './hooks/useSeverityFilter'
+export type { UseSeverityFilterResult } from './hooks/useSeverityFilter'
