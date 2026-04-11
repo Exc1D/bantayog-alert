@@ -39,3 +39,12 @@ export type {
   ArchivedReport,
   MFASettings,
 } from './firestore.types'
+
+// IndexedDB types
+export type {
+  ReportQueueItem,
+  AddReportOptions,
+  BatchResult,
+  ReportStatus as IndexedDBReportStatus,
+} from './indexedDB'
+export { DB_CONFIG, DB_VERSION } from './indexedDB'
