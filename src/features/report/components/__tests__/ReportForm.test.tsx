@@ -11,9 +11,36 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ReportForm } from '../ReportForm'
 
+// ---------------------------------------------------------------------------
+// Stable mock objects — hoisted before vi.mock so factories can reference
+// them. Tests modify .isOnline / .isSyncing / .queueSize directly.
+// ---------------------------------------------------------------------------
+const queueState = vi.hoisted(() => ({
+  enqueueReport: vi.fn(),
+  isSyncing: false,
+  queueSize: 0,
+}))
+
+const networkState = vi.hoisted(() => ({
+  isOnline: true,
+}))
+
+vi.mock('@/features/report/hooks/useReportQueue', () => ({
+  useReportQueue: () => queueState,
+}))
+
+vi.mock('@/shared/hooks/useNetworkStatus', () => ({
+  useNetworkStatus: () => networkState,
+}))
+
 describe('ReportForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore default (online) state for each test
+    networkState.isOnline = true
+    queueState.enqueueReport.mockClear()
+    queueState.isSyncing = false
+    queueState.queueSize = 0
   })
 
   it('renders all 4 fields', () => {
@@ -532,6 +559,70 @@ describe('ReportForm', () => {
       // Error should be cleared
       await waitFor(() => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Offline Queue Integration', () => {
+    it('should show offline banner when network is unavailable', () => {
+      networkState.isOnline = false
+
+      render(<ReportForm />)
+
+      expect(screen.getByTestId('offline-banner')).toBeInTheDocument()
+      expect(screen.getByText(/you're offline/i)).toBeInTheDocument()
+    })
+
+    it('should queue report when submitted offline', async () => {
+      const user = userEvent.setup()
+
+      networkState.isOnline = false
+      queueState.queueSize = 1
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+        />
+      )
+
+      // Fill required fields
+      await user.type(screen.getByLabelText(/description/i), 'Flooding near the bridge')
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      // Should call enqueueReport
+      await waitFor(() => {
+        expect(queueState.enqueueReport).toHaveBeenCalledOnce()
+      })
+
+      // Should show queued success screen
+      await waitFor(() => {
+        expect(screen.getByText(/report queued/i)).toBeInTheDocument()
+      })
+    })
+
+    it('should generate report ID with -queued suffix when offline', async () => {
+      const user = userEvent.setup()
+
+      networkState.isOnline = false
+      queueState.queueSize = 1
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+        />
+      )
+
+      await user.type(screen.getByLabelText(/description/i), 'Test flooding')
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        const reportIdElement = screen.getByTestId('report-id')
+        expect(reportIdElement.textContent ?? '').toMatch(/-queued$/)
       })
     })
   })

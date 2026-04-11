@@ -119,7 +119,7 @@ export function ReportSuccess({
       <div className="mb-8">
         <p className="text-sm text-gray-600 mb-1">Your Report ID</p>
         <p className="text-xl font-mono font-semibold text-gray-900" data-testid="report-id">
-          {formatReportId(reportId.replace('-queued', ''))}
+          {formatReportId(reportId)}
         </p>
       </div>
 
