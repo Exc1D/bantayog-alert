@@ -61,6 +61,7 @@ export function Navigation() {
               <Link
                 key={item.path}
                 to={item.path}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex flex-col items-center justify-center w-16 h-full ${
                   isActive ? 'text-primary-blue' : 'text-gray-500'
                 }`}
