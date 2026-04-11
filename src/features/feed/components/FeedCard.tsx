@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { MapPin, Heart, MessageCircle, Share2, CheckCircle2 } from 'lucide-react'
+import { MapPin, Heart, Share2, CheckCircle2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Report } from '@/shared/types/firestore.types'
 import { StatusBadge } from '@/shared/components/StatusBadge'
@@ -17,10 +17,9 @@ export interface FeedCardProps {
   actions?: FeedCardActions
   isLiked?: boolean
   likeCount?: number
-  commentCount?: number
 }
 
-export function FeedCard({ report, actions, isLiked = false, likeCount = 0, commentCount = 0 }: FeedCardProps) {
+export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: FeedCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [liked, setLiked] = useState(isLiked)
   const navigate = useNavigate()
@@ -51,11 +50,6 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0, comm
   const handleLike = () => {
     setLiked(!liked)
     actions?.onLike?.(report.id)
-  }
-
-  // Handle comment
-  const handleComment = () => {
-    actions?.onComment?.(report.id)
   }
 
   // Handle share
@@ -235,9 +229,6 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0, comm
             {likeCount > 0 && (
               <span data-testid="like-count">{likeCount}</span>
             )}
-            {commentCount > 0 && (
-              <span data-testid="comment-count">{commentCount} comments</span>
-            )}
           </div>
         </div>
 
@@ -257,15 +248,6 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0, comm
             <span className="text-sm font-medium">Like</span>
           </button>
 
-          {/* Comment button */}
-          <button
-            onClick={handleComment}
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-            data-testid="comment-button"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-sm font-medium">Comment</span>
-          </button>
 
           {/* Share button */}
           <button

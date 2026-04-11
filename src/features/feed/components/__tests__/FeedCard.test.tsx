@@ -193,18 +193,6 @@ describe('FeedCard', () => {
 
       expect(screen.queryByTestId('like-count')).not.toBeInTheDocument()
     })
-
-    it('should display comment count when greater than 0', () => {
-      render(<FeedCard report={mockReport} commentCount={12} />)
-
-      expect(screen.getByTestId('comment-count')).toHaveTextContent('12 comments')
-    })
-
-    it('should not display comment count when 0', () => {
-      render(<FeedCard report={mockReport} commentCount={0} />)
-
-      expect(screen.queryByTestId('comment-count')).not.toBeInTheDocument()
-    })
   })
 
   describe('Action Buttons', () => {
@@ -212,7 +200,6 @@ describe('FeedCard', () => {
       render(<FeedCard report={mockReport} />)
 
       expect(screen.getByTestId('like-button')).toBeInTheDocument()
-      expect(screen.getByTestId('comment-button')).toBeInTheDocument()
       expect(screen.getByTestId('share-button')).toBeInTheDocument()
     })
 
@@ -247,15 +234,6 @@ describe('FeedCard', () => {
 
       const likeButton = screen.getByTestId('like-button')
       expect(likeButton).toHaveClass('text-red-500')
-    })
-
-    it('should call onComment when comment button is clicked', () => {
-      render(<FeedCard report={mockReport} actions={mockActions} />)
-
-      const commentButton = screen.getByTestId('comment-button')
-      fireEvent.click(commentButton)
-
-      expect(mockActions.onComment).toHaveBeenCalledWith(mockReport.id)
     })
 
     it('should call onShare when share button is clicked', () => {
