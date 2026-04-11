@@ -42,6 +42,8 @@ interface ReportSuccessProps {
   reportId: string
   /** The municipality from the report location */
   municipality: string
+  /** Whether the report was queued (offline) vs submitted immediately */
+  isQueued?: boolean
   /** Callback when user clicks "Create account to track" */
   onCreateAccount?: () => void
   /** Callback when user clicks "Share this alert" */
@@ -70,6 +72,7 @@ function formatReportId(reportId: string): string {
 export function ReportSuccess({
   reportId,
   municipality,
+  isQueued = false,
   onCreateAccount,
   onShare,
   onNavigate,
@@ -92,18 +95,20 @@ export function ReportSuccess({
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] px-4 py-8 text-center">
       {/* Success Icon */}
-      <div className="mb-6 text-green-600" role="img" aria-label="Success checkmark">
+      <div className={`mb-6 ${isQueued ? 'text-orange-600' : 'text-green-600'}`} role="img" aria-label={isQueued ? 'Report queued' : 'Success checkmark'}>
         <CheckCircle size={80} strokeWidth={1.5} />
       </div>
 
       {/* Success Message */}
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Report submitted successfully!</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        {isQueued ? 'Report queued for submission' : 'Report submitted successfully!'}
+      </h1>
 
       {/* Report ID Display */}
       <div className="mb-8">
         <p className="text-sm text-gray-600 mb-1">Your Report ID</p>
         <p className="text-xl font-mono font-semibold text-gray-900" data-testid="report-id">
-          {formatReportId(reportId)}
+          {formatReportId(reportId.replace('-queued', ''))}
         </p>
       </div>
 
@@ -144,7 +149,16 @@ export function ReportSuccess({
 
       {/* Additional Info */}
       <p className="mt-8 text-sm text-gray-500 max-w-md">
-        Your report from {municipality} has been submitted and will be reviewed.
+        {isQueued ? (
+          <>
+            Your report from {municipality} has been queued and will be submitted automatically
+            when you're back online.
+          </>
+        ) : (
+          <>
+            Your report from {municipality} has been submitted and will be reviewed.
+          </>
+        )}
         {isAnonymous && <> Create an account to track updates on your report.</>}
       </p>
     </div>

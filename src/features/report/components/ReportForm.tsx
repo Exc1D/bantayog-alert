@@ -1,6 +1,9 @@
 import React, { useRef, useState } from 'react'
+import { AlertCircle, WifiOff } from 'lucide-react'
 import { Button } from '@/shared/components/Button'
 import { ReportSuccess } from './ReportSuccess'
+import { useReportQueue } from '../hooks/useReportQueue'
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,6 +98,8 @@ export function ReportForm({
   onNavigate,
 }: ReportFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { enqueueReport, isSyncing } = useReportQueue()
+  const { isOnline } = useNetworkStatus()
 
   const [incidentType, setIncidentType] = useState<IncidentType>('other')
   const [photo, setPhoto] = useState<File | null>(null)
@@ -150,11 +155,28 @@ export function ReportForm({
       ? { type: 'gps', latitude: userLocation!.latitude, longitude: userLocation!.longitude }
       : { type: 'manual', municipality, barangay }
 
+    const reportData = {
+      incidentType,
+      photo,
+      location,
+      description,
+      phone,
+    }
+
+    // If offline, enqueue the report
+    if (!isOnline) {
+      enqueueReport(reportData)
+      // Show queued success screen (different from immediate submission)
+      const reportId = generateReportId(location)
+      setSubmittedReportId(`${reportId}-queued`)
+      return
+    }
+
     // Generate Report ID and show success screen
     const reportId = generateReportId(location)
     setSubmittedReportId(reportId)
 
-    onSubmit?.({ incidentType, photo, location, description, phone })
+    onSubmit?.(reportData)
   }
 
   function handleShare() {
@@ -179,10 +201,12 @@ export function ReportForm({
 
   // Show success screen if form was submitted
   if (submittedReportId) {
+    const isQueued = submittedReportId.endsWith('-queued')
     return (
       <ReportSuccess
         reportId={submittedReportId}
         municipality={getMunicipalityName()}
+        isQueued={isQueued}
         onCreateAccount={onCreateAccount}
         onShare={handleShare}
         onNavigate={onNavigate}
@@ -192,6 +216,19 @@ export function ReportForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      {/* Offline indicator */}
+      {!isOnline && (
+        <div className="bg-orange-50 border-b border-orange-200 px-4 py-3 mb-4 flex items-center gap-2" data-testid="offline-banner">
+          <WifiOff className="w-5 h-5 text-orange-600" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-orange-900">You're offline</p>
+            <p className="text-xs text-orange-700">
+              Your report will be queued and submitted automatically when you're back online.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ------------------------------------------------------------------ */}
       {/* Photo field                                                          */}
       {/* ------------------------------------------------------------------ */}
