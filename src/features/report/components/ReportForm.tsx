@@ -15,6 +15,8 @@ export interface ReportData {
   location: LocationValue
   description: string
   phone: string
+  injuriesConfirmed?: boolean
+  situationWorsening?: boolean
 }
 
 type IncidentType =
@@ -108,6 +110,8 @@ export function ReportForm({
   const [description, setDescription] = useState('')
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [injuriesConfirmed, setInjuriesConfirmed] = useState<boolean | undefined>(undefined)
+  const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
 
   const isGpsAvailable = Boolean(userLocation && !gpsError)
@@ -161,6 +165,8 @@ export function ReportForm({
       location,
       description,
       phone,
+      injuriesConfirmed,
+      situationWorsening,
     }
 
     // If offline, enqueue the report
@@ -339,6 +345,87 @@ export function ReportForm({
         <span>
           {description.length}/{MAX_DESCRIPTION_CHARS}
         </span>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Quick questions                                                      */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-gray-700">Quick Questions (Optional)</p>
+
+        {/* Anyone injured? */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-gray-600">Anyone injured?</span>
+          <div className="flex gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="injuries"
+                checked={injuriesConfirmed === true}
+                onChange={() => setInjuriesConfirmed(true)}
+                className="w-4 h-4 text-primary-blue"
+              />
+              <span className="text-sm">Yes</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="injuries"
+                checked={injuriesConfirmed === false}
+                onChange={() => setInjuriesConfirmed(false)}
+                className="w-4 h-4 text-primary-blue"
+              />
+              <span className="text-sm">No</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="injuries"
+                checked={injuriesConfirmed === undefined}
+                onChange={() => setInjuriesConfirmed(undefined)}
+                className="w-4 h-4 text-primary-blue"
+              />
+              <span className="text-sm text-gray-500">Skip</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Situation getting worse? */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-gray-600">Is the situation getting worse?</span>
+          <div className="flex gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="worsening"
+                checked={situationWorsening === true}
+                onChange={() => setSituationWorsening(true)}
+                className="w-4 h-4 text-primary-blue"
+              />
+              <span className="text-sm">Yes</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="worsening"
+                checked={situationWorsening === false}
+                onChange={() => setSituationWorsening(false)}
+                className="w-4 h-4 text-primary-blue"
+              />
+              <span className="text-sm">No</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="worsening"
+                checked={situationWorsening === undefined}
+                onChange={() => setSituationWorsening(undefined)}
+                className="w-4 h-4 text-primary-blue"
+              />
+              <span className="text-sm text-gray-500">Skip</span>
+            </label>
+          </div>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
