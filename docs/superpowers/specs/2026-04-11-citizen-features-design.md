@@ -241,6 +241,40 @@ src/
 - **If denied:** Fall back to manual location selection dropdown
 - **If granted:** Center map on user GPS
 
+**Report Modal (Medium Preview):**
+Bottom sheet modal that slides up when pin is tapped.
+
+```
+┌─────────────────────────────────────┐
+│  [Photo Thumbnail - 200x200px]      │
+│                                     │
+│  Flash Flood                    ●   │
+│  Barangay San Jose, Daet           │
+│  2 hours ago                       │
+│                                     │
+│  ┌─────────────────────────────┐   │
+│  │  View Full Details          │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  ╳ Close                            │
+└─────────────────────────────────────┘
+```
+
+**Modal Content:**
+- Photo thumbnail (200x200px, centered)
+- Disaster type (bold, 18px, top-left)
+- Status badge (top-right, colored dot)
+- Full location (barangay + municipality, 14px)
+- Time ago (relative, 14px, gray)
+- "View Full Details" button (blue, large, 44px height)
+- Close button (X icon, top-right corner)
+
+**Modal Interactions:**
+- Tap outside modal → Close
+- Swipe down → Close
+- "View Full Details" → Navigate to full report detail screen
+- Back button → Close
+
 ### 3.2 Feed Tab
 
 **Purpose:** Scrollable list of public reports for detailed reading.
