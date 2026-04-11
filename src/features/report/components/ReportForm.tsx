@@ -7,11 +7,24 @@ import { ReportSuccess } from './ReportSuccess'
 // ---------------------------------------------------------------------------
 
 export interface ReportData {
+  incidentType: IncidentType
   photo: File | null
   location: LocationValue
   description: string
   phone: string
 }
+
+type IncidentType =
+  | 'flood'
+  | 'earthquake'
+  | 'landslide'
+  | 'fire'
+  | 'typhoon'
+  | 'medical_emergency'
+  | 'accident'
+  | 'infrastructure'
+  | 'crime'
+  | 'other'
 
 type LocationValue =
   | { type: 'gps'; latitude: number; longitude: number }
@@ -30,6 +43,19 @@ interface ReportFormProps {
 // Static data
 // ---------------------------------------------------------------------------
 
+const INCIDENT_TYPES: { value: IncidentType; label: string }[] = [
+  { value: 'flood', label: 'Flood' },
+  { value: 'earthquake', label: 'Earthquake' },
+  { value: 'landslide', label: 'Landslide' },
+  { value: 'fire', label: 'Fire' },
+  { value: 'typhoon', label: 'Typhoon' },
+  { value: 'medical_emergency', label: 'Medical Emergency' },
+  { value: 'accident', label: 'Accident' },
+  { value: 'infrastructure', label: 'Infrastructure Issue' },
+  { value: 'crime', label: 'Crime' },
+  { value: 'other', label: 'Other' },
+]
+
 const MUNICIPALITIES = ['Daet', 'Capalonga', 'Jose Panganiban', 'Labo']
 
 const BARANGAYS: Record<string, string[]> = {
@@ -47,7 +73,7 @@ const BARANGAYS: Record<string, string[]> = {
 const PH_PHONE_REGEX = /^\+63\s?\d{3}\s?\d{3}\s?\d{4}$/
 
 function validatePhone(value: string): string | null {
-  if (!value.trim()) return null // phone is optional until submission
+  if (!value.trim()) return 'Phone number is required'
   if (!PH_PHONE_REGEX.test(value.trim())) {
     return 'Phone must be in format: +63 912 345 6789'
   }
@@ -70,6 +96,7 @@ export function ReportForm({
 }: ReportFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [incidentType, setIncidentType] = useState<IncidentType>('other')
   const [photo, setPhoto] = useState<File | null>(null)
   const [municipality, setMunicipality] = useState('')
   const [barangay, setBarangay] = useState('')
@@ -127,7 +154,7 @@ export function ReportForm({
     const reportId = generateReportId(location)
     setSubmittedReportId(reportId)
 
-    onSubmit?.({ photo, location, description, phone })
+    onSubmit?.({ incidentType, photo, location, description, phone })
   }
 
   function handleShare() {
@@ -184,6 +211,26 @@ export function ReportForm({
           Take Photo
         </button>
         {photo && <span>{photo.name}</span>}
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Incident Type field                                                   */}
+      {/* ------------------------------------------------------------------ */}
+      <div>
+        <label htmlFor="report-incident-type">What's happening?</label>
+        <select
+          id="report-incident-type"
+          value={incidentType}
+          onChange={(e) => setIncidentType(e.target.value as IncidentType)}
+          required
+          aria-label="Select incident type"
+        >
+          {INCIDENT_TYPES.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* ------------------------------------------------------------------ */}
