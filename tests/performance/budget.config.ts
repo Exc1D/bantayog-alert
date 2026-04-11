@@ -7,6 +7,7 @@
 export const PERFORMANCE_BUDGETS = {
   // Bundle size budgets (bytes)
   bundleSize: 500 * 1024, // 500KB main bundle
+  totalJs: 1024 * 1024, // 1MB total JS
 
   // Core Web Vitals (milliseconds)
   firstContentfulPaint: 2000, // 2s

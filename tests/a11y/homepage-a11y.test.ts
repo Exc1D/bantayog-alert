@@ -33,17 +33,13 @@ test.describe('Homepage Accessibility', () => {
   })
 
   test('should be keyboard navigable', async ({ page }) => {
-    // Tab through page - just verify we can tab without errors
-    // and that focus moves to some element
+    // Tab through page - verify focus moves to an interactive element
     await page.keyboard.press('Tab')
-
-    // Wait briefly for focus to settle
     await page.waitForTimeout(100)
 
-    // Verify some element has focus (body or other)
+    // Verify focus landed on an actual interactive element
     const focusedElement = page.locator(':focus')
-    const isVisible = await focusedElement.isVisible().catch(() => false)
-    expect(isVisible || true).toBeTruthy() // Pass even if focus handling is different
+    await expect(focusedElement).toBeVisible()
   })
 
   test('should have color contrast >= 4.5:1', async ({ page }) => {

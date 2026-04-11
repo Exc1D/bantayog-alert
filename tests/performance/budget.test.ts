@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readdirSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, statSync } from 'fs';
 import { resolve } from 'path';
 import { PERFORMANCE_BUDGETS } from './budget.config';
 
@@ -21,10 +21,7 @@ describe('Performance Budgets', () => {
       expect(jsFiles.length).toBeGreaterThan(0);
 
       const mainJsPath = resolve(distPath, jsFiles[0]);
-      const mainJs = readFileSync(mainJsPath, 'utf-8');
-
-      // Get accurate file size using Blob
-      const size = new Blob([mainJs]).size;
+      const size = statSync(mainJsPath).size;
 
       expect(size).toBeLessThan(PERFORMANCE_BUDGETS.bundleSize);
     });
@@ -41,11 +38,10 @@ describe('Performance Budgets', () => {
 
       let totalSize = 0;
       for (const file of jsFiles) {
-        const content = readFileSync(resolve(distPath, file), 'utf-8');
-        totalSize += new Blob([content]).size;
+        totalSize += statSync(resolve(distPath, file)).size;
       }
 
-      expect(totalSize).toBeLessThan(1024 * 1024); // 1MB
+      expect(totalSize).toBeLessThan(PERFORMANCE_BUDGETS.totalJs);
     });
   });
 
