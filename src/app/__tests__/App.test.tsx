@@ -19,16 +19,6 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
-// Mock localStorage
-Object.defineProperty(global, 'localStorage', {
-  value: {
-    getItem: vi.fn().mockReturnValue(null),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-  },
-  writable: true,
-})
-
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()

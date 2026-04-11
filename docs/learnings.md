@@ -57,7 +57,6 @@
 2. **Task 13:** Untyped catch parameter - fixed via code review
 3. **Task 15 (RateLimitExceeded):** Decorative icons missing `aria-hidden` - fixed before amend
 4. **E2E Tests:** Offline queue tests have infrastructure issue (navigator.onLine vs socket-level offline) - documented as known limitation
-5. **AgeGate Flicker:** `useState(false)` caused double-render on mount when user already verified. Fixed with lazy initialization: `useState(() => localStorage.getItem(STORAGE_KEY) === 'true')`
 
 ## Context for Future Sessions
 

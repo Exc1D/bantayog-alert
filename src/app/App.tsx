@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from './routes'
 import { usePWAInstall } from '@/shared/hooks/usePWAInstall'
 import { AgeGate } from '@/shared/components/AgeGate'
-import { Download, X } from 'lucide-react'
+import { Download } from 'lucide-react'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,7 +16,7 @@ const queryClient = new QueryClient({
 })
 
 function PWAInstallBanner() {
-  const { deferredPrompt, installApp, dismissBanner } = usePWAInstall()
+  const { deferredPrompt, installApp } = usePWAInstall()
 
   if (!deferredPrompt) return null
 
@@ -30,23 +30,13 @@ function PWAInstallBanner() {
           <Download className="w-5 h-5" />
           <p className="text-sm font-medium">Install Bantayog Alert for faster access</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={installApp}
-            className="px-4 py-1.5 bg-white text-primary-red rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors"
-            data-testid="pwa-install-button"
-          >
-            Install
-          </button>
-          <button
-            onClick={dismissBanner}
-            className="p-1.5 text-white/80 hover:text-white transition-colors"
-            data-testid="pwa-dismiss-button"
-            aria-label="Dismiss banner"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <button
+          onClick={installApp}
+          className="px-4 py-1.5 bg-white text-primary-red rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors"
+          data-testid="pwa-install-button"
+        >
+          Install
+        </button>
       </div>
     </div>
   )
@@ -57,7 +47,7 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div data-testid="query-client-provider" className="app-root">
+      <div data-testid="query-client-provider">
         {!isAgeVerified && <AgeGate onVerified={() => setIsAgeVerified(true)} />}
         <PWAInstallBanner />
         <RouterProvider router={router} />
