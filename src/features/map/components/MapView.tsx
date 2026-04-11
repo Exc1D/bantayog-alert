@@ -13,6 +13,7 @@ import {
 } from '../utils/disasterMarkers'
 import { ReportDetailModal } from './ReportDetailModal'
 import { MapControls } from './MapControls'
+import { LocationSearch } from './LocationSearch'
 import 'leaflet/dist/leaflet.css'
 
 // Camarines Norte coordinates
@@ -186,6 +187,11 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
             <p className="text-gray-600">Loading map...</p>
           </div>
         </div>
+      )}
+
+      {/* Location search */}
+      {isReady && mapInstanceRef.current && (
+        <LocationSearch map={mapInstanceRef.current} />
       )}
 
       {/* Map container */}
