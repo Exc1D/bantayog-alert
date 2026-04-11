@@ -8,6 +8,9 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
 import { reportQueueService } from '../services/reportQueue.service'
+import { uploadReportPhoto } from '../services/reportStorage.service'
+import { submitReport } from '@/domains/citizen/services/firestore.service'
+import type { Report } from '@/shared/types/firestore.types'
 
 export interface QueuedReport {
   id: string
@@ -115,9 +118,58 @@ export function useReportQueue(): UseReportQueueResult {
         await reportQueueService.update(syncingReport)
         setQueue((prev) => prev.map((r) => (r.id === report.id ? syncingReport : r)))
 
-        // TODO: Actually submit to Firebase/API
-        // For now, simulate successful sync
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        // Step 1: Upload photo if present
+        let photoUrl: string | undefined
+        if (report.reportData.photo) {
+          photoUrl = await uploadReportPhoto(report.reportData.photo, report.id)
+        }
+
+        // Step 2: Transform to three-tier report model
+        const { reportData } = report
+
+        // Public report data (approximate location, no PII)
+        const publicReportData = {
+          incidentType: reportData.incidentType as Report['incidentType'],
+          severity: 'medium' as const, // Default severity, admin can adjust
+          approximateLocation: {
+            barangay: reportData.location.type === 'manual'
+              ? reportData.location.barangay || ''
+              : 'Unknown',
+            municipality: reportData.location.type === 'manual'
+              ? reportData.location.municipality || ''
+              : 'Unknown',
+            approximateCoordinates: reportData.location.type === 'gps' && reportData.location.latitude
+              ? {
+                  latitude: reportData.location.latitude,
+                  longitude: reportData.location.longitude ?? 0,
+                }
+              : { latitude: 0, longitude: 0 },
+          },
+          description: reportData.description,
+          isAnonymous: true, // Citizens always report anonymously
+        }
+
+        // Private report data (exact location, contact info)
+        const privateReportData = {
+          exactLocation: {
+            address: reportData.location.type === 'manual'
+              ? `${reportData.location.barangay || ''}, ${reportData.location.municipality || ''}`
+              : reportData.location.type === 'gps' && reportData.location.latitude
+                ? `${reportData.location.latitude}, ${reportData.location.longitude}`
+                : 'Unknown',
+            coordinates: reportData.location.type === 'gps' && reportData.location.latitude
+              ? { latitude: reportData.location.latitude, longitude: reportData.location.longitude }
+              : { latitude: 0, longitude: 0 },
+          },
+          reporterContact: {
+            name: 'Anonymous', // Citizens are anonymous by default
+            phone: reportData.phone,
+          },
+          photoUrls: photoUrl ? [photoUrl] : [],
+        }
+
+        // Step 3: Submit to Firebase
+        await submitReport(publicReportData, privateReportData)
 
         // Remove from queue on success
         await reportQueueService.delete(report.id)

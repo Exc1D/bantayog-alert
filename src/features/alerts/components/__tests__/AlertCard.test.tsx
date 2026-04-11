@@ -60,17 +60,17 @@ describe('AlertCard', () => {
 
     it('shows severity indicator for warning', () => {
       render(<AlertCard alert={mockAlert} />)
-      expect(screen.getByText('⚠️')).toBeInTheDocument()
+      expect(screen.getByLabelText('severity-warning')).toBeInTheDocument()
     })
 
     it('shows severity indicator for emergency', () => {
       render(<AlertCard alert={{ ...mockAlert, severity: 'emergency' }} />)
-      expect(screen.getByText('🔴')).toBeInTheDocument()
+      expect(screen.getByLabelText('severity-emergency')).toBeInTheDocument()
     })
 
     it('shows severity indicator for info', () => {
       render(<AlertCard alert={{ ...mockAlert, severity: 'info' }} />)
-      expect(screen.getByText('ℹ️')).toBeInTheDocument()
+      expect(screen.getByLabelText('severity-info')).toBeInTheDocument()
     })
   })
 
