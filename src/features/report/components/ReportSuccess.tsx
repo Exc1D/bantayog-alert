@@ -29,9 +29,10 @@
  * ```
  */
 
-import { CheckCircle, Share2, UserPlus } from 'lucide-react'
+import { CheckCircle, Share2, UserPlus, Bell } from 'lucide-react'
 import { Button } from '@/shared/components/Button'
 import { useAuth } from '@/shared/hooks/useAuth'
+import { usePushNotifications } from '@/features/alerts/hooks/usePushNotifications'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +45,8 @@ interface ReportSuccessProps {
   municipality: string
   /** Whether the report was queued (offline) vs submitted immediately */
   isQueued?: boolean
+  /** Whether this is the user's first report (to prompt for notifications) */
+  isFirstReport?: boolean
   /** Callback when user clicks "Create account to track" */
   onCreateAccount?: () => void
   /** Callback when user clicks "Share this alert" */
@@ -73,12 +76,16 @@ export function ReportSuccess({
   reportId,
   municipality,
   isQueued = false,
+  isFirstReport = false,
   onCreateAccount,
   onShare,
   onNavigate,
 }: ReportSuccessProps) {
   const { user } = useAuth()
   const isAnonymous = !user
+  const { permission, requestPermission, isSupported } = usePushNotifications()
+
+  const shouldPromptNotifications = isFirstReport && isSupported && permission !== 'granted'
 
   const handleShare = () => {
     onShare?.()
@@ -90,6 +97,10 @@ export function ReportSuccess({
 
   const handleNavigate = () => {
     onNavigate?.()
+  }
+
+  const handleEnableNotifications = async () => {
+    await requestPermission()
   }
 
   return (
@@ -134,6 +145,27 @@ export function ReportSuccess({
             <UserPlus size={20} />
             Create account to track
           </Button>
+        )}
+
+        {/* Notification Prompt - only for first report when not already granted */}
+        {shouldPromptNotifications && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg" data-testid="notification-prompt">
+            <div className="flex items-start gap-3">
+              <Bell className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-blue-900 font-medium mb-2">
+                  Get notified when your report is verified?
+                </p>
+                <button
+                  onClick={handleEnableNotifications}
+                  className="w-full px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  data-testid="enable-notifications-button"
+                >
+                  Enable Notifications
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Navigate Back Button */}

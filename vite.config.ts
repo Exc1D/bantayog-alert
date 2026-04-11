@@ -10,6 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
+      scope: '/',
       manifest: {
         name: 'Bantayog Alert',
         short_name: 'Bantayog',
@@ -19,16 +20,35 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        categories: ['disaster', 'emergency', 'utilities'],
         icons: [
           {
             src: '/icons/icon-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: '/icons/icon-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ],
+        shortcuts: [
+          {
+            name: 'Submit Report',
+            short_name: 'Report',
+            description: 'Submit a new disaster report',
+            url: '/?action=report',
+            icons: [{ src: '/icons/icon-192x192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'View Alerts',
+            short_name: 'Alerts',
+            description: 'View emergency alerts',
+            url: '/?tab=alerts',
+            icons: [{ src: '/icons/icon-192x192.png', sizes: '192x192' }]
           }
         ]
       },

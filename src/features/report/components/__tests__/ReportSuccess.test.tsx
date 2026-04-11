@@ -16,6 +16,12 @@ vi.mock('@/shared/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }))
 
+// Mock usePushNotifications hook
+const mockUsePushNotifications = vi.fn()
+vi.mock('@/features/alerts/hooks/usePushNotifications', () => ({
+  usePushNotifications: () => mockUsePushNotifications(),
+}))
+
 // Import after mocking
 import { ReportSuccess } from '../ReportSuccess'
 
@@ -30,6 +36,13 @@ describe('ReportSuccess', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default mock returns
+    mockUseAuth.mockReturnValue({ user: null, loading: false })
+    mockUsePushNotifications.mockReturnValue({
+      permission: 'default',
+      isSupported: true,
+      requestPermission: vi.fn().mockResolvedValue('granted'),
+    })
   })
 
   it('renders success message with Report ID', () => {
@@ -162,5 +175,73 @@ describe('ReportSuccess', () => {
     render(<ReportSuccess {...defaultProps} />)
 
     expect(screen.queryByText(/Create an account to track updates/)).not.toBeInTheDocument()
+  })
+
+  describe('Push Notification Prompt', () => {
+    it('does not show notification prompt when isFirstReport is false', () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+
+      render(<ReportSuccess {...defaultProps} isFirstReport={false} />)
+
+      expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
+    })
+
+    it('does not show notification prompt when permission is already granted', () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'granted',
+        isSupported: true,
+        requestPermission: vi.fn(),
+      })
+
+      render(<ReportSuccess {...defaultProps} isFirstReport />)
+
+      expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
+    })
+
+    it('does not show notification prompt when notifications are not supported', () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'denied',
+        isSupported: false,
+        requestPermission: vi.fn(),
+      })
+
+      render(<ReportSuccess {...defaultProps} isFirstReport />)
+
+      expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
+    })
+
+    it('shows notification prompt when isFirstReport and permission not granted', () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'default',
+        isSupported: true,
+        requestPermission: vi.fn().mockResolvedValue('granted'),
+      })
+
+      render(<ReportSuccess {...defaultProps} isFirstReport />)
+
+      expect(screen.getByTestId('notification-prompt')).toBeInTheDocument()
+      expect(screen.getByText(/Get notified when your report is verified/i)).toBeInTheDocument()
+      expect(screen.getByTestId('enable-notifications-button')).toBeInTheDocument()
+    })
+
+    it('calls requestPermission when enable notifications button is clicked', async () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      const mockRequestPermission = vi.fn().mockResolvedValue('granted')
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'default',
+        isSupported: true,
+        requestPermission: mockRequestPermission,
+      })
+
+      render(<ReportSuccess {...defaultProps} isFirstReport />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByTestId('enable-notifications-button'))
+
+      expect(mockRequestPermission).toHaveBeenCalledTimes(1)
+    })
   })
 })
