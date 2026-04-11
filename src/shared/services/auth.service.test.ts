@@ -128,15 +128,11 @@ describe('AuthService', () => {
     })
 
     it('should reject invalid email', async () => {
-      await expect(
-        loginBase('wrong@example.com', 'SecurePass123!')
-      ).rejects.toThrow()
+      await expect(loginBase('wrong@example.com', 'SecurePass123!')).rejects.toThrow()
     })
 
     it('should reject invalid password', async () => {
-      await expect(
-        loginBase('login-test@example.com', 'WrongPassword123!')
-      ).rejects.toThrow()
+      await expect(loginBase('login-test@example.com', 'WrongPassword123!')).rejects.toThrow()
     })
 
     it('should indicate email verification required', async () => {
@@ -223,9 +219,7 @@ describe('AuthService', () => {
     it('should send password reset email', async () => {
       // Note: This test only verifies no error is thrown
       // Actual email sending is handled by Firebase Auth
-      await expect(
-        sendPasswordReset('reset@example.com')
-      ).resolves.not.toThrow()
+      await expect(sendPasswordReset('reset@example.com')).resolves.not.toThrow()
     })
   })
 

@@ -58,9 +58,7 @@ export async function getCollection<T extends DocumentData>(
   try {
     const collectionRef = collection(db, collectionPath) as CollectionReference<T>
 
-    const q = constraints.length > 0
-      ? query(collectionRef, ...constraints)
-      : collectionRef
+    const q = constraints.length > 0 ? query(collectionRef, ...constraints) : collectionRef
 
     const querySnap = await getDocs(q)
 
@@ -110,10 +108,7 @@ export async function setDocument<T extends DocumentData>(
     const docRef = doc(db, collectionPath, docId)
     await setDoc(docRef, data)
   } catch (error) {
-    throw new Error(
-      `Failed to set document ${docId} in ${collectionPath}`,
-      { cause: error }
-    )
+    throw new Error(`Failed to set document ${docId} in ${collectionPath}`, { cause: error })
   }
 }
 
@@ -131,10 +126,7 @@ export async function updateDocument<T extends DocumentData>(
     const docRef = doc(db, collectionPath, docId)
     await updateDoc(docRef, data)
   } catch (error) {
-    throw new Error(
-      `Failed to update document ${docId} in ${collectionPath}`,
-      { cause: error }
-    )
+    throw new Error(`Failed to update document ${docId} in ${collectionPath}`, { cause: error })
   }
 }
 
@@ -143,18 +135,12 @@ export async function updateDocument<T extends DocumentData>(
  *
  * Deletes a document from a collection.
  */
-export async function deleteDocument(
-  collectionPath: string,
-  docId: string
-): Promise<void> {
+export async function deleteDocument(collectionPath: string, docId: string): Promise<void> {
   try {
     const docRef = doc(db, collectionPath, docId)
     await deleteDoc(docRef)
   } catch (error) {
-    throw new Error(
-      `Failed to delete document ${docId} from ${collectionPath}`,
-      { cause: error }
-    )
+    throw new Error(`Failed to delete document ${docId} from ${collectionPath}`, { cause: error })
   }
 }
 
@@ -163,10 +149,7 @@ export async function deleteDocument(
  *
  * Builds Firestore queries with type safety.
  */
-export function buildQuery(
-  collectionPath: string,
-  constraints: QueryConstraint[]
-): Query {
+export function buildQuery(collectionPath: string, constraints: QueryConstraint[]): Query {
   const collectionRef = collection(db, collectionPath)
   return query(collectionRef, ...constraints)
 }

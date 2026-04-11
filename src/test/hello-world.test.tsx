@@ -11,9 +11,7 @@ describe('Phase 0: Project Setup Verification', () => {
   it('should display the project description', () => {
     render(<App />)
     expect(
-      screen.getByText(
-        'Disaster reporting and alerting platform for Camarines Norte, Philippines'
-      )
+      screen.getByText('Disaster reporting and alerting platform for Camarines Norte, Philippines')
     ).toBeInTheDocument()
   })
 

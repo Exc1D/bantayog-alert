@@ -11,11 +11,7 @@
  */
 
 import { registerBase, loginBase } from '@/shared/services/auth.service'
-import type {
-  AuthResult,
-  AuthCredentials,
-  UserProfile,
-} from '@/shared/types'
+import type { AuthResult, AuthCredentials, UserProfile } from '@/shared/types'
 
 /**
  * Citizen registration
@@ -42,9 +38,6 @@ export async function registerCitizen(
  *
  * Standard email/password login for citizens.
  */
-export async function loginCitizen(
-  email: string,
-  password: string
-): Promise<AuthResult> {
+export async function loginCitizen(email: string, password: string): Promise<AuthResult> {
   return loginBase(email, password)
 }

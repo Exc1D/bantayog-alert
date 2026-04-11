@@ -21,12 +21,7 @@ import {
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/app/firebase/config'
-import type {
-  UserProfile,
-  AuthResult,
-  AuthCredentials,
-  AuthErrorCode,
-} from '@/shared/types'
+import type { UserProfile, AuthResult, AuthCredentials, AuthErrorCode } from '@/shared/types'
 
 /**
  * Map Firebase Auth errors to application-specific error codes
@@ -58,9 +53,7 @@ function getAuthErrorCode(error: unknown): AuthErrorCode {
  *
  * Fetches the user profile document. Returns null if it doesn't exist.
  */
-export async function getUserProfile(
-  uid: string
-): Promise<UserProfile | null> {
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
     const docRef = doc(db, 'users', uid)
     const docSnap = await getDoc(docRef)
@@ -122,12 +115,11 @@ export async function registerBase(
 ): Promise<AuthResult> {
   try {
     // Create Firebase Auth user
-    const userCredential: UserCredential =
-      await createUserWithEmailAndPassword(
-        auth,
-        credentials.email,
-        credentials.password
-      )
+    const userCredential: UserCredential = await createUserWithEmailAndPassword(
+      auth,
+      credentials.email,
+      credentials.password
+    )
 
     const { user } = userCredential
 
@@ -139,12 +131,7 @@ export async function registerBase(
     }
 
     // Create Firestore profile
-    const profile = await createUserProfile(
-      user.uid,
-      user.email!,
-      role,
-      additionalData
-    )
+    const profile = await createUserProfile(user.uid, user.email!, role, additionalData)
 
     // Send email verification
     await sendEmailVerification(user)
@@ -155,10 +142,7 @@ export async function registerBase(
     }
   } catch (error) {
     const errorCode = getAuthErrorCode(error)
-    throw new Error(
-      `Registration failed: ${(error as Error).message}`,
-      { cause: error }
-    )
+    throw new Error(`Registration failed: ${(error as Error).message}`, { cause: error })
   }
 }
 
@@ -168,17 +152,10 @@ export async function registerBase(
  * Base login logic used by all role-specific login functions.
  * Authenticates with Firebase Auth and fetches user profile.
  */
-export async function loginBase(
-  email: string,
-  password: string
-): Promise<AuthResult> {
+export async function loginBase(email: string, password: string): Promise<AuthResult> {
   try {
     // Sign in with Firebase Auth
-    const userCredential: UserCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    )
+    const userCredential: UserCredential = await signInWithEmailAndPassword(auth, email, password)
 
     const { user } = userCredential
 
@@ -191,9 +168,7 @@ export async function loginBase(
 
     // Check if account is active
     if (!profile.isActive) {
-      throw new Error(
-        `Account suspended: ${profile.suspendedReason || 'Contact administrator'}`
-      )
+      throw new Error(`Account suspended: ${profile.suspendedReason || 'Contact administrator'}`)
     }
 
     // Update last login

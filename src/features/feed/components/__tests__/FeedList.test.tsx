@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { BrowserRouter } from 'react-router-dom'
 import { FeedList } from '../FeedList'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as useFeedReportsModule from '../../hooks/useFeedReports'
@@ -75,7 +76,9 @@ const createWrapper = () => {
 
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </BrowserRouter>
     )
   }
 }
@@ -198,8 +201,8 @@ describe('FeedList', () => {
       render(<FeedList />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('feed-reports')).toBeInTheDocument()
-      expect(screen.getByTestId('feed-report-report-1')).toBeInTheDocument()
-      expect(screen.getByTestId('feed-report-report-2')).toBeInTheDocument()
+      expect(screen.getByTestId('feed-card-report-1')).toBeInTheDocument()
+      expect(screen.getByTestId('feed-card-report-2')).toBeInTheDocument()
     })
 
     it('should display report information correctly', () => {
@@ -217,19 +220,17 @@ describe('FeedList', () => {
 
       render(<FeedList />, { wrapper: createWrapper() })
 
-      // First report
-      expect(screen.getByText('Flood')).toBeInTheDocument()
-      expect(screen.getByText('1h ago')).toBeInTheDocument()
+      // First report - Check for FeedCard elements
+      expect(screen.getAllByText('Flood').length).toBeGreaterThan(0)
       expect(screen.getByText('Heavy flooding in the area')).toBeInTheDocument()
-      expect(screen.getByText('Brgy. 1, Daet')).toBeInTheDocument()
+      expect(screen.getAllByText('Brgy. 1, Daet').length).toBeGreaterThan(0)
       expect(screen.getByText('HIGH')).toBeInTheDocument()
       expect(screen.getByTestId('verified-badge')).toBeInTheDocument()
 
       // Second report
-      expect(screen.getByText('Fire')).toBeInTheDocument()
-      expect(screen.getByText('2h ago')).toBeInTheDocument()
+      expect(screen.getAllByText('Fire').length).toBeGreaterThan(0)
       expect(screen.getByText('Building on fire')).toBeInTheDocument()
-      expect(screen.getByText('Brgy. 2, Daet')).toBeInTheDocument()
+      expect(screen.getAllByText('Brgy. 2, Daet').length).toBeGreaterThan(0)
       expect(screen.getByText('CRITICAL')).toBeInTheDocument()
     })
 

@@ -38,3 +38,6 @@ ui-debug.log*
 # Environment
 .env.local
 .env.*.local
+
+# AI
+.claude

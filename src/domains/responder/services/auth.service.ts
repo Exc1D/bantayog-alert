@@ -11,27 +11,13 @@
  * - Email verification required
  */
 
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ApplicationVerifier,
-} from 'firebase/auth'
+import { RecaptchaVerifier, signInWithPhoneNumber, ApplicationVerifier } from 'firebase/auth'
 import { auth } from '@/app/firebase/config'
 import { registerBase, loginBase } from '@/shared/services/auth.service'
-import {
-  doc,
-  setDoc,
-  serverTimestamp,
-  where,
-} from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp, where } from 'firebase/firestore'
 import { db } from '@/app/firebase/config'
 import { getCollection } from '@/shared/services/firestore.service'
-import type {
-  AuthResult,
-  ResponderCredentials,
-  UserProfile,
-  Responder,
-} from '@/shared/types'
+import type { AuthResult, ResponderCredentials, UserProfile, Responder } from '@/shared/types'
 
 /**
  * Register a new responder
@@ -41,9 +27,7 @@ import type {
  *
  * Note: Phone verification must be completed separately using verifyResponderPhone()
  */
-export async function registerResponder(
-  credentials: ResponderCredentials
-): Promise<AuthResult> {
+export async function registerResponder(credentials: ResponderCredentials): Promise<AuthResult> {
   // Validate phone number is present
   if (!credentials.phoneNumber) {
     throw new Error('Phone number is required for responders')
@@ -83,10 +67,7 @@ export async function registerResponder(
  *
  * Extends the user profile with responder-specific fields.
  */
-export async function createResponderProfile(
-  uid: string,
-  phoneNumber: string
-): Promise<void> {
+export async function createResponderProfile(uid: string, phoneNumber: string): Promise<void> {
   const responderProfile: Responder = {
     uid,
     phoneNumber,
@@ -117,11 +98,7 @@ export async function initiateResponderPhoneVerification(
   recaptchaVerifier: ApplicationVerifier
 ): Promise<unknown> {
   try {
-    const confirmationResult = await signInWithPhoneNumber(
-      auth,
-      phoneNumber,
-      recaptchaVerifier
-    )
+    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier)
 
     return confirmationResult
   } catch (error) {
@@ -185,10 +162,7 @@ export async function verifyResponderPhoneOTP(
  *
  * @throws {Error} If phone number is not verified
  */
-export async function loginResponder(
-  email: string,
-  password: string
-): Promise<AuthResult> {
+export async function loginResponder(email: string, password: string): Promise<AuthResult> {
   const result = await loginBase(email, password)
 
   // CRITICAL: Enforce phone verification requirement
@@ -210,9 +184,7 @@ export async function loginResponder(
  *
  * @param containerId - ID of the container element for reCAPTCHA widget
  */
-export function createRecaptchaVerifier(
-  containerId: string
-): ApplicationVerifier {
+export function createRecaptchaVerifier(containerId: string): ApplicationVerifier {
   return new RecaptchaVerifier(auth, containerId, {
     size: 'normal',
   })

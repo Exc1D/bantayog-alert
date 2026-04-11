@@ -14,11 +14,7 @@
  * - municipal_admin: Email/password + municipality assignment
  * - provincial_superadmin: Email/password + MFA (TOTP mandatory)
  */
-export type UserRole =
-  | 'citizen'
-  | 'responder'
-  | 'municipal_admin'
-  | 'provincial_superadmin'
+export type UserRole = 'citizen' | 'responder' | 'municipal_admin' | 'provincial_superadmin'
 
 /**
  * Authentication credentials for registration

@@ -25,5 +25,4 @@ export const storage = getStorage(app)
 export const functions = getFunctions(app)
 
 // Initialize analytics only in browser
-export const analytics =
-  typeof window !== 'undefined' ? getAnalytics(app) : null
+export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null

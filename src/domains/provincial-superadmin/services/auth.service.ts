@@ -25,17 +25,9 @@ import {
 } from 'firebase/auth'
 import { auth } from '@/app/firebase/config'
 import { registerBase, loginBase } from '@/shared/services/auth.service'
-import {
-  doc,
-  setDoc,
-  serverTimestamp,
-} from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/app/firebase/config'
-import type {
-  AuthResult,
-  ProvincialSuperadminCredentials,
-  UserProfile,
-} from '@/shared/types'
+import type { AuthResult, ProvincialSuperadminCredentials, UserProfile } from '@/shared/types'
 
 /**
  * Register a new provincial superadmin
@@ -55,11 +47,7 @@ export async function registerProvincialSuperadmin(
     },
   }
 
-  const result = await registerBase(
-    credentials,
-    'provincial_superadmin',
-    additionalData
-  )
+  const result = await registerBase(credentials, 'provincial_superadmin', additionalData)
 
   return {
     ...result,
@@ -92,9 +80,7 @@ export async function enrollTOTP(): Promise<{
     // This is a placeholder that returns mock data
     // In production, this would call a Cloud Function to generate the TOTP secret
 
-    throw new Error(
-      'TOTP enrollment requires Firebase Cloud Functions. Not yet implemented.'
-    )
+    throw new Error('TOTP enrollment requires Firebase Cloud Functions. Not yet implemented.')
 
     // Placeholder return type
     return {
@@ -113,9 +99,7 @@ export async function enrollTOTP(): Promise<{
  *
  * @param verificationCode - 6-digit code from authenticator app
  */
-export async function finalizeTOTPEnrollment(
-  verificationCode: string
-): Promise<void> {
+export async function finalizeTOTPEnrollment(verificationCode: string): Promise<void> {
   try {
     const user = auth.currentUser
     if (!user) {
@@ -123,9 +107,7 @@ export async function finalizeTOTPEnrollment(
     }
 
     // Note: This requires Firebase Cloud Functions to handle TOTP enrollment securely
-    throw new Error(
-      'TOTP enrollment requires Firebase Cloud Functions. Not yet implemented.'
-    )
+    throw new Error('TOTP enrollment requires Firebase Cloud Functions. Not yet implemented.')
   } catch (error) {
     throw new Error('Failed to complete TOTP enrollment', { cause: error })
   }
@@ -148,9 +130,7 @@ export async function enrollSMS(phoneNumber: string): Promise<void> {
 
     // Note: Firebase Phone Auth requires reCAPTCHA verification
     // This is a simplified implementation
-    throw new Error(
-      'SMS MFA enrollment requires reCAPTCHA setup. Not yet implemented.'
-    )
+    throw new Error('SMS MFA enrollment requires reCAPTCHA setup. Not yet implemented.')
   } catch (error) {
     throw new Error('Failed to complete SMS enrollment', { cause: error })
   }
@@ -170,9 +150,7 @@ export async function verifyMFA(verificationCode: string): Promise<void> {
   try {
     // Note: This requires proper integration with Firebase Auth's MFA flow
     // The actual implementation depends on the MFA factor (TOTP or SMS)
-    throw new Error(
-      'MFA verification requires Firebase Cloud Functions. Not yet implemented.'
-    )
+    throw new Error('MFA verification requires Firebase Cloud Functions. Not yet implemented.')
   } catch (error) {
     throw new Error('Invalid verification code', { cause: error })
   }
@@ -242,9 +220,7 @@ export async function unenrollMFA(factorUid: string): Promise<void> {
     }
 
     // Note: Firebase's unenroll API requires proper multi-factor user handling
-    throw new Error(
-      'MFA unenrollment requires Firebase Cloud Functions. Not yet implemented.'
-    )
+    throw new Error('MFA unenrollment requires Firebase Cloud Functions. Not yet implemented.')
   } catch (error) {
     throw new Error('Failed to unenroll MFA factor', { cause: error })
   }

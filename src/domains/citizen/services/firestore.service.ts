@@ -7,16 +7,8 @@
  */
 
 import { orderBy, limit } from 'firebase/firestore'
-import {
-  getDocument,
-  addDocument,
-  getCollection,
-} from '@/shared/services/firestore.service'
-import type {
-  Report,
-  ReportPrivate,
-  ReportOps,
-} from '@/shared/types'
+import { getDocument, addDocument, getCollection } from '@/shared/services/firestore.service'
+import type { Report, ReportPrivate, ReportOps } from '@/shared/types'
 
 /**
  * Submit a new disaster report
@@ -45,30 +37,24 @@ export async function submitReport(
 
     // Tier 2: Create private report (if not anonymous)
     if (privateData) {
-      await addDocument<Omit<ReportPrivate, 'id' | 'reportId'>>(
-        'report_private',
-        {
-          ...privateData,
-          reportId,
-        }
-      )
+      await addDocument<Omit<ReportPrivate, 'id' | 'reportId'>>('report_private', {
+        ...privateData,
+        reportId,
+      })
     }
 
     // Tier 3: Create operational report
-    await addDocument<Omit<ReportOps, 'id' | 'reportId'>>(
-      'report_ops',
-      {
-        reportId,
-        timeline: [
-          {
-            timestamp: now,
-            action: 'report_created',
-            performedBy: privateData?.reporterUserId || 'anonymous',
-            notes: 'Initial report submitted',
-          },
-        ],
-      }
-    )
+    await addDocument<Omit<ReportOps, 'id' | 'reportId'>>('report_ops', {
+      reportId,
+      timeline: [
+        {
+          timestamp: now,
+          action: 'report_created',
+          performedBy: privateData?.reporterUserId || 'anonymous',
+          notes: 'Initial report submitted',
+        },
+      ],
+    })
 
     return reportId
   } catch (error) {

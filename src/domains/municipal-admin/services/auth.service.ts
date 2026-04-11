@@ -38,10 +38,7 @@ export async function registerMunicipalAdmin(
   }
 
   // CRITICAL: Verify municipality exists
-  const municipality = await getDocument<Municipality>(
-    'municipalities',
-    credentials.municipality
-  )
+  const municipality = await getDocument<Municipality>('municipalities', credentials.municipality)
 
   if (!municipality) {
     throw new Error(
@@ -64,9 +61,6 @@ export async function registerMunicipalAdmin(
  * Standard email/password login for municipal admins.
  * Custom claims will enforce municipality-level data access.
  */
-export async function loginMunicipalAdmin(
-  email: string,
-  password: string
-): Promise<AuthResult> {
+export async function loginMunicipalAdmin(email: string, password: string): Promise<AuthResult> {
   return loginBase(email, password)
 }

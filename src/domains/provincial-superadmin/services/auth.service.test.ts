@@ -101,10 +101,7 @@ describe('ProvincialSuperadminAuthService', () => {
       const result = await registerProvincialSuperadmin(credentials)
       testUsers.push(result.user.uid)
 
-      const loginResult = await loginProvincialSuperadmin(
-        credentials.email,
-        credentials.password
-      )
+      const loginResult = await loginProvincialSuperadmin(credentials.email, credentials.password)
 
       expect(loginResult.requiresMFAEnrollment).toBe(true)
     })

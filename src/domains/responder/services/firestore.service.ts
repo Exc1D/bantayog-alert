@@ -6,11 +6,7 @@
  */
 
 import { query, where, orderBy } from 'firebase/firestore'
-import {
-  getDocument,
-  updateDocument,
-  getCollection,
-} from '@/shared/services/firestore.service'
+import { getDocument, updateDocument, getCollection } from '@/shared/services/firestore.service'
 import type { Report, ReportPrivate, ReportOps, Incident } from '@/shared/types'
 
 /**
@@ -26,10 +22,7 @@ export async function getAssignedIncidents(
 ): Promise<Array<{ report: Report; ops: ReportOps }>> {
   try {
     // Fetch operational reports assigned to this responder
-    const constraints = [
-      where('assignedTo', '==', responderUid),
-      orderBy('assignedAt', 'desc'),
-    ]
+    const constraints = [where('assignedTo', '==', responderUid), orderBy('assignedAt', 'desc')]
 
     const opsReports = await getCollection<ReportOps>('report_ops', constraints)
 

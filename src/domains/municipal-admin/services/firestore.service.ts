@@ -42,10 +42,7 @@ export async function getMunicipalityReports(
     // Fetch private data for each report
     const results = await Promise.all(
       reports.map(async (report) => {
-        const privateData = await getDocument<ReportPrivate>(
-          'report_private',
-          report.id
-        )
+        const privateData = await getDocument<ReportPrivate>('report_private', report.id)
         return { report, private: privateData || undefined }
       })
     )
@@ -66,9 +63,7 @@ export async function getMunicipalityReports(
  *
  * @param reportId - Report ID
  */
-export async function getReportDetails(
-  reportId: string
-): Promise<{
+export async function getReportDetails(reportId: string): Promise<{
   report: Report
   private?: ReportPrivate
   ops: ReportOps
@@ -101,10 +96,7 @@ export async function getReportDetails(
  * @param reportId - Report ID
  * @param adminUid - Admin's UID
  */
-export async function verifyReport(
-  reportId: string,
-  adminUid: string
-): Promise<void> {
+export async function verifyReport(reportId: string, adminUid: string): Promise<void> {
   try {
     const now = Date.now()
 
@@ -205,9 +197,7 @@ export async function assignToResponder(
  *
  * @param municipality - Municipality name
  */
-export async function getAvailableResponders(
-  municipality: string
-): Promise<Responder[]> {
+export async function getAvailableResponders(municipality: string): Promise<Responder[]> {
   try {
     // Note: This would require a responders_by_municipality index
     // For now, return empty array
@@ -225,9 +215,7 @@ export async function getAvailableResponders(
  *
  * @param municipality - Municipality name
  */
-export async function getMunicipalityStats(
-  municipality: string
-): Promise<{
+export async function getMunicipalityStats(municipality: string): Promise<{
   totalReports: number
   pendingReports: number
   verifiedReports: number

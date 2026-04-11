@@ -92,10 +92,7 @@ export async function getProvinceStats(): Promise<{
     return {
       totalReports: reports.length,
       totalMunicipalities: municipalities.length,
-      totalResponders: municipalities.reduce(
-        (sum, m) => sum + m.totalResponders,
-        0
-      ),
+      totalResponders: municipalities.reduce((sum, m) => sum + m.totalResponders, 0),
       activeIncidents: reports.filter((r) =>
         ['verified', 'assigned', 'responding'].includes(r.status)
       ).length,
@@ -122,9 +119,7 @@ export async function getMunicipalities(): Promise<Municipality[]> {
  *
  * Fetches detailed information about a specific municipality.
  */
-export async function getMunicipalityDetails(
-  municipalityId: string
-): Promise<Municipality | null> {
+export async function getMunicipalityDetails(municipalityId: string): Promise<Municipality | null> {
   return getDocument<Municipality>('municipalities', municipalityId)
 }
 
@@ -147,9 +142,7 @@ export async function createMunicipalAdmin(
   try {
     // This would be done via a Firebase Function in production
     // For now, we'll create a placeholder
-    throw new Error(
-      'Use municipal admin registration service to create admin accounts'
-    )
+    throw new Error('Use municipal admin registration service to create admin accounts')
   } catch (error) {
     throw new Error('Failed to create municipal admin', { cause: error })
   }
@@ -191,10 +184,7 @@ export async function promoteToMunicipalAdmin(
  * @param uid - User UID
  * @param superadminUid - Current superadmin UID
  */
-export async function demoteMunicipalAdmin(
-  uid: string,
-  superadminUid: string
-): Promise<void> {
+export async function demoteMunicipalAdmin(uid: string, superadminUid: string): Promise<void> {
   try {
     await updateDocument<UserProfile>('users', uid, {
       role: 'citizen',
@@ -266,10 +256,7 @@ export async function getAllUsers(): Promise<UserProfile[]> {
  * @param limitCount - Maximum number of logs to fetch
  */
 export async function getAuditLogs(limitCount: number = 100): Promise<AuditLog[]> {
-  return getCollection<AuditLog>('audit_logs', [
-    orderBy('timestamp', 'desc'),
-    limit(limitCount),
-  ])
+  return getCollection<AuditLog>('audit_logs', [orderBy('timestamp', 'desc'), limit(limitCount)])
 }
 
 /**
@@ -289,9 +276,7 @@ async function addAuditLog(logData: Omit<AuditLog, 'id'>): Promise<void> {
  * Sets up automatic data deletion policies (GDPR compliance).
  * Default is 6 months retention.
  */
-export async function configureDataRetention(
-  retentionMonths: number
-): Promise<void> {
+export async function configureDataRetention(retentionMonths: number): Promise<void> {
   try {
     // This would configure a scheduled Firebase Function
     // to auto-delete data older than retentionMonths

@@ -21,7 +21,11 @@ vi.mock('@/app/firebase/config', () => ({
   auth: {},
 }))
 
-import { signInWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth'
+import {
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+} from 'firebase/auth'
 import type { User } from 'firebase/auth'
 
 describe('useAuth', () => {
@@ -144,9 +148,7 @@ describe('useAuth', () => {
     })
 
     it('should handle sign in errors', async () => {
-      vi.mocked(signInWithEmailAndPassword).mockRejectedValue(
-        new Error('Invalid credentials')
-      )
+      vi.mocked(signInWithEmailAndPassword).mockRejectedValue(new Error('Invalid credentials'))
 
       const { result } = renderHook(() => useAuth())
 
@@ -178,9 +180,7 @@ describe('useAuth', () => {
     })
 
     it('should handle sign out errors', async () => {
-      vi.mocked(firebaseSignOut).mockRejectedValue(
-        new Error('Sign out failed')
-      )
+      vi.mocked(firebaseSignOut).mockRejectedValue(new Error('Sign out failed'))
 
       const { result } = renderHook(() => useAuth())
 
