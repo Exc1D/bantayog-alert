@@ -3,6 +3,7 @@ import { AlertCircle, WifiOff } from 'lucide-react'
 import { Button } from '@/shared/components/Button'
 import { ReportSuccess } from './ReportSuccess'
 import { NonEmergencyRedirect } from './NonEmergencyRedirect'
+import { RateLimitExceeded } from './RateLimitExceeded'
 import { useReportQueue } from '../hooks/useReportQueue'
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
@@ -141,6 +142,7 @@ export function ReportForm({
   const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
   const [showNonEmergency, setShowNonEmergency] = useState(false)
+  const [rateLimitExceeded, setRateLimitExceeded] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { enqueueReport, isSyncing } = useReportQueue()
@@ -270,6 +272,17 @@ export function ReportForm({
         mdrmoPhone="+63 54 100 5678"
         barangayCaptainPhone="+63 54 100 9012"
         onCancel={() => setShowNonEmergency(false)}
+      />
+    )
+  }
+
+  // Show rate limit exceeded screen
+  if (rateLimitExceeded) {
+    return (
+      <RateLimitExceeded
+        mdrmoHotline="+63 54 123 4567"
+        retryAfterMinutes={60}
+        onOk={() => setRateLimitExceeded(false)}
       />
     )
   }
