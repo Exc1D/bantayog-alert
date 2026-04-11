@@ -13,6 +13,7 @@ import { FeedCard } from './FeedCard'
 import { FeedFilters, type FilterType } from './FeedFilters'
 import { FeedSearch } from './FeedSearch'
 import { FeedSort, type SortOption } from './FeedSort'
+import { FeedTimeRange, type TimeRangeOption } from './FeedTimeRange'
 import { Button } from '@/shared/components/Button'
 
 export interface FeedListProps {
@@ -24,6 +25,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<SortOption>('recent')
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>('all')
 
   const {
     data,
@@ -46,11 +48,32 @@ export function FeedList({ enabled = true }: FeedListProps) {
     false_alarm: allReports.filter((r) => r.status === 'false_alarm').length,
   }
 
+  // Calculate time range threshold
+  const timeRangeThreshold = useMemo(() => {
+    const now = Date.now()
+    switch (timeRange) {
+      case '24h':
+        return now - 24 * 60 * 60 * 1000 // 24 hours ago
+      case '7d':
+        return now - 7 * 24 * 60 * 60 * 1000 // 7 days ago
+      case '30d':
+        return now - 30 * 24 * 60 * 60 * 1000 // 30 days ago
+      case 'all':
+      default:
+        return 0 // Show all
+    }
+  }, [timeRange])
+
   // Filter and search reports
   const filteredAndSearchedReports = useMemo(() => {
     return allReports.filter((report) => {
       // Apply status filter
       if (selectedFilter !== 'all' && report.status !== selectedFilter) {
+        return false
+      }
+
+      // Apply time range filter
+      if (timeRangeThreshold > 0 && report.createdAt < timeRangeThreshold) {
         return false
       }
 
@@ -69,7 +92,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
 
       return true
     })
-  }, [allReports, selectedFilter, searchQuery])
+  }, [allReports, selectedFilter, searchQuery, timeRangeThreshold])
 
   // Sort reports
   const displayReports = useMemo(() => {
@@ -252,10 +275,13 @@ export function FeedList({ enabled = true }: FeedListProps) {
       <div className="max-w-lg mx-auto bg-gray-100 min-h-screen">
         {/* Header with pull-to-refresh indicator */}
         <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10 space-y-3">
-          {/* Title row with sort */}
-          <div className="flex items-center justify-between">
+          {/* Title row with sort and time range */}
+          <div className="flex items-center justify-between gap-2">
             <h1 className="text-xl font-bold text-gray-900">Bantayog Feed</h1>
-            <FeedSort value={sortBy} onChange={setSortBy} reportCount={displayReports.length} />
+            <div className="flex items-center gap-2">
+              <FeedTimeRange value={timeRange} onChange={setTimeRange} />
+              <FeedSort value={sortBy} onChange={setSortBy} reportCount={displayReports.length} />
+            </div>
           </div>
 
           {/* Search bar */}
