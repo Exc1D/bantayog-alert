@@ -19,6 +19,13 @@ export default {
           800: '#1e40af',
           900: '#1e3a8a',
           950: '#172554',
+          blue: '#1e40af',
+          red: '#dc2626',
+        },
+        status: {
+          verified: '#10B981',
+          pending: '#F59E0B',
+          resolved: '#10B981',
         },
       },
     },
