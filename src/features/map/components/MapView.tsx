@@ -191,7 +191,7 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
   }, [isReady, mapInstanceRef, filteredReports])
 
   return (
-    <div className="relative w-full h-screen" style={{ isolation: 'isolate' }}>
+    <div className="relative w-full h-screen">
       {/* Loading state */}
       {!isReady && (
         <div

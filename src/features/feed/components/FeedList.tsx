@@ -190,16 +190,14 @@ export function FeedList({ enabled = true }: FeedListProps) {
               <p className="text-red-700 mb-4">
                 Something went wrong while fetching the feed. Please try again.
               </p>
-              <div className="flex justify-center">
-                <Button
-                  variant="primary"
-                  onClick={() => refetch()}
-                  disabled={isLoading}
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Retry
-                </Button>
-              </div>
+              <Button
+                variant="primary"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
             </div>
           </div>
         </div>

@@ -22,7 +22,7 @@ export function Button({
 
   return (
     <button
-      className={`${baseStyles} ${variantStyles[variant]} ${className} flex items-center justify-center gap-2`}
+      className={`${baseStyles} ${variantStyles[variant]} ${className}`}
       disabled={disabled}
       {...props}
     >

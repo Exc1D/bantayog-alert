@@ -60,7 +60,7 @@ describe('ReportForm', () => {
   it('shows photo capture area', () => {
     render(<ReportForm />)
 
-    expect(screen.getByText(/tap to take a photo/i)).toBeInTheDocument()
+    expect(screen.getByText(/take photo/i)).toBeInTheDocument()
   })
 
   it('shows GPS location when available', () => {

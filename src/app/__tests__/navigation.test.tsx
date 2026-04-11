@@ -87,22 +87,22 @@ describe('Navigation', () => {
       renderWithRouter(<Navigation />)
 
       const reportLink = screen.getByText('Report').closest('a')
-      expect(reportLink).toHaveClass('shadow-lg')
-      expect(reportLink).toHaveClass('border-[3px]', 'border-white')
+      expect(reportLink).toHaveClass('from-primary-red', 'to-red-600')
+      expect(reportLink).toHaveClass('shadow-lg', 'border-4', 'border-white')
     })
 
     it('should render Report tab with elevated position', () => {
       renderWithRouter(<Navigation />)
 
       const reportLink = screen.getByText('Report').closest('a')
-      expect(reportLink).toHaveClass('-top-6')
+      expect(reportLink).toHaveClass('-top-4')
     })
 
-    it('should render Report tab with squircle shape', () => {
+    it('should render Report tab with rounded-full shape', () => {
       renderWithRouter(<Navigation />)
 
       const reportLink = screen.getByText('Report').closest('a')
-      expect(reportLink).toHaveClass('rounded-[40%]')
+      expect(reportLink).toHaveClass('rounded-full')
     })
 
     it('should render Report tab with larger icon size', () => {
