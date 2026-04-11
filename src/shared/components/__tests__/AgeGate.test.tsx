@@ -68,4 +68,16 @@ describe('AgeGate', () => {
 
     localStorage.removeItem('age_verified')
   })
+
+  it('should call onVerified on mount when already verified', () => {
+    localStorage.setItem('age_verified', 'true')
+    const onVerified = vi.fn()
+
+    render(<AgeGate onVerified={onVerified} />)
+
+    // onVerified should be called when mount with existing verification
+    expect(onVerified).toHaveBeenCalledTimes(1)
+
+    localStorage.removeItem('age_verified')
+  })
 })
