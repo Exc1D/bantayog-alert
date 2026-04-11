@@ -246,6 +246,51 @@ describe('FeedCard', () => {
     })
   })
 
+  describe('Photo Display', () => {
+    it('should display photo thumbnail when photoUrls exist', () => {
+      const reportWithPhoto = {
+        ...mockReport,
+        photoUrls: ['https://example.com/photo.jpg'],
+      }
+
+      render(<FeedCard report={reportWithPhoto} />)
+
+      // Should show image with proper alt text
+      const photo = screen.getByRole('img', { name: /report photo for/i })
+      expect(photo).toBeInTheDocument()
+      expect(photo).toHaveAttribute('src', 'https://example.com/photo.jpg')
+    })
+
+    it('should display first photo only as thumbnail', () => {
+      const reportWithMultiplePhotos = {
+        ...mockReport,
+        photoUrls: [
+          'https://example.com/photo1.jpg',
+          'https://example.com/photo2.jpg',
+        ],
+      }
+
+      render(<FeedCard report={reportWithMultiplePhotos} />)
+
+      // Should only display first photo
+      const photos = screen.getAllByRole('img')
+      expect(photos.length).toBe(1)
+      expect(photos[0]).toHaveAttribute('src', 'https://example.com/photo1.jpg')
+    })
+
+    it('should not display photo section when photoUrls is empty', () => {
+      const reportNoPhoto = {
+        ...mockReport,
+        photoUrls: [],
+      }
+
+      render(<FeedCard report={reportNoPhoto} />)
+
+      // No img elements should be present
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    })
+  })
+
   describe('Styling and Accessibility', () => {
     it('should apply correct severity colors', () => {
       const { rerender } = render(<FeedCard report={mockReport} />)
