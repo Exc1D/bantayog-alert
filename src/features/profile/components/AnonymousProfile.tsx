@@ -1,5 +1,6 @@
 import { CheckCircle, Phone, UserCircle } from 'lucide-react'
 import { Button } from '@/shared/components/Button'
+import { LinkReportsByPhone } from './LinkReportsByPhone'
 
 const ACCOUNT_BENEFITS = [
   'Track your report status',
@@ -53,6 +54,11 @@ export function AnonymousProfile({ onCreateAccount, onContinue }: AnonymousProfi
         <Button variant="secondary" className="w-full" onClick={onContinue}>
           Continue as Anonymous
         </Button>
+      </div>
+
+      {/* Link reports by phone section */}
+      <div className="w-full max-w-sm">
+        <LinkReportsByPhone />
       </div>
 
       {/* Admin contact section */}
