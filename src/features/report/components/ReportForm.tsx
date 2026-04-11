@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { Button } from '@/shared/components/Button'
+import { ReportSuccess } from './ReportSuccess'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +21,9 @@ interface ReportFormProps {
   userLocation?: { latitude: number; longitude: number }
   gpsError?: string
   onSubmit?: (data: ReportData) => void
+  onCreateAccount?: () => void
+  onShare?: (reportId: string) => void
+  onNavigate?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -56,7 +60,14 @@ function validatePhone(value: string): string | null {
 
 const MAX_DESCRIPTION_CHARS = 500
 
-export function ReportForm({ userLocation, gpsError, onSubmit }: ReportFormProps) {
+export function ReportForm({
+  userLocation,
+  gpsError,
+  onSubmit,
+  onCreateAccount,
+  onShare,
+  onNavigate,
+}: ReportFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [photo, setPhoto] = useState<File | null>(null)
@@ -65,6 +76,7 @@ export function ReportForm({ userLocation, gpsError, onSubmit }: ReportFormProps
   const [description, setDescription] = useState('')
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
 
   const isGpsAvailable = Boolean(userLocation && !gpsError)
   const showManualDropdowns = Boolean(gpsError)
@@ -87,6 +99,16 @@ export function ReportForm({ userLocation, gpsError, onSubmit }: ReportFormProps
     setBarangay('') // reset barangay when municipality changes
   }
 
+  function generateReportId(location: LocationValue): string {
+    const year = new Date().getFullYear()
+    const municipalityCode =
+      location.type === 'manual' && location.municipality
+        ? location.municipality.substring(0, 4).toUpperCase()
+        : 'DAET'
+    const sequential = Math.floor(Math.random() * 9000) + 1000
+    return `${year}-${municipalityCode}-${sequential}`
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
@@ -101,7 +123,24 @@ export function ReportForm({ userLocation, gpsError, onSubmit }: ReportFormProps
       ? { type: 'gps', latitude: userLocation!.latitude, longitude: userLocation!.longitude }
       : { type: 'manual', municipality, barangay }
 
+    // Generate Report ID and show success screen
+    const reportId = generateReportId(location)
+    setSubmittedReportId(reportId)
+
     onSubmit?.({ photo, location, description, phone })
+  }
+
+  function handleShare() {
+    if (submittedReportId) {
+      onShare?.(submittedReportId)
+    }
+  }
+
+  // Get municipality for success screen
+  const getMunicipalityName = (): string => {
+    if (municipality) return municipality
+    if (isGpsAvailable) return 'Daet' // Default for GPS
+    return 'Unknown'
   }
 
   // Derive a human-readable GPS label for display
@@ -110,6 +149,19 @@ export function ReportForm({ userLocation, gpsError, onSubmit }: ReportFormProps
     : null
 
   const availableBarangays = municipality ? (BARANGAYS[municipality] ?? []) : []
+
+  // Show success screen if form was submitted
+  if (submittedReportId) {
+    return (
+      <ReportSuccess
+        reportId={submittedReportId}
+        municipality={getMunicipalityName()}
+        onCreateAccount={onCreateAccount}
+        onShare={handleShare}
+        onNavigate={onNavigate}
+      />
+    )
+  }
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -218,9 +270,7 @@ export function ReportForm({ userLocation, gpsError, onSubmit }: ReportFormProps
           onBlur={handlePhoneBlur}
           placeholder="+63 912 345 6789"
         />
-        {phoneError && (
-          <span role="alert">{phoneError}</span>
-        )}
+        {phoneError && <span role="alert">{phoneError}</span>}
       </div>
 
       {/* ------------------------------------------------------------------ */}
