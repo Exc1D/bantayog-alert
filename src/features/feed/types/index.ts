@@ -34,3 +34,14 @@ export interface FeedPageResponse {
   nextPage: number | null
   totalCount: number
 }
+
+/**
+ * Action button handlers for FeedCard
+ */
+export interface FeedCardActions {
+  onLike?: (reportId: string) => void
+  onComment?: (reportId: string) => void
+  onShare?: (reportId: string) => void
+  onLocationClick?: (lat: number, lng: number) => void
+}
+
