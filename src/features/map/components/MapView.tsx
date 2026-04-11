@@ -10,6 +10,7 @@ import {
   formatRelativeTime,
   DISASTER_MARKER_CSS,
 } from '../utils/disasterMarkers'
+import { ReportDetailModal } from './ReportDetailModal'
 import 'leaflet/dist/leaflet.css'
 
 // Camarines Norte coordinates
@@ -46,6 +47,7 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
   } = useDisasterReports()
 
   const disasterMarkersRef = useRef<L.Marker[]>([])
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
 
   // Inject custom CSS for user location marker and disaster markers
   useEffect(() => {
@@ -140,6 +142,12 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
         })
 
         marker.bindPopup(popupContent)
+
+        // Add click handler to open modal
+        marker.on('click', () => {
+          setSelectedReportId(report.id)
+        })
+
         marker.addTo(map)
 
         disasterMarkersRef.current.push(marker)
@@ -329,6 +337,12 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
           <p className="text-sm text-gray-600">Disaster layer controls coming soon</p>
         </div>
       )}
+
+      {/* Report detail modal */}
+      <ReportDetailModal
+        reportId={selectedReportId}
+        onClose={() => setSelectedReportId(null)}
+      />
     </div>
   )
 }
