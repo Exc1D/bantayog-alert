@@ -5,11 +5,12 @@
  * Features pull-to-refresh, infinite scroll, and multiple loading states.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { useFeedReports } from '../hooks/useFeedReports'
 import { FeedCardSkeleton } from './FeedCardSkeleton'
 import { FeedCard } from './FeedCard'
+import { FeedFilters, type FilterType } from './FeedFilters'
 import { Button } from '@/shared/components/Button'
 
 export interface FeedListProps {
@@ -18,6 +19,8 @@ export interface FeedListProps {
 }
 
 export function FeedList({ enabled = true }: FeedListProps) {
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>('all')
+
   const {
     data,
     isLoading,
@@ -28,6 +31,22 @@ export function FeedList({ enabled = true }: FeedListProps) {
     fetchNextPage,
     isFetchingNextPage,
   } = useFeedReports({ enabled })
+
+  // Calculate filter counts from all loaded reports
+  const allReports = data?.pages?.flatMap((page) => page.data ?? []) ?? []
+  const filterCounts = {
+    all: allReports.length,
+    pending: allReports.filter(r => r.status === 'pending').length,
+    verified: allReports.filter(r => r.status === 'verified').length,
+    resolved: allReports.filter(r => r.status === 'resolved').length,
+    false_alarm: allReports.filter(r => r.status === 'false_alarm').length,
+  }
+
+  // Filter reports based on selected filter
+  const filteredReports = allReports.filter((report) => {
+    if (selectedFilter === 'all') return true
+    return report.status === selectedFilter
+  })
 
   // Infinite scroll observer
   const observerTarget = useRef<HTMLDivElement>(null)
@@ -116,7 +135,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
   // Empty state (guard: don't show empty message when feed is intentionally disabled)
   if (!enabled) return null
 
-  if (!data || data.length === 0) {
+  if (!data || allReports.length === 0) {
     return (
       <div className="min-h-screen bg-gray-100 pb-20" data-testid="feed-list">
         <div className="max-w-lg mx-auto bg-gray-100 min-h-screen">
@@ -150,13 +169,40 @@ export function FeedList({ enabled = true }: FeedListProps) {
     )
   }
 
+  // Show empty state when filter matches no reports
+  if (filteredReports.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-100 pb-20" data-testid="feed-list">
+        <div className="max-w-lg mx-auto bg-gray-100 min-h-screen">
+          {/* Header */}
+          <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
+            <h1 className="text-xl font-bold text-gray-900">Bantayog Feed</h1>
+          </div>
+
+          {/* Filtered empty state */}
+          <div className="p-4">
+            <div className="bg-white rounded-lg p-8 text-center" data-testid="feed-empty">
+              <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                No reports match this filter
+              </h2>
+              <p className="text-gray-600">
+                Try selecting a different filter or check back later.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Success state with feed
   return (
     <div className="min-h-screen bg-gray-100 pb-20" data-testid="feed-list">
       <div className="max-w-lg mx-auto bg-gray-100 min-h-screen">
         {/* Header with pull-to-refresh indicator */}
         <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-bold text-gray-900">Bantayog Feed</h1>
             {isRefetching && (
               <RefreshCw
@@ -165,6 +211,11 @@ export function FeedList({ enabled = true }: FeedListProps) {
               />
             )}
           </div>
+          <FeedFilters
+            selectedFilter={selectedFilter}
+            counts={filterCounts}
+            onSelect={setSelectedFilter}
+          />
         </div>
 
         {/* Story cards section (placeholder for future) */}
@@ -181,7 +232,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
 
         {/* Report cards */}
         <div className="p-4 space-y-4" data-testid="feed-reports">
-          {data.map((report) => (
+          {filteredReports.map((report) => (
             <FeedCard key={report.id} report={report} />
           ))}
 

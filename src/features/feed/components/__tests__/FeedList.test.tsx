@@ -163,7 +163,7 @@ describe('FeedList', () => {
   describe('when empty', () => {
     it('should show empty state illustration', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: [],
+        data: { pages: [{ data: [] }] },
         isLoading: false,
         isRefetching: false,
         isError: false,
@@ -187,7 +187,7 @@ describe('FeedList', () => {
   describe('when reports are loaded', () => {
     it('should display report cards', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: mockReports,
+        data: { pages: [{ data: mockReports }] },
         isLoading: false,
         isRefetching: false,
         isError: false,
@@ -207,7 +207,7 @@ describe('FeedList', () => {
 
     it('should display report information correctly', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: mockReports,
+        data: { pages: [{ data: mockReports }] },
         isLoading: false,
         isRefetching: false,
         isError: false,
@@ -236,7 +236,7 @@ describe('FeedList', () => {
 
     it('should show verified badge only for verified reports', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: mockReports,
+        data: { pages: [{ data: mockReports }] },
         isLoading: false,
         isRefetching: false,
         isError: false,
@@ -255,7 +255,7 @@ describe('FeedList', () => {
 
     it('should show refresh indicator when refetching', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: mockReports,
+        data: { pages: [{ data: mockReports }] },
         isLoading: false,
         isRefetching: true,
         isError: false,
@@ -273,7 +273,7 @@ describe('FeedList', () => {
 
     it('should show story cards placeholder', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: mockReports,
+        data: { pages: [{ data: mockReports }] },
         isLoading: false,
         isRefetching: false,
         isError: false,
@@ -293,7 +293,7 @@ describe('FeedList', () => {
   describe('when loading more', () => {
     it('should show loading skeletons when fetching next page', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: mockReports,
+        data: { pages: [{ data: mockReports }] },
         isLoading: false,
         isRefetching: false,
         isError: false,
