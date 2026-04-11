@@ -308,6 +308,152 @@ Bottom sheet modal that slides up when pin is tapped.
 - No reports: "No reports in your area yet. Be the first to report!"
 - Filtered empty: "No reports match your filters."
 
+**Interactions:**
+- Tap FeedCard → Open Report Detail screen (like Facebook post)
+- Pull down to refresh (load new reports)
+- Infinite scroll (load more as user scrolls)
+- Pull-to-refresh loading spinner at top
+
+**Loading States:**
+- Skeleton cards (gray placeholders) while loading
+- Pull-to-refresh spinner (circular, blue)
+- "Loading more reports..." at bottom
+
+### 3.2.1 Report Detail Screen (Facebook-Style Post View)
+
+**Purpose:** Full report view with timeline of updates and resolution evidence.
+
+**Screen Layout:**
+```
+┌─────────────────────────────────────┐
+│ ← Back        Flash Flood    ⋯ More │
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ [Original Photo - Full Width]   │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ Flash Flood                        │
+│ Barangay San Jose, Daet             │
+│ 2 hours ago                        │
+│                                     │
+│ Heavy flooding on the main road...  │
+│ Water is waist-deep and...          │
+│                                     │
+│ ● Verified  ────  ✗ Resolved       │
+│                                     │
+│ ════════ UPDATES ════════          │
+│                                     │
+│ 👤 MMDA Officer                     │
+│ 1 hour ago                          │
+│ Team dispatched to assess...        │
+│                                     │
+│ 👤 Response Team Lead               │
+│ 30 min ago                          │
+│ [Evidence Photo 1]                  │
+│ [Evidence Photo 2]                  │
+│ Situation resolved. Water...        │
+│                                     │
+│ ─────────────────────────────────   │
+│ 💬 View Comments (5)                │
+│ 📤 Share                             │
+└─────────────────────────────────────┘
+```
+
+**Screen Content:**
+- **Header:** Back button, disaster type, more menu (⋯)
+- **Original Report:**
+  - Full-width photo (tap to fullscreen)
+  - Disaster type (bold, 20px)
+  - Location (barangay + municipality, 14px, gray)
+  - Time ago (relative)
+  - Full description (no truncation)
+  - Status timeline: ● Verified → ✗ Resolved (with timestamps)
+
+- **Updates Section:**
+  - Header: "UPDATES" (gray divider line)
+  - Timeline entries (reverse chronological - newest first)
+  - Each update shows:
+    - Responder/admin avatar (initials)
+    - Name (e.g., "MMDA Officer", "Response Team Lead")
+    - Timestamp (relative: "1 hour ago")
+    - Update text (what action was taken)
+    - Evidence photos (attached by responders)
+    - Status changes (verified → in progress → resolved)
+
+- **Before/After Comparison:**
+  - When resolved: Show original photo + evidence photos side-by-side
+  - Label: "BEFORE" / "AFTER" badges
+  - Swipe left/right to compare
+  - Tap to fullscreen
+
+- **Actions (Bottom Bar):**
+  - Comments icon + count: "💬 View Comments (5)"
+  - Share button: "📤 Share" (share to Facebook/Messenger)
+  - (Comments feature out of scope - just show count for now)
+
+**Interactions:**
+- Tap photo → Fullscreen gallery view
+- Swipe photos → Navigate between original + evidence photos
+- Pull down → Refresh for new updates
+- Back button → Return to Feed
+
+**Empty States:**
+- No updates yet: "No updates yet. Check back later for response team actions."
+- Not resolved: Status shows ● Verified only (no ✗ Resolved)
+
+### 3.2.2 Facebook-Like Design Patterns
+
+**Philosophy:** Filipinos are familiar with Facebook - use familiar interaction patterns to make the app feel intuitive and "like home."
+
+**Patterns Used Throughout:**
+
+**Feed Interactions:**
+- Pull-to-refresh (same gesture as Facebook)
+- Infinite scroll (no pagination, just keep scrolling)
+- Card-based layout (similar to Facebook posts)
+- Full-screen photo viewer (tap to expand)
+- Swipe between photos (left/right)
+
+**Social Cues:**
+- Relative timestamps ("2 hours ago" not "14:30")
+- Avatar initials with colored backgrounds
+- Blue accent color (#1E40AF) for primary actions
+- Gray for secondary text (#6B7280)
+- Skeleton loading screens (gray placeholders while loading)
+
+**Visual Hierarchy:**
+- Photo/video content first (prominent)
+- Headline text (disaster type) bold and larger
+- Metadata (location, time) smaller and lighter
+- Action buttons at bottom (fixed position)
+- Clean whitespace between sections
+
+**Status Indicators:**
+- Colored dots for status (● verified, ○ pending, ✗ resolved)
+- Timeline-style updates (newest first)
+- Divider lines between sections
+- Progress indicators for multi-step processes
+
+**Micro-Interactions:**
+- Subtle animations on card tap (scale down slightly)
+- Smooth slide transitions between screens
+- Loading spinners (not progress bars)
+- Toast notifications for actions
+- Haptic feedback on button press (mobile)
+
+**Touch Targets:**
+- Large tappable areas (min 44px, preferred 48px)
+- Full-width buttons (easy to tap)
+- Bottom navigation (thumb-friendly zone)
+- Swipe gestures for navigation (back, refresh)
+
+**Content Display:**
+- Full-width photos (immersive)
+- Text truncation with ellipsis (2-3 lines preview)
+- "Read more" expansion (tap to see full text)
+- Photo galleries (swipe to view all)
+- Before/after comparisons (side-by-side)
+
 ### 3.3 Report Tab (Primary Action)
 
 **Design Philosophy:** Minimal fields, maximal speed. Citizens describe what they see; admins classify during triage.
@@ -750,7 +896,7 @@ interface Report {
   id: string;
   userId?: string;                    // undefined if anonymous
   phoneNumber: string;                // required, PH format
-  status: 'pending' | 'verified' | 'resolved' | 'false_alarm';
+  status: 'pending' | 'verified' 'in_progress' | 'resolved' | 'false_alarm';
   disasterType?: string;              // set by admin during triage
   description: string;                // optional, max 500 chars
   location: {
@@ -770,8 +916,23 @@ interface Report {
   updatedAt: Timestamp;
   verifiedAt?: Timestamp;
   verifiedBy?: string;                // admin userId
+  resolvedAt?: Timestamp;
+  resolvedBy?: string;                // responder userId
   isPublic: boolean;                  // true once verified
   viewCount: number;
+  updateHistory: ReportUpdate[];      // timeline of responder actions
+}
+
+interface ReportUpdate {
+  id: string;
+  reportId: string;
+  userId: string;                     // admin or responder userId
+  userName: string;                   // display name
+  userRole: 'municipal_admin' | 'provincial_superadmin' | 'responder';
+  action: 'verified' | 'in_progress' | 'resolved' | 'false_alarm' | 'info_update';
+  message: string;                    // update text
+  evidencePhotos: string[];           // Firebase Storage URLs
+  createdAt: Timestamp;
 }
 ```
 
