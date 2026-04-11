@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from './routes'
 import { usePWAInstall } from '@/shared/hooks/usePWAInstall'
+import { AgeGate } from '@/shared/components/AgeGate'
 import { Download } from 'lucide-react'
 
 const queryClient = new QueryClient({
@@ -41,9 +43,12 @@ function PWAInstallBanner() {
 }
 
 export function App() {
+  const [isAgeVerified, setIsAgeVerified] = useState(false)
+
   return (
     <QueryClientProvider client={queryClient}>
       <div data-testid="query-client-provider">
+        {!isAgeVerified && <AgeGate onVerified={() => setIsAgeVerified(true)} />}
         <PWAInstallBanner />
         <RouterProvider router={router} />
       </div>
