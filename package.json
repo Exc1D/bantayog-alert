@@ -25,7 +25,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "typecheck": "tsc --noEmit",
     "emulators:start": "firebase emulators:start",
-    "emulators:exec": "firebase emulators:exec \"npm run test:run\""
+    "emulators:exec": "firebase emulators:exec \"npm run test:run\"",
+    "generate:icons": "node scripts/generate-pwa-icons.js"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.96.2",
@@ -62,6 +63,7 @@
     "jsdom": "^25.0.1",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17",
     "typescript": "~6.0.2",
     "vite": "^5.4.11",
