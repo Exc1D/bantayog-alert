@@ -2,9 +2,11 @@
  * AlertCard Component
  *
  * Displays a single government emergency alert.
- * Uses the shared Alert type from Firestore and shared formatTimeAgo utility.
+ * Features severity indicator, timestamp, and optional "Read More" link.
  */
 
+import { useState } from 'react'
+import { ExternalLink } from 'lucide-react'
 import type { Alert } from '@/shared/types/firestore.types'
 import { formatTimeAgo } from '@/shared/utils/formatTimeAgo'
 
@@ -25,7 +27,21 @@ const SEVERITY_BORDER: Record<Alert['severity'], string> = {
 }
 
 export function AlertCard({ alert }: AlertCardProps) {
-  const { title, message, severity, createdAt } = alert
+  const { title, message, severity, createdAt, linkUrl } = alert
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  // Truncate long messages
+  const TRUNCATE_LENGTH = 150
+  const shouldTruncate = message.length > TRUNCATE_LENGTH
+  const displayMessage = isExpanded || !shouldTruncate
+    ? message
+    : message.slice(0, TRUNCATE_LENGTH) + '...'
+
+  const handleLinkClick = () => {
+    if (linkUrl) {
+      window.open(linkUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   return (
     <div
@@ -43,7 +59,32 @@ export function AlertCard({ alert }: AlertCardProps) {
           {formatTimeAgo(createdAt)}
         </span>
       </div>
-      <p className="text-gray-700 text-sm leading-relaxed">{message}</p>
+
+      <p className="text-gray-700 text-sm leading-relaxed mb-2">{displayMessage}</p>
+
+      {/* See more / See less button */}
+      {shouldTruncate && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-primary-blue text-sm font-medium hover:underline mb-2"
+          data-testid="see-more-button"
+        >
+          {isExpanded ? 'See less' : 'See more'}
+        </button>
+      )}
+
+      {/* Read More link */}
+      {linkUrl && (
+        <button
+          onClick={handleLinkClick}
+          className="flex items-center gap-1 text-sm text-gray-600 hover:text-primary-blue transition-colors"
+          data-testid="read-more-link"
+        >
+          <span>Read More</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   )
 }
+
