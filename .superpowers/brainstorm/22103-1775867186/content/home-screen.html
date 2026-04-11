@@ -1,0 +1,203 @@
+<h2>Default Home Screen</h2>
+<p class="subtitle">What should citizens see when they open Bantayog Alert?</p>
+
+<div class="cards">
+  <div class="card" data-choice="map" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #1E40AF, #3B82F6); padding: 50px 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" style="margin-bottom: 16px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/><circle cx="12" cy="10" r="7" stroke-dasharray="2 2"/></svg>
+      <div style="color: white; font-size: 28px; font-weight: 700;">MAP FIRST</div>
+      <div style="color: rgba(255,255,255,0.8); text-align: center; font-size: 14px; margin-top: 8px;">Spatial awareness</div>
+    </div>
+    <div class="card-body">
+      <h3>Map as Home</h3>
+      <p>See incidents geographically. Pins showing verified reports. Tap for details. Birds-eye view of what's happening nearby.</p>
+      <p class="label">BEST FOR: "Is there anything near me?"</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="feed" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #3B82F6, #1E40AF); padding: 50px 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" style="margin-bottom: 16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+      <div style="color: white; font-size: 28px; font-weight: 700;">FEED FIRST</div>
+      <div style="color: rgba(255,255,255,0.8); text-align: center; font-size: 14px; margin-top: 8px;">Chronological list</div>
+    </div>
+    <div class="card-body">
+      <h3>Feed as Home</h3>
+      <p>Recent incidents first. Scroll through timeline. More context per incident. Read severity, status, location at a glance.</p>
+      <p class="label">BEST FOR: "What's happening recently?"</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="report" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #DC2626, #1E40AF); padding: 50px 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" style="margin-bottom: 16px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div style="color: white; font-size: 28px; font-weight: 700;">REPORT FIRST</div>
+      <div style="color: rgba(255,255,255,0.8); text-align: center; font-size: 14px; margin-top: 8px;">Action-oriented</div>
+    </div>
+    <div class="card-body">
+      <h3>Report as Home</h3>
+      <p>Immediate action. One tap from app open to report submission. For emergencies where speed matters most.</p>
+      <p class="label">BEST FOR: "I need to report NOW"</p>
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Option A: Map Home</div>
+    <div class="mockup-body" style="background: #F8FAFC; padding: 20px;">
+      <div style="width: 320px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1);">
+        <div style="height: 44px; background: #1E40AF; display: flex; align-items: center; padding: 0 12px;">
+          <span style="color: white; font-weight: 600; font-size: 14px;">Bantayog Alert</span>
+        </div>
+
+        <!-- Map Area -->
+        <div style="height: 320px; background: linear-gradient(135deg, #E0F2FE, #BAE6FD); position: relative; padding: 16px;">
+          <!-- Simulated map pins -->
+          <div style="position: absolute; top: 60px; left: 80px; width: 32px; height: 32px; background: #DC2626; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg); color: white; font-size: 12px;">🔴</div>
+          </div>
+          <div style="position: absolute; top: 120px; left: 200px; width: 32px; height: 32px; background: #F59E0B; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg); color: white; font-size: 12px;">🟡</div>
+          </div>
+          <div style="position: absolute; top: 180px; left: 120px; width: 32px; height: 32px; background: #10B981; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg); color: white; font-size: 12px;">🟢</div>
+          </div>
+
+          <!-- User location -->
+          <div style="position: absolute; bottom: 40px; right: 40px; width: 20px; height: 20px; background: #3B82F6; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; background: white; border-radius: 50%;"></div>
+          </div>
+
+          <!-- Filter chips -->
+          <div style="position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 6px;">
+            <span style="background: white; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 500; box-shadow: 0 1px 4px rgba(0,0,0,0.1);">🔴 🟡 🟢 All</span>
+            <span style="background: white; padding: 4px 10px; border-radius: 16px; font-size: 11px; color: #64748B; box-shadow: 0 1px 4px rgba(0,0,0,0.1);">Last 24h</span>
+          </div>
+        </div>
+
+        <!-- Bottom Nav -->
+        <div style="display: flex; background: white; border-top: 1px solid #E2E8F0;">
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #1E40AF;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Map
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            Feed
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: block; margin: 0 auto 2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            Report
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+            Alerts
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Profile
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Option B: Feed Home</div>
+    <div class="mockup-body" style="background: #F8FAFC; padding: 20px;">
+      <div style="width: 320px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1);">
+        <div style="height: 44px; background: #1E40AF; display: flex; align-items: center; padding: 0 12px;">
+          <span style="color: white; font-weight: 600; font-size: 14px;">Bantayog Alert</span>
+        </div>
+
+        <!-- Feed Area -->
+        <div style="height: 320px; background: #F8FAFC; padding: 12px; overflow-y: auto;">
+          <!-- Filter bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 8px; background: white; border-radius: 8px;">
+            <span style="font-size: 12px; font-weight: 500; color: #374151;">Last 24h ▼</span>
+            <span style="font-size: 11px; color: #64748B;">3 incidents</span>
+          </div>
+
+          <!-- Incident cards -->
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #DC2626; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 13px; font-weight: 600; color: #1E293B;">Flood</span>
+              <span style="font-size: 10px; background: #FEF2F2; color: #DC2626; padding: 2px 6px; border-radius: 8px; font-weight: 600;">HIGH</span>
+            </div>
+            <div style="font-size: 11px; color: #64748B; margin-bottom: 2px;">Barangay San Jose, Daet</div>
+            <div style="font-size: 10px; color: #94A3B8;">2 hours ago • Verified</div>
+          </div>
+
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #F59E0B; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 13px; font-weight: 600; color: #1E293B;">Landslide</span>
+              <span style="font-size: 10px; background: #FEF3C7; color: #D97706; padding: 2px 6px; border-radius: 8px; font-weight: 600;">MED</span>
+            </div>
+            <div style="font-size: 11px; color: #64748B; margin-bottom: 2px;">Barangay Malag, Labo</div>
+            <div style="font-size: 10px; color: #94A3B8;">5 hours ago • Dispatched</div>
+          </div>
+
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #10B981; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 13px; font-weight: 600; color: #1E293B;">Fallen Tree</span>
+              <span style="font-size: 10px; background: #ECFDF5; color: #059669; padding: 2px 6px; border-radius: 8px; font-weight: 600;">LOW</span>
+            </div>
+            <div style="font-size: 11px; color: #64748B; margin-bottom: 2px;">Poblacion, Daet</div>
+            <div style="font-size: 10px; color: #94A3B8;">Yesterday • Resolved</div>
+          </div>
+        </div>
+
+        <!-- Bottom Nav -->
+        <div style="display: flex; background: white; border-top: 1px solid #E2E8F0;">
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Map
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #1E40AF;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            Feed
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: block; margin: 0 auto 2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            Report
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+            Alerts
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; font-size: 10px; color: #94A3B8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 2px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Profile
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>My Recommendation: Map as Home</h3>
+  <p style="line-height: 1.7; color: #374151;"><strong>Why:</strong></p>
+  <ul style="line-height: 1.8;">
+    <li><strong>Spatial = survival</strong> - "Is the flood near MY house?" is the first question</li>
+    <li><strong>Immediate context</strong> - See what's happening around you at a glance</li>
+    <li><strong>Fewer taps</strong> - Tap pin → see details (vs scroll entire feed)</li>
+    <li><strong>Emotional calmer</strong> - Visual overview is less overwhelming than scrolling text</li>
+    <li><strong>Scales better</strong> - 100 pins on map is fine, 100 cards in feed is overwhelming</li>
+  </ul>
+  <p style="margin-top: 12px; line-height: 1.7; color: #374151;">
+    <strong>Feed becomes secondary</strong> - for "what happened recently?" or when you want to read details.
+  </p>
+</div>
+
+<div class="section">
+  <h3>Or: Context-Aware Home?</h3>
+  <p style="line-height: 1.7; color: #374151;">
+    Alternative: Remember user's last tab. If they last looked at Feed, open Feed. If last looked at Map, open Map. New users default to Map.
+  </p>
+  <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px; margin-top: 12px; border-radius: 4px;">
+    <div style="font-size: 13px; font-weight: 500; color: #92400E;">Trade-off:</div>
+    <div style="font-size: 12px; color: #B45309; margin-top: 4px;">Predictable (always map) vs personalized (remember last). For emergency apps, predictability usually wins.
+  </div>
+</div>

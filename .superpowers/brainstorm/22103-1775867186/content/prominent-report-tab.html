@@ -1,0 +1,178 @@
+<h2>Prominent Report Tab</h2>
+<p class="subtitle">Making the Report button impossible to miss</p>
+
+<div class="options">
+  <div class="option" data-choice="floating" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Floating Action Button (FAB)</h3>
+      <p>Circular red button floats above content. Always visible. Material Design pattern.</p>
+      <p class="label">MOST: Prominent, follows conventions</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="center-tab" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Center Tab (Larger + Red)</h3>
+      <p>Report tab in middle but 20% larger with red background. Stands out from other tabs.</p>
+      <p class="label">CLEAREST: Part of nav, visually distinct</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="floating-above" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Floating Above Nav Bar</h3>
+      <p>FAB sits above the nav bar, centered. Hovers slightly. Maximum visibility.</p>
+      <p class="label">MOST: Visible, breaks nav slightly</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Option B: Center Tab (Recommended)</div>
+  <div class="mockup-body" style="background: #e5e7eb; padding: 40px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+      <!-- Header -->
+      <div style="background: #1E40AF; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="color: white; font-weight: 600; font-size: 16px;">Bantayog Alert</div>
+        <div style="display: flex; gap: 12px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+
+      <!-- Map Content -->
+      <div style="height: 480px; background: linear-gradient(135deg, #E0F2FE, #BAE6FD); position: relative; display: flex; align-items: center; justify-content: center;">
+        <div style="color: #3B82F6; font-size: 24px; font-weight: 600;">[Map View]</div>
+      </div>
+
+      <!-- Bottom Nav with Prominent Report -->
+      <div style="background: white; border-top: 1px solid #E2E8F0; padding: 6px 0 8px 0;">
+        <div style="display: flex; align-items: center;">
+          <!-- Map -->
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #1E40AF;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div style="font-size: 11px; font-weight: 500;">Map</div>
+          </div>
+
+          <!-- Feed -->
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <div style="font-size: 11px;">Feed</div>
+          </div>
+
+          <!-- REPORT - Prominent -->
+          <div style="flex: 1.3; text-align: center; padding: 4px; margin: -8px 4px -4px 4px;">
+            <div style="background: linear-gradient(135deg, #DC2626, #EF4444); border-radius: 16px; padding: 12px 8px; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4); border: 3px solid white;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="display: block; margin: 0 auto 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div style="font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.5px; text-transform: uppercase;">REPORT</div>
+            </div>
+          </div>
+
+          <!-- Alerts -->
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <div style="font-size: 11px;">Alerts</div>
+          </div>
+
+          <!-- Profile -->
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div style="font-size: 11px;">Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Option A: Floating Action Button</div>
+  <div class="mockup-body" style="background: #e5e7eb; padding: 40px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.15); position: relative;">
+      <!-- Header -->
+      <div style="background: #1E40AF; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="color: white; font-weight: 600; font-size: 16px;">Bantayog Alert</div>
+        <div style="display: flex; gap: 12px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+
+      <!-- Map Content -->
+      <div style="height: 480px; background: linear-gradient(135deg, #E0F2FE, #BAE6FD); position: relative; display: flex; align-items: center; justify-content: center;">
+        <div style="color: #3B82F6; font-size: 24px; font-weight: 600;">[Map View]</div>
+
+        <!-- Floating FAB -->
+        <div style="position: absolute; bottom: 80px; right: 20px;">
+          <button style="width: 64px; height: 64px; background: linear-gradient(135deg, #DC2626, #EF4444); border: 4px solid white; border-radius: 50%; box-shadow: 0 6px 24px rgba(220, 38, 38, 0.5); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Standard Bottom Nav (no Report tab) -->
+      <div style="background: white; border-top: 1px solid #E2E8F0; padding: 8px 0;">
+        <div style="display: flex;">
+          <div style="flex: 1; text-align: center; padding: 8px; color: #1E40AF;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div style="font-size: 11px; font-weight: 500;">Map</div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            <div style="font-size: 11px;">Feed</div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <div style="font-size: 11px;">Alerts</div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div style="font-size: 11px;">Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>My Recommendation: Center Tab (Option B)</h3>
+  <p style="line-height: 1.7; color: #374151;"><strong>Why center tab over FAB:</strong></p>
+  <ul style="line-height: 1.8;">
+    <li><strong>Part of navigation</strong> - Users expect tabs at bottom, not floating buttons</li>
+    <li><strong>Always same position</strong> - FAB can be obscured by content/map pins</li>
+    <li><strong>Easier to tap</strong> - Larger target area, don't need to reach around content</li>
+    <li><strong>Clearer purpose</strong> - Users understand "this is a navigation tab"</li>
+    <li><strong>No content obstruction</strong> - FABs often cover map pins or content</li>
+  </ul>
+
+  <div style="background: #1E293B; padding: 20px; border-radius: 8px; margin-top: 16px;">
+    <div style="color: #60A5FA; font-family: 'Monaco', monospace; font-size: 13px; margin-bottom: 12px;">// Report tab styling (Tailwind)</div>
+    <div style="color: #E2E8F0; font-family: 'Monaco', monospace; font-size: 12px; line-height: 1.8;">
+      &lt;<span style="color: #F472B6;">div</span> <span style="color: #94A3B8;">className</span>=<span style="color: #34D399;">"flex-1 text-center p-1"</span>&gt;<br>
+      &nbsp;&nbsp;&lt;<span style="color: #F472B6;">div</span> <span style="color: #94A3B8;">className</span>=<span style="color: #34D399;">"bg-gradient-to-br from-red-600 to-red-500 rounded-2xl p-3 shadow-lg border-3 border-white"</span>&gt;<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;<span style="color: #C084FC;">AlertTriangle</span> <span style="color: #94A3B8;">className</span>=<span style="color: #34D399;">"w-8 h-8 text-white stroke-[2.5]"</span> /&gt;<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;<span style="color: #F472B6;">span</span> <span style="color: #94A3B8;">className</span>=<span style="color: #34D399;">"text-xs font-bold text-white uppercase tracking-wide"</span>&gt;<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Report<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;/<span style="color: #F472B6;">span</span>&gt;<br>
+      &nbsp;&nbsp;&lt;/<span style="color: #F472B6;">div</span>&gt;<br>
+      &lt;/<span style="color: #F472B6;">div</span>&gt;
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Key Design Details</h3>
+  <ul style="line-height: 1.8;">
+    <li><strong>30% larger</strong> than other tabs (flex-1.3 vs flex-1)</li>
+    <li><strong>Red gradient</strong> (#DC2626 → #EF4444) for depth</li>
+    <li><strong>White border</strong> (3px) creates separation from nav</li>
+    <li><strong>Elevated shadow</strong> (0 4px 16px) creates floating effect</li>
+    <li><strong>Heavier icon stroke</strong> (2.5 vs 2.0) matches urgency</li>
+    <li><strong>Uppercase text</strong> with letter-spacing for emphasis</li>
+    <li><strong>Negative margin</strong> (-8px top) makes it rise above nav</li>
+  </ul>
+</div>

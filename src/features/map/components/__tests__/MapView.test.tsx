@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { BrowserRouter } from 'react-router-dom'
 import L from 'leaflet'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MapView } from '../MapView'
@@ -25,6 +26,17 @@ vi.mock('leaflet', () => ({
 // Mock CSS import
 vi.mock('leaflet/dist/leaflet.css', () => ({}))
 
+// Mock localStorage
+const localStorageMock = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  clear: vi.fn(),
+  removeItem: vi.fn(),
+  length: 0,
+  key: vi.fn(),
+}
+global.localStorage = localStorageMock as any
+
 // Mock useGeolocation hook
 vi.mock('@/shared/hooks/useGeolocation', () => ({
   useGeolocation: vi.fn(),
@@ -45,6 +57,13 @@ describe('MapView', () => {
     addLayer: vi.fn(),
     removeLayer: vi.fn(),
     hasLayer: vi.fn(() => true),
+    getZoom: vi.fn(() => 10),
+    setZoom: vi.fn(),
+    flyTo: vi.fn(),
+    invalidateSize: vi.fn(),
+    getCenter: vi.fn(() => ({ lat: 14.5995, lng: 120.9842 })),
+    on: vi.fn(),
+    off: vi.fn(),
   }
 
   const mockMarker = {
@@ -67,7 +86,9 @@ describe('MapView', () => {
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </BrowserRouter>
   )
 
   beforeEach(() => {
@@ -157,17 +178,6 @@ describe('MapView', () => {
 
       await waitFor(() => {
         expect(screen.queryByTestId('map-loading')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should show placeholder controls', async () => {
-      render(<MapView />, { wrapper })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('map-controls-placeholder')).toBeInTheDocument()
-        expect(
-          screen.getByText(/disaster layer controls coming soon/i)
-        ).toBeInTheDocument()
       })
     })
   })

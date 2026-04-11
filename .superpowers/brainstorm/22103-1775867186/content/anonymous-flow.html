@@ -1,0 +1,180 @@
+<h2>Anonymous vs Registered User Flow</h2>
+<p class="subtitle">How should citizens interact with the app?</p>
+
+<div class="cards">
+  <div class="card" data-choice="anonymous-first" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #6B7280, #4B5563); padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="margin-bottom: 12px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div style="color: white; font-size: 24px; font-weight: 700;">ANONYMOUS FIRST</div>
+      <div style="color: rgba(255,255,255,0.8); text-align: center; font-size: 13px; margin-top: 8px;">No signup required to report</div>
+    </div>
+    <div class="card-body">
+      <h3>Anonymous-First (Spec)</h3>
+      <p>Anyone can report immediately. After first report, gently suggest creating an account. Optional: link past reports via phone number.</p>
+      <p class="label">LOWEST: Friction, highest participation</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="account-required" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #1E40AF, #3B82F6); padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="margin-bottom: 12px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <div style="color: white; font-size: 24px; font-weight: 700;">ACCOUNT REQUIRED</div>
+      <div style="color: rgba(255,255,255,0.8); text-align: center; font-size: 13px; margin-top: 8px;">Sign up to use the app</div>
+    </div>
+    <div class="card-body">
+      <h3>Registration Required</h3>
+      <p>Create account before first report. Phone verification required. Better data quality, traceable reports.</p>
+      <p class="label">HIGHEST: Data quality, accountability</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="delayed-account" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #3B82F6, #6B7280); padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="margin-bottom: 12px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <div style="color: white; font-size: 24px; font-weight: 700;">3 FREE REPORTS</div>
+      <div style="color: rgba(255,255,255,0.8); text-align: center; font-size: 13px; margin-top: 8px;">Then sign up to continue</div>
+    </div>
+    <div class="card-body">
+      <h3>Quota Before Signup</h3>
+      <p>3 anonymous reports allowed. After that, create account to continue. Balances access with accountability.</p>
+      <p class="label">BALANCED: Try before you commit</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Anonymous-First Flow (Recommended)</div>
+  <div class="mockup-body" style="background: #F8FAFC; padding: 30px;">
+    <div style="max-width: 600px; margin: 0 auto;">
+      <!-- Step 1: First Report -->
+      <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 16px; border-left: 4px solid #1E40AF;">
+        <div style="font-weight: 600; color: #1E293B; margin-bottom: 8px;">1. First Report</div>
+        <div style="font-size: 13px; color: #64748B; line-height: 1.6;">
+          User taps "Report" → Submits with phone number → Gets Report ID → Done.<br>
+          <strong style="color: #1E40AF;">No account asked.</strong> Takes 10 seconds.
+        </div>
+      </div>
+
+      <!-- Step 2: Gentle Suggestion -->
+      <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 16px; border-left: 4px solid #3B82F6;">
+        <div style="font-weight: 600; color: #1E293B; margin-bottom: 8px;">2. Gentle Nudge (After Report #1)</div>
+        <div style="background: #ECFDF5; border: 1px solid #10B981; border-radius: 8px; padding: 16px; margin-top: 12px;">
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; color: #065F46; margin-bottom: 4px;">Report submitted!</div>
+              <div style="font-size: 13px; color: #059669; line-height: 1.6;">
+                Create an account to track this report and get status updates. Takes 30 seconds.
+              </div>
+              <div style="margin-top: 12px; display: flex; gap: 8px;">
+                <button style="padding: 10px 16px; background: #1E40AF; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Create Account</button>
+                <button style="padding: 10px 16px; background: white; color: #64748B; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 13px;">Not Now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">
+          User can dismiss → Returns to map → Can report again anytime
+        </div>
+      </div>
+
+      <!-- Step 3: Account Linking -->
+      <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #DC2626;">
+        <div style="font-weight: 600; color: #1E293B; margin-bottom: 8px;">3. Account Creation Links Past Reports</div>
+        <div style="font-size: 13px; color: #64748B; line-height: 1.6;">
+          When user finally creates account, they enter phone number → System finds all previous reports from that number → <strong style="color: #DC2626;">Links them to new account</strong>. Now they can track everything.
+        </div>
+        <div style="background: #FEF2F2; padding: 12px; border-radius: 6px; margin-top: 12px; font-size: 12px; color: #991B1B;">
+          "We found 2 previous reports from this number. They've been linked to your account."
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Anonymous User Capabilities</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <tr style="border-bottom: 2px solid #E2E8F0;">
+      <th style="text-align: left; padding: 12px; color: #64748B;">Feature</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Anonymous</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Registered</th>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Submit reports</td>
+      <td style="padding: 12px; color: #10B981;">✓ Unlimited</td>
+      <td style="padding: 12px; color: #10B981;">✓ Unlimited</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Upload photos</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">View map/feed</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Receive alerts</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes (location-based)</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes (location + preferences)</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Track own reports</td>
+      <td style="padding: 12px; color: #DC2626;">✗ No (only via Report ID)</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes (full history)</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Edit reports</td>
+      <td style="padding: 12px; color: #DC2626;">✗ No</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes (until verified)</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; font-weight: 500;">Cancel reports</td>
+      <td style="padding: 12px; color: #DC2626;">✗ No</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes (pending only)</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Why Anonymous-First?</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>✓ Pros</h4>
+      <ul>
+        <li><strong>Zero friction</strong> - Report in 10 seconds, no forms</li>
+        <li><strong>Higher participation</strong> - More reports = better response</li>
+        <li><strong>Emergency-ready</strong> - No barriers during crisis</li>
+        <li><strong>Privacy</strong> - Some users don't want accounts</li>
+        <li><strong>Compliance</strong> - Still collect phone for follow-up</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>✗ Cons</h4>
+      <ul>
+        <li><strong>Can't track reports</strong> - Unless you save Report ID</li>
+        <li><strong>Can't edit later</strong> - If you made a mistake</li>
+        <li><strong>Harder to follow up</strong> - Admin can't contact if number wrong</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Account Creation Trigger</h3>
+  <p style="line-height: 1.7; color: #374151;"><strong>When to suggest account creation:</strong></p>
+  <ul style="line-height: 1.8;">
+    <li>After first report submitted ✓</li>
+    <li>After viewing 3+ incidents</li>
+    <li>When tapping "Profile" tab (if not logged in)</li>
+    <li>Never block - always "Not Now" option</li>
+  </ul>
+  <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin-top: 16px; border-radius: 4px;">
+    <div style="font-size: 13px; font-weight: 500; color: #065F46;">Key insight:</div>
+    <div style="font-size: 13px; color: #059669; margin-top: 4px;">
+      Most users will create account after first successful report. They see value, then invest. Forced signup = dropoff.
+    </div>
+  </div>
+</div>

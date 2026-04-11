@@ -1,0 +1,188 @@
+<h2>Smart Auto-Fill with Fallbacks</h2>
+<p class="subtitle">Graceful degradation when permissions are denied or unavailable</p>
+
+<div class="mockup">
+  <div class="mockup-header">Happy Path: All Permissions Granted</div>
+  <div class="mockup-body" style="background: #F8FAFC; padding: 30px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <div style="background: linear-gradient(135deg, #1E40AF, #DC2626); padding: 16px;">
+        <div style="color: white; font-weight: 600; font-size: 18px;">Quick Report</div>
+        <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 4px;">✓ Location • ✓ Camera ready</div>
+      </div>
+
+      <div style="padding: 16px;">
+        <!-- Type -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">What's happening?</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <button style="padding: 12px; border: 2px solid #DC2626; background: #FEF2F2; border-radius: 8px; font-size: 12px; font-weight: 600; color: #DC2626;">🌊 Flood</button>
+            <button style="padding: 12px; border: 1px solid #E2E8F0; background: white; border-radius: 8px; font-size: 12px;">⛰️ Landslide</button>
+            <button style="padding: 12px; border: 1px solid #E2E8F0; background: white; border-radius: 8px; font-size: 12px;">🔥 Fire</button>
+          </div>
+        </div>
+
+        <!-- Both Auto-Detected -->
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #ECFDF5; border: 1px solid #10B981; border-radius: 8px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; font-weight: 500; color: #065F46;">Location & camera ready</div>
+              <div style="font-size: 11px; color: #059669;">Tap photo to capture • Barangay San Jose detected</div>
+            </div>
+          </div>
+        </div>
+
+        <textarea style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; min-height: 60px; resize: none; margin-bottom: 12px;" placeholder="Describe briefly..."></textarea>
+        <input type="tel" style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; margin-bottom: 16px;" placeholder="Your phone number" />
+        <button style="width: 100%; padding: 16px; background: #DC2626; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Submit Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Fallback 1: Location Denied</div>
+  <div class="mockup-body" style="background: #F8FAFC; padding: 30px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <div style="background: linear-gradient(135deg, #1E40AF, #DC2626); padding: 16px;">
+        <div style="color: white; font-weight: 600; font-size: 18px;">Quick Report</div>
+        <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 4px;">⚠️ Enable location or select manually</div>
+      </div>
+
+      <div style="padding: 16px;">
+        <!-- Type -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">What's happening?</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <button style="padding: 12px; border: 2px solid #DC2626; background: #FEF2F2; border-radius: 8px; font-size: 12px; font-weight: 600; color: #DC2626;">🌊 Flood</button>
+            <button style="padding: 12px; border: 1px solid #E2E8F0; background: white; border-radius: 8px; font-size: 12px;">⛰️ Landslide</button>
+            <button style="padding: 12px; border: 1px solid #E2E8F0; background: white; border-radius: 8px; font-size: 12px;">🔥 Fire</button>
+          </div>
+        </div>
+
+        <!-- Camera Still Works -->
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #ECFDF5; border: 1px solid #10B981; border-radius: 8px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; font-weight: 500; color: #065F46;">Camera ready</div>
+              <div style="font-size: 11px; color: #059669;">Tap to capture photo</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Location Fallback -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">Where is it?</div>
+          <select style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; background: white;">
+            <option>Select municipality...</option>
+            <option>Daet</option>
+            <option>Labo</option>
+            <option>Paracale</option>
+          </select>
+          <select style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; background: white; margin-top: 8px;">
+            <option>Select barangay...</option>
+            <option>Barangay San Jose</option>
+            <option>Barangay Malag</option>
+            <option>Poblacion</option>
+          </select>
+          <input type="text" style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; margin-top: 8px;" placeholder="Landmark (optional): Near the bridge..." />
+        </div>
+
+        <textarea style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; min-height: 60px; resize: none; margin-bottom: 12px;" placeholder="Describe briefly..."></textarea>
+        <input type="tel" style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; margin-bottom: 16px;" placeholder="Your phone number" />
+        <button style="width: 100%; padding: 16px; background: #DC2626; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Submit Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Fallback 2: Both Denied (Offline Mode)</div>
+  <div class="mockup-body" style="background: #F8FAFC; padding: 30px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <div style="background: linear-gradient(135deg, #1E40AF, #DC2626); padding: 16px;">
+        <div style="color: white; font-weight: 600; font-size: 18px;">Quick Report</div>
+        <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 4px;">📴 Offline • Manual entry • Queues for sync</div>
+      </div>
+
+      <div style="padding: 16px;">
+        <!-- Type -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">What's happening?</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <button style="padding: 12px; border: 2px solid #DC2626; background: #FEF2F2; border-radius: 8px; font-size: 12px; font-weight: 600; color: #DC2626;">🌊 Flood</button>
+            <button style="padding: 12px; border: 1px solid #E2E8F0; background: white; border-radius: 8px; font-size: 12px;">⛰️ Landslide</button>
+            <button style="padding: 12px; border: 1px solid #E2E8F0; background: white; border-radius: 8px; font-size: 12px;">🔥 Fire</button>
+          </div>
+        </div>
+
+        <!-- Photo Fallback -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">Photo (optional)</div>
+          <div style="border: 2px dashed #E2E8F0; border-radius: 8px; padding: 16px; text-align: center; color: #9CA3AF; font-size: 12px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Select from gallery
+            <div style="font-size: 10px; margin-top: 4px;">Camera unavailable</div>
+          </div>
+        </div>
+
+        <!-- Location Fallback -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">Where is it?</div>
+          <select style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; background: white;">
+            <option>Select municipality...</option>
+          </select>
+          <select style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; background: white; margin-top: 8px;">
+            <option>Select barangay...</option>
+          </select>
+        </div>
+
+        <textarea style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; min-height: 60px; resize: none; margin-bottom: 12px;" placeholder="Describe briefly..."></textarea>
+        <input type="tel" style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; margin-bottom: 16px;" placeholder="Your phone number" />
+
+        <div style="padding: 12px; background: #FEF3C7; border-radius: 8px; margin-bottom: 12px; display: flex; gap: 10px; align-items: start;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div style="font-size: 12px; color: #92400E;">Will send when you're back online</div>
+        </div>
+
+        <button style="width: 100%; padding: 16px; background: #DC2626; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Submit Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Permission Detection Logic</h3>
+  <div style="background: #1E293B; color: #E2E8F0; padding: 20px; border-radius: 8px; font-family: 'Monaco', 'Menlo', monospace; font-size: 12px; line-height: 1.8;">
+    <div style="color: #60A5FA;">// Auto-detect on component mount</div>
+    <div style="color: #C084FC;">const</div> [locationStatus, setLocationStatus] = <div style="color: #C084FC;">useState</div>(<div style="color: #34D399;">'checking'</div>);<br>
+    <div style="color: #C084FC;">const</div> [cameraStatus, setCameraStatus] = <div style="color: #C084FC;">useState</div>(<div style="color: #34D399;">'checking'</div>);<br>
+    <br>
+    <div style="color: #60A5FA;">// Check permissions gracefully</div>
+    <div style="color: #F472B6;">if</div> (navigator.permissions) {<br>
+    &nbsp;&nbsp;navigator.permissions.query({name: <div style="color: #34D399;">'geolocation'</div>})<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;.then(result => {<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;setLocationStatus(result.state === <div style="color: #34D399;">'granted'</div> ? <div style="color: #34D399;">'ready'</div> : <div style="color: #34D399;">'manual'</div>);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<div style="color: #64748B;">// Show auto-filled fields OR manual dropdowns</div><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;});<br>
+    }<br>
+    <br>
+    <div style="color: #60A5FA;">// Fallback: Always show manual option</div>
+    <div style="color: #F472B6;">if</div> (locationStatus === <div style="color: #34D399;">'manual'</div> || locationStatus === <div style="color: #34D399;">'denied'</div>) {<br>
+    &nbsp;&nbsp;<div style="color: #64748B;">// Render municipality/barangay dropdowns</div><br>
+    &nbsp;&nbsp;<div style="color: #F472B6;">return</div> <LocationManualSelect />;<br>
+    }
+  </div>
+</div>
+
+<div class="section">
+  <h3>Key Principles</h3>
+  <ul style="line-height: 1.8;">
+    <li><strong>Try auto first</strong> - Attempt GPS/camera detection on mount</li>
+    <li><strong>Fail gracefully</strong> - If denied/prompt, show manual inputs immediately</li>
+    <li><strong>Never block</strong> - User can always submit report, even with zero permissions</li>
+    <li><strong>Queue for offline</strong> - Store in IndexedDB, sync when connection returns</li>
+    <li><strong>Clear feedback</strong> - Show "Location ready" ✅ or "Select manually" 📝</li>
+  </ul>
+</div>

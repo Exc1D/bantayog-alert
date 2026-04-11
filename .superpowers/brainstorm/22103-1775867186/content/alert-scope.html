@@ -1,0 +1,97 @@
+<h2>Alert Creation Scope by Role</h2>
+<p class="subtitle">Who can create alerts and for whom?</p>
+
+<div class="options">
+  <div class="option" data-choice="correct" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>This is Correct</h3>
+      <p>Municipal Admins → Their municipality only. Provincial Superadmins → Entire province. Citizens → Cannot create alerts (only reports).</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Alert Creation Scope Matrix</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <tr style="border-bottom: 2px solid #E2E8F0;">
+      <th style="text-align: left; padding: 12px; color: #64748B;">Role</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Can Create Alerts?</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Target Scope</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Example</th>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Municipal Admin</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes</td>
+      <td style="padding: 12px;">Their municipality only</td>
+      <td style="padding: 12px;">Daet admin → All Daet citizens</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Provincial Superadmin</td>
+      <td style="padding: 12px; color: #10B981;">✓ Yes</td>
+      <td style="padding: 12px;">Entire province</td>
+      <td style="padding: 12px;">"Typhoon approaching Camarines Norte"</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Citizen</td>
+      <td style="padding: 12px; color: #DC2626;">✗ No</td>
+      <td style="padding: 12px;">N/A</td>
+      <td style="padding: 12px;">Can only submit reports (verified by admin)</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; font-weight: 500;">Responder</td>
+      <td style="padding: 12px; color: #DC2626;">✗ No</td>
+      <td style="padding: 12px;">N/A</td>
+      <td style="padding: 12px;">Receives alerts, cannot create</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Practical Example</h3>
+  <div style="background: #F3F4F6; padding: 20px; border-radius: 8px;">
+    <div style="font-weight: 600; color: #1E293B; margin-bottom: 12px;">Scenario: Flash flood in Barangay San Jose, Daet</div>
+
+    <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+      <div style="font-size: 13px; font-weight: 500; color: #DC2626; margin-bottom: 4px;">Municipal Admin (Daet)</div>
+      <div style="font-size: 12px; color: #64748B;">Creates alert → Targets: All citizens with registered location = Daet</div>
+    </div>
+
+    <div style="background: white; padding: 16px; border-radius: 8px;">
+      <div style="font-size: 13px; font-weight: 500; color: #1E40AF; margin-bottom: 4px;">Provincial Superadmin</div>
+      <div style="font-size: 12px; color: #64748B;">Creates alert → Targets: ALL citizens in Camarines Norte (all municipalities)</div>
+    </div>
+
+    <div style="background: white; padding: 16px; border-radius: 8px; opacity: 0.6;">
+      <div style="font-size: 13px; font-weight: 500; color: #6B7280; margin-bottom: 4px;">Municipal Admin (Labo)</div>
+      <div style="font-size: 12px; color: #94A3B8;">CANNOT create alert for Daet - out of scope</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Location-Based Alert Filtering</h3>
+  <p style="line-height: 1.7; color: #374151;">
+    Citizens only receive alerts for <strong>their registered municipality</strong>. If they're anonymous, alerts are based on <strong>current GPS location</strong>.
+  </p>
+  <div style="background: #1E293B; padding: 16px; border-radius: 8px; margin-top: 12px;">
+    <div style="color: #60A5FA; font-family: 'Monaco', monospace; font-size: 12px;">// Alert targeting logic</div>
+    <div style="color: #E2E8F0; font-family: 'Monaco', monospace; font-size: 11px; line-height: 1.6; margin-top: 8px;">
+      <span style="color: #64748B;">// For registered users:</span><br>
+      alerts.<span style="color: #F472B6;">where</span>(<span style="color: #34D399;">'targetMunicipalities'</span>, <span style="color: #34D399;">'=='</span>, user.municipality)<br>
+      <br>
+      <span style="color: #64748B;">// For anonymous users:</span><br>
+      alerts.<span style="color: #F472B6;">where</span>(<span style="color: #34D399;">'targetMunicipalities'</span>, <span style="color: #F472B6;">array-contains</span>(gps.municipality))
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Why This Scope Matters</h3>
+  <ul style="line-height: 1.8;">
+    <li><strong>Prevents alert spam</strong> - Labo admin can't flood Daet citizens with irrelevant alerts</li>
+    <li><strong>Relevance</strong> - Users only see warnings that affect their area</li>
+    <li><strong>Authority</strong> - Only official sources can broadcast alerts (verified accounts)</li>
+    <li><strong>Privacy</strong> - Location-based targeting for anonymous users respects privacy</li>
+  </ul>
+</div>

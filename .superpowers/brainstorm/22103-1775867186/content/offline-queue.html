@@ -1,0 +1,248 @@
+<h2>Offline Queue & Sync Behavior</h2>
+<p class="subtitle">How should reports queue and sync when connection is poor?</p>
+
+<div class="options">
+  <div class="option" data-choice="auto-sync" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Auto-Sync Transparently</h3>
+      <p>Queue in background, sync when connection returns. Show subtle indicator. User doesn't think about it.</p>
+      <p class="label">BEST: Set-and-forget, works like magic</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="manual-sync" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Manual Sync Control</h3>
+      <p>Show queue count, user taps "Sync Now". More control, more awareness, more cognitive load.</p>
+      <p class="label">GOOD: User control, BAD: More to think about</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid: Auto + Manual Option</h3>
+      <p>Auto-syncs in background BUT shows queue indicator with manual sync button for impatient users.</p>
+      <p class="label">BALANCED: Magic + control when wanted</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Option C: Hybrid (Recommended)</div>
+  <div class="mockup-body" style="background: #F8FAFC; padding: 30px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <!-- Header with Queue Indicator -->
+      <div style="background: #1E40AF; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="color: white; font-weight: 600; font-size: 16px;">Bantayog Alert</div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <!-- Queue indicator -->
+          <div style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span style="color: white; font-size: 12px; font-weight: 500;">2 reports queued</span>
+          </div>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+
+      <!-- Map with Offline Message -->
+      <div style="height: 340px; background: linear-gradient(135deg, #E0F2FE, #BAE6FD); position: relative; padding: 16px;">
+        <div style="background: rgba(255,255,255,0.95); padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M12.71 5.05a16 16 0 0 0-11.31 3.31M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07M19 4v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; font-weight: 500; color: #92400E;">No internet connection</div>
+              <div style="font-size: 11px; color: #B45309;">Reports will sync automatically when you're back online</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: center; align-items: center; height: 260px;">
+          <div style="color: #3B82F6; font-size: 20px; font-weight: 600;">[Map - Last Cached State]</div>
+        </div>
+      </div>
+
+      <!-- Bottom Nav -->
+      <div style="display: flex; background: white; border-top: 1px solid #E2E8F0; padding: 6px 0 8px 0;">
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #1E40AF;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div style="font-size: 11px; font-weight: 500;">Map</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+          <div style="font-size: 11px;">Feed</div>
+        </div>
+        <div style="flex: 1.3; text-align: center; padding: 4px; margin: -8px 4px -4px 4px;">
+          <div style="background: linear-gradient(135deg, #DC2626, #EF4444); border-radius: 16px; padding: 12px 8px; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4); border: 3px solid white;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="display: block; margin: 0 auto 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div style="font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.5px; text-transform: uppercase;">REPORT</div>
+          </div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <div style="font-size: 11px;">Alerts</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div style="font-size: 11px;">Profile</div>
+        </div>
+      </div>
+
+      <!-- Manual Sync Bar (when queue exists) -->
+      <div style="background: #FEF3C7; border-top: 1px solid #F59E0B; padding: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: 500; color: #92400E;">2 reports waiting to sync</div>
+            <div style="font-size: 11px; color: #B45309;">Will send automatically when you're online</div>
+          </div>
+          <button style="background: #1E40AF; color: white; padding: 10px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;">
+            Sync Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">After Successful Sync</div>
+  <div class="mockup-body" style="background: #F8FAFC; padding: 30px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <!-- Header -->
+      <div style="background: #1E40AF; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="color: white; font-weight: 600; font-size: 16px;">Bantayog Alert</div>
+        <div style="display: flex; gap: 12px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+
+      <!-- Success Message -->
+      <div style="height: 340px; background: linear-gradient(135deg, #E0F2FE, #BAE6FD); padding: 30px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); text-align: center; max-width: 280px;">
+          <div style="width: 56px; height: 56px; background: #ECFDF5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div style="font-weight: 600; color: #1E293B; font-size: 18px; margin-bottom: 8px;">All reports synced!</div>
+          <div style="font-size: 13px; color: #64748B; line-height: 1.6;">
+            2 reports sent successfully. You can now track them in your profile.
+          </div>
+          <button style="margin-top: 16px; padding: 10px 20px; background: #1E40AF; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500;">
+            View Reports
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Nav -->
+      <div style="display: flex; background: white; border-top: 1px solid #E2E8F0; padding: 6px 0 8px 0;">
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div style="font-size: 11px;">Map</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+          <div style="font-size: 11px;">Feed</div>
+        </div>
+        <div style="flex: 1.3; text-align: center; padding: 4px; margin: -8px 4px -4px 4px;">
+          <div style="background: linear-gradient(135deg, #DC2626, #EF4444); border-radius: 16px; padding: 12px 8px; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4); border: 3px solid white;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="display: block; margin: 0 auto 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div style="font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.5px; text-transform: uppercase;">REPORT</div>
+          </div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <div style="font-size: 11px;">Alerts</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #1E40AF;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div style="font-size: 11px; font-weight: 500;">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Offline Behavior Breakdown</h3>
+  <div style="background: #1E293B; padding: 20px; border-radius: 8px;">
+    <div style="color: #60A5FA; font-family: 'Monaco', monospace; font-size: 13px; margin-bottom: 12px;">// When offline:</div>
+    <div style="color: #E2E8F0; font-family: 'Monaco', monospace; font-size: 12px; line-height: 1.8;">
+      <span style="color: #C084FC;">1.</span> User submits report<br>
+      <span style="color: #C084FC;">2.</span> Detect <span style="color: #F472B6;">navigator.onLine</span> === <span style="color: #F472B6;">false</span><br>
+      <span style="color: #C084FC;">3.</span> Save to IndexedDB <span style="color: #34D399;">'offline-queue'</span> store<br>
+      <span style="color: #C084FC;">4.</span> Show: <span style="color: #34D399;">"Saved locally. Will sync when online."</span><br>
+      <span style="color: #C084FC;">5.</span> Add queue indicator to header<br>
+      <span style="color: #64748B;">// User continues using app (map from cache)</span>
+    </div>
+  </div>
+
+  <div style="background: #1E293B; padding: 20px; border-radius: 8px; margin-top: 12px;">
+    <div style="color: #60A5FA; font-family: 'Monaco', monospace; font-size: 13px; margin-bottom: 12px;">// When connection returns:</div>
+    <div style="color: #E2E8F0; font-family: 'Monaco', monospace; font-size: 12px; line-height: 1.8;">
+      <span style="color: #C084FC;">1.</span> Detect <span style="color: #F472B6;">navigator.onLine</span> === <span style="color: #F472B6;">true</span><br>
+      <span style="color: #C084FC;">2.</span> Auto-sync all queued reports in background<br>
+      <span style="color: #C084FC;">3.</span> Update IndexedDB: mark as <span style="color: #34D399;">'synced'</span><br>
+      <span style="color: #C084FC;">4.</span> Show success toast: <span style="color: #34D399;">"2 reports synced!"</span><br>
+      <span style="color: #C084FC;">5.</span> Remove queue indicator from header<br>
+      <span style="color: #64748B;">// User can tap "Sync Now" anytime if impatient</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>IndexedDB Schema</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+    <tr style="border-bottom: 2px solid #E2E8F0;">
+      <th style="text-align: left; padding: 10px; color: #64748B;">Store</th>
+      <th style="text-align: left; padding: 10px; color: #64748B;">Purpose</th>
+      <th style="text-align: left; padding: 10px; color: #64748B;">Key</th>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">offline-queue</td>
+      <td style="padding: 10px;">Queued reports awaiting sync</td>
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">timestamp + random</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">report-history</td>
+      <td style="padding: 10px;">All submitted reports (synced + pending)</td>
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">reportId</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">map-cache</td>
+      <td style="padding: 10px;">Cached map tiles for offline viewing</td>
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">tileUrl + zoom</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">feed-cache</td>
+      <td style="padding: 10px;">Cached incident feed</td>
+      <td style="padding: 10px; font-family: 'Monaco', monospace;">'last-fetch'</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Conflict Resolution</h3>
+  <div style="background: #FEF2E2; border-left: 4px solid #DC2626; padding: 16px; border-radius: 4px;">
+    <div style="font-weight: 600; color: #991B1B; margin-bottom: 8px;">⚠️ Edge Case: Multiple reports, same incident</div>
+    <div style="font-size: 13px; color: #7F1D1D; line-height: 1.7;">
+      If user submits report offline, and another user reports same incident (which gets verified before user comes online), what happens?
+    </div>
+  </div>
+  <div style="margin-top: 12px; font-size: 13px; color: #374151; line-height: 1.8;">
+    <strong>Solution:</strong> Server checks for duplicates on sync. If duplicate detected within 500m and 30 minutes, merge reports and notify user: "Your report was merged with an existing incident. Thanks for confirming!"
+  </div>
+</div>
+
+<div class="section">
+  <h3>Key Principles</h3>
+  <ul style="line-height: 1.8;">
+    <li><strong>Queue in IndexedDB</strong> - Survives app restart, persists across sessions</li>
+    <li><strong>Auto-sync on connection</strong> - Service worker listens for online event</li>
+    <li><strong>Manual sync option</strong> - For impatient users, "Sync Now" button</li>
+    <li><strong>Clear feedback</strong> - Queue count, success message, error handling</li>
+    <li><strong>No blocking</strong> - User can continue using app (cached map/feed)</li>
+    <li><strong>Deduplication</strong> - Server checks for merges on sync</li>
+  </ul>
+</div>

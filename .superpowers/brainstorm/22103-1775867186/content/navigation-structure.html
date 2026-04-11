@@ -1,0 +1,71 @@
+<h2>Citizen App Navigation Structure</h2>
+<p class="subtitle">Which navigation approach best serves citizens during emergencies?</p>
+
+<div class="options">
+  <div class="option" data-choice="5-tab" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>5-Tab Bottom Bar (Spec)</h3>
+      <p>📍 Map • 📋 Feed • 🚨 Report • ⚠️ Alerts • 👤 Profile</p>
+      <p><strong>Pros:</strong> Clear separation, quick access to all features, familiar mobile pattern</p>
+      <p><strong>Cons:</strong> More tabs to navigate, Report button competes with other tabs</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="4-tab-plus-fab" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>4-Tabs + Floating Report Button</h3>
+      <p>📍 Map • 📋 Feed • ⚠️ Alerts • 👤 Profile + [🚨] floating action button</p>
+      <p><strong>Pros:</strong> Report always visible, emphasizes primary action, fewer tabs</p>
+      <p><strong>Cons:</strong> FAB obscures content, less standard pattern</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="3-tab" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>3-Tabs (Consolidated)</h3>
+      <p>📍 Map & Feed (swipeable) • 🚨 Report (center home) • ⚠️ Alerts & 👤 Profile</p>
+      <p><strong>Pros:</strong> Simpler navigation, Report as primary focus</p>
+      <p><strong>Cons:</strong> Map/Feed combined may be confusing, harder to access Profile</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Option A: 5-Tab Layout (from spec)</div>
+  <div class="mockup-body" style="background: #f5f5f5; padding: 20px;">
+    <div style="max-width: 375px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <div style="height: 44px; background: #DC2626; display: flex; align-items: center; padding: 0 16px;">
+        <span style="color: white; font-weight: bold;">← Bantayog</span>
+        <span style="margin-left: auto; color: white;">🔔 👤</span>
+      </div>
+      <div style="height: 500px; display: flex; align-items: center; justify-content: center; background: #f9fafb;">
+        <span style="color: #9ca3af;">[Map View]</span>
+      </div>
+      <div style="display: flex; background: white; border-top: 1px solid #e5e7eb;">
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 11px; color: #DC2626;">
+          <div style="font-size: 20px;">📍</div>
+          <div>Map</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 11px; color: #6b7280;">
+          <div style="font-size: 20px;">📋</div>
+          <div>Feed</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 11px; color: #6b7280;">
+          <div style="font-size: 20px;">🚨</div>
+          <div>Report</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 11px; color: #6b7280;">
+          <div style="font-size: 20px;">⚠️</div>
+          <div>Alerts</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 11px; color: #6b7280;">
+          <div style="font-size: 20px;">👤</div>
+          <div>Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

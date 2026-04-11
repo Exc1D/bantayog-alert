@@ -1,0 +1,246 @@
+<h2>Alert System Design</h2>
+<p class="subtitle">How should citizens receive official emergency alerts?</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Push Notification (Emergency)</div>
+    <div class="mockup-body" style="background: #1a1a1a; padding: 30px; display: flex; justify-content: center;">
+      <div style="width: 320px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <!-- Phone Header -->
+        <div style="background: #1a1a1a; padding: 12px 16px; display: flex; align-items: center; gap: 8px;">
+          <span style="color: white; font-size: 12px;">9:41</span>
+          <div style="flex: 1; height: 12px; background: #333; border-radius: 6px;"></div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        </div>
+
+        <!-- Notification Content -->
+        <div style="padding: 16px;">
+          <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #DC2626, #EF4444); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; color: #9CA3AF; margin-bottom: 4px;">BANTAYOG ALERT</div>
+              <div style="font-size: 15px; font-weight: 600; color: #1E293B; line-height: 1.4;">⚠️ EVACUATION WARNING</div>
+              <div style="font-size: 13px; color: #64748B; margin-top: 4px;">Flash flood in Daet. Residents near rivers: EVACUATE now.</div>
+            </div>
+          </div>
+
+          <div style="background: #F3F4F6; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 12px; color: #64748B;">2 min ago</span>
+            <div style="display: flex; gap: 8px;">
+              <button style="background: none; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; color: #64748B;">Clear</span>
+              <button style="background: none; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; color: #1E40AF; font-weight: 500;">Settings</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">In-App Alert Card (High Priority)</div>
+    <div class="mockup-body" style="background: #F8FAFC; padding: 20px;">
+      <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1);">
+        <!-- Alert Header -->
+        <div style="background: linear-gradient(135deg, #DC2626, #EF4444); padding: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div style="color: white; font-weight: 600; font-size: 16px;">EVACUATION WARNING</div>
+          </div>
+          <div style="color: rgba(255,255,255,0.9); font-size: 12px; margin-top: 8px;">Municipal Disaster Risk Reduction Office</div>
+        </div>
+
+        <!-- Alert Content -->
+        <div style="padding: 16px;">
+          <div style="font-size: 14px; color: #1E293B; line-height: 1.6; margin-bottom: 12px;">
+            Flash flood warning for Daet. Residents near rivers and low-lying areas must evacuate immediately.
+          </div>
+
+          <div style="background: #FEF2F2; border-left: 4px solid #DC2626; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+            <div style="font-size: 12px; font-weight: 600; color: #991B1B; margin-bottom: 4px;">📍 Affected Areas:</div>
+            <div style="font-size: 13px; color: #7F1D1D;">Barangays San Jose, Alawihao, Daguit</div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div style="text-align: center; padding: 10px; background: #F3F4F6; border-radius: 6px;">
+              <div style="font-size: 11px; color: #64748B;">Issued</div>
+              <div style="font-size: 13px; font-weight: 500; color: #1E293B;">10:30 AM</div>
+            </div>
+            <div style="text-align: center; padding: 10px; background: #F3F4F6; border-radius: 6px;">
+              <div style="font-size: 11px; color: #64748B;">Valid until</div>
+              <div style="font-size: 13px; font-weight: 500; color: #DC2626;">6:00 PM</div>
+            </div>
+          </div>
+
+          <button style="width: 100%; padding: 14px; background: #1E40AF; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+            View Full Alert
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Alerts Tab Screen</div>
+  <div class="mockup-body" style="background: #e5e7eb; padding: 30px; display: flex; justify-content: center;">
+    <div style="width: 375px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+      <!-- Header -->
+      <div style="background: #1E40AF; padding: 16px;">
+        <div style="color: white; font-weight: 600; font-size: 18px;">Official Alerts</div>
+        <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 4px;">Verified warnings from MDRRMO and PAGASA</div>
+      </div>
+
+      <!-- Active Alert -->
+      <div style="padding: 12px;">
+        <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 12px;">
+          <div style="background: linear-gradient(135deg, #DC2626, #EF4444); padding: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div style="color: white; font-weight: 600; font-size: 14px;">⚠️ EVACUATION WARNING</div>
+            </div>
+          </div>
+          <div style="padding: 12px;">
+            <div style="font-size: 13px; color: #1E293B; line-height: 1.5; margin-bottom: 8px;">
+              Flash flood in Daet. Residents near rivers: EVACUATE immediately.
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11px; color: #94A3B8;">20 min ago</span>
+              <span style="font-size: 11px; background: #FEF2F2; color: #DC2626; padding: 3px 8px; border-radius: 10px; font-weight: 600;">ACTIVE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Advisory Alert -->
+        <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 12px;">
+          <div style="background: linear-gradient(135deg, #3B82F6, #1E40AF); padding: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <div style="color: white; font-weight: 600; font-size: 14px;">📢 WEATHER ADVISORY</div>
+            </div>
+          </div>
+          <div style="padding: 12px;">
+            <div style="font-size: 13px; color: #1E293B; line-height: 1.5; margin-bottom: 8px;">
+              Typhoon Signal #1 raised. Prepare emergency kits. Monitor updates.
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11px; color: #94A3B8;">2 hours ago</span>
+              <span style="font-size: 11px; background: #DBEAFE; color: #1E40AF; padding: 3px 8px; border-radius: 10px; font-weight: 600;">ADVISORY</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expired Alert -->
+        <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); opacity: 0.6;">
+          <div style="background: linear-gradient(135deg, #6B7280, #4B5563); padding: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div style="color: white; font-weight: 600; font-size: 14px;">✓ Resolved: Road Closure</div>
+            </div>
+          </div>
+          <div style="padding: 12px;">
+            <div style="font-size: 13px; color: #64748B; line-height: 1.5; margin-bottom: 8px;">
+              Daet - Vinzons Highway now open to traffic.
+            </div>
+            <div style="font-size: 11px; color: #9CA3AF;">Yesterday at 4:30 PM</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Nav -->
+      <div style="display: flex; background: white; border-top: 1px solid #E2E8F0; padding: 6px 0 8px 0;">
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div style="font-size: 11px;">Map</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+          <div style="font-size: 11px;">Feed</div>
+        </div>
+        <div style="flex: 1.3; text-align: center; padding: 4px; margin: -8px 4px -4px 4px;">
+          <div style="background: linear-gradient(135deg, #DC2626, #EF4444); border-radius: 16px; padding: 12px 8px; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4); border: 3px solid white;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="display: block; margin: 0 auto 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div style="font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.5px; text-transform: uppercase;">REPORT</div>
+          </div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #1E40AF;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <div style="font-size: 11px; font-weight: 500;">Alerts</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div style="font-size: 11px;">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Alert Priority Levels</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <tr style="border-bottom: 2px solid #E2E8F0;">
+      <th style="text-align: left; padding: 12px; color: #64748B;">Level</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Color</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Push?</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Vibrate?</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Sound?</th>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">🔴 Emergency</td>
+      <td style="padding: 12px;"><span style="color: #DC2626;">Red gradient</span></td>
+      <td style="padding: 12px;">✓ Immediate</td>
+      <td style="padding: 12px;">✓ Strong pattern</td>
+      <td style="padding: 12px;">✓ Loud alarm</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">🟡 Warning</td>
+      <td style="padding: 12px;"><span style="color: #F59E0B;">Yellow/Orange</span></td>
+      <td style="padding: 12px;">✓ Yes</td>
+      <td style="padding: 12px;">✓ Double pulse</td>
+      <td style="padding: 12px;">✓ Chime</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; font-weight: 500;">🟢 Advisory</td>
+      <td style="padding: 12px;"><span style="color: #10B981;">Green/Blue</span></td>
+      <td style="padding: 12px;">✓ Yes</td>
+      <td style="padding: 12px;">✗ No</td>
+      <td style="padding: 12px;">✓ Gentle ping</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Alert Sources (Verified Only)</h3>
+  <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; border-radius: 4px;">
+    <div style="font-weight: 600; color: #065F46; margin-bottom: 8px;">✅ Official Sources Only</div>
+    <div style="font-size: 13px; color: #059669; line-height: 1.8;">
+      Alerts only come from verified municipal accounts (MDRRMO) and national agencies (PAGASA, PHIVOLCS). Citizens cannot post alerts - only reports that admins verify.
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Location-Based Filtering</h3>
+  <p style="line-height: 1.7; color: #374151;">
+    Users only see alerts relevant to their municipality. Daet residents don't need flood warnings for Labo unless it affects them (e.g., highway closure).
+  </p>
+  <div style="background: #1E293B; padding: 16px; border-radius: 8px; margin-top: 12px;">
+    <div style="color: #60A5FA; font-family: 'Monaco', monospace; font-size: 12px;">// Filter by user's registered municipality</div>
+    <div style="color: #E2E8F0; font-family: 'Monaco', monospace; font-size: 11px; line-height: 1.6; margin-top: 8px;">
+      .<span style="color: #F472B6;">where</span>(<span style="color: #34D399;">'targetMunicipalities'</span>, <span style="color: #F472B6;">array-contains</span>(user.municipality))<br>
+      .<span style="color: #F472B6;">orderBy</span>(<span style="color: #34D399;">'issuedAt'</span>, <span style="color: #34D399;">'desc'</span>)
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Alert Lifecycle</h3>
+  <ul style="line-height: 1.8;">
+    <li><strong>Issued</strong> - Created by admin, push notification sent immediately</li>
+    <li><strong>Active</strong> - Visible in Alerts tab, push persists for 24h or until expired</li>
+    <li><strong>Expired</strong> - Past validUntil date, moved to bottom, marked "Expired"</li>
+    <li><strong>Resolved</strong> - Incident resolved, marked "Resolved", shows resolution time</li>
+  </ul>
+</div>

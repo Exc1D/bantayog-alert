@@ -1,0 +1,257 @@
+<h2>Profile Screen: Anonymous vs Registered</h2>
+<p class="subtitle>How the Profile tab adapts based on authentication state</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Anonymous User Profile</div>
+    <div class="mockup-body" style="background: #F8FAFC; padding: 20px;">
+      <div style="width: 320px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1);">
+        <!-- Header -->
+        <div style="background: #1E40AF; padding: 20px; text-align: center;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div style="color: white; font-weight: 600; font-size: 16px;">Not Signed In</div>
+          <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 4px;">Create an account to track your reports</div>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 20px;">
+          <!-- Value Prop -->
+          <div style="background: #ECFDF5; border: 1px solid #10B981; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+            <div style="font-size: 14px; font-weight: 600; color: #065F46; margin-bottom: 8px;">Why create an account?</div>
+            <ul style="font-size: 12px; color: #059669; line-height: 1.8; padding-left: 16px; margin: 0;">
+              <li>Track all your reports in one place</li>
+              <li>Get notified when responders are dispatched</li>
+              <li>Edit reports before they're verified</li>
+              <li>See incident resolution status</li>
+            </ul>
+          </div>
+
+          <!-- CTA -->
+          <button style="width: 100%; padding: 14px; background: #1E40AF; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 15px; margin-bottom: 12px;">
+            Create Account (30 sec)
+          </button>
+          <button style="width: 100%; padding: 12px; background: white; color: #64748B; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px;">
+            Continue as Anonymous
+          </button>
+
+          <!-- Divider -->
+          <div style="display: flex; align-items: center; margin: 24px 0;">
+            <div style="flex: 1; height: 1px; background: #E2E8F0;"></div>
+            <span style="padding: 0 12px; font-size: 12px; color: #9CA3AF;">OR</span>
+            <div style="flex: 1; height: 1px; background: #E2E8F0;"></div>
+          </div>
+
+          <!-- Link Past Reports -->
+          <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px; padding: 16px;">
+            <div style="font-size: 13px; font-weight: 500; color: #92400E; margin-bottom: 8px;">Already submitted reports?</div>
+            <div style="font-size: 12px; color: #B45309; line-height: 1.6;">
+              Create an account and enter the phone number you used. We'll link all your past reports automatically.
+            </div>
+          </div>
+
+          <!-- Admin Contact -->
+          <div style="margin-top: 20px;">
+            <div style="font-size: 11px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Need Help?</div>
+            <div style="background: #F3F4F6; padding: 12px; border-radius: 8px;">
+              <div style="font-size: 12px; color: #374151; margin-bottom: 6px;">Contact your municipal admin:</div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07M19 4v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg>
+                <span style="font-size: 13px; font-weight: 500; color: #1E293B;">0917 123 4567</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Registered User Profile</div>
+    <div class="mockup-body" style="background: #F8FAFC; padding: 20px;">
+      <div style="width: 320px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1);">
+        <!-- Header with User Info -->
+        <div style="background: linear-gradient(135deg, #1E40AF, #3B82F6); padding: 20px; text-align: center;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+            <span style="color: white; font-size: 24px; font-weight: 700;">JD</span>
+          </div>
+          <div style="color: white; font-weight: 600; font-size: 16px;">Juan Dela Cruz</div>
+          <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 4px;">juan@email.com</div>
+          <div style="color: rgba(255,255,255,0.7); font-size: 11px; margin-top: 8px;">📍 Daet, Camarines Norte</div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #E2E8F0; margin: 20px 0; border-radius: 8px; overflow: hidden;">
+          <div style="background: white; padding: 12px; text-align: center;">
+            <div style="font-size: 20px; font-weight: 700; color: #1E40AF;">3</div>
+            <div style="font-size: 10px; color: #64748B;">Reports</div>
+          </div>
+          <div style="background: white; padding: 12px; text-align: center;">
+            <div style="font-size: 20px; font-weight: 700; color: #10B981;">2</div>
+            <div style="font-size: 10px; color: #64748B;">Verified</div>
+          </div>
+          <div style="background: white; padding: 12px; text-align: center;">
+            <div style="font-size: 20px; font-weight: 700; color: #64748B;">0</div>
+            <div style="font-size: 10px; color: #64748B;">Pending</div>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 0 20px 20px;">
+          <!-- My Reports Section -->
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div style="font-size: 14px; font-weight: 600; color: #1E293B;">My Reports</div>
+              <button style="font-size: 11px; color: #1E40AF; font-weight: 500; background: none; border: none;">See All →</button>
+            </div>
+
+            <!-- Report Item 1 -->
+            <div style="background: white; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+                <div style="font-size: 13px; font-weight: 600; color: #1E293B;">Flood - High Severity</div>
+                <span style="font-size: 10px; background: #FEF2F2; color: #DC2626; padding: 2px 6px; border-radius: 8px; font-weight: 600;">DISPATCHED</span>
+              </div>
+              <div style="font-size: 11px; color: #64748B; margin-bottom: 4px;">Barangay San Jose, Daet</div>
+              <div style="font-size: 10px; color: #94A3B8;">Reported today at 2:30 PM</div>
+            </div>
+
+            <!-- Report Item 2 -->
+            <div style="background: white; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+                <div style="font-size: 13px; font-weight: 600; color: #1E293B;">Fallen Tree</div>
+                <span style="font-size: 10px; background: #ECFDF5; color: #059669; padding: 2px 6px; border-radius: 8px; font-weight: 600;">RESOLVED</span>
+              </div>
+              <div style="font-size: 11px; color: #64748B; margin-bottom: 4px;">Poblacion, Daet</div>
+              <div style="font-size: 10px; color: #94A3B8;">Reported 3 days ago</div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div style="margin-bottom: 20px;">
+            <div style="font-size: 14px; font-weight: 600; color: #1E293B; margin-bottom: 12px;">Quick Actions</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button style="padding: 12px; background: #F3F4F6; color: #374151; border: none; border-radius: 8px; font-size: 12px; text-align: left;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4-1 1-5-5v5"/></svg>
+                Edit Profile
+              </button>
+              <button style="padding: 12px; background: #F3F4F6; color: #374151; border: none; border-radius: 8px; font-size: 12px; text-align: left;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Notification Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- Logout -->
+          <button style="width: 100%; padding: 12px; background: white; color: #DC2626; border: 1px solid #FEE2E2; border-radius: 8px; font-size: 14px; font-weight: 500;">
+            Log Out
+          </button>
+        </div>
+
+        <!-- Bottom Nav -->
+        <div style="display: flex; background: white; border-top: 1px solid #E2E8F0; padding: 6px 0 8px 0;">
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div style="font-size: 11px;">Map</div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            <div style="font-size: 11px;">Feed</div>
+          </div>
+          <div style="flex: 1.3; text-align: center; padding: 4px; margin: -8px 4px -4px 4px;">
+            <div style="background: linear-gradient(135deg, #DC2626, #EF4444); border-radius: 16px; padding: 12px 8px; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4); border: 3px solid white;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="display: block; margin: 0 auto 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div style="font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.5px; text-transform: uppercase;">REPORT</div>
+            </div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <div style="font-size: 11px;">Alerts</div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 8px 4px; color: #1E40AF;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block; margin: 0 auto 4px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div style="font-size: 11px; font-weight: 500;">Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Key Differences Summary</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <tr style="border-bottom: 2px solid #E2E8F0;">
+      <th style="text-align: left; padding: 12px; color: #64748B;">Feature</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Anonymous</th>
+      <th style="text-align: left; padding: 12px; color: #64748B;">Registered</th>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Header</td>
+      <td style="padding: 12px;">"Not Signed In" + CTA</td>
+      <td style="padding: 12px;">User avatar, name, email, location</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Stats</td>
+      <td style="padding: 12px;">❌ Not shown</td>
+      <td style="padding: 12px;">✓ Report count (total, verified, pending)</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">My Reports</td>
+      <td style="padding: 12px;">❌ Not available (shows CTA to sign up)</td>
+      <td style="padding: 12px;">✓ Recent reports list with status</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F1F5F9;">
+      <td style="padding: 12px; font-weight: 500;">Quick Actions</td>
+      <td style="padding: 12px;">❌ Not available</td>
+      <td style="padding: 12px;">✓ Edit profile, Notification settings</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; font-weight: 500;">Logout</td>
+      <td style="padding: 12px;">❌ Not shown (already "logged out")</td>
+      <td style="padding: 12px;">✓ Log out button</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Anonymous Profile Strategy</h3>
+  <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; border-radius: 4px;">
+    <div style="font-weight: 600; color: #92400E; margin-bottom: 8px;">💡 Conversion Opportunity</div>
+    <div style="font-size: 13px; color: #B45309; line-height: 1.6;">
+      Every tap on the Profile tab by an anonymous user is a conversion opportunity. Show value proposition and clear CTA.
+    </div>
+  </div>
+
+  <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; border-radius: 4px; margin-top: 12px;">
+    <div style="font-weight: 600; color: #065F46; margin-bottom: 8px;">✅ Always Allow "Continue as Anonymous"</div>
+    <div style="font-size: 13px; color: #059669; line-height: 1.6;">
+      Never block access. User can view map/feed/alerts without account. Profile just shows account benefits.
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Registered User Profile Sections</h3>
+  <ul style="line-height: 1.8;">
+    <li><strong>Header</strong> - Avatar initials, name, email, municipality</li>
+    <li><strong>Quick Stats</strong> - Total reports, verified count, pending count</li>
+    <li><strong>My Reports</strong> - Last 3 reports with status (tap "See All" for full history)</li>
+    <li><strong>Quick Actions</strong> - Edit profile, Notification settings</li>
+    <li><strong>Log Out</strong> - Sign out button (returns to anonymous state)</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>Full Report History (When Tapped "See All")</h3>
+  <p style="line-height: 1.7; color: #374151;">
+    Shows all reports chronologically with:
+  </p>
+  <ul style="line-height: 1.8;">
+    <li>Incident type & severity (admin-classified)</li>
+    <li>Location (approximate on public view)</li>
+    <li>Status timeline (submitted → verified → dispatched → resolved)</li>
+    <li>Timestamps for each status change</li>
+    <li>Actions: View details, Edit (if pending), Cancel (if pending)</li>
+  </ul>
+</div>
