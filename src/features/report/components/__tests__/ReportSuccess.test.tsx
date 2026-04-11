@@ -244,4 +244,87 @@ describe('ReportSuccess', () => {
       expect(mockRequestPermission).toHaveBeenCalledTimes(1)
     })
   })
+
+  describe('Notification Prompt', () => {
+    it('should show notification prompt when isFirstReport is true', () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'default',
+        isSupported: true,
+        requestPermission: vi.fn(),
+      })
+
+      render(
+        <ReportSuccess
+          reportId="2024-DAET-0471"
+          municipality="Daet"
+          isFirstReport={true}
+        />
+      )
+
+      expect(screen.getByTestId('notification-prompt')).toBeInTheDocument()
+      expect(screen.getByText(/get notified when your report is verified/i)).toBeInTheDocument()
+    })
+
+    it('should call requestPermission when Enable Notifications is clicked', async () => {
+      const user = userEvent.setup()
+      const requestPermissionMock = vi.fn()
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'default',
+        requestPermission: requestPermissionMock,
+        isSupported: true,
+      })
+
+      render(
+        <ReportSuccess
+          reportId="2024-DAET-0471"
+          municipality="Daet"
+          isFirstReport={true}
+        />
+      )
+
+      await user.click(screen.getByTestId('enable-notifications-button'))
+
+      expect(requestPermissionMock).toHaveBeenCalledOnce()
+    })
+
+    it('should not show notification prompt when permission is already granted', () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'granted',
+        requestPermission: vi.fn(),
+        isSupported: true,
+      })
+
+      render(
+        <ReportSuccess
+          reportId="2024-DAET-0471"
+          municipality="Daet"
+          isFirstReport={true}
+        />
+      )
+
+      expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
+    })
+
+    it('should not show notification prompt when isFirstReport is false', () => {
+      mockUseAuth.mockReturnValue({ user: null, loading: false })
+      mockUsePushNotifications.mockReturnValue({
+        permission: 'default',
+        isSupported: true,
+        requestPermission: vi.fn(),
+      })
+
+      render(
+        <ReportSuccess
+          reportId="2024-DAET-0471"
+          municipality="Daet"
+          isFirstReport={false}
+        />
+      )
+
+      expect(screen.queryByTestId('notification-prompt')).not.toBeInTheDocument()
+    })
+  })
 })
