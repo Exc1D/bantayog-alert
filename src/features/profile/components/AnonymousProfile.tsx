@@ -7,7 +7,12 @@ const ACCOUNT_BENEFITS = [
   'Build a history of your community contributions',
 ]
 
-export function AnonymousProfile() {
+interface AnonymousProfileProps {
+  onCreateAccount?: () => void
+  onContinue?: () => void
+}
+
+export function AnonymousProfile({ onCreateAccount, onContinue }: AnonymousProfileProps = {}) {
   return (
     <div
       data-testid="anonymous-profile"
@@ -42,10 +47,10 @@ export function AnonymousProfile() {
 
       {/* CTA buttons */}
       <div className="w-full max-w-sm flex flex-col gap-3">
-        <Button variant="primary" className="w-full">
+        <Button variant="primary" className="w-full" onClick={onCreateAccount}>
           Create Account
         </Button>
-        <Button variant="secondary" className="w-full">
+        <Button variant="secondary" className="w-full" onClick={onContinue}>
           Continue as Anonymous
         </Button>
       </div>

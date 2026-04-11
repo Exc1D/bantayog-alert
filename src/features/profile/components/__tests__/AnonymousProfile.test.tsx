@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AnonymousProfile } from '../AnonymousProfile'
 
 describe('AnonymousProfile', () => {
@@ -41,5 +42,29 @@ describe('AnonymousProfile', () => {
     render(<AnonymousProfile />)
 
     expect(screen.getByText(/contact your admin/i)).toBeInTheDocument()
+  })
+
+  describe('Button Callbacks', () => {
+    it('should call onCreateAccount when Create Account button is clicked', async () => {
+      const user = userEvent.setup()
+      const onCreateAccount = vi.fn()
+
+      render(<AnonymousProfile onCreateAccount={onCreateAccount} />)
+
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+
+      expect(onCreateAccount).toHaveBeenCalledOnce()
+    })
+
+    it('should call onContinue when Continue as Anonymous button is clicked', async () => {
+      const user = userEvent.setup()
+      const onContinue = vi.fn()
+
+      render(<AnonymousProfile onContinue={onContinue} />)
+
+      await user.click(screen.getByRole('button', { name: /continue as anonymous/i }))
+
+      expect(onContinue).toHaveBeenCalledOnce()
+    })
   })
 })
