@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import L from 'leaflet'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MapView } from '../MapView'
 
 // Mock Leaflet library
@@ -29,7 +30,13 @@ vi.mock('@/shared/hooks/useGeolocation', () => ({
   useGeolocation: vi.fn(),
 }))
 
+// Mock useDisasterReports hook
+vi.mock('../../hooks/useDisasterReports', () => ({
+  useDisasterReports: vi.fn(),
+}))
+
 import { useGeolocation } from '@/shared/hooks/useGeolocation'
+import { useDisasterReports } from '../../hooks/useDisasterReports'
 
 describe('MapView', () => {
   const mockMapInstance = {
@@ -37,16 +44,31 @@ describe('MapView', () => {
     remove: vi.fn(),
     addLayer: vi.fn(),
     removeLayer: vi.fn(),
+    hasLayer: vi.fn(() => true),
   }
 
   const mockMarker = {
-    addTo: vi.fn(),
-    on: vi.fn(),
+    addTo: vi.fn(function(this: any) { this.added = true; return this; }),
+    on: vi.fn(function(this: any, event: string, handler: () => void) { this.eventHandler = handler; return this; }),
+    bindPopup: vi.fn(function(this: any) { return this; }),
+    added: false,
   }
 
   const mockCircle = {
     addTo: vi.fn(),
   }
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -62,24 +84,33 @@ describe('MapView', () => {
       manualLocation: null,
       setManualLocation: vi.fn(),
     })
+
+    // Default disaster reports state
+    vi.mocked(useDisasterReports).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      isSuccess: true,
+      isFetching: false,
+    } as any)
   })
 
   describe('when rendered', () => {
     it('should show loading state initially', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       expect(screen.getByTestId('map-loading')).toBeInTheDocument()
       expect(screen.getByText(/loading map/i)).toBeInTheDocument()
     })
 
     it('should render map container', () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       expect(screen.getByTestId('map-view')).toBeInTheDocument()
     })
 
     it('should use default center coordinates (Camarines Norte)', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(vi.mocked(L.map)).toHaveBeenCalledWith(
@@ -93,7 +124,7 @@ describe('MapView', () => {
     })
 
     it('should use default zoom level of 10', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(vi.mocked(L.map)).toHaveBeenCalledWith(
@@ -108,7 +139,7 @@ describe('MapView', () => {
 
   describe('when initialized', () => {
     it('should add OpenStreetMap tile layer', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(vi.mocked(L.tileLayer)).toHaveBeenCalledWith(
@@ -122,7 +153,7 @@ describe('MapView', () => {
     })
 
     it('should hide loading state when map is ready', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('map-loading')).not.toBeInTheDocument()
@@ -130,7 +161,7 @@ describe('MapView', () => {
     })
 
     it('should show placeholder controls', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByTestId('map-controls-placeholder')).toBeInTheDocument()
@@ -145,7 +176,7 @@ describe('MapView', () => {
     it('should use custom center coordinates', async () => {
       const customCenter: [number, number] = [10.3157, 123.8854]
 
-      render(<MapView center={customCenter} />)
+      render(<MapView center={customCenter} />, { wrapper })
 
       await waitFor(() => {
         expect(vi.mocked(L.map)).toHaveBeenCalledWith(
@@ -158,7 +189,7 @@ describe('MapView', () => {
     })
 
     it('should use custom zoom level', async () => {
-      render(<MapView zoom={15} />)
+      render(<MapView zoom={15} />, { wrapper })
 
       await waitFor(() => {
         expect(vi.mocked(L.map)).toHaveBeenCalledWith(
@@ -173,7 +204,7 @@ describe('MapView', () => {
     it('should use both custom center and zoom', async () => {
       const customCenter: [number, number] = [15.5, 121.0]
 
-      render(<MapView center={customCenter} zoom={12} />)
+      render(<MapView center={customCenter} zoom={12} />, { wrapper })
 
       await waitFor(() => {
         expect(vi.mocked(L.map)).toHaveBeenCalledWith(
@@ -189,14 +220,14 @@ describe('MapView', () => {
 
   describe('map container', () => {
     it('should have full viewport height', () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
       const mapContainer = screen.getByTestId('map-view')
 
       expect(mapContainer).toHaveStyle({ height: '100vh', width: '100%' })
     })
 
     it('should be responsive', () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
       const mapContainer = screen.getByTestId('map-view')
 
       expect(mapContainer).toHaveClass('w-full', 'h-full')
@@ -205,7 +236,7 @@ describe('MapView', () => {
 
   describe('cleanup', () => {
     it('should remove map instance on unmount', async () => {
-      const { unmount } = render(<MapView />)
+      const { unmount } = render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(mockMapInstance.remove).not.toHaveBeenCalled()
@@ -219,7 +250,7 @@ describe('MapView', () => {
 
   describe('accessibility', () => {
     it('should have accessible loading message', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         const loadingText = screen.getByText(/loading map/i)
@@ -228,7 +259,7 @@ describe('MapView', () => {
     })
 
     it('should provide loading spinner for visual feedback', async () => {
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         const spinner = screen.getByTestId('map-loading').querySelector('.animate-spin')
@@ -247,7 +278,7 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByTestId('location-loading')).toBeInTheDocument()
@@ -269,7 +300,7 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(L.marker).toHaveBeenCalledWith(
@@ -301,7 +332,7 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByTestId('user-location-info')).toBeInTheDocument()
@@ -321,7 +352,7 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      const { rerender } = render(<MapView />)
+      const { rerender } = render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(L.marker).toHaveBeenCalledWith(
@@ -358,7 +389,7 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByTestId('location-error')).toBeInTheDocument()
@@ -378,7 +409,7 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByTestId('location-error')).toBeInTheDocument()
@@ -416,7 +447,7 @@ describe('MapView', () => {
         return marker as any
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(L.marker).toHaveBeenCalled()
@@ -447,7 +478,7 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(L.circle).toHaveBeenCalledWith(
@@ -472,11 +503,145 @@ describe('MapView', () => {
         setManualLocation: vi.fn(),
       })
 
-      render(<MapView />)
+      render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('user-location-info')).not.toBeInTheDocument()
         expect(screen.queryByTestId('location-error')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('disaster reports', () => {
+    const mockDisasterReports = [
+      {
+        id: 'report1',
+        incidentType: 'flood' as const,
+        severity: 'high' as const,
+        status: 'verified',
+        timestamp: Date.now() - 3600000,
+        location: { latitude: 14.5995, longitude: 120.9842 },
+        description: 'Heavy flooding',
+      },
+      {
+        id: 'report2',
+        incidentType: 'fire' as const,
+        severity: 'medium' as const,
+        status: 'assigned',
+        timestamp: Date.now() - 7200000,
+        location: { latitude: 14.61, longitude: 120.99 },
+        description: 'Building fire',
+      },
+    ]
+
+    it('should show loading indicator when fetching reports', async () => {
+      vi.mocked(useDisasterReports).mockReturnValue({
+        data: [],
+        isLoading: true,
+        error: null,
+        isSuccess: false,
+        isFetching: true,
+      } as any)
+
+      render(<MapView />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('reports-loading')).toBeInTheDocument()
+        expect(screen.getByText(/loading disaster reports/i)).toBeInTheDocument()
+      })
+    })
+
+    it('should render disaster report markers', async () => {
+      vi.mocked(useDisasterReports).mockReturnValue({
+        data: mockDisasterReports,
+        isLoading: false,
+        error: null,
+        isSuccess: true,
+        isFetching: false,
+      } as any)
+
+      render(<MapView />, { wrapper })
+
+      await waitFor(() => {
+        // Should create markers for each report
+        expect(L.marker).toHaveBeenCalled()
+      })
+    })
+
+    it('should create color-coded markers by severity', async () => {
+      vi.mocked(useDisasterReports).mockReturnValue({
+        data: mockDisasterReports,
+        isLoading: false,
+        error: null,
+        isSuccess: true,
+        isFetching: false,
+      } as any)
+
+      render(<MapView />, { wrapper })
+
+      await waitFor(() => {
+        expect(L.marker).toHaveBeenCalled()
+      })
+
+      // Check that markers are created with severity-specific icons
+      expect(L.marker).toHaveBeenCalledWith(
+        [14.5995, 120.9842],
+        expect.objectContaining({
+          icon: expect.any(Object),
+        })
+      )
+    })
+
+    it('should bind popups to markers', async () => {
+      vi.mocked(useDisasterReports).mockReturnValue({
+        data: mockDisasterReports,
+        isLoading: false,
+        error: null,
+        isSuccess: true,
+        isFetching: false,
+      } as any)
+
+      render(<MapView />, { wrapper })
+
+      await waitFor(() => {
+        expect(L.marker).toHaveBeenCalled()
+      })
+
+      // Check that markers have popups bound
+      expect(mockMarker.bindPopup).toHaveBeenCalled()
+    })
+
+    it('should show error indicator when reports fail to load', async () => {
+      vi.mocked(useDisasterReports).mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: new Error('Failed to fetch'),
+        isSuccess: false,
+        isFetching: false,
+      } as any)
+
+      render(<MapView />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('reports-error')).toBeInTheDocument()
+        expect(screen.getByText(/failed to load disaster reports/i)).toBeInTheDocument()
+      })
+    })
+
+    it('should handle empty reports array gracefully', async () => {
+      vi.mocked(useDisasterReports).mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: null,
+        isSuccess: true,
+        isFetching: false,
+      } as any)
+
+      render(<MapView />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('reports-loading')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('reports-error')).not.toBeInTheDocument()
       })
     })
   })
