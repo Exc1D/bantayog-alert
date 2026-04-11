@@ -10,6 +10,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    // Grant geolocation so the app does not show a blocking location-error overlay
+    permissions: ['geolocation'],
+    geolocation: { latitude: 14.1121, longitude: 122.9381 }, // Daet, Camarines Norte
   },
 
   projects: [
