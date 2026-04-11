@@ -1,48 +1,47 @@
 # Phase 2: Citizen Features — Implementation Status
 
 **Project:** Bantayog Alert
+
 **Last Updated:** 2026-04-11
+
 **Plan Document:** `docs/superpowers/plans/2026-04-11-citizen-features.md`
+
 **Total Tasks:** 117
 
 ---
 
 ## Executive Summary
 
-Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Implementation is complete** - all 117 tasks finished including PWA icons, Playwright multi-browser config, and comprehensive E2E tests.
+Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Implementation is complete** — all 117 tasks finished including PWA icons, Playwright multi-browser config, and comprehensive E2E tests.
 
 ---
 
 ## 1. Latest Changes (Recent Commits)
 
 | Commit | Description |
-|--------|-------------|
+| ------ | ----------- |
+| `82de382` | feat: complete Tasks 116 and 117 — Playwright config and PWA icons |
+| `455306a` | docs: update Phase 2 status to mark all 117 tasks complete |
 | `0d59074` | test(e2e): add comprehensive E2E tests for citizen features |
 | `4896d5d` | feat(alerts): show cached indicator when viewing offline alerts |
 | `d1e0ce9` | feat(report): prompt for push notifications after first report |
 | `15f4613` | feat(pwa): add PWA install prompt hook and banner |
 | `11fde7e` | feat(profile): add Sync Now button for offline queue |
 | `007525f` | feat(navigation): add queue badge to Report tab |
-| `7bdd6d5` | fix(alerts): improve usePushNotifications error handling |
-| `3bcac6a` | feat: add usePushNotifications hook for FCM |
-| `9d7ef7c` | fix(pwa): add error handling to FCM service worker |
-| `7b32e0c` | fix(test): rewrite firebase-messaging test |
-| `92f6e37` | feat: add Firebase Cloud Messaging service worker |
-| `c50f643` | feat: add vite-plugin-pwa with autoUpdate and workbox |
-| `6985490` | feat(profile): implement GDPR data export and account deletion |
-| `f2694b6` | fix: implement offline queue Firebase sync |
 
 ---
 
 ## 2. Implementation Status by Phase
 
 ### Phase 1: Foundation & Navigation (Tasks 1-15) ✅ COMPLETE
+
 - [x] TypeScript path aliases configured
 - [x] Tailwind custom colors added
 - [x] Bottom 5-tab navigation implemented
 - [x] Routes defined
 
 ### Phase 2: Map Feature (Tasks 16-25) ✅ COMPLETE
+
 - [x] MapView with Leaflet
 - [x] ReportDetailModal
 - [x] MapControls
@@ -52,6 +51,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 - [x] RefreshButton
 
 ### Phase 3: Feed Feature (Tasks 26-45) ✅ COMPLETE
+
 - [x] FeedCard
 - [x] FeedList with infinite scroll
 - [x] FeedFilters (status filtering)
@@ -63,6 +63,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 - [x] useFeedReports hook
 
 ### Phase 4: Report Form (Tasks 46-65) ✅ COMPLETE
+
 - [x] ReportForm with 4 fields
 - [x] PhotoCapture (camera/gallery)
 - [x] LocationPicker (GPS + manual)
@@ -72,6 +73,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 - [x] QueueIndicator
 
 ### Phase 5: Alerts (Tasks 66-75) ✅ COMPLETE
+
 - [x] AlertList
 - [x] AlertCard with truncation
 - [x] useAlerts hook
@@ -81,6 +83,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 - [x] Cached indicator for offline alerts
 
 ### Phase 6: Profile (Tasks 76-95) ✅ COMPLETE
+
 - [x] AnonymousProfile
 - [x] RegisteredProfile with tabs
 - [x] GDPR data export
@@ -89,6 +92,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 - [x] Admin contact info
 
 ### Phase 7: Offline Queue & PWA (Tasks 96-105) ✅ COMPLETE
+
 - [x] vite-plugin-pwa with workbox
 - [x] FCM service worker with error handling
 - [x] Queue badge on Report tab
@@ -97,6 +101,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 - [x] Cached alert indicator
 
 ### Phase 8: Testing Infrastructure (Tasks 106-115) ✅ COMPLETE
+
 - [x] Firebase Emulator configuration
 - [x] Firestore security rules
 - [x] E2E tests for offline queue
@@ -107,6 +112,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 - [x] report-submission.spec.ts
 
 ### Task 116-117: Final Setup ✅ COMPLETE
+
 - [x] Playwright multi-browser configuration (Chromium, Firefox, Webkit, Mobile Chrome, Mobile Safari)
 - [x] PWA icon generation script with sharp
 - [x] Icon source SVG (red alert bell design)
@@ -118,49 +124,56 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 
 ### Medium Priority
 
-1. **Feed Card Photos**
-   - FeedCard should display report photos in thumbnail view
-   - ReportDetailScreen should show full photo gallery
-   - BeforeAfterGallery component for comparison view
+1. **Feed Card Photos** — FeedCard should display report photos in thumbnail view. ReportDetailScreen should show full photo gallery. BeforeAfterGallery component for comparison view.
 
-4. **Report Timeline**
-   - UpdateTimeline component for responder updates
-   - Timeline display in ReportDetailScreen
+2. **Report Timeline** — UpdateTimeline component for responder updates. Timeline display in ReportDetailScreen.
 
 ### Low Priority (Nice to Have)
 
-5. **Performance Optimizations**
-   - Image compression before upload
-   - Lazy loading for feed images
-   - Map marker clustering
+1. **Performance Optimizations** — Image compression before upload. Lazy loading for feed images. Map marker clustering.
 
 ---
 
 ## 4. Known Risks
 
 ### Risk 1: Offline Queue Sync Conflicts
+
 **Severity:** Medium
+
 **Description:** When a queued report is synced while the user is also creating a new report, there could be a race condition.
+
 **Mitigation:** The `useReportQueue` hook handles sync atomically. Users cannot submit while sync is in progress.
 
 ### Risk 2: FCM Token Refresh on Install
+
 **Severity:** Low
+
 **Description:** If a user installs the PWA on a new device, their push notification subscription is tied to that device.
+
 **Mitigation:** Users can re-enable notifications from Profile settings. Notification prompt appears after first report submission.
 
 ### Risk 3: Firebase Emulator Not Available in CI
+
 **Severity:** Medium
+
 **Description:** E2E tests require Firebase emulators running in background.
+
 **Mitigation:** Add `firebase emulators:start --background` to CI pipeline before running Playwright tests.
 
 ### Risk 4: Anonymous Report Linking
+
 **Severity:** Low
+
 **Description:** Anonymous reports cannot be linked to user accounts, limiting tracking functionality.
+
 **Mitigation:** Conversion prompt after first report encourages account creation. Email field in report form enables identification.
 
 ### Risk 5: Service Worker Update Propagation
+
 **Severity:** Low
+
 **Description:** PWA service worker updates require page reload, which may disrupt active users.
+
 **Mitigation:** `vite-plugin-pwa` configured with `autoUpdate` to prompt users when new version available.
 
 ---
@@ -170,8 +183,8 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 ### 5.1 Before Production Deployment
 
 1. **Complete Playwright Configuration**
+
    ```bash
-   # Add to CI/CD pipeline
    firebase emulators:exec --only firestore 'npx playwright test'
    ```
 
@@ -193,22 +206,16 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 
 ### 5.2 Performance Considerations
 
-1. **Image Compression**
-   - Add sharp-based compression before Firebase Storage upload
-   - Target: <500KB per image
+1. **Image Compression** — Add sharp-based compression before Firebase Storage upload. Target: <500KB per image.
 
-2. **Map Marker Clustering**
-   - For areas with many reports, cluster markers at lower zoom levels
-   - Use leaflet.markercluster plugin
+2. **Map Marker Clustering** — For areas with many reports, cluster markers at lower zoom levels using leaflet.markercluster plugin.
 
-3. **Feed Virtualization**
-   - For users with many reports, consider windowing/virtualization
-   - TanStack Query `keepPreviousData` helps
+3. **Feed Virtualization** — For users with many reports, consider windowing/virtualization. TanStack Query `keepPreviousData` helps.
 
 ### 5.3 Future Enhancements
 
 | Feature | Priority | Notes |
-|---------|----------|-------|
+| ------- | ------- | ----- |
 | SMS alerts | Medium | Requires Twilio/MessageBird integration |
 | Email digest | Low | Daily summary for registered users |
 | Photo upload progress | Low | Show upload progress indicator |
@@ -220,7 +227,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 
 ### Firestore Collections
 
-```
+```typescript
 /users/{userId}
   - email, displayName, role, municipality, phone
   - createdAt, isActive, emailVerified
@@ -267,7 +274,7 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 ### Firestore Security Rules Summary
 
 | Collection | Read | Write |
-|-----------|------|-------|
+| --------- | ---- | ----- |
 | users | Owner + admins | Admins only |
 | reports | Authenticated | Citizens create, Admins update |
 | report_private | Admins only | Admins only |
@@ -284,23 +291,33 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 ## 7. Architecture Decisions
 
 ### Decision 1: Anonymous-First Design
+
 **Why:** Citizens in emergency situations won't wait to create accounts.
+
 **Trade-off:** Limited tracking capability for anonymous reports.
 
 ### Decision 2: Offline Queue with Hybrid Sync
+
 **Why:** Philippines has variable connectivity; reports must not be lost.
+
 **Trade-off:** Sync conflicts possible; mitigated by atomic operations.
 
 ### Decision 3: No In-App Chat
+
 **Why:** Facebook Messenger is already ubiquitous in PH; building chat is expensive.
+
 **Trade-off:** Two-way communication requires app switch.
 
 ### Decision 4: Three-Tier Report Model
+
 **Why:** Privacy for reporters vs. operational data for responders vs. public transparency.
+
 **Trade-off:** More complex queries; justified by data sensitivity.
 
 ### Decision 5: PWA with Workbox
+
 **Why:** Fast installs, offline capability, push notifications.
+
 **Trade-off:** Service worker lifecycle management complexity.
 
 ---
@@ -308,23 +325,27 @@ Phase 2 implements the citizen-facing mobile PWA for disaster reporting. **Imple
 ## 8. Testing Strategy
 
 ### Unit Tests (Vitest)
+
 - Component rendering
 - Hook behavior
 - Utility functions
 - Form validation
 
 ### Integration Tests
+
 - Firebase Emulator for Firestore
 - Auth flow with emulators
 - Service worker registration
 
 ### E2E Tests (Playwright)
+
 - Critical user paths
 - Offline queue flow
 - Push notification handling
 - Multi-browser (Chrome, Firefox, Safari)
 
 ### Test Coverage Goals
+
 - Minimum 70% for new code
 - 100% for security-critical paths
 - All Firestore rules tested with emulators
@@ -368,7 +389,7 @@ FIREBASE_ADMIN_CLIENT_EMAIL=
 ## 11. Related Documentation
 
 | Document | Purpose |
-|----------|---------|
+| -------- | ------- |
 | `docs/citizen-role-spec.md` | Complete citizen role specification |
 | `docs/communication-architecture.md` | Communication flow (no chat) |
 | `docs/superpowers/specs/2026-04-11-citizen-features-design.md` | Design document |
@@ -378,4 +399,4 @@ FIREBASE_ADMIN_CLIENT_EMAIL=
 
 ---
 
-**Status:** ✅ All 117 tasks complete - Phase 2 ready for deployment!
+**Status:** ✅ All 117 tasks complete — Phase 2 ready for deployment!
