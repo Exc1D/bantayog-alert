@@ -5,6 +5,7 @@ import { FeedList } from '@/features/feed/components/FeedList'
 import { ReportForm } from '@/features/report/components/ReportForm'
 import { AlertList } from '@/features/alerts/components/AlertList'
 import { AnonymousProfile } from '@/features/profile/components/AnonymousProfile'
+import { LinkReportsByPhone } from '@/features/profile/components/LinkReportsByPhone'
 import { ReportDetailScreen } from '@/features/feed/components/ReportDetailScreen'
 
 export const router = createBrowserRouter([
@@ -20,6 +21,10 @@ export const router = createBrowserRouter([
       {
         path: 'profile',
         element: <AnonymousProfile />,
+      },
+      {
+        path: 'profile/link-reports',
+        element: <LinkReportsByPhone />,
       },
       {
         path: 'feed/:reportId',
