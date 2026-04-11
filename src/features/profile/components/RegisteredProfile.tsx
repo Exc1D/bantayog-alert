@@ -16,6 +16,7 @@ import {
   Trash2,
   ChevronRight,
   Loader2,
+  RefreshCw,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/hooks/useAuth'
@@ -26,6 +27,7 @@ import {
   exportUserData,
   deleteUserAccount,
 } from '../services/profile.service'
+import { useReportQueue } from '@/features/report/hooks/useReportQueue'
 
 type Tab = 'info' | 'reports' | 'settings'
 
@@ -36,6 +38,19 @@ export function RegisteredProfile() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Offline queue state
+  const { queue, queueSize, isSyncing, syncQueue, hasPendingReports } = useReportQueue()
+  const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
+
+  const handleSyncNow = async () => {
+    try {
+      const result = await syncQueue()
+      setSyncResult(result)
+    } catch (error) {
+      console.error('Failed to sync queue:', error)
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -143,6 +158,11 @@ export function RegisteredProfile() {
               onDownloadData={handleDownloadData}
               onDeleteAccount={() => setShowDeleteConfirm(true)}
               deleteError={deleteError}
+              hasPendingReports={hasPendingReports}
+              queueSize={queueSize}
+              isSyncing={isSyncing}
+              onSyncNow={handleSyncNow}
+              syncResult={syncResult}
             />
           )}
 
@@ -377,6 +397,11 @@ interface SettingsTabProps {
   onDownloadData: () => void
   onDeleteAccount: () => void
   deleteError?: string | null
+  hasPendingReports?: boolean
+  queueSize?: number
+  isSyncing?: boolean
+  onSyncNow?: () => void
+  syncResult?: { success: number; failed: number } | null
 }
 
 function SettingsTab({
@@ -385,9 +410,49 @@ function SettingsTab({
   onDownloadData,
   onDeleteAccount,
   deleteError,
+  hasPendingReports = false,
+  queueSize = 0,
+  isSyncing = false,
+  onSyncNow,
+  syncResult,
 }: SettingsTabProps) {
   return (
     <div className="space-y-4" data-testid="settings-tab">
+      {/* Offline Queue Sync section */}
+      {hasPendingReports && (
+        <div className="bg-yellow-50 rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-yellow-900">Pending Reports</h2>
+            {syncResult && (
+              <span className="text-xs text-yellow-700">
+                Last sync: {syncResult.success} synced, {syncResult.failed} failed
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-yellow-800 mb-3">
+            {queueSize} report{queueSize > 1 ? 's' : ''} waiting to sync
+          </p>
+          <button
+            onClick={onSyncNow}
+            disabled={isSyncing}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium disabled:opacity-50 hover:bg-yellow-700 transition-colors"
+            data-testid="sync-now-button"
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Syncing...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                <span>Sync Now</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Notifications section */}
       <div className="bg-white rounded-lg shadow-sm p-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h2>
