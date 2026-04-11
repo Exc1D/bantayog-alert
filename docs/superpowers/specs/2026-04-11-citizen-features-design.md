@@ -288,7 +288,7 @@ Bottom sheet modal that slides up when pin is tapped.
 │                                     │
 │ Heavy flooding on main road...      │
 │                                     │
-│ Status: Pending  ●●○○○  5 comments │
+│ Status: Pending                    │
 └─────────────────────────────────────┘
 ```
 
@@ -299,7 +299,6 @@ Bottom sheet modal that slides up when pin is tapped.
 - Time ago (relative: "2 hours ago")
 - Description preview (2 lines, ellipsis)
 - Status badge (Verified/Pending/Resolved)
-- View count (optional)
 
 **Filtering:**
 - Filter by status (all/verified/pending/resolved)
@@ -449,9 +448,14 @@ Bottom sheet modal that slides up when pin is tapped.
 **Quick Actions:**
 - Edit Profile (name, phone, municipality)
 - Notification Settings
-- Privacy Settings
+- Privacy Settings (see details below)
 - Help & Support
 - Log Out (red, bottom)
+
+**Privacy Settings (Minimal Set):**
+Toggle controls for:
+- **Show name on my reports** (default: ON) - Display name on public reports vs show as "Anonymous"
+- **Auto-delete old resolved reports** (default: OFF) - Automatically delete resolved reports older than 1 year
 
 ---
 
@@ -768,7 +772,6 @@ interface Report {
   verifiedBy?: string;                // admin userId
   isPublic: boolean;                  // true once verified
   viewCount: number;
-  commentCount: number;
 }
 ```
 
