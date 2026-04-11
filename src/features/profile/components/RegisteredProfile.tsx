@@ -8,8 +8,6 @@
 import { useState } from 'react'
 import {
   UserCircle,
-  MapPin,
-  Mail,
   FileText,
   Settings,
   LogOut,
@@ -17,10 +15,17 @@ import {
   Download,
   Trash2,
   ChevronRight,
+  Loader2,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/hooks/useAuth'
 import { Button } from '@/shared/components/Button'
-import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import {
+  getUserReportsWithDetails,
+  exportUserData,
+  deleteUserAccount,
+} from '../services/profile.service'
 
 type Tab = 'info' | 'reports' | 'settings'
 
@@ -29,6 +34,8 @@ export function RegisteredProfile() {
   const navigate = useNavigate()
   const [selectedTab, setSelectedTab] = useState<Tab>('info')
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const handleLogout = async () => {
     try {
@@ -39,14 +46,43 @@ export function RegisteredProfile() {
     }
   }
 
-  const handleDownloadData = () => {
-    // TODO: Implement data download functionality
-    console.log('Download data clicked')
+  const handleDownloadData = async () => {
+    if (!user) return
+    try {
+      const exportData = await exportUserData(
+        user.uid,
+        user.email || '',
+        'citizen', // Role would come from user profile
+        user.metadata?.creationTime ? new Date(user.metadata.creationTime).getTime() : Date.now()
+      )
+
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `bantayog-data-${user.uid}-${Date.now()}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to download data:', error)
+    }
   }
 
-  const handleDeleteAccount = () => {
-    // TODO: Implement account deletion with confirmation
-    console.log('Delete account clicked')
+  const handleDeleteAccount = async () => {
+    if (!user) return
+    try {
+      setDeleteError(null)
+      await deleteUserAccount(user.uid)
+      // User deleted, redirect to login
+      navigate('/login')
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete account')
+    }
   }
 
   if (!user) {
@@ -65,8 +101,8 @@ export function RegisteredProfile() {
                 {user.displayName || 'Citizen Reporter'}
               </h1>
               <p className="text-sm text-gray-600">{user.email}</p>
-              <p className="text-xs text-gray-500 mt-1 capitalize">
-                {user.role?.replace('_', ' ') || 'Citizen'}
+              <p className="text-xs text-gray-500 mt-1">
+                {user.emailVerified ? 'Verified' : 'Not Verified'}
               </p>
             </div>
           </div>
@@ -105,8 +141,42 @@ export function RegisteredProfile() {
               notificationsEnabled={notificationsEnabled}
               onToggleNotifications={() => setNotificationsEnabled(!notificationsEnabled)}
               onDownloadData={handleDownloadData}
-              onDeleteAccount={handleDeleteAccount}
+              onDeleteAccount={() => setShowDeleteConfirm(true)}
+              deleteError={deleteError}
             />
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Account?</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  This will permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                {deleteError && (
+                  <p className="text-sm text-red-600 mb-4" role="alert">
+                    {deleteError}
+                  </p>
+                )}
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleDeleteAccount}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -170,8 +240,7 @@ function InfoTab({ user }: InfoTabProps) {
 
       <div className="space-y-3">
         <InfoItem label="Display Name" value={user.displayName || 'Not set'} />
-        <InfoItem label="Email" value={user.email} />
-        <InfoItem label="Role" value={user.role?.replace('_', ' ') || 'Citizen'} capitalize />
+        <InfoItem label="Email" value={user.email || 'Not set'} />
         <InfoItem
           label="Email Verified"
           value={user.emailVerified ? 'Yes' : 'No'}
@@ -215,23 +284,30 @@ interface ReportsTabProps {
 }
 
 function ReportsTab({ userId }: ReportsTabProps) {
-  // TODO: Fetch user's submitted reports
-  const mockReports = [
-    {
-      id: 'report-1',
-      incidentType: 'flood',
-      status: 'verified',
-      createdAt: Date.now() - 86400000, // 1 day ago
-    },
-    {
-      id: 'report-2',
-      incidentType: 'fire',
-      status: 'pending',
-      createdAt: Date.now() - 172800000, // 2 days ago
-    },
-  ]
+  const { data: reports, isLoading, error } = useQuery({
+    queryKey: ['user-reports', userId],
+    queryFn: () => getUserReportsWithDetails(userId),
+    enabled: !!userId,
+  })
 
-  if (mockReports.length === 0) {
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-8 text-center" data-testid="reports-tab-loading">
+        <Loader2 className="w-8 h-8 text-gray-400 mx-auto mb-3 animate-spin" />
+        <p className="text-gray-600 text-sm">Loading your reports...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-8 text-center" data-testid="reports-tab-error">
+        <p className="text-red-600 text-sm">Failed to load reports</p>
+      </div>
+    )
+  }
+
+  if (!reports || reports.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-8 text-center" data-testid="reports-tab">
         <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -246,7 +322,7 @@ function ReportsTab({ userId }: ReportsTabProps) {
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Reports</h2>
 
       <div className="space-y-3">
-        {mockReports.map((report) => {
+        {reports.map((report) => {
           const incidentTypeFormatted = report.incidentType
             .split('_')
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -300,6 +376,7 @@ interface SettingsTabProps {
   onToggleNotifications: () => void
   onDownloadData: () => void
   onDeleteAccount: () => void
+  deleteError?: string | null
 }
 
 function SettingsTab({
@@ -307,6 +384,7 @@ function SettingsTab({
   onToggleNotifications,
   onDownloadData,
   onDeleteAccount,
+  deleteError,
 }: SettingsTabProps) {
   return (
     <div className="space-y-4" data-testid="settings-tab">
@@ -341,6 +419,14 @@ function SettingsTab({
       {/* Data management section */}
       <div className="bg-white rounded-lg shadow-sm p-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Management</h2>
+
+        {deleteError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700" role="alert">
+              {deleteError}
+            </p>
+          </div>
+        )}
 
         <div className="space-y-3">
           <SettingItem
