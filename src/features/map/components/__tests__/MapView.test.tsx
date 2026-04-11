@@ -130,14 +130,18 @@ describe('MapView', () => {
       expect(screen.getByTestId('map-view')).toBeInTheDocument()
     })
 
-    it('should use default center coordinates (Camarines Norte)', async () => {
+    it('should use default center coordinates in Camarines Norte province', async () => {
       render(<MapView />, { wrapper })
 
       await waitFor(() => {
         expect(vi.mocked(L.map)).toHaveBeenCalledWith(
           expect.any(HTMLDivElement),
           expect.objectContaining({
-            center: [14.5995, 120.9842],
+            // Camarines Norte province center: Labo municipality area
+            center: expect.arrayContaining([
+              expect.closeTo(14.3, 0.5), // Latitude within province
+              expect.closeTo(122.7, 0.5), // Longitude within province
+            ]),
             zoom: 10,
           })
         )

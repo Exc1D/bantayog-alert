@@ -21,7 +21,7 @@ import { RefreshButton } from './RefreshButton'
 import 'leaflet/dist/leaflet.css'
 
 // Camarines Norte coordinates
-const DEFAULT_CENTER: [number, number] = [14.5995, 120.9842]
+const DEFAULT_CENTER: [number, number] = [14.2972, 122.7417] // Labo, Camarines Norte (province center)
 const DEFAULT_ZOOM = 10
 
 export interface MapViewProps {
