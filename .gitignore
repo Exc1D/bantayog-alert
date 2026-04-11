@@ -41,3 +41,4 @@ ui-debug.log*
 
 # AI
 .claude
+.worktrees/
