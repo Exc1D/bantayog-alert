@@ -15,6 +15,7 @@ export interface ReportData {
   location: LocationValue
   description: string
   phone: string
+  email?: string
   injuriesConfirmed?: boolean
   situationWorsening?: boolean
 }
@@ -85,6 +86,17 @@ function validatePhone(value: string): string | null {
   return null
 }
 
+// Basic email validation
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function validateEmail(value: string): string | null {
+  if (!value.trim()) return null // Email is optional
+  if (!EMAIL_REGEX.test(value.trim())) {
+    return 'Please enter a valid email address'
+  }
+  return null
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -110,6 +122,8 @@ export function ReportForm({
   const [description, setDescription] = useState('')
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [injuriesConfirmed, setInjuriesConfirmed] = useState<boolean | undefined>(undefined)
   const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
@@ -128,6 +142,10 @@ export function ReportForm({
 
   function handlePhoneBlur() {
     setPhoneError(validatePhone(phone))
+  }
+
+  function handleEmailBlur() {
+    setEmailError(validateEmail(email))
   }
 
   function handleMunicipalityChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -165,6 +183,7 @@ export function ReportForm({
       location,
       description,
       phone,
+      email: email.trim() || undefined,
       injuriesConfirmed,
       situationWorsening,
     }
@@ -432,7 +451,7 @@ export function ReportForm({
       {/* Phone field                                                          */}
       {/* ------------------------------------------------------------------ */}
       <div>
-        <label htmlFor="report-phone">Phone</label>
+        <label htmlFor="report-phone">Phone *</label>
         <input
           id="report-phone"
           type="tel"
@@ -442,6 +461,22 @@ export function ReportForm({
           placeholder="+63 912 345 6789"
         />
         {phoneError && <span role="alert">{phoneError}</span>}
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Email field (optional)                                               */}
+      {/* ------------------------------------------------------------------ */}
+      <div>
+        <label htmlFor="report-email">Email (Optional)</label>
+        <input
+          id="report-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={handleEmailBlur}
+          placeholder="your@email.com"
+        />
+        {emailError && <span role="alert">{emailError}</span>}
       </div>
 
       {/* ------------------------------------------------------------------ */}

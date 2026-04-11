@@ -27,6 +27,7 @@ describe('ReportForm', () => {
 
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/phone/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
   })
 
   it('shows photo capture area', () => {
@@ -234,6 +235,115 @@ describe('ReportForm', () => {
         phone: '+63 912 345 6789',
         injuriesConfirmed: undefined,
         situationWorsening: undefined,
+      })
+    })
+  })
+
+  describe('Email Field', () => {
+    it('shows email field as optional', () => {
+      render(<ReportForm />)
+
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+      // Verify "Optional" text appears somewhere on the form
+      expect(screen.getAllByText(/Optional/i).length).toBeGreaterThan(0)
+    })
+
+    it('validates email format when provided', async () => {
+      const user = userEvent.setup()
+      render(<ReportForm />)
+
+      const emailInput = screen.getByLabelText(/email/i)
+      await user.type(emailInput, 'invalid-email')
+      await user.tab() // trigger blur validation
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument()
+        expect(screen.getByRole('alert')).toHaveTextContent(/valid email/i)
+      })
+    })
+
+    it('accepts valid email format', async () => {
+      const user = userEvent.setup()
+      render(<ReportForm />)
+
+      const emailInput = screen.getByLabelText(/email/i)
+      await user.type(emailInput, 'test@example.com')
+      await user.tab() // trigger blur validation
+
+      // Should not show error
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('allows empty email (optional field)', async () => {
+      const user = userEvent.setup()
+      render(<ReportForm />)
+
+      const emailInput = screen.getByLabelText(/email/i)
+      await user.type(emailInput, '  ') // spaces only
+      await user.tab() // trigger blur validation
+
+      // Should not show error for empty optional field
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('includes email in submission when provided', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      // Fill required fields
+      await user.type(screen.getByLabelText(/description/i), 'Test incident')
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+      await user.type(screen.getByLabelText(/email/i), 'reporter@example.com')
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+
+      const callArg = onSubmit.mock.calls[0][0]
+      expect(callArg).toMatchObject({
+        description: 'Test incident',
+        phone: '+63 912 345 6789',
+        email: 'reporter@example.com',
+      })
+    })
+
+    it('submits without email when not provided', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      // Fill required fields only
+      await user.type(screen.getByLabelText(/description/i), 'Test incident')
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+
+      // Submit without email
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+
+      const callArg = onSubmit.mock.calls[0][0]
+      expect(callArg).toMatchObject({
+        description: 'Test incident',
+        phone: '+63 912 345 6789',
+        email: undefined,
       })
     })
   })
