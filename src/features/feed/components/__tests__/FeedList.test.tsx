@@ -253,24 +253,6 @@ describe('FeedList', () => {
       expect(verifiedBadges).toHaveLength(1)
     })
 
-    it('should show refresh indicator when refetching', () => {
-      vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
-        data: { pages: [{ data: mockReports }] },
-        isLoading: false,
-        isRefetching: true,
-        isError: false,
-        error: null,
-        refetch: mockRefetch,
-        hasNextPage: false,
-        fetchNextPage: mockFetchNextPage,
-        isFetchingNextPage: false,
-      })
-
-      render(<FeedList />, { wrapper: createWrapper() })
-
-      expect(screen.getByTestId('refresh-indicator')).toBeInTheDocument()
-    })
-
     it('should show story cards placeholder', () => {
       vi.spyOn(useFeedReportsModule, 'useFeedReports').mockReturnValue({
         data: { pages: [{ data: mockReports }] },

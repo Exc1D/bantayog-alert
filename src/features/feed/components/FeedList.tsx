@@ -5,12 +5,14 @@
  * Features pull-to-refresh, infinite scroll, and multiple loading states.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { useFeedReports } from '../hooks/useFeedReports'
 import { FeedCardSkeleton } from './FeedCardSkeleton'
 import { FeedCard } from './FeedCard'
 import { FeedFilters, type FilterType } from './FeedFilters'
+import { FeedSearch } from './FeedSearch'
+import { FeedSort, type SortOption } from './FeedSort'
 import { Button } from '@/shared/components/Button'
 
 export interface FeedListProps {
@@ -20,6 +22,8 @@ export interface FeedListProps {
 
 export function FeedList({ enabled = true }: FeedListProps) {
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<SortOption>('recent')
 
   const {
     data,
@@ -36,17 +40,63 @@ export function FeedList({ enabled = true }: FeedListProps) {
   const allReports = data?.pages?.flatMap((page) => page.data ?? []) ?? []
   const filterCounts = {
     all: allReports.length,
-    pending: allReports.filter(r => r.status === 'pending').length,
-    verified: allReports.filter(r => r.status === 'verified').length,
-    resolved: allReports.filter(r => r.status === 'resolved').length,
-    false_alarm: allReports.filter(r => r.status === 'false_alarm').length,
+    pending: allReports.filter((r) => r.status === 'pending').length,
+    verified: allReports.filter((r) => r.status === 'verified').length,
+    resolved: allReports.filter((r) => r.status === 'resolved').length,
+    false_alarm: allReports.filter((r) => r.status === 'false_alarm').length,
   }
 
-  // Filter reports based on selected filter
-  const filteredReports = allReports.filter((report) => {
-    if (selectedFilter === 'all') return true
-    return report.status === selectedFilter
-  })
+  // Filter and search reports
+  const filteredAndSearchedReports = useMemo(() => {
+    return allReports.filter((report) => {
+      // Apply status filter
+      if (selectedFilter !== 'all' && report.status !== selectedFilter) {
+        return false
+      }
+
+      // Apply search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const { barangay, municipality } = report.approximateLocation
+        const matchesLocation =
+          barangay?.toLowerCase().includes(query) ||
+          municipality?.toLowerCase().includes(query)
+        const matchesType = report.incidentType.toLowerCase().includes(query)
+        const matchesDesc = report.description.toLowerCase().includes(query)
+
+        return matchesLocation || matchesType || matchesDesc
+      }
+
+      return true
+    })
+  }, [allReports, selectedFilter, searchQuery])
+
+  // Sort reports
+  const displayReports = useMemo(() => {
+    const sorted = [...filteredAndSearchedReports]
+
+    switch (sortBy) {
+      case 'severity':
+        return sorted.sort((a, b) => {
+          const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
+          const severityA = severityOrder[a.severity as keyof typeof severityOrder] ?? 99
+          const severityB = severityOrder[b.severity as keyof typeof severityOrder] ?? 99
+          return severityA - severityB
+        })
+
+      case 'status':
+        return sorted.sort((a, b) => {
+          const statusOrder = { pending: 0, verified: 1, resolved: 2, false_alarm: 3 }
+          const statusA = statusOrder[a.status] ?? 99
+          const statusB = statusOrder[b.status] ?? 99
+          return statusA - statusB
+        })
+
+      case 'recent':
+      default:
+        return sorted.sort((a, b) => b.createdAt - a.createdAt)
+    }
+  }, [filteredAndSearchedReports, sortBy])
 
   // Infinite scroll observer
   const observerTarget = useRef<HTMLDivElement>(null)
@@ -170,7 +220,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
   }
 
   // Show empty state when filter matches no reports
-  if (filteredReports.length === 0) {
+  if (displayReports.length === 0) {
     return (
       <div className="min-h-screen bg-gray-100 pb-20" data-testid="feed-list">
         <div className="max-w-lg mx-auto bg-gray-100 min-h-screen">
@@ -201,16 +251,20 @@ export function FeedList({ enabled = true }: FeedListProps) {
     <div className="min-h-screen bg-gray-100 pb-20" data-testid="feed-list">
       <div className="max-w-lg mx-auto bg-gray-100 min-h-screen">
         {/* Header with pull-to-refresh indicator */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-          <div className="flex items-center justify-between mb-3">
+        <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10 space-y-3">
+          {/* Title row with sort */}
+          <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">Bantayog Feed</h1>
-            {isRefetching && (
-              <RefreshCw
-                className="w-5 h-5 text-primary-blue animate-spin"
-                data-testid="refresh-indicator"
-              />
-            )}
+            <FeedSort value={sortBy} onChange={setSortBy} reportCount={displayReports.length} />
           </div>
+
+          {/* Search bar */}
+          <FeedSearch
+            onSearch={setSearchQuery}
+            resultCount={displayReports.length}
+          />
+
+          {/* Status filters */}
           <FeedFilters
             selectedFilter={selectedFilter}
             counts={filterCounts}
@@ -232,7 +286,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
 
         {/* Report cards */}
         <div className="p-4 space-y-4" data-testid="feed-reports">
-          {filteredReports.map((report) => (
+          {displayReports.map((report) => (
             <FeedCard key={report.id} report={report} />
           ))}
 
