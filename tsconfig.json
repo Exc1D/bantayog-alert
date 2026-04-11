@@ -27,9 +27,11 @@
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src"],
-      "@/features/*": ["src/features"],
-      "@/shared/*": ["src/shared"]
+      "@/*": ["src/*"],
+      "@/features/*": ["src/features/*"],
+      "@/shared/*": ["src/shared/*"],
+      "@/domains/*": ["src/domains/*"],
+      "@/app/*": ["src/app/*"]
     }
   },
   "include": ["src", "src/test/setup.d.ts", "vite.config.ts", "vitest.config.ts"],
