@@ -10,6 +10,7 @@ export type { FeedListProps } from './components/FeedList'
 export { FeedCard } from './components/FeedCard'
 export type { FeedCardProps } from './components/FeedCard'
 export { FeedCardSkeleton } from './components/FeedCardSkeleton'
+export { EmptyState } from './components/EmptyState'
 
 // Hooks
 export { useFeedReports } from './hooks/useFeedReports'
