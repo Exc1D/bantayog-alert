@@ -11,6 +11,8 @@ export { FeedCard } from './components/FeedCard'
 export type { FeedCardProps } from './components/FeedCard'
 export { FeedCardSkeleton } from './components/FeedCardSkeleton'
 export { EmptyState } from './components/EmptyState'
+export { FeedFilters } from './components/FeedFilters'
+export type { FeedFiltersProps, FilterCount, FilterType } from './components/FeedFilters'
 
 // Hooks
 export { useFeedReports } from './hooks/useFeedReports'
