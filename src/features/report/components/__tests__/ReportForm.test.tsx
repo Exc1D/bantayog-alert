@@ -347,4 +347,102 @@ describe('ReportForm', () => {
       })
     })
   })
+
+  describe('Anonymity Checkbox', () => {
+    it('renders anonymity checkbox', () => {
+      render(<ReportForm />)
+
+      expect(screen.getByRole('checkbox', { name: /submit this report anonymously/i })).toBeInTheDocument()
+      expect(screen.getByText(/your identity will not be shared/i)).toBeInTheDocument()
+    })
+
+    it('defaults to not anonymous', () => {
+      render(<ReportForm />)
+
+      const checkbox = screen.getByRole('checkbox', { name: /submit this report anonymously/i })
+      expect(checkbox).not.toBeChecked()
+    })
+
+    it('allows toggling anonymity', async () => {
+      const user = userEvent.setup()
+      render(<ReportForm />)
+
+      const checkbox = screen.getByRole('checkbox', { name: /submit this report anonymously/i })
+
+      // Initially unchecked
+      expect(checkbox).not.toBeChecked()
+
+      // Click to check
+      await user.click(checkbox)
+      expect(checkbox).toBeChecked()
+
+      // Click to uncheck
+      await user.click(checkbox)
+      expect(checkbox).not.toBeChecked()
+    })
+
+    it('includes isAnonymous in submission when checked', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      // Fill required fields
+      await user.type(screen.getByLabelText(/description/i), 'Test incident')
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+
+      // Check anonymous checkbox
+      const checkbox = screen.getByRole('checkbox', { name: /submit this report anonymously/i })
+      await user.click(checkbox)
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+
+      const callArg = onSubmit.mock.calls[0][0]
+      expect(callArg).toMatchObject({
+        description: 'Test incident',
+        phone: '+63 912 345 6789',
+        isAnonymous: true,
+      })
+    })
+
+    it('includes isAnonymous: false when unchecked', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      // Fill required fields (don't check anonymous checkbox)
+      await user.type(screen.getByLabelText(/description/i), 'Test incident')
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+
+      const callArg = onSubmit.mock.calls[0][0]
+      expect(callArg).toMatchObject({
+        description: 'Test incident',
+        phone: '+63 912 345 6789',
+        isAnonymous: false,
+      })
+    })
+  })
 })

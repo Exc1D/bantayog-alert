@@ -16,6 +16,7 @@ export interface ReportData {
   description: string
   phone: string
   email?: string
+  isAnonymous: boolean
   injuriesConfirmed?: boolean
   situationWorsening?: boolean
 }
@@ -124,6 +125,7 @@ export function ReportForm({
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [isAnonymous, setIsAnonymous] = useState(false)
   const [injuriesConfirmed, setInjuriesConfirmed] = useState<boolean | undefined>(undefined)
   const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
@@ -184,6 +186,7 @@ export function ReportForm({
       description,
       phone,
       email: email.trim() || undefined,
+      isAnonymous,
       injuriesConfirmed,
       situationWorsening,
     }
@@ -477,6 +480,25 @@ export function ReportForm({
           placeholder="your@email.com"
         />
         {emailError && <span role="alert">{emailError}</span>}
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Anonymity checkbox                                                   */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="flex items-start gap-2">
+        <input
+          id="report-anonymous"
+          type="checkbox"
+          checked={isAnonymous}
+          onChange={(e) => setIsAnonymous(e.target.checked)}
+          className="w-4 h-4 mt-1 text-primary-blue"
+        />
+        <label htmlFor="report-anonymous" className="text-sm text-gray-700 cursor-pointer">
+          Submit this report anonymously
+          <span className="block text-xs text-gray-500 mt-1">
+            Your identity will not be shared with the public or responders
+          </span>
+        </label>
       </div>
 
       {/* ------------------------------------------------------------------ */}
