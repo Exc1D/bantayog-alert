@@ -9,7 +9,7 @@
 
 import { test, expect } from '@playwright/test'
 
-describe('Authentication E2E Tests', () => {
+test.describe('Authentication E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to app
     await page.goto('/')
@@ -183,7 +183,7 @@ describe('Authentication E2E Tests', () => {
   })
 })
 
-describe('Login Flow E2E Tests', () => {
+test.describe('Login Flow E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.click('text=Login')
@@ -229,7 +229,7 @@ describe('Login Flow E2E Tests', () => {
   })
 })
 
-describe('Incident Management E2E Tests', () => {
+test.describe('Incident Management E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Login as municipal admin
     await page.goto('/login')
@@ -271,7 +271,7 @@ describe('Incident Management E2E Tests', () => {
   })
 })
 
-describe('Error Handling E2E Tests', () => {
+test.describe('Error Handling E2E Tests', () => {
   test('should show user-friendly error messages', async ({ page }) => {
     await page.goto('/register')
 
@@ -317,7 +317,7 @@ describe('Error Handling E2E Tests', () => {
   })
 })
 
-describe('Accessibility E2E Tests', () => {
+test.describe('Accessibility E2E Tests', () => {
   test('should be keyboard navigable', async ({ page }) => {
     await page.goto('/register')
 
@@ -354,7 +354,7 @@ describe('Accessibility E2E Tests', () => {
   })
 })
 
-describe('Performance E2E Tests', () => {
+test.describe('Performance E2E Tests', () => {
   test('should load registration page quickly', async ({ page }) => {
     const startTime = Date.now()
 
