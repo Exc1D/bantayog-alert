@@ -66,8 +66,8 @@ describe('Firebase Messaging Service Worker', () => {
       expect(swContent).toContain('event.notification.close()');
     });
 
-    it('should open /alerts page when view action is triggered', () => {
-      expect(swContent).toContain("clients.openWindow('/alerts')");
+    it('should open alerts page when view action is triggered', () => {
+      expect(swContent).toContain("clients.openWindow('/?tab=alerts')");
     });
   });
 });
