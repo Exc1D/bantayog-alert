@@ -896,7 +896,7 @@ interface Report {
   id: string;
   userId?: string;                    // undefined if anonymous
   phoneNumber: string;                // required, PH format
-  status: 'pending' | 'verified' 'in_progress' | 'resolved' | 'false_alarm';
+  status: 'pending' | 'verified' | 'in_progress' | 'resolved' | 'false_alarm';
   disasterType?: string;              // set by admin during triage
   description: string;                // optional, max 500 chars
   location: {
