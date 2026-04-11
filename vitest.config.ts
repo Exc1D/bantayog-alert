@@ -13,12 +13,18 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
-        'src/test/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        '**/mockData',
+        'tests/',
+        '**/*.test.{ts,tsx}',
+        '**/*.config.{ts,js}',
         'src/main.tsx',
       ],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 65,
+        statements: 70,
+        perFile: true,
+      },
     },
     typecheck: {
       tsconfig: './tsconfig.json',
