@@ -15,13 +15,13 @@ export function Navigation() {
   const { queueSize } = useReportQueue()
 
   return (
-    <>
+    <div className="navigation-wrapper">
       <Outlet />
       <nav
         data-testid="navigation"
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-bottom"
+        className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-400 safe-area-bottom z-[100] shadow-lg"
       >
-        <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+        <div className="flex justify-around items-center h-16 max-w-md mx-auto bg-gray-50">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path
             const Icon = item.icon
@@ -31,24 +31,17 @@ export function Navigation() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="relative -top-5 flex items-center justify-center w-20 h-16"
-                  style={{
-                    clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-                  }}
+                  className="relative -top-6 flex items-center justify-center w-[72px] h-[72px] rounded-[40%] bg-gradient-to-b from-primary-red to-red-700 text-white shadow-lg border-[3px] border-white"
                   aria-label={`Report ${item.label}`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-b from-primary-red to-red-700" />
-                  <div className="relative z-10 flex flex-col items-center justify-center pt-2">
-                    <Icon size={24} className="text-white drop-shadow-md" />
-                    <span className="text-[10px] font-bold mt-0.5 text-white drop-shadow-md uppercase tracking-wide">
-                      {item.label}
-                    </span>
+                  <div className="flex flex-col items-center">
+                    <Icon size={24} />
+                    <span className="text-[10px] font-bold mt-1">{item.label}</span>
                   </div>
                   {queueSize > 0 && (
                     <span
                       data-testid="queue-badge"
-                      className="absolute -top-1 right-4 w-5 h-5 bg-yellow-400 text-red-900 text-xs font-bold rounded-full flex items-center justify-center animate-pulse border-2 border-white"
-                      aria-label={`${queueSize} reports waiting to sync`}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 text-red-900 text-xs font-bold rounded-full flex items-center justify-center animate-pulse"
                     >
                       {queueSize > 9 ? '9+' : queueSize}
                     </span>
@@ -72,6 +65,6 @@ export function Navigation() {
           })}
         </div>
       </nav>
-    </>
+    </div>
   )
 }

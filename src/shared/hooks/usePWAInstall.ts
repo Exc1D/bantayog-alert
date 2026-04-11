@@ -17,7 +17,10 @@ interface UsePWAInstallResult {
   isInstalled: boolean
   isStandalone: boolean
   installApp: () => Promise<boolean>
+  dismissBanner: () => void
 }
+
+const DISMISSED_KEY = 'pwa_install_dismissed'
 
 export function usePWAInstall(): UsePWAInstallResult {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -27,7 +30,14 @@ export function usePWAInstall(): UsePWAInstallResult {
   const isStandalone = typeof window !== 'undefined' &&
     window.matchMedia('(display-mode: standalone)').matches
 
+  // Check if user previously dismissed the banner
+  const wasDismissed = typeof window !== 'undefined' &&
+    localStorage.getItem(DISMISSED_KEY) === 'true'
+
   useEffect(() => {
+    // If already dismissed or already installed, don't show banner
+    if (wasDismissed || isStandalone) return
+
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
@@ -47,7 +57,7 @@ export function usePWAInstall(): UsePWAInstallResult {
         window.removeEventListener('beforeinstallprompt', handler)
       }
     }
-  }, [isStandalone])
+  }, [isStandalone, wasDismissed])
 
   const installApp = useCallback(async (): Promise<boolean> => {
     if (!deferredPrompt) return false
@@ -60,6 +70,7 @@ export function usePWAInstall(): UsePWAInstallResult {
         setIsInstalled(true)
       }
       setDeferredPrompt(null)
+      localStorage.removeItem(DISMISSED_KEY)
       return outcome === 'accepted'
     } catch (error) {
       console.error('Failed to install PWA:', error)
@@ -67,10 +78,16 @@ export function usePWAInstall(): UsePWAInstallResult {
     }
   }, [deferredPrompt])
 
+  const dismissBanner = useCallback(() => {
+    setDeferredPrompt(null)
+    localStorage.setItem(DISMISSED_KEY, 'true')
+  }, [])
+
   return {
     deferredPrompt,
     isInstalled: isInstalled || isStandalone,
     isStandalone,
     installApp,
+    dismissBanner,
   }
 }
