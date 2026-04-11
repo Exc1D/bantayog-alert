@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { AlertCircle, WifiOff } from 'lucide-react'
 import { Button } from '@/shared/components/Button'
 import { ReportSuccess } from './ReportSuccess'
+import { NonEmergencyRedirect } from './NonEmergencyRedirect'
 import { useReportQueue } from '../hooks/useReportQueue'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
 
@@ -141,6 +142,7 @@ export function ReportForm({
   const [injuriesConfirmed, setInjuriesConfirmed] = useState<boolean | undefined>(undefined)
   const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
+  const [showNonEmergency, setShowNonEmergency] = useState(false)
 
   const isGpsAvailable = Boolean(userLocation && !gpsError)
   const showManualDropdowns = Boolean(gpsError)
@@ -249,6 +251,16 @@ export function ReportForm({
     : null
 
   const availableBarangays = municipality ? (BARANGAYS[municipality] ?? []) : []
+
+  // Show non-emergency redirect screen
+  if (showNonEmergency) {
+    return (
+      <NonEmergencyRedirect
+        municipality={municipality || 'Daet'}
+        onCancel={() => setShowNonEmergency(false)}
+      />
+    )
+  }
 
   // Show success screen if form was submitted
   if (submittedReportId) {
@@ -531,6 +543,13 @@ export function ReportForm({
       {/* ------------------------------------------------------------------ */}
       {/* Submit                                                               */}
       {/* ------------------------------------------------------------------ */}
+      <button
+        type="button"
+        onClick={() => setShowNonEmergency(true)}
+        className="text-sm text-gray-500 underline hover:text-gray-700 mb-2"
+      >
+        This isn&apos;t an emergency?
+      </button>
       <Button variant="primary" type="submit">
         Submit Report
       </Button>
