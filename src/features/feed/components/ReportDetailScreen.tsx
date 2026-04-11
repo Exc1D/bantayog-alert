@@ -21,6 +21,7 @@ import { formatTimeAgo } from '@/shared/utils/formatTimeAgo'
 import { UpdateTimeline, TimelineEntry } from './UpdateTimeline'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { formatReportType, formatLocationName } from '../utils/feedHelpers'
+import { BeforeAfterGallery } from './BeforeAfterGallery'
 
 interface ReportDetailState {
   report: Report | null
@@ -300,6 +301,21 @@ export function ReportDetailScreen() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                 <p className="text-sm font-medium text-green-800 mb-1">Resolution</p>
                 <p className="text-sm text-green-700">{report.resolutionNotes}</p>
+              </div>
+            )}
+
+            {/* Before/After Gallery for resolved reports */}
+            {report.status === 'resolved' && report.photoUrls && report.photoUrls.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Photo Documentation</h4>
+                <BeforeAfterGallery
+                  photos={{
+                    // Currently using existing photoUrls as "after" photos
+                    // TODO: Add beforePhotoUrls field to Report type for proper before/after comparison
+                    before: [],
+                    after: report.photoUrls,
+                  }}
+                />
               </div>
             )}
           </div>
