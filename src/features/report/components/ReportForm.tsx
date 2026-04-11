@@ -4,6 +4,7 @@ import { Button } from '@/shared/components/Button'
 import { ReportSuccess } from './ReportSuccess'
 import { NonEmergencyRedirect } from './NonEmergencyRedirect'
 import { useReportQueue } from '../hooks/useReportQueue'
+import { useDuplicateCheck } from '../hooks/useDuplicateCheck'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
 
 // ---------------------------------------------------------------------------
@@ -124,10 +125,7 @@ export function ReportForm({
   onShare,
   onNavigate,
 }: ReportFormProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { enqueueReport, isSyncing } = useReportQueue()
-  const { isOnline } = useNetworkStatus()
-
+  // incidentType must be declared before useDuplicateCheck since the hook reads it
   const [incidentType, setIncidentType] = useState<IncidentType>('other')
   const [photo, setPhoto] = useState<File | null>(null)
   const [municipality, setMunicipality] = useState('')
@@ -143,6 +141,17 @@ export function ReportForm({
   const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
   const [showNonEmergency, setShowNonEmergency] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { enqueueReport, isSyncing } = useReportQueue()
+  const { isOnline } = useNetworkStatus()
+
+  // Duplicate check — only meaningful when GPS location is available
+  const { duplicates } = useDuplicateCheck(
+    userLocation && !gpsError
+      ? { latitude: userLocation.latitude, longitude: userLocation.longitude, incidentType }
+      : { latitude: 0, longitude: 0, incidentType: '' }
+  )
 
   const isGpsAvailable = Boolean(userLocation && !gpsError)
   const showManualDropdowns = Boolean(gpsError)
@@ -257,6 +266,9 @@ export function ReportForm({
     return (
       <NonEmergencyRedirect
         municipality={municipality || 'Daet'}
+        municipalHallPhone="+63 54 100 1234"
+        mdrmoPhone="+63 54 100 5678"
+        barangayCaptainPhone="+63 54 100 9012"
         onCancel={() => setShowNonEmergency(false)}
       />
     )
@@ -279,6 +291,29 @@ export function ReportForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      {/* Duplicate warning */}
+      {duplicates.length > 0 && (
+        <div
+          className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 mb-4"
+          data-testid="duplicate-warning"
+          role="alert"
+        >
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Possible duplicate detected
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                {duplicates.length === 1
+                  ? 'A similar report was submitted nearby in the last 30 minutes. Please verify this is not a duplicate before submitting.'
+                  : `${duplicates.length} similar reports were submitted nearby in the last 30 minutes. Please verify these are not duplicates before submitting.`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Offline indicator */}
       {!isOnline && (
         <div className="bg-orange-50 border-b border-orange-200 px-4 py-3 mb-4 flex items-center gap-2" data-testid="offline-banner">
