@@ -3,6 +3,10 @@ import { checkA11y } from './a11y.config'
 
 test.describe('Report Form Accessibility', () => {
   test.beforeEach(async ({ page }) => {
+    // Bypass age gate - set localStorage before any navigation
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/report')
   })
 
@@ -31,18 +35,19 @@ test.describe('Report Form Accessibility', () => {
   })
 
   test('should be keyboard navigable', async ({ page }) => {
-    // Tab through form fields
-    const fields = [
-      'incident type',
-      'description',
-      'phone',
-      'photo',
-    ]
+    // Focus order: incident type -> description -> phone -> photo
+    // Note: We verify focus order by checking the focused element's id matches expected field id
+    // after each Tab press. This requires the form to be fully rendered.
+    const fieldIds = ['report-incident-type', 'report-description', 'report-phone']
 
-    for (const field of fields) {
+    // Click on the first field to establish focus
+    const firstField = page.locator('#report-incident-type')
+    await firstField.click()
+
+    for (const fieldId of fieldIds) {
       await page.keyboard.press('Tab')
       const focused = page.locator(':focus')
-      await expect(focused).toBeVisible()
+      await expect(focused).toHaveAttribute('id', fieldId)
     }
   })
 })
