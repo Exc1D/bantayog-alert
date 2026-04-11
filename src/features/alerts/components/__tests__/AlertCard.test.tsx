@@ -78,6 +78,8 @@ describe('AlertCard', () => {
     it('should truncate long messages and show see more button', () => {
       render(<AlertCard alert={longMessageAlert} />)
 
+      // Assert truncated text is actually displayed (first 150 chars + ellipsis)
+      expect(screen.getByText(/^This is a very long alert message that exceeds the 150 character truncate limit\. It contains detailed information about the emergency situation and wh\.\.\./)).toBeInTheDocument()
       expect(screen.getByTestId('see-more-button')).toBeInTheDocument()
       expect(screen.getByText(/See more/)).toBeInTheDocument()
     })

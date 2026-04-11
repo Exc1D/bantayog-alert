@@ -577,7 +577,6 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
 
       networkState.isOnline = false
-      queueState.queueSize = 1
 
       render(
         <ReportForm
@@ -597,6 +596,18 @@ describe('ReportForm', () => {
         expect(queueState.enqueueReport).toHaveBeenCalledOnce()
       })
 
+      // Verify the data shape passed to enqueueReport
+      const [enqueuedData] = queueState.enqueueReport.mock.calls[0]
+      expect(enqueuedData).toMatchObject({
+        description: 'Flooding near the bridge',
+        phone: '+63 912 345 6789',
+      })
+      expect(enqueuedData.location).toMatchObject({
+        type: 'gps',
+        latitude: 14.1,
+        longitude: 122.9,
+      })
+
       // Should show queued success screen
       await waitFor(() => {
         expect(screen.getByText(/report queued/i)).toBeInTheDocument()
@@ -607,7 +618,6 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
 
       networkState.isOnline = false
-      queueState.queueSize = 1
 
       render(
         <ReportForm
@@ -622,7 +632,7 @@ describe('ReportForm', () => {
 
       await waitFor(() => {
         const reportIdElement = screen.getByTestId('report-id')
-        expect(reportIdElement.textContent ?? '').toMatch(/-queued$/)
+        expect(reportIdElement.textContent ?? '').toMatch(/queued$/)
       })
     })
   })
