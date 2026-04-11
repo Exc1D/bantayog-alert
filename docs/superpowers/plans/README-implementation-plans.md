@@ -1,4 +1,4 @@
-# Citizen Features - Implementation Plans Summary
+Citizen Features - Implementation Plans Summary
 
 **Date:** 2026-04-11  
 **Status:** All plans complete and ready for execution
@@ -8,18 +8,21 @@
 ## 📋 Plans Created
 
 ### 1. ✅ Triangular Report Button (Quick Win)
+
 **File:** `docs/superpowers/plans/2026-04-11-triangular-report-button.md`  
 **Priority:** LOW (UI improvement)  
 **Effort:** 2-3 hours  
 **Status:** Ready to execute
 
 **What's Included:**
+
 - Update navigation.tsx with clip-path triangle design
 - Update navigation tests for triangular shape
 - Add press state feedback (active:scale-95)
 - Document design decision
 
 **Key Changes:**
+
 - SOS-style triangular button (↑) instead of circular
 - Gradient background (primary-red to red-700)
 - Elevated position (-top-5) for visual prominence
@@ -28,12 +31,14 @@
 ---
 
 ### 2. ✅ Missing Tests Prioritization (Foundational)
+
 **File:** `docs/superpowers/plans/2026-04-11-missing-tests-prioritization.md`  
 **Priority:** HIGH (blocks release - unknown quality)  
 **Effort:** 16-20 hours  
 **Status:** Ready to execute
 
 **What's Included:**
+
 - **Task 1:** Set up axe-core accessibility testing
 - **Task 2:** Create a11y tests for all major screens (map, feed, report, profile)
 - **Task 3:** Set up Lighthouse performance testing
@@ -42,6 +47,7 @@
 - **Task 6:** Document test gaps and priorities
 
 **Key Deliverables:**
+
 - WCAG 2.1 AA compliance verification
 - Performance budgets (< 500KB bundle, < 2s FCP)
 - Rate limiting E2E tests
@@ -50,18 +56,21 @@
 ---
 
 ### 3. ✅ Legal Compliance - DPA (CRITICAL)
+
 **File:** `docs/superpowers/plans/2026-04-11-legal-compliance-dpa.md`  
 **Priority:** **CRITICAL** (blocks public release)  
 **Effort:** 20-24 hours  
 **Status:** Ready to execute
 
 **What's Included:**
+
 - **Task 1:** Privacy Policy document (plain language, RA 10173 compliant)
 - **Task 2:** Consent checkbox in ReportForm
 - **Task 3:** Account deletion flow (DataDeletion component)
 - **Task 4:** "Download My Data" feature (DPA right to access)
 
 **Key Deliverables:**
+
 - Plain-language privacy policy
 - Explicit consent mechanism (required checkbox)
 - Account deletion with data anonymization
@@ -69,6 +78,7 @@
 - DPA compliance for RA 10173
 
 **Why CRITICAL:**
+
 - Legal liability without privacy policy
 - Consent required by Data Privacy Act
 - Right to deletion and access are legal requirements
@@ -77,12 +87,14 @@
 ---
 
 ### 4. ✅ Account & Auth Implementation (HIGH)
+
 **File:** `docs/superpowers/plans/2026-04-11-account-auth-implementation.md`  
 **Priority:** HIGH (core conversion feature)  
 **Effort:** 24-30 hours  
 **Status:** Ready to execute
 
 **What's Included:**
+
 - **Task 1:** PhoneVerification component (6-digit OTP)
 - **Task 2:** SignUpFlow component (multi-step wizard)
 - **Task 3:** usePhoneAuth hook (OTP verification)
@@ -94,6 +106,7 @@
 - **Task 9:** Add signup route
 
 **Key Deliverables:**
+
 - Complete account creation flow with phone OTP
 - Report linking by phone number
 - "My Reports" history view
@@ -102,12 +115,14 @@
 ---
 
 ### 5. ✅ Alerts System Implementation (HIGH)
+
 **File:** `docs/superpowers/plans/2026-04-11-alerts-system-implementation.md`  
 **Priority:** HIGH (safety-critical)  
 **Effort:** 16-20 hours  
 **Status:** Ready to execute
 
 **What's Included:**
+
 - **Task 1:** Define alert data model (types, priorities)
 - **Task 2:** Create Firestore alerts collection
 - **Task 3:** Implement alert queries (location-based)
@@ -119,6 +134,7 @@
 - **Task 9:** Admin alert creation (optional)
 
 **Key Deliverables:**
+
 - Official alerts data source (Firestore)
 - Priority levels (🔴 emergency, 🟡 warning, 🟢 advisory)
 - Location-based filtering (user's municipality)
@@ -126,6 +142,7 @@
 - Official source attribution (MDRRMO, PAGASA, etc.)
 
 **Why HIGH:**
+
 - Safety-critical (evacuation warnings)
 - Currently non-functional tab
 - No data source for alerts
@@ -135,6 +152,7 @@
 ## 🎯 Recommended Execution Order
 
 ### Phase 1: Unblocking Work (Week 1)
+
 1. **Legal Compliance (Tasks 1-2)** - 6-8 hours
    - Privacy policy + consent checkbox
    - Unblocks public release
@@ -147,6 +165,7 @@
    - Understand current a11y state
 
 ### Phase 2: Core Features (Week 2)
+
 4. **Alerts System (Tasks 1-6)** - 12-16 hours
    - Safety-critical feature
    - Makes alerts tab functional
@@ -156,6 +175,7 @@
    - Rate limiting E2E
 
 ### Phase 3: User Conversion (Week 3)
+
 6. **Account & Auth (Tasks 1-4)** - 12-16 hours
    - Phone verification
    - Signup flow
@@ -165,6 +185,7 @@
    - My Reports
 
 ### Phase 4: Polish (Week 4)
+
 8. **Legal Completion (Tasks 3-4)** - 8-10 hours
    - Account deletion
    - Data export
@@ -177,14 +198,14 @@
 
 ## 📊 Effort Summary
 
-| Plan | Priority | Effort | Tasks |
-|------|----------|--------|-------|
-| Triangular Button | LOW | 2-3h | 3 tasks |
-| Missing Tests | HIGH | 16-20h | 6 tasks |
-| Legal Compliance | **CRITICAL** | 20-24h | 4 tasks |
-| Account & Auth | HIGH | 24-30h | 9 tasks |
-| Alerts System | HIGH | 16-20h | 9 tasks |
-| **TOTAL** | | **78-97 hours** | **31 tasks** |
+| Plan              | Priority     | Effort          | Tasks        |
+| ----------------- | ------------ | --------------- | ------------ |
+| Triangular Button | LOW          | 2-3h            | 3 tasks      |
+| Missing Tests     | HIGH         | 16-20h          | 6 tasks      |
+| Legal Compliance  | **CRITICAL** | 20-24h          | 4 tasks      |
+| Account & Auth    | HIGH         | 24-30h          | 9 tasks      |
+| Alerts System     | HIGH         | 16-20h          | 9 tasks      |
+| **TOTAL**         |              | **78-97 hours** | **31 tasks** |
 
 **Estimated Timeline:** 3-4 weeks with 1 engineer
 
@@ -193,14 +214,18 @@
 ## 🚀 Next Steps
 
 ### Option 1: Execute All Plans (Recommended)
+
 Use subagent-driven-development to execute all 5 plans systematically:
+
 - Fresh subagent per task
 - Two-stage review (spec → code)
 - Fast iteration
 - High quality
 
 ### Option 2: Priority-Based Execution
+
 Execute in this order:
+
 1. Legal Compliance (CRITICAL)
 2. Alerts System (HIGH)
 3. Account & Auth (HIGH)
@@ -208,16 +233,18 @@ Execute in this order:
 5. Triangular Button (LOW)
 
 ### Option 3: Quick Wins First
+
 1. Triangular Button (2-3h)
 2. Legal Compliance - Tasks 1-2 (6-8h)
 3. Alerts System - Tasks 1-3 (8-10h)
-Then decide on remaining work.
+   Then decide on remaining work.
 
 ---
 
 ## 📝 Plan Quality
 
 All plans include:
+
 - ✅ Complete code (no placeholders)
 - ✅ Exact file paths
 - ✅ Test-first approach (TDD)
@@ -228,6 +255,7 @@ All plans include:
 - ✅ Security considerations
 
 **No Plan Has:**
+
 - ❌ "TBD" or "TODO"
 - ❌ "Implement later"
 - ❌ "Add error handling" (without specifics)
@@ -240,6 +268,7 @@ All plans include:
 After executing these plans, the app will have:
 
 **Legal Compliance:**
+
 - ✅ Privacy policy
 - ✅ Consent flow
 - ✅ Data deletion
@@ -247,6 +276,7 @@ After executing these plans, the app will have:
 - ✅ DPA compliant
 
 **Features:**
+
 - ✅ Alerts tab functional
 - ✅ Account creation flow
 - ✅ "My Reports" history
@@ -254,12 +284,14 @@ After executing these plans, the app will have:
 - ✅ Triangular SOS button
 
 **Quality:**
+
 - ✅ 800+ tests (from 761)
 - ✅ A11y compliance verified
 - ✅ Performance budgets enforced
 - ✅ 70% coverage threshold
 
 **Readiness:**
+
 - ✅ Legal blocks cleared
 - ✅ Safety-critical features working
 - ✅ User conversion path complete
@@ -281,6 +313,7 @@ Each plan is self-contained and execution-ready:
 6. **Commit frequently** (as instructed)
 
 **For subagent-driven execution:**
+
 ```bash
 # Dispatch subagent with plan
 claude-code execute "docs/superpowers/plans/2026-04-11-[plan-name].md"
