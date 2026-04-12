@@ -7,22 +7,42 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { useReportQueue } from '../useReportQueue'
-import * as reportQueueService from '../../services/reportQueue.service'
-import * as useNetworkStatusModule from '@/shared/hooks/useNetworkStatus'
 
-// Mock dependencies
-vi.mock('../services/reportQueue.service', () => ({
+// ---------------------------------------------------------------------------
+// vi.hoisted ensures these run at module initialization time, BEFORE vi.mock.
+// vi.mock then uses these same function references in its factory, so any
+// per-test mockImplementation calls affect what the hook actually calls.
+// Path is '../../services/reportQueue.service' (from hooks/__tests__/).
+// ---------------------------------------------------------------------------
+const getAllMock = vi.hoisted(() => vi.fn<() => Promise<unknown[]>>())
+const addMock = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const getMock = vi.hoisted(() => vi.fn<() => Promise<unknown>>())
+const updateMock = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const deleteMock = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const clearMock = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const getByStatusMock = vi.hoisted(() => vi.fn<() => Promise<unknown[]>>())
+
+vi.mock('../../services/reportQueue.service', () => ({
   reportQueueService: {
-    getAll: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue(undefined),
-    get: vi.fn().mockResolvedValue(undefined),
-    update: vi.fn().mockResolvedValue(undefined),
-    delete: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(undefined),
-    getByStatus: vi.fn().mockResolvedValue([]),
+    getAll: getAllMock,
+    add: addMock,
+    get: getMock,
+    update: updateMock,
+    delete: deleteMock,
+    clear: clearMock,
+    getByStatus: getByStatusMock,
   },
 }))
-vi.mock('@/shared/hooks/useNetworkStatus')
+
+vi.mock('@/app/firebase/config', () => ({
+  storage: {},
+  db: {},
+  auth: {},
+}))
+
+vi.mock('@/shared/hooks/useNetworkStatus', () => ({
+  useNetworkStatus: vi.fn().mockReturnValue({ isOnline: true, networkType: 'wifi' }),
+}))
 
 const mockReportData = {
   incidentType: 'flood' as const,
@@ -33,14 +53,21 @@ const mockReportData = {
 }
 
 describe('useReportQueue', () => {
+  beforeEach(() => {
+    // Clear call history — implementations persist so each test can override.
+    vi.clearAllMocks()
+    // Restore default resolved implementations for each test.
+    getAllMock.mockImplementation(() => Promise.resolve([]))
+    addMock.mockImplementation(() => Promise.resolve())
+    getMock.mockImplementation(() => Promise.resolve())
+    updateMock.mockImplementation(() => Promise.resolve())
+    deleteMock.mockImplementation(() => Promise.resolve())
+    clearMock.mockImplementation(() => Promise.resolve())
+    getByStatusMock.mockImplementation(() => Promise.resolve([]))
+  })
+
   describe('initial state', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should load queue on mount', async () => {
-      vi.mocked(reportQueueService.reportQueueService.getAll).mockResolvedValue([])
-
       const { result } = renderHook(() => useReportQueue())
 
       expect(result.current.queue).toEqual([])
@@ -49,8 +76,6 @@ describe('useReportQueue', () => {
     })
 
     it('should return initial computed values', () => {
-      vi.mocked(reportQueueService.reportQueueService.getAll).mockResolvedValue([])
-
       const { result } = renderHook(() => useReportQueue())
 
       expect(result.current.hasPendingReports).toBe(false)
@@ -58,20 +83,45 @@ describe('useReportQueue', () => {
     })
   })
 
+  describe('loadError', () => {
+    it('should be null when queue loads successfully', async () => {
+      const { result } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.loadError).toBeNull()
+      })
+    })
+
+    it('should surface IndexedDB load error via loadError state', async () => {
+      getAllMock.mockImplementation(() => Promise.reject(new Error('IDB corrupted')))
+
+      const { result } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.loadError).toBe('IDB corrupted')
+      })
+    })
+
+    it('should use fallback message for non-Error rejection', async () => {
+      getAllMock.mockImplementation(() => Promise.reject('raw string error'))
+
+      const { result } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.loadError).toBe('Failed to load offline queue')
+      })
+    })
+  })
+
   describe('enqueueReport', () => {
     it('should add report to queue when offline', async () => {
-      vi.mocked(useNetworkStatusModule.useNetworkStatus).mockReturnValue({
-        isOnline: false,
-        networkType: null,
-      })
-
       const { result } = renderHook(() => useReportQueue())
 
       await act(async () => {
         await result.current.enqueueReport(mockReportData)
       })
 
-      expect(reportQueueService.reportQueueService.add).toHaveBeenCalled()
+      expect(addMock).toHaveBeenCalled()
     })
 
     it('should add report to queue and sync immediately when online', async () => {
@@ -81,17 +131,12 @@ describe('useReportQueue', () => {
         await result.current.enqueueReport(mockReportData)
       })
 
-      expect(reportQueueService.reportQueueService.add).toHaveBeenCalled()
+      expect(addMock).toHaveBeenCalled()
     })
   })
 
   describe('syncQueue', () => {
     it('should not sync when offline', async () => {
-      vi.mocked(useNetworkStatusModule.useNetworkStatus).mockReturnValue({
-        isOnline: false,
-        networkType: null,
-      })
-
       const { result } = renderHook(() => useReportQueue())
 
       const syncResult = await act(async () => {
@@ -123,7 +168,7 @@ describe('useReportQueue', () => {
           createdAt: Date.now(),
         },
       ]
-      vi.mocked(reportQueueService.reportQueueService.getAll).mockResolvedValue(mockQueue)
+      getAllMock.mockImplementation(() => Promise.resolve(mockQueue))
 
       const { result } = renderHook(() => useReportQueue())
 
@@ -131,21 +176,23 @@ describe('useReportQueue', () => {
         await result.current.removeReport('report-1')
       })
 
-      expect(reportQueueService.reportQueueService.delete).toHaveBeenCalledWith('report-1')
+      expect(deleteMock).toHaveBeenCalledWith('report-1')
     })
   })
 
   describe('clearQueue', () => {
     it('should clear all reports from queue', async () => {
-      vi.mocked(reportQueueService.reportQueueService.getAll).mockResolvedValue([
-        {
-          id: 'report-1',
-          reportData: mockReportData,
-          retryCount: 0,
-          status: 'pending' as const,
-          createdAt: Date.now(),
-        },
-      ])
+      getAllMock.mockImplementation(() =>
+        Promise.resolve([
+          {
+            id: 'report-1',
+            reportData: mockReportData,
+            retryCount: 0,
+            status: 'pending' as const,
+            createdAt: Date.now(),
+          },
+        ])
+      )
 
       const { result } = renderHook(() => useReportQueue())
 
@@ -153,7 +200,7 @@ describe('useReportQueue', () => {
         await result.current.clearQueue()
       })
 
-      expect(reportQueueService.reportQueueService.clear).toHaveBeenCalled()
+      expect(clearMock).toHaveBeenCalled()
     })
   })
 })

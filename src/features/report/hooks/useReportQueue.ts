@@ -43,6 +43,7 @@ export interface UseReportQueueResult {
   queue: QueuedReport[]
   queueSize: number
   isSyncing: boolean
+  loadError: string | null
 
   // Actions
   enqueueReport: (reportData: QueuedReport['reportData']) => Promise<void>
@@ -62,14 +63,20 @@ export function useReportQueue(): UseReportQueueResult {
   const { isOnline } = useNetworkStatus()
   const [queue, setQueue] = useState<QueuedReport[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Load queue on mount
   useEffect(() => {
-    reportQueueService.getAll().then(setQueue).catch((err) => {
-      // Non-fatal: queue remains empty if IndexedDB is unavailable.
-      // The service will recreate an empty queue on next enqueue.
-      console.error('Failed to load report queue from IndexedDB:', err)
-    })
+    reportQueueService.getAll()
+      .then((data) => {
+        setQueue(data)
+        setLoadError(null)
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Failed to load offline queue'
+        console.error('[QUEUE_LOAD_ERROR]', message)
+        setLoadError(message)
+      })
   }, [])
 
   // Auto-sync when coming online
@@ -219,6 +226,7 @@ export function useReportQueue(): UseReportQueueResult {
     queue,
     queueSize: queue.length,
     isSyncing,
+    loadError,
     enqueueReport,
     syncQueue,
     clearQueue,
