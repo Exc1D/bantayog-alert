@@ -64,7 +64,9 @@ export function RegisteredProfile() {
       await signOut()
       navigate('/login')
     } catch (error) {
-      const message = 'Failed to log out. Please try again or close the browser.'
+      const message = error instanceof Error
+        ? error.message
+        : 'Failed to log out. Please try again or close the browser.'
       setLogoutError(message)
       console.error('[LOGOUT_ERROR]', error)
     }

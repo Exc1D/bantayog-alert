@@ -307,7 +307,7 @@ describe('RegisteredProfile Error Handling', () => {
       await user.click(screen.getByTestId('logout-button'))
 
       await waitFor(() => {
-        expect(screen.getByRole('alert').textContent).toContain('Failed to log out')
+        expect(screen.getByRole('alert').textContent).toContain('Logout failed')
       })
 
       // Verify navigate was NOT called
