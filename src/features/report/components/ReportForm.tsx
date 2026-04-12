@@ -127,6 +127,8 @@ export function ReportForm({
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
   const [showNonEmergency, setShowNonEmergency] = useState(false)
   const [rateLimitExceeded, setRateLimitExceeded] = useState(false)
+  const [privacyConsent, setPrivacyConsent] = useState(false)
+  const [privacyConsentError, setPrivacyConsentError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { enqueueReport, isSyncing } = useReportQueue()
@@ -186,6 +188,12 @@ export function ReportForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // DPA compliance: explicit consent required before collecting personal data
+    if (!privacyConsent) {
+      setPrivacyConsentError('You must agree to the Privacy Policy to submit a report.')
+      return
+    }
 
     // Validate photo is required
     if (!photo) {
@@ -602,6 +610,41 @@ export function ReportForm({
                 Your identity will not be shared with the public or responders
               </span>
             </label>
+          </div>
+
+          {/* ------------------------------------------------------------------ */}
+          {/* Privacy Consent — DPA compliance                                    */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="space-y-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="privacyConsent"
+                className="mt-1 w-4 h-4 text-primary-blue border-gray-300 rounded focus:ring-primary-blue"
+                checked={privacyConsent}
+                onChange={(e) => {
+                  setPrivacyConsent(e.target.checked)
+                  if (e.target.checked) setPrivacyConsentError(null)
+                }}
+              />
+              <span className="text-sm text-gray-700">
+                I have read and agree to the{' '}
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-blue underline hover:text-blue-700"
+                >
+                  Privacy Policy
+                </a>{' '}
+                and consent to the collection and processing of my personal data.
+              </span>
+            </label>
+            {privacyConsentError && (
+              <span className="text-sm text-red-600" role="alert">
+                {privacyConsentError}
+              </span>
+            )}
           </div>
 
           {/* ------------------------------------------------------------------ */}
