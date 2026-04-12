@@ -120,6 +120,48 @@ describe('ReportForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('submits correct location data when using manual dropdowns', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+
+    render(
+      <ReportForm
+        gpsError="PERMISSION_DENIED"
+        onSubmit={onSubmit}
+      />
+    )
+
+    // Upload photo
+    const fileInput = screen.getByLabelText(/photo/i)
+    await user.upload(fileInput, createMockFile())
+
+    // Select municipality
+    const municipalitySelect = screen.getByRole('combobox', { name: /municipality/i })
+    await user.selectOptions(municipalitySelect, 'Daet')
+
+    // Select barangay
+    const barangaySelect = screen.getByRole('combobox', { name: /barangay/i })
+    await user.selectOptions(barangaySelect, 'Bagasbas')
+
+    // Fill phone
+    const phoneInput = screen.getByLabelText(/phone/i)
+    await user.type(phoneInput, '+63 912 345 6789')
+
+    // Submit
+    await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledOnce()
+    })
+
+    const callArg = onSubmit.mock.calls[0][0]
+    expect(callArg.location).toMatchObject({
+      type: 'manual',
+      municipality: 'Daet',
+      barangay: 'Bagasbas',
+    })
+  })
+
   it('shows photo capture area', () => {
     render(<ReportForm />)
 
