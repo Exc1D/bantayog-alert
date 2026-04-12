@@ -43,6 +43,7 @@ export function RegisteredProfile() {
   const { queue, queueSize, isSyncing, syncQueue, hasPendingReports } = useReportQueue()
   const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [logoutError, setLogoutError] = useState<string | null>(null)
 
   const handleSyncNow = async () => {
     try {
@@ -58,10 +59,13 @@ export function RegisteredProfile() {
 
   const handleLogout = async () => {
     try {
+      setLogoutError(null)
       await signOut()
       navigate('/login')
     } catch (error) {
-      console.error('Failed to log out:', error)
+      const message = 'Failed to log out. Please try again or close the browser.'
+      setLogoutError(message)
+      console.error('[LOGOUT_ERROR]', error)
     }
   }
 
@@ -207,6 +211,11 @@ export function RegisteredProfile() {
 
         {/* Logout button */}
         <div className="px-4 pb-4">
+          {logoutError && (
+            <p className="text-sm text-red-600 mb-2" role="alert">
+              {logoutError}
+            </p>
+          )}
           <Button
             variant="secondary"
             onClick={handleLogout}
