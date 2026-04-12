@@ -162,6 +162,49 @@ describe('ReportForm', () => {
     })
   })
 
+  it('submits form with all required fields and correct data shape', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+
+    render(
+      <ReportForm
+        userLocation={{ latitude: 14.1, longitude: 122.9 }}
+        onSubmit={onSubmit}
+      />
+    )
+
+    // Upload photo
+    const fileInput = screen.getByLabelText(/photo/i)
+    await user.upload(fileInput, createMockFile())
+
+    // Fill phone with valid PH format
+    const phoneInput = screen.getByLabelText(/phone/i)
+    await user.type(phoneInput, '+63 912 345 6789')
+
+    // Submit
+    await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledOnce()
+    })
+
+    // Verify complete data shape
+    const callArg = onSubmit.mock.calls[0][0]
+    expect(callArg).toMatchObject({
+      incidentType: 'other',           // default
+      photo: expect.any(File),
+      location: {
+        type: 'gps',
+        latitude: 14.1,
+        longitude: 122.9,
+      },
+      phone: '+63 912 345 6789',
+      isAnonymous: false,              // default
+      injuriesConfirmed: undefined,     // not answered
+      situationWorsening: undefined,   // not answered
+    })
+  })
+
   it('shows photo capture area', () => {
     render(<ReportForm />)
 
