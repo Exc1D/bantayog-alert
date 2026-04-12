@@ -51,8 +51,7 @@ service cloud.firestore {
     // ============================================================
 
     // All operations require authentication and active account
-    allow read, write: if !isAuthenticated();
-    allow read, write: if !isAccountActive();
+    allow read, write: if false;
 
     // ============================================================
     // USERS COLLECTION
