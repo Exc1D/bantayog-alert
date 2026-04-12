@@ -31,9 +31,10 @@ export async function uploadReportPhoto(file: File, reportId: string): Promise<s
     const downloadURL = await getDownloadURL(snapshot.ref)
 
     return downloadURL
-  } catch (error) {
-    console.error('Failed to upload report photo:', error)
-    throw new Error('Failed to upload report photo')
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to upload report photo'
+    console.error('[UPLOAD_PHOTO_ERROR]', message, error)
+    throw new Error(message)
   }
 }
 
@@ -47,15 +48,36 @@ export async function uploadReportPhoto(file: File, reportId: string): Promise<s
 export async function uploadReportPhotos(
   files: File[],
   reportId: string
-): Promise<string[]> {
-  const uploadPromises = files.map((file, index) => {
-    const timestamp = Date.now()
-    const extension = file.name.split('.').pop() || 'jpg'
-    const filename = `${reportId}_${index}_${timestamp}.${extension}`
+): Promise<{ successful: string[]; failed: { file: File; error: string }[] }> {
+  const results = await Promise.allSettled(
+    files.map(async (file, index) => {
+      const timestamp = Date.now()
+      const extension = file.name.split('.').pop() || 'jpg'
+      const filename = `${reportId}_${index}_${timestamp}.${extension}`
 
-    const storageRef = ref(storage, `reports/${reportId}/${filename}`)
-    return uploadBytes(storageRef, file).then((snapshot) => getDownloadURL(snapshot.ref))
+      const storageRef = ref(storage, `reports/${reportId}/${filename}`)
+      const snapshot = await uploadBytes(storageRef, file)
+      const downloadURL = await getDownloadURL(snapshot.ref)
+      return downloadURL
+    })
+  )
+
+  const successful: string[] = []
+  const failed: { file: File; error: string }[] = []
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      successful.push(result.value)
+    } else {
+      const file = files[index]
+      if (file) {
+        failed.push({
+          file,
+          error: result.reason instanceof Error ? result.reason.message : 'Upload failed',
+        })
+      }
+    }
   })
 
-  return Promise.all(uploadPromises)
+  return { successful, failed }
 }

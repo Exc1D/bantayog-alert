@@ -3,6 +3,10 @@
  *
  * Manages offline-first report submission queue.
  * Stores failed submissions in IndexedDB and auto-syncs when online.
+ *
+ * @note Consumers should monitor `failedReports.length > 0` on app focus
+ * and surface a notification to alert users of reports that could not be
+ * synced after maximum retries.
  */
 
 import { useEffect, useCallback, useState } from 'react'
@@ -38,6 +42,7 @@ export interface UseReportQueueResult {
   queue: QueuedReport[]
   queueSize: number
   isSyncing: boolean
+  loadError: string | null
 
   // Actions
   enqueueReport: (reportData: QueuedReport['reportData']) => Promise<void>
@@ -57,10 +62,20 @@ export function useReportQueue(): UseReportQueueResult {
   const { isOnline } = useNetworkStatus()
   const [queue, setQueue] = useState<QueuedReport[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Load queue on mount
   useEffect(() => {
-    reportQueueService.getAll().then(setQueue).catch(console.error)
+    reportQueueService.getAll()
+      .then((data) => {
+        setQueue(data)
+        setLoadError(null)
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Failed to load offline queue'
+        console.error('[QUEUE_LOAD_ERROR]', message)
+        setLoadError(message)
+      })
   }, [])
 
   // Auto-sync when coming online
@@ -210,6 +225,7 @@ export function useReportQueue(): UseReportQueueResult {
     queue,
     queueSize: queue.length,
     isSyncing,
+    loadError,
     enqueueReport,
     syncQueue,
     clearQueue,

@@ -96,7 +96,10 @@ export function useDuplicateCheck({
 
       setDuplicates(duplicateReports)
     } catch (error) {
-      console.error('Duplicate check failed:', error)
+      // Duplicate check failures are non-fatal — show no duplicates.
+      // Use an errorId prefix for traceability in logs.
+      const errorId = 'DUPLICATE_CHECK_ERROR'
+      console.error(`[${errorId}] Duplicate check failed:`, error)
       setDuplicates([])
     } finally {
       setIsChecking(false)

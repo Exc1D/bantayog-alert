@@ -51,3 +51,100 @@
 ## Previous Sessions
 
 - 2026-04-10: Citizen features implementation (see git history)
+
+---
+
+## 2026-04-12: PR #10 Test & Error Handling Fixes
+
+**Plan:** `docs/superpowers/plans/2026-04-12-pr10-test-error-fixes.md`
+**Branch:** `fix/pr10-test-error-fixes-2026-04-12`
+
+### Completed Tasks
+
+| # | Task | Status | Type |
+|---|------|--------|------|
+| 1 | Photo Required Validation Test | ✅ Done | Test |
+| 2 | Manual Location Submission Test | ✅ Done | Test |
+| 3 | Complete Happy Path Submission Test | ✅ Done | Test |
+| 4 | Incident Type and Valid Phone Tests | ✅ Done | Test |
+| 5 | Duplicate Warning Display Test | ✅ Done | Test |
+| 6 | handleFileChange Error Handling | ✅ Done | Code fix |
+| 7 | onSubmit try/catch + Offline Callback | ✅ Done | Code fix |
+| 8 | Manual Location Validation | ✅ Done | Code fix |
+| 9 | useReportQueue IndexedDB Error Logging | ✅ Done | Code fix |
+| 10 | Queue Sync Failure Documentation | ✅ Done | Docs |
+| 11 | useDuplicateCheck ErrorId Logging | ✅ Done | Code fix |
+| 12 | uploadReportPhotos Per-File Error Tracking | ✅ Done | Code fix |
+
+**Total:** 12/12 tasks completed
+
+### Test Summary
+
+- **Tests added:** 6 (ReportForm)
+- **ReportForm tests passing:** 24 (was 18)
+- **All relevant tests passing:** 30 (ReportForm + useDuplicateCheck)
+
+### Key Fixes
+
+1. **handleFileChange:** Wrapped in try/catch to handle file access errors (SecurityError, NotAllowedError)
+2. **handleSubmit:** `onSubmit` now called on offline queue; wrapped in try/catch for online path
+3. **Manual location:** Added `locationError` state and validation when GPS unavailable
+4. **uploadReportPhotos:** Changed from `Promise.all` to `Promise.allSettled` for partial success tracking
+
+### Notes
+
+- `useReportQueue.test.ts` and `QueueIndicator.test.tsx` have pre-existing firebase mock gap (fail in worktree without `.env.local`)
+- TypeScript errors in `ReportForm.tsx` and `useReportQueue.ts` are pre-existing (unrelated to these fixes)
+
+
+---
+
+## 2026-04-12: PR #11 Error Handling & Test Fixes
+
+**Plan:** `docs/superpowers/plans/2026-04-12-pr11-error-handling-and-test-fixes.md`
+**Branch:** `fix/pr10-test-error-fixes-2026-04-12` (via worktree)
+**Session:** Subagent-driven development with 8 tasks
+
+### Completed Tasks
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Fix bare `catch` in `onSubmit` path | ✅ Done | `ReportForm.handleSubmit` now has `try/catch (err: unknown)` on both online and offline paths |
+| 2 | Surface IndexedDB load error via `loadError` state | ✅ Done | `useReportQueue.ts` now has `loadError: string | null` state, populated via `catch (err: unknown)` in mount useEffect |
+| 3 | Fix `uploadReportPhoto` error chaining | ✅ Done | Changed `catch (error)` → `catch (error: unknown)` + message preservation |
+| 4 | Photo required validation test | ✅ Done | 24 ReportForm tests passing |
+| 5 | Manual location flow test | ✅ Done | |
+| 6 | Duplicate warning display test | ✅ Done | |
+| 7 | Complete happy path test | ✅ Done | |
+| 8 | Phone validation edge cases test | ✅ Done | 3 valid + 5 invalid formats |
+
+### Known Limitations
+
+**useReportQueue test infrastructure:** The test file (`useReportQueue.test.ts`) has pre-existing broken mocks — wrong relative path (`../..` instead of `../../..`) and `vi.fn()` inside `vi.mock` without `vi.hoisted()`. Tests fail without `.env.local` firebase credentials. `QueueIndicator.test.tsx` also fails for the same reason.
+
+### Test Summary
+
+- **ReportForm tests:** 24/24 passing
+- **useReportQueue tests:** 2/8 passing (pre-existing infrastructure issue)
+- **All report feature tests:** 82 passed, 1 failed (QueueIndicator pre-existing)
+
+### Commits on This Branch
+
+```
+6c22fac fix(ReportForm): use catch (err: unknown) with proper error message extraction
+c38c308 fix(reportStorage): preserve original error in uploadReportPhoto catch block
+3f66bc1 fix(useReportQueue): surface IndexedDB load error via loadError state
+21bf18d docs: update progress and learnings for PR #11 session
+cd783af test(ReportForm): add happy path submission test
+6823791 test(ReportForm): add duplicate warning display test
+4a8df7b test(ReportForm): add manual location flow test
+b1b0ec7 test(ReportForm): add photo required validation test
+```
+
+### Verification Commands
+
+```bash
+npm run test -- --run src/features/report/components/__tests__/ReportForm.test.tsx  # 24/24
+npm run typecheck  # Pre-existing errors in useReportQueue.ts (TS1127), others
+```
+

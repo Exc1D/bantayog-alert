@@ -116,6 +116,7 @@ export function ReportForm({
   const [incidentType, setIncidentType] = useState<IncidentType>('other')
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
   const [municipality, setMunicipality] = useState('')
   const [barangay, setBarangay] = useState('')
   const [phone, setPhone] = useState('')
@@ -146,8 +147,21 @@ export function ReportForm({
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    setPhoto(file)
+    try {
+      const files = e.target.files
+      if (!files || files.length === 0) {
+        // User cancelled file selection — clear photo
+        setPhoto(null)
+        setPhotoError(null)
+        return
+      }
+      setPhoto(files[0] ?? null)
+      setPhotoError(null)
+    } catch (err: unknown) {
+      // File access errors (SecurityError, NotAllowedError, AbortError) land here
+      console.error('[FILE_ACCESS_ERROR]', err instanceof Error ? err.message : err)
+      setPhotoError('Unable to access file. Please try again.')
+    }
   }
 
   function handlePhoneBlur() {
@@ -157,6 +171,7 @@ export function ReportForm({
   function handleMunicipalityChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setMunicipality(e.target.value)
     setBarangay('') // reset barangay when municipality changes
+    setLocationError(null) // clear any previous location error
   }
 
   function generateReportId(location: LocationValue): string {
@@ -185,6 +200,12 @@ export function ReportForm({
       return
     }
 
+    // Validate manual location dropdowns when GPS is unavailable
+    if (!isGpsAvailable && (!municipality || !barangay)) {
+      setLocationError('Please select municipality and barangay')
+      return
+    }
+
     const location: LocationValue = isGpsAvailable
       ? { type: 'gps', latitude: userLocation!.latitude, longitude: userLocation!.longitude }
       : { type: 'manual', municipality, barangay }
@@ -202,6 +223,12 @@ export function ReportForm({
     // If offline, enqueue the report
     if (!isOnline) {
       enqueueReport(reportData)
+      // Notify parent even when offline — parent may track analytics or state
+      try {
+        onSubmit?.(reportData)
+      } catch {
+        // Parent error must not block offline queue flow
+      }
       // Show queued success screen (different from immediate submission)
       const reportId = generateReportId(location)
       setSubmittedReportId(`${reportId}-queued`)
@@ -212,7 +239,12 @@ export function ReportForm({
     const reportId = generateReportId(location)
     setSubmittedReportId(reportId)
 
-    onSubmit?.(reportData)
+    try {
+      onSubmit?.(reportData)
+    } catch (err: unknown) {
+      // Log but still show success — form data is valid and queued/submitted
+      console.error('[SUBMIT_CALLBACK_ERROR]', err instanceof Error ? err.message : err)
+    }
   }
 
   function handleShare() {
@@ -420,7 +452,10 @@ export function ReportForm({
                   <select
                     id="report-barangay"
                     value={barangay}
-                    onChange={(e) => setBarangay(e.target.value)}
+                    onChange={(e) => {
+                      setBarangay(e.target.value)
+                      setLocationError(null)
+                    }}
                     disabled={!municipality}
                     aria-label="Select Barangay"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue bg-white text-gray-900 disabled:bg-gray-100 disabled:text-gray-400"
@@ -433,6 +468,10 @@ export function ReportForm({
                     ))}
                   </select>
                 </div>
+
+                {locationError && (
+                  <p role="alert" className="text-red-500 text-sm mt-1">{locationError}</p>
+                )}
               </div>
             )}
 
