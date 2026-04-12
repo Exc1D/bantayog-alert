@@ -295,13 +295,11 @@ describe('AlertCard', () => {
           'https://mdrmo.example.gov.ph/advisory'
         )
         expect(badge.closest('a')).toHaveAttribute('target', '_blank')
-
-        await user.click(badge)
-        expect(mockOpen).toHaveBeenCalledWith(
-          'https://mdrmo.example.gov.ph/advisory',
-          '_blank',
-          'noopener,noreferrer'
+        expect(badge.closest('a')).toHaveAttribute(
+          'rel',
+          'noopener noreferrer'
         )
+        // No window.open call expected — <a target="_blank"> opens natively
       })
 
       it('should not render source badge when alert.source is undefined', () => {

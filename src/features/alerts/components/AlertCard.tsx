@@ -96,7 +96,6 @@ export function AlertCard({ alert, isCached = false }: AlertCardProps) {
               <TypeIcon
                 className="w-4 h-4 text-gray-500"
                 aria-label={`type-${type}`}
-                aria-hidden="true"
               />
             )
           })()}
@@ -118,7 +117,6 @@ export function AlertCard({ alert, isCached = false }: AlertCardProps) {
               href={sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
               className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${SOURCE_BADGE_COLOR[source] ?? SOURCE_BADGE_COLOR['Other']}`}
             >
               {source}
