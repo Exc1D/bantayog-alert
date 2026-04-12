@@ -8,8 +8,9 @@
  * snapshot update — this hook receives already-filtered active alerts.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { subscribeToAlerts, subscribeToAlertsByMunicipality } from '../services/alert.service'
+import { cacheAlerts, loadCachedAlerts } from './alertsCache'
 import type { Alert } from '@/shared/types/firestore.types'
 import type { UserRole } from '@/shared/types/auth.types'
 
@@ -52,10 +53,22 @@ export function useAlerts(options: UseAlertsOptions = {}): UseAlertsResult {
     })
   }, [])
 
+  // Ref to hold the last known alert set — needed by handleError since state updates are async
+  const latestAlertsRef = useRef<Alert[]>([])
+
+  useEffect(() => {
+    latestAlertsRef.current = alerts
+  }, [alerts])
+
   useEffect(() => {
     const unsubscribers: (() => void)[] = []
 
-    function handleError(err: Error) {
+    async function handleError(err: Error) {
+      // Persist current alerts to cache before surfacing the error
+      cacheAlerts(latestAlertsRef.current).catch(() => {/* fire-and-forget */})
+      // Load cached alerts as fallback so UI isn't blank
+      const cached = await loadCachedAlerts()
+      if (cached.length > 0) setAlerts(cached)
       setIsError(true)
       setError(err)
       setIsLoading(false)

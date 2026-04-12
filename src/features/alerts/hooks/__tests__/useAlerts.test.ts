@@ -19,9 +19,21 @@ const { subscribeToAlertsMock, subscribeToAlertsByMunicipalityMock } = vi.hoiste
   }
 })
 
+const { loadCachedAlertsMock, cacheAlertsMock } = vi.hoisted(() => {
+  return {
+    loadCachedAlertsMock: vi.fn().mockResolvedValue([]),
+    cacheAlertsMock: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
 vi.mock('../../services/alert.service', () => ({
   subscribeToAlerts: subscribeToAlertsMock,
   subscribeToAlertsByMunicipality: subscribeToAlertsByMunicipalityMock,
+}))
+
+vi.mock('../alertsCache', () => ({
+  loadCachedAlerts: loadCachedAlertsMock,
+  cacheAlerts: cacheAlertsMock,
 }))
 
 const now = Date.now()
@@ -135,8 +147,12 @@ describe('onSnapshot Subscription', () => {
     vi.clearAllMocks()
     subscribeToAlertsMock.mockReset()
     subscribeToAlertsByMunicipalityMock.mockReset()
+    cacheAlertsMock.mockReset()
+    loadCachedAlertsMock.mockReset()
     subscribeToAlertsMock.mockReturnValue(vi.fn())
     subscribeToAlertsByMunicipalityMock.mockReturnValue(vi.fn())
+    cacheAlertsMock.mockResolvedValue(undefined)
+    loadCachedAlertsMock.mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -214,6 +230,42 @@ describe('onSnapshot Subscription', () => {
     await waitFor(() => expect(result.current.error).toBeInstanceOf(Error))
     expect(result.current.error?.message).toBe('Snapshot error')
   })
+
+  it('should fall back to IndexedDB cache on error', async () => {
+    const cachedAlert = makeAlert({ id: 'cached-1', title: 'Cached Typhoon Warning' })
+
+    subscribeToAlertsMock.mockImplementation((_filters, _callback, onError) => {
+      // First deliver a valid snapshot, then simulate an error
+      setTimeout(() => {
+        _callback([makeAlert({ id: 'snap-1', title: 'Live Alert' })])
+      }, 0)
+      setTimeout(() => {
+        onError?.(new Error('Network lost'))
+      }, 10)
+      return vi.fn()
+    })
+    loadCachedAlertsMock.mockResolvedValue([cachedAlert])
+
+    const { result } = renderHook(() => useAlerts())
+
+    // Wait for first snapshot to populate alerts
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    // Wait for error to trigger cache fallback
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    // Cache should have been populated with the live alert before error hit
+    expect(cacheAlertsMock).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ id: 'snap-1' })])
+    )
+
+    // Cache should have been loaded to provide fallback
+    expect(loadCachedAlertsMock).toHaveBeenCalled()
+
+    // Cached alert should be present in state
+    const cachedInState = result.current.alerts.some((a) => a.id === 'cached-1')
+    expect(cachedInState).toBe(true)
+  })
 })
 
 describe('Multiple Query Merge', () => {
@@ -221,8 +273,12 @@ describe('Multiple Query Merge', () => {
     vi.clearAllMocks()
     subscribeToAlertsMock.mockReset()
     subscribeToAlertsByMunicipalityMock.mockReset()
+    cacheAlertsMock.mockReset()
+    loadCachedAlertsMock.mockReset()
     subscribeToAlertsMock.mockReturnValue(vi.fn())
     subscribeToAlertsByMunicipalityMock.mockReturnValue(vi.fn())
+    cacheAlertsMock.mockResolvedValue(undefined)
+    loadCachedAlertsMock.mockResolvedValue([])
   })
 
   afterEach(() => {
