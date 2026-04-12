@@ -174,6 +174,7 @@ vi.mock('../../services/reportQueue.service', () => ({
 The real issue is that `catch (error)` gives you `any` implicitly in non-strict mode, and the project uses strict mode. So `catch (err: unknown)` is the correct pattern for TypeScript strictness.
 
 
+
 ---
 
 ## Learnings - 2026-04-12 (PR #12 Error Handling Session)
@@ -236,3 +237,41 @@ Adding a "plan review" phase before dispatching implementers caught 3 real issue
 3. Missing logout error test case
 
 **Lesson:** Don't skip gap analysis - read actual code against plan before implementing.
+
+---
+
+## Learnings - 2026-04-12 (Alerts System — onSnapshot Rewrite)
+
+### vi.hoisted Cannot Reference External const
+
+**Problem:** `vi.hoisted(() => ({ subscribeToAlerts: subscribeToAlertsMock }))` failed with `ReferenceError: Cannot access 'subscribeToAlertsMock' before initialization` because `vi.hoisted` runs before module-level `const` declarations are initialized.
+
+**Fix:** Define all mock functions INSIDE the `vi.hoisted` callback:
+```typescript
+const { subscribeToAlertsMock, subscribeToAlertsByMunicipalityMock } = vi.hoisted(() => ({
+  subscribeToAlertsMock: vi.fn(),
+  subscribeToAlertsByMunicipalityMock: vi.fn(),
+}))
+vi.mock('../../services/alert.service', () => ({
+  subscribeToAlerts: subscribeToAlertsMock,
+  subscribeToAlertsByMunicipality: subscribeToAlertsByMunicipalityMock,
+}))
+```
+
+### onSnapshot Tests Need Immediate Mock Setup
+
+**Issue:** When tests call `renderHook` without an immediate `mockImplementation`, the hook's `useEffect` runs synchronously and the mock must be pre-set (via `mockReturnValue` in `beforeEach`) or the test would throw.
+
+**Fix:** Always set `mockReturnValue(vi.fn())` in `beforeEach` for the subscription mocks, then override per-test with `mockImplementation`.
+
+### Dual-snapshot Merge Logic
+
+**Decision:** When both `municipality` AND `role` are provided, both `subscribeToAlerts` (with role filter) and `subscribeToAlertsByMunicipality` run in parallel. Each listener calls `setAlerts` by merging new results with existing state and deduplicating by id. A counter tracks when both have delivered their first snapshot before setting `isLoading = false`.
+
+### useAlerts IndexedDB Cache Fallback
+
+**Implementation:** Added `alertsCache.ts` (new file) with `cacheAlerts()` and `loadCachedAlerts()` using a dedicated `bantayog-alerts-cache` IndexedDB database. On `onSnapshot` error, `handleError` in `useAlerts` becomes `async`, persists the current alert set to cache, then loads the cache as fallback so the UI stays populated instead of going blank.
+
+**Key decision:** Used a separate `useEffect` to sync `useRef` with state (`latestAlertsRef.current = alerts`), rather than passing `alerts` as a `useRef` initializer. This prevents the ref from capturing stale initial state while still avoiding the circular-state-update problem.
+
+**Lesson on ref + state synchronization:** `const ref = useRef(initialState)` initializes the ref once; `ref.current` never updates when `initialState` changes. You need a separate effect that writes `ref.current = state` on every render to keep them in sync.

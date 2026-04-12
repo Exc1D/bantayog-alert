@@ -72,6 +72,8 @@ export function useAlerts(options: UseAlertsOptions = {}): UseAlertsResult {
       setIsError(true)
       setError(err)
       setIsLoading(false)
+      // Stop all onSnapshot listeners — they are no longer needed once an error has been surfaced
+      unsubscribers.forEach((unsub) => unsub())
     }
 
     function handleFirstSnapshot() {

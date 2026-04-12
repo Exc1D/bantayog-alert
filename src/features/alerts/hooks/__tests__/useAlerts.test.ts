@@ -3,9 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAlerts } from '../useAlerts'
 import type { Alert } from '@/shared/types/firestore.types'
 import type { UserRole } from '@/shared/types/auth.types'
@@ -84,63 +83,7 @@ function makeAlert(overrides: Partial<Alert> & { id: string }): Alert {
 // The hook was rewritten to use onSnapshot; these tests now verify the same
 // contracts (loading state, alerts returned, error state) via the new API.
 
-describe('useAlerts (legacy — onSnapshot contract)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    subscribeToAlertsMock.mockReset()
-    subscribeToAlertsByMunicipalityMock.mockReset()
-    subscribeToAlertsMock.mockReturnValue(vi.fn())
-    subscribeToAlertsByMunicipalityMock.mockReturnValue(vi.fn())
-  })
-
-  it('returns alerts on successful subscription', async () => {
-    subscribeToAlertsMock.mockImplementation((_filters, callback) => {
-      setTimeout(() => callback(mockAlerts), 0)
-      return vi.fn()
-    })
-
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-
-    const { result } = renderHook(() => useAlerts(), { wrapper })
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.alerts).toHaveLength(2)
-    expect(result.current.alerts[0].id).toBe('alert-1')
-  })
-
-  it('starts in loading state before first snapshot', () => {
-    subscribeToAlertsMock.mockImplementation(() => vi.fn())
-
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-
-    const { result } = renderHook(() => useAlerts(), { wrapper })
-
-    // Before the effect runs, isLoading should be true
-    expect(result.current.isLoading).toBe(true)
-    expect(result.current.alerts).toEqual([])
-  })
-
-  it('sets isError=true when onSnapshot emits an error', async () => {
-    subscribeToAlertsMock.mockImplementation((_filters, _callback, onError) => {
-      setTimeout(() => onError?.(new Error('Network error')), 0)
-      return vi.fn()
-    })
-
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-
-    const { result } = renderHook(() => useAlerts(), { wrapper })
-
-    await waitFor(() => expect(result.current.isError).toBe(true))
-  })
-})
-
-// ── New onSnapshot-based tests ────────────────────────────────────────────────
+// ── onSnapshot-based tests ────────────────────────────────────────────────────
 
 describe('onSnapshot Subscription', () => {
   beforeEach(() => {

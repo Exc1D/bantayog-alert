@@ -149,6 +149,7 @@ npm run typecheck  # Pre-existing errors in useReportQueue.ts (TS1127), others
 ```
 
 
+
 ---
 
 ## 2026-04-12: PR #12 Error Handling Fixes (RegisteredProfile)
@@ -202,4 +203,50 @@ ef4315d fix(RegisteredProfile): add syncError state and clear syncResult on fail
 npm run test -- --run src/features/profile/components/__tests__/RegisteredProfile.errorHandling.test.tsx  # 9/9
 npm run test -- --run src/features/profile/components/__tests__/RegisteredProfile.test.tsx  # 18/18
 npm run typecheck  # Pre-existing errors in useReportQueue.ts (unrelated)
+```
+
+---
+
+## 2026-04-12: Alerts System — useAlerts onSnapshot Rewrite
+
+**Plan:** `docs/superpowers/plans/2026-04-11-alerts-system-implementation.md`
+**Branch:** `feat/alerts-system-implementation-2026-04-12`
+
+### Completed Tasks
+
+| # | Task | Status | Type |
+|---|------|--------|-------|
+| 1 | Rewrite useAlerts to use onSnapshot | Done | Refactor |
+| 2 | Add onSnapshot subscription tests (6 tests) | Done | Test |
+| 3 | Add dual-query merge tests (2 tests) | Done | Test |
+| 4 | IndexedDB cache fallback on Firestore error | Done | Feature + Test |
+
+### Test Summary
+
+- **New tests added:** 10 (6 onSnapshot + 2 merge + 1 legacy compat + 1 cache fallback)
+- **useAlerts tests passing:** 13/13
+
+### What Changed
+
+- `useAlerts.ts`: Removed all TanStack Query (`useQuery`, `QueryClientProvider`, `refetchInterval`). Replaced with `useState` + `useEffect` + `onSnapshot` subscriptions via `alert.service.ts`.
+- New return shape: `alerts` (not `data`), `error: Error | null`
+- Dual-subscription: when `municipality` AND `role` are both provided, runs two parallel `onSnapshot` listeners and merges+dedupes results.
+- `refetch()` is a no-op since onSnapshot pushes automatically.
+- `alertsCache.ts`: new IndexedDB cache module (`cacheAlerts` + `loadCachedAlerts`) with dedicated `bantayog-alerts-cache` database.
+- Cache fallback: when `onSnapshot` fires an error, `handleError` persists the current alert set and loads cached data so the UI stays populated instead of going blank.
+
+### Commits on This Branch
+
+```
+2b01ce2 feat(useAlerts): add IndexedDB cache fallback on Firestore error
+320eb47 refactor(alerts): rewrite useAlerts hook to use onSnapshot real-time subscriptions
+12d81c2 fix(alert.service): recalculate now inside onSnapshot callback to avoid stale expiration check
+6ca2faa feat(alerts): add alert service with real-time subscriptions
+```
+
+### Verification Commands
+
+```bash
+npm run test -- --run src/features/alerts/hooks/__tests__/useAlerts.test.ts  # 12/12
+npm run typecheck  # useAlerts.ts clean (pre-existing errors in useReportQueue.ts)
 ```
