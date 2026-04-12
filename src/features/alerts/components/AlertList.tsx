@@ -9,7 +9,6 @@ import { useState } from 'react'
 import { RefreshCw, AlertCircle, Info } from 'lucide-react'
 import { useAlerts } from '../hooks/useAlerts'
 import { AlertCard } from './AlertCard'
-import { Alert } from '@/shared/types/firestore.types'
 import { Button } from '@/shared/components/Button'
 
 export type AlertPriority = 'all' | 'high' | 'medium' | 'low'

@@ -26,7 +26,9 @@
     "typecheck": "tsc --noEmit",
     "emulators:start": "firebase emulators:start",
     "emulators:exec": "firebase emulators:exec \"npm run test:run\"",
-    "generate:icons": "node scripts/generate-pwa-icons.js"
+    "generate:icons": "node scripts/generate-pwa-icons.js",
+    "lighthouse:ci": "lhci autorun",
+    "lighthouse:collect": "lhci collect"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.96.2",
@@ -41,6 +43,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.49.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -61,6 +65,7 @@
     "firebase-tools": "^13.32.0",
     "globals": "^15.13.0",
     "jsdom": "^25.0.1",
+    "lighthouse": "^13.1.0",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
     "sharp": "^0.34.5",

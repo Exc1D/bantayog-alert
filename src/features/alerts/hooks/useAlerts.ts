@@ -16,6 +16,7 @@ export interface UseAlertsResult {
   data: Alert[] | undefined
   isLoading: boolean
   isError: boolean
+  isRefetching: boolean
   refetch: () => void
 }
 
@@ -31,6 +32,7 @@ export function useAlerts(): UseAlertsResult {
     data: query.data,
     isLoading: query.isLoading,
     isError: query.isError,
+    isRefetching: query.isRefetching,
     refetch: query.refetch,
   }
 }
