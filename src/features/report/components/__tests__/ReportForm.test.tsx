@@ -344,6 +344,81 @@ describe('ReportForm', () => {
     expect(callArg.incidentType).toBe('flood')
   })
 
+  describe('Photo Validation', () => {
+    it('should show photo required error and not call onSubmit when submitting without photo', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      // Don't upload any photo
+
+      // Fill required fields
+      const phoneInput = screen.getByLabelText(/phone/i)
+      await user.type(phoneInput, '+63 912 345 6789')
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      // Should show photo required error
+      await waitFor(() => {
+        expect(screen.getByText('Photo is required')).toBeInTheDocument()
+      })
+
+      // onSubmit should NOT have been called
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Manual Location Flow', () => {
+    it('should submit with correct manual location shape when municipality and barangay are selected', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          gpsError="PERMISSION_DENIED"
+          onSubmit={onSubmit}
+        />
+      )
+
+      // Select municipality
+      const municipalitySelect = screen.getByRole('combobox', { name: /municipality/i })
+      await user.selectOptions(municipalitySelect, 'Daet')
+
+      // Select barangay
+      const barangaySelect = screen.getByRole('combobox', { name: /barangay/i })
+      await user.selectOptions(barangaySelect, 'Bagasbas')
+
+      // Upload photo
+      const fileInput = screen.getByLabelText(/photo/i)
+      await user.upload(fileInput, createMockFile())
+
+      // Fill phone
+      const phoneInput = screen.getByLabelText(/phone/i)
+      await user.type(phoneInput, '+63 912 345 6789')
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+
+      const callArg = onSubmit.mock.calls[0][0]
+      expect(callArg.location).toEqual({
+        type: 'manual',
+        municipality: 'Daet',
+        barangay: 'Bagasbas',
+      })
+    })
+  })
+
   describe('Quick Questions', () => {
     it('renders quick questions section', () => {
       render(<ReportForm />)
@@ -661,6 +736,68 @@ describe('ReportForm', () => {
         const reportIdElement = screen.getByTestId('report-id')
         expect(reportIdElement.textContent ?? '').toMatch(/queued$/)
       })
+    })
+  })
+
+  describe('Duplicate Warning', () => {
+    it('should display duplicate warning when duplicates are returned from hook', async () => {
+      // Override the duplicate hook for this test
+      duplicateCheckState.duplicates = [{ id: 'dup-1', incidentType: 'flood', createdAt: new Date(), distanceKm: 0.5, report: {} }]
+
+      render(
+        <ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('duplicate-warning')).toBeInTheDocument()
+      })
+      expect(screen.getByText(/possible duplicate detected/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('Happy Path', () => {
+    it('should show ReportSuccess screen with valid reportId after full happy path submission', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      // 1. Upload a photo
+      const fileInput = screen.getByLabelText(/photo/i)
+      await user.upload(fileInput, createMockFile())
+
+      // 2. Select incident type
+      const incidentSelect = screen.getByLabelText(/what's happening/i)
+      await user.selectOptions(incidentSelect, 'flood')
+
+      // 3. Fill phone
+      const phoneInput = screen.getByLabelText(/phone/i)
+      await user.type(phoneInput, '+63 912 345 6789')
+
+      // 4. Submit
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      // 5. Verify ReportSuccess screen appears
+      await waitFor(() => {
+        expect(screen.getByTestId('report-id')).toBeInTheDocument()
+      })
+
+      // Verify the reportId is not queued (no -queued suffix)
+      const reportId = screen.getByTestId('report-id').textContent
+      expect(reportId).not.toContain('-queued')
+
+      // onSubmit was called with correct data
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+      const submittedData = onSubmit.mock.calls[0][0]
+      expect(submittedData.incidentType).toBe('flood')
+      expect(submittedData.phone).toBe('+63 912 345 6789')
     })
   })
 })
