@@ -3,6 +3,10 @@
  *
  * Manages offline-first report submission queue.
  * Stores failed submissions in IndexedDB and auto-syncs when online.
+ *
+ * @note Consumers should monitor `failedReports.length > 0` on app focus
+ * and surface a notification to alert users of reports that could not be
+ * synced after maximum retries.
  */
 
 import { useEffect, useCallback, useState } from 'react'
@@ -61,7 +65,11 @@ export function useReportQueue(): UseReportQueueResult {
 
   // Load queue on mount
   useEffect(() => {
-    reportQueueService.getAll().then(setQueue).catch(console.error)
+    reportQueueService.getAll().then(setQueue).catch((err) => {
+      // Non-fatal: queue remains empty if IndexedDB is unavailable.
+      // The service will recreate an empty queue on next enqueue.
+      console.error('Failed to load report queue from IndexedDB:', err)
+    })
   }, [])
 
   // Auto-sync when coming online
