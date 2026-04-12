@@ -7,6 +7,7 @@ import { AlertList } from '@/features/alerts/components/AlertList'
 import { AnonymousProfile } from '@/features/profile/components/AnonymousProfile'
 import { LinkReportsByPhone } from '@/features/profile/components/LinkReportsByPhone'
 import { ReportDetailScreen } from '@/features/feed/components/ReportDetailScreen'
+import { PrivacyPolicy } from './components/PrivacyPolicy'
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
       {
         path: 'feed/:reportId',
         element: <ReportDetailScreen />,
+      },
+      {
+        path: 'privacy-policy',
+        element: <PrivacyPolicy />,
       },
     ],
   },
