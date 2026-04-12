@@ -215,6 +215,12 @@ export function ReportForm({
     // If offline, enqueue the report
     if (!isOnline) {
       enqueueReport(reportData)
+      // Notify parent even when offline — parent may track analytics or state
+      try {
+        onSubmit?.(reportData)
+      } catch {
+        // Parent error must not block offline queue flow
+      }
       // Show queued success screen (different from immediate submission)
       const reportId = generateReportId(location)
       setSubmittedReportId(`${reportId}-queued`)
@@ -225,7 +231,12 @@ export function ReportForm({
     const reportId = generateReportId(location)
     setSubmittedReportId(reportId)
 
-    onSubmit?.(reportData)
+    try {
+      onSubmit?.(reportData)
+    } catch (err) {
+      // Log but still show success — form data is valid and queued/submitted
+      console.error('Report submission callback error:', err)
+    }
   }
 
   function handleShare() {
