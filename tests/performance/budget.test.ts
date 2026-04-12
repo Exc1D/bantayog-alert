@@ -8,11 +8,8 @@ describe('Performance Budgets', () => {
 
   describe('Bundle Size', () => {
     it('should keep main bundle under 500KB', () => {
-      // Skip test if dist doesn't exist (e.g., in CI before build)
-      if (!existsSync(distPath)) {
-        console.warn('Dist directory not found, skipping bundle size test');
-        return;
-      }
+      // Dist must exist after build - fail if missing instead of silently skipping
+      expect(existsSync(distPath), 'dist/assets must exist. Run "npm run build" before running tests.').toBe(true);
 
       const jsFiles = readdirSync(distPath).filter((f) =>
         f.match(/^index-[a-f0-9]+\.js$/)
@@ -27,10 +24,7 @@ describe('Performance Budgets', () => {
     });
 
     it('should keep total JS under 1MB', () => {
-      if (!existsSync(distPath)) {
-        console.warn('Dist directory not found, skipping bundle size test');
-        return;
-      }
+      expect(existsSync(distPath), 'dist/assets must exist. Run "npm run build" before running tests.').toBe(true);
 
       const jsFiles = readdirSync(distPath).filter((f) =>
         f.endsWith('.js')
@@ -49,11 +43,8 @@ describe('Performance Budgets', () => {
     it('should have index.html after running build', () => {
       const distPath = resolve(__dirname, '../../dist');
 
-      // Skip test if dist doesn't exist (e.g., in CI before build)
-      if (!existsSync(distPath)) {
-        console.warn('Dist directory not found, skipping build artifacts test');
-        return;
-      }
+      // Dist must exist after build - fail if missing
+      expect(existsSync(distPath), 'dist must exist. Run "npm run build" before running tests.').toBe(true);
 
       const indexHtmlExists = existsSync(resolve(distPath, 'index.html'));
 
@@ -61,10 +52,7 @@ describe('Performance Budgets', () => {
     });
 
     it('should generate JS bundles with hashes in filenames', () => {
-      if (!existsSync(distPath)) {
-        console.warn('Dist directory not found, skipping bundle test');
-        return;
-      }
+      expect(existsSync(distPath), 'dist/assets must exist. Run "npm run build" before running tests.').toBe(true);
 
       const jsFiles = readdirSync(distPath).filter((f) => f.endsWith('.js'));
 
