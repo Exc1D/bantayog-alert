@@ -13,6 +13,30 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as useAuthModule from '@/shared/hooks/useAuth'
 import * as profileService from '../../services/profile.service'
 
+// Mock firebase/firestore before any imports that transitively use it
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn().mockReturnValue({}),
+  query: vi.fn().mockReturnValue({}),
+  where: vi.fn().mockReturnValue({}),
+  orderBy: vi.fn().mockReturnValue({}),
+  limit: vi.fn().mockReturnValue({}),
+  getDocs: vi.fn().mockResolvedValue({ docs: [], forEach: () => {} }),
+  Timestamp: { fromDate: vi.fn((date: Date) => ({ toDate: () => date })) },
+}))
+
+// Mock firebase/auth before any imports that transitively use it
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: vi.fn((auth, callback) => { callback(null); return vi.fn() }),
+  signInWithEmailAndPassword: vi.fn(),
+  signOut: vi.fn(),
+}))
+
+// Mock @/app/firebase/config
+vi.mock('@/app/firebase/config', () => ({
+  db: {},
+  auth: { onAuthStateChanged: vi.fn((callback) => { callback(null); return vi.fn() }) },
+}))
+
 // Mock the hook module
 vi.mock('@/shared/hooks/useAuth')
 
@@ -31,9 +55,28 @@ vi.mock('@/features/report/hooks/useReportQueue', () => ({
   }),
 }))
 
-// Mock profile service
+// Mock profile service - use vi.hoisted to avoid TDZ issues with vi.mock factory
+const mockReports = vi.hoisted(() => [
+  {
+    id: 'report-1',
+    incidentType: 'flood',
+    description: 'Flood Report',
+    status: 'verified',
+    createdAt: new Date('2024-01-15T10:00:00Z'),
+    barangay: 'Barangay 1',
+  },
+  {
+    id: 'report-2',
+    incidentType: 'fire',
+    description: 'Fire Report',
+    status: 'pending',
+    createdAt: new Date('2024-01-10T08:00:00Z'),
+    barangay: 'Barangay 2',
+  },
+])
+
 vi.mock('../../services/profile.service', () => ({
-  getUserReportsWithDetails: vi.fn().mockResolvedValue([]),
+  getUserReportsWithDetails: vi.fn().mockResolvedValue(mockReports),
   exportUserData: vi.fn().mockResolvedValue({}),
   deleteUserAccount: vi.fn().mockResolvedValue(undefined),
 }))
@@ -148,9 +191,9 @@ describe('RegisteredProfile', () => {
       withinInfoTab.getByText('Juan Dela Cruz')
       withinInfoTab.getByText('Email')
       withinInfoTab.getByText('citizen@example.com')
-      withinInfoTab.getByText('Role')
       withinInfoTab.getByText('Email Verified')
       withinInfoTab.getByText('Yes')
+      withinInfoTab.getByText('Account Created')
     })
 
     it('should show location privacy note', () => {

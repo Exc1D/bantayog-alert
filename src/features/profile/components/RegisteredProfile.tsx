@@ -28,6 +28,7 @@ import {
   deleteUserAccount,
 } from '../services/profile.service'
 import { useReportQueue } from '@/features/report/hooks/useReportQueue'
+import { User as FirebaseUser } from 'firebase/auth'
 
 type Tab = 'info' | 'reports' | 'settings'
 
@@ -42,28 +43,40 @@ export function RegisteredProfile() {
   // Offline queue state
   const { queue, queueSize, isSyncing, syncQueue, hasPendingReports } = useReportQueue()
   const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [logoutError, setLogoutError] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const handleSyncNow = async () => {
     try {
+      setSyncError(null)
+      setSyncResult(null)
       const result = await syncQueue()
       setSyncResult(result)
     } catch (error) {
-      console.error('Failed to sync queue:', error)
+      setSyncError(error instanceof Error ? error.message : 'Failed to sync. Please try again.')
+      console.error('[SYNC_ERROR]', error)
     }
   }
 
   const handleLogout = async () => {
     try {
+      setLogoutError(null)
       await signOut()
       navigate('/login')
     } catch (error) {
-      console.error('Failed to log out:', error)
+      const message = error instanceof Error
+        ? error.message
+        : 'Failed to log out. Please try again or close the browser.'
+      setLogoutError(message)
+      console.error('[LOGOUT_ERROR]', error)
     }
   }
 
   const handleDownloadData = async () => {
     if (!user) return
     try {
+      setDownloadError(null)
       const exportData = await exportUserData(
         user.uid,
         user.email || '',
@@ -84,7 +97,9 @@ export function RegisteredProfile() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Failed to download data:', error)
+      const message = error instanceof Error ? error.message : 'Failed to download data. Please try again.'
+      setDownloadError(message)
+      console.error('[DOWNLOAD_ERROR]', error)
     }
   }
 
@@ -158,11 +173,13 @@ export function RegisteredProfile() {
               onDownloadData={handleDownloadData}
               onDeleteAccount={() => setShowDeleteConfirm(true)}
               deleteError={deleteError}
+              downloadError={downloadError}
               hasPendingReports={hasPendingReports}
               queueSize={queueSize}
               isSyncing={isSyncing}
               onSyncNow={handleSyncNow}
               syncResult={syncResult}
+              syncError={syncError}
             />
           )}
 
@@ -202,6 +219,11 @@ export function RegisteredProfile() {
 
         {/* Logout button */}
         <div className="px-4 pb-4">
+          {logoutError && (
+            <p className="text-sm text-red-600 mb-2" role="alert">
+              {logoutError}
+            </p>
+          )}
           <Button
             variant="secondary"
             onClick={handleLogout}
@@ -250,7 +272,7 @@ function TabButton({ label, icon: Icon, active, onClick }: TabButtonProps) {
 // ---------------------------------------------------------------------------
 
 interface InfoTabProps {
-  user: any // Firebase User
+  user: FirebaseUser
 }
 
 function InfoTab({ user }: InfoTabProps) {
@@ -397,11 +419,13 @@ interface SettingsTabProps {
   onDownloadData: () => void
   onDeleteAccount: () => void
   deleteError?: string | null
+  downloadError?: string | null
   hasPendingReports?: boolean
   queueSize?: number
   isSyncing?: boolean
   onSyncNow?: () => void
   syncResult?: { success: number; failed: number } | null
+  syncError?: string | null
 }
 
 function SettingsTab({
@@ -410,11 +434,13 @@ function SettingsTab({
   onDownloadData,
   onDeleteAccount,
   deleteError,
+  downloadError,
   hasPendingReports = false,
   queueSize = 0,
   isSyncing = false,
   onSyncNow,
   syncResult,
+  syncError,
 }: SettingsTabProps) {
   return (
     <div className="space-y-4" data-testid="settings-tab">
@@ -450,6 +476,11 @@ function SettingsTab({
               </>
             )}
           </button>
+          {syncError && (
+            <p className="text-sm text-red-600 mt-2" role="alert">
+              {syncError}
+            </p>
+          )}
         </div>
       )}
 
@@ -485,11 +516,18 @@ function SettingsTab({
       <div className="bg-white rounded-lg shadow-sm p-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Management</h2>
 
-        {deleteError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700" role="alert">
-              {deleteError}
-            </p>
+        {(downloadError || deleteError) && (
+          <div className="mb-4 space-y-2">
+            {downloadError && (
+              <p className="text-sm text-red-600" role="alert">
+                {downloadError}
+              </p>
+            )}
+            {deleteError && (
+              <p className="text-sm text-red-600" role="alert">
+                {deleteError}
+              </p>
+            )}
           </div>
         )}
 
