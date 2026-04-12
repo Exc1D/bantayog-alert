@@ -28,6 +28,7 @@ import {
   deleteUserAccount,
 } from '../services/profile.service'
 import { useReportQueue } from '@/features/report/hooks/useReportQueue'
+import { User as FirebaseUser } from 'firebase/auth'
 
 type Tab = 'info' | 'reports' | 'settings'
 
@@ -271,7 +272,7 @@ function TabButton({ label, icon: Icon, active, onClick }: TabButtonProps) {
 // ---------------------------------------------------------------------------
 
 interface InfoTabProps {
-  user: any // Firebase User
+  user: FirebaseUser
 }
 
 function InfoTab({ user }: InfoTabProps) {
