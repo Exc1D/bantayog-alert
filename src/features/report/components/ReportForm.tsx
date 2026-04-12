@@ -1,5 +1,17 @@
 import React, { useRef, useState } from 'react'
-import { AlertCircle, WifiOff } from 'lucide-react'
+import {
+  AlertCircle,
+  WifiOff,
+  Droplets,
+  Mountain,
+  Flame,
+  Wind,
+  Heart,
+  Car,
+  Building,
+  AlertTriangle,
+  MoreHorizontal,
+} from 'lucide-react'
 import { Button } from '@/shared/components/Button'
 import { ReportSuccess } from './ReportSuccess'
 import { NonEmergencyRedirect } from './NonEmergencyRedirect'
@@ -16,9 +28,7 @@ export interface ReportData {
   incidentType: IncidentType
   photo: File | null
   location: LocationValue
-  description: string
   phone: string
-  email?: string
   isAnonymous: boolean
   injuriesConfirmed?: boolean
   situationWorsening?: boolean
@@ -53,17 +63,17 @@ interface ReportFormProps {
 // Static data
 // ---------------------------------------------------------------------------
 
-const INCIDENT_TYPES: { value: IncidentType; label: string }[] = [
-  { value: 'flood', label: 'Flood' },
-  { value: 'earthquake', label: 'Earthquake' },
-  { value: 'landslide', label: 'Landslide' },
-  { value: 'fire', label: 'Fire' },
-  { value: 'typhoon', label: 'Typhoon' },
-  { value: 'medical_emergency', label: 'Medical Emergency' },
-  { value: 'accident', label: 'Accident' },
-  { value: 'infrastructure', label: 'Infrastructure Issue' },
-  { value: 'crime', label: 'Crime' },
-  { value: 'other', label: 'Other' },
+const INCIDENT_TYPES: { value: IncidentType; label: string; icon: React.ReactNode }[] = [
+  { value: 'flood', label: 'Flood', icon: <Droplets size={18} /> },
+  { value: 'earthquake', label: 'Earthquake', icon: <Mountain size={18} /> },
+  { value: 'landslide', label: 'Landslide', icon: <Mountain size={18} /> },
+  { value: 'fire', label: 'Fire', icon: <Flame size={18} /> },
+  { value: 'typhoon', label: 'Typhoon', icon: <Wind size={18} /> },
+  { value: 'medical_emergency', label: 'Medical Emergency', icon: <Heart size={18} /> },
+  { value: 'accident', label: 'Accident', icon: <Car size={18} /> },
+  { value: 'infrastructure', label: 'Infrastructure Issue', icon: <Building size={18} /> },
+  { value: 'crime', label: 'Crime', icon: <AlertTriangle size={18} /> },
+  { value: 'other', label: 'Other Issues', icon: <MoreHorizontal size={18} /> },
 ]
 
 const MUNICIPALITIES = ['Daet', 'Capalonga', 'Jose Panganiban', 'Labo']
@@ -90,33 +100,9 @@ function validatePhone(value: string): string | null {
   return null
 }
 
-// Basic email validation
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function validateEmail(value: string): string | null {
-  if (!value.trim()) return null // Email is optional
-  if (!EMAIL_REGEX.test(value.trim())) {
-    return 'Please enter a valid email address'
-  }
-  return null
-}
-
-// Minimum description length validation
-const MIN_DESCRIPTION_CHARS = 10
-
-function validateDescription(value: string): string | null {
-  const trimmed = value.trim()
-  if (trimmed.length > 0 && trimmed.length < MIN_DESCRIPTION_CHARS) {
-    return `Description must be at least ${MIN_DESCRIPTION_CHARS} characters`
-  }
-  return null
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-
-const MAX_DESCRIPTION_CHARS = 500
 
 export function ReportForm({
   userLocation,
@@ -129,14 +115,11 @@ export function ReportForm({
   // incidentType must be declared before useDuplicateCheck since the hook reads it
   const [incidentType, setIncidentType] = useState<IncidentType>('other')
   const [photo, setPhoto] = useState<File | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
   const [municipality, setMunicipality] = useState('')
   const [barangay, setBarangay] = useState('')
-  const [description, setDescription] = useState('')
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
-  const [email, setEmail] = useState('')
-  const [emailError, setEmailError] = useState<string | null>(null)
-  const [descriptionError, setDescriptionError] = useState<string | null>(null)
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [injuriesConfirmed, setInjuriesConfirmed] = useState<boolean | undefined>(undefined)
   const [situationWorsening, setSituationWorsening] = useState<boolean | undefined>(undefined)
@@ -171,14 +154,6 @@ export function ReportForm({
     setPhoneError(validatePhone(phone))
   }
 
-  function handleEmailBlur() {
-    setEmailError(validateEmail(email))
-  }
-
-  function handleDescriptionBlur() {
-    setDescriptionError(validateDescription(description))
-  }
-
   function handleMunicipalityChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setMunicipality(e.target.value)
     setBarangay('') // reset barangay when municipality changes
@@ -197,17 +172,16 @@ export function ReportForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
+    // Validate photo is required
+    if (!photo) {
+      setPhotoError('Photo is required')
+      return
+    }
+
     // Re-validate phone before submission
     const phoneError = validatePhone(phone)
     if (phoneError) {
       setPhoneError(phoneError)
-      return
-    }
-
-    // Validate description
-    const descError = validateDescription(description)
-    if (descError) {
-      setDescriptionError(descError)
       return
     }
 
@@ -219,9 +193,7 @@ export function ReportForm({
       incidentType,
       photo,
       location,
-      description,
       phone,
-      email: email.trim() || undefined,
       isAnonymous,
       injuriesConfirmed,
       situationWorsening,
@@ -303,304 +275,316 @@ export function ReportForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      {/* Duplicate warning */}
-      {duplicates.length > 0 && (
-        <div
-          className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 mb-4"
-          data-testid="duplicate-warning"
-          role="alert"
-        >
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-amber-900">
-                Possible duplicate detected
-              </p>
-              <p className="text-xs text-amber-700 mt-1">
-                {duplicates.length === 1
-                  ? 'A similar report was submitted nearby in the last 30 minutes. Please verify this is not a duplicate before submitting.'
-                  : `${duplicates.length} similar reports were submitted nearby in the last 30 minutes. Please verify these are not duplicates before submitting.`}
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="max-w-lg mx-auto bg-white min-h-screen">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
+          <h1 className="text-xl font-bold text-gray-900">Submit Report</h1>
+          <p className="text-sm text-gray-500 mt-1">Report a disaster or emergency in your area</p>
+        </div>
+
+        {/* Duplicate warning */}
+        {duplicates.length > 0 && (
+          <div
+            className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 mx-4 mt-4"
+            data-testid="duplicate-warning"
+            role="alert"
+          >
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900">
+                  Possible duplicate detected
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  {duplicates.length === 1
+                    ? 'A similar report was submitted nearby in the last 30 minutes. Please verify this is not a duplicate before submitting.'
+                    : `${duplicates.length} similar reports were submitted nearby in the last 30 minutes. Please verify these are not duplicates before submitting.`}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Offline indicator */}
+        {!isOnline && (
+          <div className="bg-orange-50 border-b border-orange-200 px-4 py-3 flex items-center gap-2" data-testid="offline-banner">
+            <WifiOff className="w-5 h-5 text-orange-600 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-orange-900">You're offline</p>
+              <p className="text-xs text-orange-700">
+                Your report will be queued and submitted automatically when you're back online.
               </p>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Offline indicator */}
-      {!isOnline && (
-        <div className="bg-orange-50 border-b border-orange-200 px-4 py-3 mb-4 flex items-center gap-2" data-testid="offline-banner">
-          <WifiOff className="w-5 h-5 text-orange-600" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-orange-900">You're offline</p>
-            <p className="text-xs text-orange-700">
-              Your report will be queued and submitted automatically when you're back online.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Photo field                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <div>
-        {/* Hidden file input associated with the visible label */}
-        <label htmlFor="report-photo">Photo</label>
-        <input
-          id="report-photo"
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-        <button type="button" onClick={handlePhotoButtonClick}>
-          Take Photo
-        </button>
-        {photo && <span>{photo.name}</span>}
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Incident Type field                                                   */}
-      {/* ------------------------------------------------------------------ */}
-      <div>
-        <label htmlFor="report-incident-type">What's happening?</label>
-        <select
-          id="report-incident-type"
-          value={incidentType}
-          onChange={(e) => setIncidentType(e.target.value as IncidentType)}
-          required
-          aria-label="Select incident type"
-        >
-          {INCIDENT_TYPES.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Location field                                                       */}
-      {/* ------------------------------------------------------------------ */}
-      <div>
-        <p>Location</p>
-
-        {isGpsAvailable && (
-          <div id="report-location" data-testid="location-display">
-            {gpsLabel}
-          </div>
         )}
 
-        {showManualDropdowns && (
-          <div id="report-location" data-testid="location-display">
-            <label htmlFor="report-municipality">Select Municipality</label>
-            <select
-              id="report-municipality"
-              value={municipality}
-              onChange={handleMunicipalityChange}
-              aria-label="Select Municipality"
+        <form onSubmit={handleSubmit} noValidate className="p-4 space-y-6">
+          {/* ------------------------------------------------------------------ */}
+          {/* Photo field                                                          */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <label htmlFor="report-photo" className="block text-sm font-medium text-gray-700 mb-3">
+              Photo <span className="text-red-500">*</span>
+            </label>
+            {/* Hidden file input associated with the visible label */}
+            <input
+              id="report-photo"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                handleFileChange(e)
+                setPhotoError(null)
+              }}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handlePhotoButtonClick}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg text-gray-600 hover:border-primary-blue hover:text-primary-blue transition-colors ${photoError ? 'border-red-500' : 'border-gray-300'}`}
             >
-              <option value="">-- Select Municipality --</option>
-              {MUNICIPALITIES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              <span>{photo ? photo.name : 'Tap to take a photo'}</span>
+            </button>
+            {photoError && <p className="text-red-500 text-sm mt-2">{photoError}</p>}
+          </div>
 
-            <label htmlFor="report-barangay">Select Barangay</label>
-            <select
-              id="report-barangay"
-              value={barangay}
-              onChange={(e) => setBarangay(e.target.value)}
-              disabled={!municipality}
-              aria-label="Select Barangay"
+          {/* ------------------------------------------------------------------ */}
+          {/* Incident Type field                                                   */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <label htmlFor="report-incident-type" className="block text-sm font-medium text-gray-700 mb-2">
+              What's happening? <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <select
+                id="report-incident-type"
+                value={incidentType}
+                onChange={(e) => setIncidentType(e.target.value as IncidentType)}
+                required
+                aria-label="Select incident type"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue bg-white text-gray-900 appearance-none cursor-pointer"
+              >
+                {INCIDENT_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                {INCIDENT_TYPES.find((t) => t.value === incidentType)?.icon}
+              </div>
+            </div>
+          </div>
+
+          {/* ------------------------------------------------------------------ */}
+          {/* Location field                                                       */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Location <span className="text-red-500">*</span>
+            </label>
+
+            {isGpsAvailable && (
+              <div id="report-location" data-testid="location-display" className="flex items-center gap-2 text-sm text-gray-600">
+                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                <span>{gpsLabel}</span>
+              </div>
+            )}
+
+            {showManualDropdowns && (
+              <div id="report-location" data-testid="location-display" className="space-y-3">
+                <div>
+                  <label htmlFor="report-municipality" className="block text-xs text-gray-500 mb-1">Municipality</label>
+                  <select
+                    id="report-municipality"
+                    value={municipality}
+                    onChange={handleMunicipalityChange}
+                    aria-label="Select Municipality"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue bg-white text-gray-900"
+                  >
+                    <option value="">-- Select Municipality --</option>
+                    {MUNICIPALITIES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="report-barangay" className="block text-xs text-gray-500 mb-1">Barangay</label>
+                  <select
+                    id="report-barangay"
+                    value={barangay}
+                    onChange={(e) => setBarangay(e.target.value)}
+                    disabled={!municipality}
+                    aria-label="Select Barangay"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue bg-white text-gray-900 disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="">-- Select Barangay --</option>
+                    {availableBarangays.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {!isGpsAvailable && !showManualDropdowns && (
+              <div id="report-location" data-testid="location-display" className="text-sm text-gray-500">
+                Detecting location…
+              </div>
+            )}
+          </div>
+
+          {/* ------------------------------------------------------------------ */}
+          {/* Quick questions                                                      */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+            <p className="text-sm font-medium text-gray-700">Quick Questions (Optional)</p>
+
+            {/* Anyone injured? */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-gray-600">Anyone injured? <span className="text-gray-400">(May nasaktan ba?)</span></span>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="injuries"
+                    checked={injuriesConfirmed === true}
+                    onChange={() => setInjuriesConfirmed(true)}
+                    className="w-4 h-4 text-primary-blue"
+                  />
+                  <span className="text-sm text-gray-700">Yes</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="injuries"
+                    checked={injuriesConfirmed === false}
+                    onChange={() => setInjuriesConfirmed(false)}
+                    className="w-4 h-4 text-primary-blue"
+                  />
+                  <span className="text-sm text-gray-700">No</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="injuries"
+                    checked={injuriesConfirmed === undefined}
+                    onChange={() => setInjuriesConfirmed(undefined)}
+                    className="w-4 h-4 text-primary-blue"
+                  />
+                  <span className="text-sm text-gray-500">Skip</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Situation getting worse? */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-gray-600">Is the situation getting worse? <span className="text-gray-400">(Lumalala ba ang sitwasyon?)</span></span>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="worsening"
+                    checked={situationWorsening === true}
+                    onChange={() => setSituationWorsening(true)}
+                    className="w-4 h-4 text-primary-blue"
+                  />
+                  <span className="text-sm text-gray-700">Yes</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="worsening"
+                    checked={situationWorsening === false}
+                    onChange={() => setSituationWorsening(false)}
+                    className="w-4 h-4 text-primary-blue"
+                  />
+                  <span className="text-sm text-gray-700">No</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="worsening"
+                    checked={situationWorsening === undefined}
+                    onChange={() => setSituationWorsening(undefined)}
+                    className="w-4 h-4 text-primary-blue"
+                  />
+                  <span className="text-sm text-gray-500">Skip</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* ------------------------------------------------------------------ */}
+          {/* Phone field                                                          */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <label htmlFor="report-phone" className="block text-sm font-medium text-gray-700 mb-2">
+              Phone <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="report-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onBlur={handlePhoneBlur}
+              placeholder="+63 912 345 6789"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue text-gray-900"
+            />
+            {phoneError && <span role="alert" className="text-red-600 text-sm mt-1 block">{phoneError}</span>}
+          </div>
+
+          {/* ------------------------------------------------------------------ */}
+          {/* Email field (optional)                                               */}
+          {/* ------------------------------------------------------------------ */}
+          {/* ------------------------------------------------------------------ */}
+          {/* Anonymity checkbox                                                   */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 flex items-start gap-3">
+            <input
+              id="report-anonymous"
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
+              className="w-4 h-4 mt-1 text-primary-blue rounded border-gray-300 focus:ring-primary-blue"
+            />
+            <label htmlFor="report-anonymous" className="text-sm text-gray-700 cursor-pointer">
+              Submit this report anonymously
+              <span className="block text-xs text-gray-500 mt-1">
+                Your identity will not be shared with the public or responders
+              </span>
+            </label>
+          </div>
+
+          {/* ------------------------------------------------------------------ */}
+          {/* Submit                                                               */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setShowNonEmergency(true)}
+              className="text-sm text-gray-500 underline hover:text-gray-700"
             >
-              <option value="">-- Select Barangay --</option>
-              {availableBarangays.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+              This isn&apos;t an emergency?
+            </button>
+            <button
+              type="submit"
+              className="w-full px-6 py-3 bg-primary-blue text-white font-semibold rounded-[24px] border-2 border-blue-600 shadow-lg hover:bg-blue-700 transition-colors"
+            >
+              Submit Report
+            </button>
           </div>
-        )}
-
-        {!isGpsAvailable && !showManualDropdowns && (
-          <div id="report-location" data-testid="location-display">
-            Detecting location…
-          </div>
-        )}
+        </form>
       </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Description field                                                    */}
-      {/* ------------------------------------------------------------------ */}
-      <div>
-        <label htmlFor="report-description">Description *</label>
-        <textarea
-          id="report-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value.slice(0, MAX_DESCRIPTION_CHARS))}
-          onBlur={handleDescriptionBlur}
-          maxLength={MAX_DESCRIPTION_CHARS}
-          rows={4}
-        />
-        <div className="flex items-center justify-between">
-          <span className={descriptionError ? 'text-red-600' : ''}>
-            {description.length}/{MAX_DESCRIPTION_CHARS}
-          </span>
-          {descriptionError && <span role="alert" className="text-red-600 text-sm">{descriptionError}</span>}
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Quick questions                                                      */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-gray-700">Quick Questions (Optional)</p>
-
-        {/* Anyone injured? */}
-        <div className="flex flex-col gap-2">
-          <span className="text-sm text-gray-600">Anyone injured?</span>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="injuries"
-                checked={injuriesConfirmed === true}
-                onChange={() => setInjuriesConfirmed(true)}
-                className="w-4 h-4 text-primary-blue"
-              />
-              <span className="text-sm">Yes</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="injuries"
-                checked={injuriesConfirmed === false}
-                onChange={() => setInjuriesConfirmed(false)}
-                className="w-4 h-4 text-primary-blue"
-              />
-              <span className="text-sm">No</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="injuries"
-                checked={injuriesConfirmed === undefined}
-                onChange={() => setInjuriesConfirmed(undefined)}
-                className="w-4 h-4 text-primary-blue"
-              />
-              <span className="text-sm text-gray-500">Skip</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Situation getting worse? */}
-        <div className="flex flex-col gap-2">
-          <span className="text-sm text-gray-600">Is the situation getting worse?</span>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="worsening"
-                checked={situationWorsening === true}
-                onChange={() => setSituationWorsening(true)}
-                className="w-4 h-4 text-primary-blue"
-              />
-              <span className="text-sm">Yes</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="worsening"
-                checked={situationWorsening === false}
-                onChange={() => setSituationWorsening(false)}
-                className="w-4 h-4 text-primary-blue"
-              />
-              <span className="text-sm">No</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="worsening"
-                checked={situationWorsening === undefined}
-                onChange={() => setSituationWorsening(undefined)}
-                className="w-4 h-4 text-primary-blue"
-              />
-              <span className="text-sm text-gray-500">Skip</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Phone field                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <div>
-        <label htmlFor="report-phone">Phone *</label>
-        <input
-          id="report-phone"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          onBlur={handlePhoneBlur}
-          placeholder="+63 912 345 6789"
-        />
-        {phoneError && <span role="alert">{phoneError}</span>}
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Email field (optional)                                               */}
-      {/* ------------------------------------------------------------------ */}
-      <div>
-        <label htmlFor="report-email">Email (Optional)</label>
-        <input
-          id="report-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={handleEmailBlur}
-          placeholder="your@email.com"
-        />
-        {emailError && <span role="alert">{emailError}</span>}
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Anonymity checkbox                                                   */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="flex items-start gap-2">
-        <input
-          id="report-anonymous"
-          type="checkbox"
-          checked={isAnonymous}
-          onChange={(e) => setIsAnonymous(e.target.checked)}
-          className="w-4 h-4 mt-1 text-primary-blue"
-        />
-        <label htmlFor="report-anonymous" className="text-sm text-gray-700 cursor-pointer">
-          Submit this report anonymously
-          <span className="block text-xs text-gray-500 mt-1">
-            Your identity will not be shared with the public or responders
-          </span>
-        </label>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Submit                                                               */}
-      {/* ------------------------------------------------------------------ */}
-      <button
-        type="button"
-        onClick={() => setShowNonEmergency(true)}
-        className="text-sm text-gray-500 underline hover:text-gray-700 mb-2"
-      >
-        This isn&apos;t an emergency?
-      </button>
-      <Button variant="primary" type="submit">
-        Submit Report
-      </Button>
-    </form>
+    </div>
   )
 }

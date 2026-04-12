@@ -22,16 +22,16 @@ const STORAGE_KEY = 'age_verified'
 
 export function AgeGate({ onVerified }: AgeGateProps) {
   const [isChecked, setIsChecked] = useState(false)
-  const [isAlreadyVerified, setIsAlreadyVerified] = useState(false)
+  // Initialize directly from localStorage to prevent flicker on first render
+  const [isAlreadyVerified] = useState(() => {
+    return localStorage.getItem(STORAGE_KEY) === 'true'
+  })
 
   useEffect(() => {
-    // Check if user already verified age in this browser
-    const verified = localStorage.getItem(STORAGE_KEY)
-    if (verified === 'true') {
-      setIsAlreadyVerified(true)
+    if (isAlreadyVerified) {
       onVerified()
     }
-  }, [onVerified])
+  }, [isAlreadyVerified, onVerified])
 
   const handleContinue = () => {
     if (!isChecked) return
