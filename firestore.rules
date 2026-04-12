@@ -243,11 +243,24 @@ service cloud.firestore {
     // ============================================================
 
     match /alerts/{alertId} {
-      // Users can read alerts targeted to them
+      // Read access: authenticated users who are:
+      // 1. In the target audience (all/municipality/role), OR
+      // 2. In an affected geographic area (government alerts)
+      // Also enforces isActive (default true when null/undefined)
       allow read: if isAuthenticated()
-        && (resource.data.targetAudience == 'all'
-          || (resource.data.targetAudience == 'municipality' && resource.data.targetMunicipality == getMunicipality())
-          || (resource.data.targetAudience == 'role' && resource.data.targetRole == getRole()));
+        && (resource.data.isActive == true || resource.data.isActive == null)
+        && (
+          resource.data.targetAudience == 'all'
+          || (resource.data.targetAudience == 'municipality'
+              && resource.data.targetMunicipality == getMunicipality())
+          || (resource.data.targetAudience == 'role'
+              && resource.data.targetRole == getRole())
+          || (resource.data.affectedAreas != null
+              && resource.data.affectedAreas.municipalities != null
+              && resource.data.affectedAreas.municipalities.toSet().hasAny(
+                   [getMunicipality()].toSet()
+                 ))
+        );
 
       // Municipal admins can create alerts for their municipality
       allow create: if hasRole('municipal_admin')
@@ -256,10 +269,10 @@ service cloud.firestore {
       // Provincial superadmins can create any alert
       allow create: if hasRole('provincial_superadmin');
 
-      // Only admins can update alerts
+      // Admins can update alerts
       allow update: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
 
-      // Only superadmins can delete alerts
+      // Only superadmins can delete
       allow delete: if hasRole('provincial_superadmin');
     }
 

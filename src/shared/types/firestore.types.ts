@@ -339,6 +339,46 @@ export interface Alert {
 
   // Creator
   createdBy: string // UID
+
+  // ---- Government Alert Extensions ----
+  // These fields are used when the alert originates from a government
+  // agency (MDRRMO, PAGASA, NDRRMC, etc.) and targets affected areas
+  // rather than a specific audience.
+
+  /** Geographic areas covered by this alert (municipality IDs) */
+  affectedAreas?: {
+    municipalities: string[]
+  }
+
+  /** Type of hazard or event this alert is about */
+  type?:
+    | 'rainfall'
+    | 'flood'
+    | 'typhoon'
+    | 'earthquake'
+    | 'landslide'
+    | 'fire'
+    | 'medical'
+    | 'other'
+
+  /** Originating government agency */
+  source?:
+    | 'mdrrmo'
+    | 'pagasa'
+    | 'phivOLCS'
+    | 'ndrrmc'
+    | 'local_gov'
+    | 'barangay'
+
+  /** Link to the original advisory or bulletin */
+  sourceUrl?: string
+
+  /**
+   * Whether this alert is currently active.
+   * Defaults to true when undefined (active).
+   * Firestore rules check: `isActive == true || isActive == null`
+   */
+  isActive?: boolean
 }
 
 /**
