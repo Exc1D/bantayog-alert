@@ -17,7 +17,7 @@ export function AnonymousProfile({ onCreateAccount, onContinue }: AnonymousProfi
   return (
     <div
       data-testid="anonymous-profile"
-      className="flex flex-col items-center min-h-screen bg-gray-50 px-4 py-8 gap-6"
+      className="flex flex-col items-center min-h-screen bg-gray-50 px-4 py-8 gap-6 pb-20"
     >
       {/* Avatar + heading */}
       <div className="flex flex-col items-center gap-3 pt-4">

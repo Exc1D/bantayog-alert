@@ -89,10 +89,12 @@ export function AlertList() {
               <p className="text-red-700 mb-4">
                 Something went wrong while fetching official alerts. Please try again.
               </p>
-              <Button variant="primary" onClick={handleRefresh} disabled={isLoading}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Retry
-              </Button>
+              <div className="flex justify-center">
+                <Button variant="primary" onClick={handleRefresh} disabled={isLoading}>
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </Button>
+              </div>
             </div>
           </div>
         </div>
