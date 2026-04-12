@@ -148,53 +148,58 @@ npm run test -- --run src/features/report/components/__tests__/ReportForm.test.t
 npm run typecheck  # Pre-existing errors in useReportQueue.ts (TS1127), others
 ```
 
+
 ---
 
-## 2026-04-12: DPA Compliance Implementation
+## 2026-04-12: PR #12 Error Handling Fixes (RegisteredProfile)
 
-**Plan:** `docs/superpowers/plans/2026-04-12-legal-compliance-dpa-revised.md`
-**Branch:** `feature/legal-compliance-dpa`
-**Session:** Subagent-driven development with 4 tasks
+**Plan:** `docs/superpowers/plans/2026-04-12-pr12-registeredprofile-error-handling.md`
+**Branch:** `fix/pr12-registeredprofile-error-handling` (worktree)
 
 ### Completed Tasks
 
-| # | Task | Status | Tests Added |
-|---|------|--------|------------|
-| 1 | Privacy Policy Page | ✅ Done | 4 tests |
-| 2 | Privacy Policy Link in Profile Settings | ✅ Done | 1 test |
-| 3 | Consent Checkbox in ReportForm | ✅ Done | 6 tests |
-| 4 | Firestore Rules for Data Deletion | ✅ Done | - (verification) |
+| # | Task | Status | Type |
+|---|------|--------|------|
+| 1 | Add syncError state and fix handleSyncNow | ✅ Done | Code fix |
+| 2 | Add logoutError state and UI display | ✅ Done | Code fix |
+| 3 | Add downloadError state and UI display | ✅ Done | Code fix |
+| 4 | Add firebase mocks to RegisteredProfile tests | ✅ Done | Test fix |
+| 5 | Write error handling tests | ✅ Done | Tests |
 
 ### Test Summary
 
-- **PrivacyPolicy tests:** 4 passed
-- **RegisteredProfile privacy link tests:** 1 passed
-- **ReportForm consent tests:** 6 passed
-- **Total DPA-related tests:** 11 passed
+- **RegisteredProfile tests:** 18 passing (was 0 due to firebase mock gap)
+- **Error handling tests:** 9 passing
+- **Total RegisteredProfile tests:** 27 passing
 
 ### Key Fixes
 
-1. **Privacy Policy page:** Created `/privacy-policy` route with DPA-compliant plain-language content
-2. **Privacy policy link:** Added to Settings tab in RegisteredProfile
-3. **Consent checkbox:** ReportForm now requires privacy policy agreement before submission
-4. **Firestore rules:** Added `allow delete: if isOwner(userId)` for DPA Article 17 Right to Erasure
+1. **handleSyncNow:** Now sets `syncError` on failure, clears `syncResult` before retry (prevents stale success message)
+2. **handleLogout:** Now sets `logoutError` with user-facing message near logout button
+3. **handleDownloadData:** Now sets `downloadError` with `instanceof Error` check
 
-### Firestore Rules Changes (DPA Article 17)
+### Gap Analysis Findings (Plan Review)
 
-- **users/{userId}:** Added `allow delete: if isOwner(userId)`
-- **report_private/{privateId}:** Added citizen delete permission for own reports
-- **report_ops/{opsId}:** Retained superadmin-only delete (audit trail protection)
+During plan review, these gaps were identified and addressed:
+- `syncResult` was never cleared on error → Added `setSyncResult(null)` before sync
+- `logoutError` display is outside SettingsTab → Error display added near logout button
+- `logoutError` not passed to SettingsTabProps → Correctly kept in main component
+- Missing logout error test → Added to test plan
 
 ### Commits on This Branch
 
 ```
-1ed1b84 docs(legal): verify firestore rules for DPA compliance
-[earlier commits from subagent-driven tasks]
+9b5b266 test(RegisteredProfile): add error handling and DPA flow tests
+0c1859c test(RegisteredProfile): add firebase mocks to fix test infrastructure
+53bb746 fix(RegisteredProfile): add downloadError state and display in Data Management
+db15a15 fix(RegisteredProfile): add logoutError state and display near logout button
+ef4315d fix(RegisteredProfile): add syncError state and clear syncResult on failure
 ```
 
-### Notes
+### Verification Commands
 
-- `report_ops` delete permission NOT granted to citizens - audit trail protection
-- Citizens can request ops data anonymization via privacy@bantayogalert.gov.ph
-- DPA Article 17 "Right to Erasure" has legal exceptions for audit trails and public records
-
+```bash
+npm run test -- --run src/features/profile/components/__tests__/RegisteredProfile.errorHandling.test.tsx  # 9/9
+npm run test -- --run src/features/profile/components/__tests__/RegisteredProfile.test.tsx  # 18/18
+npm run typecheck  # Pre-existing errors in useReportQueue.ts (unrelated)
+```

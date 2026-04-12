@@ -173,40 +173,66 @@ vi.mock('../../services/reportQueue.service', () => ({
 
 The real issue is that `catch (error)` gives you `any` implicitly in non-strict mode, and the project uses strict mode. So `catch (err: unknown)` is the correct pattern for TypeScript strictness.
 
+
 ---
 
-## Learnings - 2026-04-12 (DPA Compliance Session)
+## Learnings - 2026-04-12 (PR #12 Error Handling Session)
 
-### Firestore Rules Discovery - DPA Article 17 Right to Erasure
+### Silent Failure Pattern in RegisteredProfile
 
-**Issue found:** Task 4 verification revealed that `deleteUserAccount()` would fail at runtime because Firestore rules did not grant citizens permission to delete their own data.
+**Issue:** `handleSyncNow`, `handleLogout`, and `handleDownloadData` all used bare `console.error` in catch blocks without surfacing errors to users.
 
-**What the rules said:**
-- `report_private`: Only `provincial_superadmin` could delete
-- `report_ops`: Only `provincial_superadmin` could delete
-- `users/{userId}`: No explicit delete rule (default deny)
+**Fix applied:** Added error states (`syncError`, `logoutError`, `downloadError`) with user-facing error messages.
 
-**Fix applied:** Updated Firestore rules to support DPA Article 17:
-```javascript
-// users/{userId}
-allow delete: if isOwner(userId);
+### Gap Analysis During Plan Review
 
-// report_private/{privateId}
-allow delete: if hasRole('provincial_superadmin')
-  || (hasRole('citizen') && resource.data.reporterUserId == request.auth.uid);
+Before implementing, we reviewed the plan against actual code and found:
+1. **syncResult conflict** - When sync fails, old "Last sync: X synced" message would persist alongside error. Fixed by clearing `syncResult` on error.
+2. **logoutError UI location** - Logout button is in main `RegisteredProfile` component, not `SettingsTab`. Error display must be co-located with the button, not passed as prop.
+3. **downloadError vs deleteError** - Both errors display in Data Management section (same area), handled by stacking them in a `space-y-2` container.
 
-// report_ops: retained superadmin-only (audit trail protection)
+### Error State Placement Rules
+
+| Error State | Display Location | Why |
+|------------|-----------------|-----|
+| `syncError` | SettingsTab (Pending Reports section) | Sync is a SettingsTab feature |
+| `logoutError` | RegisteredProfile main (near logout button) | Logout is NOT in SettingsTab |
+| `downloadError` | SettingsTab (Data Management section) | Download is a SettingsTab feature |
+| `deleteError` | SettingsTab (Data Management section) | Delete is a SettingsTab feature |
+
+### Error Message Patterns
+
+```typescript
+// For user-facing errors (surfaced in UI):
+setError(error instanceof Error ? error.message : 'Fallback message')
+
+// For internal errors (logged only):
+console.error('[ERROR_TAG]', error)
 ```
 
-**Lesson:** When implementing deletion functionality, always verify Firestore rules allow the operation. Client-side code that can't delete due to rules is a silent failure.
+### vi.hoisted() Pattern for Error Test Mocks
 
-### report_ops Audit Trail Decision
+When testing error flows, use `vi.hoisted()` for mock functions so per-test `.mockRejectedValueOnce()` works:
 
-**Decision:** Did NOT add citizen delete permission for `report_ops` because:
-1. Operational timeline entries serve as audit trail
-2. Emergency response coordination depends on these records
-3. Citizens can request anonymization via email instead
+```typescript
+const mockSyncQueue = vi.hoisted(() => vi.fn().mockResolvedValue({ success: 0, failed: 0 }))
 
-**Alternative considered:** Anonymization (replacing name with "Deleted User") instead of deletion. This is actually better for verified reports since they're public records anyway.
+vi.mock('@/features/report/hooks/useReportQueue', () => ({
+  useReportQueue: vi.fn().mockReturnValue({
+    syncQueue: mockSyncQueue,
+    // ...
+  }),
+}))
 
-**Lesson:** DPA Article 17 "Right to Erasure" has legal exceptions for legal compliance and public interest. Audit trails are specifically protected.
+// In test:
+mockSyncQueue.mockRejectedValueOnce(new Error('Network error'))
+```
+
+### Subagent-Driven Development: Plan Review Phase
+
+Adding a "plan review" phase before dispatching implementers caught 3 real issues:
+1. Missing `setSyncResult(null)` on error
+2. Wrong component for logout error display
+3. Missing logout error test case
+
+**Lesson:** Don't skip gap analysis - read actual code against plan before implementing.
