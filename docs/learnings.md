@@ -64,3 +64,54 @@
 - Tasks 1-10 were completed before context compaction
 - Tasks 11-17 completed in this session with full two-stage review
 - Pre-compaction state preserved in vault for context continuity
+
+---
+
+# Learnings - 2026-04-12
+
+## Firebase Test Mocks Pattern
+
+**Issue:** `ReportForm.test.tsx` failed with `FirebaseError: auth/invalid-api-key` because it imports `useDuplicateCheck` which transitively imports `firebase/firestore`, triggering firebase auth initialization before mocks are applied.
+
+**Fix:** Added firebase mocks to `ReportForm.test.tsx`:
+```typescript
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn().mockReturnValue({}),
+  query: vi.fn().mockReturnValue({}),
+  where: vi.fn().mockReturnValue({}),
+  orderBy: vi.fn().mockReturnValue({}),
+  limit: vi.fn().mockReturnValue({}),
+  getDocs: vi.fn().mockResolvedValue({ docs: [], forEach: () => {} }),
+  Timestamp: { fromDate: vi.fn((date: Date) => ({ toDate: () => date })) },
+}))
+
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: vi.fn((auth, callback) => { callback(null); return vi.fn() }),
+  signInWithEmailAndPassword: vi.fn(),
+  signOut: vi.fn(),
+}))
+
+vi.mock('@/app/firebase/config', () => ({
+  db: {},
+  auth: { onAuthStateChanged: vi.fn((callback) => { callback(null); return vi.fn() }) },
+}))
+```
+
+Also needed `vi.hoisted` mock state reset in `beforeEach`:
+```typescript
+duplicateCheckState.duplicates = []  // reset shared mock state
+```
+
+## Error Handling Patterns
+
+1. **File access errors:** Wrap `e.target.files` access in try/catch — `SecurityError`, `NotAllowedError`, `AbortError` can occur on file selection
+2. **Callback errors:** Wrap `onSubmit?.()` calls in try/catch — parent callbacks can throw without crashing the form
+3. **Offline queue:** Call `onSubmit?.()` before `enqueueReport()` so parent is always notified
+4. **`Promise.allSettled`:** Use for multi-file operations where partial success is meaningful
+
+## Pre-existing Issues Found
+
+- `useReportQueue.test.ts` and `QueueIndicator.test.tsx` lack firebase mocks — fail without `.env.local`
+- `ReportForm.tsx` has pre-existing TS errors (unused `Button` import, type mismatch in `onSubmit` callback)
+- `useReportQueue.ts` has pre-existing TS error at `submitReport` call (type mismatch)
+
