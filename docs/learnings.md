@@ -115,3 +115,41 @@ duplicateCheckState.duplicates = []  // reset shared mock state
 - `ReportForm.tsx` has pre-existing TS errors (unused `Button` import, type mismatch in `onSubmit` callback)
 - `useReportQueue.ts` has pre-existing TS error at `submitReport` call (type mismatch)
 
+
+---
+
+## Learnings - 2026-04-12 (PR #11 Session)
+
+### Subagent Branch Isolation Issue
+
+**Problem:** Implementer subagent's commits for Task 2 (`loadError` surfacing) were made to branch `fix/ui-enhancements-and-pr6-restoration-2026-04-12` instead of `fix/pr10-test-error-fixes-2026-04-12`. Root cause: subagent ran on `main` branch (controller's main worktree) instead of the feature worktree.
+
+**Prevention:** Before dispatching subagents, verify `git branch -vv` shows the correct worktree is being used. When using worktrees, either:
+1. `cd` into the worktree directory before dispatching, OR
+2. Have subagent use `git -C /path/to/worktree` commands
+
+### Vitest Mock Path Issues in useReportQueue Tests
+
+**Problem:** `vi.mock('../../services/reportQueue.service', ...)` used wrong path. Test file at `hooks/__tests__/` → service at `services/` requires `'../../services/reportQueue.service'`. With `vi.fn()` inside `vi.mock` factory without `vi.hoisted()`, per-test `mockImplementation()` calls have no effect because factory runs once at module init.
+
+**Fix:** Use `vi.hoisted()` to create shared mock function references that are initialized before `vi.mock` runs:
+```typescript
+const getAllMock = vi.hoisted(() => vi.fn().mockResolvedValue([]))
+vi.mock('../../services/reportQueue.service', () => ({
+  reportQueueService: { getAll: getAllMock, ... }
+}))
+// Now per-test: getAllMock.mockRejectedValueOnce(...)
+```
+
+### Template Literal Escaping in Edit Tool
+
+**Problem:** Using Edit tool with template literal backticks (`` ` ``) sometimes resulted in escaped backticks (`\``) in the file, breaking TypeScript.
+
+**Lesson:** When editing template literals, ensure the new_string contains unescaped backticks. The Edit tool passes strings literally — any escaping in input ends up in the file.
+
+### What Worked
+
+- Two-stage review (spec compliance → code quality) continued to catch real issues
+- Test-writing tasks (4-8) proceeded cleanly with no infrastructure issues
+- Accepting limitations and documenting them was better than spending excessive time debugging
+
