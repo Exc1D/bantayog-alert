@@ -37,6 +37,36 @@ vi.mock('@/shared/hooks/useNetworkStatus', () => ({
   useNetworkStatus: () => networkState,
 }))
 
+// Mock firebase/firestore before any firebase-dependent imports
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn().mockReturnValue({}),
+  query: vi.fn().mockReturnValue({}),
+  where: vi.fn().mockReturnValue({}),
+  orderBy: vi.fn().mockReturnValue({}),
+  limit: vi.fn().mockReturnValue({}),
+  getDocs: vi.fn().mockResolvedValue({ docs: [], forEach: () => {} }),
+  Timestamp: { fromDate: vi.fn((date: Date) => ({ toDate: () => date })) },
+}))
+
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: vi.fn((auth, callback) => {
+    callback(null)
+    return vi.fn()
+  }),
+  signInWithEmailAndPassword: vi.fn(),
+  signOut: vi.fn(),
+}))
+
+vi.mock('@/app/firebase/config', () => ({
+  db: {},
+  auth: {
+    onAuthStateChanged: vi.fn((callback) => {
+      callback(null)
+      return vi.fn()
+    }),
+  },
+}))
+
 describe('ReportForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -61,6 +91,33 @@ describe('ReportForm', () => {
 
     // Phone: form input
     expect(screen.getByLabelText(/phone/i)).toBeInTheDocument()
+  })
+
+  it('shows photo required error when submitting without photo', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+
+    render(
+      <ReportForm
+        userLocation={{ latitude: 14.1, longitude: 122.9 }}
+        onSubmit={onSubmit}
+      />
+    )
+
+    // Fill required phone field but skip photo
+    const phoneInput = screen.getByLabelText(/phone/i)
+    await user.type(phoneInput, '+63 912 345 6789')
+
+    // Submit
+    await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+    // Should show photo required error
+    await waitFor(() => {
+      expect(screen.getByText(/photo is required/i)).toBeInTheDocument()
+    })
+
+    // onSubmit should NOT have been called
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('shows photo capture area', () => {
