@@ -42,13 +42,17 @@ export function RegisteredProfile() {
   // Offline queue state
   const { queue, queueSize, isSyncing, syncQueue, hasPendingReports } = useReportQueue()
   const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   const handleSyncNow = async () => {
     try {
+      setSyncError(null)
+      setSyncResult(null)
       const result = await syncQueue()
       setSyncResult(result)
     } catch (error) {
-      console.error('Failed to sync queue:', error)
+      setSyncError(error instanceof Error ? error.message : 'Failed to sync. Please try again.')
+      console.error('[SYNC_ERROR]', error)
     }
   }
 
@@ -163,6 +167,7 @@ export function RegisteredProfile() {
               isSyncing={isSyncing}
               onSyncNow={handleSyncNow}
               syncResult={syncResult}
+              syncError={syncError}
             />
           )}
 
@@ -402,6 +407,7 @@ interface SettingsTabProps {
   isSyncing?: boolean
   onSyncNow?: () => void
   syncResult?: { success: number; failed: number } | null
+  syncError?: string | null
 }
 
 function SettingsTab({
@@ -415,6 +421,7 @@ function SettingsTab({
   isSyncing = false,
   onSyncNow,
   syncResult,
+  syncError,
 }: SettingsTabProps) {
   return (
     <div className="space-y-4" data-testid="settings-tab">
@@ -450,6 +457,11 @@ function SettingsTab({
               </>
             )}
           </button>
+          {syncError && (
+            <p className="text-sm text-red-600 mt-2" role="alert">
+              {syncError}
+            </p>
+          )}
         </div>
       )}
 
