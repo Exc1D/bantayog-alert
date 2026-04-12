@@ -29,6 +29,11 @@ const networkState = vi.hoisted(() => ({
 const createMockFile = () =>
   new File(['dummy'], 'test-photo.jpg', { type: 'image/jpeg' })
 
+// DPA consent is required on every submission — extracted to avoid repetition
+async function agreeToPrivacyPolicy(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+}
+
 vi.mock('@/features/report/hooks/useReportQueue', () => ({
   useReportQueue: () => queueState,
 }))
@@ -123,7 +128,7 @@ describe('ReportForm', () => {
     await user.type(phoneInput, '+63 912 345 6789')
 
     // Agree to privacy policy (DPA consent — required before photo check fires)
-    await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+    await agreeToPrivacyPolicy(user)
 
     // Submit
     await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -165,7 +170,7 @@ describe('ReportForm', () => {
     await user.type(phoneInput, '+63 912 345 6789')
 
     // Agree to privacy policy (DPA consent required before submission)
-    await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+    await agreeToPrivacyPolicy(user)
 
     // Submit
     await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -202,7 +207,7 @@ describe('ReportForm', () => {
     await user.type(phoneInput, '+63 912 345 6789')
 
     // Agree to privacy policy (DPA consent required before submission)
-    await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+    await agreeToPrivacyPolicy(user)
 
     // Submit
     await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -314,7 +319,7 @@ describe('ReportForm', () => {
     await user.upload(fileInput, createMockFile())
 
     // Agree to privacy policy (DPA consent required before submission)
-    await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+    await agreeToPrivacyPolicy(user)
 
     await user.click(screen.getByRole('button', { name: /submit report/i }))
 
@@ -347,7 +352,7 @@ describe('ReportForm', () => {
     await user.type(phoneInput, '+63 912 345 6789')
 
     // Agree to privacy policy (DPA consent required before submission)
-    await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+    await agreeToPrivacyPolicy(user)
 
     // Submit
     await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -379,7 +384,7 @@ describe('ReportForm', () => {
       await user.type(phoneInput, '+63 912 345 6789')
 
       // Agree to privacy policy (DPA consent fires first — must be checked so photo error can surface)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // Submit
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -423,7 +428,7 @@ describe('ReportForm', () => {
       await user.type(phoneInput, '+63 912 345 6789')
 
       // Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // Submit
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -525,7 +530,7 @@ describe('ReportForm', () => {
       await user.click(worseningYes)
 
       // Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // Submit
       const submitButton = screen.getByRole('button', { name: /submit report/i })
@@ -563,7 +568,7 @@ describe('ReportForm', () => {
       await user.type(phoneInput, '+63 912 345 6789')
 
       // Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // Submit without answering quick questions (they're optional)
       const submitButton = screen.getByRole('button', { name: /submit report/i })
@@ -639,7 +644,7 @@ describe('ReportForm', () => {
       await user.click(checkbox)
 
       // Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // Submit
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -675,7 +680,7 @@ describe('ReportForm', () => {
       await user.type(phoneInput, '+63 912 345 6789')
 
       // Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // Submit
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -722,7 +727,7 @@ describe('ReportForm', () => {
       await user.type(phoneInput, '+63 912 345 6789')
 
       // Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // Submit
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -768,7 +773,7 @@ describe('ReportForm', () => {
       await user.type(phoneInput, '+63 912 345 6789')
 
       // Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       await user.click(screen.getByRole('button', { name: /submit report/i }))
 
@@ -820,7 +825,7 @@ describe('ReportForm', () => {
       await user.type(phoneInput, '+63 912 345 6789')
 
       // 4. Agree to privacy policy (DPA consent required before submission)
-      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await agreeToPrivacyPolicy(user)
 
       // 5. Submit
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -866,11 +871,10 @@ describe('ReportForm', () => {
       // Submit without checking the privacy consent checkbox
       await user.click(screen.getByRole('button', { name: /submit report/i }))
 
-      // Consent error must appear and submission must be blocked
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument()
-      })
-      expect(screen.getByRole('alert').textContent).toMatch(/privacy policy/i)
+      // Consent error must appear with the exact DPA message and submission must be blocked
+      expect(
+        await screen.findByText(/You must agree to the Privacy Policy/i)
+      ).toBeInTheDocument()
       expect(onSubmit).not.toHaveBeenCalled()
     })
   })
