@@ -245,6 +245,70 @@ describe('ReportForm', () => {
     })
   })
 
+  it('accepts valid PH phone format without error', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+
+    render(
+      <ReportForm
+        userLocation={{ latitude: 14.1, longitude: 122.9 }}
+        onSubmit={onSubmit}
+      />
+    )
+
+    const phoneInput = screen.getByLabelText(/phone/i)
+    await user.type(phoneInput, '+63 912 345 6789')
+    await user.tab() // trigger blur validation
+
+    // No error should appear for valid format
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    // Should be able to submit
+    const fileInput = screen.getByLabelText(/photo/i)
+    await user.upload(fileInput, createMockFile())
+    await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('includes incident type in submission data', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+
+    render(
+      <ReportForm
+        userLocation={{ latitude: 14.1, longitude: 122.9 }}
+        onSubmit={onSubmit}
+      />
+    )
+
+    // Change incident type to flood
+    const incidentSelect = screen.getByLabelText(/what's happening/i)
+    await user.selectOptions(incidentSelect, 'flood')
+
+    // Upload photo
+    const fileInput = screen.getByLabelText(/photo/i)
+    await user.upload(fileInput, createMockFile())
+
+    // Fill phone
+    const phoneInput = screen.getByLabelText(/phone/i)
+    await user.type(phoneInput, '+63 912 345 6789')
+
+    // Submit
+    await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledOnce()
+    })
+
+    const callArg = onSubmit.mock.calls[0][0]
+    expect(callArg.incidentType).toBe('flood')
+  })
+
   describe('Quick Questions', () => {
     it('renders quick questions section', () => {
       render(<ReportForm />)
