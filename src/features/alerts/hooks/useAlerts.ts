@@ -32,7 +32,7 @@ export function useAlerts(): UseAlertsResult {
     data: query.data,
     isLoading: query.isLoading,
     isError: query.isError,
-    isRefetching: query.isRefetching ?? false,
+    isRefetching: query.isRefetching,
     refetch: query.refetch,
   }
 }

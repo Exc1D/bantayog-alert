@@ -43,16 +43,13 @@ test.describe('Rate Limiting', () => {
     }
   })
 
-  test('should allow 3 reports per day per device', async ({ page, context }) => {
-    const reports = []
-
+  test('should allow 3 reports per day per device', async ({ page }) => {
     // Submit 3 reports (should work)
     for (let i = 0; i < 3; i++) {
       await page.goto('/report')
       await fillValidReport(page)
       await page.getByRole('button', { name: /submit/i }).click()
       await expect(page.getByText(/report submitted/i)).toBeVisible()
-      reports.push(i)
     }
 
     // 4th report should be rate limited
@@ -98,8 +95,9 @@ async function fillValidReport(page, options = {}) {
   // Select incident type
   await page.getByRole('combobox', { name: /incident/i }).selectOption('flood')
 
-  // Add description
-  await page.getByLabel(/description/i).fill('Test flood report. Water is rising.')
+  // Add photo (required field)
+  const fileInput = page.locator('input[type="file"]')
+  await fileInput.setInputFiles({ name: 'test-photo.jpg', mimeType: 'image/jpeg' } as any)
 
   // Add phone
   if (!skipPhone) {
