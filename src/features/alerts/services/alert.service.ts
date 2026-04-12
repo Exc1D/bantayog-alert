@@ -163,7 +163,6 @@ export function subscribeToAlerts(
   onError?: (err: Error) => void
 ): () => void {
   const { active = true, severity, type } = filters
-  const now = Date.now()
 
   const constraints: Parameters<typeof query>[1] = []
 
@@ -188,8 +187,9 @@ export function subscribeToAlerts(
   const unsubscribe = onSnapshot(
     q,
     (snap) => {
+      const now = Date.now()
       const alerts = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Alert))
-      // Filter expired alerts on every update
+      // Filter expired alerts on every update — recalculate now to avoid stale timestamps
       const active = alerts.filter((a) => !a.expiresAt || a.expiresAt > now)
       callback(active)
     },
@@ -211,7 +211,6 @@ export function subscribeToAlertsByMunicipality(
   callback: (alerts: Alert[]) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const now = Date.now()
   const alertsRef = collection(db, 'alerts')
 
   const q = query(
@@ -224,6 +223,7 @@ export function subscribeToAlertsByMunicipality(
   const unsubscribe = onSnapshot(
     q,
     (snap) => {
+      const now = Date.now()
       const alerts = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Alert))
       const active = alerts.filter((a) => !a.expiresAt || a.expiresAt > now)
       callback(active)
