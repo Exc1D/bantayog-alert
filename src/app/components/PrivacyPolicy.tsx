@@ -111,8 +111,8 @@ export function PrivacyPolicy() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-4">Anonymous Reporting</h2>
-        <p className="text-gray-700 mb-2">When you report anonymously:</p>
+        <h2 className="text-2xl font-semibold text-gray-900 mb-4">Pseudonymous Reporting</h2>
+        <p className="text-gray-700 mb-2">When you choose not to display your name:</p>
         <ul className="list-disc pl-6 space-y-1 text-gray-700 mb-4">
           <li><strong>Hidden From:</strong> Public, responders, municipal admins</li>
           <li><strong>Visible To:</strong> Provincial superadmins (legal compliance only)</li>
@@ -120,7 +120,7 @@ export function PrivacyPolicy() {
         </ul>
         <div className="bg-amber-50 p-4 rounded-lg">
           <p className="text-amber-800 font-medium mb-2">Important:</p>
-          <p className="text-amber-700">Even anonymous reports store your phone number for:</p>
+          <p className="text-amber-700">Your phone number is still stored for:</p>
           <ol className="list-decimal pl-6 space-y-1 text-amber-700 mt-2">
             <li>Follow-up questions about the incident</li>
             <li>Legal compliance (court orders)</li>
@@ -200,12 +200,12 @@ export function PrivacyPolicy() {
         </div>
 
         <div className="mb-6">
-          <h3 className="text-lg font-medium text-gray-800 mb-2">3. Right to Delete</h3>
+          <h3 className="text-lg font-medium text-gray-800 mb-2">3. Right to Erasure (Article 17)</h3>
           <p className="text-gray-700 mb-2">You can delete your account and personal data.</p>
           <ul className="list-disc pl-6 space-y-1 text-gray-700">
             <li><strong>How:</strong> Profile → Delete Account</li>
             <li><strong>What's Deleted:</strong> Name, email, phone</li>
-            <li><strong>What's Kept:</strong> Verified reports (public record)</li>
+            <li><strong>What's Anonymized:</strong> Verified reports become 'Anonymous Citizen' (public record cannot be removed)</li>
             <li><strong>Timeline:</strong> Immediate for account, 30 days for data</li>
           </ul>
         </div>
@@ -240,7 +240,7 @@ export function PrivacyPolicy() {
         </ul>
         <div className="bg-blue-50 p-4 rounded-lg">
           <p className="text-blue-800">
-            <strong>Data Breaches:</strong> If your data is exposed, we will notify you within 72 hours via email and push notification.
+            <strong>Data Breaches:</strong> If your data is exposed, we will notify you within 72 hours via email and push notification where contact information is still available. We will also post a notice on our website.
           </p>
         </div>
       </section>
@@ -271,7 +271,7 @@ export function PrivacyPolicy() {
               <tr>
                 <td className="px-4 py-2 text-sm text-gray-700">Leaflet</td>
                 <td className="px-4 py-2 text-sm text-gray-700">Maps</td>
-                <td className="px-4 py-2 text-sm text-gray-700">Location coordinates (public)</td>
+                <td className="px-4 py-2 text-sm text-gray-700">Map tiles loaded from external servers; location coordinates you provide</td>
               </tr>
             </tbody>
           </table>
@@ -288,7 +288,7 @@ export function PrivacyPolicy() {
         <ul className="list-disc pl-6 space-y-1 text-gray-700">
           <li>We will delete their account and personal data</li>
           <li>We will keep the report (important for emergency response)</li>
-          <li>We will flag the account for parental contact</li>
+          <li>If contact information is available, we may attempt to notify parents/guardians</li>
         </ul>
       </section>
 
@@ -310,8 +310,7 @@ export function PrivacyPolicy() {
           <li>
             Email: <a href={`mailto:${PRIVACY_EMAIL}`} className="text-blue-600 underline">{PRIVACY_EMAIL}</a>
           </li>
-          <li>MDRRMO Office: [Phone number set by admin]</li>
-          <li>[Address set by admin]</li>
+          <li>MDRRMO Office: Contact your local MDRRMO for office details</li>
         </ul>
       </section>
 
