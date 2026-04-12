@@ -146,8 +146,21 @@ export function ReportForm({
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    setPhoto(file)
+    try {
+      const files = e.target.files
+      if (!files || files.length === 0) {
+        // User cancelled file selection — clear photo
+        setPhoto(null)
+        setPhotoError(null)
+        return
+      }
+      setPhoto(files[0] ?? null)
+      setPhotoError(null)
+    } catch (err) {
+      // File access errors (SecurityError, NotAllowedError, AbortError) land here
+      console.error('File access error:', err)
+      setPhotoError('Unable to access file. Please try again.')
+    }
   }
 
   function handlePhoneBlur() {
