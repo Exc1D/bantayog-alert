@@ -44,6 +44,7 @@ export function RegisteredProfile() {
   const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [logoutError, setLogoutError] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const handleSyncNow = async () => {
     try {
@@ -72,6 +73,7 @@ export function RegisteredProfile() {
   const handleDownloadData = async () => {
     if (!user) return
     try {
+      setDownloadError(null)
       const exportData = await exportUserData(
         user.uid,
         user.email || '',
@@ -92,7 +94,9 @@ export function RegisteredProfile() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Failed to download data:', error)
+      const message = error instanceof Error ? error.message : 'Failed to download data. Please try again.'
+      setDownloadError(message)
+      console.error('[DOWNLOAD_ERROR]', error)
     }
   }
 
@@ -166,6 +170,7 @@ export function RegisteredProfile() {
               onDownloadData={handleDownloadData}
               onDeleteAccount={() => setShowDeleteConfirm(true)}
               deleteError={deleteError}
+              downloadError={downloadError}
               hasPendingReports={hasPendingReports}
               queueSize={queueSize}
               isSyncing={isSyncing}
@@ -411,6 +416,7 @@ interface SettingsTabProps {
   onDownloadData: () => void
   onDeleteAccount: () => void
   deleteError?: string | null
+  downloadError?: string | null
   hasPendingReports?: boolean
   queueSize?: number
   isSyncing?: boolean
@@ -425,6 +431,7 @@ function SettingsTab({
   onDownloadData,
   onDeleteAccount,
   deleteError,
+  downloadError,
   hasPendingReports = false,
   queueSize = 0,
   isSyncing = false,
@@ -506,11 +513,18 @@ function SettingsTab({
       <div className="bg-white rounded-lg shadow-sm p-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Management</h2>
 
-        {deleteError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700" role="alert">
-              {deleteError}
-            </p>
+        {(downloadError || deleteError) && (
+          <div className="mb-4 space-y-2">
+            {downloadError && (
+              <p className="text-sm text-red-600" role="alert">
+                {downloadError}
+              </p>
+            )}
+            {deleteError && (
+              <p className="text-sm text-red-600" role="alert">
+                {deleteError}
+              </p>
+            )}
           </div>
         )}
 
