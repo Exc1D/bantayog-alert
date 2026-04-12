@@ -345,30 +345,28 @@ export interface Alert {
   // agency (MDRRMO, PAGASA, NDRRMC, etc.) and targets affected areas
   // rather than a specific audience.
 
-  /** Geographic areas covered by this alert (municipality IDs) */
+  /** Geographic areas covered by this alert */
   affectedAreas?: {
     municipalities: string[]
+    barangays?: string[]
   }
 
   /** Type of hazard or event this alert is about */
   type?:
-    | 'rainfall'
-    | 'flood'
-    | 'typhoon'
-    | 'earthquake'
-    | 'landslide'
-    | 'fire'
-    | 'medical'
+    | 'evacuation'
+    | 'weather'
+    | 'health'
+    | 'infrastructure'
     | 'other'
 
   /** Originating government agency */
   source?:
-    | 'mdrrmo'
-    | 'pagasa'
-    | 'phivOLCS'
-    | 'ndrrmc'
-    | 'local_gov'
-    | 'barangay'
+    | 'MDRRMO'
+    | 'PAGASA'
+    | 'DOH'
+    | 'DPWH'
+    | 'PHIVOLCS'
+    | 'Other'
 
   /** Link to the original advisory or bulletin */
   sourceUrl?: string

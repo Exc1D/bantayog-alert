@@ -12,15 +12,15 @@ import type { Alert } from '../firestore.types'
 // Manual validators (no Zod in this project — use simple type guards)
 // ---------------------------------------------------------------------------
 
-type AlertSource = 'mdrrmo' | 'pagasa' | 'phivOLCS' | 'ndrrmc' | 'local_gov' | 'barangay'
-type AlertType = 'rainfall' | 'flood' | 'typhoon' | 'earthquake' | 'landslide' | 'fire' | 'medical' | 'other'
+type AlertSource = 'MDRRMO' | 'PAGASA' | 'DOH' | 'DPWH' | 'PHIVOLCS' | 'Other'
+type AlertType = 'evacuation' | 'weather' | 'health' | 'infrastructure' | 'other'
 
 function isValidAlertSource(val: unknown): val is AlertSource {
-  return ['mdrrmo', 'pagasa', 'phivOLCS', 'ndrrmc', 'local_gov', 'barangay'].includes(val as string)
+  return ['MDRRMO', 'PAGASA', 'DOH', 'DPWH', 'PHIVOLCS', 'Other'].includes(val as string)
 }
 
 function isValidAlertType(val: unknown): val is AlertType {
-  return ['rainfall', 'flood', 'typhoon', 'earthquake', 'landslide', 'fire', 'medical', 'other'].includes(val as string)
+  return ['evacuation', 'weather', 'health', 'infrastructure', 'other'].includes(val as string)
 }
 
 function isValidAffectedAreas(alert: Partial<Alert>): boolean {
@@ -29,6 +29,8 @@ function isValidAffectedAreas(alert: Partial<Alert>): boolean {
   // If affectedAreas is present, it must have municipalities (array of strings)
   if (!areas || typeof areas !== 'object') return false
   if (!Array.isArray((areas as { municipalities?: unknown }).municipalities)) return false
+  // barangays is optional but must be an array of strings if present
+  if (areas.barangays !== undefined && !Array.isArray(areas.barangays)) return false
   return true
 }
 
@@ -71,8 +73,8 @@ describe('Alert type validation', () => {
         createdBy: 'admin-1',
         // Government alert fields
         affectedAreas: { municipalities: ['daet', 'basud', 'vinzons'] },
-        type: 'flood',
-        source: 'mdrrmo',
+        type: 'weather',
+        source: 'MDRRMO',
         sourceUrl: 'https://mdrrmo.gov.ph/advisory/123',
         isActive: true,
       }
