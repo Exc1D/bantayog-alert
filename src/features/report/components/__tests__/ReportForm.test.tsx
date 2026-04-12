@@ -37,6 +37,18 @@ vi.mock('@/shared/hooks/useNetworkStatus', () => ({
   useNetworkStatus: () => networkState,
 }))
 
+// Mock useDuplicateCheck — return empty duplicates by default
+const duplicateCheckState = vi.hoisted(() => ({
+  duplicates: [] as Array<{ id: string; createdAt: Date; distanceKm: number; report: Record<string, unknown> }>,
+  isChecking: false,
+  checkForDuplicates: vi.fn(),
+  clearDuplicates: vi.fn(),
+}))
+
+vi.mock('@/features/report/hooks/useDuplicateCheck', () => ({
+  useDuplicateCheck: () => duplicateCheckState,
+}))
+
 // Mock firebase/firestore before any firebase-dependent imports
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn().mockReturnValue({}),
@@ -75,6 +87,8 @@ describe('ReportForm', () => {
     queueState.enqueueReport.mockClear()
     queueState.isSyncing = false
     queueState.queueSize = 0
+    // Reset duplicate check mock
+    duplicateCheckState.duplicates = []
   })
 
   it('renders required fields', () => {
@@ -229,6 +243,27 @@ describe('ReportForm', () => {
 
     expect(screen.getByRole('combobox', { name: /municipality/i })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /barangay/i })).toBeInTheDocument()
+  })
+
+  it('displays duplicate warning when duplicates exist', () => {
+    // Override the duplicate check mock to return duplicates
+    duplicateCheckState.duplicates = [
+      {
+        id: 'dup-1',
+        createdAt: new Date(),
+        distanceKm: 0.3,
+        report: { incidentType: 'flood' },
+      },
+    ]
+
+    render(
+      <ReportForm
+        userLocation={{ latitude: 14.1, longitude: 122.9 }}
+      />
+    )
+
+    expect(screen.getByTestId('duplicate-warning')).toBeInTheDocument()
+    expect(screen.getByText(/possible duplicate detected/i)).toBeInTheDocument()
   })
 
   it('validates phone number format', async () => {
