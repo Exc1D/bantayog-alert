@@ -128,43 +128,31 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
     fetchReports()
   }, [userId, userPhone])
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-lg p-4 animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/4 mb-2" />
-            <div className="h-3 bg-gray-200 rounded w-1/2" />
-          </div>
-        ))}
-      </div>
-    )
-  }
+  const renderLoading = () => (
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white rounded-lg p-4 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-2" />
+          <div className="h-3 bg-gray-200 rounded w-1/2" />
+        </div>
+      ))}
+    </div>
+  )
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
-        {error}
-      </div>
-    )
-  }
+  const renderError = () => (
+    <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+      {error}
+    </div>
+  )
 
-  if (reports.length === 0) {
-    return (
-      <div className="bg-gray-50 rounded-lg p-6 text-center">
-        <p className="text-gray-500">No reports yet.</p>
-        <p className="text-sm text-gray-400 mt-1">
-          Submit a report or link your existing reports to see them here.
-        </p>
-      </div>
-    )
-  }
-
-  // Group by status
-  const pending = reports.filter((r) => r.status === 'pending')
-  const verified = reports.filter((r) => r.status === 'verified')
-  const resolved = reports.filter((r) => r.status === 'resolved')
-  const rejected = reports.filter((r) => r.status === 'rejected')
+  const renderEmpty = () => (
+    <div className="bg-gray-50 rounded-lg p-6 text-center">
+      <p className="text-gray-500">No reports yet.</p>
+      <p className="text-sm text-gray-400 mt-1">
+        Submit a report or link your existing reports to see them here.
+      </p>
+    </div>
+  )
 
   const renderReportList = (reportList: ReportSummary[], title: string) => {
     if (reportList.length === 0) return null
@@ -198,12 +186,28 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
     )
   }
 
+  const renderReports = () => {
+    const pending = reports.filter((r) => r.status === 'pending')
+    const verified = reports.filter((r) => r.status === 'verified')
+    const resolved = reports.filter((r) => r.status === 'resolved')
+    const rejected = reports.filter((r) => r.status === 'rejected')
+
+    return (
+      <div className="space-y-6">
+        {renderReportList(pending, 'Pending')}
+        {renderReportList(verified, 'Verified')}
+        {renderReportList(resolved, 'Resolved')}
+        {renderReportList(rejected, 'Rejected')}
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      {renderReportList(pending, 'Pending')}
-      {renderReportList(verified, 'Verified')}
-      {renderReportList(resolved, 'Resolved')}
-      {renderReportList(rejected, 'Rejected')}
+    <div data-testid="reports-tab">
+      {isLoading && renderLoading()}
+      {error && renderError()}
+      {!isLoading && !error && reports.length === 0 && renderEmpty()}
+      {!isLoading && !error && reports.length > 0 && renderReports()}
     </div>
   )
 }
