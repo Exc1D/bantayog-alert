@@ -1,31 +1,11 @@
 # Citizen Features - Implementation Plans Summary
 
 **Date:** 2026-04-11  
-**Status:** All plans complete and ready for execution
+**Status:** Most plans complete - cleanup in progress
 
 ---
 
 ## 📋 Plans Created
-
-### 1. ✅ Triangular Report Button (Quick Win)
-**File:** `docs/superpowers/plans/2026-04-11-triangular-report-button.md`  
-**Priority:** LOW (UI improvement)  
-**Effort:** 2-3 hours  
-**Status:** Ready to execute
-
-**What's Included:**
-- Update navigation.tsx with clip-path triangle design
-- Update navigation tests for triangular shape
-- Add press state feedback (active:scale-95)
-- Document design decision
-
-**Key Changes:**
-- SOS-style triangular button (↑) instead of circular
-- Gradient background (primary-red to red-700)
-- Elevated position (-top-5) for visual prominence
-- Maintains accessibility (44px touch target, aria-labels)
-
----
 
 ### 2. ✅ Missing Tests Prioritization (Foundational)
 **File:** `docs/superpowers/plans/2026-04-11-missing-tests-prioritization.md`  
@@ -139,10 +119,7 @@
    - Privacy policy + consent checkbox
    - Unblocks public release
 
-2. **Triangular Button** - 2-3 hours
-   - Quick win, improves UX
-
-3. **Tests Foundation (Tasks 1-2)** - 6-8 hours
+2. **Tests Foundation (Tasks 1-2)** - 6-8 hours
    - Accessibility testing infrastructure
    - Understand current a11y state
 
@@ -179,12 +156,11 @@
 
 | Plan | Priority | Effort | Tasks |
 |------|----------|--------|-------|
-| Triangular Button | LOW | 2-3h | 3 tasks |
 | Missing Tests | HIGH | 16-20h | 6 tasks |
 | Legal Compliance | **CRITICAL** | 20-24h | 4 tasks |
 | Account & Auth | HIGH | 24-30h | 9 tasks |
 | Alerts System | HIGH | 16-20h | 9 tasks |
-| **TOTAL** | | **78-97 hours** | **31 tasks** |
+| **TOTAL** | | **76-94 hours** | **28 tasks** |
 
 **Estimated Timeline:** 3-4 weeks with 1 engineer
 
@@ -205,12 +181,10 @@ Execute in this order:
 2. Alerts System (HIGH)
 3. Account & Auth (HIGH)
 4. Missing Tests (HIGH)
-5. Triangular Button (LOW)
 
 ### Option 3: Quick Wins First
-1. Triangular Button (2-3h)
-2. Legal Compliance - Tasks 1-2 (6-8h)
-3. Alerts System - Tasks 1-3 (8-10h)
+1. Legal Compliance - Tasks 1-2 (6-8h)
+2. Alerts System - Tasks 1-3 (8-10h)
 Then decide on remaining work.
 
 ---
@@ -251,7 +225,6 @@ After executing these plans, the app will have:
 - ✅ Account creation flow
 - ✅ "My Reports" history
 - ✅ Report linking by phone
-- ✅ Triangular SOS button
 
 **Quality:**
 - ✅ 800+ tests (from 761)

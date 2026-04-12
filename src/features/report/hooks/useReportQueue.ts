@@ -24,7 +24,6 @@ export interface QueuedReport {
       municipality?: string
       barangay?: string
     }
-    description: string
     phone: string
   }
   retryCount: number
@@ -145,7 +144,7 @@ export function useReportQueue(): UseReportQueueResult {
                 }
               : { latitude: 0, longitude: 0 },
           },
-          description: reportData.description,
+          description: \`Reported \${reportData.incidentType} incident\`,
           isAnonymous: true, // Citizens always report anonymously
         }
 
