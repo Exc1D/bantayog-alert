@@ -8,6 +8,7 @@ import { AnonymousProfile } from '@/features/profile/components/AnonymousProfile
 import { LinkReportsByPhone } from '@/features/profile/components/LinkReportsByPhone'
 import { ReportDetailScreen } from '@/features/feed/components/ReportDetailScreen'
 import { PrivacyPolicy } from './components/PrivacyPolicy'
+import { Signup } from './Signup'
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,10 @@ export const router = createBrowserRouter([
       {
         path: 'privacy-policy',
         element: <PrivacyPolicy />,
+      },
+      {
+        path: 'signup',
+        element: <Signup />,
       },
     ],
   },
