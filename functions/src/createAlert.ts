@@ -13,7 +13,7 @@ admin.initializeApp()
  * {
  *   title: string,
  *   message: string,
- *   severity: 'emergency' | 'warning' | 'advisory',
+ *   severity: 'emergency' | 'warning' | 'info',
  *   type: 'evacuation' | 'weather' | 'health' | 'infrastructure' | 'other',
  *   affectedAreas?: { municipalities: string[], barangays?: string[] },
  *   source?: string,
@@ -22,6 +22,10 @@ admin.initializeApp()
  *   expiresAt?: number,           // Unix timestamp
  * }
  */
+
+const VALID_SEVERITIES = ['info', 'warning', 'emergency'] as const
+const VALID_TYPES = ['evacuation', 'weather', 'health', 'infrastructure', 'other'] as const
+
 export const createAlert = functions.https.onCall(async (data, context) => {
   // 1. Verify authenticated
   if (!context.auth) {
@@ -56,26 +60,81 @@ export const createAlert = functions.https.onCall(async (data, context) => {
     )
   }
 
-  // 5. Create alert document
+  // 5. Validate severity enum — prevent arbitrary string injection
+  if (!VALID_SEVERITIES.includes(data.severity)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Invalid severity value'
+    )
+  }
+
+  // 6. Validate type enum if provided
+  if (data.type && !VALID_TYPES.includes(data.type)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Invalid type value'
+    )
+  }
+
+  // 7. Write alert + audit log; use allSettled so audit failure does not
+  //    silently swallow the success response sent to the client.
+  const now = Date.now()
   const alertData = {
-    ...data,
+    title: data.title,
+    message: data.message,
+    severity: data.severity,
+    type: data.type,
+    affectedAreas: data.affectedAreas,
+    source: data.source,
+    sourceUrl: data.sourceUrl,
+    targetAudience: data.targetAudience,
+    targetMunicipality: data.targetMunicipality,
+    targetRole: data.targetRole,
+    deliveryMethod: data.deliveryMethod,
+    linkUrl: data.linkUrl,
+    metadata: data.metadata,
+    expiresAt: data.expiresAt,
     createdBy: context.auth.uid,
-    createdAt: Date.now(),
+    createdAt: now,
     isActive: true,
   }
 
-  const docRef = await admin.firestore().collection('alerts').add(alertData)
+  let alertId = 'unknown'
 
-  // 6. Create audit log
-  await admin.firestore().collection('audit_logs').add({
-    timestamp: Date.now(),
-    performedBy: context.auth.uid,
-    performedByRole: role,
-    action: 'CREATE_ALERT',
-    resourceType: 'alert',
-    resourceId: docRef.id,
-    details: `Created alert: ${data.title}`,
-  })
+  try {
+    const [alertResult, auditResult] = await Promise.allSettled([
+      admin.firestore().collection('alerts').add(alertData),
+      admin.firestore().collection('audit_logs').add({
+        timestamp: now,
+        performedBy: context.auth.uid,
+        performedByRole: role,
+        action: 'CREATE_ALERT',
+        resourceType: 'alert',
+        resourceId: 'pending', // filled in after we know the alert ID
+        details: `Created alert: ${data.title}`,
+      }),
+    ])
 
-  return { id: docRef.id }
+    // Extract alert ID — guard against unexpected rejection
+    if (alertResult.status === 'fulfilled') {
+      alertId = alertResult.value?.id ?? 'unknown'
+    } else {
+      console.error('createAlert: alert write failed:', alertResult.reason)
+      throw new functions.https.HttpsError('internal', 'Failed to create alert')
+    }
+
+    // Audit failure is logged but does not fail the request — the alert was created
+    if (auditResult.status === 'rejected') {
+      console.error(
+        'createAlert: audit log write failed for alert',
+        alertId,
+        auditResult.reason
+      )
+    }
+  } catch (err: unknown) {
+    console.error('createAlert: firestore error:', err)
+    throw new functions.https.HttpsError('internal', 'Failed to create alert')
+  }
+
+  return { id: alertId }
 })

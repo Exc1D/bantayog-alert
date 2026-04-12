@@ -123,7 +123,36 @@ describe('createAlert', () => {
   })
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Test 5: Happy path → creates alert + audit log
+  // Test 5: Invalid severity → 'invalid-argument'
+  // ─────────────────────────────────────────────────────────────────────────
+  it('rejects invalid severity value with invalid-argument error', async () => {
+    await expect(
+      wrap(createAlert)(
+        { ...validData, severity: 'critical' },
+        superadminContext
+      )
+    ).rejects.toMatchObject({
+      code: 'invalid-argument',
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Test 6: Invalid type → 'invalid-argument'
+  // ─────────────────────────────────────────────────────────────────────────
+  it('rejects invalid type value with invalid-argument error', async () => {
+    await expect(
+      wrap(createAlert)(
+        { ...validData, type: 'earthquake' },
+        superadminContext
+      )
+    ).rejects.toMatchObject({
+      code: 'invalid-argument',
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Test 7: Happy path → creates alert + audit log; audit failure does not fail
+  //          the request (Promise.allSettled)
   // ─────────────────────────────────────────────────────────────────────────
   it('creates alert document and audit log when called by superadmin', async () => {
     const result = await wrap(createAlert)(validData, superadminContext)
@@ -153,7 +182,6 @@ describe('createAlert', () => {
       performedByRole: 'provincial_superadmin',
       action: 'CREATE_ALERT',
       resourceType: 'alert',
-      resourceId: 'alert-doc-id',
       details: 'Created alert: Flood Warning',
     })
   })
@@ -166,5 +194,35 @@ describe('createAlert', () => {
 
     expect(result).toEqual({ id: 'alert-doc-id' })
     expect(firestoreAddMock).toHaveBeenCalledTimes(2) // alert + audit log
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Test 8: Audit log failure does not fail the request — returns success with
+  //          the alert ID (Promise.allSettled)
+  // ─────────────────────────────────────────────────────────────────────────
+  it('returns alert ID when audit log fails but alert write succeeds', async () => {
+    // First call (alert) succeeds, second call (audit log) rejects
+    firestoreAddMock
+      .mockResolvedValueOnce({ id: 'alert-doc-id' })
+      .mockRejectedValueOnce(new Error('Firestore quota exceeded'))
+
+    const result = await wrap(createAlert)(validData, superadminContext)
+
+    // Client still receives the alert ID
+    expect(result).toEqual({ id: 'alert-doc-id' })
+    expect(firestoreAddMock).toHaveBeenCalledTimes(2)
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Test 9: Alert write failure throws 'internal' error (wrapped in try/catch)
+  // ─────────────────────────────────────────────────────────────────────────
+  it('throws internal error when alert write fails', async () => {
+    firestoreAddMock.mockRejectedValue(new Error('Permission denied'))
+
+    await expect(
+      wrap(createAlert)(validData, superadminContext)
+    ).rejects.toMatchObject({
+      code: 'internal',
+    })
   })
 })
