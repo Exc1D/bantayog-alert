@@ -116,6 +116,7 @@ export function ReportForm({
   const [incidentType, setIncidentType] = useState<IncidentType>('other')
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
   const [municipality, setMunicipality] = useState('')
   const [barangay, setBarangay] = useState('')
   const [phone, setPhone] = useState('')
@@ -170,6 +171,7 @@ export function ReportForm({
   function handleMunicipalityChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setMunicipality(e.target.value)
     setBarangay('') // reset barangay when municipality changes
+    setLocationError(null) // clear any previous location error
   }
 
   function generateReportId(location: LocationValue): string {
@@ -195,6 +197,12 @@ export function ReportForm({
     const phoneError = validatePhone(phone)
     if (phoneError) {
       setPhoneError(phoneError)
+      return
+    }
+
+    // Validate manual location dropdowns when GPS is unavailable
+    if (!isGpsAvailable && (!municipality || !barangay)) {
+      setLocationError('Please select municipality and barangay')
       return
     }
 
@@ -444,7 +452,10 @@ export function ReportForm({
                   <select
                     id="report-barangay"
                     value={barangay}
-                    onChange={(e) => setBarangay(e.target.value)}
+                    onChange={(e) => {
+                      setBarangay(e.target.value)
+                      setLocationError(null)
+                    }}
                     disabled={!municipality}
                     aria-label="Select Barangay"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue bg-white text-gray-900 disabled:bg-gray-100 disabled:text-gray-400"
@@ -457,6 +468,10 @@ export function ReportForm({
                     ))}
                   </select>
                 </div>
+
+                {locationError && (
+                  <p role="alert" className="text-red-500 text-sm mt-1">{locationError}</p>
+                )}
               </div>
             )}
 
