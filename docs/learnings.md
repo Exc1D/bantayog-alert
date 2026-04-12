@@ -173,3 +173,40 @@ vi.mock('../../services/reportQueue.service', () => ({
 
 The real issue is that `catch (error)` gives you `any` implicitly in non-strict mode, and the project uses strict mode. So `catch (err: unknown)` is the correct pattern for TypeScript strictness.
 
+---
+
+## Learnings - 2026-04-12 (DPA Compliance Session)
+
+### Firestore Rules Discovery - DPA Article 17 Right to Erasure
+
+**Issue found:** Task 4 verification revealed that `deleteUserAccount()` would fail at runtime because Firestore rules did not grant citizens permission to delete their own data.
+
+**What the rules said:**
+- `report_private`: Only `provincial_superadmin` could delete
+- `report_ops`: Only `provincial_superadmin` could delete
+- `users/{userId}`: No explicit delete rule (default deny)
+
+**Fix applied:** Updated Firestore rules to support DPA Article 17:
+```javascript
+// users/{userId}
+allow delete: if isOwner(userId);
+
+// report_private/{privateId}
+allow delete: if hasRole('provincial_superadmin')
+  || (hasRole('citizen') && resource.data.reporterUserId == request.auth.uid);
+
+// report_ops: retained superadmin-only (audit trail protection)
+```
+
+**Lesson:** When implementing deletion functionality, always verify Firestore rules allow the operation. Client-side code that can't delete due to rules is a silent failure.
+
+### report_ops Audit Trail Decision
+
+**Decision:** Did NOT add citizen delete permission for `report_ops` because:
+1. Operational timeline entries serve as audit trail
+2. Emergency response coordination depends on these records
+3. Citizens can request anonymization via email instead
+
+**Alternative considered:** Anonymization (replacing name with "Deleted User") instead of deletion. This is actually better for verified reports since they're public records anyway.
+
+**Lesson:** DPA Article 17 "Right to Erasure" has legal exceptions for legal compliance and public interest. Audit trails are specifically protected.

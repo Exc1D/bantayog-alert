@@ -76,6 +76,9 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys()
           .hasAny(['role', 'municipality', 'mfaSettings', 'isActive']);
 
+      // Users can delete their own profile (DPA Article 17 - Right to Erasure)
+      allow delete: if isOwner(userId);
+
       // Only superadmins can modify role-related fields
       allow update, create: if hasRole('provincial_superadmin');
     }
@@ -118,8 +121,9 @@ service cloud.firestore {
       // Only admins can create/update private data
       allow create, update: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
 
-      // Only superadmins can delete private data
-      allow delete: if hasRole('provincial_superadmin');
+      // Citizens can delete their own private reports (DPA Article 17 - Right to Erasure)
+      allow delete: if hasRole('provincial_superadmin')
+        || (hasRole('citizen') && resource.data.reporterUserId == request.auth.uid);
     }
 
     // ============================================================
@@ -147,7 +151,9 @@ service cloud.firestore {
         && resource.data.assignedTo == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeline']);
 
-      // Only superadmins can delete ops data
+      // Only superadmins can delete ops data (audit trail protection)
+      // Note: DPA Article 17 Right to Erasure - timeline entries from citizens remain for audit
+      // Citizens can request anonymization via privacy@bantayogalert.gov.ph
       allow delete: if hasRole('provincial_superadmin');
     }
 

@@ -148,3 +148,53 @@ npm run test -- --run src/features/report/components/__tests__/ReportForm.test.t
 npm run typecheck  # Pre-existing errors in useReportQueue.ts (TS1127), others
 ```
 
+---
+
+## 2026-04-12: DPA Compliance Implementation
+
+**Plan:** `docs/superpowers/plans/2026-04-12-legal-compliance-dpa-revised.md`
+**Branch:** `feature/legal-compliance-dpa`
+**Session:** Subagent-driven development with 4 tasks
+
+### Completed Tasks
+
+| # | Task | Status | Tests Added |
+|---|------|--------|------------|
+| 1 | Privacy Policy Page | ✅ Done | 4 tests |
+| 2 | Privacy Policy Link in Profile Settings | ✅ Done | 1 test |
+| 3 | Consent Checkbox in ReportForm | ✅ Done | 6 tests |
+| 4 | Firestore Rules for Data Deletion | ✅ Done | - (verification) |
+
+### Test Summary
+
+- **PrivacyPolicy tests:** 4 passed
+- **RegisteredProfile privacy link tests:** 1 passed
+- **ReportForm consent tests:** 6 passed
+- **Total DPA-related tests:** 11 passed
+
+### Key Fixes
+
+1. **Privacy Policy page:** Created `/privacy-policy` route with DPA-compliant plain-language content
+2. **Privacy policy link:** Added to Settings tab in RegisteredProfile
+3. **Consent checkbox:** ReportForm now requires privacy policy agreement before submission
+4. **Firestore rules:** Added `allow delete: if isOwner(userId)` for DPA Article 17 Right to Erasure
+
+### Firestore Rules Changes (DPA Article 17)
+
+- **users/{userId}:** Added `allow delete: if isOwner(userId)`
+- **report_private/{privateId}:** Added citizen delete permission for own reports
+- **report_ops/{opsId}:** Retained superadmin-only delete (audit trail protection)
+
+### Commits on This Branch
+
+```
+1ed1b84 docs(legal): verify firestore rules for DPA compliance
+[earlier commits from subagent-driven tasks]
+```
+
+### Notes
+
+- `report_ops` delete permission NOT granted to citizens - audit trail protection
+- Citizens can request ops data anonymization via privacy@bantayogalert.gov.ph
+- DPA Article 17 "Right to Erasure" has legal exceptions for audit trails and public records
+

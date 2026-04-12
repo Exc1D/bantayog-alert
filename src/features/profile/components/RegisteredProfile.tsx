@@ -510,6 +510,17 @@ function SettingsTab({
             variant="danger"
           />
         </div>
+
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <a
+            href="/privacy-policy"
+            className="text-sm text-primary-blue underline hover:text-blue-700"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View Privacy Policy
+          </a>
+        </div>
       </div>
 
       {/* Privacy note */}
