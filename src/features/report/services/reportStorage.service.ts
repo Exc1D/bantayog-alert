@@ -31,9 +31,10 @@ export async function uploadReportPhoto(file: File, reportId: string): Promise<s
     const downloadURL = await getDownloadURL(snapshot.ref)
 
     return downloadURL
-  } catch (error) {
-    console.error('Failed to upload report photo:', error)
-    throw new Error('Failed to upload report photo')
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to upload report photo'
+    console.error('[UPLOAD_PHOTO_ERROR]', message, error)
+    throw new Error(message)
   }
 }
 
