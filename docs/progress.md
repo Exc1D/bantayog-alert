@@ -250,3 +250,76 @@ npm run typecheck  # Pre-existing errors in useReportQueue.ts (unrelated)
 npm run test -- --run src/features/alerts/hooks/__tests__/useAlerts.test.ts  # 12/12
 npm run typecheck  # useAlerts.ts clean (pre-existing errors in useReportQueue.ts)
 ```
+
+
+---
+
+## 2026-04-12: Task 5 — Wire AlertList to Real Data
+
+**Files changed:** `src/features/alerts/components/AlertList.tsx`, `src/features/alerts/components/__tests__/AlertList.test.tsx`, `src/shared/hooks/UserContext.tsx` (new)
+
+### What Changed
+
+1. **Created `UserContext.tsx`:** A new context that provides `municipality` and `role` from Firestore `users/{uid}` for authenticated users. Falls back to `undefined` for anonymous users.
+
+2. **`AlertList.tsx`:** Fixed pre-existing mismatch — changed `data` → `alerts` (the hook's actual return key). Now calls `useUserContext()` and passes `{ municipality, role }` to `useAlerts({ municipality, role })`.
+
+3. **`AlertList.test.tsx`:** Fixed all existing mock returns (`data` → `alerts`). Added Firebase mocks (`firebase/firestore`, `firebase/auth`, `@/app/firebase/config`). Added 2 integration tests verifying `useAlerts` is called with correct `municipality` and `role` from UserContext.
+
+### Test Summary
+
+- **AlertList tests:** 16/16 passing (was 14, added 2 integration tests)
+- **All alerts tests:** 92/92 passing
+- **Breaking changes:** None — existing 14 tests pass unchanged
+
+### Key Decisions
+
+- **No existing user context found:** The codebase has `useAuth` (Firebase User only) but no `municipality`/`role`. Created a minimal `UserContext` following the Firestore profile fetch pattern.
+- **`data` → `alerts` mismatch:** `AlertList` was destructuring `data` but `useAlerts` returns `alerts`. Fixed as part of wiring.
+- **`vi.spyOn` extra args:** When using `vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue(...)`, Vitest may inject extra internal args. Integration test assertions use `spy.mock.calls[0]?.[0]` to verify the first argument specifically.
+
+### Verification Commands
+
+```bash
+npm run test -- --run src/features/alerts/components/__tests__/AlertList.test.tsx  # 16/16
+npm run test -- --run src/features/alerts/                                       # 92/92
+```
+
+---
+
+## 2026-04-12: Task 7 — Create AlertDetailModal
+
+**Files created:** `src/features/alerts/components/AlertDetailModal.tsx`, `src/features/alerts/components/__tests__/AlertDetailModal.test.tsx`
+
+### What Changed
+
+1. **`AlertDetailModal.tsx`:** Modal component that displays full government alert details:
+   - Severity badge (info/warning/emergency) + type badge with icon
+   - Full message display
+   - Affected areas (municipalities + barangays)
+   - Source attribution with sourceUrl link
+   - Read More link (linkUrl)
+   - Share button (navigator.share with clipboard fallback)
+   - Close button
+
+2. **`AlertDetailModal.test.tsx`:** 18 tests covering all render cases and share behavior.
+
+### Test Summary
+
+- **New tests:** 18 (AlertDetailModal)
+- **AlertDetailModal tests passing:** 18/18
+- **All alerts tests passing:** 110/110
+
+### Key Decisions
+
+- **Uses existing `Modal` component:** Leverages `src/shared/components/Modal.tsx` for backdrop, close, portal, accessibility.
+- **Props:** `alert`, `isOpen`, `onClose`, optional `title` override.
+- **Share pattern:** Matches `FeedCard.tsx` — navigator.share with AbortError handling, clipboard fallback with try/catch.
+- **Metadata:** Alert interface has no dedicated `metadata` field. `linkUrl` rendered as "Read More" link.
+
+### Verification Commands
+
+```bash
+npm run test -- --run src/features/alerts/components/__tests__/AlertDetailModal.test.tsx  # 18/18
+npm run test -- --run src/features/alerts/                                               # 110/110
+```

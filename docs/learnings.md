@@ -275,3 +275,37 @@ vi.mock('../../services/alert.service', () => ({
 **Key decision:** Used a separate `useEffect` to sync `useRef` with state (`latestAlertsRef.current = alerts`), rather than passing `alerts` as a `useRef` initializer. This prevents the ref from capturing stale initial state while still avoiding the circular-state-update problem.
 
 **Lesson on ref + state synchronization:** `const ref = useRef(initialState)` initializes the ref once; `ref.current` never updates when `initialState` changes. You need a separate effect that writes `ref.current = state` on every render to keep them in sync.
+
+
+### UserContext Pattern — No Pre-existing Context Found
+
+**Problem:** Task asked to wire `AlertList` to receive `municipality` and `role` from "user context", but no such context existed in the codebase. `useAuth` only returns Firebase `User` (no `municipality`/`role`).
+
+**Solution:** Created `UserContext.tsx` in `src/shared/hooks/` using the existing Firestore `getDocument` pattern — `useAuth` provides the Firebase UID, Firestore `users/{uid}` provides `municipality` and `role`. Anonymous users get `undefined` for both (fine — `useAlerts` handles missing args gracefully).
+
+### vi.spyOn + Extra Args in Integration Tests
+
+**Problem:** `vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue(...)` worked but Vitest internals sometimes inject extra args into the mock call. `toHaveBeenCalledWith(expect.objectContaining({...}), expect.any(Object), expect.any(Function))` failed because the second and third args were not `Object` and `Function` (they were Vitest internals).
+
+**Fix:** Access `spy.mock.calls[0]?.[0]` to verify only the first argument:
+```typescript
+expect(spy.mock.calls[0]?.[0]).toMatchObject({ municipality: 'Daet', role: 'citizen' })
+```
+
+### Firebase Test Mocks for Integration Tests
+
+When a component uses a context that fetches from Firestore (like `UserContext`), the integration test needs firebase mocks at the module level. Required mocks:
+- `vi.mock('@/app/firebase/config')` — bypasses `getAuth`/`getFirestore` app initialization
+- `vi.mock('firebase/firestore')` — `getFirestore`, `collection`, `doc`, `getDoc`, `onSnapshot`
+- `vi.mock('firebase/auth')` — `getAuth`, `onAuthStateChanged`
+- `vi.mock('@/shared/services/firestore.service')` — `getDocument`
+
+Use `vi.hoisted` for mock refs that need per-test reset via `beforeEach`.
+
+### navigator.clipboard Mocking Limitation in Vitest + happy-dom
+
+**Problem:** `navigator.clipboard` is an inherited getter from `Navigator.prototype` in happy-dom. `Object.getOwnPropertyDescriptor(navigator, 'clipboard')` returns `undefined` and `Object.keys(navigator)` returns `[]` (empty). This makes it impossible to spy on `navigator.clipboard.writeText` directly.
+
+**Workaround:** Create a mock navigator in `beforeEach` using `Object.create(Object.getPrototypeOf(global.navigator))` to preserve prototype chain, then copy own enumerable properties and define `clipboard` as an own property. In individual tests, use direct assignment: `;(global.navigator as any).clipboard = { writeText: mockWriteText }`. Note: spying on `navigator.clipboard.writeText` in Vitest requires `clipboard` to be an own property of the navigator instance, not an inherited getter.
+
+**For share API tests:** `navigator.share` IS an own property of the navigator object in happy-dom, so `vi.fn()` spy + direct assignment works reliably. Use `Object.create(Object.getPrototypeOf(navigator))` to make a mock that can have its own `share` property.
