@@ -153,3 +153,23 @@ vi.mock('../../services/reportQueue.service', () => ({
 - Test-writing tasks (4-8) proceeded cleanly with no infrastructure issues
 - Accepting limitations and documenting them was better than spending excessive time debugging
 
+### Verification Gap — Always Re-Check Before Assuming
+
+**Problem:** After context compaction, I assumed Task 1 (`catch (err: unknown)` in ReportForm) was done because a commit existed (`169bb57 fix(ReportForm): call onSubmit on offline queue and wrap in try/catch`). But the commit used bare `catch (err)` without `unknown` type — the actual TypeScript fix was never applied.
+
+**Lesson:** Just because a commit with a similar message exists doesn't mean the actual fix was implemented. Always verify the actual code state rather than trusting commit messages or summaries.
+
+**What to do:** When resuming after compaction, re-read the actual source files to verify task completion rather than relying on vault summaries or commit messages.
+
+### Vitest Path Resolution in Worktrees
+
+**Issue:** When running `npm run test` from the controller session, it runs tests against `main` branch (at `/home/exxeed/dev/projects/bantayog-alert`), not the worktree. Worktree tests must be run from within the worktree directory.
+
+**Fix:** Always `cd` into the worktree before running tests, or use absolute paths that point into the worktree.
+
+### Bare `catch (err)` Still Violates TypeScript Strict Mode
+
+**Issue:** `catch (err)` without type annotation is technically valid JS but violates TypeScript's `noImplicitAny` in strict mode when the catch clause parameter has no type. Wait — actually `catch (err)` IS valid TypeScript. The `unknown` type is about *which* type to use, not *whether* to use a type.
+
+The real issue is that `catch (error)` gives you `any` implicitly in non-strict mode, and the project uses strict mode. So `catch (err: unknown)` is the correct pattern for TypeScript strictness.
+
