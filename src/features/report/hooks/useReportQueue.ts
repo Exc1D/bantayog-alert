@@ -159,7 +159,7 @@ export function useReportQueue(): UseReportQueueResult {
                 }
               : { latitude: 0, longitude: 0 },
           },
-          description: \`Reported \${reportData.incidentType} incident\`,
+          description: `Reported ${reportData.incidentType} incident`,
           isAnonymous: true, // Citizens always report anonymously
         }
 
