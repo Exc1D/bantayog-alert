@@ -157,9 +157,9 @@ export function ReportForm({
       }
       setPhoto(files[0] ?? null)
       setPhotoError(null)
-    } catch (err) {
+    } catch (err: unknown) {
       // File access errors (SecurityError, NotAllowedError, AbortError) land here
-      console.error('File access error:', err)
+      console.error('[FILE_ACCESS_ERROR]', err instanceof Error ? err.message : err)
       setPhotoError('Unable to access file. Please try again.')
     }
   }
@@ -241,9 +241,9 @@ export function ReportForm({
 
     try {
       onSubmit?.(reportData)
-    } catch (err) {
+    } catch (err: unknown) {
       // Log but still show success — form data is valid and queued/submitted
-      console.error('Report submission callback error:', err)
+      console.error('[SUBMIT_CALLBACK_ERROR]', err instanceof Error ? err.message : err)
     }
   }
 
