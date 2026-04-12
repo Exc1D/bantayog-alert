@@ -31,23 +31,19 @@ export function Navigation() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="relative -top-5 flex items-center justify-center w-20 h-16"
-                  style={{
-                    clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-                  }}
+                  className="relative -top-6 flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-red border-2 border-white shadow-lg"
                   aria-label={`Report ${item.label}`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-b from-primary-red to-red-700" />
-                  <div className="relative z-10 flex flex-col items-center justify-center pt-2">
-                    <Icon size={24} className="text-white drop-shadow-md" />
-                    <span className="text-[10px] font-bold mt-0.5 text-white drop-shadow-md uppercase tracking-wide">
+                  <div className="flex flex-col items-center justify-center">
+                    <Icon size={28} className="text-white" />
+                    <span className="text-[10px] font-bold mt-0.5 text-white uppercase tracking-wide">
                       {item.label}
                     </span>
                   </div>
                   {queueSize > 0 && (
                     <span
                       data-testid="queue-badge"
-                      className="absolute -top-1 right-4 w-5 h-5 bg-yellow-400 text-red-900 text-xs font-bold rounded-full flex items-center justify-center animate-pulse border-2 border-white"
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 text-red-900 text-xs font-bold rounded-full flex items-center justify-center animate-pulse border-2 border-white"
                       aria-label={`${queueSize} reports waiting to sync`}
                     >
                       {queueSize > 9 ? '9+' : queueSize}
