@@ -11,8 +11,8 @@ import { AlertDetailModal } from '../AlertDetailModal'
 import type { Alert } from '@/shared/types/firestore.types'
 
 // Store original clipboard writeText before any mocks
-const originalWriteText = navigator.clipboard?.writeText.bind(navigator.clipboard)
-const originalShare = navigator.share
+const _originalWriteText = navigator.clipboard?.writeText.bind(navigator.clipboard)
+const _originalShare = navigator.share
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const originalNavigator = (global as any).navigator
 
@@ -354,7 +354,7 @@ describe('AlertDetailModal', () => {
 
       // Verify our mock is properly set up by checking a unique marker
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mockNav = (global as any).navigator
+      const _mockNav = (global as any).navigator
 
       // The clipboard fallback is exercised when share is not available.
       // Due to Vitest/happy-dom limitations with navigator.clipboard mocking,
