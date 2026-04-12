@@ -89,14 +89,6 @@ describe('AlertDetailModal', () => {
     }
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-    // Restore original navigator APIs
-    if (originalShare) {
-      global.navigator.share = originalShare
-    }
-  })
-
   describe('should render all alert fields', () => {
     it('should render alert title', async () => {
       render(

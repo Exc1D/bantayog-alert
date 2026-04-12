@@ -87,7 +87,7 @@ export function AlertDetailModal({
           text: message,
           url: linkUrl ?? window.location.href,
         })
-      } catch (error) {
+      } catch (error: unknown) {
         // AbortError means the user dismissed the share sheet — not a real failure
         if (!(error instanceof Error) || error.name !== 'AbortError') {
           console.error('Share failed:', error)
@@ -96,7 +96,7 @@ export function AlertDetailModal({
     } else if (navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(linkUrl ?? window.location.href)
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Clipboard write failed:', error)
       }
     }
@@ -142,7 +142,7 @@ export function AlertDetailModal({
             </p>
             {(affectedAreas.barangays ?? []).length > 0 && (
               <p className="text-sm text-gray-600 mt-1">
-                Barangays: {affectedAreas.barangays!.join(', ')}
+                Barangays: {affectedAreas.barangays?.join(', ')}
               </p>
             )}
           </div>
