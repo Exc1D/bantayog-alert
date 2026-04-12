@@ -10,16 +10,18 @@ import { RefreshCw, AlertCircle, Info } from 'lucide-react'
 import { useAlerts } from '../hooks/useAlerts'
 import { AlertCard } from './AlertCard'
 import { Button } from '@/shared/components/Button'
+import { useUserContext } from '@/shared/hooks/UserContext'
 
 export type AlertPriority = 'all' | 'high' | 'medium' | 'low'
 
 export function AlertList() {
   const [selectedPriority, setSelectedPriority] = useState<AlertPriority>('all')
+  const { municipality, role } = useUserContext()
 
-  const { data, isLoading, isError, refetch, isRefetching } = useAlerts()
+  const { alerts, isLoading, isError, refetch, isRefetching } = useAlerts({ municipality, role })
 
   // Filter alerts by priority (derived from severity)
-  const filteredAlerts = (data ?? []).filter((alert) => {
+  const filteredAlerts = (alerts ?? []).filter((alert) => {
     if (selectedPriority === 'all') return true
     const priorityMap = {
       high: 'emergency' as const,
@@ -31,10 +33,10 @@ export function AlertList() {
 
   // Calculate priority counts
   const priorityCounts = {
-    all: (data ?? []).length,
-    high: (data ?? []).filter((a) => a.severity === 'emergency').length,
-    medium: (data ?? []).filter((a) => a.severity === 'warning').length,
-    low: (data ?? []).filter((a) => a.severity === 'info').length,
+    all: (alerts ?? []).length,
+    high: (alerts ?? []).filter((a) => a.severity === 'emergency').length,
+    medium: (alerts ?? []).filter((a) => a.severity === 'warning').length,
+    low: (alerts ?? []).filter((a) => a.severity === 'info').length,
   }
 
   const handleRefresh = () => {
@@ -84,7 +86,7 @@ export function AlertList() {
           {/* Error banner */}
           <div className="p-4">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center" data-testid="alert-error">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+              <AlertCircle aria-hidden="true" className="w-12 h-12 text-red-500 mx-auto mb-3" />
               <h2 className="text-lg font-semibold text-red-900 mb-2">Unable to load alerts</h2>
               <p className="text-red-700 mb-4">
                 Something went wrong while fetching official alerts. Please try again.
@@ -103,7 +105,7 @@ export function AlertList() {
   }
 
   // Empty state
-  if (!data || data.length === 0) {
+  if (!alerts || alerts.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 pb-20" data-testid="alert-list">
         <div className="max-w-lg mx-auto bg-gray-50 min-h-screen">
@@ -116,7 +118,7 @@ export function AlertList() {
           <div className="p-4">
             <div className="bg-white rounded-lg p-8 text-center" data-testid="alert-empty">
               <div className="w-24 h-24 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Info className="w-12 h-12 text-gray-400" />
+                <Info aria-hidden="true" className="w-12 h-12 text-gray-400" />
               </div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">No active alerts</h2>
               <p className="text-gray-600">
@@ -155,7 +157,7 @@ export function AlertList() {
           {/* Filtered empty state */}
           <div className="p-4">
             <div className="bg-white rounded-lg p-8 text-center" data-testid="alert-empty">
-              <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <AlertCircle aria-hidden="true" className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 No alerts match this filter
               </h2>
@@ -180,6 +182,7 @@ export function AlertList() {
               disabled={isLoading}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
               data-testid="refresh-button"
+              aria-label="Refresh alerts"
             >
               <RefreshCw
                 className={`w-5 h-5 text-primary-blue ${isRefetching ? 'animate-spin' : ''}`}
