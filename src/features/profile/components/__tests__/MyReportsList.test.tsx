@@ -9,8 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BrowserRouter, useNavigate } from 'react-router-dom'
-import { MyReportsList } from '../MyReportsList'
+import { MyReportsList, StatusBadge } from '../MyReportsList'
 import { Timestamp } from 'firebase/firestore'
 
 // ---------------------------------------------------------------------------
@@ -49,7 +48,7 @@ vi.mock('@/app/firebase/config', () => ({
 // ---------------------------------------------------------------------------
 // Helper: create a mock Firestore document snapshot
 // ---------------------------------------------------------------------------
-function createMockDoc(id: string, data: Record<string, unknown>) {
+function createMockDoc(id: string, data: Record<string, unknown> | null) {
   return {
     id,
     data: () => data,
@@ -85,12 +84,14 @@ function createReport(overrides: {
 // ---------------------------------------------------------------------------
 // Render helper
 // ---------------------------------------------------------------------------
-const renderWithRouter = (userId: string, userPhone?: string) =>
-  render(
+const renderWithRouter = (userId: string, userPhone?: string) => {
+  const { BrowserRouter } = require('react-router-dom')
+  return render(
     <BrowserRouter>
       <MyReportsList userId={userId} userPhone={userPhone} />
     </BrowserRouter>
   )
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -310,5 +311,57 @@ describe('MyReportsList navigation', () => {
     await user.click(screen.getByRole('button', { name: /view/i }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/feed/report-detail-001')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Null data handling
+// ---------------------------------------------------------------------------
+describe('MyReportsList null data handling', () => {
+  it('should handle documents with null data gracefully', async () => {
+    mockGetDocs.mockResolvedValue({
+      docs: [
+        createMockDoc('doc-1', null), // Simulates partial document
+        createMockDoc('doc-2', {
+          reportId: 'report-valid-001',
+          reporterUserId: 'user-123',
+          incidentType: 'fire',
+          status: 'pending',
+          createdAt: Timestamp.fromDate(new Date()),
+          barangay: 'Mabuhay',
+          municipality: 'Daet',
+        }),
+      ],
+      forEach: function (fn: (doc: unknown) => void) {
+        this.docs.forEach(fn)
+      },
+    })
+
+    renderWithRouter('user-123')
+
+    await waitFor(() => {
+      // Should show the valid report, skip the null one
+      expect(screen.getByText(/fire/i)).toBeInTheDocument()
+      // Should not crash
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Additional status badges (assigned, responding, false_alarm)
+// ---------------------------------------------------------------------------
+describe('StatusBadge additional statuses', () => {
+  it('should render assigned, responding, and false_alarm badges with correct labels and colors', () => {
+    const { container: container1 } = render(<StatusBadge status="assigned" />)
+    expect(container1.textContent).toBe('Assigned')
+    expect(container1.querySelector('span')?.className).toContain('bg-purple-100')
+
+    const { container: container2 } = render(<StatusBadge status="responding" />)
+    expect(container2.textContent).toBe('Responding')
+    expect(container2.querySelector('span')?.className).toContain('bg-orange-100')
+
+    const { container: container3 } = render(<StatusBadge status="false_alarm" />)
+    expect(container3.textContent).toBe('False Alarm')
+    expect(container3.querySelector('span')?.className).toContain('bg-gray-100')
   })
 })

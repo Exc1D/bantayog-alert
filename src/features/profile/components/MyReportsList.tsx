@@ -4,6 +4,38 @@
  * Displays user's submitted reports:
  * - Registered reports (reporterUserId === userId)
  * - Linked anonymous reports (reporterPhone === user's phone)
+ *
+ * FIRESTORE INDEX REQUIREMENTS:
+ * This component uses composite queries that require Firestore indexes.
+ * Create the following indexes in Firebase Console > Firestore > Indexes:
+ *
+ * 1. Collection: report_private
+ *    - Fields: reporterUserId (Ascending), reportId (Descending)
+ *
+ * 2. Collection: report_private
+ *    - Fields: reporterPhone (Ascending), reportId (Descending)
+ *
+ * Or deploy firestore.indexes.json with:
+ * {
+ *   "indexes": [
+ *     {
+ *       "collectionGroup": "report_private",
+ *       "queryScope": "COLLECTION",
+ *       "fields": [
+ *         { "fieldPath": "reporterUserId", "order": "ASCENDING" },
+ *         { "fieldPath": "reportId", "order": "DESCENDING" }
+ *       ]
+ *     },
+ *     {
+ *       "collectionGroup": "report_private",
+ *       "queryScope": "COLLECTION",
+ *       "fields": [
+ *         { "fieldPath": "reporterPhone", "order": "ASCENDING" },
+ *         { "fieldPath": "reportId", "order": "DESCENDING" }
+ *       ]
+ *     }
+ *   ]
+ * }
  */
 
 import { useState, useEffect } from 'react'
@@ -11,7 +43,7 @@ import { useNavigate } from 'react-router-dom'
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
 import { db } from '@/app/firebase/config'
 import { Button } from '@/shared/components/Button'
-import { ReportStatus } from '@/shared/types/firestore.types'
+import { ReportStatus, IncidentType } from '@/shared/types/firestore.types'
 
 export interface MyReportsListProps {
   userId: string
@@ -20,7 +52,7 @@ export interface MyReportsListProps {
 
 interface ReportSummary {
   id: string
-  incidentType: string
+  incidentType: IncidentType
   status: ReportStatus
   createdAt: Date
   barangay: string
@@ -32,6 +64,9 @@ const STATUS_LABELS: Record<ReportStatus, string> = {
   verified: 'Verified',
   resolved: 'Resolved',
   rejected: 'Rejected',
+  assigned: 'Assigned',
+  responding: 'Responding',
+  false_alarm: 'False Alarm',
 }
 
 const STATUS_COLORS: Record<ReportStatus, string> = {
@@ -39,9 +74,22 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
   verified: 'bg-blue-100 text-blue-800',
   resolved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
+  assigned: 'bg-purple-100 text-purple-800',
+  responding: 'bg-orange-100 text-orange-800',
+  false_alarm: 'bg-gray-100 text-gray-800',
 }
 
-function StatusBadge({ status }: { status: ReportStatus }) {
+const STATUS_ORDER: ReportStatus[] = [
+  'pending',
+  'verified',
+  'assigned',
+  'responding',
+  'resolved',
+  'rejected',
+  'false_alarm',
+]
+
+export function StatusBadge({ status }: { status: ReportStatus }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[status]}`}>
       {STATUS_LABELS[status]}
@@ -75,17 +123,20 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
 
           for (const docSnap of registeredSnap.docs) {
             const data = docSnap.data()
-            if (!seenIds.has(data.reportId)) {
-              seenIds.add(data.reportId)
-              allReports.push({
-                id: data.reportId,
-                incidentType: data.incidentType || 'other',
-                status: data.status || 'pending',
-                createdAt: data.createdAt?.toDate() || new Date(),
-                barangay: data.barangay || 'Unknown',
-                municipality: data.municipality || 'Unknown',
-              })
-            }
+            if (!data) continue
+
+            const reportId = data.reportId
+            if (!reportId || seenIds.has(reportId)) continue
+
+            seenIds.add(reportId)
+            allReports.push({
+              id: reportId,
+              incidentType: data.incidentType || 'other',
+              status: data.status || 'pending',
+              createdAt: data.createdAt?.toDate() || new Date(),
+              barangay: data.barangay || 'Unknown',
+              municipality: data.municipality || 'Unknown',
+            })
           }
         }
 
@@ -100,17 +151,20 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
 
           for (const docSnap of linkedSnap.docs) {
             const data = docSnap.data()
-            if (!seenIds.has(data.reportId)) {
-              seenIds.add(data.reportId)
-              allReports.push({
-                id: data.reportId,
-                incidentType: data.incidentType || 'other',
-                status: data.status || 'pending',
-                createdAt: data.createdAt?.toDate() || new Date(),
-                barangay: data.barangay || 'Unknown',
-                municipality: data.municipality || 'Unknown',
-              })
-            }
+            if (!data) continue
+
+            const reportId = data.reportId
+            if (!reportId || seenIds.has(reportId)) continue
+
+            seenIds.add(reportId)
+            allReports.push({
+              id: reportId,
+              incidentType: data.incidentType || 'other',
+              status: data.status || 'pending',
+              createdAt: data.createdAt?.toDate() || new Date(),
+              barangay: data.barangay || 'Unknown',
+              municipality: data.municipality || 'Unknown',
+            })
           }
         }
 
@@ -187,17 +241,13 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
   }
 
   const renderReports = () => {
-    const pending = reports.filter((r) => r.status === 'pending')
-    const verified = reports.filter((r) => r.status === 'verified')
-    const resolved = reports.filter((r) => r.status === 'resolved')
-    const rejected = reports.filter((r) => r.status === 'rejected')
-
     return (
       <div className="space-y-6">
-        {renderReportList(pending, 'Pending')}
-        {renderReportList(verified, 'Verified')}
-        {renderReportList(resolved, 'Resolved')}
-        {renderReportList(rejected, 'Rejected')}
+        {STATUS_ORDER.map((status) => {
+          const statusReports = reports.filter((r) => r.status === status)
+          if (statusReports.length === 0) return null
+          return renderReportList(statusReports, STATUS_LABELS[status])
+        })}
       </div>
     )
   }

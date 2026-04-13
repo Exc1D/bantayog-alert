@@ -34,14 +34,28 @@ vi.mock('../../services/reportQueue.service', () => ({
   },
 }))
 
+// Mock submitReport and uploadReportPhoto for syncQueue tests
+const submitReportMock = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const uploadReportPhotoMock = vi.hoisted(() => vi.fn<() => Promise<string>>())
+
+vi.mock('@/domains/citizen/services/firestore.service', () => ({
+  submitReport: submitReportMock,
+}))
+
+vi.mock('../services/reportStorage.service', () => ({
+  uploadReportPhoto: uploadReportPhotoMock,
+}))
+
 vi.mock('@/app/firebase/config', () => ({
   storage: {},
   db: {},
   auth: {},
 }))
 
+// Mock useNetworkStatus with configurable isOnline
+const mockNetworkStatus = { isOnline: false, networkType: 'wifi' as const }
 vi.mock('@/shared/hooks/useNetworkStatus', () => ({
-  useNetworkStatus: vi.fn().mockReturnValue({ isOnline: true, networkType: 'wifi' }),
+  useNetworkStatus: vi.fn(() => mockNetworkStatus),
 }))
 
 const mockReportData = {
@@ -56,6 +70,8 @@ describe('useReportQueue', () => {
   beforeEach(() => {
     // Clear call history — implementations persist so each test can override.
     vi.clearAllMocks()
+    // Reset network status to online
+    mockNetworkStatus.isOnline = true
     // Restore default resolved implementations for each test.
     getAllMock.mockImplementation(() => Promise.resolve([]))
     addMock.mockImplementation(() => Promise.resolve())
@@ -64,6 +80,8 @@ describe('useReportQueue', () => {
     deleteMock.mockImplementation(() => Promise.resolve())
     clearMock.mockImplementation(() => Promise.resolve())
     getByStatusMock.mockImplementation(() => Promise.resolve([]))
+    submitReportMock.mockImplementation(() => Promise.resolve())
+    uploadReportPhotoMock.mockImplementation(() => Promise.resolve('https://example.com/photo.jpg'))
   })
 
   describe('initial state', () => {
@@ -110,6 +128,83 @@ describe('useReportQueue', () => {
       await waitFor(() => {
         expect(result.current.loadError).toBe('Failed to load offline queue')
       })
+    })
+  })
+
+  describe('auto-sync error handling', () => {
+    it('should log [AUTO_SYNC_ERROR] when syncQueue promise rejects', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      // Set up queue with pending report, starting offline
+      const queuedReport = {
+        id: 'q1',
+        reportData: mockReportData,
+        retryCount: 0,
+        status: 'pending' as const,
+        createdAt: Date.now(),
+      }
+
+      // Start offline so auto-sync doesn't trigger immediately
+      mockNetworkStatus.isOnline = false
+      getAllMock.mockImplementation(() => Promise.resolve([queuedReport]))
+
+      const { result, rerender } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.queue.length).toBe(1)
+      })
+
+      // Make updateMock reject to trigger syncQueue rejection
+      // The rejection happens BEFORE the per-report try/catch because
+      // we're simulating an infrastructure failure
+      updateMock.mockImplementation(() => Promise.reject(new Error('IDB connection lost')))
+
+      // Go online - this triggers the auto-sync useEffect
+      mockNetworkStatus.isOnline = true
+      rerender()
+
+      // Wait for the async error to be logged
+      await waitFor(
+        () => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            '[AUTO_SYNC_ERROR]',
+            'IDB connection lost'
+          )
+        },
+        { timeout: 3000 }
+      )
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('should handle non-Error rejections in syncQueue', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const queuedReport = {
+        id: 'q1',
+        reportData: mockReportData,
+        retryCount: 0,
+        status: 'pending' as const,
+        createdAt: Date.now(),
+      }
+
+      getAllMock.mockImplementation(() => Promise.resolve([queuedReport]))
+      submitReportMock.mockRejectedValueOnce('raw string error')
+
+      const { result } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.queue.length).toBe(1)
+      })
+
+      const syncResult = await act(async () => {
+        return await result.current.syncQueue()
+      })
+
+      // Should handle non-Error rejections
+      expect(syncResult.failed).toBe(1)
+
+      consoleErrorSpy.mockRestore()
     })
   })
 

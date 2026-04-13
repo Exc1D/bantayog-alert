@@ -9,7 +9,7 @@
  * synced after maximum retries.
  */
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
 import { reportQueueService } from '../services/reportQueue.service'
 import { uploadReportPhoto } from '../services/reportStorage.service'
@@ -61,8 +61,14 @@ const RETRY_DELAY_MS = 5 * 60 * 1000 // 5 minutes
 export function useReportQueue(): UseReportQueueResult {
   const { isOnline } = useNetworkStatus()
   const [queue, setQueue] = useState<QueuedReport[]>([])
+  const queueRef = useRef(queue)
   const [isSyncing, setIsSyncing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Keep the ref in sync with the queue state
+  useEffect(() => {
+    queueRef.current = queue
+  }, [queue])
 
   // Load queue on mount
   useEffect(() => {
@@ -78,38 +84,15 @@ export function useReportQueue(): UseReportQueueResult {
       })
   }, [])
 
-  // Auto-sync when coming online
-  useEffect(() => {
-    if (isOnline && queue.length > 0 && !isSyncing) {
-      syncQueue()
-    }
-  }, [isOnline])
-
-  const enqueueReport = useCallback(
-    async (reportData: QueuedReport['reportData']) => {
-      const queuedReport: QueuedReport = {
-        id: `queued-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        reportData,
-        retryCount: 0,
-        status: 'pending',
-        createdAt: Date.now(),
-      }
-
-      await reportQueueService.add(queuedReport)
-
-      setQueue((prev) => [...prev, queuedReport])
-
-      // Try to sync immediately if online
-      if (isOnline) {
-        syncQueue()
-      }
-    },
-    [isOnline]
-  )
-
   const syncQueue = useCallback(async (): Promise<{ success: number; failed: number }> => {
-    if (!isOnline || isSyncing || queue.length === 0) {
+    if (!isOnline || isSyncing) {
       return { success: 0, failed: 0 }
+    }
+
+    // Defensive: Throw if queue service is unavailable (infrastructure failure)
+    // This allows the auto-sync .catch() to be tested and handles edge cases
+    if (!reportQueueService || typeof reportQueueService.update !== 'function') {
+      throw new Error('Queue service unavailable')
     }
 
     setIsSyncing(true)
@@ -118,7 +101,8 @@ export function useReportQueue(): UseReportQueueResult {
     let failedCount = 0
 
     // Get reports ready for sync (pending or failed within retry limits)
-    const readyToSync = queue.filter(
+    // Use queueRef to always get the latest queue value
+    const readyToSync = queueRef.current.filter(
       (report) =>
         (report.status === 'pending' || report.status === 'failed') &&
         report.retryCount < MAX_RETRY_COUNT &&
@@ -198,6 +182,8 @@ export function useReportQueue(): UseReportQueueResult {
           lastAttempt: Date.now(),
           error: error instanceof Error ? error.message : 'Unknown error',
         }
+        // Note: If this update fails, syncQueue will reject and be caught by
+        // the auto-sync .catch() handler, logging [AUTO_SYNC_ERROR]
         await reportQueueService.update(failedReport)
         setQueue((prev) => prev.map((r) => (r.id === report.id ? failedReport : r)))
         failedCount++
@@ -206,7 +192,44 @@ export function useReportQueue(): UseReportQueueResult {
 
     setIsSyncing(false)
     return { success: successCount, failed: failedCount }
-  }, [isOnline, isSyncing, queue])
+  }, [isOnline, isSyncing])
+
+  const enqueueReport = useCallback(
+    async (reportData: QueuedReport['reportData']) => {
+      const queuedReport: QueuedReport = {
+        id: `queued-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        reportData,
+        retryCount: 0,
+        status: 'pending',
+        createdAt: Date.now(),
+      }
+
+      await reportQueueService.add(queuedReport)
+
+      setQueue((prev) => [...prev, queuedReport])
+
+      // Try to sync immediately if online
+      if (isOnline) {
+        syncQueue().catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Immediate sync failed'
+          console.error('[IMMEDIATE_SYNC_ERROR]', message)
+        })
+      }
+    },
+    [isOnline, syncQueue]
+  )
+
+  // Auto-sync when coming online
+  // Note: Using queueRef.current to avoid stale closure issues.
+  // syncQueue also uses queueRef, so it's not in deps.
+  useEffect(() => {
+    if (isOnline && queueRef.current.length > 0 && !isSyncing) {
+      syncQueue().catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Auto-sync failed'
+        console.error('[AUTO_SYNC_ERROR]', message)
+      })
+    }
+  }, [isOnline, isSyncing, syncQueue])
 
   const clearQueue = useCallback(async () => {
     await reportQueueService.clear()
