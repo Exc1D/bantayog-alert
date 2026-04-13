@@ -185,7 +185,7 @@ export function ReportForm({
     return `${year}-${municipalityCode}-${sequential}`
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     // DPA compliance: explicit consent required before collecting personal data
@@ -242,15 +242,16 @@ export function ReportForm({
       return
     }
 
-    // Generate Report ID and show success screen
-    const reportId = generateReportId(location)
-    setSubmittedReportId(reportId)
-
+    // Online: call the persistence service and wait for the confirmed reportId
     try {
-      onSubmit?.(reportData)
+      const persistedReportId = await onSubmit?.(reportData)
+      const idStr = typeof persistedReportId === 'string' ? persistedReportId : ''
+      setSubmittedReportId(
+        idStr.length > 0 ? idStr : generateReportId(location)
+      )
     } catch (err: unknown) {
-      // Log but still show success — form data is valid and queued/submitted
-      console.error('[SUBMIT_CALLBACK_ERROR]', err instanceof Error ? err.message : err)
+      const message = err instanceof Error ? err.message : 'Failed to submit report'
+      setPhotoError(message)
     }
   }
 

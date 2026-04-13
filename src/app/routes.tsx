@@ -9,6 +9,7 @@ import { LinkReportsByPhone } from '@/features/profile/components/LinkReportsByP
 import { ReportDetailScreen } from '@/features/feed/components/ReportDetailScreen'
 import { PrivacyPolicy } from './components/PrivacyPolicy'
 import { Signup } from './Signup'
+import { submitCitizenReport } from '@/features/report/services/reportSubmission.service'
 
 export const router = createBrowserRouter([
   {
@@ -18,7 +19,16 @@ export const router = createBrowserRouter([
       { index: true, element: <MapView /> },
       { path: 'map', element: <MapView /> },
       { path: 'feed', element: <FeedList /> },
-      { path: 'report', element: <ReportForm /> },
+      {
+        path: 'report',
+        element: (
+          <ReportForm
+            onSubmit={(data) =>
+              submitCitizenReport(data).then((result) => result.reportId)
+            }
+          />
+        ),
+      },
       { path: 'alerts', element: <AlertList /> },
       {
         path: 'profile',

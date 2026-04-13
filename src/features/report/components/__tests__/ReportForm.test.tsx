@@ -849,6 +849,61 @@ describe('ReportForm', () => {
     })
   })
 
+  describe('Online Real Persistence Path', () => {
+    it('submits online reports through the real persistence path', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue('report-123')
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      await user.upload(screen.getByLabelText(/photo/i), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+
+      // The form should display the reportId returned by the persistence layer,
+      // not a locally-generated fallback ID.
+      // ReportSuccess prepends '#' for display.
+      const reportIdElement = await screen.findByTestId('report-id')
+      expect(reportIdElement.textContent).toBe('#report-123')
+    })
+
+    it('uses locally-generated ID when onSubmit returns empty string', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue('')
+
+      render(
+        <ReportForm
+          userLocation={{ latitude: 14.1, longitude: 122.9 }}
+          onSubmit={onSubmit}
+        />
+      )
+
+      await user.upload(screen.getByLabelText(/photo/i), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
+      await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
+      await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
+      await user.click(screen.getByRole('button', { name: /submit report/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledOnce()
+      })
+
+      // Falls back to locally-generated ID (format: YYYY-XXXX-NNNN)
+      // ReportSuccess prepends '#' for display
+      const reportIdElement = await screen.findByTestId('report-id')
+      expect(reportIdElement.textContent).toMatch(/^#\d{4}-[A-Z]{4}-\d{4}$/)
+    })
+  })
+
   describe('Privacy Policy Consent', () => {
     it('should show privacy policy consent error when submitting without agreeing', async () => {
       const user = userEvent.setup()
