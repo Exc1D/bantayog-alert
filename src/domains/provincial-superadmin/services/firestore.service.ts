@@ -17,7 +17,6 @@ import type {
   ReportPrivate,
   ReportOps,
   Incident,
-  Responder,
   Municipality,
   UserProfile,
   AuditLog,
@@ -134,10 +133,10 @@ export async function getMunicipalityDetails(municipalityId: string): Promise<Mu
  * @param municipality - Municipality assignment
  */
 export async function createMunicipalAdmin(
-  email: string,
-  password: string,
-  displayName: string,
-  municipality: string
+  _email: string,
+  _password: string,
+  _displayName: string,
+  _municipality: string
 ): Promise<void> {
   try {
     // This would be done via a Firebase Function in production
@@ -159,13 +158,13 @@ export async function createMunicipalAdmin(
  */
 export async function promoteToMunicipalAdmin(
   uid: string,
-  municipality: string,
-  superadminUid: string
+  _municipality: string,
+  _superadminUid: string
 ): Promise<void> {
   try {
     await updateDocument<UserProfile>('users', uid, {
       role: 'municipal_admin',
-      municipality,
+      municipality: _municipality,
       updatedAt: Date.now(),
     })
 
@@ -184,7 +183,7 @@ export async function promoteToMunicipalAdmin(
  * @param uid - User UID
  * @param superadminUid - Current superadmin UID
  */
-export async function demoteMunicipalAdmin(uid: string, superadminUid: string): Promise<void> {
+export async function demoteMunicipalAdmin(uid: string, _superadminUid: string): Promise<void> {
   try {
     await updateDocument<UserProfile>('users', uid, {
       role: 'citizen',
@@ -211,7 +210,7 @@ export async function demoteMunicipalAdmin(uid: string, superadminUid: string): 
 export async function declareEmergency(
   incidentId: string,
   emergencyLevel: 'state_of_calamity' | 'state_of_emergency',
-  superadminUid: string
+  _superadminUid: string
 ): Promise<void> {
   try {
     const now = Date.now()
@@ -219,14 +218,14 @@ export async function declareEmergency(
     await updateDocument<Incident>('incidents', incidentId, {
       emergencyDeclared: true,
       emergencyDeclaredAt: now,
-      emergencyDeclaredBy: superadminUid,
+      emergencyDeclaredBy: _superadminUid,
       emergencyLevel,
     })
 
     // Log the action
     await addAuditLog({
       timestamp: now,
-      performedBy: superadminUid,
+      performedBy: _superadminUid,
       performedByRole: 'provincial_superadmin',
       action: 'DECLARE_EMERGENCY',
       resourceType: 'incident',
@@ -276,7 +275,7 @@ async function addAuditLog(logData: Omit<AuditLog, 'id'>): Promise<void> {
  * Sets up automatic data deletion policies (GDPR compliance).
  * Default is 6 months retention.
  */
-export async function configureDataRetention(retentionMonths: number): Promise<void> {
+export async function configureDataRetention(_retentionMonths: number): Promise<void> {
   try {
     // This would configure a scheduled Firebase Function
     // to auto-delete data older than retentionMonths
@@ -311,7 +310,7 @@ export async function forceUserLogout(uid: string): Promise<void> {
  *
  * @param uid - User UID
  */
-export async function getUserSessions(uid: string): Promise<unknown[]> {
+export async function getUserSessions(_uid: string): Promise<unknown[]> {
   try {
     // This would query a user_sessions subcollection
     // For now, return empty array

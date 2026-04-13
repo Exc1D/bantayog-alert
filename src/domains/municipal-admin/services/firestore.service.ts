@@ -197,7 +197,7 @@ export async function assignToResponder(
  *
  * @param municipality - Municipality name
  */
-export async function getAvailableResponders(municipality: string): Promise<Responder[]> {
+export async function getAvailableResponders(_municipality: string): Promise<Responder[]> {
   try {
     // Note: This would require a responders_by_municipality index
     // For now, return empty array

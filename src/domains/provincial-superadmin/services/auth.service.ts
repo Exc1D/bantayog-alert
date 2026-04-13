@@ -13,20 +13,9 @@
  * - Sole authority to declare emergencies
  */
 
-import {
-  multiFactor,
-  PhoneMultiFactorGenerator,
-  TotpMultiFactorGenerator,
-  MultiFactorUser,
-  MultiFactorAssertion,
-  MultiFactorInfo,
-  MultiFactorSession,
-  getMultiFactorResolver,
-} from 'firebase/auth'
+import { getMultiFactorResolver } from 'firebase/auth'
 import { auth } from '@/app/firebase/config'
 import { registerBase, loginBase } from '@/shared/services/auth.service'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/app/firebase/config'
 import type { AuthResult, ProvincialSuperadminCredentials, UserProfile } from '@/shared/types'
 
 /**
@@ -99,7 +88,7 @@ export async function enrollTOTP(): Promise<{
  *
  * @param verificationCode - 6-digit code from authenticator app
  */
-export async function finalizeTOTPEnrollment(verificationCode: string): Promise<void> {
+export async function finalizeTOTPEnrollment(_verificationCode: string): Promise<void> {
   try {
     const user = auth.currentUser
     if (!user) {
@@ -121,7 +110,7 @@ export async function finalizeTOTPEnrollment(verificationCode: string): Promise<
  *
  * @param phoneNumber - Phone number in E.164 format
  */
-export async function enrollSMS(phoneNumber: string): Promise<void> {
+export async function enrollSMS(_phoneNumber: string): Promise<void> {
   try {
     const user = auth.currentUser
     if (!user) {
@@ -146,7 +135,7 @@ export async function enrollSMS(phoneNumber: string): Promise<void> {
  *
  * @param verificationCode - 6-digit verification code
  */
-export async function verifyMFA(verificationCode: string): Promise<void> {
+export async function verifyMFA(_verificationCode: string): Promise<void> {
   try {
     // Note: This requires proper integration with Firebase Auth's MFA flow
     // The actual implementation depends on the MFA factor (TOTP or SMS)
@@ -188,7 +177,7 @@ export async function loginProvincialSuperadmin(
   } catch (error: unknown) {
     // Check if error is due to MFA requirement (from Firebase Auth)
     if ((error as { code?: string })?.code === 'auth/multi-factor-auth-required') {
-      const resolver = getMultiFactorResolver(error)
+      const resolver = getMultiFactorResolver(auth, error)
 
       // Throw special error indicating MFA verification is needed
       const mfaError = new Error('MFA verification required') as Error & {
@@ -212,7 +201,7 @@ export async function loginProvincialSuperadmin(
  *
  * @param factorUid - UID of the factor to remove
  */
-export async function unenrollMFA(factorUid: string): Promise<void> {
+export async function unenrollMFA(_factorUid: string): Promise<void> {
   try {
     const user = auth.currentUser
     if (!user) {

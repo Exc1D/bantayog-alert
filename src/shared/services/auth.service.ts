@@ -11,7 +11,6 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithCustomToken,
   signOut as firebaseSignOut,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -19,7 +18,7 @@ import {
   User as FirebaseUser,
   UserCredential,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { auth, db } from '@/app/firebase/config'
 import type { UserProfile, AuthResult, AuthCredentials, AuthErrorCode } from '@/shared/types'
 
@@ -141,7 +140,7 @@ export async function registerBase(
       requiresEmailVerification: true,
     }
   } catch (error) {
-    const errorCode = getAuthErrorCode(error)
+    getAuthErrorCode(error)
     throw new Error(`Registration failed: ${(error as Error).message}`, { cause: error })
   }
 }

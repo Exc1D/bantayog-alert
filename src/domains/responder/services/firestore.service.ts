@@ -5,9 +5,9 @@
  * Responders can view assigned incidents and update response status.
  */
 
-import { query, where, orderBy } from 'firebase/firestore'
+import { where, orderBy } from 'firebase/firestore'
 import { getDocument, updateDocument, getCollection } from '@/shared/services/firestore.service'
-import type { Report, ReportPrivate, ReportOps, Incident } from '@/shared/types'
+import type { Report, ReportOps } from '@/shared/types'
 
 /**
  * Get assigned incidents

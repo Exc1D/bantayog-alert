@@ -7,8 +7,8 @@
  */
 
 import { orderBy, limit } from 'firebase/firestore'
-import { getDocument, addDocument, getCollection } from '@/shared/services/firestore.service'
-import type { Report, ReportPrivate, ReportOps } from '@/shared/types'
+import { getDocument, getCollection, setDocument } from '@/shared/services/firestore.service'
+import type { Report, ReportPrivate } from '@/shared/types'
 
 /**
  * Submit a new disaster report
@@ -27,8 +27,12 @@ export async function submitReport(
   try {
     const now = Date.now()
 
-    // Tier 1: Create public report
-    const reportId = await addDocument<Omit<Report, 'id'>>('reports', {
+    // Generate deterministic report ID
+    const reportId = `report_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+
+    // Tier 1: Create public report with deterministic ID
+    await setDocument('reports', reportId, {
+      id: reportId,
       ...reportData,
       createdAt: now,
       updatedAt: now,
@@ -37,14 +41,16 @@ export async function submitReport(
 
     // Tier 2: Create private report (if not anonymous)
     if (privateData) {
-      await addDocument<Omit<ReportPrivate, 'id' | 'reportId'>>('report_private', {
-        ...privateData,
+      await setDocument('report_private', reportId, {
+        id: reportId,
         reportId,
+        ...privateData,
       })
     }
 
     // Tier 3: Create operational report
-    await addDocument<Omit<ReportOps, 'id' | 'reportId'>>('report_ops', {
+    await setDocument('report_ops', reportId, {
+      id: reportId,
       reportId,
       timeline: [
         {
