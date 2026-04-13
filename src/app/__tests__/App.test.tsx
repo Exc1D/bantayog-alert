@@ -5,33 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { App } from '../App'
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-})
-
-// Mock localStorage with persistent store
-const localStorageStore: Record<string, string> = {}
-Object.defineProperty(global, 'localStorage', {
-  value: {
-    getItem: vi.fn((key: string) => localStorageStore[key] || null),
-    setItem: vi.fn((key: string, value: string) => { localStorageStore[key] = value }),
-    removeItem: vi.fn((key: string) => { delete localStorageStore[key] }),
-  },
-  writable: true,
-})
-
-// Mock beforeinstallprompt event
+// Mock beforeinstallprompt event (matchMedia and localStorage are now in setup.ts)
 Object.defineProperty(window, 'beforeinstallprompt', {
   value: vi.fn(),
   writable: true,
@@ -40,7 +14,6 @@ Object.defineProperty(window, 'beforeinstallprompt', {
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.keys(localStorageStore).forEach(key => delete localStorageStore[key])
   })
   describe('Router Integration', () => {
     it('should render router and navigation', () => {
@@ -140,11 +113,13 @@ describe('App Component', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('pwa-install-banner')).not.toBeInTheDocument()
       })
+      // localStorage.setItem is now mocked in setup.ts
       expect(localStorage.setItem).toHaveBeenCalledWith('pwa_install_dismissed', 'true')
     })
 
     it('should not render banner if user previously dismissed (localStorage)', async () => {
-      localStorageStore['pwa_install_dismissed'] = 'true'
+      // Pre-populate localStorage via the shared mock
+      localStorage.setItem('pwa_install_dismissed', 'true')
 
       render(<App />)
 

@@ -25,12 +25,38 @@ const DISMISSED_KEY = 'pwa_install_dismissed'
 const INSTALL_ERROR_NOT_AVAILABLE = 'Installation is not available right now.'
 const INSTALL_ERROR_FAILED = 'Installation failed. Please try again.'
 
+// Safe localStorage access - guards against JSDOM/test environment issues
+// TODO: Monitor for legitimate localStorage failures in production (quota exceeded, private browsing)
+function safeGetStorageItem(key: string): string | null {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage?.getItem?.(key) ?? null : null
+  } catch {
+    return null
+  }
+}
+
+function safeSetStorageItem(key: string, value: string): void {
+  try {
+    window.localStorage?.setItem?.(key, value)
+  } catch {
+    // Non-fatal in tests/private browsing
+  }
+}
+
+function safeRemoveStorageItem(key: string): void {
+  try {
+    window.localStorage?.removeItem?.(key)
+  } catch {
+    // Non-fatal in tests/private browsing
+  }
+}
+
 export function usePWAInstall(): UsePWAInstallResult {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
   const [installError, setInstallError] = useState<string | null>(null)
   const [wasDismissed, setWasDismissed] = useState(() =>
-    typeof window !== 'undefined' && localStorage.getItem(DISMISSED_KEY) === 'true'
+    safeGetStorageItem(DISMISSED_KEY) === 'true'
   )
 
   // Check if running in standalone mode (installed PWA)
@@ -75,7 +101,7 @@ export function usePWAInstall(): UsePWAInstallResult {
         setInstallError(null)
       }
       setDeferredPrompt(null)
-      localStorage.removeItem(DISMISSED_KEY)
+      safeRemoveStorageItem(DISMISSED_KEY)
       return outcome === 'accepted'
     } catch (error) {
       console.error('Failed to install PWA:', error)
@@ -88,7 +114,7 @@ export function usePWAInstall(): UsePWAInstallResult {
     setDeferredPrompt(null)
     setInstallError(null)
     setWasDismissed(true)
-    localStorage.setItem(DISMISSED_KEY, 'true')
+    safeSetStorageItem(DISMISSED_KEY, 'true')
   }, [])
 
   return {

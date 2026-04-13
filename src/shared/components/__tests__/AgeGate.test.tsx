@@ -3,27 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgeGate } from '../AgeGate'
 
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-
-  return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
-      store[key] = value.toString()
-    },
-    clear: () => {
-      store = {}
-    },
-    removeItem: (key: string) => {
-      delete store[key]
-    },
-  }
-})()
-
-Object.defineProperty(global, 'localStorage', {
-  value: localStorageMock,
-})
+// localStorage is now mocked in setup.ts - no per-file overrides needed
 
 describe('AgeGate', () => {
   beforeEach(() => {
@@ -65,8 +45,6 @@ describe('AgeGate', () => {
 
     // Should not render the gate if already verified
     expect(screen.queryByText(/must be 13 or older/i)).not.toBeInTheDocument()
-
-    localStorage.removeItem('age_verified')
   })
 
   it('should call onVerified on mount when already verified', () => {
@@ -77,7 +55,5 @@ describe('AgeGate', () => {
 
     // onVerified should be called when mount with existing verification
     expect(onVerified).toHaveBeenCalledTimes(1)
-
-    localStorage.removeItem('age_verified')
   })
 })

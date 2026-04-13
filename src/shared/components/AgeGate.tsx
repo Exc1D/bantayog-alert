@@ -20,11 +20,29 @@ export interface AgeGateProps {
 
 const STORAGE_KEY = 'age_verified'
 
+// Safe localStorage access - guards against JSDOM/test environment issues
+// TODO: Monitor for legitimate localStorage failures in production (quota exceeded, private browsing)
+function safeGetStorageItem(key: string): string | null {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage?.getItem?.(key) ?? null : null
+  } catch {
+    return null
+  }
+}
+
+function safeSetStorageItem(key: string, value: string): void {
+  try {
+    window.localStorage?.setItem?.(key, value)
+  } catch {
+    // Non-fatal in tests/private browsing
+  }
+}
+
 export function AgeGate({ onVerified }: AgeGateProps) {
   const [isChecked, setIsChecked] = useState(false)
   // Initialize directly from localStorage to prevent flicker on first render
   const [isAlreadyVerified] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY) === 'true'
+    return safeGetStorageItem(STORAGE_KEY) === 'true'
   })
 
   useEffect(() => {
@@ -36,7 +54,7 @@ export function AgeGate({ onVerified }: AgeGateProps) {
   const handleContinue = () => {
     if (!isChecked) return
 
-    localStorage.setItem(STORAGE_KEY, 'true')
+    safeSetStorageItem(STORAGE_KEY, 'true')
     onVerified()
   }
 

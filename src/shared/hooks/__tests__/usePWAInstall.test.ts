@@ -6,36 +6,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { usePWAInstall } from '../usePWAInstall'
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-})
-
-// Mock localStorage with persistent store
-const localStorageStore: Record<string, string> = {}
-Object.defineProperty(global, 'localStorage', {
-  value: {
-    getItem: vi.fn((key: string) => localStorageStore[key] || null),
-    setItem: vi.fn((key: string, value: string) => { localStorageStore[key] = value }),
-    removeItem: vi.fn((key: string) => { delete localStorageStore[key] }),
-  },
-  writable: true,
-})
+// matchMedia and localStorage are now mocked in setup.ts - no per-file overrides needed
 
 describe('usePWAInstall', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.keys(localStorageStore).forEach(key => delete localStorageStore[key])
+    localStorage.clear()
   })
 
   it('returns deferredPrompt as null initially', () => {
