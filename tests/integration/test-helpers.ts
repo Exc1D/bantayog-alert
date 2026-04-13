@@ -223,7 +223,7 @@ export async function getUserProfile(
       return null
     }
     return docSnap.data() as UserProfile
-  } catch (error) {
+  } catch (_error) {
     return null
   }
 }

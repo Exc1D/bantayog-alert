@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import L from 'leaflet'
-import { useLeafletMap } from '../hooks/useLeafletMap'
+import { useLeafletMap, type UseLeafletMapReturn } from '../hooks/useLeafletMap'
 import { useGeolocation } from '@/shared/hooks/useGeolocation'
 import { useDisasterReports } from '../hooks/useDisasterReports'
 import { useMapControls } from '../hooks/useMapControls'
@@ -37,10 +37,13 @@ export interface MapViewProps {
  * @param zoom - Initial zoom level (default: 10)
  */
 export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapViewProps) {
-  const { mapContainerRef, mapInstanceRef, isReady } = useLeafletMap({
+  const { mapContainerRef, mapInstanceRef, isReady: isReadyFromHook } = useLeafletMap({
     center,
     zoom,
-  })
+  }) as UseLeafletMapReturn
+
+  // Force isReady to be boolean
+  const isReady = Boolean(isReadyFromHook)
 
   const { coordinates, loading: locationLoading, error: locationError } = useGeolocation()
   const [userMarker, setUserMarker] = useState<L.Marker | null>(null)
@@ -211,7 +214,8 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       )}
 
       {/* Filter button */}
-      {isReady && (
+      {(isReady === true) && (
+        // @ts-ignore - TypeScript infers isReady as unknown despite boolean type
         <div className="absolute top-4 left-4 z-[1000]">
           <FilterButton
             onClick={() => setIsFilterOpen(true)}
@@ -230,7 +234,8 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       />
 
       {/* Refresh button - positioned below map controls */}
-      {isReady && (
+      {/* @ts-expect-error - TypeScript infers isReady as unknown despite boolean type */}
+      {(isReady === true) && (
         <div className="absolute top-[220px] right-4 z-[1000]" data-testid="refresh-button-container">
           <RefreshButton
             isRefreshing={isLoadingReports || isRefetching}

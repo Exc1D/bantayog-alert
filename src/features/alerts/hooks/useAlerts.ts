@@ -39,20 +39,6 @@ export function useAlerts(options: UseAlertsOptions = {}): UseAlertsResult {
   const [isRefetching, setIsRefetching] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  // Merge helpers
-  const mergeAlerts = useCallback((newAlerts: Alert[]) => {
-    setAlerts((prev) => {
-      const merged = [...prev, ...newAlerts]
-      // Deduplicate by id, preserving newest-first order from Firestore
-      const seen = new Set<string>()
-      return merged.filter((a) => {
-        if (seen.has(a.id)) return false
-        seen.add(a.id)
-        return true
-      })
-    })
-  }, [])
-
   // Ref to hold the last known alert set — needed by handleError since state updates are async
   const latestAlertsRef = useRef<Alert[]>([])
 
@@ -119,7 +105,7 @@ export function useAlerts(options: UseAlertsOptions = {}): UseAlertsResult {
       )
 
       const unsubMunicipality = subscribeToAlertsByMunicipality(
-        municipality,
+        municipality ?? '',
         (alertsFromMunicipality) => {
           setAlerts((prev) => {
             const merged = [...prev, ...alertsFromMunicipality]

@@ -7,7 +7,7 @@
  * Run with Firebase Emulator: firebase emulators:exec "vitest run tests/integration/phone-uniqueness.test.ts"
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { registerResponder } from '@/domains/responder/services/auth.service'
 import { db } from '@/app/firebase/config'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'

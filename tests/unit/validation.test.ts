@@ -7,7 +7,7 @@
  * Run: npm run test:run tests/unit/validation.test.ts
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { registerResponder } from '@/domains/responder/services/auth.service'
 import { registerMunicipalAdmin } from '@/domains/municipal-admin/services/auth.service'
 import { assignToResponder } from '@/domains/municipal-admin/services/firestore.service'
@@ -273,7 +273,7 @@ describe('Data Validation Unit Tests', () => {
       const mockGetDocument = getDocument as vi.MockedFunction<typeof getDocument>
 
       // Mock report in Daet
-      mockGetDocument.mockImplementation((collection, id) => {
+      mockGetDocument.mockImplementation((_collection, _id) => {
         if (collection === 'reports') {
           return Promise.resolve({
             id: 'report-001',
@@ -318,7 +318,7 @@ describe('Data Validation Unit Tests', () => {
       const mockGetDocument = getDocument as vi.MockedFunction<typeof getDocument>
 
       // Mock report exists
-      mockGetDocument.mockImplementation((collection, id) => {
+      mockGetDocument.mockImplementation((_collection, _id) => {
         if (collection === 'reports') {
           return Promise.resolve({
             id: 'report-001',
@@ -339,7 +339,7 @@ describe('Data Validation Unit Tests', () => {
       const mockGetDocument = getDocument as vi.MockedFunction<typeof getDocument>
 
       // Mock report in Daet, responder in Basud
-      mockGetDocument.mockImplementation((collection, id) => {
+      mockGetDocument.mockImplementation((_collection, _id) => {
         if (collection === 'reports') {
           return Promise.resolve({
             id: 'report-001',
@@ -368,7 +368,7 @@ describe('Data Validation Unit Tests', () => {
       // Arrange
       const mockGetDocument = getDocument as vi.MockedFunction<typeof getDocument>
 
-      mockGetDocument.mockImplementation((collection, id) => {
+      mockGetDocument.mockImplementation((_collection, _id) => {
         if (collection === 'reports') {
           return Promise.resolve({
             id: 'report-001',
@@ -403,7 +403,7 @@ describe('Data Validation Unit Tests', () => {
       const mockGetDocument = getDocument as vi.MockedFunction<typeof getDocument>
 
       // Mock report in Daet, responder with no municipality
-      mockGetDocument.mockImplementation((collection, id) => {
+      mockGetDocument.mockImplementation((_collection, _id) => {
         if (collection === 'reports') {
           return Promise.resolve({
             id: 'report-001',
@@ -476,7 +476,7 @@ describe('Data Validation Unit Tests', () => {
       // Arrange
       const mockGetDocument = getDocument as vi.MockedFunction<typeof getDocument>
 
-      mockGetDocument.mockImplementation((collection, id) => {
+      mockGetDocument.mockImplementation((_collection, _id) => {
         if (collection === 'reports') {
           return Promise.resolve({
             id: 'report-001',

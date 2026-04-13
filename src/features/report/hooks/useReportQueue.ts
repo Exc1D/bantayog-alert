@@ -156,7 +156,7 @@ export function useReportQueue(): UseReportQueueResult {
                 ? `${reportData.location.latitude}, ${reportData.location.longitude}`
                 : 'Unknown',
             coordinates: reportData.location.type === 'gps' && reportData.location.latitude
-              ? { latitude: reportData.location.latitude, longitude: reportData.location.longitude }
+              ? { latitude: reportData.location.latitude, longitude: reportData.location.longitude ?? 0 }
               : { latitude: 0, longitude: 0 },
           },
           reporterContact: {

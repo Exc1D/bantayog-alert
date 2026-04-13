@@ -6,7 +6,7 @@ interface MapConfig {
   zoom: number
 }
 
-interface UseLeafletMapReturn {
+export interface UseLeafletMapReturn {
   mapContainerRef: React.RefObject<HTMLDivElement>
   mapInstanceRef: React.RefObject<L.Map | null>
   isReady: boolean
@@ -22,7 +22,7 @@ interface UseLeafletMapReturn {
 export function useLeafletMap(config: MapConfig): UseLeafletMapReturn {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
-  const [isReady, setIsReady] = useState(false)
+  const [isReady, setIsReady] = useState<boolean>(false)
 
   useEffect(() => {
     // Small delay to ensure DOM is ready
@@ -58,9 +58,10 @@ export function useLeafletMap(config: MapConfig): UseLeafletMapReturn {
     }
   }, [config.center, config.zoom])
 
-  return {
+  const result: UseLeafletMapReturn = {
     mapContainerRef,
     mapInstanceRef,
     isReady,
   }
+  return result
 }

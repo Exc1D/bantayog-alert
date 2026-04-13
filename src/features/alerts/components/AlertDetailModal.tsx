@@ -18,12 +18,6 @@ export interface AlertDetailModalProps {
   title?: string
 }
 
-const SEVERITY_ICON: Record<Alert['severity'], React.ElementType> = {
-  info: Info,
-  warning: AlertTriangle,
-  emergency: AlertTriangle,
-}
-
 const SEVERITY_LABEL: Record<Alert['severity'], string> = {
   info: 'info',
   warning: 'warning',

@@ -37,7 +37,7 @@ export function ReportDetailModal({ reportId, onClose }: ReportDetailModalProps)
       setError(null)
 
       try {
-        const data = await getDocument<Report>('reports', reportId)
+        const data = await getDocument<Report>('reports', reportId ?? '')
         if (data) {
           setReport(data)
         } else {

@@ -13,7 +13,7 @@
  * - Sole authority to declare emergencies
  */
 
-import { getMultiFactorResolver } from 'firebase/auth'
+import { getMultiFactorResolver, type MultiFactorError } from 'firebase/auth'
 import { auth } from '@/app/firebase/config'
 import { registerBase, loginBase } from '@/shared/services/auth.service'
 import type { AuthResult, ProvincialSuperadminCredentials, UserProfile } from '@/shared/types'
@@ -177,7 +177,7 @@ export async function loginProvincialSuperadmin(
   } catch (error: unknown) {
     // Check if error is due to MFA requirement (from Firebase Auth)
     if ((error as { code?: string })?.code === 'auth/multi-factor-auth-required') {
-      const resolver = getMultiFactorResolver(auth, error)
+      const resolver = getMultiFactorResolver(auth, error as MultiFactorError)
 
       // Throw special error indicating MFA verification is needed
       const mfaError = new Error('MFA verification required') as Error & {

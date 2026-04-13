@@ -22,12 +22,6 @@ const SEVERITY_ICON: Record<Alert['severity'], React.ElementType> = {
   emergency: AlertTriangle,
 }
 
-const SEVERITY_LABEL: Record<Alert['severity'], string> = {
-  info: 'info',
-  warning: 'warning',
-  emergency: 'emergency',
-}
-
 const SEVERITY_BORDER: Record<Alert['severity'], string> = {
   info: 'border-blue-400',
   warning: 'border-orange-400',

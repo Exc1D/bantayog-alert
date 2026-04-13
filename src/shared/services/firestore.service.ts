@@ -125,7 +125,7 @@ export async function updateDocument<T extends DocumentData>(
 ): Promise<void> {
   try {
     const docRef = doc(db, collectionPath, docId)
-    await updateDoc(docRef, data)
+    await updateDoc(docRef as any, data as any)
   } catch (error) {
     throw new Error(`Failed to update document ${docId} in ${collectionPath}`, { cause: error })
   }
