@@ -14,6 +14,7 @@ import { addDocument, updateDocument } from '@/shared/services/firestore.service
 import { db } from '@/app/firebase/config'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
 import { deleteAuthUsers } from '../helpers/firebase-admin'
+import { createTestReport } from './test-helpers'
 import type { Report, UserProfile, Municipality } from '@/shared/types'
 
 describe('Cross-Municipality Assignment Prevention', () => {
@@ -88,34 +89,13 @@ describe('Cross-Municipality Assignment Prevention', () => {
       testUsers.push(responderResult.user.uid)
 
       // Create report in Daet
-      const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+      const reportId = await createTestReport('Daet', {
         incidentType: 'flood',
         severity: 'high',
         description: 'Major flooding in downtown area',
-        approximateLocation: {
-          address: 'Downtown Daet',
-          municipality: 'Daet',
-          coordinates: { latitude: 14.1167, longitude: 122.95 },
-        },
-        reportedBy: 'citizen@example.com',
-      }
-
-      const reportId = await addDocument<Report>('reports', {
-        ...reportData,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
         status: 'verified',
       })
       testReports.push(reportId)
-
-      // Also create report_ops document
-      await addDocument('report_ops', {
-        reportId,
-        assignedTo: null,
-        assignedAt: null,
-        assignedBy: null,
-        timeline: [],
-      })
 
       // Assign responder to report (should succeed)
       await expect(
@@ -173,33 +153,13 @@ describe('Cross-Municipality Assignment Prevention', () => {
       testUsers.push(responderResult.user.uid)
 
       // Create report in Daet (different municipality!)
-      const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+      const reportId = await createTestReport('Daet', {
         incidentType: 'flood',
         severity: 'high',
         description: 'Flooding in Daet',
-        approximateLocation: {
-          address: 'Daet town proper',
-          municipality: 'Daet', // DIFFERENT from responder's municipality
-          coordinates: { latitude: 14.1167, longitude: 122.95 },
-        },
-        reportedBy: 'citizen@example.com',
-      }
-
-      const reportId = await addDocument<Report>('reports', {
-        ...reportData,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
         status: 'verified',
       })
       testReports.push(reportId)
-
-      await addDocument('report_ops', {
-        reportId,
-        assignedTo: null,
-        assignedAt: null,
-        assignedBy: null,
-        timeline: [],
-      })
 
       // Try to assign Basud responder to Daet report (should fail)
       try {
@@ -250,33 +210,13 @@ describe('Cross-Municipality Assignment Prevention', () => {
       testUsers.push(responderResult.user.uid)
 
       // Create report in Daet
-      const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+      const reportId = await createTestReport('Daet', {
         incidentType: 'flood',
         severity: 'high',
         description: 'Flooding in Daet',
-        approximateLocation: {
-          address: 'Daet',
-          municipality: 'Daet',
-          coordinates: { latitude: 14.1167, longitude: 122.95 },
-        },
-        reportedBy: 'citizen@example.com',
-      }
-
-      const reportId = await addDocument<Report>('reports', {
-        ...reportData,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
         status: 'verified',
       })
       testReports.push(reportId)
-
-      await addDocument('report_ops', {
-        reportId,
-        assignedTo: null,
-        assignedAt: null,
-        assignedBy: null,
-        timeline: [],
-      })
 
       // Try to assign unassigned responder (should fail)
       await expect(
@@ -328,33 +268,13 @@ describe('Cross-Municipality Assignment Prevention', () => {
       testUsers.push(responderResult.user.uid)
 
       // Create report in Paracale
-      const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+      const reportId = await createTestReport('Paracale', {
         incidentType: 'landslide',
         severity: 'medium',
         description: 'Landslide in Paracale',
-        approximateLocation: {
-          address: 'Paracale mining area',
-          municipality: 'Paracale',
-          coordinates: { latitude: 14.2, longitude: 122.8 },
-        },
-        reportedBy: 'citizen@example.com',
-      }
-
-      const reportId = await addDocument<Report>('reports', {
-        ...reportData,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
         status: 'verified',
       })
       testReports.push(reportId)
-
-      await addDocument('report_ops', {
-        reportId,
-        assignedTo: null,
-        assignedAt: null,
-        assignedBy: null,
-        timeline: [],
-      })
 
       // Try to assign
       try {
@@ -399,33 +319,13 @@ describe('Cross-Municipality Assignment Prevention', () => {
       testUsers.push(responderResult.user.uid)
 
       // Create report in same municipality
-      const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+      const reportId = await createTestReport('San Vicente', {
         incidentType: 'fire',
         severity: 'high',
         description: 'Fire in San Vicente',
-        approximateLocation: {
-          address: 'San Vicente',
-          municipality: 'San Vicente',
-          coordinates: { latitude: 14.12, longitude: 122.92 },
-        },
-        reportedBy: 'citizen@example.com',
-      }
-
-      const reportId = await addDocument<Report>('reports', {
-        ...reportData,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
         status: 'verified',
       })
       testReports.push(reportId)
-
-      await addDocument('report_ops', {
-        reportId,
-        assignedTo: null,
-        assignedAt: null,
-        assignedBy: null,
-        timeline: [],
-      })
 
       // Try concurrent assignments (one should succeed, rest should fail as already assigned)
       const results = await Promise.allSettled([
@@ -494,33 +394,13 @@ describe('Cross-Municipality Assignment Prevention', () => {
       )
       testMunicipalities.push(municipalityId)
 
-      const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+      const reportId = await createTestReport('San Lorenzo', {
         incidentType: 'typhoon',
         severity: 'critical',
         description: 'Typhoon damage in San Lorenzo',
-        approximateLocation: {
-          address: 'San Lorenzo',
-          municipality: 'San Lorenzo',
-          coordinates: { latitude: 14.1, longitude: 122.88 },
-        },
-        reportedBy: 'citizen@example.com',
-      }
-
-      const reportId = await addDocument<Report>('reports', {
-        ...reportData,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
         status: 'verified',
       })
       testReports.push(reportId)
-
-      await addDocument('report_ops', {
-        reportId,
-        assignedTo: null,
-        assignedAt: null,
-        assignedBy: null,
-        timeline: [],
-      })
 
       // Try to assign non-existent responder
       const fakeResponderUid = 'non-existent-responder-id'
@@ -572,33 +452,13 @@ describe('Cross-Municipality Assignment Prevention', () => {
       testUsers.push(responder2Result.user.uid)
 
       // Create report in same municipality
-      const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+      const reportId = await createTestReport('Sta. Elena', {
         incidentType: 'earthquake',
         severity: 'high',
         description: 'Earthquake in Sta. Elena',
-        approximateLocation: {
-          address: 'Sta. Elena proper',
-          municipality: 'Sta. Elena',
-          coordinates: { latitude: 14.18, longitude: 122.93 },
-        },
-        reportedBy: 'citizen@example.com',
-      }
-
-      const reportId = await addDocument<Report>('reports', {
-        ...reportData,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
         status: 'verified',
       })
       testReports.push(reportId)
-
-      await addDocument('report_ops', {
-        reportId,
-        assignedTo: null,
-        assignedAt: null,
-        assignedBy: null,
-        timeline: [],
-      })
 
       // Assign first responder
       await assignToResponder(
