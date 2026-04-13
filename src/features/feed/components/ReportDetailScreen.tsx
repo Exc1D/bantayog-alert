@@ -20,7 +20,7 @@ import { getDocument } from '@/shared/services/firestore.service'
 import { formatTimeAgo } from '@/shared/utils/formatTimeAgo'
 import { UpdateTimeline, TimelineEntry } from './UpdateTimeline'
 import { StatusBadge } from '@/shared/components/StatusBadge'
-import { formatReportType, formatLocationName } from '../utils/feedHelpers'
+import { formatReportType } from '../utils/feedHelpers'
 import { BeforeAfterGallery } from './BeforeAfterGallery'
 
 interface ReportDetailState {
@@ -71,19 +71,22 @@ function buildTimelineEntries(report: Report): TimelineEntry[] {
  * Severity badge color
  */
 function getSeverityColor(severity: string): string {
+  const DEFAULT_COLOR = 'bg-gray-100 text-gray-800'
   const colors: Record<string, string> = {
     low: 'bg-gray-100 text-gray-800',
     medium: 'bg-yellow-100 text-yellow-800',
     high: 'bg-orange-100 text-orange-800',
     critical: 'bg-red-100 text-red-800',
   }
-  return colors[severity] || colors.low
+  const color = colors[severity]
+  return color !== undefined ? color : DEFAULT_COLOR
 }
 
 /**
  * Incident type badge color
  */
 function getTypeColor(type: string): string {
+  const DEFAULT_COLOR = 'bg-gray-100 text-gray-800'
   const colors: Record<string, string> = {
     flood: 'bg-blue-100 text-blue-800',
     earthquake: 'bg-amber-100 text-amber-800',
@@ -96,7 +99,8 @@ function getTypeColor(type: string): string {
     crime: 'bg-purple-100 text-purple-800',
     other: 'bg-gray-100 text-gray-800',
   }
-  return colors[type] || colors.other
+  const color = colors[type]
+  return color !== undefined ? color : DEFAULT_COLOR
 }
 
 export function ReportDetailScreen() {
@@ -286,10 +290,10 @@ export function ReportDetailScreen() {
             </div>
 
             {/* Photos */}
-            {report.photoUrls && report.photoUrls.length > 0 && (
+            {(report as any).photoUrls && (report as any).photoUrls.length > 0 && (
               <div className="mb-4 -mx-4">
                 <img
-                  src={report.photoUrls[0]}
+                  src={(report as any).photoUrls[0]}
                   alt={`Report photo for ${typeDisplay}`}
                   className="w-full h-64 object-cover"
                 />
@@ -305,7 +309,7 @@ export function ReportDetailScreen() {
             )}
 
             {/* Before/After Gallery for resolved reports */}
-            {report.status === 'resolved' && report.photoUrls && report.photoUrls.length > 0 && (
+            {report.status === 'resolved' && (report as any).photoUrls && (report as any).photoUrls.length > 0 && (
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Photo Documentation</h4>
                 <BeforeAfterGallery
@@ -313,7 +317,7 @@ export function ReportDetailScreen() {
                     // Currently using existing photoUrls as "after" photos
                     // TODO: Add beforePhotoUrls field to Report type for proper before/after comparison
                     before: [],
-                    after: report.photoUrls,
+                    after: (report as any).photoUrls,
                   }}
                 />
               </div>

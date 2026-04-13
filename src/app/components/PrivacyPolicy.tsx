@@ -1,5 +1,3 @@
-import React from 'react'
-
 const PRIVACY_EMAIL = import.meta.env.VITE_PRIVACY_EMAIL || 'privacy@bantayogalert.gov.ph'
 
 export function PrivacyPolicy() {

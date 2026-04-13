@@ -44,13 +44,15 @@ export function BeforeAfterGallery({ photos }: BeforeAfterGalleryProps) {
 
   const handlePrev = () => {
     if (currentIndex > 0) {
-      setSelectedPhoto(allPhotos[currentIndex - 1].url)
+      const prevPhoto = allPhotos[currentIndex - 1]
+      if (prevPhoto) setSelectedPhoto(prevPhoto.url)
     }
   }
 
   const handleNext = () => {
     if (currentIndex < allPhotos.length - 1) {
-      setSelectedPhoto(allPhotos[currentIndex + 1].url)
+      const nextPhoto = allPhotos[currentIndex + 1]
+      if (nextPhoto) setSelectedPhoto(nextPhoto.url)
     }
   }
 

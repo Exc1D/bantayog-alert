@@ -21,9 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/hooks/useAuth'
 import { Button } from '@/shared/components/Button'
-import { useQuery } from '@tanstack/react-query'
 import {
-  getUserReportsWithDetails,
   exportUserData,
   deleteUserAccount,
 } from '../services/profile.service'
@@ -42,7 +40,7 @@ export function RegisteredProfile() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Offline queue state
-  const { queue, queueSize, isSyncing, syncQueue, hasPendingReports } = useReportQueue()
+  const { queueSize, isSyncing, syncQueue, hasPendingReports } = useReportQueue()
   const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [logoutError, setLogoutError] = useState<string | null>(null)
@@ -322,98 +320,6 @@ function InfoItem({ label, value, valueClassName = 'text-gray-900' }: InfoItemPr
     <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
       <span className="text-sm text-gray-600">{label}</span>
       <span className={`text-sm font-medium ${valueClassName}`}>{value}</span>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Reports Tab Component
-// ---------------------------------------------------------------------------
-
-interface ReportsTabProps {
-  userId: string
-}
-
-function ReportsTab({ userId }: ReportsTabProps) {
-  const { data: reports, isLoading, error } = useQuery({
-    queryKey: ['user-reports', userId],
-    queryFn: () => getUserReportsWithDetails(userId),
-    enabled: !!userId,
-  })
-
-  if (isLoading) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-8 text-center" data-testid="reports-tab-loading">
-        <Loader2 className="w-8 h-8 text-gray-400 mx-auto mb-3 animate-spin" />
-        <p className="text-gray-600 text-sm">Loading your reports...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-8 text-center" data-testid="reports-tab-error">
-        <p className="text-red-600 text-sm">Failed to load reports</p>
-      </div>
-    )
-  }
-
-  if (!reports || reports.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-8 text-center" data-testid="reports-tab">
-        <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No reports yet</h3>
-        <p className="text-gray-600 text-sm">You haven't submitted any reports yet.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-4" data-testid="reports-tab">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Reports</h2>
-
-      <div className="space-y-3">
-        {reports.map((report) => {
-          const incidentTypeFormatted = report.incidentType
-            .split('_')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ')
-
-          return (
-            <div
-              key={report.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              data-testid={`user-report-${report.id}`}
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="text-gray-400 w-5 h-5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {incidentTypeFormatted} Report
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    {new Date(report.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-xs font-medium px-2 py-1 rounded ${
-                    report.status === 'verified'
-                      ? 'bg-green-100 text-green-800'
-                      : report.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {report.status}
-                </span>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }

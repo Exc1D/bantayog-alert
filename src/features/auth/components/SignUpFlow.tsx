@@ -11,7 +11,7 @@
  *  7. Review & Submit
  */
 
-import React, { useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/shared/components/Button'
 import { registerCitizen } from '@/domains/citizen/services/auth.service'

@@ -40,12 +40,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     let cancelled = false
+    const userId = user.uid
 
     async function loadProfile() {
       try {
         const doc = await getDocument<{ municipality?: string; role?: UserRole }>(
           'users',
-          user.uid
+          userId
         )
         if (!cancelled) {
           setProfile({

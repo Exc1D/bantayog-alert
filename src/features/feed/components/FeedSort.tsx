@@ -21,7 +21,7 @@ const SORT_OPTIONS: { value: SortOption; label: string; description: string }[] 
   { value: 'status', label: 'Status', description: 'Group by verification status' },
 ]
 
-export function FeedSort({ value, onChange, reportCount }: FeedSortProps) {
+export function FeedSort({ value, onChange }: FeedSortProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 

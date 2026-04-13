@@ -5,7 +5,7 @@
  * Displays as a banner or icon based on context.
  */
 
-import { WifiOff, RefreshCw, AlertCircle } from 'lucide-react'
+import { WifiOff, RefreshCw } from 'lucide-react'
 import { useReportQueue } from '../hooks/useReportQueue'
 
 export interface QueueIndicatorProps {

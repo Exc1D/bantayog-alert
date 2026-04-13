@@ -196,10 +196,10 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
         </div>
 
         {/* Photo section (if available) */}
-        {report.photoUrls && report.photoUrls.length > 0 && (
+        {(report as any).photoUrls && (report as any).photoUrls.length > 0 && (
           <div className="mb-3 -mx-4">
             <img
-              src={report.photoUrls[0]}
+              src={(report as any).photoUrls[0]}
               alt={`Report photo for ${typeDisplay}`}
               className="w-full h-64 object-cover"
               loading="lazy"

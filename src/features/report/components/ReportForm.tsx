@@ -12,7 +12,6 @@ import {
   AlertTriangle,
   MoreHorizontal,
 } from 'lucide-react'
-import { Button } from '@/shared/components/Button'
 import { ReportSuccess } from './ReportSuccess'
 import { NonEmergencyRedirect } from './NonEmergencyRedirect'
 import { RateLimitExceeded } from './RateLimitExceeded'
@@ -131,7 +130,7 @@ export function ReportForm({
   const [privacyConsentError, setPrivacyConsentError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { enqueueReport, isSyncing } = useReportQueue()
+  const { enqueueReport } = useReportQueue()
   const { isOnline } = useNetworkStatus()
 
   // Duplicate check — only meaningful when GPS location is available
