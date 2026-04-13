@@ -79,6 +79,16 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
   false_alarm: 'bg-gray-100 text-gray-800',
 }
 
+const STATUS_ORDER: ReportStatus[] = [
+  'pending',
+  'verified',
+  'assigned',
+  'responding',
+  'resolved',
+  'rejected',
+  'false_alarm',
+]
+
 export function StatusBadge({ status }: { status: ReportStatus }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[status]}`}>
@@ -231,17 +241,13 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
   }
 
   const renderReports = () => {
-    const pending = reports.filter((r) => r.status === 'pending')
-    const verified = reports.filter((r) => r.status === 'verified')
-    const resolved = reports.filter((r) => r.status === 'resolved')
-    const rejected = reports.filter((r) => r.status === 'rejected')
-
     return (
       <div className="space-y-6">
-        {renderReportList(pending, 'Pending')}
-        {renderReportList(verified, 'Verified')}
-        {renderReportList(resolved, 'Resolved')}
-        {renderReportList(rejected, 'Rejected')}
+        {STATUS_ORDER.map((status) => {
+          const statusReports = reports.filter((r) => r.status === status)
+          if (statusReports.length === 0) return null
+          return renderReportList(statusReports, STATUS_LABELS[status])
+        })}
       </div>
     )
   }
