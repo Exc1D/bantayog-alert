@@ -5,12 +5,72 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
+import React from 'react'
 import { AlertList } from '../AlertList'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as useAlertsModule from '../../hooks/useAlerts'
+
+// ── Firebase mocks (for UserContext's Firestore profile lookup) ───────────────
+
+// Mock the firebase config — bypasses app initialization that requires projectId
+vi.mock('@/app/firebase/config', () => ({
+  auth: {},
+  db: {},
+  storage: {},
+}))
+
+vi.mock('firebase/firestore', () => ({
+  getFirestore: vi.fn(() => ({})),
+  collection: vi.fn().mockReturnValue({}),
+  doc: vi.fn().mockReturnValue({}),
+  getDoc: vi.fn().mockResolvedValue({
+    exists: vi.fn().mockReturnValue(false),
+  }),
+  query: vi.fn().mockReturnValue({}),
+  where: vi.fn().mockReturnValue({}),
+  orderBy: vi.fn().mockReturnValue({}),
+  limit: vi.fn().mockReturnValue({}),
+  getDocs: vi.fn().mockResolvedValue({ docs: [], forEach: () => {} }),
+  Timestamp: { fromDate: vi.fn((date: Date) => ({ toDate: () => date })) },
+  onSnapshot: vi.fn(),
+}))
+
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(() => ({})),
+  onAuthStateChanged: vi.fn((_auth, callback) => {
+    callback(null)
+    return vi.fn()
+  }),
+  signInWithEmailAndPassword: vi.fn(),
+  signOut: vi.fn(),
+}))
+
+// ── Hoisted mock refs (must be defined before vi.mock so they are initialized first) ──
+
+const useAuthMock = vi.hoisted(() =>
+  vi.fn().mockReturnValue({ user: null, loading: false, signIn: vi.fn(), signOut: vi.fn() })
+)
+const getDocumentMock = vi.hoisted(() => vi.fn().mockResolvedValue(null))
+const useUserContextMock = vi.hoisted(() => vi.fn().mockReturnValue({ municipality: undefined, role: undefined, isLoading: false }))
+
+// Mock the UserContext's getDocument source
+vi.mock('@/shared/services/firestore.service', () => ({
+  getDocument: getDocumentMock,
+}))
+
+// Mock the useAuth hook (used by UserContext)
+vi.mock('@/shared/hooks/useAuth', () => ({
+  useAuth: useAuthMock,
+}))
+
+// Mock useUserContext directly — bypasses async UserContext useEffect
+vi.mock('@/shared/hooks/UserContext', () => ({
+  useUserContext: useUserContextMock,
+  UserProvider: ({ children }: { children: React.ReactNode }) => children as React.ReactElement,
+}))
 
 // Mock the hook module
 vi.mock('../../hooks/useAlerts')
@@ -74,12 +134,16 @@ describe('AlertList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRefetch.mockResolvedValue({})
+    // Reset UserContext mocks to anonymous user default for existing tests
+    useAuthMock.mockReturnValue({ user: null, loading: false, signIn: vi.fn(), signOut: vi.fn() })
+    getDocumentMock.mockResolvedValue(null)
+    useUserContextMock.mockReturnValue({ municipality: undefined, role: undefined, isLoading: false })
   })
 
   describe('when loading', () => {
     it('should show loading skeleton', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: undefined,
+        alerts: [],
         isLoading: true,
         isError: false,
         refetch: mockRefetch,
@@ -97,7 +161,7 @@ describe('AlertList', () => {
   describe('when error occurs', () => {
     it('should show error message with retry button', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: undefined,
+        alerts: [],
         isLoading: false,
         isError: true,
         refetch: mockRefetch,
@@ -113,7 +177,7 @@ describe('AlertList', () => {
     it('should call refetch when retry button is clicked', async () => {
       const user = userEvent.setup()
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: undefined,
+        alerts: [],
         isLoading: false,
         isError: true,
         refetch: mockRefetch,
@@ -131,7 +195,7 @@ describe('AlertList', () => {
   describe('when empty', () => {
     it('should show empty state illustration', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: [],
+        alerts: [],
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -150,7 +214,7 @@ describe('AlertList', () => {
   describe('when alerts are loaded', () => {
     it('should display alert cards', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -166,7 +230,7 @@ describe('AlertList', () => {
 
     it('should display alert information correctly', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -188,7 +252,7 @@ describe('AlertList', () => {
 
     it('should show refresh indicator when refetching', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -198,7 +262,7 @@ describe('AlertList', () => {
       const { rerender } = render(<AlertList />, { wrapper: createWrapper() })
 
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -219,7 +283,7 @@ describe('AlertList', () => {
   describe('Priority Filters', () => {
     it('should display all priority filters', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -236,7 +300,7 @@ describe('AlertList', () => {
 
     it('should show correct count badges', () => {
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -257,7 +321,7 @@ describe('AlertList', () => {
     it('should filter alerts by high priority', async () => {
       const user = userEvent.setup()
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -277,7 +341,7 @@ describe('AlertList', () => {
     it('should filter alerts by medium priority', async () => {
       const user = userEvent.setup()
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -297,7 +361,7 @@ describe('AlertList', () => {
     it('should filter alerts by low priority', async () => {
       const user = userEvent.setup()
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -318,7 +382,7 @@ describe('AlertList', () => {
       const user = userEvent.setup()
       const noHighAlerts = mockAlerts.filter((a) => a.severity !== 'emergency')
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: noHighAlerts,
+        alerts: noHighAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -338,7 +402,7 @@ describe('AlertList', () => {
     it('should call refetch when refresh button is clicked', async () => {
       const user = userEvent.setup()
       vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
-        data: mockAlerts,
+        alerts: mockAlerts,
         isLoading: false,
         isError: false,
         refetch: mockRefetch,
@@ -350,6 +414,54 @@ describe('AlertList', () => {
       await user.click(refreshButton)
 
       expect(mockRefetch).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('useAlerts Integration', () => {
+    it('should call useAlerts with municipality from UserContext', () => {
+      // Simulate UserContext providing municipality and role from Firestore profile
+      useUserContextMock.mockReturnValue({
+        municipality: 'Daet',
+        role: 'citizen',
+        isLoading: false,
+      })
+
+      const spy = vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
+        alerts: [],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetch,
+      })
+
+      render(<AlertList />, { wrapper: createWrapper() })
+
+      // Verify useAlerts was called with municipality from UserContext
+      expect(spy).toHaveBeenCalledTimes(1)
+      // Check first arg only — spy may capture Vitest internal calls with extra args
+      expect(spy.mock.calls[0]?.[0]).toMatchObject({ municipality: 'Daet', role: 'citizen' })
+    })
+
+    it('should call useAlerts with role from UserContext for admin users', () => {
+      // Simulate UserContext providing admin municipality and role from Firestore profile
+      useUserContextMock.mockReturnValue({
+        municipality: 'Mercedes',
+        role: 'municipal_admin',
+        isLoading: false,
+      })
+
+      const spy = vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue({
+        alerts: [],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetch,
+      })
+
+      render(<AlertList />, { wrapper: createWrapper() })
+
+      // Verify useAlerts was called with role-based query for admin
+      expect(spy).toHaveBeenCalledTimes(1)
+      // Check first arg only — spy may capture Vitest internal calls with extra args
+      expect(spy.mock.calls[0]?.[0]).toMatchObject({ municipality: 'Mercedes', role: 'municipal_admin' })
     })
   })
 })
