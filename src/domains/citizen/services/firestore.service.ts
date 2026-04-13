@@ -7,7 +7,7 @@
  */
 
 import { orderBy, limit } from 'firebase/firestore'
-import { getDocument, getCollection, setDocument } from '@/shared/services/firestore.service'
+import { getDocument, getCollection, setDocument, addDocument } from '@/shared/services/firestore.service'
 import type { Report, ReportPrivate } from '@/shared/types'
 
 /**
@@ -27,19 +27,15 @@ export async function submitReport(
   try {
     const now = Date.now()
 
-    // Generate deterministic report ID
-    const reportId = `report_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-
-    // Tier 1: Create public report with deterministic ID
-    await setDocument('reports', reportId, {
-      id: reportId,
+    // Tier 1: Create public report with auto-generated ID (collision-resistant)
+    const reportId = await addDocument('reports', {
       ...reportData,
       createdAt: now,
       updatedAt: now,
       status: 'pending',
     })
 
-    // Tier 2: Create private report (if not anonymous)
+    // Tier 2: Create private report (if not anonymous) using the same ID
     if (privateData) {
       await setDocument('report_private', reportId, {
         id: reportId,
@@ -48,7 +44,7 @@ export async function submitReport(
       })
     }
 
-    // Tier 3: Create operational report
+    // Tier 3: Create operational report using the same ID
     await setDocument('report_ops', reportId, {
       id: reportId,
       reportId,

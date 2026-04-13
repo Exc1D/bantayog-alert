@@ -253,7 +253,6 @@ export async function getMunicipalityStats(municipality: string): Promise<{
 export async function createAlert(alert: Omit<Alert, 'id' | 'createdAt'>): Promise<string> {
   return addDocument('alerts', {
     ...alert,
-    id: '',
     createdAt: Date.now(),
   })
 }
