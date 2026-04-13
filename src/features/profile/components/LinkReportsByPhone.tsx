@@ -15,6 +15,7 @@ import { Input } from '@/shared/components/Input'
 
 export interface LinkReportsByPhoneProps {
   onSuccess?: (count: number) => void
+  onCreateAccount?: () => void
 }
 
 interface FoundReport {
@@ -24,7 +25,7 @@ interface FoundReport {
   status: string
 }
 
-export function LinkReportsByPhone({ onSuccess }: LinkReportsByPhoneProps) {
+export function LinkReportsByPhone({ onSuccess, onCreateAccount }: LinkReportsByPhoneProps) {
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -72,6 +73,14 @@ export function LinkReportsByPhone({ onSuccess }: LinkReportsByPhoneProps) {
       setError('Failed to search. Please try again.')
     } finally {
       setIsSearching(false)
+    }
+  }
+
+  const handleCreateAccount = () => {
+    if (onCreateAccount) {
+      onCreateAccount()
+    } else {
+      navigate(`/signup?phone=${encodeURIComponent(phone)}`)
     }
   }
 
@@ -147,6 +156,21 @@ export function LinkReportsByPhone({ onSuccess }: LinkReportsByPhoneProps) {
                     </Button>
                   </div>
                 ))}
+              </div>
+
+              {/* Post-link registration prompt */}
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-sm text-blue-900 mb-3">
+                  Create an account to track these reports and receive updates.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleCreateAccount}
+                  className="w-full"
+                >
+                  Create Account
+                </Button>
               </div>
             </div>
           )}

@@ -28,6 +28,7 @@ import {
   deleteUserAccount,
 } from '../services/profile.service'
 import { useReportQueue } from '@/features/report/hooks/useReportQueue'
+import { MyReportsList } from './MyReportsList'
 import { User as FirebaseUser } from 'firebase/auth'
 
 type Tab = 'info' | 'reports' | 'settings'
@@ -165,7 +166,9 @@ export function RegisteredProfile() {
         {/* Tab content */}
         <div className="p-4">
           {selectedTab === 'info' && <InfoTab user={user} />}
-          {selectedTab === 'reports' && <ReportsTab userId={user.uid} />}
+          {selectedTab === 'reports' && (
+            <MyReportsList userId={user.uid} />
+          )}
           {selectedTab === 'settings' && (
             <SettingsTab
               notificationsEnabled={notificationsEnabled}

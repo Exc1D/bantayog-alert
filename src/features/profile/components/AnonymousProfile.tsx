@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { CheckCircle, Phone, UserCircle } from 'lucide-react'
 import { Button } from '@/shared/components/Button'
 import { LinkReportsByPhone } from './LinkReportsByPhone'
@@ -14,6 +15,16 @@ interface AnonymousProfileProps {
 }
 
 export function AnonymousProfile({ onCreateAccount, onContinue }: AnonymousProfileProps = {}) {
+  const navigate = useNavigate()
+
+  const handleCreateAccount = () => {
+    if (onCreateAccount) {
+      onCreateAccount()
+    } else {
+      navigate('/signup')
+    }
+  }
+
   return (
     <div
       data-testid="anonymous-profile"
@@ -48,7 +59,7 @@ export function AnonymousProfile({ onCreateAccount, onContinue }: AnonymousProfi
 
       {/* CTA buttons */}
       <div className="w-full max-w-sm flex flex-col gap-3">
-        <Button variant="primary" className="w-full" onClick={onCreateAccount}>
+        <Button variant="primary" className="w-full" onClick={handleCreateAccount}>
           Create Account
         </Button>
         <Button variant="secondary" className="w-full" onClick={onContinue}>
