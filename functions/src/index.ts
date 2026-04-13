@@ -332,6 +332,15 @@ export const deleteUserData = functions.https.onCall(
       await db.collection('roles').doc(targetUserUid).delete()
     }
 
+    // Delete private report data and ops records
+    const privateReports = await db.collection('report_private')
+      .where('reporterUserId', '==', targetUserUid)
+      .get()
+    for (const privateDoc of privateReports.docs) {
+      await db.collection('report_private').doc(privateDoc.id).delete()
+      await db.collection('report_ops').doc(privateDoc.id).delete()
+    }
+
     // Log audit entry (unless deleting own account)
     if (callerUid !== targetUserUid) {
       await db.collection('audit_logs').add({
