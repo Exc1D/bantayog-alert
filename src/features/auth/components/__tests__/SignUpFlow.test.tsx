@@ -468,6 +468,53 @@ describe('Submit & onComplete', () => {
 
     expect(onCancel).toHaveBeenCalled()
   })
+
+  it('should reset isSubmitting before calling onComplete', async () => {
+    // Create a deferred promise to control when registerCitizen resolves
+    let resolveRegister: (value: { user: { uid: string } }) => void
+    const deferredPromise = new Promise<{ user: { uid: string } }>((resolve) => {
+      resolveRegister = resolve
+    })
+
+    registerCitizenState.mockReturnValueOnce(deferredPromise)
+
+    const user = userEvent.setup()
+    renderWithRouter(<SignUpFlow onComplete={mockOnComplete} />)
+
+    // Fill out form
+    await user.type(screen.getByLabelText(/full name/i), 'Juan')
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.type(screen.getByLabelText(/email address/i), 'juan@example.com')
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.type(screen.getByLabelText(/password/i), 'StrongPass1!')
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.selectOptions(screen.getByLabelText(/municipality/i), 'Daet')
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByLabelText(/agree to the/i))
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    const createButton = screen.getByRole('button', { name: /create account/i })
+
+    // Button should be enabled initially
+    expect(createButton).toBeEnabled()
+
+    // Click submit
+    await user.click(createButton)
+
+    // Button shows loading state while request is in flight
+    await waitFor(() => {
+      expect(createButton).toHaveTextContent('Creating account...')
+    })
+
+    // Resolve the registration promise
+    resolveRegister!({ user: { uid: 'new-user-123' } })
+
+    // After success, onComplete is called (isSubmitting was reset before this)
+    await waitFor(() => {
+      expect(mockOnComplete).toHaveBeenCalledWith('new-user-123')
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

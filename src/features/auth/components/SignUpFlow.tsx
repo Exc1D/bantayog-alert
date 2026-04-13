@@ -159,6 +159,7 @@ export function SignUpFlow({ onComplete, onCancel, initialPhone }: SignUpFlowPro
         displayName: form.displayName,
         phoneNumber: form.phoneNumber.trim() || undefined,
       })
+      setIsSubmitting(false)
       onComplete(result.user.uid)
     } catch (err: unknown) {
       const message =
