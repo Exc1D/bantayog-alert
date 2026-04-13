@@ -1,9 +1,13 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Placeholder rules - Phase 1 will implement proper security
-    match /{allPaths=**} {
-      allow read, write: if false;
+    match /reports/{reportId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      // TODO: Tighten read access once report ownership / admin viewing requirements are clarified.
+      // TODO: Add emulator-backed Storage rules tests when Storage emulator coverage is added.
     }
   }
 }
