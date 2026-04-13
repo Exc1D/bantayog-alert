@@ -18,7 +18,8 @@ const storage = (() => {
       delete store[key]
     }),
     clear: vi.fn(() => {
-      store = {}
+      // Clear all keys from the closure-captured store
+      Object.keys(store).forEach(key => delete store[key])
     }),
   }
 })()
@@ -26,6 +27,12 @@ const storage = (() => {
 Object.defineProperty(globalThis, 'localStorage', {
   value: storage,
   configurable: true,
+  writable: true,
+})
+
+// PWA install event mock
+Object.defineProperty(window, 'beforeinstallprompt', {
+  value: vi.fn(),
   writable: true,
 })
 
