@@ -76,6 +76,16 @@ else
   echo "  firebase.json not found (required for integration tests)"
 fi
 
+# Check 4b: Verify Firebase config contract (rules files referenced must exist)
+echo -n "✓ Checking Firebase config contract... "
+if bash scripts/validate-firebase-config.sh > /dev/null 2>&1; then
+  echo -e "${GREEN}OK${NC}"
+else
+  echo -e "${RED}FAILED${NC}"
+  echo "  Firebase config references a rules file that does not exist"
+  exit 1
+fi
+
 # Check 5: Verify TypeScript configuration
 echo -n "✓ Checking TypeScript configuration... "
 if [ -f "tsconfig.json" ] || [ -f "tsconfig.node.json" ]; then

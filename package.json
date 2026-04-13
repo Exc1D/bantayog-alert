@@ -30,7 +30,8 @@
     "emulators:exec": "firebase emulators:exec \"npm run test:run\"",
     "generate:icons": "node scripts/generate-pwa-icons.js",
     "lighthouse:ci": "lhci autorun",
-    "lighthouse:collect": "lhci collect"
+    "lighthouse:collect": "lhci collect",
+    "validate:firebase-config": "bash scripts/validate-firebase-config.sh"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.96.2",
