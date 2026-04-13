@@ -112,7 +112,13 @@ export function RegisteredProfile() {
       // User deleted, redirect to login
       navigate('/login')
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : 'Failed to delete account')
+      // Check for Firebase auth error code
+      const code = (error as { code?: string })?.code
+      if (code === 'auth/requires-recent-login') {
+        setDeleteError('For security, please log out and log back in before deleting your account.')
+      } else {
+        setDeleteError(error instanceof Error ? error.message : 'Failed to delete account')
+      }
     }
   }
 
