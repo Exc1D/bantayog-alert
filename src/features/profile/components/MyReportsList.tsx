@@ -4,6 +4,38 @@
  * Displays user's submitted reports:
  * - Registered reports (reporterUserId === userId)
  * - Linked anonymous reports (reporterPhone === user's phone)
+ *
+ * FIRESTORE INDEX REQUIREMENTS:
+ * This component uses composite queries that require Firestore indexes.
+ * Create the following indexes in Firebase Console > Firestore > Indexes:
+ *
+ * 1. Collection: report_private
+ *    - Fields: reporterUserId (Ascending), reportId (Descending)
+ *
+ * 2. Collection: report_private
+ *    - Fields: reporterPhone (Ascending), reportId (Descending)
+ *
+ * Or deploy firestore.indexes.json with:
+ * {
+ *   "indexes": [
+ *     {
+ *       "collectionGroup": "report_private",
+ *       "queryScope": "COLLECTION",
+ *       "fields": [
+ *         { "fieldPath": "reporterUserId", "order": "ASCENDING" },
+ *         { "fieldPath": "reportId", "order": "DESCENDING" }
+ *       ]
+ *     },
+ *     {
+ *       "collectionGroup": "report_private",
+ *       "queryScope": "COLLECTION",
+ *       "fields": [
+ *         { "fieldPath": "reporterPhone", "order": "ASCENDING" },
+ *         { "fieldPath": "reportId", "order": "DESCENDING" }
+ *       ]
+ *     }
+ *   ]
+ * }
  */
 
 import { useState, useEffect } from 'react'
