@@ -1,3 +1,33 @@
+# Progress - 2026-04-13
+
+## PR #15: Spec Review Fixes
+
+**Branch:** `pr15`
+
+### Fixed Tasks
+
+| # | Task | Status | Type |
+|---|------|--------|------|
+| 1 | Auto-sync error handling test gap fix | ✅ Done | Test |
+
+### Test Summary
+
+- **useReportQueue tests:** 13 passing
+- **Fixed test:** `should log [AUTO_SYNC_ERROR] when syncQueue promise rejects`
+
+### Key Changes
+
+1. **useReportQueue.ts:** Added defensive check for service unavailability
+2. **useReportQueue.test.ts:** Updated test to trigger auto-sync useEffect and verify `.catch()` handler logs error with `[AUTO_SYNC_ERROR]` tag
+
+### Commits
+
+```
+9cf198d test(useReportQueue): fix auto-sync error handling test to verify .catch() behavior
+```
+
+---
+
 # Progress - 2026-04-11
 
 ## Citizen Features Gap Fix Implementation

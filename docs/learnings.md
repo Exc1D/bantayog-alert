@@ -1,3 +1,33 @@
+# Learnings - 2026-04-13
+
+## Auto-Sync Error Handling Test Gap
+
+**Issue:** Spec review found that the auto-sync error test only asserted `syncResult.failed === 1`, not that `console.error` was called with `[AUTO_SYNC_ERROR]` tag. The `.catch()` handler in auto-sync useEffect was never verified.
+
+**Root Cause:** `syncQueue` is designed to never reject - it catches all errors internally and returns `{ success, failed }`. The `.catch()` in auto-sync (lines 222-225) was unreachable with the original implementation.
+
+**Fix Applied:**
+1. Added defensive check in `syncQueue` that throws if `reportQueueService` is unavailable (infrastructure failure)
+2. Updated test to trigger auto-sync useEffect by toggling `isOnline` from false to true
+3. Mocked `updateMock` to reject, which causes `update(failedReport)` in the catch block to fail
+4. Verified `console.error` is called with `[AUTO_SYNC_ERROR]` and the error message
+
+**Key Insight:** The error at `reportQueueService.update(failedReport)` (line 207) is OUTSIDE any try/catch - it's in the catch block itself. If this update fails, the entire `syncQueue` function rejects, triggering the auto-sync `.catch()` handler.
+
+```typescript
+// The try/catch handles errors during sync
+try {
+  await reportQueueService.update(syncingReport)
+  // ... sync logic
+} catch (error) {
+  // This update is NOT wrapped in try/catch
+  // If it fails, syncQueue rejects and auto-sync .catch() handles it
+  await reportQueueService.update(failedReport)
+}
+```
+
+---
+
 # Learnings - 2026-04-11
 
 ## Development Process
