@@ -132,11 +132,10 @@ describe('useReportQueue', () => {
   })
 
   describe('auto-sync error handling', () => {
-    it('should log error when syncQueue promise rejects', async () => {
+    it('should log [AUTO_SYNC_ERROR] when syncQueue promise rejects', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      // Create a simple test that directly verifies the error handling
-      // by calling syncQueue when it will reject
+      // Set up queue with pending report, starting offline
       const queuedReport = {
         id: 'q1',
         reportData: mockReportData,
@@ -145,27 +144,35 @@ describe('useReportQueue', () => {
         createdAt: Date.now(),
       }
 
+      // Start offline so auto-sync doesn't trigger immediately
+      mockNetworkStatus.isOnline = false
       getAllMock.mockImplementation(() => Promise.resolve([queuedReport]))
-      submitReportMock.mockRejectedValueOnce(new Error('Sync failed'))
 
-      const { result } = renderHook(() => useReportQueue())
+      const { result, rerender } = renderHook(() => useReportQueue())
 
       await waitFor(() => {
         expect(result.current.queue.length).toBe(1)
       })
 
-      // Directly call syncQueue to trigger the sync
-      // The error is handled by the try/catch inside syncQueue for individual reports
-      // But we want to test that the auto-sync effect's catch() works
-      // Since testing the actual auto-sync timing is complex, we verify
-      // that syncQueue properly handles errors internally
+      // Make updateMock reject to trigger syncQueue rejection
+      // The rejection happens BEFORE the per-report try/catch because
+      // we're simulating an infrastructure failure
+      updateMock.mockImplementation(() => Promise.reject(new Error('IDB connection lost')))
 
-      const syncResult = await act(async () => {
-        return await result.current.syncQueue()
-      })
+      // Go online - this triggers the auto-sync useEffect
+      mockNetworkStatus.isOnline = true
+      rerender()
 
-      // syncQueue should handle the error and report failures
-      expect(syncResult.failed).toBe(1)
+      // Wait for the async error to be logged
+      await waitFor(
+        () => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            '[AUTO_SYNC_ERROR]',
+            'IDB connection lost'
+          )
+        },
+        { timeout: 3000 }
+      )
 
       consoleErrorSpy.mockRestore()
     })

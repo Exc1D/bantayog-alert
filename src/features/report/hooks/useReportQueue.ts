@@ -111,6 +111,12 @@ export function useReportQueue(): UseReportQueueResult {
       return { success: 0, failed: 0 }
     }
 
+    // Defensive: Throw if queue service is unavailable (infrastructure failure)
+    // This allows the auto-sync .catch() to be tested and handles edge cases
+    if (!reportQueueService || typeof reportQueueService.update !== 'function') {
+      throw new Error('Queue service unavailable')
+    }
+
     setIsSyncing(true)
 
     let successCount = 0
@@ -198,6 +204,8 @@ export function useReportQueue(): UseReportQueueResult {
           lastAttempt: Date.now(),
           error: error instanceof Error ? error.message : 'Unknown error',
         }
+        // Note: If this update fails, syncQueue will reject and be caught by
+        // the auto-sync .catch() handler, logging [AUTO_SYNC_ERROR]
         await reportQueueService.update(failedReport)
         setQueue((prev) => prev.map((r) => (r.id === report.id ? failedReport : r)))
         failedCount++
