@@ -291,15 +291,18 @@ service cloud.firestore {
     }
 
     // ============================================================
-    // ARCHIVED_REPORTS COLLECTION
+    // REPORTS_ARCHIVE COLLECTION
     // ============================================================
 
-    match /archived_reports/{archiveId} {
+    match /reports_archive/{archiveId} {
       // Provincial superadmins can read archived reports
       allow read: if hasRole('provincial_superadmin');
 
       // Only system can create archived reports (via scheduled function)
       allow create: if false;
+
+      // Archived reports are immutable
+      allow update: if false;
 
       // Only superadmins can delete archived reports
       allow delete: if hasRole('provincial_superadmin');
