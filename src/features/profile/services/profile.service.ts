@@ -5,10 +5,10 @@
  * Includes fetching user's reports, data export, and account deletion.
  */
 
-import { doc, deleteDoc, getDocs, collection, query, where, orderBy } from 'firebase/firestore'
-import { deleteUser } from 'firebase/auth'
-import { auth, db } from '@/app/firebase/config'
+import { getDocs, collection, query, where, orderBy } from 'firebase/firestore'
+import { db } from '@/app/firebase/config'
 import { getDocument } from '@/shared/services/firestore.service'
+import { callFunction } from '@/shared/services/functions.service'
 import type { ReportPrivate, Report } from '@/shared/types/firestore.types'
 
 /**
@@ -186,45 +186,11 @@ export async function exportUserData(
  */
 export async function deleteUserAccount(userId: string): Promise<void> {
   try {
-    // Step 1: Delete private report data
-    const privateQuery = query(
-      collection(db, 'report_private'),
-      where('reporterUserId', '==', userId)
-    )
-    const privateSnap = await getDocs(privateQuery)
-
-    for (const docSnap of privateSnap.docs) {
-      await deleteDoc(doc(db, 'report_private', docSnap.id))
-    }
-
-    // Step 2: Delete operational report data
-    const opsQuery = query(collection(db, 'report_ops'), where('timeline', 'array-contains', {
-      performedBy: userId,
-    }))
-    const opsSnap = await getDocs(opsQuery)
-
-    for (const docSnap of opsSnap.docs) {
-      await deleteDoc(doc(db, 'report_ops', docSnap.id))
-    }
-
-    // Step 3: Delete user's Firestore profile
-    await deleteDoc(doc(db, 'users', userId))
-
-    // Step 4: Delete Firebase Auth user
-    const currentUser = auth.currentUser
-    if (currentUser && currentUser.uid === userId) {
-      await deleteUser(currentUser)
-    } else {
-      throw new Error('Cannot delete user: not currently signed in')
-    }
+    // Delegate to server-side callable which handles all cleanup atomically.
+    // The Cloud Function deletes: auth user, users/{uid}, roles/{uid},
+    // report_private records, and report_ops records.
+    await callFunction('deleteUserData', { targetUserUid: userId })
   } catch (error) {
-    console.error('Failed to delete account:', error)
-    if (error instanceof Error && error.message.includes('recent authentication')) {
-      throw new Error(
-        'Please sign out and sign in again before deleting your account. ' +
-          'Firebase requires recent authentication for security reasons.'
-      )
-    }
-    throw new Error('Failed to delete account')
+    throw new Error('Failed to delete account', { cause: error })
   }
 }
