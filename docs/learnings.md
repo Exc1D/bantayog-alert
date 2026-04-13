@@ -174,6 +174,7 @@ vi.mock('../../services/reportQueue.service', () => ({
 The real issue is that `catch (error)` gives you `any` implicitly in non-strict mode, and the project uses strict mode. So `catch (err: unknown)` is the correct pattern for TypeScript strictness.
 
 
+
 ---
 
 ## Learnings - 2026-04-12 (PR #12 Error Handling Session)
@@ -236,3 +237,75 @@ Adding a "plan review" phase before dispatching implementers caught 3 real issue
 3. Missing logout error test case
 
 **Lesson:** Don't skip gap analysis - read actual code against plan before implementing.
+
+---
+
+## Learnings - 2026-04-12 (Alerts System — onSnapshot Rewrite)
+
+### vi.hoisted Cannot Reference External const
+
+**Problem:** `vi.hoisted(() => ({ subscribeToAlerts: subscribeToAlertsMock }))` failed with `ReferenceError: Cannot access 'subscribeToAlertsMock' before initialization` because `vi.hoisted` runs before module-level `const` declarations are initialized.
+
+**Fix:** Define all mock functions INSIDE the `vi.hoisted` callback:
+```typescript
+const { subscribeToAlertsMock, subscribeToAlertsByMunicipalityMock } = vi.hoisted(() => ({
+  subscribeToAlertsMock: vi.fn(),
+  subscribeToAlertsByMunicipalityMock: vi.fn(),
+}))
+vi.mock('../../services/alert.service', () => ({
+  subscribeToAlerts: subscribeToAlertsMock,
+  subscribeToAlertsByMunicipality: subscribeToAlertsByMunicipalityMock,
+}))
+```
+
+### onSnapshot Tests Need Immediate Mock Setup
+
+**Issue:** When tests call `renderHook` without an immediate `mockImplementation`, the hook's `useEffect` runs synchronously and the mock must be pre-set (via `mockReturnValue` in `beforeEach`) or the test would throw.
+
+**Fix:** Always set `mockReturnValue(vi.fn())` in `beforeEach` for the subscription mocks, then override per-test with `mockImplementation`.
+
+### Dual-snapshot Merge Logic
+
+**Decision:** When both `municipality` AND `role` are provided, both `subscribeToAlerts` (with role filter) and `subscribeToAlertsByMunicipality` run in parallel. Each listener calls `setAlerts` by merging new results with existing state and deduplicating by id. A counter tracks when both have delivered their first snapshot before setting `isLoading = false`.
+
+### useAlerts IndexedDB Cache Fallback
+
+**Implementation:** Added `alertsCache.ts` (new file) with `cacheAlerts()` and `loadCachedAlerts()` using a dedicated `bantayog-alerts-cache` IndexedDB database. On `onSnapshot` error, `handleError` in `useAlerts` becomes `async`, persists the current alert set to cache, then loads the cache as fallback so the UI stays populated instead of going blank.
+
+**Key decision:** Used a separate `useEffect` to sync `useRef` with state (`latestAlertsRef.current = alerts`), rather than passing `alerts` as a `useRef` initializer. This prevents the ref from capturing stale initial state while still avoiding the circular-state-update problem.
+
+**Lesson on ref + state synchronization:** `const ref = useRef(initialState)` initializes the ref once; `ref.current` never updates when `initialState` changes. You need a separate effect that writes `ref.current = state` on every render to keep them in sync.
+
+
+### UserContext Pattern — No Pre-existing Context Found
+
+**Problem:** Task asked to wire `AlertList` to receive `municipality` and `role` from "user context", but no such context existed in the codebase. `useAuth` only returns Firebase `User` (no `municipality`/`role`).
+
+**Solution:** Created `UserContext.tsx` in `src/shared/hooks/` using the existing Firestore `getDocument` pattern — `useAuth` provides the Firebase UID, Firestore `users/{uid}` provides `municipality` and `role`. Anonymous users get `undefined` for both (fine — `useAlerts` handles missing args gracefully).
+
+### vi.spyOn + Extra Args in Integration Tests
+
+**Problem:** `vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue(...)` worked but Vitest internals sometimes inject extra args into the mock call. `toHaveBeenCalledWith(expect.objectContaining({...}), expect.any(Object), expect.any(Function))` failed because the second and third args were not `Object` and `Function` (they were Vitest internals).
+
+**Fix:** Access `spy.mock.calls[0]?.[0]` to verify only the first argument:
+```typescript
+expect(spy.mock.calls[0]?.[0]).toMatchObject({ municipality: 'Daet', role: 'citizen' })
+```
+
+### Firebase Test Mocks for Integration Tests
+
+When a component uses a context that fetches from Firestore (like `UserContext`), the integration test needs firebase mocks at the module level. Required mocks:
+- `vi.mock('@/app/firebase/config')` — bypasses `getAuth`/`getFirestore` app initialization
+- `vi.mock('firebase/firestore')` — `getFirestore`, `collection`, `doc`, `getDoc`, `onSnapshot`
+- `vi.mock('firebase/auth')` — `getAuth`, `onAuthStateChanged`
+- `vi.mock('@/shared/services/firestore.service')` — `getDocument`
+
+Use `vi.hoisted` for mock refs that need per-test reset via `beforeEach`.
+
+### navigator.clipboard Mocking Limitation in Vitest + happy-dom
+
+**Problem:** `navigator.clipboard` is an inherited getter from `Navigator.prototype` in happy-dom. `Object.getOwnPropertyDescriptor(navigator, 'clipboard')` returns `undefined` and `Object.keys(navigator)` returns `[]` (empty). This makes it impossible to spy on `navigator.clipboard.writeText` directly.
+
+**Workaround:** Create a mock navigator in `beforeEach` using `Object.create(Object.getPrototypeOf(global.navigator))` to preserve prototype chain, then copy own enumerable properties and define `clipboard` as an own property. In individual tests, use direct assignment: `;(global.navigator as any).clipboard = { writeText: mockWriteText }`. Note: spying on `navigator.clipboard.writeText` in Vitest requires `clipboard` to be an own property of the navigator instance, not an inherited getter.
+
+**For share API tests:** `navigator.share` IS an own property of the navigator object in happy-dom, so `vi.fn()` spy + direct assignment works reliably. Use `Object.create(Object.getPrototypeOf(navigator))` to make a mock that can have its own `share` property.
