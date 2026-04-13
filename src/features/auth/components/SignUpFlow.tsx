@@ -126,6 +126,7 @@ export function SignUpFlow({ onComplete, onCancel, initialPhone }: SignUpFlowPro
   const updateField = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
     setError(null)
+    setSubmitError(null)
   }, [])
 
   const handleNext = useCallback(() => {
