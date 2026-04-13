@@ -62,7 +62,7 @@ export function RegisteredProfile() {
     try {
       setLogoutError(null)
       await signOut()
-      navigate('/login')
+      navigate('/profile')
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -107,8 +107,8 @@ export function RegisteredProfile() {
     try {
       setDeleteError(null)
       await deleteUserAccount(user.uid)
-      // User deleted, redirect to login
-      navigate('/login')
+      // User deleted — navigate to profile; ProfileRoute will show AnonymousProfile once auth clears
+      navigate('/profile')
     } catch (error) {
       // Check for Firebase auth error code
       const code = (error as { code?: string })?.code

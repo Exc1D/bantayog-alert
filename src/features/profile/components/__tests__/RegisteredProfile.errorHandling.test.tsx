@@ -181,7 +181,7 @@ describe('RegisteredProfile Error Handling', () => {
       })
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/login')
+        expect(mockNavigate).toHaveBeenCalledWith('/profile')
       })
     })
 

@@ -394,7 +394,7 @@ describe('RegisteredProfile', () => {
       await user.click(logoutButton)
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/login')
+        expect(mockNavigate).toHaveBeenCalledWith('/profile')
       })
     })
   })
