@@ -206,31 +206,6 @@ describe('RegisteredProfile Error Handling', () => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
 
-    it('should show recent login error when auth/requires-recent-login is thrown', async () => {
-      const mockError = new Error('Firebase: Error (auth/requires-recent-login).')
-      // Add code property to simulate Firebase error structure
-      ;(mockError as { code?: string }).code = 'auth/requires-recent-login'
-
-      mockDeleteUserAccount.mockRejectedValueOnce(mockError)
-
-      const user = userEvent.setup()
-      render(<RegisteredProfile />, { wrapper: createWrapper() })
-
-      // Click delete account button (first open the delete confirmation)
-      await user.click(screen.getByTestId('tab-settings'))
-      await user.click(screen.getByTestId('delete-account'))
-
-      // Confirm deletion
-      await user.click(screen.getByRole('button', { name: 'Delete' }))
-
-      // Verify user-friendly message is displayed (error appears in both modal and settings tab)
-      await waitFor(() => {
-        expect(screen.getAllByText(/please log out and log back in/i).length).toBeGreaterThan(0)
-      })
-
-      // Verify navigate was NOT called
-      expect(mockNavigate).not.toHaveBeenCalled()
-    })
   })
 
   // -------------------------------------------------------------------------

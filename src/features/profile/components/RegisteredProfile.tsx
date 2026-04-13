@@ -110,13 +110,9 @@ export function RegisteredProfile() {
       // User deleted — navigate to profile; ProfileRoute will show AnonymousProfile once auth clears
       navigate('/profile')
     } catch (error) {
-      // Check for Firebase auth error code
-      const code = (error as { code?: string })?.code
-      if (code === 'auth/requires-recent-login') {
-        setDeleteError('For security, please log out and log back in before deleting your account.')
-      } else {
-        setDeleteError(error instanceof Error ? error.message : 'Failed to delete account')
-      }
+      // Account deletion delegates to the deleteUserData Cloud Function (Admin SDK),
+      // which does not require recent authentication.
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete account')
     }
   }
 
