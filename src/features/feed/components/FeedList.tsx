@@ -30,7 +30,6 @@ export function FeedList({ enabled = true }: FeedListProps) {
   const {
     data,
     isLoading,
-    isRefetching,
     isError,
     refetch,
     hasNextPage,
@@ -39,7 +38,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
   } = useFeedReports({ enabled })
 
   // Calculate filter counts from all loaded reports
-  const allReports = data?.pages?.flatMap((page) => page.data ?? []) ?? []
+  const allReports = data ?? []
   const filterCounts = {
     all: allReports.length,
     pending: allReports.filter((r) => r.status === 'pending').length,
@@ -109,7 +108,7 @@ export function FeedList({ enabled = true }: FeedListProps) {
 
       case 'status':
         return sorted.sort((a, b) => {
-          const statusOrder = { pending: 0, verified: 1, resolved: 2, false_alarm: 3 }
+          const statusOrder: Record<string, number> = { pending: 0, verified: 1, resolved: 2, false_alarm: 3 }
           const statusA = statusOrder[a.status] ?? 99
           const statusB = statusOrder[b.status] ?? 99
           return statusA - statusB

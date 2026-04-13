@@ -119,7 +119,7 @@ export function AlertDetailModal({
           {type && (
             <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 flex items-center gap-1">
               {(() => {
-                const TypeIcon = TYPE_ICON[type]
+                const TypeIcon = TYPE_ICON[type] ?? Info
                 return <TypeIcon className="w-4 h-4" aria-hidden="true" />
               })()}
               {type.charAt(0).toUpperCase() + type.slice(1)}

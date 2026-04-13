@@ -5,18 +5,29 @@
  * Stores pending submissions and sync metadata.
  */
 
-import { openDB } from 'idb'
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { QueuedReport } from '../hooks/useReportQueue'
 
 const DB_NAME = 'bantayog-alert'
 const DB_VERSION = 1
 const STORE_NAME = 'report-queue'
 
-let db: IDBDatabase | null = null
+interface ReportQueueDB extends DBSchema {
+  'report-queue': {
+    key: string
+    value: QueuedReport
+    indexes: {
+      status: QueuedReport['status']
+      createdAt: number
+    }
+  }
+}
+
+let db: IDBPDatabase<ReportQueueDB> | null = null
 
 async function getDB() {
   if (!db) {
-    db = await openDB(DB_NAME, DB_VERSION, {
+    db = await openDB<ReportQueueDB>(DB_NAME, DB_VERSION, {
       upgrade(database) {
         if (!database.objectStoreNames.contains(STORE_NAME)) {
           const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' })

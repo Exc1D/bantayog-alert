@@ -7,7 +7,7 @@
 
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { getCollection } from '@/shared/services/firestore.service'
-import { where, orderBy, limit } from 'firebase/firestore'
+import { where, orderBy, limit, type QueryConstraint } from 'firebase/firestore'
 import { Report } from '@/shared/types/firestore.types'
 import { FeedReport, FeedPageResponse } from '../types'
 
@@ -20,12 +20,11 @@ export interface UseFeedReportsOptions {
 export interface UseFeedReportsResult {
   data: FeedReport[] | undefined
   isLoading: boolean
-  isRefetching: boolean
   isError: boolean
   error: unknown
-  refetch: () => void
+  refetch: () => Promise<unknown>
   hasNextPage: boolean
-  fetchNextPage: () => void
+  fetchNextPage: () => Promise<unknown>
   isFetchingNextPage: boolean
 }
 
@@ -64,7 +63,6 @@ export function useFeedReports(
   return {
     data: reports,
     isLoading: query.isLoading,
-    isRefetching: query.isRefetching,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
@@ -82,7 +80,7 @@ export function useFeedReports(
  */
 async function fetchFeedReports(page: number): Promise<FeedPageResponse> {
   // Fetch verified reports ordered by creation date (newest first)
-  const constraints = [
+  const constraints: QueryConstraint[] = [
     where('status', 'in', ['verified', 'assigned', 'responding', 'resolved']),
     orderBy('createdAt', 'desc'),
     limit(PAGE_SIZE),

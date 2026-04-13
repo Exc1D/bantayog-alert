@@ -19,6 +19,7 @@ import {
   getDocs,
   onSnapshot,
   DocumentSnapshot,
+  type QueryConstraint,
 } from 'firebase/firestore'
 import { db } from '@/app/firebase/config'
 import type { Alert } from '@/shared/types/firestore.types'
@@ -51,10 +52,10 @@ export interface AlertFilters {
  * client-side to avoid a composite Firestore index.
  */
 export async function getAlerts(filters: AlertFilters = {}): Promise<Alert[]> {
-  const { active = true, severity, type, municipality } = filters
+  const { active = true, severity, type } = filters
   const now = Date.now()
 
-  const constraints: Parameters<typeof query>[1] = []
+  const constraints: QueryConstraint[] = []
 
   if (active) {
     constraints.push(where('isActive', '==', true))
@@ -81,7 +82,7 @@ export async function getAlerts(filters: AlertFilters = {}): Promise<Alert[]> {
     alerts = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Alert))
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    throw new Error(`Failed to fetch alerts: ${message}`, { cause: err })
+    throw new Error(`Failed to fetch alerts: ${message}`)
   }
 
   // Filter expired alerts client-side — avoids composite index on expiresAt
@@ -111,9 +112,7 @@ export async function getAlertsByMunicipality(municipality: string): Promise<Ale
     alerts = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Alert))
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    throw new Error(`Failed to fetch alerts for municipality ${municipality}: ${message}`, {
-      cause: err,
-    })
+    throw new Error(`Failed to fetch alerts for municipality ${municipality}: ${message}`)
   }
 
   return alerts.filter((a) => !a.expiresAt || a.expiresAt > now)
@@ -141,7 +140,7 @@ export async function getAlertsByRole(role: UserRole): Promise<Alert[]> {
     alerts = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Alert))
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    throw new Error(`Failed to fetch alerts for role ${role}: ${message}`, { cause: err })
+    throw new Error(`Failed to fetch alerts for role ${role}: ${message}`)
   }
 
   return alerts.filter((a) => !a.expiresAt || a.expiresAt > now)
@@ -164,7 +163,7 @@ export function subscribeToAlerts(
 ): () => void {
   const { active = true, severity, type } = filters
 
-  const constraints: Parameters<typeof query>[1] = []
+  const constraints: QueryConstraint[] = []
 
   if (active) {
     constraints.push(where('isActive', '==', true))
@@ -250,14 +249,14 @@ export async function getAlertsPage(
   const now = Date.now()
   const alertsRef = collection(db, 'alerts')
 
-  const constraints: Parameters<typeof query>[1] = [
+  const constraints: QueryConstraint[] = [
     where('isActive', '==', true),
     orderBy('createdAt', 'desc'),
     limit(ALERTS_LIMIT),
   ]
 
   if (lastDoc) {
-    constraints.push(startAfter(lastDoc) as Parameters<typeof query>[1])
+    constraints.push(startAfter(lastDoc))
   }
 
   const q = query(alertsRef, ...constraints)
@@ -276,7 +275,6 @@ export async function getAlertsPage(
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    throw new Error(`Failed to fetch alerts page: ${message}`, { cause: err })
+    throw new Error(`Failed to fetch alerts page: ${message}`)
   }
 }
-

@@ -91,7 +91,7 @@ export function AlertCard({ alert, isCached = false }: AlertCardProps) {
             )
           })()}
           {type && (() => {
-            const TypeIcon = TYPE_ICON[type]
+            const TypeIcon = TYPE_ICON[type] ?? Info
             return (
               <TypeIcon
                 className="w-4 h-4 text-gray-500"

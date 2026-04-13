@@ -4,6 +4,7 @@ import { Search, X, Clock, Loader2 } from 'lucide-react'
 import {
   useLocationSearch,
   type LocationSearchResult,
+  type RecentSearch,
 } from '../hooks/useLocationSearch'
 
 export interface LocationSearchProps {

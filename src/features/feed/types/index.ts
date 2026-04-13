@@ -16,6 +16,7 @@ export interface FeedReport extends Report {
   locationDisplay: string
   typeDisplay: string
   isVerified: boolean
+  photoUrls?: string[]
 }
 
 /**

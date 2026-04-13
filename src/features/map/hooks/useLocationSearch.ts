@@ -25,7 +25,7 @@ export interface LocationSearchResult {
 /**
  * Recent search item stored in localStorage
  */
-interface RecentSearch {
+export interface RecentSearch {
   displayName: string
   lat: number
   lng: number
