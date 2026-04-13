@@ -10,8 +10,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { registerMunicipalAdmin } from '@/domains/municipal-admin/services/auth.service'
 import { addDocument } from '@/shared/services/firestore.service'
-import { auth, db } from '@/app/firebase/config'
+import { db } from '@/app/firebase/config'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
+import { deleteAuthUsers } from '../helpers/firebase-admin'
 import type { Municipality } from '@/shared/types'
 
 describe('Municipality Validation', () => {
@@ -22,14 +23,9 @@ describe('Municipality Validation', () => {
   afterEach(async () => {
     // Clean up test users
     for (const uid of testUsers) {
-      try {
-        await deleteDoc(doc(db, 'users', uid))
-        const user = await auth.getUser(uid)
-        await auth.deleteUser(user.uid)
-      } catch (error) {
-        // User might not exist, ignore error
-      }
+      await deleteDoc(doc(db, 'users', uid)).catch(() => undefined)
     }
+    await deleteAuthUsers(testUsers)
     testUsers.length = 0
 
     // Clean up test municipalities

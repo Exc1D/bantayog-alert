@@ -4,7 +4,7 @@
  * Tests for shared Firestore operations.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   getDocument,
   getCollection,

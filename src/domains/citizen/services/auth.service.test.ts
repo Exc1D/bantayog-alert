@@ -4,24 +4,20 @@
  * Tests for citizen-specific authentication operations.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { registerCitizen, loginCitizen } from './auth.service'
-import { auth, db } from '@/app/firebase/config'
+import { db } from '@/app/firebase/config'
 import { doc, deleteDoc } from 'firebase/firestore'
+import { deleteAuthUsers } from '../../../../tests/helpers/firebase-admin'
 
 describe('CitizenAuthService', () => {
   const testUsers: string[] = []
 
   afterEach(async () => {
     for (const uid of testUsers) {
-      try {
-        await deleteDoc(doc(db, 'users', uid))
-        const user = await auth.getUser(uid)
-        await auth.deleteUser(user.uid)
-      } catch (error) {
-        // Ignore
-      }
+      await deleteDoc(doc(db, 'users', uid)).catch(() => undefined)
     }
+    await deleteAuthUsers(testUsers)
     testUsers.length = 0
   })
 

@@ -9,8 +9,9 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { registerResponder } from '@/domains/responder/services/auth.service'
-import { auth, db } from '@/app/firebase/config'
+import { db } from '@/app/firebase/config'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
+import { deleteAuthUsers } from '../helpers/firebase-admin'
 import type { UserProfile } from '@/shared/types'
 
 describe('Phone Uniqueness Validation', () => {
@@ -20,18 +21,10 @@ describe('Phone Uniqueness Validation', () => {
   // Cleanup test users after each test
   afterEach(async () => {
     for (const uid of testUsers) {
-      try {
-        // Delete user profile
-        await deleteDoc(doc(db, 'users', uid))
-        // Delete responder profile
-        await deleteDoc(doc(db, 'responders', uid))
-        // Delete Firebase Auth user (if exists)
-        const user = await auth.getUser(uid)
-        await auth.deleteUser(user.uid)
-      } catch (error) {
-        // User might not exist, ignore error
-      }
+      await deleteDoc(doc(db, 'users', uid)).catch(() => undefined)
+      await deleteDoc(doc(db, 'responders', uid)).catch(() => undefined)
     }
+    await deleteAuthUsers(testUsers)
     testUsers.length = 0
   })
 

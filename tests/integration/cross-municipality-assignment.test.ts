@@ -11,8 +11,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { assignToResponder } from '@/domains/municipal-admin/services/firestore.service'
 import { registerBase } from '@/shared/services/auth.service'
 import { addDocument, updateDocument } from '@/shared/services/firestore.service'
-import { auth, db } from '@/app/firebase/config'
+import { db } from '@/app/firebase/config'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
+import { deleteAuthUsers } from '../helpers/firebase-admin'
 import type { Report, UserProfile, Municipality } from '@/shared/types'
 
 describe('Cross-Municipality Assignment Prevention', () => {
@@ -36,15 +37,10 @@ describe('Cross-Municipality Assignment Prevention', () => {
 
     // Clean up test users
     for (const uid of testUsers) {
-      try {
-        await deleteDoc(doc(db, 'users', uid))
-        await deleteDoc(doc(db, 'responders', uid))
-        const user = await auth.getUser(uid)
-        await auth.deleteUser(user.uid)
-      } catch (error) {
-        // User might not exist, ignore error
-      }
+      await deleteDoc(doc(db, 'users', uid)).catch(() => undefined)
+      await deleteDoc(doc(db, 'responders', uid)).catch(() => undefined)
     }
+    await deleteAuthUsers(testUsers)
     testUsers.length = 0
 
     // Clean up test municipalities

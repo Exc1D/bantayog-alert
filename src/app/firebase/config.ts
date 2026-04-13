@@ -1,9 +1,9 @@
 import { initializeApp } from 'firebase/app'
 import { getAnalytics } from 'firebase/analytics'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
-import { getStorage } from 'firebase/storage'
-import { getFunctions } from 'firebase/functions'
+import { connectAuthEmulator, getAuth } from 'firebase/auth'
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
+import { connectStorageEmulator, getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,6 +15,9 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
+const useEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true'
+const isTest = import.meta.env.MODE === 'test'
+
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig)
 
@@ -24,5 +27,15 @@ export const db = getFirestore(app)
 export const storage = getStorage(app)
 export const functions = getFunctions(app)
 
-// Initialize analytics only in browser
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null
+if (useEmulators) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFirestoreEmulator(db, '127.0.0.1', 8080)
+  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+  connectStorageEmulator(storage, '127.0.0.1', 9199)
+}
+
+// Skip analytics in test mode and SSR — analytics requires a real browser + API key
+export const analytics =
+  !isTest && typeof window !== 'undefined'
+    ? getAnalytics(app)
+    : null

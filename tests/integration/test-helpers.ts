@@ -5,8 +5,9 @@
  * Provides utilities for creating and cleaning up test data.
  */
 
-import { auth, db } from '@/app/firebase/config'
+import { db } from '@/app/firebase/config'
 import { doc, deleteDoc, getDoc } from 'firebase/firestore'
+import { deleteAuthUsers } from '../helpers/firebase-admin'
 import type { UserProfile, Municipality, Report } from '@/shared/types'
 
 /**
@@ -16,21 +17,10 @@ import type { UserProfile, Municipality, Report } from '@/shared/types'
  */
 export async function cleanupTestUsers(uids: string[]): Promise<void> {
   for (const uid of uids) {
-    try {
-      // Delete Firestore profile
-      await deleteDoc(doc(db, 'users', uid))
-
-      // Delete responder profile (if exists)
-      await deleteDoc(doc(db, 'responders', uid)).catch(() => {})
-
-      // Delete Firebase Auth user
-      const user = await auth.getUser(uid)
-      await auth.deleteUser(user.uid)
-    } catch (error) {
-      // User might not exist, ignore error
-      console.debug(`Failed to cleanup user ${uid}:`, error)
-    }
+    await deleteDoc(doc(db, 'users', uid)).catch(() => undefined)
+    await deleteDoc(doc(db, 'responders', uid)).catch(() => undefined)
   }
+  await deleteAuthUsers(uids)
 }
 
 /**
@@ -131,15 +121,15 @@ export async function createTestReport(
   const { addDocument } = await import('@/shared/services/firestore.service')
 
   const reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt' | 'status'> = {
+    approximateLocation: {
+      barangay: 'Test Barangay',
+      municipality,
+      approximateCoordinates: { latitude: 14.0, longitude: 122.9 },
+    },
     incidentType: 'flood',
     severity: 'medium',
     description: 'Test report',
-    approximateLocation: {
-      address: municipality,
-      municipality,
-      coordinates: { latitude: 14.0, longitude: 122.9 },
-    },
-    reportedBy: 'test@example.com',
+    isAnonymous: false,
     ...overrides,
   }
 
