@@ -43,7 +43,7 @@ import { useNavigate } from 'react-router-dom'
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
 import { db } from '@/app/firebase/config'
 import { Button } from '@/shared/components/Button'
-import { ReportStatus } from '@/shared/types/firestore.types'
+import { ReportStatus, IncidentType } from '@/shared/types/firestore.types'
 
 export interface MyReportsListProps {
   userId: string
@@ -52,7 +52,7 @@ export interface MyReportsListProps {
 
 interface ReportSummary {
   id: string
-  incidentType: string
+  incidentType: IncidentType
   status: ReportStatus
   createdAt: Date
   barangay: string
