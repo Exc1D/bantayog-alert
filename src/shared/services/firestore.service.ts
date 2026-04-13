@@ -6,18 +6,19 @@
  */
 
 import {
+  addDoc,
   collection,
+  CollectionReference,
+  deleteDoc,
   doc,
+  DocumentData,
   getDoc,
   getDocs,
-  addDoc,
+  query,
+  Query,
+  QueryConstraint,
   setDoc,
   updateDoc,
-  deleteDoc,
-  query,
-  QueryConstraint,
-  DocumentData,
-  CollectionReference,
 } from 'firebase/firestore'
 import { db } from '@/app/firebase/config'
 
@@ -149,7 +150,10 @@ export async function deleteDocument(collectionPath: string, docId: string): Pro
  *
  * Builds Firestore queries with type safety.
  */
-export function buildQuery(collectionPath: string, constraints: QueryConstraint[]): Query {
-  const collectionRef = collection(db, collectionPath)
+export function buildQuery(
+  collectionPath: string,
+  constraints: QueryConstraint[]
+): Query<DocumentData> {
+  const collectionRef = collection(db, collectionPath) as CollectionReference<DocumentData>
   return query(collectionRef, ...constraints)
 }

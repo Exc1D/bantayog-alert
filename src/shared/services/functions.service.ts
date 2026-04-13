@@ -5,7 +5,7 @@
  * Handles consistent error handling and type safety.
  */
 
-import { httpsCallable, HttpsCallableResult } from 'firebase/functions'
+import { httpsCallable } from 'firebase/functions'
 import { functions } from '@/app/firebase/config'
 
 /**
