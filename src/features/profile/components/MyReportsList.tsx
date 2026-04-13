@@ -75,17 +75,20 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
 
           for (const docSnap of registeredSnap.docs) {
             const data = docSnap.data()
-            if (!seenIds.has(data.reportId)) {
-              seenIds.add(data.reportId)
-              allReports.push({
-                id: data.reportId,
-                incidentType: data.incidentType || 'other',
-                status: data.status || 'pending',
-                createdAt: data.createdAt?.toDate() || new Date(),
-                barangay: data.barangay || 'Unknown',
-                municipality: data.municipality || 'Unknown',
-              })
-            }
+            if (!data) continue
+
+            const reportId = data.reportId
+            if (!reportId || seenIds.has(reportId)) continue
+
+            seenIds.add(reportId)
+            allReports.push({
+              id: reportId,
+              incidentType: data.incidentType || 'other',
+              status: data.status || 'pending',
+              createdAt: data.createdAt?.toDate() || new Date(),
+              barangay: data.barangay || 'Unknown',
+              municipality: data.municipality || 'Unknown',
+            })
           }
         }
 
@@ -100,17 +103,20 @@ export function MyReportsList({ userId, userPhone }: MyReportsListProps) {
 
           for (const docSnap of linkedSnap.docs) {
             const data = docSnap.data()
-            if (!seenIds.has(data.reportId)) {
-              seenIds.add(data.reportId)
-              allReports.push({
-                id: data.reportId,
-                incidentType: data.incidentType || 'other',
-                status: data.status || 'pending',
-                createdAt: data.createdAt?.toDate() || new Date(),
-                barangay: data.barangay || 'Unknown',
-                municipality: data.municipality || 'Unknown',
-              })
-            }
+            if (!data) continue
+
+            const reportId = data.reportId
+            if (!reportId || seenIds.has(reportId)) continue
+
+            seenIds.add(reportId)
+            allReports.push({
+              id: reportId,
+              incidentType: data.incidentType || 'other',
+              status: data.status || 'pending',
+              createdAt: data.createdAt?.toDate() || new Date(),
+              barangay: data.barangay || 'Unknown',
+              municipality: data.municipality || 'Unknown',
+            })
           }
         }
 

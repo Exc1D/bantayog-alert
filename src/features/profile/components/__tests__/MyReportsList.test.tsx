@@ -49,7 +49,7 @@ vi.mock('@/app/firebase/config', () => ({
 // ---------------------------------------------------------------------------
 // Helper: create a mock Firestore document snapshot
 // ---------------------------------------------------------------------------
-function createMockDoc(id: string, data: Record<string, unknown>) {
+function createMockDoc(id: string, data: Record<string, unknown> | null) {
   return {
     id,
     data: () => data,
@@ -310,5 +310,38 @@ describe('MyReportsList navigation', () => {
     await user.click(screen.getByRole('button', { name: /view/i }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/feed/report-detail-001')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Null data handling
+// ---------------------------------------------------------------------------
+describe('MyReportsList null data handling', () => {
+  it('should handle documents with null data gracefully', async () => {
+    mockGetDocs.mockResolvedValue({
+      docs: [
+        createMockDoc('doc-1', null), // Simulates partial document
+        createMockDoc('doc-2', {
+          reportId: 'report-valid-001',
+          reporterUserId: 'user-123',
+          incidentType: 'fire',
+          status: 'pending',
+          createdAt: Timestamp.fromDate(new Date()),
+          barangay: 'Mabuhay',
+          municipality: 'Daet',
+        }),
+      ],
+      forEach: function (fn: (doc: unknown) => void) {
+        this.docs.forEach(fn)
+      },
+    })
+
+    renderWithRouter('user-123')
+
+    await waitFor(() => {
+      // Should show the valid report, skip the null one
+      expect(screen.getByText(/fire/i)).toBeInTheDocument()
+      // Should not crash
+    })
   })
 })
