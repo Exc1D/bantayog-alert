@@ -34,16 +34,11 @@ vi.mock('../../services/reportQueue.service', () => ({
   },
 }))
 
-// Mock submitReport and uploadReportPhoto for syncQueue tests
-const submitReportMock = vi.hoisted(() => vi.fn<() => Promise<void>>())
-const uploadReportPhotoMock = vi.hoisted(() => vi.fn<() => Promise<string>>())
+// Mock submitCitizenReport for syncQueue tests
+const submitCitizenReportMock = vi.hoisted(() => vi.fn<() => Promise<{ reportId: string; photoUrls: string[] }>>())
 
-vi.mock('@/domains/citizen/services/firestore.service', () => ({
-  submitReport: submitReportMock,
-}))
-
-vi.mock('../services/reportStorage.service', () => ({
-  uploadReportPhoto: uploadReportPhotoMock,
+vi.mock('../../services/reportSubmission.service', () => ({
+  submitCitizenReport: submitCitizenReportMock,
 }))
 
 vi.mock('@/app/firebase/config', () => ({
@@ -80,8 +75,7 @@ describe('useReportQueue', () => {
     deleteMock.mockImplementation(() => Promise.resolve())
     clearMock.mockImplementation(() => Promise.resolve())
     getByStatusMock.mockImplementation(() => Promise.resolve([]))
-    submitReportMock.mockImplementation(() => Promise.resolve())
-    uploadReportPhotoMock.mockImplementation(() => Promise.resolve('https://example.com/photo.jpg'))
+    submitCitizenReportMock.mockImplementation(() => Promise.resolve({ reportId: 'report-123', photoUrls: [] }))
   })
 
   describe('initial state', () => {
@@ -189,7 +183,7 @@ describe('useReportQueue', () => {
       }
 
       getAllMock.mockImplementation(() => Promise.resolve([queuedReport]))
-      submitReportMock.mockRejectedValueOnce('raw string error')
+      submitCitizenReportMock.mockRejectedValueOnce('raw string error')
 
       const { result } = renderHook(() => useReportQueue())
 
@@ -249,6 +243,38 @@ describe('useReportQueue', () => {
       })
 
       expect(syncResult).toEqual({ success: 0, failed: 0 })
+    })
+
+    it('delegates persistence to submitCitizenReport when syncing queued reports', async () => {
+      const queuedReport = {
+        id: 'q1',
+        reportData: mockReportData,
+        retryCount: 0,
+        status: 'pending' as const,
+        createdAt: Date.now(),
+      }
+      getAllMock.mockImplementation(() => Promise.resolve([queuedReport]))
+
+      const { result } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.queue.length).toBe(1)
+      })
+
+      const syncResult = await act(async () => {
+        return await result.current.syncQueue()
+      })
+
+      expect(submitCitizenReportMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          incidentType: mockReportData.incidentType,
+          photo: null,
+          location: mockReportData.location,
+          phone: mockReportData.phone,
+          isAnonymous: true,
+        })
+      )
+      expect(syncResult.success).toBe(1)
     })
   })
 
