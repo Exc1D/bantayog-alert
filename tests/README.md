@@ -52,9 +52,10 @@ E2E Tests (Slow)
 npm install
 ```
 
-2. (For integration/E2E tests) Start Firebase Emulator:
+2. Run the emulator-backed test entry points:
 ```bash
-firebase emulators:start --background
+npm run test:integration
+npm run test:e2e:ci
 ```
 
 ### Verify Test Setup
@@ -78,7 +79,7 @@ npm run test:run
 npm run test:integration
 
 # E2E tests (requires emulator)
-npm run test:e2e
+npm run test:e2e:ci
 
 # All tests with coverage
 npm run test:coverage
@@ -214,13 +215,13 @@ npm run test:coverage
 
 ```bash
 # Only phone uniqueness tests
-firebase emulators:exec "vitest run tests/integration/phone-uniqueness.test.ts"
+npm run test:integration -- tests/integration/phone-uniqueness.test.ts
 
 # Only municipality validation tests
-firebase emulators:exec "vitest run tests/integration/municipality-validation.test.ts"
+npm run test:integration -- tests/integration/municipality-validation.test.ts
 
 # Only cross-municipality assignment tests
-firebase emulators:exec "vitest run tests/integration/cross-municipality-assignment.test.ts"
+npm run test:integration -- tests/integration/cross-municipality-assignment.test.ts
 
 # Only validation unit tests
 npm run test:run tests/unit/validation.test.ts
@@ -432,11 +433,9 @@ git push
 
 **Solution:**
 ```bash
-# Start emulator
-firebase emulators:start
-
-# Or in background
-firebase emulators:start --background
+# Run the emulator-backed test entry points
+npm run test:integration
+npm run test:e2e:ci
 ```
 
 #### 2. "Port already in use"
@@ -487,10 +486,10 @@ npx playwright install
 npm run test:run -- tests/unit/validation.test.ts -t "should reject duplicate phone"
 
 # Integration test
-firebase emulators:exec "vitest run tests/integration/phone-uniqueness.test.ts -t should reject"
+npm run test:integration -- tests/integration/phone-uniqueness.test.ts -t should reject
 
 # E2E test
-npx playwright test --tests/e2e/auth-flows.spec.ts -g "should successfully register"
+npm run test:e2e:ci -- tests/e2e/auth-flows.spec.ts -g "should successfully register"
 ```
 
 #### 2. Run Tests in Debug Mode
@@ -678,7 +677,7 @@ npm run test:run tests/unit/
 npm run test:integration
 
 # E2E tests
-npm run test:e2e
+npm run test:e2e:ci
 
 # With coverage
 npm run test:coverage
@@ -690,17 +689,10 @@ npm run test:verify
 ### Firebase Emulator
 
 ```bash
-# Start emulator
-firebase emulators:start
-
-# Start in background
-firebase emulators:start --background
-
-# Stop emulator
-firebase emulators:stop
-
-# Run command with emulator
-firebase emulators:exec "npm run test:run"
+# Run the emulator-backed test scripts
+npm run test:integration
+npm run test:e2e:ci
+npm run test:rules
 ```
 
 ### Playwright
@@ -710,7 +702,7 @@ firebase emulators:exec "npm run test:run"
 npx playwright install
 
 # Run tests
-npm run test:e2e
+npm run test:e2e:ci
 
 # UI mode
 npm run test:e2e:ui
@@ -719,7 +711,7 @@ npm run test:e2e:ui
 npx playwright test --debug
 
 # Run specific test
-npx playwright test --tests/e2e/auth-flows.spec.ts
+npm run test:e2e:ci -- tests/e2e/auth-flows.spec.ts
 ```
 
 ---

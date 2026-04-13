@@ -101,15 +101,8 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Start Firebase Emulator
-        run: firebase emulators:start --background
-        timeout-minutes: 5
-
-      - name: Wait for emulators to be ready
-        run: npx wait-on http://localhost:4000
-
       - name: Run integration tests
-        run: firebase emulators:exec "vitest run tests/integration/"
+        run: npm run test:integration
 
       - name: Upload integration test coverage
         uses: codecov/codecov-action@v4
@@ -142,18 +135,8 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Start Firebase Emulator
-        run: firebase emulators:start --background
-        timeout-minutes: 5
-
-      - name: Wait for emulators to be ready
-        run: npx wait-on http://localhost:4000
-
-      - name: Build application
-        run: npm run build
-
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: npm run test:e2e:ci
 
       - name: Upload E2E test results
         if: always()
@@ -248,8 +231,7 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Run Firestore rules tests
-        run: |
-          firebase emulators:exec "vitest run tests/firestore/firestore.rules.test.ts"
+        run: npm run test:rules
 
   # Test Summary Job
   test-summary:

@@ -27,17 +27,10 @@ Integration tests validate that the system works correctly end-to-end using the 
 
 ### 1. Firebase Emulator
 
-Install and start the Firebase Emulator:
+Run the emulator-backed test script from the project root:
 
 ```bash
-# From project root
-firebase emulators:start
-```
-
-Or use the background option:
-
-```bash
-firebase emulators:start --background
+npm run test:integration
 ```
 
 ### 2. Dependencies
@@ -53,32 +46,32 @@ npm install
 ### Run All Integration Tests
 
 ```bash
-firebase emulators:exec "vitest run tests/integration/"
+npm run test:integration
 ```
 
 ### Run Specific Test Suite
 
 ```bash
 # Phone uniqueness tests
-firebase emulators:exec "vitest run tests/integration/phone-uniqueness.test.ts"
+npm run test:integration -- tests/integration/phone-uniqueness.test.ts
 
 # Municipality validation tests
-firebase emulators:exec "vitest run tests/integration/municipality-validation.test.ts"
+npm run test:integration -- tests/integration/municipality-validation.test.ts
 
 # Cross-municipality assignment tests
-firebase emulators:exec "vitest run tests/integration/cross-municipality-assignment.test.ts"
+npm run test:integration -- tests/integration/cross-municipality-assignment.test.ts
 ```
 
 ### Run Tests in Watch Mode
 
 ```bash
-firebase emulators:exec "vitest tests/integration/" --watch
+npm run test:integration:watch
 ```
 
 ### Run Tests with Coverage
 
 ```bash
-firebase emulators:exec "vitest run tests/integration/" --coverage
+npm run test:coverage
 ```
 
 ## Test Structure
@@ -224,15 +217,9 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
-      
-      - name: Start Firebase Emulator
-        run: firebase emulators:start --background
-      
-      - name: Wait for emulators
-        run: npx wait-on http://localhost:4000
-      
+
       - name: Run integration tests
-        run: firebase emulators:exec "vitest run tests/integration/"
+        run: npm run test:integration
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -251,9 +238,7 @@ integration_tests:
     - npm ci
   
   script:
-    - firebase emulators:start --background
-    - sleep 10  # Wait for emulators to start
-    - firebase emulators:exec "vitest run tests/integration/"
+    - npm run test:integration
   
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:
