@@ -1,0 +1,45 @@
+wing: bantayog_alert
+rooms:
+- name: documentation
+  description: Files from docs/
+  keywords:
+  - documentation
+  - docs
+- name: src
+  description: Files from src/
+  keywords:
+  - src
+  - src
+- name: testing
+  description: Files from tests/
+  keywords:
+  - testing
+  - tests
+- name: functions
+  description: Files from functions/
+  keywords:
+  - functions
+  - functions
+- name: scripts
+  description: Files from scripts/
+  keywords:
+  - scripts
+  - scripts
+- name: public
+  description: Files from public/
+  keywords:
+  - public
+  - public
+- name: test_results
+  description: Files from test-results/
+  keywords:
+  - test_results
+  - test-results
+- name: playwright_report
+  description: Files from playwright-report/
+  keywords:
+  - playwright_report
+  - playwright-report
+- name: general
+  description: Files that don't fit other rooms
+  keywords: []
