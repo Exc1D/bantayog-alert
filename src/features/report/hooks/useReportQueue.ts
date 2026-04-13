@@ -84,28 +84,6 @@ export function useReportQueue(): UseReportQueueResult {
       })
   }, [])
 
-  const enqueueReport = useCallback(
-    async (reportData: QueuedReport['reportData']) => {
-      const queuedReport: QueuedReport = {
-        id: `queued-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        reportData,
-        retryCount: 0,
-        status: 'pending',
-        createdAt: Date.now(),
-      }
-
-      await reportQueueService.add(queuedReport)
-
-      setQueue((prev) => [...prev, queuedReport])
-
-      // Try to sync immediately if online
-      if (isOnline) {
-        syncQueue()
-      }
-    },
-    [isOnline]
-  )
-
   const syncQueue = useCallback(async (): Promise<{ success: number; failed: number }> => {
     if (!isOnline || isSyncing) {
       return { success: 0, failed: 0 }
@@ -215,6 +193,31 @@ export function useReportQueue(): UseReportQueueResult {
     setIsSyncing(false)
     return { success: successCount, failed: failedCount }
   }, [isOnline, isSyncing])
+
+  const enqueueReport = useCallback(
+    async (reportData: QueuedReport['reportData']) => {
+      const queuedReport: QueuedReport = {
+        id: `queued-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        reportData,
+        retryCount: 0,
+        status: 'pending',
+        createdAt: Date.now(),
+      }
+
+      await reportQueueService.add(queuedReport)
+
+      setQueue((prev) => [...prev, queuedReport])
+
+      // Try to sync immediately if online
+      if (isOnline) {
+        syncQueue().catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Immediate sync failed'
+          console.error('[IMMEDIATE_SYNC_ERROR]', message)
+        })
+      }
+    },
+    [isOnline, syncQueue]
+  )
 
   // Auto-sync when coming online
   // Note: Using queueRef.current to avoid stale closure issues.
