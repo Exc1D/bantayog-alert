@@ -28,9 +28,20 @@ describe('ProfileRoute', () => {
     expect(screen.queryByTestId('anonymous-profile')).not.toBeInTheDocument()
   })
 
-  it('renders nothing while auth is loading', () => {
+  it('renders a loading placeholder while auth state is resolving', () => {
     mockUseAuth.mockReturnValue({ user: null, loading: true })
     const { container } = render(<ProfileRoute />)
-    expect(container.firstChild).toBeNull()
+    expect(screen.queryByTestId('anonymous-profile')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('registered-profile')).not.toBeInTheDocument()
+    // The placeholder div is present (not null) — no profile content
+    expect(container.firstChild).not.toBeNull()
+  })
+
+  it('renders nothing while auth is loading even if a stale user is present', () => {
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' }, loading: true })
+    const { container } = render(<ProfileRoute />)
+    // Loading placeholder has no child content to assert — check it's not RegisteredProfile
+    expect(screen.queryByTestId('registered-profile')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('anonymous-profile')).not.toBeInTheDocument()
   })
 })

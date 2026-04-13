@@ -5,6 +5,6 @@ import { useAuth } from '@/shared/hooks/useAuth'
 export function ProfileRoute() {
   const { user, loading } = useAuth()
 
-  if (loading) return null
+  if (loading) return <div className="min-h-screen bg-gray-50" aria-label="Loading profile" />
   return user ? <RegisteredProfile /> : <AnonymousProfile />
 }

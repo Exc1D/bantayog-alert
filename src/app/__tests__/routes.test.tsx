@@ -88,6 +88,7 @@ describe('Router Configuration', () => {
     it('renders the profile route shell at /profile', () => {
       renderWithRouter('/profile')
       expect(screen.getByTestId('navigation')).toBeInTheDocument()
+      expect(screen.getByTestId('anonymous-profile')).toBeInTheDocument()
     })
   })
 
