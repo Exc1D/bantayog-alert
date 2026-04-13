@@ -4,7 +4,7 @@ import { MapView } from '@/features/map/components/MapView'
 import { FeedList } from '@/features/feed/components/FeedList'
 import { ReportForm } from '@/features/report/components/ReportForm'
 import { AlertList } from '@/features/alerts/components/AlertList'
-import { AnonymousProfile } from '@/features/profile/components/AnonymousProfile'
+import { ProfileRoute } from './components/ProfileRoute'
 import { LinkReportsByPhone } from '@/features/profile/components/LinkReportsByPhone'
 import { ReportDetailScreen } from '@/features/feed/components/ReportDetailScreen'
 import { PrivacyPolicy } from './components/PrivacyPolicy'
@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
       { path: 'alerts', element: <AlertList /> },
       {
         path: 'profile',
-        element: <AnonymousProfile />,
+        element: <ProfileRoute />,
       },
       {
         path: 'profile/link-reports',

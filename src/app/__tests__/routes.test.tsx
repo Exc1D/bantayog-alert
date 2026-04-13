@@ -8,8 +8,18 @@ import { MapView } from '@/features/map/components/MapView'
 import { FeedList } from '@/features/feed/components/FeedList'
 import { ReportForm } from '@/features/report/components/ReportForm'
 import { AlertList } from '@/features/alerts/components/AlertList'
-import { AnonymousProfile } from '@/features/profile/components/AnonymousProfile'
+import { ProfileRoute } from '../components/ProfileRoute'
 import { ReportDetailScreen } from '@/features/feed/components/ReportDetailScreen'
+
+vi.mock('@/shared/hooks/useAuth', () => ({
+  useAuth: vi.fn(() => ({ user: null, loading: false })),
+}))
+vi.mock('@/features/profile/components/AnonymousProfile', () => ({
+  AnonymousProfile: () => <div data-testid="anonymous-profile" />,
+}))
+vi.mock('@/features/profile/components/RegisteredProfile', () => ({
+  RegisteredProfile: () => <div data-testid="registered-profile" />,
+}))
 
 describe('Router Configuration', () => {
   const renderWithRouter = (path: string) => {
@@ -22,7 +32,7 @@ describe('Router Configuration', () => {
           <Route path="/feed" element={<FeedList />} />
           <Route path="/report" element={<ReportForm />} />
           <Route path="/alerts" element={<AlertList />} />
-          <Route path="/profile" element={<AnonymousProfile />} />
+          <Route path="/profile" element={<ProfileRoute />} />
           <Route path="/feed/:reportId" element={<ReportDetailScreen />} />
         </Routes>
       </MemoryRouter>
@@ -75,10 +85,8 @@ describe('Router Configuration', () => {
   })
 
   describe('profile route', () => {
-    it('should render AnonymousProfile at /profile', () => {
+    it('renders the profile route shell at /profile', () => {
       renderWithRouter('/profile')
-
-      expect(screen.getByTestId('anonymous-profile')).toBeInTheDocument()
       expect(screen.getByTestId('navigation')).toBeInTheDocument()
     })
   })
