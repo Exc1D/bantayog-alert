@@ -107,40 +107,42 @@ export function useReportQueue(): UseReportQueueResult {
         (!report.lastAttempt || Date.now() - report.lastAttempt > RETRY_DELAY_MS)
     )
 
-    for (const report of readyToSync) {
-      try {
-        // Update status to syncing
-        const syncingReport = { ...report, status: 'syncing' as const }
-        await reportQueueService.update(syncingReport)
-        setQueue((prev) => prev.map((r) => (r.id === report.id ? syncingReport : r)))
+    try {
+      for (const report of readyToSync) {
+        try {
+          // Update status to syncing
+          const syncingReport = { ...report, status: 'syncing' as const }
+          await reportQueueService.update(syncingReport)
+          setQueue((prev) => prev.map((r) => (r.id === report.id ? syncingReport : r)))
 
-        // Delegate to shared submission service (handles photo upload + three-tier persistence)
-        // Queued reports are always anonymous — citizens submit without identity
-        await submitCitizenReport({ ...report.reportData, isAnonymous: true })
+          // Delegate to shared submission service (handles photo upload + three-tier persistence)
+          // Queued reports are always anonymous — citizens submit without identity
+          await submitCitizenReport({ ...report.reportData, isAnonymous: true })
 
-        // Remove from queue on success
-        await reportQueueService.delete(report.id)
-        setQueue((prev) => prev.filter((r) => r.id !== report.id))
-        successCount++
-      } catch (error) {
-        // Update as failed
-        const failedReport = {
-          ...report,
-          status: 'failed' as const,
-          retryCount: report.retryCount + 1,
-          lastAttempt: Date.now(),
-          error: error instanceof Error ? error.message : 'Unknown error',
+          // Remove from queue on success
+          await reportQueueService.delete(report.id)
+          setQueue((prev) => prev.filter((r) => r.id !== report.id))
+          successCount++
+        } catch (error) {
+          // Update as failed
+          const failedReport = {
+            ...report,
+            status: 'failed' as const,
+            retryCount: report.retryCount + 1,
+            lastAttempt: Date.now(),
+            error: error instanceof Error ? error.message : 'Unknown error',
+          }
+          // Note: If this update fails, syncQueue will reject and be caught by
+          // the auto-sync .catch() handler, logging [AUTO_SYNC_ERROR]
+          await reportQueueService.update(failedReport)
+          setQueue((prev) => prev.map((r) => (r.id === report.id ? failedReport : r)))
+          failedCount++
         }
-        // Note: If this update fails, syncQueue will reject and be caught by
-        // the auto-sync .catch() handler, logging [AUTO_SYNC_ERROR]
-        await reportQueueService.update(failedReport)
-        setQueue((prev) => prev.map((r) => (r.id === report.id ? failedReport : r)))
-        failedCount++
       }
+      return { success: successCount, failed: failedCount }
+    } finally {
+      setIsSyncing(false)
     }
-
-    setIsSyncing(false)
-    return { success: successCount, failed: failedCount }
   }, [isOnline, isSyncing])
 
   const enqueueReport = useCallback(

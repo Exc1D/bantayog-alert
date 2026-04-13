@@ -57,7 +57,6 @@ const mockReportData = {
   incidentType: 'flood' as const,
   photo: null,
   location: { type: 'gps' as const, latitude: 14.5995, longitude: 120.9842 },
-  description: 'Test flood report',
   phone: '+63 912 345 6789',
 }
 
