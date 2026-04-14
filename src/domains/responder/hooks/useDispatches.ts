@@ -1,5 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { onSnapshot, query, where, orderBy, collection, getDocs, getFirestore } from 'firebase/firestore'
+import {
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  collection,
+  getDocs,
+  getFirestore,
+  type QuerySnapshot,
+  type QueryDocumentSnapshot,
+} from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import type { AssignedDispatch } from '../types'
 import type { DispatchesError } from '../types'
@@ -10,6 +20,29 @@ interface UseDispatchesReturn {
   isLoading: boolean
   error: DispatchesError | null
   refresh: () => Promise<void>
+}
+
+/**
+ * Build the Firestore query for active dispatches assigned to a responder.
+ */
+function buildDispatchesQuery(db: ReturnType<typeof getFirestore>, uid: string) {
+  return query(
+    collection(db, 'report_ops'),
+    where('assignedTo', '==', uid),
+    where('status', 'not-in', ['resolved', 'cancelled']),
+    orderBy('assignedAt', 'desc')
+  )
+}
+
+/**
+ * Convert a Firestore snapshot to AssignedDispatch array.
+ */
+function snapshotToDispatches(snap: QuerySnapshot) {
+  const dispatches: AssignedDispatch[] = []
+  snap.forEach((doc: QueryDocumentSnapshot) => {
+    dispatches.push({ id: doc.id, ...doc.data() } as AssignedDispatch)
+  })
+  return dispatches
 }
 
 export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesReturn {
@@ -30,6 +63,9 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
     abortControllerRef.current = new AbortController()
     const { signal } = abortControllerRef.current
 
+    // Reset retry counter on manual refresh
+    retryCountRef.current = 0
+
     try {
       setError(null)
       const user = getAuth().currentUser
@@ -46,23 +82,13 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
       }
 
       const db = getFirestore()
-      const q = query(
-        collection(db, 'report_ops'),
-        where('assignedTo', '==', user.uid),
-        where('status', 'not-in', ['resolved', 'cancelled']),
-        orderBy('assignedAt', 'desc')
-      )
+      const q = buildDispatchesQuery(db, user.uid)
 
       const snapshot = await getDocs(q)
 
       if (signal.aborted) return
 
-      const newDispatches: AssignedDispatch[] = []
-      snapshot.forEach((doc) => {
-        newDispatches.push({ id: doc.id, ...doc.data() } as AssignedDispatch)
-      })
-
-      setDispatches(newDispatches)
+      setDispatches(snapshotToDispatches(snapshot))
     } catch (err: unknown) {
       if (signal.aborted) return
 
@@ -81,95 +107,77 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
         })
       }
     } finally {
-      if (abortControllerRef.current?.signal === signal) {
-        abortControllerRef.current = null
-      }
+      // Clear abort controller ref on completion (aborted or success)
+      abortControllerRef.current = null
     }
   }, [])
 
   useEffect(() => {
     let mounted = true
 
-    const subscribe = async () => {
-      try {
-        const user = getAuth().currentUser
+    const subscribe = () => {
+      const user = getAuth().currentUser
+      if (!user || !mounted) return
 
-        if (!user || !mounted) return
+      const db = getFirestore()
+      const q = buildDispatchesQuery(db, user.uid)
 
-        const db = getFirestore()
-        const q = query(
-          collection(db, 'report_ops'),
-          where('assignedTo', '==', user.uid),
-          where('status', 'not-in', ['resolved', 'cancelled']),
-          orderBy('assignedAt', 'desc')
-        )
+      const unsubscribe = onSnapshot(
+        q,
+        {
+          next: (snapshot) => {
+            if (!mounted) return
 
-        unsubscribeRef.current = onSnapshot(
-          q,
-          {
-            next: (snapshot) => {
-              if (!mounted) return
+            // Verify user hasn't changed auth state mid-subscription
+            const currentUser = getAuth().currentUser
+            if (!currentUser || currentUser.uid !== user.uid) return
 
-              const newDispatches: AssignedDispatch[] = []
-              snapshot.forEach((doc) => {
-                newDispatches.push({ id: doc.id, ...doc.data() } as AssignedDispatch)
+            setDispatches(snapshotToDispatches(snapshot))
+            if (isLoading) setIsLoading(false)
+            if (error !== null) setError(null)
+            retryCountRef.current = 0
+          },
+
+          error: (err) => {
+            if (!mounted) return
+
+            const errorCode = (err as { code?: string })?.code
+
+            if (errorCode === 'permission-denied') {
+              setError({
+                code: 'PERMISSION_DENIED',
+                message: 'You do not have permission to view dispatches',
+                isFatal: true
               })
-
-              setDispatches(newDispatches)
               setIsLoading(false)
-              setError(null)
-              retryCountRef.current = 0
-            },
+              return
+            }
 
-            error: (err) => {
-              if (!mounted) return
+            if (retryCountRef.current < MAX_SYNC_RETRIES) {
+              const delay = Math.min(
+                SYNC_RETRY_DELAY_MS * Math.pow(2, retryCountRef.current),
+                SYNC_MAX_DELAY_MS
+              )
 
-              const errorCode = (err as { code?: string })?.code
-
-              if (errorCode === 'permission-denied') {
-                setError({
-                  code: 'PERMISSION_DENIED',
-                  message: 'You do not have permission to view dispatches',
-                  isFatal: true
-                })
-                setIsLoading(false)
-                return
-              }
-
-              if (retryCountRef.current < MAX_SYNC_RETRIES) {
-                const delay = Math.min(
-                  SYNC_RETRY_DELAY_MS * Math.pow(2, retryCountRef.current),
-                  SYNC_MAX_DELAY_MS
-                )
-
-                reconnectTimeoutRef.current = setTimeout(() => {
-                  if (mounted) {
-                    retryCountRef.current++
-                    subscribe()
-                  }
-                }, delay)
-              } else {
-                setError({
-                  code: 'NETWORK_ERROR',
-                  message: 'Unable to connect. Please check your connection and tap to retry.',
-                  isFatal: false
-                })
-                setIsLoading(false)
-              }
+              reconnectTimeoutRef.current = setTimeout(() => {
+                if (mounted) {
+                  retryCountRef.current++
+                  subscribe()
+                }
+              }, delay)
+            } else {
+              setError({
+                code: 'NETWORK_ERROR',
+                message: 'Unable to connect. Please check your connection and tap to retry.',
+                isFatal: false
+              })
+              setIsLoading(false)
             }
           }
-        )
+        }
+      )
 
-      } catch (err: unknown) {
-        if (!mounted) return
-
-        setError({
-          code: 'NETWORK_ERROR',
-          message: err instanceof Error ? err.message : 'Failed to subscribe to dispatches',
-          isFatal: false
-        })
-        setIsLoading(false)
-      }
+      unsubscribeRef.current = unsubscribe
     }
 
     if (options?.subscribe !== false) {
