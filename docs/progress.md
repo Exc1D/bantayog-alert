@@ -1,5 +1,75 @@
 # Progress - 2026-04-14
 
+## QA Edge Case Scan
+
+**Branch:** N/A (research session)
+
+### What Happened
+
+Dispatched 5 parallel qa-edge-hunter agents to scan the entire codebase for potential issues. Each agent focused on a different area of concern.
+
+### Findings Summary
+
+**Report saved to:** `docs/qa-findings/edge-case-report-2026-04-14.md`
+
+| Area             | Agents | Critical | High   | Medium | Low   |
+| ---------------- | ------ | -------- | ------ | ------ | ----- |
+| Security         | 1      | 3        | 3      | 4      | 1     |
+| Input Validation | 1      | 2        | 4      | 5      | 1     |
+| Concurrency      | 1      | 2        | 2      | 2      | 0     |
+| Error Handling   | 1      | 3        | 1      | 4      | 1     |
+| Performance      | 1      | 2        | 2      | 4      | 0     |
+| **Total**        | **5**  | **12**   | **12** | **19** | **3** |
+
+### Top 5 Most Critical Issues
+
+1. **MFA dead feature** — Provincial admins locked out (all MFA methods throw "not implemented")
+2. **Municipality filter ignored** — Municipal admins see ALL reports province-wide
+3. **Non-atomic 3-tier writes** — Report submission can partially succeed
+4. **Photo upload failure silent** — Returns success when photo fails
+5. **GPS coordinates (0,0) accepted** — False locations stored
+
+### Files Affected by Findings
+
+| File                                                        | Issues                                             |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| `functions/src/index.ts`                                    | MFA dead code, no rate limiting on Cloud Functions |
+| `src/domains/municipal-admin/services/firestore.service.ts` | Municipality filter ignored                        |
+| `src/domains/citizen/services/firestore.service.ts`         | Non-atomic 3-tier writes                           |
+| `src/features/report/services/reportSubmission.service.ts`  | Silent photo failure                               |
+| `src/features/report/services/reportStorage.service.ts`     | No file size validation                            |
+| `src/features/report/hooks/useReportQueue.ts`               | Silent auto-sync failure                           |
+| `src/domains/responder/services/firestore.service.ts`       | Timeline read-modify-write race                    |
+| `src/features/report/services/reportQueue.service.ts`       | IndexedDB init race                                |
+| `src/features/feed/hooks/useFeedReports.ts`                 | Pagination uses page numbers not cursors           |
+| `src/features/map/components/MapView.tsx`                   | All markers rendered at once                       |
+
+### Recommendations (Priority Order)
+
+**P0 (Must fix before production):**
+
+1. Fix `getMunicipalityReports` to filter by municipality parameter (2 lines)
+2. Implement MFA or remove the requirement from `loginProvincialSuperadmin`
+3. Add Firestore batch writes for atomic 3-tier submission
+4. Photo upload failure must return error, not success
+5. Add GPS coordinate bounds validation
+
+**P1 (Should fix soon):**
+
+1. Add photo size validation (recommend 5MB)
+2. Add IndexedDB auto-pruning with TTL + max size
+3. Implement server-side rate limiting in Firestore rules
+4. Replace timeline read-modify-write with `arrayUnion()`
+
+**P2 (Technical debt):**
+
+1. Standardize phone regex across all inputs
+2. Use Firestore document cursors in feed pagination
+3. Implement marker clustering for map view
+4. Add batch deletes in `deleteUserData`
+
+---
+
 ## Bug Fix: ReportForm Submit Not Working (Missing Geolocation)
 
 **Branch:** `main`

@@ -1,5 +1,43 @@
 # Learnings - 2026-04-14
 
+## QA Edge Case Scan Findings
+
+**Session:** Dispatched 5 parallel qa-edge-hunter agents covering security, input validation, concurrency, error handling, and performance.
+
+**Report saved to:** `docs/qa-findings/edge-case-report-2026-04-14.md`
+
+### Critical Findings by Category
+
+| Category         | Critical Issues                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| Auth/AuthZ       | MFA dead code (lockout); municipality filter ignored; no rate limiting on Cloud Functions |
+| Data Integrity   | Non-atomic 3-tier writes; timeline read-modify-write race                                 |
+| Input Validation | GPS 0,0 accepted; out-of-range coords accepted; photo size not validated                  |
+| Error Handling   | Photo failure silent; auto-sync failure silent; queue service failure silent              |
+| Concurrency      | TOCTOU duplicate bypass; timeline race; IndexedDB init race                               |
+| Performance      | Unbounded IndexedDB; N+1 deletes; feed pagination using page numbers not cursors          |
+| Security         | MFA lockout; cross-municipality leakage; path traversal risk                              |
+
+### Top Architectural Issues
+
+1. **`getMunicipalityReports` ignores municipality parameter** — cross-municipality data leakage
+2. **3-tier write non-atomic** — partial state on network failure
+3. **All MFA methods throw "not implemented"** — provincial admins locked out
+4. **Silent failures throughout** — disaster system where silent failures are deadly
+
+### Key Insight for Disaster System
+
+For a disaster mapping system used during actual emergencies:
+
+- Silent failures = potential loss of life
+- Non-atomic writes = corrupted data when infrastructure is unstable
+- Cross-municipality leakage = privacy breach at scale
+- Unbounded queues = system collapse during mass events
+
+All P0/P1 issues must be fixed before production deployment.
+
+---
+
 ## ReportForm Submit Button Not Working — Missing Geolocation Hook
 
 **Issue:** Report form's submit button appeared to do nothing. Form was stuck at "Detecting location…" forever, preventing submission.
