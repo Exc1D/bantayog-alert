@@ -19,9 +19,10 @@ export interface ValidationResult {
 }
 
 /**
- * Check if SOS can be activated
+ * Check if SOS can be activated.
+ * Note: Returns synchronously (no await needed currently).
  */
-export async function canActivateSOS(): Promise<ValidationResult> {
+export function canActivateSOS(): ValidationResult {
   // Check network connectivity (SOS requires network)
   if (!navigator.onLine) {
     return {
@@ -36,12 +37,13 @@ export async function canActivateSOS(): Promise<ValidationResult> {
 }
 
 /**
- * Check if status update is valid
+ * Check if status update is valid.
+ * Note: Currently a stub — actual Firestore check lives in the hook.
  */
-export async function canUpdateStatus(
+export function canUpdateStatus(
   _dispatchId: string,
   _status: QuickStatus
-): Promise<ValidationResult> {
+): ValidationResult {
   // Check if dispatcher is assigned to this dispatch
   // (This would check Firestore in real implementation)
 
@@ -50,13 +52,25 @@ export async function canUpdateStatus(
 }
 
 /**
- * Validate GPS coordinates
+ * Validate GPS coordinates.
+ * Checks: (0,0) sentinel, NaN/Infinity, and world bounds (-90/90 lat, -180/180 lng).
  */
 export function validateGPSLocation(location: RichLocation): ValidationResult {
   if (location.latitude === 0 && location.longitude === 0) {
     return {
       valid: false,
       message: 'Invalid GPS coordinates (0,0)',
+      code: 'INVALID_COORDS',
+    }
+  }
+
+  if (
+    !Number.isFinite(location.latitude) ||
+    !Number.isFinite(location.longitude)
+  ) {
+    return {
+      valid: false,
+      message: 'Invalid GPS coordinates (NaN or Infinity)',
       code: 'INVALID_COORDS',
     }
   }

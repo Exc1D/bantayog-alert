@@ -37,6 +37,8 @@ export type SOSError =
   | { code: 'GPS_TIMEOUT'; message: string }
   | { code: 'CANCEL_WINDOW_EXPIRED'; message: string }
   | { code: 'SOS_DUPLICATE'; message: string }
+  | { code: 'INVALID_COORDS'; message: string }
+  | { code: 'OUT_OF_RANGE'; message: string }
 
 /**
  * Timeline entry for dispatch/SOS history
