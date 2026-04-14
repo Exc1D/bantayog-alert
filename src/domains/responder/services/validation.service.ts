@@ -6,6 +6,7 @@
  * in critical paths.
  */
 
+import { getAuth } from 'firebase/auth'
 import type { QuickStatus } from '../types'
 import type { RichLocation } from '../types'
 
@@ -23,6 +24,15 @@ export interface ValidationResult {
  * Note: Returns synchronously (no await needed currently).
  */
 export function canActivateSOS(): ValidationResult {
+  // Check authentication
+  if (!getAuth().currentUser) {
+    return {
+      valid: false,
+      message: 'You must be logged in to activate SOS',
+      code: 'PERMISSION_DENIED',
+    }
+  }
+
   // Check network connectivity (SOS requires network)
   if (!navigator.onLine) {
     return {

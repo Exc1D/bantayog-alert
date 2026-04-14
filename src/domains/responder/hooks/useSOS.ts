@@ -6,11 +6,13 @@
  * GPS location is tracked continuously once activated.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   runTransaction,
   doc,
   collection,
+  query,
+  where,
   arrayUnion,
   getFirestore,
 } from 'firebase/firestore'
@@ -36,11 +38,14 @@ export function useSOS(): UseSOSReturn {
   const geoWatchIdRef = useRef<number | null>(null)
   const locationCacheRef = useRef<RichLocation | null>(null)
 
-  const canCancel =
-    sosState !== null &&
-    Date.now() - sosState.activatedAt < SOS_CANCELLATION_WINDOW_MS &&
-    sosState.status !== 'cancelled' &&
-    sosState.status !== 'expired'
+  const canCancel = useMemo(
+    () =>
+      sosState !== null &&
+      Date.now() - sosState.activatedAt < SOS_CANCELLATION_WINDOW_MS &&
+      sosState.status !== 'cancelled' &&
+      sosState.status !== 'expired',
+    [sosState]
+  )
 
   const startLocationSharing = useCallback(() => {
     if (!navigator.geolocation) {
@@ -100,7 +105,6 @@ export function useSOS(): UseSOSReturn {
     const now = Date.now()
     let location = locationCacheRef.current
 
-    // No cached location — try a one-shot fix before falling back to error
     if (!location) {
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
@@ -121,7 +125,15 @@ export function useSOS(): UseSOSReturn {
           timestamp: Date.now(),
           source: 'gps',
         }
-      } catch {
+      } catch (err: unknown) {
+        const geolocationErr = err as { code?: number | string; message?: string }
+        if (geolocationErr.code === 1 || geolocationErr.code === 'PERMISSION_DENIED') {
+          setError({
+            code: 'PERMISSION_DENIED',
+            message: 'Location permission denied. Please enable location access in your browser settings.',
+          })
+          return
+        }
         setError({
           code: 'GPS_TIMEOUT',
           message: 'Unable to get your location. Move to an open area and try again.',
@@ -148,8 +160,16 @@ export function useSOS(): UseSOSReturn {
           throw new Error('User not authenticated')
         }
 
-        // TODO: Check for existing active SOS — mutex pattern would go here
-        // e.g., query sos_events where responderId == user.uid AND status == 'active'
+        // Mutex: check for existing active SOS for this responder
+        const existingSosQuery = query(
+          collection(getFirestore(), 'sos_events'),
+          where('responderId', '==', user.uid),
+          where('status', '==', 'active')
+        )
+        const existingSnap = await transaction.get(existingSosQuery as unknown as Parameters<typeof transaction.get>[0]) as unknown as { empty: boolean }
+        if (!existingSnap.empty) {
+          throw new Error('SOS already active')
+        }
 
         // Create new SOS event with auto-generated ID
         const sosRef = doc(collection(getFirestore(), 'sos_events'))
@@ -174,7 +194,6 @@ export function useSOS(): UseSOSReturn {
           ],
         })
 
-        // Update local state
         setSosState({
           id: sosRef.id,
           status: 'active',
@@ -189,17 +208,14 @@ export function useSOS(): UseSOSReturn {
       // Start GPS tracking
       startLocationSharing()
     } catch (err: unknown) {
+      console.error('[SOS_ERROR]', err)
       const message = err instanceof Error ? err.message : 'Failed to activate SOS'
-      if (message.includes('already active')) {
-        setError({ code: 'ALREADY_ACTIVE', message })
-      } else if (
-        message.includes('permission') ||
-        message.includes('not authenticated')
-      ) {
-        setError({ code: 'PERMISSION_DENIED', message })
-      } else {
-        setError({ code: 'NETWORK_ERROR', message })
-      }
+      const code = message.includes('already active')
+        ? 'ALREADY_ACTIVE'
+        : message.includes('permission') || message.includes('not authenticated')
+          ? 'PERMISSION_DENIED'
+          : 'NETWORK_ERROR'
+      setError({ code: code as SOSError['code'], message })
     }
   }, [startLocationSharing])
 
@@ -269,14 +285,17 @@ export function useSOS(): UseSOSReturn {
 
         stopLocationSharing()
       } catch (err: unknown) {
+        console.error('[SOS_ERROR]', err)
+        const errCode = (err as { code?: string }).code
         const message = err instanceof Error ? err.message : 'Failed to cancel SOS'
-        if (message.includes('not found')) {
-          setError({ code: 'SOS_NOT_FOUND', message })
-        } else if (message.includes('window') || message.includes('expired')) {
-          setError({ code: 'CANCEL_WINDOW_EXPIRED', message })
-        } else {
-          setError({ code: 'NETWORK_ERROR', message })
-        }
+        const code = errCode === 'permission-denied'
+          ? 'PERMISSION_DENIED'
+          : message.includes('not found')
+            ? 'SOS_NOT_FOUND'
+            : message.includes('window') || message.includes('expired')
+              ? 'CANCEL_WINDOW_EXPIRED'
+              : 'NETWORK_ERROR'
+        setError({ code: code as SOSError['code'], message })
       }
     },
     [sosState, canCancel, stopLocationSharing]

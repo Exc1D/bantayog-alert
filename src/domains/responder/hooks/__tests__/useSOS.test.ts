@@ -5,12 +5,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useSOS } from '../useSOS'
+import { SOS_CANCELLATION_WINDOW_MS } from '../../config/urgency.config'
 
 // ── Mock firebase/firestore — stable via vi.hoisted() ────────────────────────
 
 const runTransactionMock = vi.hoisted(() => vi.fn())
 const docMock = vi.hoisted(() => vi.fn((_db: unknown, _col: string, id: string) => ({ id })))
 const collectionMock = vi.hoisted(() => vi.fn((_db: unknown, name: string) => ({ colName: name })))
+const queryMock = vi.hoisted(() => vi.fn())
+const whereMock = vi.hoisted(() => vi.fn())
 const arrayUnionMock = vi.hoisted(() => vi.fn((...args: unknown[]) => args))
 const getFirestoreMock = vi.hoisted(() => vi.fn(() => ({})))
 
@@ -20,6 +23,8 @@ vi.mock('firebase/firestore', () => ({
   runTransaction: runTransactionMock,
   doc: docMock,
   collection: collectionMock,
+  query: queryMock,
+  where: whereMock,
   arrayUnion: arrayUnionMock,
   getFirestore: getFirestoreMock,
 }))
@@ -107,7 +112,7 @@ describe('useSOS', () => {
     it('should activate SOS and start location sharing', async () => {
       const mockTransaction = {
         set: vi.fn(),
-        get: vi.fn(),
+        get: vi.fn().mockResolvedValue({ empty: true }),
         update: vi.fn(),
       }
       runTransactionMock.mockImplementation(
@@ -219,7 +224,7 @@ describe('useSOS', () => {
     it('should cancel SOS within window', async () => {
       const mockTransaction = {
         set: vi.fn(),
-        get: vi.fn(),
+        get: vi.fn().mockResolvedValue({ empty: true }),
         update: vi.fn(),
       }
       runTransactionMock.mockImplementation(
@@ -243,7 +248,7 @@ describe('useSOS', () => {
             get: vi.fn().mockResolvedValue({
               exists: () => true,
               data: () => ({
-                cancellationWindowEndsAt: Date.now() + 30000,
+                cancellationWindowEndsAt: Date.now() + SOS_CANCELLATION_WINDOW_MS,
               }),
             }),
             update: vi.fn(),
@@ -276,7 +281,7 @@ describe('useSOS', () => {
     it('should cleanup geolocation on unmount', async () => {
       const mockTransaction = {
         set: vi.fn(),
-        get: vi.fn(),
+        get: vi.fn().mockResolvedValue({ empty: true }),
         update: vi.fn(),
       }
       runTransactionMock.mockImplementation(
