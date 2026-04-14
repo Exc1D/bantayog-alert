@@ -3,6 +3,7 @@ import { onSnapshot, query, where, orderBy, collection, getDocs, getFirestore } 
 import { getAuth } from 'firebase/auth'
 import type { AssignedDispatch } from '../types'
 import type { DispatchesError } from '../types'
+import { MAX_SYNC_RETRIES, SYNC_RETRY_DELAY_MS, SYNC_MAX_DELAY_MS } from '../config/time.config'
 
 interface UseDispatchesReturn {
   dispatches: AssignedDispatch[]
@@ -20,10 +21,6 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const retryCountRef = useRef(0)
-
-  const MAX_RETRIES = 5
-  const BASE_DELAY = 1000
-  const MAX_DELAY = 30000
 
   const refresh = useCallback(async (): Promise<void> => {
     if (abortControllerRef.current) {
@@ -139,10 +136,10 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
                 return
               }
 
-              if (retryCountRef.current < MAX_RETRIES) {
+              if (retryCountRef.current < MAX_SYNC_RETRIES) {
                 const delay = Math.min(
-                  BASE_DELAY * Math.pow(2, retryCountRef.current),
-                  MAX_DELAY
+                  SYNC_RETRY_DELAY_MS * Math.pow(2, retryCountRef.current),
+                  SYNC_MAX_DELAY_MS
                 )
 
                 reconnectTimeoutRef.current = setTimeout(() => {

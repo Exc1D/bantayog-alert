@@ -1,14 +1,21 @@
 import type { DispatchUrgency } from '../types'
 
 /**
- * Calculate dispatch urgency based on age
+ * Urgency threshold constants (in milliseconds)
+ */
+const HIGH_URGENCY_THRESHOLD_MS = 15 * 60 * 1000    // ≤15 minutes = high
+const MEDIUM_URGENCY_THRESHOLD_MS = 30 * 60 * 1000  // ≤30 minutes = medium
+
+/**
+ * Calculate dispatch urgency based on age.
+ * Future timestamps (negative age) default to medium urgency.
  */
 export function calculateUrgency(createdAt: number): DispatchUrgency {
   const age = Date.now() - createdAt
-
-  if (age > 30 * 60 * 1000) return 'low'   // >30 minutes
-  if (age > 15 * 60 * 1000) return 'medium' // >15 minutes
-  return 'high'                             // ≤15 minutes
+  if (age < 0) return 'medium'  // Future timestamps: treat as medium urgency
+  if (age > MEDIUM_URGENCY_THRESHOLD_MS) return 'low'
+  if (age > HIGH_URGENCY_THRESHOLD_MS) return 'medium'
+  return 'high'
 }
 
 /**
