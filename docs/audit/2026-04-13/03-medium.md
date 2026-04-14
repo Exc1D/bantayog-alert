@@ -1,0 +1,11 @@
+## Medium (schedule it)
+
+- [ ] `src/domains/provincial-superadmin/services/auth.service.ts:72` Provincial superadmin MFA flows are stubs: TOTP enroll/finalize, SMS enroll, verify, unenroll all throw “Not yet implemented” (`auth.service.ts:72`, `:99`, `:122`, `:142`, `:212`). Remove promises from product surface or complete the feature.
+- [ ] `src/domains/provincial-superadmin/services/firestore.service.ts:282` Data retention configuration is a stub; user sessions are also stubbed to `return []` (`src/domains/provincial-superadmin/services/firestore.service.ts:313-317`). If these are promised features, implement or delete.
+- [ ] `src/shared/services/firestore.service.ts:39` Core Firestore wrappers bypass typing via `as unknown as T` and `as any` (`:39`, `:69`, `:128`), increasing runtime drift risk; tighten generics instead of casting through `unknown`/`any`.
+- [ ] `src/features/feed/components/ReportDetailScreen.tsx:293` Feed/detail reads `photoUrls` via `any`; schema admits missing `beforePhotoUrls` (`src/features/feed/components/ReportDetailScreen.tsx:318`). Either promote media fields into the canonical type or stop reading them from the public report model.
+- [ ] `src/features/map/hooks/useDisasterReports.ts:28` Map fetch is unbounded (no pagination/limit); marker rendering will degrade with dataset size. Add limits and/or viewport-based queries.
+- [ ] `src/shared/utils/serviceWorkerRegistration.ts:21` Service worker support detection requires `window.importScripts`, which is not true in the main window; SW registration is effectively disabled. Fix the support check logic.
+- [ ] `functions/src/index.ts:1` Several business-critical modules still have zero direct tests, including: `functions/src/index.ts`, `src/app/firebase/config.ts`, `src/features/report/services/reportStorage.service.ts`, `src/domains/municipal-admin/services/firestore.service.ts`, `src/domains/responder/services/firestore.service.ts`.
+- [ ] `src/features/alerts/hooks/useAlerts.ts:92` Dual subscriptions union snapshots into prior state, so deletions can linger; also intentionally swallows cache failures (`useAlerts.ts:54`). Track streams separately and merge fresh snapshots deterministically.
+

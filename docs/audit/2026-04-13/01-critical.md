@@ -1,0 +1,9 @@
+## Critical (fix before next release)
+
+- [ ] `src/features/report/components/ReportForm.tsx:188` Online submission path never persists to Firestore; it only generates an ID and shows success. The live route mounts `<ReportForm />` with no `onSubmit` at `src/app/routes.tsx:21`, and the “success” branch still executes even when nothing was written (`src/features/report/components/ReportForm.tsx:245-254`).
+- [ ] `storage.rules:4` Photo upload is required by the UI (`src/features/report/components/ReportForm.tsx:197-200`), but Storage rules are a deny-all placeholder. Offline sync depends on `uploadReportPhoto()` (`src/features/report/services/reportStorage.service.ts:18`) invoked by `src/features/report/hooks/useReportQueue.ts:121`; queued reports with photos cannot complete.
+- [ ] `src/app/routes.tsx:24` Registered-user profile is unreachable: `/profile` always renders `AnonymousProfile`; signup redirects back to `/profile` (`src/app/Signup.tsx:18-25`); `RegisteredProfile` is orphaned at `src/features/profile/components/RegisteredProfile.tsx:34`. It also navigates to `/login` which is not defined in the router (`src/features/profile/components/RegisteredProfile.tsx:65`, `src/features/profile/components/RegisteredProfile.tsx:111`).
+- [ ] `src/features/profile/services/profile.service.ts:201` Account deletion query against `report_ops.timeline` uses `array-contains` on a partial object and will not match real timeline entries; user data is not reliably deleted. This contradicts the privacy/data-retention posture.
+- [ ] `functions/src/index.ts:386` Scheduled retention archives to `reports_archive`, but rules expose `archived_reports` (`firestore.rules:297`) and never mention `reports_archive`. This is schema-vs-rules drift; retention either fails or creates inaccessible data.
+- [ ] `firebase.json:7` Firebase config references `auth.rules` but the file is missing. Deployment of Auth rules is incomplete/broken.
+

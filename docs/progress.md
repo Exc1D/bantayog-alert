@@ -1,3 +1,35 @@
+# Progress - 2026-04-14
+
+## Critical Audit Remediation — Plan 2: Profile Routing & Account Flows
+
+**Branch:** `main`
+
+### Completed Tasks
+
+| # | Task | Status | Type |
+|---|------|--------|------|
+| 1 | Create `ProfileRoute` auth-aware wrapper | Done | Feature |
+| 2 | Wire `/profile` route to `ProfileRoute` | Done | Fix |
+| 3 | Fix `navigate('/login')` → `navigate('/profile')` in RegisteredProfile | Done | Fix |
+| 4 | Verify zero `/login` navigation references remain | Done | Verification |
+
+### Test Summary
+
+- **ProfileRoute tests:** 3/3 passing
+- **RegisteredProfile tests:** 18/18 passing
+- **RegisteredProfile.errorHandling tests:** 10/10 passing
+- **routes.test.tsx:** 4/9 passing (5 pre-existing failures unrelated to this work — MapView/FeedList/ReportForm lack QueryClientProvider/Firebase mocks)
+
+### Commits
+
+```
+5de49ea feat(auth): introduce ProfileRoute auth-aware profile wrapper
+124fd17 fix(routes): replace hardcoded AnonymousProfile with auth-aware ProfileRoute
+af75ea2 fix(profile): navigate to /profile after logout and account deletion
+```
+
+---
+
 # Progress - 2026-04-13
 
 ## PR #15: Spec Review Fixes
