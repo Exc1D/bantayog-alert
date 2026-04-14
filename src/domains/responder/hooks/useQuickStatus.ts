@@ -64,11 +64,11 @@ export function useQuickStatus(): UseQuickStatusReturn {
           }
 
           transaction.update(dispatchRef, {
-            status,
+            responderStatus: status,
             statusUpdatedAt: Date.now(),
             timeline: arrayUnion({
               type: 'status_change',
-              from: dispatchSnap.data().status,
+              from: dispatchSnap.data().responderStatus,
               to: status,
               timestamp: Date.now(),
               actor: 'responder',

@@ -40,7 +40,17 @@ function buildDispatchesQuery(db: ReturnType<typeof getFirestore>, uid: string) 
 function snapshotToDispatches(snap: QuerySnapshot) {
   const dispatches: AssignedDispatch[] = []
   snap.forEach((doc: QueryDocumentSnapshot) => {
-    dispatches.push({ id: doc.id, ...doc.data() } as AssignedDispatch)
+    const data = doc.data()
+    // Map Firestore's responderStatus to the type's status field
+    dispatches.push({
+      id: doc.id,
+      type: data.type,
+      status: data.responderStatus ?? data.status,
+      urgency: data.urgency,
+      incidentLocation: data.incidentLocation,
+      assignedAt: data.assignedAt,
+      responderStatus: data.responderStatus,
+    } as AssignedDispatch)
   })
   return dispatches
 }

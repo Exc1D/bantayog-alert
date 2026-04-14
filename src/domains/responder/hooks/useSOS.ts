@@ -194,6 +194,7 @@ export function useSOS(): UseSOSReturn {
           ],
         })
 
+        // State update must happen AFTER transaction commits, not inside it
         setSosState({
           id: sosRef.id,
           status: 'active',
@@ -270,18 +271,19 @@ export function useSOS(): UseSOSReturn {
               actorId: user.uid,
             }),
           })
-
-          setSosState((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  status: 'cancelled',
-                  cancelledAt: now,
-                  cancellationReason: reason,
-                }
-              : null
-          )
         })
+
+        // State update must happen AFTER transaction commits, not inside it
+        setSosState((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'cancelled',
+                cancelledAt: now,
+                cancellationReason: reason,
+              }
+            : null
+        )
 
         stopLocationSharing()
       } catch (err: unknown) {
