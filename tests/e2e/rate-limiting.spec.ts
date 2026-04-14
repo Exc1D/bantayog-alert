@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Rate Limiting', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/report')
   })
 
@@ -34,7 +37,10 @@ test.describe('Rate Limiting', () => {
 
     // The app should read from localStorage and show rate limit UI
     // Note: This tests UI behavior only - actual rate limiting requires backend validation
-    const rateLimitVisible = await page.getByText(/rate limit/i).isVisible().catch(() => false)
+    const rateLimitVisible = await page
+      .getByText(/rate limit/i)
+      .isVisible()
+      .catch(() => false)
     if (!rateLimitVisible) {
       // Fallback: Check if form is blocked
       await expect(page.getByRole('button', { name: /submit/i })).toBeDisabled()
@@ -83,7 +89,10 @@ test.describe('Rate Limiting', () => {
 
     // Should be rate limited by phone (actual implementation depends on backend)
     // This test documents the expected behavior: phone-based tracking across devices
-    const rateLimited = await page.getByText(/rate limit/i).isVisible().catch(() => false)
+    const rateLimited = await page
+      .getByText(/rate limit/i)
+      .isVisible()
+      .catch(() => false)
     expect(rateLimited).toBeTruthy()
   })
 })

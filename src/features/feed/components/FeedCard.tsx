@@ -31,9 +31,8 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
 
   // Description truncation
   const shouldTruncate = report.description.length > 150
-  const displayDescription = isExpanded || !shouldTruncate
-    ? report.description
-    : truncateText(report.description, 150)
+  const displayDescription =
+    isExpanded || !shouldTruncate ? report.description : truncateText(report.description, 150)
 
   // Handle location click
   const handleLocationClick = () => {
@@ -111,7 +110,7 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
   const typeDisplay = formatReportType(report.incidentType)
 
   return (
-    <div
+    <article
       className="bg-white rounded-lg shadow-sm overflow-hidden"
       data-testid={`feed-card-${report.id}`}
     >
@@ -121,9 +120,7 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
           <div className="flex items-center gap-3">
             {/* Avatar */}
             <div className="w-10 h-10 bg-primary-blue rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-semibold text-sm">
-                {typeDisplay.charAt(0)}
-              </span>
+              <span className="text-white font-semibold text-sm">{typeDisplay.charAt(0)}</span>
             </div>
 
             {/* User info */}
@@ -140,7 +137,8 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
                 )}
               </div>
               <div className="text-xs text-gray-500">
-                {formatTimeAgo(report.createdAt)} · {report.approximateLocation.barangay}, {report.approximateLocation.municipality}
+                {formatTimeAgo(report.createdAt)} · {report.approximateLocation.barangay},{' '}
+                {report.approximateLocation.municipality}
               </div>
             </div>
           </div>
@@ -226,9 +224,7 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
 
           {/* Action counts */}
           <div className="flex items-center gap-3 text-xs text-gray-500">
-            {likeCount > 0 && (
-              <span data-testid="like-count">{likeCount}</span>
-            )}
+            {likeCount > 0 && <span data-testid="like-count">{likeCount}</span>}
           </div>
         </div>
 
@@ -238,16 +234,13 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
           <button
             onClick={handleLike}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-colors ${
-              liked
-                ? 'text-red-500 bg-red-50 hover:bg-red-100'
-                : 'text-gray-600 hover:bg-gray-100'
+              liked ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-gray-600 hover:bg-gray-100'
             }`}
             data-testid="like-button"
           >
             <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
             <span className="text-sm font-medium">Like</span>
           </button>
-
 
           {/* Share button */}
           <button
@@ -260,6 +253,6 @@ export function FeedCard({ report, actions, isLiked = false, likeCount = 0 }: Fe
           </button>
         </div>
       </div>
-    </div>
+    </article>
   )
 }

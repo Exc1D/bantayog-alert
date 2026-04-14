@@ -3,6 +3,9 @@ import { checkA11y } from './a11y.config'
 
 test.describe('Feed Accessibility', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/feed')
   })
 
@@ -11,8 +14,19 @@ test.describe('Feed Accessibility', () => {
   })
 
   test('should have accessible feed cards', async ({ page }) => {
-    const firstCard = page.locator('[data-testid="feed-card"]').first()
-    await expect(firstCard).toHaveAttribute('role', 'article')
+    const articles = page.locator('article')
+    const count = await articles.count()
+
+    if (count === 0) {
+      const retryButton = page.getByRole('button', { name: /retry/i })
+      if (await retryButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await retryButton.click()
+        await page.waitForTimeout(2000)
+      }
+    }
+
+    const firstCard = articles.first()
+    await expect(firstCard).toBeVisible({ timeout: 15000 })
 
     const heading = firstCard.locator('h2, h3').first()
     await expect(heading).toBeVisible()

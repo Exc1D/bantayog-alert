@@ -15,6 +15,9 @@ import { checkA11y } from './a11y.config'
 
 test.describe('Homepage Accessibility', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
   })
 

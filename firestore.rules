@@ -165,12 +165,11 @@ service cloud.firestore {
       allow read: if hasRole('municipal_admin')
         && resource.data.location.municipality == getMunicipality();
 
-      // Responders can read incidents they're assigned to
+      // Responders can read the incident currently assigned to them.
+      // Firestore Rules do not support JavaScript-style array callbacks over reportIds.
       allow read: if hasRole('responder')
-        && resource.data.reportIds.toValues().any(reportId =>
-          exists(/databases/$(database)/documents/report_ops/$(reportId))
-          && get(/databases/$(database)/documents/report_ops/$(reportId)).data['assignedTo'] == request.auth['uid']
-        );
+        && exists(/databases/$(database)/documents/responders/$(request.auth.uid))
+        && get(/databases/$(database)/documents/responders/$(request.auth.uid)).data.currentAssignment.incidentId == incidentId;
 
       // Provincial superadmins can read all incidents
       allow read: if hasRole('provincial_superadmin');

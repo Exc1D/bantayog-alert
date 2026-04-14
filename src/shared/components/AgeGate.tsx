@@ -24,7 +24,7 @@ const STORAGE_KEY = 'age_verified'
 // TODO: Monitor for legitimate localStorage failures in production (quota exceeded, private browsing)
 function safeGetStorageItem(key: string): string | null {
   try {
-    return typeof window !== 'undefined' ? window.localStorage?.getItem?.(key) ?? null : null
+    return typeof window !== 'undefined' ? (window.localStorage?.getItem?.(key) ?? null) : null
   } catch {
     return null
   }
@@ -68,13 +68,11 @@ export function AgeGate({ onVerified }: AgeGateProps) {
       <div className="max-w-md text-center">
         <AlertTriangle className="w-16 h-16 text-primary-blue mx-auto mb-6" />
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Age Verification Required
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">Age Verification Required</h1>
 
         <p className="text-gray-600 mb-6">
-          You must be 13 years or older to use Bantayog Alert.
-          This is required for legal compliance to protect children's privacy.
+          You must be 13 years or older to use Bantayog Alert. This is required for legal compliance
+          to protect children's privacy.
         </p>
 
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -98,15 +96,11 @@ export function AgeGate({ onVerified }: AgeGateProps) {
           </label>
         </div>
 
-        <Button
-          onClick={handleContinue}
-          disabled={!isChecked}
-          className="w-full"
-        >
+        <Button onClick={handleContinue} disabled={!isChecked} className="w-full">
           Continue
         </Button>
 
-        <p className="text-xs text-gray-400 mt-6">
+        <p className="text-xs text-gray-500 mt-6">
           If you are under 13, please ask a parent or guardian to use this app on your behalf.
         </p>
       </div>

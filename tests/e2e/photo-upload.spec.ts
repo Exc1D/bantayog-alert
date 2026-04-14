@@ -10,6 +10,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Photo Upload', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/report')
   })
 

@@ -3,6 +3,9 @@ import { checkA11y } from './a11y.config'
 
 test.describe('Map Accessibility', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/map')
   })
 
@@ -12,7 +15,8 @@ test.describe('Map Accessibility', () => {
 
   test('should have accessible map pins', async ({ page }) => {
     const pins = await page.locator('[data-testid^="map-pin"]').all()
-    for (const pin of pins.slice(0, 3)) { // Check first 3
+    for (const pin of pins.slice(0, 3)) {
+      // Check first 3
       await expect(pin).toHaveAttribute('aria-label')
       const label = await pin.getAttribute('aria-label')
       expect(label).toMatch(/(Flood|Earthquake|Landslide|Fire)/)

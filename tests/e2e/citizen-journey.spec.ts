@@ -11,6 +11,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Anonymous Citizen Journey', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
   })
 
@@ -92,6 +95,9 @@ test.describe('Anonymous Citizen Journey', () => {
 
 test.describe('Feed Navigation', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/feed')
   })
 
@@ -144,6 +150,9 @@ test.describe('Feed Navigation', () => {
 
 test.describe('Account Creation Flow', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
     await page.getByRole('link', { name: /profile/i }).click()
   })
@@ -185,6 +194,9 @@ test.describe('Account Creation Flow', () => {
 
 test.describe('Push Notifications', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
   })
 

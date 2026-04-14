@@ -37,13 +37,18 @@ export interface MapViewProps {
  * @param zoom - Initial zoom level (default: 10)
  */
 export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapViewProps) {
-  const { mapContainerRef, mapInstanceRef, isReady: isReadyFromHook } = useLeafletMap({
+  const {
+    mapContainerRef,
+    mapInstanceRef,
+    isReady: isReadyFromHook,
+  } = useLeafletMap({
     center,
     zoom,
   }) as UseLeafletMapReturn
 
   // Force isReady to be boolean
-  const isReady = Boolean(isReadyFromHook)
+  const isReady: boolean = Boolean(isReadyFromHook)
+  const isReadyForRender: boolean = isReady
 
   const { coordinates, loading: locationLoading, error: locationError } = useGeolocation()
   const [userMarker, setUserMarker] = useState<L.Marker | null>(null)
@@ -64,9 +69,7 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   // Filter reports based on selected filters
-  const filteredReports = disasterReports
-    ? reportFilters.filterReports(disasterReports)
-    : []
+  const filteredReports = disasterReports ? reportFilters.filterReports(disasterReports) : []
 
   const disasterMarkersRef = useRef<L.Marker[]>([])
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
@@ -155,7 +158,10 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
     // Add markers for each disaster report
     if (filteredReports && filteredReports.length > 0) {
       filteredReports.forEach((report) => {
-        const markerLatLng: L.LatLngExpression = [report.location.latitude, report.location.longitude]
+        const markerLatLng: L.LatLngExpression = [
+          report.location.latitude,
+          report.location.longitude,
+        ]
 
         const marker = L.marker(markerLatLng, {
           icon: createDisasterMarkerIcon(report.severity),
@@ -209,13 +215,10 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       )}
 
       {/* Location search */}
-      {isReady && mapInstanceRef.current && (
-        <LocationSearch map={mapInstanceRef.current} />
-      )}
+      {isReady && mapInstanceRef.current && <LocationSearch map={mapInstanceRef.current} />}
 
       {/* Filter button */}
-      {(isReady === true) && (
-        // @ts-ignore - TypeScript infers isReady as unknown despite boolean type
+      {isReady && (
         <div className="absolute top-4 left-4 z-[1000]">
           <FilterButton
             onClick={() => setIsFilterOpen(true)}
@@ -234,16 +237,18 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       />
 
       {/* Refresh button - positioned below map controls */}
-      {/* @ts-expect-error - TypeScript infers isReady as unknown despite boolean type */}
-      {(isReady === true) && (
-        <div className="absolute top-[220px] right-4 z-[1000]" data-testid="refresh-button-container">
+      {isReadyForRender === true ? (
+        <div
+          className="absolute top-[220px] right-4 z-[1000]"
+          data-testid="refresh-button-container"
+        >
           <RefreshButton
             isRefreshing={isLoadingReports || isRefetching}
             onRefresh={refetch}
             lastUpdated={lastUpdated}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Location error state */}
       {isReady && locationError && (
@@ -269,8 +274,8 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
                 {locationError === 'PERMISSION_DENIED'
                   ? 'Please enable location permissions to see your position on the map.'
                   : locationError === 'GEOLOCATION_UNSUPPORTED'
-                  ? 'Your browser does not support geolocation.'
-                  : 'Unable to retrieve your location.'}
+                    ? 'Your browser does not support geolocation.'
+                    : 'Unable to retrieve your location.'}
               </p>
             </div>
           </div>
@@ -284,11 +289,7 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
           data-testid="user-location-info"
         >
           <div className="flex items-center text-xs text-gray-600">
-            <svg
-              className="w-4 h-4 mr-2 text-primary-blue"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg className="w-4 h-4 mr-2 text-primary-blue" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
@@ -363,17 +364,13 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       )}
 
       {/* Reports error indicator */}
-      {isReady && reportsError && (
+      {isReady && reportsError != null && (
         <div
           className="absolute top-4 left-4 z-[1000] bg-red-50 border border-red-200 rounded-lg shadow-lg p-3"
           data-testid="reports-error"
         >
           <div className="flex items-center text-xs text-red-700">
-            <svg
-              className="w-4 h-4 mr-2"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -401,10 +398,7 @@ export function MapView({ center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM }: MapVie
       )}
 
       {/* Report detail modal */}
-      <ReportDetailModal
-        reportId={selectedReportId}
-        onClose={() => setSelectedReportId(null)}
-      />
+      <ReportDetailModal reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />
 
       {/* Severity filter sheet */}
       <SeverityFilterSheet

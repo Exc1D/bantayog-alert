@@ -3,6 +3,9 @@ import { checkA11y } from './a11y.config'
 
 test.describe('Profile Accessibility', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/profile')
   })
 
@@ -17,10 +20,13 @@ test.describe('Profile Accessibility', () => {
   })
 
   test('should list account benefits accessibly', async ({ page }) => {
-    const benefitsList = page.locator('ul[aria-label*="benefit" i]')
+    // The benefits list is a plain <ul> inside the value proposition card (AnonymousProfile.tsx line 47)
+    // Use text content to find the section, then get the <ul> inside it
+    const benefitsList = page.locator('text="Why create an account?"').locator('..').locator('ul')
     await expect(benefitsList).toBeVisible()
 
-    const items = benefitsList.locator('li').all()
-    expect(await items.count()).toBeGreaterThan(0)
+    const items = benefitsList.locator('li')
+    const itemCount = await benefitsList.locator('li').count()
+    expect(itemCount).toBeGreaterThan(0)
   })
 })

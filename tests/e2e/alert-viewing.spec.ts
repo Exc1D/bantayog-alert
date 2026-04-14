@@ -11,6 +11,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Alert Viewing', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/alerts')
   })
 
@@ -108,6 +111,9 @@ test.describe('Alert Viewing', () => {
 
 test.describe('Alert Categories and Filtering', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/alerts')
     await page.waitForSelector('[data-testid^="alert-card"]', { timeout: 10000 })
   })
@@ -119,9 +125,10 @@ test.describe('Alert Categories and Filtering', () => {
     const infoFilter = page.getByRole('button', { name: /info/i })
 
     // At least one should be visible
-    const anyVisible = await emergencyFilter.isVisible() ||
-                       await warningFilter.isVisible() ||
-                       await infoFilter.isVisible()
+    const anyVisible =
+      (await emergencyFilter.isVisible()) ||
+      (await warningFilter.isVisible()) ||
+      (await infoFilter.isVisible())
     expect(anyVisible).toBeTruthy()
   })
 
@@ -147,6 +154,9 @@ test.describe('Alert Categories and Filtering', () => {
 
 test.describe('Push Notification Deep Links', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     // Intercept console to check for FCM messaging
     await page.context().clearCookies()
   })
@@ -156,8 +166,7 @@ test.describe('Push Notification Deep Links', () => {
 
     // Check for service worker registration
     const swRegistered = await page.evaluate(() => {
-      return 'serviceWorker' in navigator &&
-             navigator.serviceWorker.controller !== null
+      return 'serviceWorker' in navigator && navigator.serviceWorker.controller !== null
     })
 
     // Service worker should be registered for PWA
@@ -194,6 +203,9 @@ test.describe('Push Notification Deep Links', () => {
 
 test.describe('External Communication Links', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
   })
 
@@ -244,6 +256,9 @@ test.describe('External Communication Links', () => {
 
 test.describe('Alert Detail View', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/alerts')
     await page.waitForSelector('[data-testid^="alert-card"]', { timeout: 10000 })
   })

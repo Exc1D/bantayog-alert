@@ -11,6 +11,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Authentication E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     // Navigate to app
     await page.goto('/')
   })
@@ -105,9 +108,7 @@ test.describe('Authentication E2E Tests', () => {
       await page.click('button[type="submit"]')
 
       // Verify error message
-      await expect(
-        page.locator('text=Phone number already registered')
-      ).toBeVisible()
+      await expect(page.locator('text=Phone number already registered')).toBeVisible()
     })
   })
 
@@ -185,6 +186,9 @@ test.describe('Authentication E2E Tests', () => {
 
 test.describe('Login Flow E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
     await page.click('text=Login')
   })
@@ -209,9 +213,7 @@ test.describe('Login Flow E2E Tests', () => {
     await page.click('button[type="submit"]')
 
     // Verify error
-    await expect(
-      page.locator('text=Phone verification required')
-    ).toBeVisible()
+    await expect(page.locator('text=Phone verification required')).toBeVisible()
     await expect(page.locator('text=Please complete phone verification')).toBeVisible()
   })
 
@@ -223,14 +225,15 @@ test.describe('Login Flow E2E Tests', () => {
     await page.click('button[type="submit"]')
 
     // Verify error
-    await expect(
-      page.locator('text=MFA enrollment required')
-    ).toBeVisible()
+    await expect(page.locator('text=MFA enrollment required')).toBeVisible()
   })
 })
 
 test.describe('Incident Management E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     // Login as municipal admin
     await page.goto('/login')
     await page.selectOption('select[name="role"]', 'municipal_admin')

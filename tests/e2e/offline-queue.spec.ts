@@ -11,6 +11,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Offline Report Queue', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
   })
 
@@ -123,6 +126,9 @@ test.describe('Offline Report Queue', () => {
 
 test.describe('Camera Fallback', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
     await page.getByRole('link', { name: /report/i }).click()
   })

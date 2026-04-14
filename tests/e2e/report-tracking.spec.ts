@@ -11,6 +11,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Anonymous Report Tracking', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
     await page.goto('/')
   })
 
@@ -38,7 +41,7 @@ test.describe('Anonymous Report Tracking', () => {
     await page.getByRole('link', { name: /profile/i }).click()
 
     // Check if the report tracking input exists (skip if not implemented)
-    const inputExists = await page.locator('[placeholder*="report id" i]').count() > 0
+    const inputExists = (await page.locator('[placeholder*="report id" i]').count()) > 0
     if (!inputExists) {
       test.skip()
     }
@@ -47,7 +50,10 @@ test.describe('Anonymous Report Tracking', () => {
     await page.locator('[placeholder*="report id" i]').fill('2024-DAET-0471')
 
     // Submit lookup
-    await page.getByRole('button', { name: /track|lookup|check/i }).first().click()
+    await page
+      .getByRole('button', { name: /track|lookup|check/i })
+      .first()
+      .click()
 
     // Should show a report entry with a status badge
     await expect(page.getByTestId(/^user-report-/).first()).toBeVisible({ timeout: 5000 })
@@ -56,7 +62,7 @@ test.describe('Anonymous Report Tracking', () => {
   test('should show error for invalid Report ID format', async ({ page }) => {
     await page.getByRole('link', { name: /profile/i }).click()
 
-    const inputExists = await page.locator('[placeholder*="report id" i]').count() > 0
+    const inputExists = (await page.locator('[placeholder*="report id" i]').count()) > 0
     if (!inputExists) {
       test.skip()
     }

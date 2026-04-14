@@ -532,7 +532,7 @@ export function ReportForm({
             {/* Anyone injured? */}
             <div className="flex flex-col gap-2">
               <span className="text-sm text-gray-600">
-                Anyone injured? <span className="text-gray-400">(May nasaktan ba?)</span>
+                Anyone injured? <span className="text-gray-500">(May nasaktan ba?)</span>
               </span>
               <div className="flex gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -572,7 +572,7 @@ export function ReportForm({
             <div className="flex flex-col gap-2">
               <span className="text-sm text-gray-600">
                 Is the situation getting worse?{' '}
-                <span className="text-gray-400">(Lumalala ba ang sitwasyon?)</span>
+                <span className="text-gray-500">(Lumalala ba ang sitwasyon?)</span>
               </span>
               <div className="flex gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">

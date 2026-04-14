@@ -71,6 +71,12 @@ const mockSearchResults = [
 
 test.describe('Map Feature E2E Tests', () => {
   test.describe('Map Initialization and Rendering', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
+    })
+
     test('should load map with OpenStreetMap tiles', async ({ page }) => {
       await page.goto('/')
 
@@ -138,6 +144,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Disaster Markers', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       // Mock geolocation
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
@@ -223,6 +232,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Map Controls', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
       await page.goto('/')
@@ -299,6 +311,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Location Search', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
 
@@ -393,6 +408,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Report Filters', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
       await page.goto('/')
@@ -461,6 +479,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Refresh Functionality', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
       await page.goto('/')
@@ -485,9 +506,10 @@ test.describe('Map Feature E2E Tests', () => {
     test('should display last updated timestamp', async ({ page }) => {
       // Look for last updated text
       const pageContent = await page.content()
-      const hasLastUpdated = pageContent.includes('Last updated') ||
-                             pageContent.includes('ago') ||
-                             pageContent.includes('just now')
+      const hasLastUpdated =
+        pageContent.includes('Last updated') ||
+        pageContent.includes('ago') ||
+        pageContent.includes('just now')
 
       // Last updated should appear somewhere in the UI
       expect(hasLastUpdated).toBeTruthy()
@@ -496,6 +518,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Navigation Between Tabs', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
     })
@@ -574,6 +599,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Report Detail Modal', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
 
@@ -628,8 +656,14 @@ test.describe('Map Feature E2E Tests', () => {
         await page.waitForTimeout(500)
 
         // Modal or popup should appear
-        const modalVisible = await page.locator('[role="dialog"]').isVisible().catch(() => false)
-        const popupVisible = await page.locator('.leaflet-popup').isVisible().catch(() => false)
+        const modalVisible = await page
+          .locator('[role="dialog"]')
+          .isVisible()
+          .catch(() => false)
+        const popupVisible = await page
+          .locator('.leaflet-popup')
+          .isVisible()
+          .catch(() => false)
 
         expect(modalVisible || popupVisible).toBeTruthy()
       }
@@ -652,7 +686,10 @@ test.describe('Map Feature E2E Tests', () => {
           await page.waitForTimeout(500)
 
           // Modal should be closed
-          const modalVisible = await page.locator('[role="dialog"]').isVisible().catch(() => false)
+          const modalVisible = await page
+            .locator('[role="dialog"]')
+            .isVisible()
+            .catch(() => false)
           expect(modalVisible).toBeFalsy()
         }
       }
@@ -661,6 +698,9 @@ test.describe('Map Feature E2E Tests', () => {
 
   test.describe('Time Range Filters', () => {
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('age_verified', 'true')
+      })
       await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
       await page.context().grantPermissions(['geolocation'])
       await page.goto('/')
@@ -706,6 +746,12 @@ test.describe('Map Feature E2E Tests', () => {
 })
 
 test.describe('Map Accessibility Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
+  })
+
   test('should have proper ARIA labels on map controls', async ({ page }) => {
     await page.context().setGeolocation({ latitude: 14.5995, longitude: 120.9842 })
     await page.context().grantPermissions(['geolocation'])
@@ -715,7 +761,10 @@ test.describe('Map Accessibility Tests', () => {
     // Check ARIA labels on control buttons
     await expect(page.getByTestId('zoom-in-btn')).toHaveAttribute('aria-label', 'Zoom in')
     await expect(page.getByTestId('zoom-out-btn')).toHaveAttribute('aria-label', 'Zoom out')
-    await expect(page.getByTestId('locate-btn')).toHaveAttribute('aria-label', 'Center on your location')
+    await expect(page.getByTestId('locate-btn')).toHaveAttribute(
+      'aria-label',
+      'Center on your location'
+    )
   })
 
   test('should be keyboard navigable', async ({ page }) => {
@@ -736,6 +785,12 @@ test.describe('Map Accessibility Tests', () => {
 })
 
 test.describe('Map Performance Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('age_verified', 'true')
+    })
+  })
+
   test('should load map quickly', async ({ page }) => {
     const startTime = Date.now()
 
