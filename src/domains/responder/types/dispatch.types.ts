@@ -33,6 +33,7 @@ export type DispatchesError =
   | { code: 'NETWORK_ERROR'; message: string; isFatal: boolean }
   | { code: 'PERMISSION_DENIED'; message: string; isFatal: true }
   | { code: 'VALIDATION_ERROR'; message: string; isFatal: false }
+  | { code: 'AUTH_EXPIRED'; message: string; isFatal: true }
 
 /**
  * Error types for quick status operations
@@ -42,3 +43,4 @@ export type QuickStatusError =
   | { code: 'NOT_ASSIGNED'; message: string }
   | { code: 'INVALID_STATUS'; message: string }
   | { code: 'NETWORK_ERROR'; message: string }
+  | { code: 'PERMISSION_DENIED'; message: string }
