@@ -7,6 +7,7 @@
 
 import { submitReport } from '@/domains/citizen/services/firestore.service'
 import { uploadReportPhoto } from './reportStorage.service'
+import type { IncidentType } from '@/shared/types/firestore.types'
 
 export async function submitCitizenReport(reportData: {
   incidentType: string
@@ -27,11 +28,11 @@ export async function submitCitizenReport(reportData: {
     'infrastructure', 'crime', 'other',
   ] as const
 
-  const incidentType = VALID_INCIDENT_TYPES.includes(
+  const incidentType = (VALID_INCIDENT_TYPES.includes(
     reportData.incidentType as typeof VALID_INCIDENT_TYPES[number]
   )
     ? reportData.incidentType
-    : 'other'
+    : 'other') as IncidentType
 
   const publicReportData = {
     // Severity is hardcoded to 'medium' for now. Deriving from incident type would
