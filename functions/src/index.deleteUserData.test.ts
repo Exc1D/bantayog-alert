@@ -353,6 +353,9 @@ describe('deleteUserData', () => {
     // report_private queried for user's reports (returns empty — no records to delete)
     expect(reportPrivateQueryMock).toHaveBeenCalled()
 
+    // report_ops deleted even with no report_private records (own-account deletion)
+    expect(reportOpsDocDeleteMock).toHaveBeenCalled()
+
     // No audit log (deleting own account)
     expect(auditAddMock).not.toHaveBeenCalled()
   })
