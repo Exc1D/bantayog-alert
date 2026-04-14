@@ -3,6 +3,7 @@ import { DispatchList } from '../DispatchList'
 import { useDispatches } from '../../hooks/useDispatches'
 import { useQuickStatus } from '../../hooks/useQuickStatus'
 
+vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 vi.mock('../../hooks/useDispatches')
 vi.mock('../../hooks/useQuickStatus')
 

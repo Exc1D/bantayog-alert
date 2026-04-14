@@ -5,7 +5,7 @@
  * Updates are validated pre-flight then written optimistically with rollback on failure.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { runTransaction, doc, getFirestore, arrayUnion } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { canUpdateStatus } from '../services/validation.service'
@@ -149,6 +149,15 @@ export function useQuickStatus(): UseQuickStatusReturn {
     } finally {
       setIsUpdating(false)
       setIsValidating(false)
+    }
+  }, [])
+
+  // Clear success timer on unmount — prevents state update on dead component
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current)
+      }
     }
   }, [])
 

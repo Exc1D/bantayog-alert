@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useDispatches } from '../hooks/useDispatches'
 import { useQuickStatus } from '../hooks/useQuickStatus'
 import type { AssignedDispatch } from '../types'
@@ -7,6 +8,7 @@ interface DispatchListProps {
 }
 
 export function DispatchList({ onDispatchClick }: DispatchListProps) {
+  const navigate = useNavigate()
   const { dispatches, isLoading, error } = useDispatches({ subscribe: true })
   const { updateStatus, isUpdating, pendingStatus } = useQuickStatus()
 
@@ -20,7 +22,7 @@ export function DispatchList({ onDispatchClick }: DispatchListProps) {
         <h2 className="text-lg font-semibold text-red-600">Session Expired</h2>
         <p className="text-gray-600 mt-2">{error.message}</p>
         <button
-          onClick={() => window.location.href = '/login'}
+          onClick={() => navigate('/login')}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
         >
           Sign In
@@ -32,7 +34,7 @@ export function DispatchList({ onDispatchClick }: DispatchListProps) {
   if (dispatches.length === 0) {
     return (
       <div className="p-8 text-center">
-        <div className="text-4xl mb-4">📍</div>
+        <div className="text-4xl mb-4" aria-hidden="true">📍</div>
         <h3 className="text-lg font-semibold text-gray-700">No Active Dispatches</h3>
         <p className="text-gray-500 mt-2">You have no assigned dispatches at the moment.</p>
       </div>
@@ -69,6 +71,13 @@ function DispatchListSkeleton() {
   )
 }
 
+// Urgency colors as module-level constant — never recreated on render
+const URGENCY_COLORS = {
+  high: 'border-red-500 bg-red-50',
+  medium: 'border-yellow-500 bg-yellow-50',
+  low: 'border-green-500 bg-green-50'
+} as const
+
 // Individual dispatch card component
 interface DispatchCardProps {
   dispatch: AssignedDispatch
@@ -79,15 +88,9 @@ interface DispatchCardProps {
 }
 
 function DispatchCard({ dispatch, onUpdateStatus, isUpdating, isPending, onClick }: DispatchCardProps) {
-  const urgencyColors = {
-    high: 'border-red-500 bg-red-50',
-    medium: 'border-yellow-500 bg-yellow-50',
-    low: 'border-green-500 bg-green-50'
-  }
-
   return (
     <div
-      className={`border-l-4 rounded-lg p-4 ${urgencyColors[dispatch.urgency]} ${isPending ? 'opacity-70' : ''}`}
+      className={`border-l-4 rounded-lg p-4 ${URGENCY_COLORS[dispatch.urgency]} ${isPending ? 'opacity-70' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
@@ -105,7 +108,7 @@ function DispatchCard({ dispatch, onUpdateStatus, isUpdating, isPending, onClick
           ${dispatch.status === 'en_route' ? 'bg-blue-100 text-blue-700' :
             dispatch.status === 'on_scene' ? 'bg-green-100 text-green-700' :
             dispatch.status === 'needs_assistance' ? 'bg-orange-100 text-orange-700' :
-            'bg-yellow-100 text-yellow-700'}
+            'bg-gray-100 text-gray-700'}
         `}>
           {dispatch.status.replace('_', ' ')}
         </span>
@@ -135,7 +138,7 @@ function DispatchCard({ dispatch, onUpdateStatus, isUpdating, isPending, onClick
           disabled={isUpdating || isPending}
           className="px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
         >
-          Help
+          Request Assistance
         </button>
       </div>
     </div>
