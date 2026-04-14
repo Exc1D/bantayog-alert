@@ -64,6 +64,7 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const retryCountRef = useRef(0)
+  const dbRef = useRef<ReturnType<typeof getFirestore> | null>(null)
 
   const refresh = useCallback(async (): Promise<void> => {
     if (abortControllerRef.current) {
@@ -91,8 +92,10 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
         return
       }
 
-      const db = getFirestore()
-      const q = buildDispatchesQuery(db, user.uid)
+      if (!dbRef.current) {
+        dbRef.current = getFirestore()
+      }
+      const q = buildDispatchesQuery(dbRef.current, user.uid)
 
       const snapshot = await getDocs(q)
 
@@ -129,8 +132,10 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
       const user = getAuth().currentUser
       if (!user || !mounted) return
 
-      const db = getFirestore()
-      const q = buildDispatchesQuery(db, user.uid)
+      if (!dbRef.current) {
+        dbRef.current = getFirestore()
+      }
+      const q = buildDispatchesQuery(dbRef.current, user.uid)
 
       const unsubscribe = onSnapshot(
         q,

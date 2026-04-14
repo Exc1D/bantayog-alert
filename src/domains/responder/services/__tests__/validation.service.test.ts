@@ -15,6 +15,12 @@ import {
 } from '../validation.service'
 import type { RichLocation } from '../../types'
 
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(() => ({
+    currentUser: { uid: 'test-uid' },
+  })),
+}))
+
 describe('validation.service', () => {
   describe('canActivateSOS', () => {
     let originalOnLine: boolean

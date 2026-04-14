@@ -37,6 +37,7 @@ export function useSOS(): UseSOSReturn {
 
   const geoWatchIdRef = useRef<number | null>(null)
   const locationCacheRef = useRef<RichLocation | null>(null)
+  const dbRef = useRef<ReturnType<typeof getFirestore> | null>(null)
 
   const canCancel = useMemo(
     () =>
@@ -153,8 +154,14 @@ export function useSOS(): UseSOSReturn {
     }
 
     try {
+      // Get or create cached Firestore instance
+      if (!dbRef.current) {
+        dbRef.current = getFirestore()
+      }
+      const db = dbRef.current
+
       // Direct Firestore transaction for safety-critical SOS (NOT queued)
-      await runTransaction(getFirestore(), async (transaction) => {
+      await runTransaction(db, async (transaction) => {
         const user = getAuth().currentUser
         if (!user) {
           throw new Error('User not authenticated')
@@ -162,7 +169,7 @@ export function useSOS(): UseSOSReturn {
 
         // Mutex: check for existing active SOS for this responder
         const existingSosQuery = query(
-          collection(getFirestore(), 'sos_events'),
+          collection(db, 'sos_events'),
           where('responderId', '==', user.uid),
           where('status', '==', 'active')
         )
@@ -172,7 +179,7 @@ export function useSOS(): UseSOSReturn {
         }
 
         // Create new SOS event with auto-generated ID
-        const sosRef = doc(collection(getFirestore(), 'sos_events'))
+        const sosRef = doc(collection(db, 'sos_events'))
 
         transaction.set(sosRef, {
           type: 'sos',
@@ -240,13 +247,18 @@ export function useSOS(): UseSOSReturn {
       try {
         const now = Date.now()
 
-        await runTransaction(getFirestore(), async (transaction) => {
+        if (!dbRef.current) {
+          dbRef.current = getFirestore()
+        }
+        const db = dbRef.current
+
+        await runTransaction(db, async (transaction) => {
           const user = getAuth().currentUser
           if (!user) {
             throw new Error('User not authenticated')
           }
 
-          const sosRef = doc(getFirestore(), 'sos_events', sosState.id)
+          const sosRef = doc(db, 'sos_events', sosState.id)
           const sosSnap = await transaction.get(sosRef)
 
           if (!sosSnap.exists()) {
@@ -309,6 +321,24 @@ export function useSOS(): UseSOSReturn {
       stopLocationSharing()
     }
   }, [stopLocationSharing])
+
+  // Honor expiresAt — stop GPS sharing when SOS expires
+  useEffect(() => {
+    if (!sosState || sosState.status !== 'active') return
+
+    const expiresIn = sosState.expiresAt - Date.now()
+    if (expiresIn <= 0) {
+      // Already expired — stop immediately
+      stopLocationSharing()
+      return
+    }
+
+    const timer = setTimeout(() => {
+      stopLocationSharing()
+    }, expiresIn)
+
+    return () => clearTimeout(timer)
+  }, [sosState?.expiresAt, sosState?.status, stopLocationSharing])
 
   return { activateSOS, cancelSOS, sosState, error, locationSharing, canCancel }
 }

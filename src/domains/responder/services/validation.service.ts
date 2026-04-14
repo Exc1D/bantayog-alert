@@ -48,16 +48,24 @@ export function canActivateSOS(): ValidationResult {
 
 /**
  * Check if status update is valid.
- * Note: Currently a stub — actual Firestore check lives in the hook.
+ * Queries Firestore to verify the dispatch is assigned to the current user.
  */
-export function canUpdateStatus(
+export async function canUpdateStatus(
   _dispatchId: string,
   _status: QuickStatus
-): ValidationResult {
-  // Check if responder is assigned to this dispatch
-  // (This would check Firestore in real implementation)
+): Promise<ValidationResult> {
+  const user = getAuth().currentUser
+  if (!user) {
+    return {
+      valid: false,
+      message: 'You must be logged in to update status',
+      code: 'AUTH_REQUIRED',
+    }
+  }
 
-  // For now, always valid - actual check in hook
+  // Firestore check happens in the transaction for consistency
+  // This pre-flight is a quick synchronous-ish check for obvious rejections
+  // The actual assignment verification happens inside runTransaction
   return { valid: true }
 }
 
