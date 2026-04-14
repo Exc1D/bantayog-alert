@@ -29,7 +29,7 @@ function buildDispatchesQuery(db: ReturnType<typeof getFirestore>, uid: string) 
   return query(
     collection(db, 'report_ops'),
     where('assignedTo', '==', uid),
-    where('status', 'not-in', ['resolved', 'cancelled']),
+    where('responderStatus', 'not-in', ['completed']),
     orderBy('assignedAt', 'desc')
   )
 }
