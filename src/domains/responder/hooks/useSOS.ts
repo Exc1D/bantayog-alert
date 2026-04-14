@@ -91,30 +91,50 @@ export function useSOS(): UseSOSReturn {
     const validation = await canActivateSOS()
     if (!validation.valid) {
       setError({
-        code: 'VALIDATION_FAILED',
+        code: (validation.code ?? 'VALIDATION_FAILED') as SOSError['code'],
         message: validation.message ?? 'SOS activation failed',
       })
       return
     }
 
     const now = Date.now()
-    const location = locationCacheRef.current ?? {
-      latitude: 0,
-      longitude: 0,
-      accuracy: 0,
-      altitude: null,
-      altitudeAccuracy: null,
-      heading: null,
-      speed: null,
-      timestamp: now,
-      source: 'gps' as const,
+    let location = locationCacheRef.current
+
+    // No cached location — try a one-shot fix before falling back to error
+    if (!location) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation?.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10_000,
+            maximumAge: 0,
+          }) ?? reject(new Error('Geolocation not supported'))
+        )
+        location = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          altitude: pos.coords.altitude ?? null,
+          altitudeAccuracy: pos.coords.altitudeAccuracy ?? null,
+          heading: pos.coords.heading ?? null,
+          speed: pos.coords.speed ?? null,
+          timestamp: Date.now(),
+          source: 'gps',
+        }
+      } catch {
+        setError({
+          code: 'GPS_TIMEOUT',
+          message: 'Unable to get your location. Move to an open area and try again.',
+        })
+        return
+      }
     }
 
     // Validate GPS before writing
     const gpsValidation = validateGPSLocation(location)
     if (!gpsValidation.valid) {
       setError({
-        code: 'VALIDATION_FAILED',
+        code: (gpsValidation.code ?? 'VALIDATION_FAILED') as SOSError['code'],
         message: gpsValidation.message ?? 'Invalid GPS location',
       })
       return
@@ -250,11 +270,9 @@ export function useSOS(): UseSOSReturn {
         stopLocationSharing()
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to cancel SOS'
-        if (
-          message.includes('window') ||
-          message.includes('expired') ||
-          message.includes('not found')
-        ) {
+        if (message.includes('not found')) {
+          setError({ code: 'SOS_NOT_FOUND', message })
+        } else if (message.includes('window') || message.includes('expired')) {
           setError({ code: 'CANCEL_WINDOW_EXPIRED', message })
         } else {
           setError({ code: 'NETWORK_ERROR', message })

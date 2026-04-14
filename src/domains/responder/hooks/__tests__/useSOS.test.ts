@@ -61,6 +61,22 @@ vi.stubGlobal('navigator', {
       } as GeolocationPosition)
       return 123
     }),
+    getCurrentPosition: vi.fn(
+      (onSuccess: (pos: GeolocationPosition) => void, _onError: () => void) => {
+        onSuccess({
+          coords: {
+            latitude: 14.2972,
+            longitude: 122.7417,
+            accuracy: 10,
+            altitude: null,
+            altitudeAccuracy: null,
+            heading: null,
+            speed: null,
+          },
+          timestamp: Date.now(),
+        } as GeolocationPosition)
+      }
+    ),
     clearWatch: vi.fn(),
   },
 })
@@ -123,7 +139,8 @@ describe('useSOS', () => {
         await result.current.activateSOS()
       })
 
-      expect(result.current.error?.code).toBe('VALIDATION_FAILED')
+      // Validation code is now preserved ('SOS_OFFLINE') instead of hardcoded 'VALIDATION_FAILED'
+      expect(result.current.error?.code).toBe('SOS_OFFLINE')
       expect(result.current.error?.message).toBe(
         'SOS activation requires internet connection'
       )
@@ -174,6 +191,12 @@ describe('useSOS', () => {
     })
 
     it('should validate GPS coordinates before activation', async () => {
+      // When locationCacheRef is null, the one-shot GPS fix is tried first.
+      // If getCurrentPosition succeeds, validateGPSLocation is called with valid coords,
+      // which would pass — so we need to make getCurrentPosition fail to exercise
+      // the GPS_TIMEOUT error path. Alternatively, mock validateGPSLocation with a
+      // bad location that still gets through getCurrentPosition.
+      // Here we let getCurrentPosition succeed but validateGPSLocation fail.
       validateGPSLocationMock.mockReturnValueOnce({
         valid: false,
         code: 'INVALID_COORDS',
@@ -186,7 +209,8 @@ describe('useSOS', () => {
         await result.current.activateSOS()
       })
 
-      expect(result.current.error?.code).toBe('VALIDATION_FAILED')
+      // GPS validation now returns INVALID_COORDS from the validator
+      expect(result.current.error?.code).toBe('INVALID_COORDS')
       expect(result.current.error?.message).toBe('Invalid GPS coordinates (0,0)')
     })
   })

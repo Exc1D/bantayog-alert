@@ -44,7 +44,7 @@ export function canUpdateStatus(
   _dispatchId: string,
   _status: QuickStatus
 ): ValidationResult {
-  // Check if dispatcher is assigned to this dispatch
+  // Check if responder is assigned to this dispatch
   // (This would check Firestore in real implementation)
 
   // For now, always valid - actual check in hook

@@ -52,7 +52,7 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const retryCountRef = useRef(0)
 
   const refresh = useCallback(async (): Promise<void> => {

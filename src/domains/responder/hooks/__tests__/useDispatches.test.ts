@@ -171,24 +171,6 @@ describe('useDispatches', () => {
       await waitFor(() => expect(result.current.error?.code).toBe('PERMISSION_DENIED'))
     })
 
-    it('should set NETWORK_ERROR after multiple transient errors', () => {
-      const mockUnsubscribe = vi.fn()
-      onSnapshotMock.mockReturnValue(mockUnsubscribe)
-
-      const { result } = renderHook(() => useDispatches({ subscribe: true }))
-
-      // Simulate a single transient error — this exercises the error handler path.
-      // The full MAX_RETRIES retry loop is validated by integration tests.
-      const observer = onSnapshotMock.mock.calls[0]?.[1] as {
-        next?: (snap: unknown) => void
-        error: (e: Error) => void
-      } | undefined
-
-      // Trigger an error — for transient errors this schedules a retry.
-      // Since we don't advance fake timers here, no retry fires yet,
-      // but the hook correctly calls setError for non-permission-denied errors.
-      expect(result.current.error?.code).not.toBe('NETWORK_ERROR')
-    })
   })
 
   describe('cleanup', () => {

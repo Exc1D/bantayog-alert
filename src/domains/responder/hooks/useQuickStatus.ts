@@ -58,7 +58,7 @@ export function useQuickStatus(): UseQuickStatusReturn {
           const dispatchSnap = await transaction.get(dispatchRef)
 
           if (!dispatchSnap.exists()) {
-            throw new Error('Dispatch not found')
+            throw Object.assign(new Error('Dispatch not found'), { code: 'not-found' })
           }
 
           transaction.update(dispatchRef, {
