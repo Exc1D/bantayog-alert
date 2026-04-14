@@ -169,7 +169,7 @@ service cloud.firestore {
       allow read: if hasRole('responder')
         && resource.data.reportIds.toValues().any(reportId =>
           exists(/databases/$(database)/documents/report_ops/$(reportId))
-          && get(/databases/$(database)/documents/report_ops/$(reportId)).data.assignedTo == request.auth.uid
+          && get(/databases/$(database)/documents/report_ops/$(reportId)).data['assignedTo'] == request.auth['uid']
         );
 
       // Provincial superadmins can read all incidents
