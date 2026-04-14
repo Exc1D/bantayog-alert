@@ -8,6 +8,7 @@ const {
   firestoreCollectionMock,
   authDeleteUserMock,
   reportPrivateQueryMock,
+  reportPrivateDocDeleteMock,
   reportOpsDocDeleteMock,
   usersDocDeleteMock,
   rolesDocGetMock,
@@ -19,6 +20,7 @@ const {
   // report_private query mock — returns empty docs by default (Test 5)
   const reportPrivateQueryMock = vi.fn().mockResolvedValue({ docs: [] })
 
+  const reportPrivateDocDeleteMock = vi.fn().mockResolvedValue(undefined)
   const reportOpsDocDeleteMock = vi.fn().mockResolvedValue(undefined)
   const usersDocDeleteMock = vi.fn().mockResolvedValue(undefined)
   const rolesDocGetMock = vi.fn().mockResolvedValue({ exists: false })
@@ -42,7 +44,8 @@ const {
       case 'report_private': {
         // Build fresh chain each call so state is clean between tests
         const whereMock = vi.fn().mockReturnValue({ get: reportPrivateQueryMock })
-        return { where: whereMock }
+        const docMock = vi.fn().mockReturnValue({ delete: reportPrivateDocDeleteMock })
+        return { where: whereMock, doc: docMock }
       }
       case 'report_ops':
         return {
@@ -59,6 +62,7 @@ const {
     firestoreCollectionMock,
     authDeleteUserMock,
     reportPrivateQueryMock,
+    reportPrivateDocDeleteMock,
     reportOpsDocDeleteMock,
     usersDocDeleteMock,
     rolesDocGetMock,
@@ -86,14 +90,17 @@ function resetSharedMocks() {
   authDeleteUserMock.mockClear()
   authDeleteUserMock.mockResolvedValue(undefined)
   reportPrivateQueryMock.mockClear()
-  reportPrivateQueryMock.mockResolvedValue({ docs: [] })
+  reportPrivateQueryMock.mockResolvedValue({ docs: [{ id: 'mock-private-doc' }] })
   rolesDocGetMock.mockClear()
-  rolesDocGetMock.mockResolvedValue({ exists: false })
+  rolesDocGetMock.mockResolvedValue({ exists: true, data: () => ({ role: 'citizen' }) })
   auditAddMock.mockClear()
   auditAddMock.mockResolvedValue({ id: 'audit-doc-id' })
   reportOpsDocDeleteMock.mockClear()
+  reportPrivateDocDeleteMock.mockClear()
   usersDocDeleteMock.mockClear()
   rolesDocDeleteMock.mockClear()
+  // Clear any mockImplementation set by previous tests (e.g. Test 4's permission-denied test)
+  firestoreCollectionMock.mockImplementation(undefined)
 }
 
 describe('deleteUserData', () => {
@@ -139,6 +146,18 @@ describe('deleteUserData', () => {
     // Users doc deleted
     expect(usersDocDeleteMock).toHaveBeenCalled()
 
+    // Roles doc deleted
+    expect(rolesDocDeleteMock).toHaveBeenCalled()
+
+    // report_private queried for user's reports
+    expect(reportPrivateQueryMock).toHaveBeenCalled()
+
+    // report_private docs deleted
+    expect(reportPrivateDocDeleteMock).toHaveBeenCalled()
+
+    // report_ops doc deleted
+    expect(reportOpsDocDeleteMock).toHaveBeenCalled()
+
     // Audit log NOT written (deleting own account)
     expect(auditAddMock).not.toHaveBeenCalled()
   })
@@ -180,7 +199,8 @@ describe('deleteUserData', () => {
       }
       if (collection === 'report_private') {
         const whereMock = vi.fn().mockReturnValue({ get: reportPrivateQueryMock })
-        return { where: whereMock }
+        const docMock = vi.fn().mockReturnValue({ delete: reportPrivateDocDeleteMock })
+        return { where: whereMock, doc: docMock }
       }
       if (collection === 'report_ops') {
         return {
@@ -212,6 +232,18 @@ describe('deleteUserData', () => {
 
     // Auth deleted
     expect(authDeleteUserMock).toHaveBeenCalledWith('target-user-1')
+
+    // Roles doc deleted
+    expect(rolesDocDeleteMock).toHaveBeenCalled()
+
+    // report_private queried for user's reports
+    expect(reportPrivateQueryMock).toHaveBeenCalled()
+
+    // report_private docs deleted
+    expect(reportPrivateDocDeleteMock).toHaveBeenCalled()
+
+    // report_ops doc deleted
+    expect(reportOpsDocDeleteMock).toHaveBeenCalled()
 
     // Audit log written
     expect(auditAddMock).toHaveBeenCalledTimes(1)
@@ -314,6 +346,12 @@ describe('deleteUserData', () => {
 
     // Users doc deleted
     expect(usersDocDeleteMock).toHaveBeenCalled()
+
+    // Roles doc deleted
+    expect(rolesDocDeleteMock).toHaveBeenCalled()
+
+    // report_private queried for user's reports (returns empty — no records to delete)
+    expect(reportPrivateQueryMock).toHaveBeenCalled()
 
     // No audit log (deleting own account)
     expect(auditAddMock).not.toHaveBeenCalled()
