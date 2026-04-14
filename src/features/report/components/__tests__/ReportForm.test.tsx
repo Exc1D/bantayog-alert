@@ -25,9 +25,16 @@ const networkState = vi.hoisted(() => ({
   isOnline: true,
 }))
 
+const geolocationState = vi.hoisted(() => ({
+  coordinates: null as { latitude: number; longitude: number } | null,
+  loading: false,
+  error: null as string | null,
+  manualLocation: null,
+  setManualLocation: vi.fn(),
+}))
+
 // Helper to create a mock File for photo upload tests
-const createMockFile = () =>
-  new File(['dummy'], 'test-photo.jpg', { type: 'image/jpeg' })
+const createMockFile = () => new File(['dummy'], 'test-photo.jpg', { type: 'image/jpeg' })
 
 // DPA consent is required on every submission — extracted to avoid repetition
 async function agreeToPrivacyPolicy(user: ReturnType<typeof userEvent.setup>) {
@@ -42,9 +49,18 @@ vi.mock('@/shared/hooks/useNetworkStatus', () => ({
   useNetworkStatus: () => networkState,
 }))
 
+vi.mock('@/shared/hooks/useGeolocation', () => ({
+  useGeolocation: () => geolocationState,
+}))
+
 // Mock useDuplicateCheck — return empty duplicates by default
 const duplicateCheckState = vi.hoisted(() => ({
-  duplicates: [] as Array<{ id: string; createdAt: Date; distanceKm: number; report: Record<string, unknown> }>,
+  duplicates: [] as Array<{
+    id: string
+    createdAt: Date
+    distanceKm: number
+    report: Record<string, unknown>
+  }>,
   isChecking: false,
   checkForDuplicates: vi.fn(),
   clearDuplicates: vi.fn(),
@@ -116,12 +132,7 @@ describe('ReportForm', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        onSubmit={onSubmit}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
     // Fill required phone field but skip photo
     const phoneInput = screen.getByLabelText(/phone/i)
@@ -146,12 +157,7 @@ describe('ReportForm', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
 
-    render(
-      <ReportForm
-        gpsError="PERMISSION_DENIED"
-        onSubmit={onSubmit}
-      />
-    )
+    render(<ReportForm gpsError="PERMISSION_DENIED" onSubmit={onSubmit} />)
 
     // Upload photo
     const fileInput = screen.getByLabelText(/photo/i)
@@ -191,12 +197,7 @@ describe('ReportForm', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        onSubmit={onSubmit}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
     // Upload photo
     const fileInput = screen.getByLabelText(/photo/i)
@@ -219,7 +220,7 @@ describe('ReportForm', () => {
     // Verify complete data shape
     const callArg = onSubmit.mock.calls[0][0]
     expect(callArg).toMatchObject({
-      incidentType: 'other',           // default
+      incidentType: 'other', // default
       photo: expect.any(File),
       location: {
         type: 'gps',
@@ -227,9 +228,9 @@ describe('ReportForm', () => {
         longitude: 122.9,
       },
       phone: '+63 912 345 6789',
-      isAnonymous: false,              // default
-      injuriesConfirmed: undefined,     // not answered
-      situationWorsening: undefined,   // not answered
+      isAnonymous: false, // default
+      injuriesConfirmed: undefined, // not answered
+      situationWorsening: undefined, // not answered
     })
   })
 
@@ -240,11 +241,7 @@ describe('ReportForm', () => {
   })
 
   it('shows GPS location when available', () => {
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />)
 
     // Should display a resolved location string (barangay + municipality)
     const locationSection = screen.getByTestId('location-display')
@@ -270,11 +267,7 @@ describe('ReportForm', () => {
       },
     ]
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />)
 
     expect(screen.getByTestId('duplicate-warning')).toBeInTheDocument()
     expect(screen.getByText(/possible duplicate detected/i)).toBeInTheDocument()
@@ -298,12 +291,7 @@ describe('ReportForm', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        onSubmit={onSubmit}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
     const phoneInput = screen.getByLabelText(/phone/i)
     await user.type(phoneInput, '+63 912 345 6789')
@@ -332,12 +320,7 @@ describe('ReportForm', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        onSubmit={onSubmit}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
     // Change incident type to flood
     const incidentSelect = screen.getByLabelText(/what's happening/i)
@@ -370,12 +353,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
       // Don't upload any photo
 
@@ -404,12 +382,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          gpsError="PERMISSION_DENIED"
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm gpsError="PERMISSION_DENIED" onSubmit={onSubmit} />)
 
       // Select municipality
       const municipalitySelect = screen.getByRole('combobox', { name: /municipality/i })
@@ -506,12 +479,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
       // Upload a photo (required field)
       const fileInput = screen.getByLabelText(/photo/i)
@@ -552,12 +520,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
       // Upload a photo (required field)
       const fileInput = screen.getByLabelText(/photo/i)
@@ -591,7 +554,9 @@ describe('ReportForm', () => {
     it('renders anonymity checkbox', () => {
       render(<ReportForm />)
 
-      expect(screen.getByRole('checkbox', { name: /submit this report anonymously/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('checkbox', { name: /submit this report anonymously/i })
+      ).toBeInTheDocument()
       expect(screen.getByText(/your identity will not be shared/i)).toBeInTheDocument()
     })
 
@@ -624,12 +589,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
       // Upload a photo (required field)
       const fileInput = screen.getByLabelText(/photo/i)
@@ -664,12 +624,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
       // Upload a photo (required field)
       const fileInput = screen.getByLabelText(/photo/i)
@@ -712,11 +667,7 @@ describe('ReportForm', () => {
 
       networkState.isOnline = false
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />)
 
       // Upload a photo (required field)
       const fileInput = screen.getByLabelText(/photo/i)
@@ -759,11 +710,7 @@ describe('ReportForm', () => {
 
       networkState.isOnline = false
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />)
 
       // Upload a photo (required field)
       const fileInput = screen.getByLabelText(/photo/i)
@@ -787,11 +734,11 @@ describe('ReportForm', () => {
   describe('Duplicate Warning', () => {
     it('should display duplicate warning when duplicates are returned from hook', async () => {
       // Override the duplicate hook for this test
-      duplicateCheckState.duplicates = [{ id: 'dup-1', incidentType: 'flood', createdAt: new Date(), distanceKm: 0.5, report: {} }]
+      duplicateCheckState.duplicates = [
+        { id: 'dup-1', incidentType: 'flood', createdAt: new Date(), distanceKm: 0.5, report: {} },
+      ]
 
-      render(
-        <ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('duplicate-warning')).toBeInTheDocument()
@@ -805,12 +752,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
       // 1. Upload a photo
       const fileInput = screen.getByLabelText(/photo/i)
@@ -854,14 +796,12 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn().mockResolvedValue('report-123')
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
-      await user.upload(screen.getByLabelText(/photo/i), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
+      await user.upload(
+        screen.getByLabelText(/photo/i),
+        new File(['x'], 'photo.jpg', { type: 'image/jpeg' })
+      )
       await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
       await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -881,14 +821,12 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn().mockResolvedValue('')
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
-      await user.upload(screen.getByLabelText(/photo/i), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
+      await user.upload(
+        screen.getByLabelText(/photo/i),
+        new File(['x'], 'photo.jpg', { type: 'image/jpeg' })
+      )
       await user.type(screen.getByLabelText(/phone/i), '+63 912 345 6789')
       await user.click(screen.getByRole('checkbox', { name: /privacy policy/i }))
       await user.click(screen.getByRole('button', { name: /submit report/i }))
@@ -909,12 +847,7 @@ describe('ReportForm', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
-        <ReportForm
-          userLocation={{ latitude: 14.1, longitude: 122.9 }}
-          onSubmit={onSubmit}
-        />
-      )
+      render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
       // Upload photo and fill phone — all required fields except consent
       const fileInput = screen.getByLabelText(/photo/i)
@@ -927,9 +860,7 @@ describe('ReportForm', () => {
       await user.click(screen.getByRole('button', { name: /submit report/i }))
 
       // Consent error must appear with the exact DPA message and submission must be blocked
-      expect(
-        await screen.findByText(/You must agree to the Privacy Policy/i)
-      ).toBeInTheDocument()
+      expect(await screen.findByText(/You must agree to the Privacy Policy/i)).toBeInTheDocument()
       expect(onSubmit).not.toHaveBeenCalled()
     })
   })

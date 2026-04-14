@@ -1,3 +1,36 @@
+# Learnings - 2026-04-14
+
+## ReportForm Submit Button Not Working — Missing Geolocation Hook
+
+**Issue:** Report form's submit button appeared to do nothing. Form was stuck at "Detecting location…" forever, preventing submission.
+
+**Root Cause:** `ReportForm` accepts `userLocation` and `gpsError` as optional props but does NOT call `useGeolocation()` internally. In `routes.tsx`, it's rendered with no location props: `<ReportForm onSubmit={...} />`. Since neither GPS nor error state was available, the form showed "Detecting location…" indefinitely with no way to proceed.
+
+**Key insight:** When a component depends on external data (geolocation), it should either:
+
+1. Fetch it internally (resilient — works regardless of parent), OR
+2. Make it a required prop (explicit — parent MUST provide it, caught at compile time)
+
+Optional props for critical data = silent failure.
+
+**Fix:** Added `useGeolocation()` call inside ReportForm. Props override hook values for backward compatibility and tests:
+
+```typescript
+const geo = useGeolocation()
+const resolvedUserLocation = userLocation ?? geo.coordinates ?? undefined
+const resolvedGpsError = gpsError ?? (geo.loading ? undefined : (geo.error ?? undefined))
+```
+
+This ensures:
+
+- During loading: shows "Detecting location…"
+- On GPS success: shows coordinates, enables GPS-based submission
+- On GPS error (permission denied, etc.): shows manual municipality/barangay dropdowns
+
+**Test impact:** Added `useGeolocation` mock (with `vi.hoisted`) to both ReportForm test files. All 37 existing tests pass unchanged because they provide explicit `userLocation`/`gpsError` props that override the hook.
+
+---
+
 # Learnings - 2026-04-13
 
 ## Auto-Sync Error Handling Test Gap
@@ -7,6 +40,7 @@
 **Root Cause:** `syncQueue` is designed to never reject - it catches all errors internally and returns `{ success, failed }`. The `.catch()` in auto-sync (lines 222-225) was unreachable with the original implementation.
 
 **Fix Applied:**
+
 1. Added defensive check in `syncQueue` that throws if `reportQueueService` is unavailable (infrastructure failure)
 2. Updated test to trigger auto-sync useEffect by toggling `isOnline` from false to true
 3. Mocked `updateMock` to reject, which causes `update(failedReport)` in the catch block to fail
@@ -35,6 +69,7 @@ try {
 ### Subagent-Driven Development Notes
 
 **What worked well:**
+
 - Two-stage review (spec compliance → code quality) caught real issues:
   - Untyped `catch (err)` in LinkReportsByPhone
   - `window.location.href` SPA routing anti-pattern
@@ -43,41 +78,50 @@ try {
 - Implementer → spec reviewer → code reviewer flow ensured quality gates
 
 **What to avoid:**
+
 - Don't skip review loops when issues are found
 - Don't move to next task while either review has open issues
 
 ### Code Quality Patterns
 
 **TypeScript Strict Mode:**
+
 - `catch (err)` without type annotation violates strict mode → use `catch (err: unknown)`
 - React Router navigation: Use `useNavigate()` hook, not `window.location.href`
 - Decorative icons need `aria-hidden="true"` for accessibility
 
 **React Hooks:**
+
 - Always mock `react-router-dom` when testing components that use `useNavigate`
 
 **Firestore in Tests:**
+
 - Firebase emulators needed for E2E tests - unit tests mock the SDK
 - Offline queue tests have infrastructure incompatibility (Playwright's `setOffline()` doesn't trigger `navigator.onLine`)
 
 ### Architecture Decisions
 
 **Anonymous Report Linking:**
+
 - Phone-based linking queries `report_private` collection by `reporterPhone`
 - Validation uses PH mobile regex: `/^(\+?63|0)?[0-9]{10}$/`
 
 **COPPA Age Gate:**
+
 - Uses localStorage key `age_verified` for persistence
 - Renders null when already verified (checks on mount)
 
 **Rate Limiting UI:**
+
 - Hardcoded `mdrmoHotline` and `retryAfterMinutes` - consider making configurable
 
 **ReportDetailScreen + Timeline:**
+
 - Timeline built from report status history (submitted, verified, resolved)
 - Share button uses native share API with clipboard fallback
 
 **BeforeAfterGallery:**
+
 - Uses URL as key for photo items - fragile for duplicate URLs
 - Fullscreen viewer supports prev/next navigation
 
@@ -104,6 +148,7 @@ try {
 **Issue:** `ReportForm.test.tsx` failed with `FirebaseError: auth/invalid-api-key` because it imports `useDuplicateCheck` which transitively imports `firebase/firestore`, triggering firebase auth initialization before mocks are applied.
 
 **Fix:** Added firebase mocks to `ReportForm.test.tsx`:
+
 ```typescript
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn().mockReturnValue({}),
@@ -116,20 +161,29 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: vi.fn((auth, callback) => { callback(null); return vi.fn() }),
+  onAuthStateChanged: vi.fn((auth, callback) => {
+    callback(null)
+    return vi.fn()
+  }),
   signInWithEmailAndPassword: vi.fn(),
   signOut: vi.fn(),
 }))
 
 vi.mock('@/app/firebase/config', () => ({
   db: {},
-  auth: { onAuthStateChanged: vi.fn((callback) => { callback(null); return vi.fn() }) },
+  auth: {
+    onAuthStateChanged: vi.fn((callback) => {
+      callback(null)
+      return vi.fn()
+    }),
+  },
 }))
 ```
 
 Also needed `vi.hoisted` mock state reset in `beforeEach`:
+
 ```typescript
-duplicateCheckState.duplicates = []  // reset shared mock state
+duplicateCheckState.duplicates = [] // reset shared mock state
 ```
 
 ## Error Handling Patterns
@@ -145,7 +199,6 @@ duplicateCheckState.duplicates = []  // reset shared mock state
 - `ReportForm.tsx` has pre-existing TS errors (unused `Button` import, type mismatch in `onSubmit` callback)
 - `useReportQueue.ts` has pre-existing TS error at `submitReport` call (type mismatch)
 
-
 ---
 
 ## Learnings - 2026-04-12 (PR #11 Session)
@@ -155,6 +208,7 @@ duplicateCheckState.duplicates = []  // reset shared mock state
 **Problem:** Implementer subagent's commits for Task 2 (`loadError` surfacing) were made to branch `fix/ui-enhancements-and-pr6-restoration-2026-04-12` instead of `fix/pr10-test-error-fixes-2026-04-12`. Root cause: subagent ran on `main` branch (controller's main worktree) instead of the feature worktree.
 
 **Prevention:** Before dispatching subagents, verify `git branch -vv` shows the correct worktree is being used. When using worktrees, either:
+
 1. `cd` into the worktree directory before dispatching, OR
 2. Have subagent use `git -C /path/to/worktree` commands
 
@@ -163,6 +217,7 @@ duplicateCheckState.duplicates = []  // reset shared mock state
 **Problem:** `vi.mock('../../services/reportQueue.service', ...)` used wrong path. Test file at `hooks/__tests__/` → service at `services/` requires `'../../services/reportQueue.service'`. With `vi.fn()` inside `vi.mock` factory without `vi.hoisted()`, per-test `mockImplementation()` calls have no effect because factory runs once at module init.
 
 **Fix:** Use `vi.hoisted()` to create shared mock function references that are initialized before `vi.mock` runs:
+
 ```typescript
 const getAllMock = vi.hoisted(() => vi.fn().mockResolvedValue([]))
 vi.mock('../../services/reportQueue.service', () => ({
@@ -199,11 +254,9 @@ vi.mock('../../services/reportQueue.service', () => ({
 
 ### Bare `catch (err)` Still Violates TypeScript Strict Mode
 
-**Issue:** `catch (err)` without type annotation is technically valid JS but violates TypeScript's `noImplicitAny` in strict mode when the catch clause parameter has no type. Wait — actually `catch (err)` IS valid TypeScript. The `unknown` type is about *which* type to use, not *whether* to use a type.
+**Issue:** `catch (err)` without type annotation is technically valid JS but violates TypeScript's `noImplicitAny` in strict mode when the catch clause parameter has no type. Wait — actually `catch (err)` IS valid TypeScript. The `unknown` type is about _which_ type to use, not _whether_ to use a type.
 
 The real issue is that `catch (error)` gives you `any` implicitly in non-strict mode, and the project uses strict mode. So `catch (err: unknown)` is the correct pattern for TypeScript strictness.
-
-
 
 ---
 
@@ -218,18 +271,19 @@ The real issue is that `catch (error)` gives you `any` implicitly in non-strict 
 ### Gap Analysis During Plan Review
 
 Before implementing, we reviewed the plan against actual code and found:
+
 1. **syncResult conflict** - When sync fails, old "Last sync: X synced" message would persist alongside error. Fixed by clearing `syncResult` on error.
 2. **logoutError UI location** - Logout button is in main `RegisteredProfile` component, not `SettingsTab`. Error display must be co-located with the button, not passed as prop.
 3. **downloadError vs deleteError** - Both errors display in Data Management section (same area), handled by stacking them in a `space-y-2` container.
 
 ### Error State Placement Rules
 
-| Error State | Display Location | Why |
-|------------|-----------------|-----|
-| `syncError` | SettingsTab (Pending Reports section) | Sync is a SettingsTab feature |
-| `logoutError` | RegisteredProfile main (near logout button) | Logout is NOT in SettingsTab |
-| `downloadError` | SettingsTab (Data Management section) | Download is a SettingsTab feature |
-| `deleteError` | SettingsTab (Data Management section) | Delete is a SettingsTab feature |
+| Error State     | Display Location                            | Why                               |
+| --------------- | ------------------------------------------- | --------------------------------- |
+| `syncError`     | SettingsTab (Pending Reports section)       | Sync is a SettingsTab feature     |
+| `logoutError`   | RegisteredProfile main (near logout button) | Logout is NOT in SettingsTab      |
+| `downloadError` | SettingsTab (Data Management section)       | Download is a SettingsTab feature |
+| `deleteError`   | SettingsTab (Data Management section)       | Delete is a SettingsTab feature   |
 
 ### Error Message Patterns
 
@@ -262,6 +316,7 @@ mockSyncQueue.mockRejectedValueOnce(new Error('Network error'))
 ### Subagent-Driven Development: Plan Review Phase
 
 Adding a "plan review" phase before dispatching implementers caught 3 real issues:
+
 1. Missing `setSyncResult(null)` on error
 2. Wrong component for logout error display
 3. Missing logout error test case
@@ -277,6 +332,7 @@ Adding a "plan review" phase before dispatching implementers caught 3 real issue
 **Problem:** `vi.hoisted(() => ({ subscribeToAlerts: subscribeToAlertsMock }))` failed with `ReferenceError: Cannot access 'subscribeToAlertsMock' before initialization` because `vi.hoisted` runs before module-level `const` declarations are initialized.
 
 **Fix:** Define all mock functions INSIDE the `vi.hoisted` callback:
+
 ```typescript
 const { subscribeToAlertsMock, subscribeToAlertsByMunicipalityMock } = vi.hoisted(() => ({
   subscribeToAlertsMock: vi.fn(),
@@ -306,7 +362,6 @@ vi.mock('../../services/alert.service', () => ({
 
 **Lesson on ref + state synchronization:** `const ref = useRef(initialState)` initializes the ref once; `ref.current` never updates when `initialState` changes. You need a separate effect that writes `ref.current = state` on every render to keep them in sync.
 
-
 ### UserContext Pattern — No Pre-existing Context Found
 
 **Problem:** Task asked to wire `AlertList` to receive `municipality` and `role` from "user context", but no such context existed in the codebase. `useAuth` only returns Firebase `User` (no `municipality`/`role`).
@@ -318,6 +373,7 @@ vi.mock('../../services/alert.service', () => ({
 **Problem:** `vi.spyOn(useAlertsModule, 'useAlerts').mockReturnValue(...)` worked but Vitest internals sometimes inject extra args into the mock call. `toHaveBeenCalledWith(expect.objectContaining({...}), expect.any(Object), expect.any(Function))` failed because the second and third args were not `Object` and `Function` (they were Vitest internals).
 
 **Fix:** Access `spy.mock.calls[0]?.[0]` to verify only the first argument:
+
 ```typescript
 expect(spy.mock.calls[0]?.[0]).toMatchObject({ municipality: 'Daet', role: 'citizen' })
 ```
@@ -325,6 +381,7 @@ expect(spy.mock.calls[0]?.[0]).toMatchObject({ municipality: 'Daet', role: 'citi
 ### Firebase Test Mocks for Integration Tests
 
 When a component uses a context that fetches from Firestore (like `UserContext`), the integration test needs firebase mocks at the module level. Required mocks:
+
 - `vi.mock('@/app/firebase/config')` — bypasses `getAuth`/`getFirestore` app initialization
 - `vi.mock('firebase/firestore')` — `getFirestore`, `collection`, `doc`, `getDoc`, `onSnapshot`
 - `vi.mock('firebase/auth')` — `getAuth`, `onAuthStateChanged`

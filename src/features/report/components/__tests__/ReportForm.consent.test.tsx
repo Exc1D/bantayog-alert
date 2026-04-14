@@ -22,8 +22,21 @@ const networkState = vi.hoisted(() => ({
   isOnline: true,
 }))
 
+const geolocationState = vi.hoisted(() => ({
+  coordinates: null as { latitude: number; longitude: number } | null,
+  loading: false,
+  error: null as string | null,
+  manualLocation: null,
+  setManualLocation: vi.fn(),
+}))
+
 const duplicateCheckState = vi.hoisted(() => ({
-  duplicates: [] as Array<{ id: string; createdAt: Date; distanceKm: number; report: Record<string, unknown> }>,
+  duplicates: [] as Array<{
+    id: string
+    createdAt: Date
+    distanceKm: number
+    report: Record<string, unknown>
+  }>,
   isChecking: false,
   checkForDuplicates: vi.fn(),
   clearDuplicates: vi.fn(),
@@ -35,6 +48,10 @@ vi.mock('@/features/report/hooks/useReportQueue', () => ({
 
 vi.mock('@/shared/hooks/useNetworkStatus', () => ({
   useNetworkStatus: () => networkState,
+}))
+
+vi.mock('@/shared/hooks/useGeolocation', () => ({
+  useGeolocation: () => geolocationState,
 }))
 
 vi.mock('@/features/report/hooks/useDuplicateCheck', () => ({
@@ -71,8 +88,7 @@ vi.mock('@/app/firebase/config', () => ({
 }))
 
 // Helper to create a mock File for photo upload tests
-const createMockFile = () =>
-  new File(['dummy'], 'test-photo.jpg', { type: 'image/jpeg' })
+const createMockFile = () => new File(['dummy'], 'test-photo.jpg', { type: 'image/jpeg' })
 
 describe('ReportForm - Privacy Consent', () => {
   beforeEach(() => {
@@ -84,7 +100,10 @@ describe('ReportForm - Privacy Consent', () => {
     duplicateCheckState.duplicates = []
   })
 
-  async function fillAllRequiredFields(screen: ReturnType<typeof screen>, user: ReturnType<typeof userEvent.setup>) {
+  async function fillAllRequiredFields(
+    screen: ReturnType<typeof screen>,
+    user: ReturnType<typeof userEvent.setup>
+  ) {
     // Upload photo
     const fileInput = screen.getByLabelText(/photo/i)
     await user.upload(fileInput, createMockFile())
@@ -112,12 +131,7 @@ describe('ReportForm - Privacy Consent', () => {
   it('should require privacy policy agreement before submission', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        onSubmit={onSubmit}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
     await fillAllRequiredFields(screen, user)
 
@@ -139,12 +153,7 @@ describe('ReportForm - Privacy Consent', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-        onSubmit={onSubmit}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} onSubmit={onSubmit} />)
 
     await fillAllRequiredFields(screen, user)
 
@@ -163,11 +172,7 @@ describe('ReportForm - Privacy Consent', () => {
   it('should clear consent error when checkbox is checked', async () => {
     const user = userEvent.setup()
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />)
 
     await fillAllRequiredFields(screen, user)
 
@@ -193,11 +198,7 @@ describe('ReportForm - Privacy Consent', () => {
     const user = userEvent.setup()
     networkState.isOnline = false
 
-    render(
-      <ReportForm
-        userLocation={{ latitude: 14.1, longitude: 122.9 }}
-      />
-    )
+    render(<ReportForm userLocation={{ latitude: 14.1, longitude: 122.9 }} />)
 
     await fillAllRequiredFields(screen, user)
 

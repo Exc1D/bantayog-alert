@@ -1,17 +1,51 @@
 # Progress - 2026-04-14
 
+## Bug Fix: ReportForm Submit Not Working (Missing Geolocation)
+
+**Branch:** `main`
+
+### Problem
+
+Report form's submit button did nothing. Form was stuck at "Detecting location…" because `routes.tsx` rendered `<ReportForm>` without geolocation data, and the component didn't fetch it internally.
+
+### Root Cause
+
+`ReportForm` accepted `userLocation`/`gpsError` as optional props but never called `useGeolocation()`. When geolocation permission was blocked, the form had no fallback to manual location selection.
+
+### Fix
+
+1. Added `useGeolocation()` call inside `ReportForm` — props override hook values for backward compatibility
+2. Added `useGeolocation` mock to both test files (`ReportForm.test.tsx`, `ReportForm.consent.test.tsx`)
+
+### Files Changed
+
+| File                                                                   | Change                                                  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------- |
+| `src/features/report/components/ReportForm.tsx`                        | Added `useGeolocation()` call, resolved props from hook |
+| `src/features/report/components/__tests__/ReportForm.test.tsx`         | Added `useGeolocation` mock                             |
+| `src/features/report/components/__tests__/ReportForm.consent.test.tsx` | Added `useGeolocation` mock                             |
+
+### Test Summary
+
+- **ReportForm tests:** 31/31 passing
+- **ReportForm consent tests:** 6/6 passing
+- **TypeScript:** Clean (no new errors)
+- **Build:** Passes
+
+---
+
 ## Critical Audit Remediation — Plan 2: Profile Routing & Account Flows
 
 **Branch:** `main`
 
 ### Completed Tasks
 
-| # | Task | Status | Type |
-|---|------|--------|------|
-| 1 | Create `ProfileRoute` auth-aware wrapper | Done | Feature |
-| 2 | Wire `/profile` route to `ProfileRoute` | Done | Fix |
-| 3 | Fix `navigate('/login')` → `navigate('/profile')` in RegisteredProfile | Done | Fix |
-| 4 | Verify zero `/login` navigation references remain | Done | Verification |
+| #   | Task                                                                   | Status | Type         |
+| --- | ---------------------------------------------------------------------- | ------ | ------------ |
+| 1   | Create `ProfileRoute` auth-aware wrapper                               | Done   | Feature      |
+| 2   | Wire `/profile` route to `ProfileRoute`                                | Done   | Fix          |
+| 3   | Fix `navigate('/login')` → `navigate('/profile')` in RegisteredProfile | Done   | Fix          |
+| 4   | Verify zero `/login` navigation references remain                      | Done   | Verification |
 
 ### Test Summary
 
@@ -38,9 +72,9 @@ af75ea2 fix(profile): navigate to /profile after logout and account deletion
 
 ### Fixed Tasks
 
-| # | Task | Status | Type |
-|---|------|--------|------|
-| 1 | Auto-sync error handling test gap fix | ✅ Done | Test |
+| #   | Task                                  | Status  | Type |
+| --- | ------------------------------------- | ------- | ---- |
+| 1   | Auto-sync error handling test gap fix | ✅ Done | Test |
 
 ### Test Summary
 
@@ -68,25 +102,25 @@ af75ea2 fix(profile): navigate to /profile after logout and account deletion
 
 ### Completed Tasks
 
-| # | Task | Status | Tests Added |
-|---|------|--------|-------------|
-| 1 | Map Center Coordinates Fix | ✅ Done | Fixed |
-| 2 | FeedCard Photo Display | ✅ Done | 3 tests |
-| 3 | ReportForm Offline Queue Tests | ✅ Done | 3 tests |
-| 4 | AnonymousProfile Navigation | ✅ Done | 2 tests |
-| 5 | AlertCard Truncation Tests | ✅ Done | 5 tests |
-| 6 | ReportSuccess Notification Tests | ✅ Done | 4 tests |
-| 7 | E2E Report Tracking | ✅ Done | 3 tests |
-| 8 | E2E Photo Upload | ✅ Done | 3 tests |
-| 9 | Offline Queue E2E Verification | ✅ Done | - |
-| 10 | Final Verification | ✅ Done | - |
-| 11 | NonEmergencyRedirect | ✅ Done | 4 tests |
-| 12 | Duplicate Detection | ✅ Done | 6 tests |
-| 13 | LinkReportsByPhone | ✅ Done | 4 tests |
-| 14 | Age Verification Gate | ✅ Done | 4 tests |
-| 15 | Rate Limiting UI | ✅ Done | 5 tests |
-| 16 | ReportDetailScreen + Timeline | ✅ Done | 15 tests |
-| 17 | BeforeAfterGallery | ✅ Done | 5 tests |
+| #   | Task                             | Status  | Tests Added |
+| --- | -------------------------------- | ------- | ----------- |
+| 1   | Map Center Coordinates Fix       | ✅ Done | Fixed       |
+| 2   | FeedCard Photo Display           | ✅ Done | 3 tests     |
+| 3   | ReportForm Offline Queue Tests   | ✅ Done | 3 tests     |
+| 4   | AnonymousProfile Navigation      | ✅ Done | 2 tests     |
+| 5   | AlertCard Truncation Tests       | ✅ Done | 5 tests     |
+| 6   | ReportSuccess Notification Tests | ✅ Done | 4 tests     |
+| 7   | E2E Report Tracking              | ✅ Done | 3 tests     |
+| 8   | E2E Photo Upload                 | ✅ Done | 3 tests     |
+| 9   | Offline Queue E2E Verification   | ✅ Done | -           |
+| 10  | Final Verification               | ✅ Done | -           |
+| 11  | NonEmergencyRedirect             | ✅ Done | 4 tests     |
+| 12  | Duplicate Detection              | ✅ Done | 6 tests     |
+| 13  | LinkReportsByPhone               | ✅ Done | 4 tests     |
+| 14  | Age Verification Gate            | ✅ Done | 4 tests     |
+| 15  | Rate Limiting UI                 | ✅ Done | 5 tests     |
+| 16  | ReportDetailScreen + Timeline    | ✅ Done | 15 tests    |
+| 17  | BeforeAfterGallery               | ✅ Done | 5 tests     |
 
 **Total:** 17/17 tasks completed
 
@@ -123,20 +157,20 @@ af75ea2 fix(profile): navigate to /profile after logout and account deletion
 
 ### Completed Tasks
 
-| # | Task | Status | Type |
-|---|------|--------|------|
-| 1 | Photo Required Validation Test | ✅ Done | Test |
-| 2 | Manual Location Submission Test | ✅ Done | Test |
-| 3 | Complete Happy Path Submission Test | ✅ Done | Test |
-| 4 | Incident Type and Valid Phone Tests | ✅ Done | Test |
-| 5 | Duplicate Warning Display Test | ✅ Done | Test |
-| 6 | handleFileChange Error Handling | ✅ Done | Code fix |
-| 7 | onSubmit try/catch + Offline Callback | ✅ Done | Code fix |
-| 8 | Manual Location Validation | ✅ Done | Code fix |
-| 9 | useReportQueue IndexedDB Error Logging | ✅ Done | Code fix |
-| 10 | Queue Sync Failure Documentation | ✅ Done | Docs |
-| 11 | useDuplicateCheck ErrorId Logging | ✅ Done | Code fix |
-| 12 | uploadReportPhotos Per-File Error Tracking | ✅ Done | Code fix |
+| #   | Task                                       | Status  | Type     |
+| --- | ------------------------------------------ | ------- | -------- |
+| 1   | Photo Required Validation Test             | ✅ Done | Test     |
+| 2   | Manual Location Submission Test            | ✅ Done | Test     |
+| 3   | Complete Happy Path Submission Test        | ✅ Done | Test     |
+| 4   | Incident Type and Valid Phone Tests        | ✅ Done | Test     |
+| 5   | Duplicate Warning Display Test             | ✅ Done | Test     |
+| 6   | handleFileChange Error Handling            | ✅ Done | Code fix |
+| 7   | onSubmit try/catch + Offline Callback      | ✅ Done | Code fix |
+| 8   | Manual Location Validation                 | ✅ Done | Code fix |
+| 9   | useReportQueue IndexedDB Error Logging     | ✅ Done | Code fix |
+| 10  | Queue Sync Failure Documentation           | ✅ Done | Docs     |
+| 11  | useDuplicateCheck ErrorId Logging          | ✅ Done | Code fix |
+| 12  | uploadReportPhotos Per-File Error Tracking | ✅ Done | Code fix |
 
 **Total:** 12/12 tasks completed
 
@@ -158,7 +192,6 @@ af75ea2 fix(profile): navigate to /profile after logout and account deletion
 - `useReportQueue.test.ts` and `QueueIndicator.test.tsx` have pre-existing firebase mock gap (fail in worktree without `.env.local`)
 - TypeScript errors in `ReportForm.tsx` and `useReportQueue.ts` are pre-existing (unrelated to these fixes)
 
-
 ---
 
 ## 2026-04-12: PR #11 Error Handling & Test Fixes
@@ -169,16 +202,16 @@ af75ea2 fix(profile): navigate to /profile after logout and account deletion
 
 ### Completed Tasks
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 1 | Fix bare `catch` in `onSubmit` path | ✅ Done | `ReportForm.handleSubmit` now has `try/catch (err: unknown)` on both online and offline paths |
-| 2 | Surface IndexedDB load error via `loadError` state | ✅ Done | `useReportQueue.ts` now has `loadError: string | null` state, populated via `catch (err: unknown)` in mount useEffect |
-| 3 | Fix `uploadReportPhoto` error chaining | ✅ Done | Changed `catch (error)` → `catch (error: unknown)` + message preservation |
-| 4 | Photo required validation test | ✅ Done | 24 ReportForm tests passing |
-| 5 | Manual location flow test | ✅ Done | |
-| 6 | Duplicate warning display test | ✅ Done | |
-| 7 | Complete happy path test | ✅ Done | |
-| 8 | Phone validation edge cases test | ✅ Done | 3 valid + 5 invalid formats |
+| #   | Task                                               | Status  | Notes                                                                                         |
+| --- | -------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1   | Fix bare `catch` in `onSubmit` path                | ✅ Done | `ReportForm.handleSubmit` now has `try/catch (err: unknown)` on both online and offline paths |
+| 2   | Surface IndexedDB load error via `loadError` state | ✅ Done | `useReportQueue.ts` now has `loadError: string                                                | null`state, populated via`catch (err: unknown)` in mount useEffect |
+| 3   | Fix `uploadReportPhoto` error chaining             | ✅ Done | Changed `catch (error)` → `catch (error: unknown)` + message preservation                     |
+| 4   | Photo required validation test                     | ✅ Done | 24 ReportForm tests passing                                                                   |
+| 5   | Manual location flow test                          | ✅ Done |                                                                                               |
+| 6   | Duplicate warning display test                     | ✅ Done |                                                                                               |
+| 7   | Complete happy path test                           | ✅ Done |                                                                                               |
+| 8   | Phone validation edge cases test                   | ✅ Done | 3 valid + 5 invalid formats                                                                   |
 
 ### Known Limitations
 
@@ -210,8 +243,6 @@ npm run test -- --run src/features/report/components/__tests__/ReportForm.test.t
 npm run typecheck  # Pre-existing errors in useReportQueue.ts (TS1127), others
 ```
 
-
-
 ---
 
 ## 2026-04-12: PR #12 Error Handling Fixes (RegisteredProfile)
@@ -221,13 +252,13 @@ npm run typecheck  # Pre-existing errors in useReportQueue.ts (TS1127), others
 
 ### Completed Tasks
 
-| # | Task | Status | Type |
-|---|------|--------|------|
-| 1 | Add syncError state and fix handleSyncNow | ✅ Done | Code fix |
-| 2 | Add logoutError state and UI display | ✅ Done | Code fix |
-| 3 | Add downloadError state and UI display | ✅ Done | Code fix |
-| 4 | Add firebase mocks to RegisteredProfile tests | ✅ Done | Test fix |
-| 5 | Write error handling tests | ✅ Done | Tests |
+| #   | Task                                          | Status  | Type     |
+| --- | --------------------------------------------- | ------- | -------- |
+| 1   | Add syncError state and fix handleSyncNow     | ✅ Done | Code fix |
+| 2   | Add logoutError state and UI display          | ✅ Done | Code fix |
+| 3   | Add downloadError state and UI display        | ✅ Done | Code fix |
+| 4   | Add firebase mocks to RegisteredProfile tests | ✅ Done | Test fix |
+| 5   | Write error handling tests                    | ✅ Done | Tests    |
 
 ### Test Summary
 
@@ -244,6 +275,7 @@ npm run typecheck  # Pre-existing errors in useReportQueue.ts (TS1127), others
 ### Gap Analysis Findings (Plan Review)
 
 During plan review, these gaps were identified and addressed:
+
 - `syncResult` was never cleared on error → Added `setSyncResult(null)` before sync
 - `logoutError` display is outside SettingsTab → Error display added near logout button
 - `logoutError` not passed to SettingsTabProps → Correctly kept in main component
@@ -276,12 +308,12 @@ npm run typecheck  # Pre-existing errors in useReportQueue.ts (unrelated)
 
 ### Completed Tasks
 
-| # | Task | Status | Type |
-|---|------|--------|-------|
-| 1 | Rewrite useAlerts to use onSnapshot | Done | Refactor |
-| 2 | Add onSnapshot subscription tests (6 tests) | Done | Test |
-| 3 | Add dual-query merge tests (2 tests) | Done | Test |
-| 4 | IndexedDB cache fallback on Firestore error | Done | Feature + Test |
+| #   | Task                                        | Status | Type           |
+| --- | ------------------------------------------- | ------ | -------------- |
+| 1   | Rewrite useAlerts to use onSnapshot         | Done   | Refactor       |
+| 2   | Add onSnapshot subscription tests (6 tests) | Done   | Test           |
+| 3   | Add dual-query merge tests (2 tests)        | Done   | Test           |
+| 4   | IndexedDB cache fallback on Firestore error | Done   | Feature + Test |
 
 ### Test Summary
 
@@ -312,7 +344,6 @@ npm run typecheck  # Pre-existing errors in useReportQueue.ts (unrelated)
 npm run test -- --run src/features/alerts/hooks/__tests__/useAlerts.test.ts  # 12/12
 npm run typecheck  # useAlerts.ts clean (pre-existing errors in useReportQueue.ts)
 ```
-
 
 ---
 

@@ -18,6 +18,7 @@ import { RateLimitExceeded } from './RateLimitExceeded'
 import { useReportQueue } from '../hooks/useReportQueue'
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
+import { useGeolocation } from '@/shared/hooks/useGeolocation'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -132,16 +133,24 @@ export function ReportForm({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { enqueueReport } = useReportQueue()
   const { isOnline } = useNetworkStatus()
+  const geo = useGeolocation()
+
+  const resolvedUserLocation = userLocation ?? geo.coordinates ?? undefined
+  const resolvedGpsError = gpsError ?? (geo.loading ? undefined : (geo.error ?? undefined))
 
   // Duplicate check — only meaningful when GPS location is available
   const { duplicates } = useDuplicateCheck(
-    userLocation && !gpsError
-      ? { latitude: userLocation.latitude, longitude: userLocation.longitude, incidentType }
+    resolvedUserLocation && !resolvedGpsError
+      ? {
+          latitude: resolvedUserLocation.latitude,
+          longitude: resolvedUserLocation.longitude,
+          incidentType,
+        }
       : { latitude: 0, longitude: 0, incidentType: '' }
   )
 
-  const isGpsAvailable = Boolean(userLocation && !gpsError)
-  const showManualDropdowns = Boolean(gpsError)
+  const isGpsAvailable = Boolean(resolvedUserLocation && !resolvedGpsError)
+  const showManualDropdowns = Boolean(resolvedGpsError)
 
   function handlePhotoButtonClick() {
     fileInputRef.current?.click()
@@ -214,7 +223,11 @@ export function ReportForm({
     }
 
     const location: LocationValue = isGpsAvailable
-      ? { type: 'gps', latitude: userLocation!.latitude, longitude: userLocation!.longitude }
+      ? {
+          type: 'gps',
+          latitude: resolvedUserLocation!.latitude,
+          longitude: resolvedUserLocation!.longitude,
+        }
       : { type: 'manual', municipality, barangay }
 
     const reportData = {
@@ -246,9 +259,7 @@ export function ReportForm({
     try {
       const persistedReportId = await onSubmit?.(reportData)
       const idStr = typeof persistedReportId === 'string' ? persistedReportId : ''
-      setSubmittedReportId(
-        idStr.length > 0 ? idStr : generateReportId(location)
-      )
+      setSubmittedReportId(idStr.length > 0 ? idStr : generateReportId(location))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to submit report'
       setPhotoError(message)
@@ -270,7 +281,7 @@ export function ReportForm({
 
   // Derive a human-readable GPS label for display
   const gpsLabel = isGpsAvailable
-    ? `GPS: ${userLocation!.latitude.toFixed(4)}, ${userLocation!.longitude.toFixed(4)}`
+    ? `GPS: ${resolvedUserLocation!.latitude.toFixed(4)}, ${resolvedUserLocation!.longitude.toFixed(4)}`
     : null
 
   const availableBarangays = municipality ? (BARANGAYS[municipality] ?? []) : []
@@ -333,9 +344,7 @@ export function ReportForm({
             <div className="flex items-start gap-2">
               <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-amber-900">
-                  Possible duplicate detected
-                </p>
+                <p className="text-sm font-semibold text-amber-900">Possible duplicate detected</p>
                 <p className="text-xs text-amber-700 mt-1">
                   {duplicates.length === 1
                     ? 'A similar report was submitted nearby in the last 30 minutes. Please verify this is not a duplicate before submitting.'
@@ -348,7 +357,10 @@ export function ReportForm({
 
         {/* Offline indicator */}
         {!isOnline && (
-          <div className="bg-orange-50 border-b border-orange-200 px-4 py-3 flex items-center gap-2" data-testid="offline-banner">
+          <div
+            className="bg-orange-50 border-b border-orange-200 px-4 py-3 flex items-center gap-2"
+            data-testid="offline-banner"
+          >
             <WifiOff className="w-5 h-5 text-orange-600 shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-orange-900">You're offline</p>
@@ -394,7 +406,10 @@ export function ReportForm({
           {/* Incident Type field                                                   */}
           {/* ------------------------------------------------------------------ */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <label htmlFor="report-incident-type" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="report-incident-type"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               What's happening? <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -427,9 +442,17 @@ export function ReportForm({
             </label>
 
             {isGpsAvailable && (
-              <div id="report-location" data-testid="location-display" className="flex items-center gap-2 text-sm text-gray-600">
+              <div
+                id="report-location"
+                data-testid="location-display"
+                className="flex items-center gap-2 text-sm text-gray-600"
+              >
                 <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  <path
+                    fillRule="evenodd"
+                    d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <span>{gpsLabel}</span>
               </div>
@@ -438,7 +461,9 @@ export function ReportForm({
             {showManualDropdowns && (
               <div id="report-location" data-testid="location-display" className="space-y-3">
                 <div>
-                  <label htmlFor="report-municipality" className="block text-xs text-gray-500 mb-1">Municipality</label>
+                  <label htmlFor="report-municipality" className="block text-xs text-gray-500 mb-1">
+                    Municipality
+                  </label>
                   <select
                     id="report-municipality"
                     value={municipality}
@@ -456,7 +481,9 @@ export function ReportForm({
                 </div>
 
                 <div>
-                  <label htmlFor="report-barangay" className="block text-xs text-gray-500 mb-1">Barangay</label>
+                  <label htmlFor="report-barangay" className="block text-xs text-gray-500 mb-1">
+                    Barangay
+                  </label>
                   <select
                     id="report-barangay"
                     value={barangay}
@@ -478,13 +505,19 @@ export function ReportForm({
                 </div>
 
                 {locationError && (
-                  <p role="alert" className="text-red-500 text-sm mt-1">{locationError}</p>
+                  <p role="alert" className="text-red-500 text-sm mt-1">
+                    {locationError}
+                  </p>
                 )}
               </div>
             )}
 
             {!isGpsAvailable && !showManualDropdowns && (
-              <div id="report-location" data-testid="location-display" className="text-sm text-gray-500">
+              <div
+                id="report-location"
+                data-testid="location-display"
+                className="text-sm text-gray-500"
+              >
                 Detecting location…
               </div>
             )}
@@ -498,7 +531,9 @@ export function ReportForm({
 
             {/* Anyone injured? */}
             <div className="flex flex-col gap-2">
-              <span className="text-sm text-gray-600">Anyone injured? <span className="text-gray-400">(May nasaktan ba?)</span></span>
+              <span className="text-sm text-gray-600">
+                Anyone injured? <span className="text-gray-400">(May nasaktan ba?)</span>
+              </span>
               <div className="flex gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -535,7 +570,10 @@ export function ReportForm({
 
             {/* Situation getting worse? */}
             <div className="flex flex-col gap-2">
-              <span className="text-sm text-gray-600">Is the situation getting worse? <span className="text-gray-400">(Lumalala ba ang sitwasyon?)</span></span>
+              <span className="text-sm text-gray-600">
+                Is the situation getting worse?{' '}
+                <span className="text-gray-400">(Lumalala ba ang sitwasyon?)</span>
+              </span>
               <div className="flex gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -587,7 +625,11 @@ export function ReportForm({
               placeholder="+63 912 345 6789"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue text-gray-900"
             />
-            {phoneError && <span role="alert" className="text-red-600 text-sm mt-1 block">{phoneError}</span>}
+            {phoneError && (
+              <span role="alert" className="text-red-600 text-sm mt-1 block">
+                {phoneError}
+              </span>
+            )}
           </div>
 
           {/* ------------------------------------------------------------------ */}
