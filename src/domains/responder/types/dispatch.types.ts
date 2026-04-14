@@ -13,8 +13,8 @@ export type DispatchUrgency = 'low' | 'medium' | 'high'
  */
 export interface AssignedDispatch {
   id: string
-  type: string  // 'rescue' | 'medical' | 'fire' | 'citizen_report'
-  status: string
+  type: 'rescue' | 'medical' | 'fire' | 'citizen_report'
+  status: QuickStatus
   urgency: DispatchUrgency
   incidentLocation: {
     latitude: number
