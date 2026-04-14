@@ -39,11 +39,10 @@ export type DispatchesError =
 
 /**
  * Error types for quick status operations
- * Note: VALIDATING is a state marker (not an error) — used during async validation
+ * Note: VALIDATING is a state marker (not an error) — use isValidating: boolean instead
  */
 export type QuickStatusError =
-  | { code: 'VALIDATING' }
-  | { code: 'NOT_ASSIGNED'; message: string }
-  | { code: 'INVALID_STATUS'; message: string }
-  | { code: 'NETWORK_ERROR'; message: string }
-  | { code: 'PERMISSION_DENIED'; message: string }
+  | { code: 'NOT_ASSIGNED'; message: string; isFatal: boolean }
+  | { code: 'INVALID_STATUS'; message: string; isFatal: false }
+  | { code: 'NETWORK_ERROR'; message: string; isFatal: boolean }
+  | { code: 'PERMISSION_DENIED'; message: string; isFatal: true }

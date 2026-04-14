@@ -5,7 +5,7 @@
  * Updates are validated pre-flight then written optimistically with rollback on failure.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { runTransaction, doc, getFirestore, arrayUnion } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { canUpdateStatus } from '../services/validation.service'
@@ -17,7 +17,6 @@ interface UseQuickStatusReturn {
   isUpdating: boolean
   error: QuickStatusError | null
   pendingStatus: Map<string, QuickStatus>
-  staleUpdateDetected: boolean
   isValidating: boolean
 }
 
@@ -25,23 +24,26 @@ export function useQuickStatus(): UseQuickStatusReturn {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<QuickStatusError | null>(null)
   const [pendingStatus, setPendingStatus] = useState<Map<string, QuickStatus>>(new Map())
-  const [staleUpdateDetected, setStaleUpdateDetected] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
+  // Store timer ID to clear on unmount — prevents state update on dead component
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const updateStatus = useCallback(async (dispatchId: string, status: QuickStatus): Promise<void> => {
     setIsUpdating(true)
-    setStaleUpdateDetected(false)
     setIsValidating(true)
-    setError({ code: 'VALIDATING' })
+    setError(null) // Clear any previous error; isValidating signals "validating" state
 
     try {
       // Pre-flight validation
       const validationResult = await canUpdateStatus(dispatchId, status)
       if (!validationResult.valid) {
+        const isNotAssigned = validationResult.code === 'NOT_ASSIGNED'
+        const errorCode = isNotAssigned ? 'NOT_ASSIGNED' : 'INVALID_STATUS'
         setError({
-          code: validationResult.code === 'NOT_ASSIGNED' ? 'NOT_ASSIGNED' : 'INVALID_STATUS',
-          message: validationResult.message || 'Validation failed'
-        })
+          code: errorCode,
+          message: validationResult.message || 'Validation failed',
+          isFatal: isNotAssigned
+        } as QuickStatusError)
         return
       }
 
@@ -76,7 +78,11 @@ export function useQuickStatus(): UseQuickStatusReturn {
         })
 
         // Success: clear after 500ms for visual confirmation
-        setTimeout(() => {
+        // Clear any existing timer first to prevent double-clearing
+        if (successTimerRef.current) {
+          clearTimeout(successTimerRef.current)
+        }
+        successTimerRef.current = setTimeout(() => {
           setPendingStatus((prev) => {
             const next = new Map(prev)
             if (next.get(dispatchId) === status) {
@@ -90,12 +96,18 @@ export function useQuickStatus(): UseQuickStatusReturn {
         const errorCode = (networkError as { code?: string })?.code
 
         if (errorCode === 'unavailable' || errorCode === 'deadline-exceeded') {
-          // Queue for offline sync - but since we don't have reportQueueService here,
-          // we just set an error and let the UI handle it
+          // Clear pending status since we cannot roll back (no offline queue implemented)
+          setPendingStatus((prev) => {
+            const next = new Map(prev)
+            next.delete(dispatchId)
+            return next
+          })
           setError({
             code: 'NETWORK_ERROR',
-            message: 'Status update queued. Will sync when connection restores.'
+            message: 'Connection unavailable. Please try again when online.',
+            isFatal: false
           })
+          console.error('[QUICK_STATUS_ERROR]', 'Network unavailable:', errorCode)
           return
         }
 
@@ -115,18 +127,24 @@ export function useQuickStatus(): UseQuickStatusReturn {
       if (errorCode === 'permission-denied') {
         setError({
           code: 'PERMISSION_DENIED',
-          message: 'Your session has expired. Please log in again.'
+          message: 'Your session has expired. Please log in again.',
+          isFatal: true
         })
+        console.error('[QUICK_STATUS_ERROR]', 'Permission denied:', err)
       } else if (errorCode === 'not-found') {
         setError({
           code: 'NOT_ASSIGNED',
-          message: 'This dispatch no longer exists or has been reassigned.'
+          message: 'This dispatch no longer exists or has been reassigned.',
+          isFatal: true
         })
+        console.error('[QUICK_STATUS_ERROR]', 'Dispatch not found:', err)
       } else {
         setError({
           code: 'NETWORK_ERROR',
-          message: err instanceof Error ? err.message : 'Failed to update status'
+          message: err instanceof Error ? err.message : 'Failed to update status',
+          isFatal: false
         })
+        console.error('[QUICK_STATUS_ERROR]', 'Transaction failed:', err)
       }
     } finally {
       setIsUpdating(false)
@@ -134,5 +152,5 @@ export function useQuickStatus(): UseQuickStatusReturn {
     }
   }, [])
 
-  return { updateStatus, isUpdating, error, pendingStatus, staleUpdateDetected, isValidating }
+  return { updateStatus, isUpdating, error, pendingStatus, isValidating }
 }
