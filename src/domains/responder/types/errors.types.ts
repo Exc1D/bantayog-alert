@@ -1,5 +1,7 @@
 /**
- * Base error interface
+ * Formal error taxonomy for logging/monitoring infrastructure.
+ * Domain-specific errors (DispatchesError, QuickStatusError, SOSError) use
+ * simpler discriminated unions — these are complementary, not replacements.
  */
 export interface BaseError {
   code: string

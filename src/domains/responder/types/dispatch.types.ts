@@ -9,7 +9,9 @@ export type QuickStatus = 'en_route' | 'on_scene' | 'needs_assistance' | 'comple
 export type DispatchUrgency = 'low' | 'medium' | 'high'
 
 /**
- * Assigned dispatch as shown to responder
+ * Incident location — simple lat/lng with optional address/landmark.
+ * Distinct from LocationValue (ReportForm.tsx) which is a discriminated union
+ * for gps vs manual entry, and from RichLocation which includes full GPS metadata.
  */
 export interface AssignedDispatch {
   id: string
@@ -37,6 +39,7 @@ export type DispatchesError =
 
 /**
  * Error types for quick status operations
+ * Note: VALIDATING is a state marker (not an error) — used during async validation
  */
 export type QuickStatusError =
   | { code: 'VALIDATING' }

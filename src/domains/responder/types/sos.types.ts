@@ -1,6 +1,3 @@
-/**
- * Active SOS emergency signal
- */
 export interface SOSEvent {
   id: string
   status: 'active' | 'cancelled' | 'expired'
