@@ -56,14 +56,15 @@ describe('Firestore Security Rules', () => {
   }
 
   afterEach(async () => {
-    // Cleanup test data
+    // Cleanup test data — log failures so test pollution is visible
     for (const reportId of testReports) {
       try {
         await deleteDoc(doc(db, 'reports', reportId))
         await deleteDoc(doc(db, 'report_private', reportId))
         await deleteDoc(doc(db, 'report_ops', reportId))
+        await deleteDoc(doc(db, 'sos_events', reportId))
       } catch (error) {
-        // Ignore
+        console.error('[TEST_CLEANUP_ERROR] Failed to delete report:', reportId, error)
       }
     }
     testReports.length = 0
@@ -72,7 +73,7 @@ describe('Firestore Security Rules', () => {
       try {
         await deleteDoc(doc(db, 'users', uid))
       } catch (error) {
-        // Ignore
+        console.error('[TEST_CLEANUP_ERROR] Failed to delete user:', uid, error)
       }
     }
     testUsers.length = 0
@@ -427,15 +428,18 @@ describe('Firestore Security Rules', () => {
         'responder'
       )
 
-      // Create an sos_event
+      // Create an sos_event with all required fields
       const sosRef = doc(db, 'sos_events', 'test-sos-event')
       await setDoc(sosRef, {
         responderId: responderUid,
         status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
         createdAt: Date.now(),
       })
 
-      // Client SDK should be denied read
+      // Client SDK should be denied read (read: if false applies to all)
       const sosDoc = await getDoc(sosRef)
       expect(sosDoc.exists()).toBe(false)
     })
@@ -447,11 +451,14 @@ describe('Firestore Security Rules', () => {
         'responder'
       )
 
-      // Create sos_event with matching responderId
+      // Create sos_event with all required fields and matching responderId
       const sosRef = doc(db, 'sos_events', 'test-sos-create')
       await setDoc(sosRef, {
         responderId: responderUid,
         status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
         createdAt: Date.now(),
       })
 
@@ -462,27 +469,41 @@ describe('Firestore Security Rules', () => {
     it('should deny responder from creating sos_events for another responder', async () => {
       await createTestUser('sos-responder3@example.com', 'pass123', 'responder')
 
-      // Attempt to create sos_event with different responderId
+      // Attempt to create sos_event with different responderId (has required fields)
       const sosRef = doc(db, 'sos_events', 'test-sos-other')
       await expect(async () => {
         await setDoc(sosRef, {
           responderId: 'different-responder-uid', // Not this user's UID
           status: 'active',
+          activatedAt: Date.now(),
+          expiresAt: Date.now() + 3600000,
+          cancellationWindowEndsAt: Date.now() + 300000,
           createdAt: Date.now(),
         })
       }).rejects.toThrow()
     })
 
     it('should deny admin from reading sos_events via client SDK', async () => {
-      await createTestUser('sos-admin@daet.gov.ph', 'pass123', 'municipal_admin', 'Daet')
+      // Create sos_event with a responder's auth context
+      const responderUid = await createTestUser(
+        'sos-responder4@example.com',
+        'pass123',
+        'responder'
+      )
 
-      // Create sos_event
       const sosRef = doc(db, 'sos_events', 'test-sos-admin-read')
       await setDoc(sosRef, {
-        responderId: 'some-responder-uid',
+        responderId: responderUid,
         status: 'resolved',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
         createdAt: Date.now(),
       })
+
+      // Sign out responder, sign in as municipal admin
+      await clientAuth.signOut()
+      await createTestUser('sos-admin@daet.gov.ph', 'pass123', 'municipal_admin', 'Daet')
 
       // Admin reading via client SDK should be denied (read: if false)
       const sosDoc = await getDoc(sosRef)

@@ -48,7 +48,7 @@ service cloud.firestore {
 
     // Check if a responder owns an ops document via normalized responderId field
     // or legacy assignedTo field (migration compatibility)
-    function isResponderOwner(opsId) {
+    function isResponderOwner() {
       return isAuthenticated()
         && (resource.data.responderId == request.auth.uid
             || resource.data.assignedTo == request.auth.uid);
@@ -178,14 +178,21 @@ service cloud.firestore {
       allow read: if false;
 
       // Responders can create sos_events for their own responderId
+      // Required fields: status ('active'), activatedAt, expiresAt, cancellationWindowEndsAt
       allow create: if isAuthenticated()
         && hasRole('responder')
-        && request.resource.data.responderId == request.auth.uid;
+        && request.resource.data.responderId == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.activatedAt is int
+        && request.resource.data.expiresAt is int
+        && request.resource.data.cancellationWindowEndsAt is int;
 
       // Responders can update sos_events for their own responderId
-      allow update: if isAuthenticated()
-        && hasRole('responder')
-        && resource.data.responderId == request.auth.uid;
+      // Only allowed fields: status, cancelledAt, cancellationReason, timeline
+      allow update: if hasRole('responder')
+        && resource.data.responderId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'cancelledAt', 'cancellationReason', 'timeline']);
 
       // Client cannot delete sos_events — preserve audit trail
       allow delete: if false;
