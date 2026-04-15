@@ -1,3 +1,90 @@
+# Progress - 2026-04-15
+
+## Task 9 — SOSButton Component
+
+**Branch:** `feat-responder-dispatch-workflow-task8`
+
+### What Changed
+
+**`SOSButton.tsx`** (282 lines) — Self-contained component calling `useSOS()` internally:
+- **Hold-to-activate**: 3-second press-and-hold using `requestAnimationFrame` loop. SVG progress ring fills over 3 seconds via `stroke-dashoffset` animation.
+- **Activating state**: Button shows `bg-red-700` while held; aria-label updates to "Hold to activate SOS — in progress"
+- **Active state**: Confirmation panel with location coordinates, GPS sharing status, cancel window status, and Cancel SOS button (shown only when `canCancel = true`)
+- **Cancelled state**: Brief panel showing cancellation reason; SOS button hidden
+- **Error state**: Red-bordered alert panel showing error code and message from `useSOS().error`
+- **Cancel confirmation**: Uses `window.confirm()` for intentional emergency guard
+
+**`SOSButton.test.tsx`** (427 lines) — 23 tests covering:
+- Idle state (button renders, no panels)
+- Hold-to-activate (3s triggers, early release cancels, touch events, disabled when active)
+- Active state (panel, coordinates, cancel button visibility, cancel confirmation flow)
+- Cancelled state (reason display, button hidden)
+- Error state (GPS_TIMEOUT, SOS_OFFLINE)
+- className forwarding
+- Location unavailable fallback
+
+### Design Decisions
+
+- **RAF loop vs setInterval**: Used `requestAnimationFrame` for smoother progress animation (smoother than 60fps setInterval)
+- **Circular SVG progress ring**: Visual feedback matches common mobile patterns (circular countdown)
+- **Inline panel vs Modal**: Small confirmation panel avoids Modal dependency complexity; positioned in top-right by consumer
+- **window.confirm()**: Simple, synchronous, blocks the thread — unambiguous for emergency cancellation confirmation
+- **No props**: Component self-contained (calls `useSOS()` internally, matches `QuickStatusButtons`/`DispatchList` pattern)
+
+### Test Summary
+
+- **SOSButton tests:** 27/27 passing
+- **All responder domain tests:** 107/107 passing
+- **TypeScript:** Clean (no new errors)
+- **Pre-existing failures:** MapView.test.tsx and other unrelated tests (infrastructure/firebase mock gaps)
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/domains/responder/components/SOSButton.tsx` | New — SOS button with hold-to-activate and cancellation UI |
+| `src/domains/responder/components/__tests__/SOSButton.test.tsx` | New — 27 tests |
+
+## Task 9 — PR Review Fixes
+
+**Fixed 11 issues** from PR #20 review (silent-failure-hunter, code-reviewer, pr-test-analyzer agents).
+
+### Critical Fixes Applied
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | Silent GPS watch failure — `watchPosition` error not surfaced | Added `gpsError` state; error callback sets `locationSharing=false` + `gpsError` message |
+| 2 | Catch-all `NETWORK_ERROR` masks real types | Check `err.code` (Firestore structured code) first: `permission-denied`, `already-exists`, `deadline-exceeded`, `unavailable` |
+| 3 | No retry on transient Firestore errors | Added 1 retry with 1s backoff for `deadline-exceeded`/`unavailable`; non-retryable errors fail immediately |
+| 5 | `window.confirm` silent failure | Added `alert()` feedback when confirm blocked or dismissed |
+
+### Minor Fixes Applied
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 4 | Unused `callbacks` lint warning | Removed dead `callbacks[]` array from RAF mock |
+| 7 | No error ID for Sentry | Added `crypto.randomUUID()` to all `[SOS_ERROR]` console logs |
+| 8 | Keyboard activation untested | Added tests for Enter/Space immediate `activateSOS()` |
+| 9 | onKeyUp Space → cancelHold untested | Added test (no-op since Space immediately activates) |
+| 10 | Unmount while hold active untested | Added test verifying RAF cancellation on unmount |
+
+### Test Summary
+
+- **SOSButton tests:** 27/27 passing (was 23, added 4 new tests)
+- **useSOS tests:** 9/9 passing
+- **All responder domain tests:** 107/107 passing
+- **TypeScript:** Clean
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/domains/responder/hooks/useSOS.ts` | Added `gpsError` state, structured error code mapping, retry logic, error IDs |
+| `src/domains/responder/components/SOSButton.tsx` | Added `alert()` feedback when `window.confirm` returns false |
+| `src/domains/responder/components/__tests__/SOSButton.test.tsx` | Added 4 tests (keyboard activation ×2, unmount cleanup, confirm dismissed alert) |
+
+---
+
 # Progress - 2026-04-14
 
 ## QA Edge Case Scan

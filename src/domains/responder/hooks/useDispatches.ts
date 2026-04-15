@@ -1,3 +1,10 @@
+/**
+ * useDispatches Hook — Responder Dispatch Subscription
+ *
+ * Subscribes to dispatches assigned to the authenticated responder via
+ * Firestore onSnapshot. Returns real-time dispatch list with loading/error state.
+ * Set subscribe=false to fetch once without real-time updates.
+ */
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   onSnapshot,

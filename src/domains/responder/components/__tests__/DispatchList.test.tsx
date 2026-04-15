@@ -87,6 +87,11 @@ describe('DispatchList', () => {
 
   it('should call updateStatus when button clicked', () => {
     const mockUpdateStatus = vi.fn()
+    const quickStatusController = {
+      updateStatus: mockUpdateStatus,
+      isUpdating: false,
+      pendingStatus: new Map()
+    }
 
     ;(useDispatches as any).mockReturnValue({
       dispatches: [
@@ -95,11 +100,7 @@ describe('DispatchList', () => {
       isLoading: false,
       error: null
     })
-    ;(useQuickStatus as any).mockReturnValue({
-      updateStatus: mockUpdateStatus,
-      isUpdating: false,
-      pendingStatus: new Map()
-    })
+    ;(useQuickStatus as any).mockReturnValue(quickStatusController)
 
     render(<DispatchList />)
 
