@@ -51,12 +51,17 @@ function snapshotToDispatches(snap: QuerySnapshot) {
   const dispatches: AssignedDispatch[] = []
   snap.forEach((doc: QueryDocumentSnapshot) => {
     const data = doc.data()
-    // Prefer responderStatus; fall back to status (migration compat). Validate against QuickStatus.
+    // Validate both status and responderStatus against QuickStatus whitelist
     const status: QuickStatus = (data.responderStatus && VALID_DISPATCH_STATUSES.includes(data.responderStatus))
       ? data.responderStatus
       : (data.status && VALID_DISPATCH_STATUSES.includes(data.status)
           ? data.status
           : 'en_route') as QuickStatus
+    // responderStatus on the dispatched object is also validated — raw data.responderStatus
+    // could be an invalid value (e.g. 'pending', 'dispatch') that would cause type mismatches
+    const validatedResponderStatus: QuickStatus = VALID_DISPATCH_STATUSES.includes(data.responderStatus)
+      ? data.responderStatus
+      : status
     dispatches.push({
       id: doc.id,
       type: data.type,
@@ -64,7 +69,7 @@ function snapshotToDispatches(snap: QuerySnapshot) {
       urgency: data.urgency,
       incidentLocation: data.incidentLocation ?? { latitude: 0, longitude: 0, address: 'Location pending...' },
       assignedAt: data.assignedAt ?? Date.now(),
-      responderStatus: data.responderStatus,
+      responderStatus: validatedResponderStatus,
     } as AssignedDispatch)
   })
   return dispatches
