@@ -72,7 +72,8 @@ describe('Firestore Security Rules', () => {
     // sos_events created with fixed string IDs (not tracked in testReports)
     const sosEventIds = [
       'test-sos-event', 'test-sos-create', 'test-sos-other',
-      'test-sos-admin-read',
+      'test-sos-admin-read', 'test-sos-missing-required',
+      'test-sos-update-allowed', 'test-sos-update-denied',
     ]
     for (const sosId of sosEventIds) {
       try {
@@ -492,6 +493,84 @@ describe('Firestore Security Rules', () => {
           expiresAt: Date.now() + 3600000,
           cancellationWindowEndsAt: Date.now() + 300000,
           createdAt: Date.now(),
+        })
+      }).rejects.toThrow()
+    })
+
+    it('should deny responder from creating sos_events missing required fields', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder5@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Missing expiresAt — a required field in the rules
+      const sosRef = doc(db, 'sos_events', 'test-sos-missing-required')
+      await expect(async () => {
+        await setDoc(sosRef, {
+          responderId: responderUid,
+          status: 'active',
+          activatedAt: Date.now(),
+          cancellationWindowEndsAt: Date.now() + 300000,
+          createdAt: Date.now(),
+        })
+      }).rejects.toThrow()
+    })
+
+    it('should allow responder to update whitelisted fields on their sos_event', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder-update@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const sosRef = doc(db, 'sos_events', 'test-sos-update-allowed')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
+        createdAt: Date.now(),
+      })
+
+      // Responder updates whitelisted fields: status, cancelledAt, cancellationReason, timeline
+      await updateDoc(sosRef, {
+        status: 'resolved',
+        cancelledAt: Date.now(),
+        cancellationReason: 'incident_ended',
+        timeline: [{ type: 'resolved', at: Date.now() }],
+      })
+
+      const sosDoc = await getDoc(sosRef)
+      expect(sosDoc.exists()).toBe(true)
+      expect(sosDoc.data().status).toBe('resolved')
+      expect(sosDoc.data().cancellationReason).toBe('incident_ended')
+    })
+
+    it('should deny responder from updating non-whitelisted fields on their sos_event', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder-update-denied@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const sosRef = doc(db, 'sos_events', 'test-sos-update-denied')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
+        createdAt: Date.now(),
+      })
+
+      // Attempt to change non-whitelisted fields should be rejected
+      await expect(async () => {
+        await updateDoc(sosRef, {
+          responderId: 'some-other-responder',
+          activatedAt: Date.now() + 1000,
+          expiresAt: Date.now() + 5000,
         })
       }).rejects.toThrow()
     })
