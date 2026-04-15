@@ -1,0 +1,205 @@
+<h2>Layer 1, Section 2: Map Foundation</h2>
+<p class="subtitle">Extended MapView with municipal boundaries and admin controls</p>
+
+<div class="section">
+  <h3>Current State (What You Have)</h3>
+  <div class="mockup">
+    <div class="mockup-header">✅ Existing MapView Component</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <ul style="margin: 0; padding-left: 20px;">
+        <li>Leaflet-based map with OpenStreetMap tiles</li>
+        <li>Disaster report markers (color-coded by severity)</li>
+        <li>User location marker with accuracy circle</li>
+        <li>Map controls (zoom in/out, locate, layer toggle)</li>
+        <li>Filter system (severity, time range)</li>
+        <li>Report detail modal</li>
+      </ul>
+      <div style="background: #d1fae5; padding: 12px; border-radius: 6px; margin-top: 12px; font-size: 13px;">
+        <strong>✨ Solid foundation!</strong> We'll extend this, not replace it.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Map Foundation Extensions</h3>
+
+  <div class="cards">
+    <div class="card" data-choice="municipal-boundaries" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>1. Municipal Boundaries Layer</h3>
+        <p><strong>Feature: GeoJSON or Firestore-based boundaries</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Display all 12 municipalities as boundary lines</li>
+          <li>Admin's municipality highlighted in green</li>
+          <li>Adjacent municipalities in gray</li>
+          <li>Boundary labels on hover/click</li>
+          <li>Toggle visibility with layer control</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Data Source:</strong> GeoJSON from <code>municipalities</code> collection or static file
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="admin-controls" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>2. Admin-Specific Map Controls</h3>
+        <p><strong>Enhanced controls for municipal admin operations</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Layer toggles: incidents, responders, boundaries, heat map</li>
+          <li>Quick filters: active only, pending only, all incidents</li>
+          <li>Zoom to municipality button</li>
+          <li>Reset view (home) button</li>
+          <li>Admin mode indicator (top bar)</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>UX:</strong> Always visible, don't obscure map center
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="layer-management" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>3. Dynamic Layer System</h3>
+        <p><strong>Pluggable layer architecture for future features</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li><code>MapLayer</code> interface for all layers</li>
+          <li>Base layers: OpenStreetMap (default), Satellite (optional)</li>
+          <li>Overlay layers: incidents, responders, boundaries, heat map</li>
+          <li>Each layer has: toggle, opacity, z-index</li>
+          <li>Add/remove layers without refactoring</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Benefit:</strong> Easy to add new layers (weather, evacuation zones, etc.)
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="performance-optimization" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>4. Performance for 50+ Markers</h3>
+        <p><strong>Optimize rendering for surge conditions</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Marker clustering (group nearby pins)</li>
+          <li>Virtual rendering (only visible markers)</li>
+          <li>Debounced updates (don't re-render on every change)</li>
+          <li>Web Workers for geospatial calculations</li>
+          <li>Progressive loading (critical path first)</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Goal:</strong> Smooth UI even with 100+ incident pins
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Admin Map Layout</h3>
+  <div class="mockup">
+    <div class="mockup-header">Map-Centric Desktop Interface</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="background: #f3f4f6; border: 2px solid #9ca3af; border-radius: 8px; height: 300px; position: relative; overflow: hidden;">
+        <!-- Top Bar -->
+        <div style="background: #1e40af; color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold;">Bantayog Alert - MUNICIPAL ADMIN (DAET)</span>
+          <span style="font-size: 12px;">🔔 Alerts: 3  👤 Profile</span>
+        </div>
+
+        <!-- Quick Stats Bar -->
+        <div style="background: rgba(255,255,255,0.95); padding: 8px 16px; display: flex; gap: 24px; font-size: 13px; border-bottom: 1px solid #e5e7eb;">
+          <span>📋 Pending: <strong>8</strong></span>
+          <span>🚒 Available: <strong>5</strong></span>
+          <span>⚠️ Urgent: <strong>2</strong></span>
+          <span>🆘 Mass Alert</span>
+        </div>
+
+        <!-- Map Layer Toggles (Top Left) -->
+        <div style="position: absolute; top: 80px; left: 16px; background: rgba(255,255,255,0.95); padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 12px;">
+          <div style="font-weight: bold; margin-bottom: 8px;">Map Layers</div>
+          <div><input type="checkbox" checked/> Active incidents</div>
+          <div><input type="checkbox" checked/> Responders available</div>
+          <div><input type="checkbox"/> Border incidents (shared)</div>
+          <div><input type="checkbox"/> Heat map (24h)</div>
+          <div><input type="checkbox" checked/> Municipal boundaries</div>
+        </div>
+
+        <!-- Map Center -->
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #6b7280;">
+          <div style="font-size: 48px;">🗺️</div>
+          <div style="font-size: 13px;">Interactive Map</div>
+          <div style="font-size: 11px;">Municipal boundary (Daet) + Incident pins + Responder dots</div>
+        </div>
+
+        <!-- Map Controls (Right) -->
+        <div style="position: absolute; top: 80px; right: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="background: rgba(255,255,255,0.95); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 18px;">+</div>
+          <div style="background: rgba(255,255,255,0.95); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 18px;">−</div>
+          <div style="background: rgba(255,255,255,0.95); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 14px;">📍</div>
+        </div>
+
+        <!-- Slide-in Panel Placeholder (Right) -->
+        <div style="position: absolute; top: 80px; right: 60px; bottom: 16px; width: 400px; background: rgba(255,255,255,0.95); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 16px;">
+          <div style="color: #9ca3af; font-size: 13px; text-align: center; padding-top: 100px;">
+            Context Panel<br/>
+            (slides in from right)
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 12px; font-size: 12px; color: #6b7280;">
+        <strong>Note:</strong> Map is always visible. Panels slide in/out but never cover the map completely.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Component Architecture</h3>
+  <div class="mockup">
+    <div class="mockup-header">Extended MapView Component Structure</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <pre style="background: #1f2937; color: #f3f4f6; padding: 16px; border-radius: 8px; font-size: 12px; overflow-x: auto;">
+<span style="color: #60a5fa;">src/domains/municipal-admin/components/</span>
+├── <span style="color: #34d399;">MunicipalMapView.tsx</span>          <span style="color: #9ca3af;">// Extends MapView with admin features</span>
+│   ├── <span style="color: #fbbf24;">MunicipalBoundariesLayer.tsx</span>  <span style="color: #9ca3af;">// GeoJSON overlay</span>
+│   ├── <span style="color: #fbbf24;">AdminMapControls.tsx</span>         <span style="color: #9ca3af;">// Layer toggles, filters</span>
+│   ├── <span style="color: #fbbf24;">QuickStatsBar.tsx</span>            <span style="color: #9ca3af;">// Pending, available, urgent</span>
+│   └── <span style="color: #fbbf24;">AdminTopBar.tsx</span>              <span style="color: #9ca3af;">// Municipality name, alerts, profile</span>
+│
+<span style="color: #60a5fa;">src/domains/municipal-admin/hooks/</span>
+├── <span style="color: #34d399;">useMunicipalBoundaries.ts</span>     <span style="color: #9ca3af;">// Load GeoJSON from Firestore</span>
+├── <span style="color: #34d399;">useMapLayers.ts</span>                <span style="color: #9ca3af;">// Layer state management</span>
+└── <span style="color: #34d399;">useAdminMapControls.ts</span>         <span style="color: #9ca3af;">// Zoom, locate, reset</span>
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Data Requirements</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>✅ What We Need</h4>
+      <ul>
+        <li><strong>Municipal boundaries GeoJSON</strong> - All 12 municipalities with boundaries</li>
+        <li><strong>Firestore collection</strong> - <code>municipalities/{id}</code> with GeoJSON data</li>
+        <li><strong>Boundary styling</strong> - Green for admin's municipality, gray for others</li>
+        <li><strong>Layer configuration</strong> - Which layers show by default, z-index values</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>⚠️ Implementation Notes</h4>
+      <ul>
+        <li>GeoJSON files can be large - consider caching or lazy loading</li>
+        <li>Boundary resolution: detail vs performance trade-off</li>
+        <li>Need to handle missing municipality data gracefully</li>
+        <li>Layer state must persist across panel open/close</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="background: #ede9fe; padding: 16px; border-radius: 8px; border-left: 4px solid #8b5cf6; margin-top: 24px;">
+  <strong>🎯 Layer 1, Section 2 Deliverable:</strong> Map with municipal boundaries visible. Admin's municipality highlighted. Layer controls working. Foundation for adding incident pins and responder locations.
+</div>

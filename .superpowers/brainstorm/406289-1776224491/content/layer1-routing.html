@@ -1,0 +1,279 @@
+<h2>Layer 1, Section 4: Routing & Layout</h2>
+<p class="subtitle">Map-centric desktop interface with sliding panels</p>
+
+<div class="section">
+  <h3>Design Principle: Map is Always Visible</h3>
+  <div class="mockup">
+    <div class="mockup-header">NON-NEGOTIABLE: The Map Never Disappears</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div style="background: #fee2e2; padding: 16px; border-radius: 8px; border-left: 4px solid #ef4444;">
+          <strong>❌ DON'T DO THIS</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 13px;">
+            <li>Full-screen modals that cover the map</li>
+            <li>Navigation to separate "pages"</li>
+            <li>Pop-ups that block map interaction</li>
+            <li>Multi-page routes (logout → dashboard → reports)</li>
+          </ul>
+        </div>
+        <div style="background: #d1fae5; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981;">
+          <strong>✅ DO THIS INSTEAD</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 13px;">
+            <li>Sliding panels from right/left/top/bottom</li>
+            <li>Map remains visible behind panels</li>
+            <li>Click outside panel → panel slides away</li>
+            <li>Single-page application with overlay UI</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 13px;">
+        <strong>💡 Why:</strong> Municipal admins need constant situational awareness. During disasters, seeing the map while processing reports is critical. The map is the command center's radar screen.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Layout Components</h3>
+
+  <div class="cards">
+    <div class="card" data-choice="top-bar" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>1. Admin Top Bar (Always Visible)</h3>
+        <p><strong>Municipality identification + quick status</strong></p>
+        <div style="background: #1e40af; color: white; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Bantayog Alert - MUNICIPAL ADMIN (DAET)</span>
+            <span>🔔 Alerts: 3  👤 Profile</span>
+          </div>
+        </div>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Municipality name (confirms which admin is logged in)</li>
+          <li>Alert count (click to view active alerts)</li>
+          <li>Profile dropdown (settings, logout)</li>
+          <li>Weather status (from PAGASA or manual)</li>
+          <li>Operational status indicator</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" data-choice="quick-actions-bar" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>2. Quick Actions Bar (Top Edge)</h3>
+        <p><strong>One-click access to common operations</strong></p>
+        <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 13px; display: flex; gap: 24px;">
+          <span>📋 Pending: <strong>8</strong></span>
+          <span>🚒 Available: <strong>5</strong></span>
+          <span>⚠️ Urgent: <strong>2</strong></span>
+          <span>🆘 Mass Alert</span>
+        </div>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Clickable badges open respective panels</li>
+          <li>Numbers update in real-time</li>
+          <li>Color-coded by urgency</li>
+          <li>Doesn't obscure map center</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" data-choice="sliding-panels" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>3. Context Panels (Slide In/Out)</h3>
+        <p><strong>Rich details without blocking the map</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li><strong>Incident Details Panel</strong> - Slide from right when pin clicked</li>
+          <li><strong>Responder Status Panel</strong> - Slide from right when responder clicked</li>
+          <li><strong>Pending Queue Panel</strong> - Slide from left when "Pending" clicked</li>
+          <li><strong>Active Incidents Dashboard</strong> - Slide from left when "Active" clicked</li>
+          <li><strong>Mass Alert Tools</strong> - Overlay panel (centered, semi-transparent)</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Interaction:</strong> Click outside → panel slides away. ESC key → close all panels.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="overlay-controls" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>4. Map Overlay Controls (Top Left)</h3>
+        <p><strong>Layer toggles and filters</strong></p>
+        <div style="background: rgba(255,255,255,0.95); padding: 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 12px; font-size: 12px;">
+          <div style="font-weight: bold; margin-bottom: 8px;">Map Layers ▼</div>
+          <div><input type="checkbox" checked/> Active incidents only</div>
+          <div><input type="checkbox" checked/> Responders available</div>
+          <div><input type="checkbox"/> Border incidents (shared)</div>
+          <div><input type="checkbox"/> Heat map (24h)</div>
+          <div><input type="checkbox" checked/> Municipal boundaries</div>
+        </div>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Collapsible panel (toggle button)</li>
+          <li>Settings persist across sessions</li>
+          <li>Filters affect map + dashboard counts</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Desktop Layout Mockup</h3>
+  <div class="mockup">
+    <div class="mockup-header">1920x1080 Desktop Monitor Interface</div>
+    <div class="mockup-body" style="padding: 0;">
+      <div style="background: #f3f4f6; border: 2px solid #9ca3af; height: 500px; position: relative; overflow: hidden;">
+        <!-- Top Bar -->
+        <div style="background: #1e40af; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold;">Bantayog Alert - MUNICIPAL ADMIN (DAET)</span>
+          <span style="font-size: 12px;">🔔 Alerts: 3  👤 Profile</span>
+        </div>
+
+        <!-- Quick Actions Bar -->
+        <div style="background: white; padding: 8px 16px; display: flex; gap: 24px; font-size: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="cursor: pointer;">📋 Pending: <strong>8</strong></span>
+          <span style="cursor: pointer;">🚒 Available: <strong>5</strong></span>
+          <span style="cursor: pointer;">⚠️ Urgent: <strong>2</strong></span>
+          <span style="cursor: pointer;">🆘 Mass Alert</span>
+        </div>
+
+        <!-- Layer Controls (Top Left) -->
+        <div style="position: absolute; top: 70px; left: 16px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); font-size: 11px; z-index: 10;">
+          <div style="font-weight: bold; margin-bottom: 6px;">[Map Layers ▼]</div>
+          <div style="color: #6b7280;">☑ Active incidents</div>
+          <div style="color: #6b7280;">☑ Responders</div>
+          <div style="color: #6b7280;">☑ Boundaries</div>
+        </div>
+
+        <!-- Map Placeholder -->
+        <div style="position: absolute; top: 70px; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);">
+          <div style="text-align: center; color: #0369a1;">
+            <div style="font-size: 48px;">🗺️</div>
+            <div style="font-weight: bold;">MUNICIPAL MAP (DAET)</div>
+            <div style="font-size: 12px; margin-top: 8px;">Municipal boundary (green) + Incident pins + Responder locations</div>
+            <div style="font-size: 11px; margin-top: 4px; color: #075985;">Always visible • All panels slide in/out</div>
+          </div>
+        </div>
+
+        <!-- Right Slide-in Panel (Incident Details) -->
+        <div style="position: absolute; top: 70px; right: 0; bottom: 0; width: 400px; background: rgba(255,255,255,0.95); box-shadow: -4px 0 12px rgba(0,0,0,0.1); padding: 16px; transform: translateX(0); transition: transform 0.3s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <strong>Incident #0471 - Flood</strong>
+            <span style="font-size: 12px; color: #6b7280;">[Close] [Map]</span>
+          </div>
+          <div style="font-size: 12px; color: #6b7280;">
+            <p><strong>STATUS:</strong> Pending Verification</p>
+            <p><strong>LOCATION:</strong> Barangay San Jose, Daet</p>
+            <p><strong>REPORTED:</strong> 12 min ago</p>
+            <p><strong>DESCRIPTION:</strong> "Water rising fast near bridge..."</p>
+            <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 6px;">
+              <strong>🔵 TRUST SCORE: 92/100</strong><br/>
+              <span style="font-size: 11px;">→ Auto-Verify? [Yes] [No]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Map Controls (Right Edge) -->
+        <div style="position: absolute; top: 80px; right: 420px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="background: white; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 16px;">+</div>
+          <div style="background: white; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 16px;">−</div>
+          <div style="background: white; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 14px;">📍</div>
+        </div>
+      </div>
+      <div style="margin-top: 8px; font-size: 11px; color: #6b7280;">
+        <strong>Note:</strong> Right panel would slide in from off-screen when incident pin clicked. Click outside panel → it slides away. Map always visible.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Routing Structure</h3>
+  <div class="mockup">
+    <div class="mockup-header">Protected Routes for Municipal Admin</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <pre style="background: #1f2937; color: #f3f4f6; padding: 16px; border-radius: 8px; font-size: 12px; overflow-x: auto;">
+<span style="color: #60a5fa;">src/domains/municipal-admin/</span>
+├── <span style="color: #34d399;">MunicipalAdminRoute.tsx</span>      <span style="color: #9ca3af;">// Protected route wrapper</span>
+│   └── Checks: auth + role === 'municipal_admin'
+│
+├── <span style="color: #34d399;">pages/</span>
+│   ├── <span style="color: #fbbf24;">MunicipalAdminDashboard.tsx</span>  <span style="color: #9ca3af;">// Main route: /municipal-admin</span>
+│   │   ├── MapView (always visible)</span>
+│   │   ├── QuickActionsBar (top)</span>
+│   │   ├── AdminTopBar (top)</span>
+│   │   ├── LayerControls (top-left)</span>
+│   │   └── Dynamic panels (slide in/out)</span>
+│   │
+│   └── <span style="color: #fbbf24;">[Future pages]</span>
+│       ├── /municipal-admin/analytics</span>
+│       ├── /municipal-admin/settings</span>
+│       └── /municipal-admin/alerts/create</span>
+│
+<span style="color: #60a5fa;">src/routes.tsx</span>
+└── <span style="color: #fbbf24;">/municipal-admin/*</span> → MunicipalAdminRoute → MunicipalAdminDashboard
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Keyboard Shortcuts</h3>
+  <div class="mockup">
+    <div class="mockup-header">Power User Shortcuts for Surge Events</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div style="background: #f3f4f6; padding: 12px; border-radius: 6px;">
+          <strong>Map Navigation</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 12px;">
+            <li><kbd>↑ ↓ ← →</kbd> - Pan map</li>
+            <li><kbd>+</kbd> / <kbd>-</kbd> - Zoom in/out</li>
+            <li><kbd>Home</kbd> - Reset to municipality view</li>
+            <li><kbd>O</kbd> - Toggle overlays panel</li>
+            <li><kbd>Esc</kbd> - Close current panel</li>
+          </ul>
+        </div>
+        <div style="background: #f3f4f6; padding: 12px; border-radius: 6px;">
+          <strong>Quick Actions</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 12px;">
+            <li><kbd>V</kbd> - Open pending queue</li>
+            <li><kbd>D</kbd> - Open active incidents</li>
+            <li><kbd>R</kbd> - Open responder dashboard</li>
+            <li><kbd>A</kbd> - Open mass alert tools</li>
+            <li><kbd>Enter</kbd> - Open selected item</li>
+          </ul>
+        </div>
+      </div>
+      <div style="background: #fef3c7; padding: 12px; border-radius: 6px; margin-top: 12px; font-size: 12px;">
+        <strong>💡 Critical during surges:</strong> When processing 50+ reports/hour, keyboard shortcuts are faster than mouse clicks. Every second saved matters.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Multi-Screen Support</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>✅ Future Enhancement</h4>
+      <ul>
+        <li><strong>Extend to second monitor</strong> - Map on both screens or map + panels</li>
+        <li><strong>Flexible layout</strong> - Admin can choose: map spanning both or split view</li>
+        <li><strong>Panel positioning</strong> - Drag panels between monitors</li>
+        <li><strong>Not blocking</strong> - Single monitor works perfectly initially</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>⚠️ Implementation Notes</h4>
+      <ul>
+        <li>Requires browser multi-window API or window management</li>
+        <li>State sync between windows (localStorage or BroadcastChannel)</li>
+        <li>Panel drag-drop UI complexity</li>
+        <li>Prioritize: Single monitor fully polished first</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="background: #ede9fe; padding: 16px; border-radius: 8px; border-left: 4px solid #8b5cf6; margin-top: 24px;">
+  <strong>🎯 Layer 1, Section 4 Deliverable:</strong> Complete map-centric desktop layout. Route guards protect municipal admin routes. Panels slide in/out without blocking map. Foundation for adding all feature panels.
+</div>

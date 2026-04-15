@@ -1,0 +1,153 @@
+<h2>Layer 1, Section 1: Authentication & Authorization</h2>
+<p class="subtitle">Secure municipality-bound access control</p>
+
+<div class="section">
+  <h3>Current State (What You Have)</h3>
+  <div class="mockup">
+    <div class="mockup-header">✅ Already Built</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <ul style="margin: 0; padding-left: 20px;">
+        <li><code>UserRole</code> type includes <code>'municipal_admin'</code></li>
+        <li><code>MunicipalAdminCredentials</code> with <code>municipality</code> field</li>
+        <li><code>registerMunicipalAdmin()</code> and <code>loginMunicipalAdmin()</code> functions</li>
+        <li>Provincial superadmin can create municipal admin accounts</li>
+        <li>Basic auth flow exists</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>What Needs to Be Added</h3>
+
+  <div class="cards">
+    <div class="card" data-choice="custom-claims" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>1. Custom Claims with Municipality</h3>
+        <p><strong>Cloud Function: setMunicipalClaims</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Triggered on municipal admin login</li>
+          <li>Sets custom claims: <code>{role: 'municipal_admin', municipality: 'Daet'}</code></li>
+          <li>Claims included in Firebase ID token</li>
+          <li>Available in Firestore rules as <code>request.auth.token.municipality</code></li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Why:</strong> Server-enforced municipality binding. Can't be spoofed by client.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="firestore-rules" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>2. Firestore Rules Enforcement</h3>
+        <p><strong>Security Rules: municipality-bound access</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Reports: <code>resource.data.municipality == request.auth.token.municipality</code></li>
+          <li>Responders: Same municipality check</li>
+          <li>Incidents: Same municipality check</li>
+          <li>Read operations: Filter by municipality</li>
+          <li>Write operations: Verify municipality match</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Why:</strong> Database-level security. Even if client is compromised, data stays siloed.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="route-guards" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>3. Client-Side Route Guards</h3>
+        <p><strong>React Router: Protected Routes</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li><code>MunicipalAdminRoute</code> wrapper component</li>
+          <li>Checks: User is authenticated + role is municipal_admin</li>
+          <li>Loads municipality from user profile</li>
+          <li>Redirects if not authorized</li>
+          <li>Passes municipality to child components</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Why:</strong> Good UX (friendly errors) + defense-in-depth. Fails fast if not authorized.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="auth-hooks" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>4. Auth Hook for Municipality</h3>
+        <p><strong>Hook: useMunicipalAdminAuth</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Returns: <code>{municipality, user, isLoading, error}</code></li>
+          <li>Loads municipality from user profile</li>
+          <li>Validates custom claims</li>
+          <li>Handles loading states</li>
+          <li>Used by all municipal admin components</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Why:</strong> Single source of truth for auth state. Easy to test and mock.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Data Flow Diagram</h3>
+  <div class="mockup">
+    <div class="mockup-header">Authentication Flow with Municipality Binding</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="display: flex; align-items: center; gap: 16px; font-size: 13px;">
+        <div style="background: #dbeafe; padding: 12px; border-radius: 8px; flex: 1;">
+          <strong>1. Login</strong><br/>
+          Admin enters email/password<br/>
+          → Firebase Auth
+        </div>
+        <div style="font-size: 24px;">→</div>
+        <div style="background: #d1fae5; padding: 12px; border-radius: 8px; flex: 1;">
+          <strong>2. Cloud Function</strong><br/>
+          <code>setMunicipalClaims</code> triggered<br/>
+          → Sets custom claims
+        </div>
+        <div style="font-size: 24px;">→</div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 8px; flex: 1;">
+          <strong>3. ID Token</strong><br/>
+          Token includes municipality<br/>
+          → Client receives claims
+        </div>
+        <div style="font-size: 24px;">→</div>
+        <div style="background: #fce7f3; padding: 12px; border-radius: 8px; flex: 1;">
+          <strong>4. Access Data</strong><br/>
+          Firestore rules validate<br/>
+          → Municipality-checked queries
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Security Guarantees</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>✅ What This Prevents</h4>
+      <ul>
+        <li>Admin from Daet cannot query Vinzons reports (Firestore rejects)</li>
+        <li>Client modifications can't bypass municipality filter</li>
+        <li>Accidental bugs in code don't leak data across municipalities</li>
+        <li>Audit trail shows which municipality accessed what data</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>⚠️ Implementation Notes</h4>
+      <ul>
+        <li>Need to add <code>municipality</code> field to all relevant documents</li>
+        <li>Cloud Function deployment required</li>
+        <li>Test rules with Firebase emulator before production</li>
+        <li>Monitor for denied access (might indicate wrong municipality assignment)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="background: #ede9fe; padding: 16px; border-radius: 8px; border-left: 4px solid #8b5cf6; margin-top: 24px;">
+  <strong>🎯 Layer 1, Section 1 Deliverable:</strong> Municipal admins can log in and are bound to their municipality. All data access is server-enforced. Foundation for all municipality-aware features.
+</div>

@@ -1,0 +1,171 @@
+<h2>Municipal Admin System - Overall Architecture</h2>
+<p class="subtitle">Layer-cake approach: Build foundation first, then all features, then polish</p>
+
+<div class="section">
+  <h3>Layer 1: Infrastructure Foundation (Weeks 1-4)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Foundation Layer - All Subsystems Build On This</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+          <strong>Authentication & Authorization</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+            <li>Municipal admin login (already exists)</li>
+            <li>Custom claims with municipality</li>
+            <li>Firestore rules enforcement</li>
+            <li>Role-based route guards</li>
+          </ul>
+        </div>
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+          <strong>Map Foundation</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+            <li>Extended MapView component</li>
+            <li>Municipal boundaries overlay</li>
+            <li>Admin map controls</li>
+            <li>Layer management system</li>
+          </ul>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+          <strong>Data Services Layer</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+            <li>Firestore service methods</li>
+            <li>TanStack Query integration</li>
+            <li>Real-time subscriptions</li>
+            <li>Error handling & retry logic</li>
+          </ul>
+        </div>
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+          <strong>Routing & Layout</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+            <li>/municipal-admin route</li>
+            <li>Map-centric layout (always visible)</li>
+            <li>Sliding panel system</li>
+            <li>Keyboard shortcuts</li>
+          </ul>
+        </div>
+      </div>
+      <div style="background: #dbeafe; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+        <strong>🎯 Layer 1 Deliverable:</strong> Working map with municipal boundaries, admin can log in and see their municipality. No features yet, but foundation is solid.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Layer 2: All Subsystems (Weeks 5-12)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Feature Layer - All 10 Subsystems Built on Foundation</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px;">
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+          <strong>1. Report Verification</strong><br/>
+          Queue, triage, auto-verify, classify
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+          <strong>2. Responder Dispatch</strong><br/>
+          Assign, track, reassign
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+          <strong>3. Status Dashboard</strong><br/>
+          Real-time responder locations
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+          <strong>4. Mass Alerts</strong><br/>
+          Citizens + responders
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+          <strong>5. Analytics</strong><br/>
+          Response times, trends
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 8px;">
+          <strong>6. Shift Handoff</strong><br/>
+          Context transfer
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 8px;">
+          <strong>7. Duplicate Detection</strong><br/>
+          Merge reports
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 8px;">
+          <strong>8. Citizen Messaging</strong><br/>
+          Two-way communication
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 8px;">
+          <strong>9. Cross-Municipality</strong><br/>
+          Border incidents
+        </div>
+        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 8px;">
+          <strong>10. Advanced Features</strong><br/>
+          Heat maps, clustering, etc.
+        </div>
+      </div>
+      <div style="background: #d1fae5; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981;">
+        <strong>🎯 Layer 2 Deliverable:</strong> Complete municipal admin command center. All features from spec are implemented and working. Can be used in beta by 2 municipalities.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Layer 3: Polish & Optimization (Weeks 13-16+)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Quality Layer - Refine, Optimize, Harden</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+          <strong>Performance</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+            <li>Map rendering optimization (50+ pins)</li>
+            <li>Query optimization</li>
+            <li>Bundle size reduction</li>
+            <li>Real-time update throttling</li>
+          </ul>
+        </div>
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+          <strong>Edge Cases</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+            <li>Offline handling</li>
+            <li>Network failures</li>
+            <li>Stale responder handling</li>
+            <li>Concurrent dispatch conflicts</li>
+          </ul>
+        </div>
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+          <strong>Testing & Docs</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+            <li>E2E test coverage</li>
+            <li>Load testing</li>
+            <li>Admin training docs</li>
+            <li>Runbook for incidents</li>
+          </ul>
+        </div>
+      </div>
+      <div style="background: #fce7f3; padding: 16px; border-radius: 8px; border-left: 4px solid #ec4899; margin-top: 16px;">
+        <strong>🎯 Layer 3 Deliverable:</strong> Production-ready system. Hardened, optimized, fully tested. Can roll out to all 12 municipalities with confidence.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>✅ Pros of Layer-Cake Approach</h4>
+    <ul>
+      <li>Clean architecture - no technical debt</li>
+      <li>Easy to add features later (foundation is solid)</li>
+      <li>Less rework as complexity grows</li>
+      <li>Easier testing (infrastructure tests are stable)</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>⚠️ Trade-offs</h4>
+    <ul>
+      <li>Longest time to first feature (4 weeks)</li>
+      <li>Requires patience (no UI until Layer 2 starts)</li>
+      <li>Need to communicate progress clearly</li>
+    </ul>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 24px;">This approach matches your 16+ week quality-focused timeline and ensures the system is robust enough for mission-critical disaster response.</p>

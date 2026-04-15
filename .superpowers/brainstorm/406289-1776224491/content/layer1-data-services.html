@@ -1,0 +1,196 @@
+<h2>Layer 1, Section 3: Data Services Layer</h2>
+<p class="subtitle">TanStack Query + Firestore for real-time municipality-bound data</p>
+
+<div class="section">
+  <h3>Current State (What You Have)</h3>
+  <div class="mockup">
+    <div class="mockup-header">✅ Existing Patterns in Codebase</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <ul style="margin: 0; padding-left: 20px;">
+        <li>TanStack Query successfully used in <code>useReportQueue</code> and <code>useAlerts</code></li>
+        <li>Firestore service patterns established in <code>@/shared/services/firestore.service</code></li>
+        <li><code>getDocument</code>, <code>getCollection</code>, <code>query</code> helpers exist</li>
+        <li>Real-time subscriptions via <code>onSnapshot</code> (alerts system)</li>
+        <li>Error handling and retry logic proven in production</li>
+      </ul>
+      <div style="background: #d1fae5; padding: 12px; border-radius: 6px; margin-top: 12px; font-size: 13px;">
+        <strong>✨ We're extending proven patterns!</strong> Not inventing new architecture.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Data Services Architecture</h3>
+
+  <div class="cards">
+    <div class="card" data-choice="firestore-services" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>1. Municipal Admin Firestore Services</h3>
+        <p><strong>Municipality-aware data access methods</strong></p>
+        <div style="text-align: left; font-size: 12px; background: #f9fafb; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">// Reports in admin's municipality</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">getMunicipalityReports(municipality)</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">getPendingReports(municipality)</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">getReportById(reportId, municipality)</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">updateReportStatus(reportId, status, municipality)</code>
+        </div>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>All queries include municipality filter</li>
+          <li>Server-side filtering (Firestore queries)</li>
+          <li>Client receives only their municipality's data</li>
+          <li>Type-safe with TypeScript</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" data-choice="react-query-hooks" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>2. TanStack Query Hooks</h3>
+        <p><strong>Real-time data fetching with caching</strong></p>
+        <div style="text-align: left; font-size: 12px; background: #f9fafb; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">// Hook example</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">useMunicipalReports(municipality) {</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">  return useQuery({</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">    queryKey: ['reports', municipality],</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">    queryFn: () => getMunicipalityReports(municipality),</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">    refetchInterval: 30000, // 30s auto-refresh</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">  })</code>
+          <code style="font-size: 11px; display: block; margin-bottom: 8px;">}</code>
+        </div>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Automatic caching reduces Firestore reads</li>
+          <li>Background refetching keeps data fresh</li>
+          <li>Optimistic updates for better UX</li>
+          <li>Error handling built-in</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" data-choice="realtime-subscriptions" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>3. Real-Time Subscriptions</h3>
+        <p><strong>Firestore onSnapshot for instant updates</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>Incident status changes (verified → dispatched → resolved)</li>
+          <li>Responder location updates (every 30s)</li>
+          <li>New reports (appear immediately in queue)</li>
+          <li>Dispatch acknowledgments (responder accepts/declines)</li>
+          <li>Use <code>onSnapshot</code> + <code>queryClient.invalidateQueries()</code></li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Pattern:</strong> Real-time for critical data, polling for non-critical
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="error-handling" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>4. Error Handling & Retry Logic</h3>
+        <p><strong>Resilient data fetching for disaster scenarios</strong></p>
+        <ul style="text-align: left; font-size: 13px;">
+          <li>TanStack Query built-in retry (exponential backoff)</li>
+          <li>Firestore offline support (data persists locally)</li>
+          <li>Network error detection (show warning banner)</li>
+          <li>Stale data display (better than blank screen)</li>
+          <li>Manual retry buttons on critical errors</li>
+        </ul>
+        <div style="background: #fef3c7; padding: 8px; border-radius: 4px; margin-top: 12px; font-size: 12px;">
+          <strong>Philosophy:</strong> Degrade gracefully, never go blank during disaster
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Real-Time Data Flow</h3>
+  <div class="mockup">
+    <div class="mockup-header">How Data Flows Through the System</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div style="background: #dbeafe; padding: 16px; border-radius: 8px;">
+          <strong>📥 Data In (Real-Time)</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 13px;">
+            <li><strong>Firestore onSnapshot</strong> → New report submitted</li>
+            <li>→ Triggers <code>queryClient.invalidateQueries()</code></li>
+            <li>→ TanStack Query refetches data</li>
+            <li>→ Components re-render with new data</li>
+            <li>→ Map shows new pin immediately</li>
+          </ul>
+        </div>
+        <div style="background: #d1fae5; padding: 16px; border-radius: 8px;">
+          <strong>📤 Data Out (Optimistic Updates)</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 13px;">
+            <li><strong>Admin verifies report</strong> → Update UI immediately</li>
+            <li>→ TanStack Query <code>setQueryData()</code> (optimistic)</li>
+            <li>→ Firestore write happens in background</li>
+            <li>→ If write fails, rollback UI + show error</li>
+            <li>→ User sees instant feedback</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 13px;">
+        <strong>💡 Key Insight:</strong> Real-time for critical events (new incidents, status changes), polling for non-critical (responder locations every 30s). Best of both worlds.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Service Module Structure</h3>
+  <div class="mockup">
+    <div class="mockup-header">Municipal Admin Data Services</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <pre style="background: #1f2937; color: #f3f4f6; padding: 16px; border-radius: 8px; font-size: 12px; overflow-x: auto;">
+<span style="color: #60a5fa;">src/domains/municipal-admin/services/</span>
+├── <span style="color: #34d399;">firestore.service.ts</span>           <span style="color: #9ca3af;">// Municipality-aware Firestore methods</span>
+│   ├── <span style="color: #fbbf24;">getMunicipalityReports(municipality)</span>
+│   ├── <span style="color: #fbbf24;">getPendingReports(municipality)</span>
+│   ├── <span style="color: #fbbf24;">getReportById(reportId, municipality)</span>
+│   ├── <span style="color: #fbbf24;">updateReportStatus(reportId, status, municipality)</span>
+│   ├── <span style="color: #fbbf24;">getResponders(municipality)</span>
+│   ├── <span style="color: #fbbf24;">getResponderLocation(responderId, municipality)</span>
+│   └── <span style="color: #fbbf24;">verifyReport(reportId, municipality, verificationData)</span>
+│
+<span style="color: #60a5fa;">src/domains/municipal-admin/hooks/</span>
+├── <span style="color: #34d399;">useMunicipalReports.ts</span>        <span style="color: #9ca3af;">// TanStack Query wrapper</span>
+├── <span style="color: #34d399;">usePendingReports.ts</span>         <span style="color: #9ca3af;">// Queue triage mode</span>
+├── <span style="color: #34d399;">useResponders.ts</span>              <span style="color: #9ca3af;">// Responder status dashboard</span>
+├── <span style="color: #34d399;">useReportVerification.ts</span>      <span style="color: #9ca3af;">// Verify/reject actions</span>
+└── <span style="color: #34d399;">useRealtimeSubscriptions.ts</span>   <span style="color: #9ca3af;">// onSnapshot listeners</span>
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Data Query Strategy</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>✅ TanStack Query Benefits</h4>
+      <ul>
+        <li><strong>Automatic caching</strong> - Reduces Firestore reads (cost + performance)</li>
+        <li><strong>Background refetch</strong> - Data stays fresh without manual refresh</li>
+        <li><strong>Stale-while-revalidate</strong> - Show cached data immediately, update in background</li>
+        <li><strong>Optimistic updates</strong> - Instant UI feedback on user actions</li>
+        <li><strong>Error boundaries</strong> - Graceful degradation on failures</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>⚠️ Implementation Considerations</h4>
+      <ul>
+        <li>Query keys must include municipality (cache isolation)</li>
+        <li>Real-time + polling mix needs coordination</li>
+        <li>Large datasets need pagination (don't fetch all incidents)</li>
+        <li>Cache invalidation strategy for cross-component updates</li>
+        <li>Testing requires mocking TanStack Query and Firestore</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="background: #ede9fe; padding: 16px; border-radius: 8px; border-left: 4px solid #8b5cf6; margin-top: 24px;">
+  <strong>🎯 Layer 1, Section 3 Deliverable:</strong> All data services in place. TanStack Query hooks return municipality-filtered data. Real-time subscriptions working. Foundation for all features that need data.
+</div>
