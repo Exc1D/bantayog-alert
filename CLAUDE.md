@@ -171,6 +171,7 @@ Update @docs/learnings.md about mistakes and decisions so that we will not repea
 Update docs/progress.md to keep track of our progress
 
 **FINAL CHECKSUM:** Before your final output, verify internally:
+
 - _Did I Read before I Edited?_
 - _Did I run the tests AND see them pass on output (not just assume)?_
 - _Did I re-read the file after editing to confirm the change landed?_

@@ -2,5 +2,7 @@
   "projects": {
     "default": "bantayog-alert",
     "staging": "bantayog-alert-staging"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
