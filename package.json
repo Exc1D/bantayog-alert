@@ -31,7 +31,8 @@
     "generate:icons": "node scripts/generate-pwa-icons.js",
     "lighthouse:ci": "lhci autorun",
     "lighthouse:collect": "lhci collect",
-    "validate:firebase-config": "bash scripts/validate-firebase-config.sh"
+    "validate:firebase-config": "bash scripts/validate-firebase-config.sh",
+    "backfill:report-ops:responder-id": "npx tsx scripts/backfill-report-ops-responder-id.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.96.2",
