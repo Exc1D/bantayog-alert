@@ -171,11 +171,12 @@ export async function assignToResponder(
   try {
     const now = Date.now()
 
-    // Update operational report
+    // Update operational report — include municipality for efficient jurisdiction filtering
     await updateDocument<ReportOps>('report_ops', reportId, {
       assignedTo: responderUid,
       assignedAt: now,
       assignedBy: adminUid,
+      municipality: reportMunicipality,
       timeline: [
         {
           timestamp: now,

@@ -12,17 +12,26 @@ import type { Report, ReportOps } from '@/shared/types'
 /**
  * Get assigned incidents
  *
- * Fetches all reports currently assigned to the responder.
- * Responders can only see incidents they are assigned to.
+ * Fetches all reports currently assigned to the responder,
+ * scoped to a specific municipality for jurisdiction enforcement.
  *
  * @param responderUid - Current responder's UID
+ * @param municipality - Municipality to scope results to
  */
 export async function getAssignedIncidents(
-  responderUid: string
+  responderUid: string,
+  municipality: string
 ): Promise<Array<{ report: Report; ops: ReportOps }>> {
+  if (!municipality) {
+    throw new Error('municipality is required')
+  }
   try {
-    // Fetch operational reports assigned to this responder
-    const constraints = [where('assignedTo', '==', responderUid), orderBy('assignedAt', 'desc')]
+    // Fetch operational reports assigned to this responder within the municipality
+    const constraints = [
+      where('assignedTo', '==', responderUid),
+      where('municipality', '==', municipality),
+      orderBy('assignedAt', 'desc'),
+    ]
 
     const opsReports = await getCollection<ReportOps>('report_ops', constraints)
 

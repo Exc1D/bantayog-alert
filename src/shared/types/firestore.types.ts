@@ -157,6 +157,7 @@ export interface ReportOps {
   assignedTo?: string // UID of responder
   assignedAt?: number
   assignedBy?: string // UID of admin who assigned
+  municipality?: string // Denormalized for efficient jurisdiction filtering
 
   // Response tracking
   responderStatus?: 'en_route' | 'on_scene' | 'needs_assistance' | 'completed'
