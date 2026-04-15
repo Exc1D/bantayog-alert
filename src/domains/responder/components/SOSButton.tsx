@@ -36,39 +36,46 @@ export function SOSButton({ className = '' }: SOSButtonProps) {
 
   const holdStartRef = useRef<number | null>(null)
   const rafRef = useRef<number | null>(null)
+  // Mutable ref to avoid stale closure — accessed inside RAF tick, not state
+  const isHoldingRef = useRef(false)
 
   /** Start the hold progress animation */
   const startHold = useCallback(() => {
     if (sosState) return  // Don't start hold if SOS is already active
+    if (isHoldingRef.current) return
     setIsHolding(true)
-    holdStartRef.current = Date.now()
+    isHoldingRef.current = true
+    holdStartRef.current = null
 
     const tick = (timestamp: number) => {
-      // Use a fixed base for elapsed time so the animation is consistent
-      const elapsed = (timestamp - (holdStartRef.current ?? timestamp))
+      if (!isHoldingRef.current) return
+      // Initialize start time on first tick — RAF timestamp is monotonic (performance time),
+      // not comparable to Date.now() (Unix epoch)
+      if (holdStartRef.current === null) holdStartRef.current = timestamp
+      const elapsed = timestamp - (holdStartRef.current ?? timestamp)
       const progress = Math.min((elapsed / HOLD_TO_ACTIVATE_MS) * 100, 100)
       setHoldProgress(progress)
 
       if (progress >= 100) {
         // Activation threshold reached
-        activateSOS()
+        void activateSOS()
+        isHoldingRef.current = false
         setIsHolding(false)
         setHoldProgress(0)
         holdStartRef.current = null
         return
       }
 
-      if (isHolding) {
-        rafRef.current = requestAnimationFrame(tick)
-      }
+      rafRef.current = requestAnimationFrame(tick)
     }
 
     rafRef.current = requestAnimationFrame(tick)
-  }, [isHolding, sosState, activateSOS])
+  }, [sosState, activateSOS])
 
   /** Cancel the hold progress */
   const cancelHold = useCallback(() => {
-    if (!isHolding) return
+    if (!isHoldingRef.current) return
+    isHoldingRef.current = false
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current)
       rafRef.current = null
@@ -76,7 +83,7 @@ export function SOSButton({ className = '' }: SOSButtonProps) {
     setIsHolding(false)
     setHoldProgress(0)
     holdStartRef.current = null
-  }, [isHolding])
+  }, [])
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -262,7 +269,7 @@ export function SOSButton({ className = '' }: SOSButtonProps) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                activateSOS()
+                if (!e.repeat) startHold()
               }
             }}
             onKeyUp={(e) => {
