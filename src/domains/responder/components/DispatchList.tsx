@@ -1,3 +1,9 @@
+/**
+ * DispatchList — Responder Active Dispatch Queue
+ *
+ * Subscribes to real-time dispatches via useDispatches and renders a list
+ * of DispatchCard items. Clicking a card navigates to the dispatch detail.
+ */
 import { useNavigate } from 'react-router-dom'
 import { useDispatches } from '../hooks/useDispatches'
 import { QuickStatusButtons } from './QuickStatusButtons'
