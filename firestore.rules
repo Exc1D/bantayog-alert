@@ -145,7 +145,7 @@ service cloud.firestore {
 
       // Responders can read ops data for reports assigned to them
       // (checked via normalized responderId or legacy assignedTo)
-      allow read: if hasRole('responder') && isResponderOwner(opsId);
+      allow read: if hasRole('responder') && isResponderOwner();
 
       // Provincial superadmins can read all ops data
       allow read: if hasRole('provincial_superadmin');
@@ -157,7 +157,7 @@ service cloud.firestore {
       // Fields: responderStatus, status, responderNotes, responderArrivalTime,
       //         responderDepartureTime, statusUpdatedAt, timeline
       allow update: if hasRole('responder')
-        && isResponderOwner(opsId)
+        && isResponderOwner()
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['responderStatus', 'status', 'responderNotes',
                     'responderArrivalTime', 'responderDepartureTime',

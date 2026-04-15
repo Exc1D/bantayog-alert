@@ -69,6 +69,19 @@ describe('Firestore Security Rules', () => {
     }
     testReports.length = 0
 
+    // sos_events created with fixed string IDs (not tracked in testReports)
+    const sosEventIds = [
+      'test-sos-event', 'test-sos-create', 'test-sos-other',
+      'test-sos-admin-read',
+    ]
+    for (const sosId of sosEventIds) {
+      try {
+        await deleteDoc(doc(db, 'sos_events', sosId))
+      } catch (error) {
+        console.error('[TEST_CLEANUP_ERROR] Failed to delete sos_event:', sosId, error)
+      }
+    }
+
     for (const uid of testUsers) {
       try {
         await deleteDoc(doc(db, 'users', uid))
