@@ -1,5 +1,43 @@
 # Learnings - 2026-04-15
 
+## Meta: AI Collaboration Process Learnings
+
+Distilled from the mistakes captured in the sessions below. These are the process rules we keep relearning — codified here so future sessions don't repeat them. The enforceable versions now live in `CLAUDE.md` §6 and §8.
+
+### Trust-But-Verify is Not Optional
+
+- **Commit messages are not evidence.** PR #11 session had a commit titled "fix: call onSubmit on offline queue and wrap in try/catch" that did NOT actually apply the `catch (err: unknown)` TypeScript fix. Assumption cost real hours.
+  - **Rule:** After any subagent run or `/compact` boundary, re-read the actual files before trusting progress.
+- **Subagent summaries describe intent, not result.** Summaries say what the agent tried to do, not what landed in git.
+  - **Rule:** Always diff-inspect after subagent dispatch; never just accept the summary.
+- **Tests passing ≠ the change is correct.** Fragile mocks can pass without exercising the new code (see RAF mock drift issues).
+  - **Rule:** For new behavior, write the failing test, run it, observe red with a meaningful error, THEN implement.
+
+### Scope Discipline Prevents Silent Disasters
+
+- **One concern per conversation.** Bundling "fix X and also Y and refactor Z" produces muddled diffs and failed two-stage review.
+- **Branch isolation failures are recurring.** Subagent on `main` commits to `main`, not the feature branch, if you don't `cd` into the worktree first. Always verify `git branch -vv` before dispatch.
+- **Feature freezes for structural changes are mandatory.** The planned folder restructure (Plan 8 of the migration) MUST happen without concurrent feature work on the same files.
+
+### Risky-Change Discipline
+
+- **Firestore rules, DB indexes, Cloud Function deploys, and auth flow changes** all have blast radius large enough that a 30-second manual diff review is cheaper than a 4-hour rollback.
+- **Never deploy to prod in the same session the change was authored.** Overnight soak in staging catches issues the dev loop doesn't.
+- **Rollback command goes in the PR description** — known in advance, not improvised under pressure.
+
+### Mock Fragility is a Code Smell
+
+- When a unit test needs 50+ lines of mock setup (firebase, navigator, RAF, crypto, clipboard), the test may be asserting only that the mocks return what we configured. Budget ~20 lines of mock before considering an integration test with emulators.
+- `vi.hoisted` is the workaround for Vitest's mock-factory hoisting, not a pattern to prefer. Use when needed; don't spread unnecessarily.
+
+### Communication Principles
+
+- **Uncertainty is information.** "I'm not sure — here's what I'd verify" is more useful than a confident wrong answer.
+- **Sycophancy is a bug.** When user instructions conflict with CLAUDE.md (YAGNI, `any`, etc.), surface the conflict instead of complying silently.
+- **Short answers for simple questions.** No headers/sections/insights blocks when a sentence suffices.
+
+---
+
 ## Task 11: Query/Schema Mismatch Caught by Code Review
 
 **Session:** Task 11 (Firestore Indexes) code quality review.
