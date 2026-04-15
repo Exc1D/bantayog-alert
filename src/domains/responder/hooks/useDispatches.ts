@@ -45,6 +45,40 @@ function buildDispatchesQuery(db: ReturnType<typeof getFirestore>, uid: string) 
 const VALID_DISPATCH_STATUSES: QuickStatus[] = ['en_route', 'on_scene', 'needs_assistance', 'completed']
 
 /**
+ * Validate incidentLocation structure.
+ * Returns true if the object has valid latitude, longitude, and address.
+ */
+function isValidIncidentLocation(location: unknown): location is { latitude: number; longitude: number; address: string } {
+  if (!location || typeof location !== 'object') return false
+  const loc = location as Record<string, unknown>
+  return (
+    Number.isFinite(loc.latitude) &&
+    Number.isFinite(loc.longitude) &&
+    typeof loc.address === 'string'
+  )
+}
+
+/**
+ * Normalize assignedAt to a numeric epoch timestamp.
+ * Handles Firestore Timestamp objects and numbers.
+ */
+function normalizeAssignedAt(assignedAt: unknown): number {
+  if (Number.isFinite(assignedAt)) {
+    return assignedAt as number
+  }
+  if (assignedAt && typeof assignedAt === 'object') {
+    const timestamp = assignedAt as Record<string, unknown>
+    if (typeof timestamp.toMillis === 'function') {
+      return (timestamp.toMillis as () => number)()
+    }
+    if (typeof timestamp.toDate === 'function') {
+      return ((timestamp.toDate as () => Date)()).getTime()
+    }
+  }
+  return Date.now()
+}
+
+/**
  * Convert a Firestore snapshot to AssignedDispatch array.
  */
 function snapshotToDispatches(snap: QuerySnapshot) {
@@ -67,8 +101,10 @@ function snapshotToDispatches(snap: QuerySnapshot) {
       type: data.type,
       status,
       urgency: data.urgency,
-      incidentLocation: data.incidentLocation ?? { latitude: 0, longitude: 0, address: 'Location pending...' },
-      assignedAt: data.assignedAt ?? Date.now(),
+      incidentLocation: isValidIncidentLocation(data.incidentLocation)
+        ? data.incidentLocation
+        : { latitude: 0, longitude: 0, address: 'Location pending...' },
+      assignedAt: normalizeAssignedAt(data.assignedAt),
       responderStatus: validatedResponderStatus,
     } as AssignedDispatch)
   })
