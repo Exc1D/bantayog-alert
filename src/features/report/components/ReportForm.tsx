@@ -19,6 +19,7 @@ import { useReportQueue } from '../hooks/useReportQueue'
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
 import { useGeolocation } from '@/shared/hooks/useGeolocation'
+import { isValidPHCoordinate } from '@/shared/utils/geoValidation'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -220,6 +221,15 @@ export function ReportForm({
     if (!isGpsAvailable && (!municipality || !barangay)) {
       setLocationError('Please select municipality and barangay')
       return
+    }
+
+    // Reject invalid GPS coordinates — guards against (0,0) null-island and out-of-range values
+    if (resolvedUserLocation) {
+      const { latitude, longitude } = resolvedUserLocation
+      if (!isValidPHCoordinate(latitude, longitude)) {
+        setLocationError('Invalid GPS coordinates. Please select municipality manually.')
+        return
+      }
     }
 
     const location: LocationValue = isGpsAvailable
