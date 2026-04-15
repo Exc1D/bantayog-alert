@@ -4,7 +4,7 @@ import * as firestoreSvc from '@/shared/services/firestore.service'
 
 // Mock firebase/firestore first to prevent firebase/auth initialization
 // Use vi.hoisted so the mock references are stable before hoisting
-const whereMock = vi.hoisted(() => vi.fn().mockReturnValue({ fieldPath: 'location.municipality' }))
+const whereMock = vi.hoisted(() => vi.fn().mockReturnValue({ fieldPath: 'approximateLocation.municipality' }))
 const orderByMock = vi.hoisted(() => vi.fn().mockReturnValue({ fieldPath: 'createdAt' }))
 const limitMock = vi.hoisted(() => vi.fn().mockReturnValue({ fieldPath: 'limit' }))
 
@@ -25,7 +25,7 @@ describe('getMunicipalityReports', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset mock return values to return proper constraint objects
-    whereMock.mockReturnValue({ fieldPath: 'location.municipality' })
+    whereMock.mockReturnValue({ fieldPath: 'approximateLocation.municipality' })
     orderByMock.mockReturnValue({ fieldPath: 'createdAt' })
     limitMock.mockReturnValue({ fieldPath: 'limit' })
   })
@@ -39,7 +39,7 @@ describe('getMunicipalityReports', () => {
     const constraints = getCollectionSpy.mock.calls[0][1]
     // Check that at least one constraint is a where clause on location.municipality
     const hasMunicipalityFilter = constraints?.some((c: any) => {
-      return c?.fieldPath === 'location.municipality'
+      return c?.fieldPath === 'approximateLocation.municipality'
     })
     expect(hasMunicipalityFilter).toBe(true)
   })

@@ -37,7 +37,7 @@ export async function getMunicipalityReports(
   }
   try {
     const constraints: QueryConstraint[] = [
-      where('location.municipality', '==', municipality),
+      where('approximateLocation.municipality', '==', municipality),
       orderBy('createdAt', 'desc'),
       limit(100),
     ]
