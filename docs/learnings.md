@@ -1,5 +1,25 @@
 # Learnings - 2026-04-15
 
+## Task 11: Query/Schema Mismatch Caught by Code Review
+
+**Session:** Task 11 (Firestore Indexes) code quality review.
+
+**Issue:** Implementer changed dispatch read queries from `assignedTo` to `responderId`, but `ReportOps` interface only had `assignedTo` — no `responderId` field. Additionally, `updateResponderStatus` wrote only `responderStatus`, not `status`, so new dispatches would never match the new `status`-based query filter.
+
+**Caught by:** Code quality reviewer subagent identified:
+1. `ReportOps` type missing `responderId` and `status` fields
+2. `updateResponderStatus` write path didn't populate normalized `status` field
+3. New dispatches would silently not appear in dispatch list queries
+
+**Fix applied:**
+- Added `responderId?: string` and `status?: string` to `ReportOps` interface
+- `updateResponderStatus` now writes BOTH legacy (`responderStatus`) and normalized (`status`, `responderId`) fields
+- Reads use normalized fields; writes are dual-field for migration compatibility
+
+**Key insight:** When normalizing a schema field, you must update BOTH the read path AND the write path. A query that reads `status` will return zero documents if `updateResponderStatus` only writes `responderStatus`. The index was correctly added, but the data flow was incomplete without the type fix and write-path fix.
+
+---
+
 ## Simplify Review: Firestore Rules Task 10 Fixes
 
 **Session:** Post-PR-review simplify phase on Task 10 (Firestore Rules responder dispatch hardening).

@@ -1,5 +1,48 @@
 # Progress - 2026-04-15
 
+## Task 11 — Firestore Indexes
+
+**Branch:** `fix/firestore-indexes-task11-2026-04-15` (worktree at `/home/exxeed/dev/projects/bantayog-alert-task11`)
+
+### What Changed
+
+**`firestore.indexes.json`** (new composite indexes):
+- `report_ops`: `[responderId ASC, status ASC, assignedAt DESC]`
+- `sos_events`: `[responderId ASC, status ASC]`
+
+**`src/domains/responder/hooks/useDispatches.ts`** — Query normalization:
+- `buildDispatchesQuery`: `assignedTo` → `responderId`, `responderStatus` → `status`
+- `snapshotToDispatches`: prefers `data.status` with fallback to `data.responderStatus` for migration compat
+
+**`src/domains/responder/services/firestore.service.ts`** — Read + write normalization:
+- `getAssignedIncidents`: `assignedTo` → `responderId`
+- `updateResponderStatus`: now writes BOTH legacy (`responderStatus`) and normalized (`status`, `responderId`) fields
+
+**`src/shared/types/firestore.types.ts`** — `ReportOps` type extended:
+- Added `responderId?: string` (mirrors `assignedTo`)
+- Added `status?: string` (mirrors `responderStatus`)
+
+### Design Decisions
+
+- **Dual-field writes**: `updateResponderStatus` writes both legacy (`responderStatus`) and normalized (`status`) so new dispatches appear in both old and new queries during migration
+- **Migration-safe reads**: `snapshotToDispatches` falls back to `responderStatus` when `status` is absent — existing docs continue to work
+- **Authorization unchanged**: `getIncidentDetails` and `addTimelineNote` still use `assignedTo` for auth checks — no change needed to authorization logic
+
+### Test Summary
+
+- **useDispatches tests:** 10/10 passing
+- **TypeScript:** Clean (`npm run typecheck` passes)
+- **Commits:** 2 (indexes + type sync)
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `firestore.indexes.json` | Added composite indexes for `report_ops` and `sos_events` |
+| `src/domains/responder/hooks/useDispatches.ts` | Query: `assignedTo` → `responderId`, `responderStatus` → `status` |
+| `src/domains/responder/services/firestore.service.ts` | Read: `assignedTo` → `responderId`; Write: add `status` + `responderId` |
+| `src/shared/types/firestore.types.ts` | Added `responderId?` and `status?` to `ReportOps` |
+
 ## Task 9 — SOSButton Component
 
 **Branch:** `feat-responder-dispatch-workflow-task8`
