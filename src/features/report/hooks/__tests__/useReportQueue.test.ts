@@ -125,6 +125,88 @@ describe('useReportQueue', () => {
   })
 
   describe('auto-sync error handling', () => {
+    it('should set syncError state when auto-sync fails', async () => {
+      // Set up queue with pending report, starting offline
+      const queuedReport = {
+        id: 'q1',
+        reportData: mockReportData,
+        retryCount: 0,
+        status: 'pending' as const,
+        createdAt: Date.now(),
+      }
+
+      // Start offline so auto-sync doesn't trigger immediately
+      mockNetworkStatus.isOnline = false
+      getAllMock.mockImplementation(() => Promise.resolve([queuedReport]))
+
+      const { result, rerender } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.queue.length).toBe(1)
+      })
+
+      // Make updateMock reject to trigger syncQueue rejection
+      updateMock.mockImplementation(() => Promise.reject(new Error('IDB connection lost')))
+
+      // Go online - this triggers the auto-sync useEffect
+      mockNetworkStatus.isOnline = true
+      rerender()
+
+      // Wait for syncError to be set
+      await waitFor(
+        () => {
+          expect(result.current.syncError).toBe('IDB connection lost')
+        },
+        { timeout: 3000 }
+      )
+    })
+
+    it('should clear syncError when retrying sync', async () => {
+      // Set up queue with pending report
+      const queuedReport = {
+        id: 'q1',
+        reportData: mockReportData,
+        retryCount: 0,
+        status: 'pending' as const,
+        createdAt: Date.now(),
+      }
+
+      getAllMock.mockImplementation(() => Promise.resolve([queuedReport]))
+      // First update call fails (infra error), second update (failedReport) also fails.
+      // Both rejections propagate to syncQueue's outer catch, setting syncError.
+      updateMock
+        .mockImplementationOnce(() => Promise.reject(new Error('IDB connection lost')))
+        .mockImplementationOnce(() => Promise.reject(new Error('IDB connection lost')))
+
+      const { result, rerender } = renderHook(() => useReportQueue())
+
+      await waitFor(() => {
+        expect(result.current.queue.length).toBe(1)
+      })
+
+      // Go online to trigger auto-sync failure
+      mockNetworkStatus.isOnline = true
+      rerender()
+
+      await waitFor(
+        () => {
+          expect(result.current.syncError).toBe('IDB connection lost')
+        },
+        { timeout: 3000 }
+      )
+
+      // Now make update succeed and trigger a manual sync
+      updateMock.mockImplementation(() => Promise.resolve())
+      submitCitizenReportMock.mockImplementation(() => Promise.resolve({ reportId: 'report-123', photoUrls: [] }))
+
+      const syncResult = await act(async () => {
+        return await result.current.syncQueue()
+      })
+
+      expect(syncResult.success).toBe(1)
+      expect(result.current.syncError).toBeNull()
+    })
+
     it('should log [AUTO_SYNC_ERROR] when syncQueue promise rejects', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 

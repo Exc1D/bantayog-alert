@@ -14,7 +14,7 @@ export interface QueueIndicatorProps {
 }
 
 export function QueueIndicator({ variant = 'banner', onSyncNow }: QueueIndicatorProps) {
-  const { queueSize, isSyncing, hasPendingReports, syncQueue } = useReportQueue()
+  const { queueSize, isSyncing, hasPendingReports, syncQueue, syncError } = useReportQueue()
 
   const handleSyncNow = async () => {
     await syncQueue()
@@ -78,6 +78,11 @@ export function QueueIndicator({ variant = 'banner', onSyncNow }: QueueIndicator
           </button>
         )}
       </div>
+      {syncError && (
+        <p className="text-xs text-red-600 mt-1" data-testid="sync-error">
+          {syncError}
+        </p>
+      )}
     </div>
   )
 }
