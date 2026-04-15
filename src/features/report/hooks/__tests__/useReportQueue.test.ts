@@ -281,6 +281,34 @@ describe('useReportQueue', () => {
 
       consoleErrorSpy.mockRestore()
     })
+
+    it('should set syncError state when immediate sync via enqueueReport fails', async () => {
+      // Start online so enqueueReport triggers immediate sync
+      mockNetworkStatus.isOnline = true
+
+      // Force the immediate sync to fail
+      const error = new Error('Immediate sync failed')
+      submitCitizenReportMock.mockRejectedValueOnce(error)
+
+      const { result } = renderHook(() => useReportQueue())
+
+      // Wait for initial queue load
+      await waitFor(() => {
+        expect(result.current.queue.length).toBe(0)
+      })
+
+      // Enqueue a report; this should attempt an immediate sync and fail
+      await act(async () => {
+        try {
+          await result.current.enqueueReport(mockReportData)
+        } catch {
+          // enqueueReport itself doesn't throw, but the immediate sync does
+        }
+      })
+
+      // syncError should be set from the immediate sync failure
+      expect(result.current.syncError).toBe('Immediate sync failed')
+    })
   })
 
   describe('enqueueReport', () => {

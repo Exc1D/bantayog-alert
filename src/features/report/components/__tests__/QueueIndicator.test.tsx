@@ -174,6 +174,42 @@ describe('QueueIndicator', () => {
 
       expect(screen.getByText('3 reports pending')).toBeInTheDocument()
     })
+
+    it('renders sync error when present', () => {
+      vi.mocked(useReportQueueModule.useReportQueue).mockReturnValue({
+        queue: [
+          {
+            id: 'report-1',
+            reportData: {
+              incidentType: 'flood',
+              photo: null,
+              location: { type: 'gps', latitude: 14.5995, longitude: 120.9842 },
+              description: 'Test',
+              phone: '+63 912 345 6789',
+            },
+            retryCount: 0,
+            status: 'pending',
+            createdAt: Date.now(),
+          },
+        ],
+        queueSize: 1,
+        isSyncing: false,
+        loadError: null,
+        syncError: 'Auto-sync failed',
+        enqueueReport: vi.fn(),
+        syncQueue: vi.fn(),
+        clearQueue: vi.fn(),
+        removeReport: vi.fn(),
+        hasPendingReports: true,
+        failedReports: [],
+      })
+
+      render(<QueueIndicator variant="banner" />)
+
+      const errorElement = screen.getByTestId('sync-error')
+      expect(errorElement).toBeInTheDocument()
+      expect(errorElement).toHaveTextContent('Auto-sync failed')
+    })
   })
 
   describe('icon variant', () => {

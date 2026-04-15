@@ -104,6 +104,7 @@ export function useReportQueue(): UseReportQueueResult {
     }
 
     setIsSyncing(true)
+    setSyncError(null)
 
     let successCount = 0
     let failedCount = 0

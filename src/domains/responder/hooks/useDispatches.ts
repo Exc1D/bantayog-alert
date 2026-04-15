@@ -167,6 +167,7 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
           message: 'Municipality not set — cannot load dispatches',
           isFatal: true
         })
+        setIsLoading(false)
         return
       }
 
@@ -211,7 +212,17 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
       if (!user || !mounted) return
 
       // Guard: municipality filter is required for access control.
-      if (!municipality) return
+      // If the user has no municipality in their profile, deny access.
+      if (!municipality) {
+        setError({
+          code: 'AUTH_EXPIRED',
+          message: 'Municipality not set — cannot load dispatches',
+          isFatal: true
+        })
+        setDispatches([])
+        setIsLoading(false)
+        return
+      }
 
       if (!dbRef.current) {
         dbRef.current = getFirestore()

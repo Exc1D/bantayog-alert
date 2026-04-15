@@ -299,4 +299,48 @@ describe('useDispatches', () => {
       expect(result.current.error?.isFatal).toBe(true)
     })
   })
+
+  describe('useDispatches municipality guard', () => {
+    beforeEach(() => {
+      // Reset mocks between tests to avoid bleed-through
+      vi.clearAllMocks()
+    })
+
+    it('throws AUTH_EXPIRED and does not construct a Firestore query on initial load when municipality is missing', async () => {
+      // Arrange: user context without municipality
+      useUserContextMock.mockReturnValue({
+        municipality: undefined,
+        role: undefined,
+        isLoading: false,
+      })
+
+      // Act
+      const { result } = renderHook(() => useDispatches({ subscribe: false }))
+
+      // Assert: fatal AUTH_EXPIRED and no Firestore query constructed
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+      expect(result.current.error?.code).toBe('AUTH_EXPIRED')
+      expect(result.current.error?.isFatal).toBe(true)
+      expect(collectionMock).not.toHaveBeenCalled()
+    })
+
+    it('does not call onSnapshot when municipality is missing on subscribe path', async () => {
+      // Arrange: user context without municipality
+      useUserContextMock.mockReturnValue({
+        municipality: undefined,
+        role: undefined,
+        isLoading: false,
+      })
+
+      // Act: subscribe path
+      renderHook(() => useDispatches({ subscribe: true }))
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10))
+      })
+
+      // Assert: subscribe path should be short-circuited before onSnapshot is invoked
+      expect(onSnapshotMock).not.toHaveBeenCalled()
+    })
+  })
 })

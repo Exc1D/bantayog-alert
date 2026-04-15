@@ -43,4 +43,9 @@ describe('getMunicipalityReports', () => {
     })
     expect(hasMunicipalityFilter).toBe(true)
   })
+
+  it('throws when municipality is missing', async () => {
+    await expect(getMunicipalityReports('')).rejects.toThrow('municipality is required')
+    await expect(getMunicipalityReports(undefined as any)).rejects.toThrow('municipality is required')
+  })
 })
