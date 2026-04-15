@@ -75,20 +75,20 @@ function getSOSButton(): HTMLButtonElement {
   return button
 }
 
-// Advance RAF time by simulating elapsed time for the hold-progress loop
+// Advance RAF time by simulating elapsed time for the hold-progress loop.
+// With the isHoldingRef pattern (holdStartRef=null, first tick sets reference),
+// each hold-duration milestone requires TWO callback invocations:
+//   1st: holdStartRef.current = timestamp  (elapsed = 0, progress ~0)
+//   2nd: elapsed = timestamp - holdStartRef  (real elapsed computed)
 function advanceHold(ms: number) {
-  // Each RAF tick calculates progress = elapsed / 3000 * 100.
-  // To reach 100% (activation threshold), we need to invoke RAF callbacks
-  // that simulate 3000ms of elapsed time.
-  // We simulate by invoking the saved callback with a synthetic timestamp
-  // that reflects ms of elapsed time. The component reads Date.now() each tick.
   act(() => {
     const cb = savedRAFCallback.current
-    if (cb) {
-      // Simulate the timestamp advancing by ms milliseconds
-      const fakeNow = Date.now() + ms
-      cb(fakeNow)
-    }
+    if (!cb) return
+    // First call: set the hold start reference (elapsed ≈ 0)
+    const fakeNow = Date.now() + ms
+    cb(fakeNow)
+    // Second call: compute elapsed with reference already set
+    cb(fakeNow + ms)
   })
 }
 
@@ -183,39 +183,36 @@ describe('SOSButton', () => {
       expect(activateSOSMock).not.toHaveBeenCalled()
     })
 
-    it('should call activateSOS immediately on Enter key press (keyboard activation)', () => {
+    it('should call activateSOS after holding Enter for 3 seconds', () => {
       render(<SOSButton />)
       const button = getSOSButton()
 
-      // Enter key triggers activateSOS immediately — no hold required
       fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' })
+      advanceHold(3_000)
 
       expect(activateSOSMock).toHaveBeenCalledTimes(1)
     })
 
-    it('should call activateSOS immediately on Space key press (keyboard activation)', () => {
+    it('should call activateSOS after holding Space for 3 seconds', () => {
       render(<SOSButton />)
       const button = getSOSButton()
 
-      // Space key triggers activateSOS immediately — no hold required
       fireEvent.keyDown(button, { key: ' ', code: 'Space' })
+      advanceHold(3_000)
 
       expect(activateSOSMock).toHaveBeenCalledTimes(1)
     })
 
-    it('should cancel hold on Space keyUp during a hold started by Space keyDown (edge case)', () => {
-      // Space keyDown → activateSOS() immediately (no hold).
-      // But if a future change makes Space start a hold instead, this test catches it.
-      // Currently this is a no-op but the handler is present for safety.
+    it('should cancel hold on Space keyUp before 3 seconds', () => {
       render(<SOSButton />)
       const button = getSOSButton()
 
-      // Simulate: Space keyDown (immediate activation), Space keyUp (cancelHold no-op)
       fireEvent.keyDown(button, { key: ' ', code: 'Space' })
+      advanceHold(1_500)
       fireEvent.keyUp(button, { key: ' ', code: 'Space' })
 
-      // activateSOS was already called on keyDown
-      expect(activateSOSMock).toHaveBeenCalledTimes(1)
+      // activateSOS was NOT called — hold was cancelled before 3s
+      expect(activateSOSMock).not.toHaveBeenCalled()
     })
 
     it('should clean up RAF on unmount while hold is active', () => {

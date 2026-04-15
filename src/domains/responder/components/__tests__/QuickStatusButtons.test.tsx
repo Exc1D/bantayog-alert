@@ -1,34 +1,34 @@
 /**
  * QuickStatusButtons Component Tests
  *
- * Tests that the component renders four buttons, calls useQuickStatus internally,
- * disables buttons appropriately, and wires to the correct dispatch ID.
+ * Tests that the component renders four buttons, accepts the quickStatus
+ * controller via prop (not hook), disables appropriately, and wires to
+ * the correct dispatch ID.
  */
 
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QuickStatusButtons } from '../QuickStatusButtons'
-import { useQuickStatus } from '../../hooks/useQuickStatus'
+import type { QuickStatus } from '../../types'
 
-// Auto-mock the entire module — useQuickStatus becomes a callable vi.fn mock
-// with .mockReturnValue() available. This is the same pattern used in DispatchList.test.tsx.
-vi.mock('../../hooks/useQuickStatus')
+// Helper to build a fresh controller object for each test
+function makeController(overrides: {
+  updateStatus?: typeof vi.fn
+  isUpdating?: boolean
+  pendingStatus?: Map<string, QuickStatus>
+} = {}) {
+  return {
+    updateStatus: overrides.updateStatus ?? vi.fn(),
+    isUpdating: overrides.isUpdating ?? false,
+    pendingStatus: overrides.pendingStatus ?? new Map(),
+  }
+}
 
 describe('QuickStatusButtons', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Default: idle state, no pending items
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: vi.fn(),
-      isUpdating: false,
-      pendingStatus: new Map(),
-    })
-  })
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   it('should render all four status buttons', () => {
-    render(<QuickStatusButtons dispatchId="dispatch-1" />)
+    render(<QuickStatusButtons dispatchId="dispatch-1" quickStatus={makeController()} />)
 
     expect(screen.getByRole('button', { name: /en route/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /on scene/i })).toBeTruthy()
@@ -37,7 +37,7 @@ describe('QuickStatusButtons', () => {
   })
 
   it('should render four buttons with the completed button last', () => {
-    render(<QuickStatusButtons dispatchId="dispatch-1" />)
+    render(<QuickStatusButtons dispatchId="dispatch-1" quickStatus={makeController()} />)
 
     const buttons = screen.getAllByRole('button')
     expect(buttons).toHaveLength(4)
@@ -45,24 +45,14 @@ describe('QuickStatusButtons', () => {
     expect(buttons[3].textContent).toBe('Complete')
   })
 
-  // ── useQuickStatus wiring ───────────────────────────────────────────────────
-
-  it('should call useQuickStatus internally (component calls hook at top level)', () => {
-    render(<QuickStatusButtons dispatchId="dispatch-1" />)
-
-    expect(useQuickStatus).toHaveBeenCalledTimes(1)
-  })
+  // ── Status updates ────────────────────────────────────────────────────────
 
   it('should call updateStatus with correct dispatchId and status when En Route clicked', async () => {
     const user = userEvent.setup()
     const mockUpdateStatus = vi.fn()
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: mockUpdateStatus,
-      isUpdating: false,
-      pendingStatus: new Map(),
-    })
+    const controller = makeController({ updateStatus: mockUpdateStatus })
 
-    render(<QuickStatusButtons dispatchId="dispatch-42" />)
+    render(<QuickStatusButtons dispatchId="dispatch-42" quickStatus={controller} />)
 
     await user.click(screen.getByRole('button', { name: /en route/i }))
 
@@ -72,13 +62,9 @@ describe('QuickStatusButtons', () => {
   it('should call updateStatus with correct dispatchId and status for On Scene', async () => {
     const user = userEvent.setup()
     const mockUpdateStatus = vi.fn()
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: mockUpdateStatus,
-      isUpdating: false,
-      pendingStatus: new Map(),
-    })
+    const controller = makeController({ updateStatus: mockUpdateStatus })
 
-    render(<QuickStatusButtons dispatchId="dispatch-42" />)
+    render(<QuickStatusButtons dispatchId="dispatch-42" quickStatus={controller} />)
 
     await user.click(screen.getByRole('button', { name: /on scene/i }))
 
@@ -88,13 +74,9 @@ describe('QuickStatusButtons', () => {
   it('should call updateStatus with correct dispatchId and status for Request Assistance', async () => {
     const user = userEvent.setup()
     const mockUpdateStatus = vi.fn()
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: mockUpdateStatus,
-      isUpdating: false,
-      pendingStatus: new Map(),
-    })
+    const controller = makeController({ updateStatus: mockUpdateStatus })
 
-    render(<QuickStatusButtons dispatchId="dispatch-42" />)
+    render(<QuickStatusButtons dispatchId="dispatch-42" quickStatus={controller} />)
 
     await user.click(screen.getByRole('button', { name: /request assistance/i }))
 
@@ -104,13 +86,9 @@ describe('QuickStatusButtons', () => {
   it('should call updateStatus with correct dispatchId and status for Complete', async () => {
     const user = userEvent.setup()
     const mockUpdateStatus = vi.fn()
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: mockUpdateStatus,
-      isUpdating: false,
-      pendingStatus: new Map(),
-    })
+    const controller = makeController({ updateStatus: mockUpdateStatus })
 
-    render(<QuickStatusButtons dispatchId="dispatch-42" />)
+    render(<QuickStatusButtons dispatchId="dispatch-42" quickStatus={controller} />)
 
     await user.click(screen.getByRole('button', { name: /complete/i }))
 
@@ -120,13 +98,9 @@ describe('QuickStatusButtons', () => {
   // ── Disabled states ───────────────────────────────────────────────────────
 
   it('should disable all buttons when isUpdating is true', () => {
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: vi.fn(),
-      isUpdating: true,   // global update in progress
-      pendingStatus: new Map(),
-    })
+    const controller = makeController({ isUpdating: true })
 
-    render(<QuickStatusButtons dispatchId="dispatch-1" />)
+    render(<QuickStatusButtons dispatchId="dispatch-1" quickStatus={controller} />)
 
     const buttons = screen.getAllByRole('button')
     buttons.forEach((btn) => {
@@ -135,14 +109,10 @@ describe('QuickStatusButtons', () => {
   })
 
   it('should disable all buttons when this dispatch has a pending status', () => {
-    const pendingMap = new Map<string, string>([['dispatch-1', 'en_route']])
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: vi.fn(),
-      isUpdating: false,
-      pendingStatus: pendingMap,  // this dispatch has a pending optimistic update
-    })
+    const pendingMap = new Map<string, QuickStatus>([['dispatch-1', 'en_route']])
+    const controller = makeController({ pendingStatus: pendingMap })
 
-    render(<QuickStatusButtons dispatchId="dispatch-1" />)
+    render(<QuickStatusButtons dispatchId="dispatch-1" quickStatus={controller} />)
 
     const buttons = screen.getAllByRole('button')
     buttons.forEach((btn) => {
@@ -152,14 +122,10 @@ describe('QuickStatusButtons', () => {
 
   it('should NOT disable buttons when a different dispatch is pending', () => {
     // dispatch-1 is clear, but dispatch-2 has a pending update
-    const pendingMap = new Map<string, string>([['dispatch-2', 'on_scene']])
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: vi.fn(),
-      isUpdating: false,
-      pendingStatus: pendingMap,
-    })
+    const pendingMap = new Map<string, QuickStatus>([['dispatch-2', 'on_scene']])
+    const controller = makeController({ pendingStatus: pendingMap })
 
-    render(<QuickStatusButtons dispatchId="dispatch-1" />)
+    render(<QuickStatusButtons dispatchId="dispatch-1" quickStatus={controller} />)
 
     const buttons = screen.getAllByRole('button')
     buttons.forEach((btn) => {
@@ -170,13 +136,9 @@ describe('QuickStatusButtons', () => {
   it('should not call updateStatus when disabled due to isUpdating', async () => {
     const user = userEvent.setup()
     const mockUpdateStatus = vi.fn()
-    ;(useQuickStatus as ReturnType<typeof vi.fn>).mockReturnValue({
-      updateStatus: mockUpdateStatus,
-      isUpdating: true,
-      pendingStatus: new Map(),
-    })
+    const controller = makeController({ updateStatus: mockUpdateStatus, isUpdating: true })
 
-    render(<QuickStatusButtons dispatchId="dispatch-1" />)
+    render(<QuickStatusButtons dispatchId="dispatch-1" quickStatus={controller} />)
 
     // Click each button — HTML button disabled attribute prevents the click handler from firing
     const buttons = screen.getAllByRole('button')
@@ -185,5 +147,19 @@ describe('QuickStatusButtons', () => {
     }
 
     expect(mockUpdateStatus).not.toHaveBeenCalled()
+  })
+
+  // ── Guard against invalid dispatchId ─────────────────────────────────────
+
+  it('should disable buttons when dispatchId is whitespace', () => {
+    const controller = makeController()
+
+    // @ts-expect-error — runtime guard test: invalid id should be handled
+    render(<QuickStatusButtons dispatchId="   " quickStatus={controller} />)
+
+    const buttons = screen.getAllByRole('button')
+    buttons.forEach((btn) => {
+      expect(btn).toBeDisabled()
+    })
   })
 })

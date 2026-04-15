@@ -6,6 +6,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useDispatches } from '../hooks/useDispatches'
+import { useQuickStatus } from '../hooks/useQuickStatus'
 import { QuickStatusButtons } from './QuickStatusButtons'
 import type { AssignedDispatch } from '../types'
 
@@ -16,6 +17,8 @@ interface DispatchListProps {
 export function DispatchList({ onDispatchClick }: DispatchListProps) {
   const navigate = useNavigate()
   const { dispatches, isLoading, error } = useDispatches({ subscribe: true })
+  // Single shared controller — coordinates isUpdating/pendingStatus across all button groups
+  const quickStatus = useQuickStatus()
 
   if (isLoading) {
     return <DispatchListSkeleton />
@@ -53,6 +56,7 @@ export function DispatchList({ onDispatchClick }: DispatchListProps) {
           key={dispatch.id}
           dispatch={dispatch}
           onClick={() => onDispatchClick?.(dispatch)}
+          quickStatus={quickStatus}
         />
       ))}
     </div>
@@ -84,9 +88,14 @@ const URGENCY_COLORS = {
 interface DispatchCardProps {
   dispatch: AssignedDispatch
   onClick?: () => void
+  quickStatus: {
+    updateStatus: (dispatchId: string, status: import('../types').QuickStatus) => Promise<void>
+    isUpdating: boolean
+    pendingStatus: Map<string, import('../types').QuickStatus>
+  }
 }
 
-function DispatchCard({ dispatch, onClick }: DispatchCardProps) {
+function DispatchCard({ dispatch, onClick, quickStatus }: DispatchCardProps) {
   return (
     <div
       className={`border-l-4 rounded-lg p-4 ${URGENCY_COLORS[dispatch.urgency]}`}
@@ -113,7 +122,7 @@ function DispatchCard({ dispatch, onClick }: DispatchCardProps) {
         </span>
       </div>
 
-      <QuickStatusButtons dispatchId={dispatch.id} />
+      <QuickStatusButtons dispatchId={dispatch.id} quickStatus={quickStatus} />
     </div>
   )
 }
