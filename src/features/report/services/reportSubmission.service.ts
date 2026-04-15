@@ -75,13 +75,10 @@ export async function submitCitizenReport(reportData: {
     },
   })
 
-  let photoUrls: string[] = []
+  const photoUrls: string[] = []
   if (reportData.photo !== null) {
-    try {
-      photoUrls = [await uploadReportPhoto(reportData.photo, reportId)]
-    } catch (photoError) {
-      console.error('[REPORT_SUBMISSION_PHOTO_ERROR]', photoError)
-    }
+    const url = await uploadReportPhoto(reportData.photo, reportId)
+    photoUrls.push(url)
   }
 
   return { reportId, photoUrls }

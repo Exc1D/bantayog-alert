@@ -46,6 +46,21 @@ describe('submitCitizenReport', () => {
     expect(result.photoUrls).toEqual([])
   })
 
+  it('rejects when photo upload fails', async () => {
+    const photoError = new Error('Storage quota exceeded')
+    uploadReportPhotoMock.mockRejectedValue(photoError)
+
+    await expect(
+      submitCitizenReport({
+        incidentType: 'flood',
+        photo: new File(['x'], 'photo.jpg', { type: 'image/jpeg' }),
+        location: { type: 'manual', municipality: 'Daet', barangay: 'Bagasbas' },
+        phone: '+63 912 345 6789',
+        isAnonymous: false,
+      })
+    ).rejects.toThrow('Storage quota exceeded')
+  })
+
   it('passes correct report data to submitReport', async () => {
     await submitCitizenReport({
       incidentType: 'flood',
