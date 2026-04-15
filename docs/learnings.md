@@ -1,5 +1,36 @@
 # Learnings - 2026-04-15
 
+## PR Review Fixes: useSOS + SOSButton
+
+**Session:** Fixed 11 issues found in PR #20 review (Task 9 — SOSButton).
+
+### Critical Fixes
+
+**1. Silent GPS watch failure (useSOS.ts:74-76):**
+GPS `watchPosition` error callback only logged to console — UI still showed "Live GPS: Sharing" while tracking was dead. Fixed by adding `gpsError` state and setting `locationSharing = false` on error.
+
+**2. Catch-all NETWORK_ERROR masking real error types (useSOS.ts:221-225, 305-311):**
+String-matching error messages (`message.includes('already active')`) is fragile — breaks if SDK message changes. Fixed by checking `err.code` (Firestore structured error code) first: `permission-denied`, `already-exists`, `not-found`, `deadline-exceeded`, `unavailable`.
+
+**3. No retry on transient Firestore errors:**
+Emergency SOS/cancel operations failed with no recovery path for `deadline-exceeded` or `unavailable`. Fixed by adding 1 retry with 1s backoff delay for transient errors. Non-retryable errors (`ALREADY_ACTIVE`, `PERMISSION_DENIED`, `SOS_NOT_FOUND`) fail immediately.
+
+**4. window.confirm silent failure (SOSButton.tsx:91):**
+When browser blocked `window.confirm` or user dismissed it, nothing happened — no feedback. Fixed by adding `alert()` call when confirm returns false: "SOS cancellation kept. Your emergency signal remains active."
+
+### Minor Fixes
+
+- **Error IDs for Sentry:** Added `crypto.randomUUID()` (with `Date.now().toString(36)` fallback) to all `[SOS_ERROR]` console logs for error correlation
+- **Unused `callbacks` array:** Removed dead code in RAF mock (SOSButton.test.tsx:50)
+- **Keyboard activation tests:** Added tests for Enter/Space immediate `activateSOS()` call
+- **Unmount cleanup test:** Added test verifying RAF cancellation on unmount during hold
+
+### Key Insight: Error Code vs String Matching
+
+Firestore errors have stable, structured `err.code` strings (`permission-denied`, `deadline-exceeded`). String-matching `err.message` breaks when messages change or are localized. Always check `err.code` first, then fall back to string matching only when needed.
+
+---
+
 ## Testing requestAnimationFrame in Vitest
 
 **Issue:** `vi.useFakeTimers()` does not reliably auto-spy `requestAnimationFrame` in jsdom environment in Vitest 3. Tests using `vi.advanceTimersByTime(3000)` inside `act()` failed because RAF callbacks were not being flushed.

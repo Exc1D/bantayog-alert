@@ -87,13 +87,18 @@ export function SOSButton({ className = '' }: SOSButtonProps) {
 
   // ── Handle cancel confirmation ────────────────────────────────────────────
   const handleCancelSOS = useCallback(() => {
-    const confirmed =
-      typeof window !== 'undefined' && typeof window.confirm === 'function'
-        ? window.confirm('Are you sure? This is an emergency.')
-        : false
+    if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
+      // SSR or feature-blocked environment — proceed without guard
+      cancelSOS('False alarm / accidental activation')
+      return
+    }
 
+    const confirmed = window.confirm('Are you sure? This is an emergency.')
     if (confirmed) {
       cancelSOS('False alarm / accidental activation')
+    } else {
+      // User explicitly dismissed — give feedback so they know the button worked
+      alert('SOS cancellation kept. Your emergency signal remains active.')
     }
   }, [cancelSOS])
 

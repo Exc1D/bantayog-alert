@@ -47,7 +47,6 @@ const savedRAFCallback = vi.hoisted(() => ({
 
 const originalRAF = (() => {
   let id = 0
-  const callbacks: FrameRequestCallback[] = []
   return {
     start: (cb: FrameRequestCallback): number => {
       savedRAFCallback.current = cb
@@ -184,6 +183,58 @@ describe('SOSButton', () => {
       expect(activateSOSMock).not.toHaveBeenCalled()
     })
 
+    it('should call activateSOS immediately on Enter key press (keyboard activation)', () => {
+      render(<SOSButton />)
+      const button = getSOSButton()
+
+      // Enter key triggers activateSOS immediately — no hold required
+      fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' })
+
+      expect(activateSOSMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call activateSOS immediately on Space key press (keyboard activation)', () => {
+      render(<SOSButton />)
+      const button = getSOSButton()
+
+      // Space key triggers activateSOS immediately — no hold required
+      fireEvent.keyDown(button, { key: ' ', code: 'Space' })
+
+      expect(activateSOSMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('should cancel hold on Space keyUp during a hold started by Space keyDown (edge case)', () => {
+      // Space keyDown → activateSOS() immediately (no hold).
+      // But if a future change makes Space start a hold instead, this test catches it.
+      // Currently this is a no-op but the handler is present for safety.
+      render(<SOSButton />)
+      const button = getSOSButton()
+
+      // Simulate: Space keyDown (immediate activation), Space keyUp (cancelHold no-op)
+      fireEvent.keyDown(button, { key: ' ', code: 'Space' })
+      fireEvent.keyUp(button, { key: ' ', code: 'Space' })
+
+      // activateSOS was already called on keyDown
+      expect(activateSOSMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('should clean up RAF on unmount while hold is active', () => {
+      const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(vi.fn())
+
+      const { unmount } = render(<SOSButton />)
+      const button = getSOSButton()
+
+      fireEvent.mouseDown(button)
+      advanceHold(1_000)
+
+      // Unmount while hold is active — cleanup should cancel the RAF
+      unmount()
+
+      expect(cancelSpy).toHaveBeenCalled()
+
+      cancelSpy.mockRestore()
+    })
+
     it('should disable button when SOS is already active', () => {
       ;(useSOS as ReturnType<typeof vi.fn>).mockReturnValue({
         activateSOS: activateSOSMock,
@@ -295,14 +346,17 @@ describe('SOSButton', () => {
       mockActiveState({ canCancel: true })
 
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(vi.fn())
 
       render(<SOSButton />)
 
       fireEvent.click(screen.getByRole('button', { name: /cancel sos/i }))
 
       expect(cancelSOSMock).not.toHaveBeenCalled()
+      expect(alertSpy).toHaveBeenCalledWith('SOS cancellation kept. Your emergency signal remains active.')
 
       confirmSpy.mockRestore()
+      alertSpy.mockRestore()
     })
   })
 

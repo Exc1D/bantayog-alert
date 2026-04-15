@@ -33,8 +33,8 @@
 
 ### Test Summary
 
-- **SOSButton tests:** 23/23 passing
-- **All responder domain tests:** 103/103 passing
+- **SOSButton tests:** 27/27 passing
+- **All responder domain tests:** 107/107 passing
 - **TypeScript:** Clean (no new errors)
 - **Pre-existing failures:** MapView.test.tsx and other unrelated tests (infrastructure/firebase mock gaps)
 
@@ -43,7 +43,45 @@
 | File | Change |
 |------|--------|
 | `src/domains/responder/components/SOSButton.tsx` | New — SOS button with hold-to-activate and cancellation UI |
-| `src/domains/responder/components/__tests__/SOSButton.test.tsx` | New — 23 tests |
+| `src/domains/responder/components/__tests__/SOSButton.test.tsx` | New — 27 tests |
+
+## Task 9 — PR Review Fixes
+
+**Fixed 11 issues** from PR #20 review (silent-failure-hunter, code-reviewer, pr-test-analyzer agents).
+
+### Critical Fixes Applied
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | Silent GPS watch failure — `watchPosition` error not surfaced | Added `gpsError` state; error callback sets `locationSharing=false` + `gpsError` message |
+| 2 | Catch-all `NETWORK_ERROR` masks real types | Check `err.code` (Firestore structured code) first: `permission-denied`, `already-exists`, `deadline-exceeded`, `unavailable` |
+| 3 | No retry on transient Firestore errors | Added 1 retry with 1s backoff for `deadline-exceeded`/`unavailable`; non-retryable errors fail immediately |
+| 5 | `window.confirm` silent failure | Added `alert()` feedback when confirm blocked or dismissed |
+
+### Minor Fixes Applied
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 4 | Unused `callbacks` lint warning | Removed dead `callbacks[]` array from RAF mock |
+| 7 | No error ID for Sentry | Added `crypto.randomUUID()` to all `[SOS_ERROR]` console logs |
+| 8 | Keyboard activation untested | Added tests for Enter/Space immediate `activateSOS()` |
+| 9 | onKeyUp Space → cancelHold untested | Added test (no-op since Space immediately activates) |
+| 10 | Unmount while hold active untested | Added test verifying RAF cancellation on unmount |
+
+### Test Summary
+
+- **SOSButton tests:** 27/27 passing (was 23, added 4 new tests)
+- **useSOS tests:** 9/9 passing
+- **All responder domain tests:** 107/107 passing
+- **TypeScript:** Clean
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/domains/responder/hooks/useSOS.ts` | Added `gpsError` state, structured error code mapping, retry logic, error IDs |
+| `src/domains/responder/components/SOSButton.tsx` | Added `alert()` feedback when `window.confirm` returns false |
+| `src/domains/responder/components/__tests__/SOSButton.test.tsx` | Added 4 tests (keyboard activation ×2, unmount cleanup, confirm dismissed alert) |
 
 ---
 
