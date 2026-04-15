@@ -56,23 +56,38 @@ describe('Firestore Security Rules', () => {
   }
 
   afterEach(async () => {
-    // Cleanup test data
+    // Cleanup test data — log failures so test pollution is visible
     for (const reportId of testReports) {
       try {
         await deleteDoc(doc(db, 'reports', reportId))
         await deleteDoc(doc(db, 'report_private', reportId))
         await deleteDoc(doc(db, 'report_ops', reportId))
+        await deleteDoc(doc(db, 'sos_events', reportId))
       } catch (error) {
-        // Ignore
+        console.error('[TEST_CLEANUP_ERROR] Failed to delete report:', reportId, error)
       }
     }
     testReports.length = 0
+
+    // sos_events created with fixed string IDs (not tracked in testReports)
+    const sosEventIds = [
+      'test-sos-event', 'test-sos-create', 'test-sos-other',
+      'test-sos-admin-read', 'test-sos-missing-required',
+      'test-sos-update-allowed', 'test-sos-update-denied',
+    ]
+    for (const sosId of sosEventIds) {
+      try {
+        await deleteDoc(doc(db, 'sos_events', sosId))
+      } catch (error) {
+        console.error('[TEST_CLEANUP_ERROR] Failed to delete sos_event:', sosId, error)
+      }
+    }
 
     for (const uid of testUsers) {
       try {
         await deleteDoc(doc(db, 'users', uid))
       } catch (error) {
-        // Ignore
+        console.error('[TEST_CLEANUP_ERROR] Failed to delete user:', uid, error)
       }
     }
     testUsers.length = 0
@@ -297,6 +312,295 @@ describe('Firestore Security Rules', () => {
       // Current responder should NOT be able to read
       const opsDoc = await getDoc(doc(db, 'report_ops', reportRef.id))
       expect(opsDoc.exists()).toBe(false)
+    })
+
+    it('should allow responder to read report_ops via normalized responderId field', async () => {
+      const responderUid = await createTestUser(
+        'responder2@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Create test report with ops using normalized responderId (not assignedTo)
+      const reportRef = await addDoc(collection(db, 'reports'), {
+        approximateLocation: {
+          barangay: 'Test Barangay',
+          municipality: 'Daet',
+          approximateCoordinates: { latitude: 14.1, longitude: 122.9 },
+        },
+        incidentType: 'fire',
+        severity: 'high',
+        status: 'assigned',
+        description: 'Test report',
+        isAnonymous: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      testReports.push(reportRef.id)
+
+      await setDoc(doc(db, 'report_ops', reportRef.id), {
+        id: reportRef.id,
+        reportId: reportRef.id,
+        responderId: responderUid, // Normalized field, not legacy assignedTo
+        timeline: [],
+      })
+
+      // Responder should be able to read via responderId
+      const opsDoc = await getDoc(doc(db, 'report_ops', reportRef.id))
+      expect(opsDoc.exists()).toBe(true)
+    })
+
+    it('should allow responder to update allowed fields on their report_ops', async () => {
+      const responderUid = await createTestUser(
+        'responder3@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const reportRef = await addDoc(collection(db, 'reports'), {
+        approximateLocation: {
+          barangay: 'Test Barangay',
+          municipality: 'Daet',
+          approximateCoordinates: { latitude: 14.1, longitude: 122.9 },
+        },
+        incidentType: 'fire',
+        severity: 'high',
+        status: 'assigned',
+        description: 'Test report',
+        isAnonymous: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      testReports.push(reportRef.id)
+
+      await setDoc(doc(db, 'report_ops', reportRef.id), {
+        id: reportRef.id,
+        reportId: reportRef.id,
+        assignedTo: responderUid,
+        responderStatus: 'en_route',
+        status: 'assigned',
+        timeline: [],
+      })
+
+      // Responder can update allowed fields
+      await updateDoc(doc(db, 'report_ops', reportRef.id), {
+        responderStatus: 'on_scene',
+        responderNotes: 'Arrived at location',
+      })
+
+      const opsDoc = await getDoc(doc(db, 'report_ops', reportRef.id))
+      expect(opsDoc.exists()).toBe(true)
+      expect(opsDoc.data().responderStatus).toBe('on_scene')
+      expect(opsDoc.data().responderNotes).toBe('Arrived at location')
+    })
+
+    it('should deny responder from reassigning report_ops to another responder', async () => {
+      const responderUid = await createTestUser(
+        'responder4@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const reportRef = await addDoc(collection(db, 'reports'), {
+        approximateLocation: {
+          barangay: 'Test Barangay',
+          municipality: 'Daet',
+          approximateCoordinates: { latitude: 14.1, longitude: 122.9 },
+        },
+        incidentType: 'fire',
+        severity: 'high',
+        status: 'assigned',
+        description: 'Test report',
+        isAnonymous: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      testReports.push(reportRef.id)
+
+      await setDoc(doc(db, 'report_ops', reportRef.id), {
+        id: reportRef.id,
+        reportId: reportRef.id,
+        assignedTo: responderUid,
+        responderStatus: 'en_route',
+        timeline: [],
+      })
+
+      // Attempt to reassign — should be denied by field whitelist
+      await expect(async () => {
+        await updateDoc(doc(db, 'report_ops', reportRef.id), {
+          assignedTo: 'another-responder-uid',
+        })
+      }).rejects.toThrow()
+    })
+  })
+
+  describe('SOS_Events Collection', () => {
+    it('should deny all client reads on sos_events', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Create an sos_event with all required fields
+      const sosRef = doc(db, 'sos_events', 'test-sos-event')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
+        createdAt: Date.now(),
+      })
+
+      // Client SDK should be denied read (read: if false applies to all)
+      const sosDoc = await getDoc(sosRef)
+      expect(sosDoc.exists()).toBe(false)
+    })
+
+    it('should allow responder to create sos_events for their own responderId', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder2@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Create sos_event with all required fields and matching responderId.
+      // Note: getDoc(read) is always denied (audit-only collection via client SDK),
+      // so we verify success by confirming setDoc does not throw.
+      const sosRef = doc(db, 'sos_events', 'test-sos-create')
+      await expect(
+        setDoc(sosRef, {
+          responderId: responderUid,
+          status: 'active',
+          activatedAt: Date.now(),
+          expiresAt: Date.now() + 3600000,
+          cancellationWindowEndsAt: Date.now() + 300000,
+          createdAt: Date.now(),
+        })
+      ).resolves.toBeUndefined()
+    })
+
+    it('should deny responder from creating sos_events for another responder', async () => {
+      await createTestUser('sos-responder3@example.com', 'pass123', 'responder')
+
+      // Attempt to create sos_event with different responderId (has required fields)
+      const sosRef = doc(db, 'sos_events', 'test-sos-other')
+      await expect(async () => {
+        await setDoc(sosRef, {
+          responderId: 'different-responder-uid', // Not this user's UID
+          status: 'active',
+          activatedAt: Date.now(),
+          expiresAt: Date.now() + 3600000,
+          cancellationWindowEndsAt: Date.now() + 300000,
+          createdAt: Date.now(),
+        })
+      }).rejects.toThrow()
+    })
+
+    it('should deny responder from creating sos_events missing required fields', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder5@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Missing expiresAt — a required field in the rules
+      const sosRef = doc(db, 'sos_events', 'test-sos-missing-required')
+      await expect(async () => {
+        await setDoc(sosRef, {
+          responderId: responderUid,
+          status: 'active',
+          activatedAt: Date.now(),
+          cancellationWindowEndsAt: Date.now() + 300000,
+          createdAt: Date.now(),
+        })
+      }).rejects.toThrow()
+    })
+
+    it('should allow responder to update whitelisted fields on their sos_event', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder-update@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const sosRef = doc(db, 'sos_events', 'test-sos-update-allowed')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
+        createdAt: Date.now(),
+      })
+
+      // Responder updates whitelisted fields: status, cancelledAt, cancellationReason, timeline
+      await updateDoc(sosRef, {
+        status: 'resolved',
+        cancelledAt: Date.now(),
+        cancellationReason: 'incident_ended',
+        timeline: [{ type: 'resolved', at: Date.now() }],
+      })
+
+      const sosDoc = await getDoc(sosRef)
+      expect(sosDoc.exists()).toBe(true)
+      expect(sosDoc.data().status).toBe('resolved')
+      expect(sosDoc.data().cancellationReason).toBe('incident_ended')
+    })
+
+    it('should deny responder from updating non-whitelisted fields on their sos_event', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder-update-denied@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const sosRef = doc(db, 'sos_events', 'test-sos-update-denied')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
+        createdAt: Date.now(),
+      })
+
+      // Attempt to change non-whitelisted fields should be rejected
+      await expect(async () => {
+        await updateDoc(sosRef, {
+          responderId: 'some-other-responder',
+          activatedAt: Date.now() + 1000,
+          expiresAt: Date.now() + 5000,
+        })
+      }).rejects.toThrow()
+    })
+
+    it('should deny admin from reading sos_events via client SDK', async () => {
+      // Create sos_event with a responder's auth context
+      const responderUid = await createTestUser(
+        'sos-responder4@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const sosRef = doc(db, 'sos_events', 'test-sos-admin-read')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        activatedAt: Date.now(),
+        expiresAt: Date.now() + 3600000,
+        cancellationWindowEndsAt: Date.now() + 300000,
+        createdAt: Date.now(),
+      })
+
+      // Sign out responder, sign in as municipal admin
+      await clientAuth.signOut()
+      await createTestUser('sos-admin@daet.gov.ph', 'pass123', 'municipal_admin', 'Daet')
+
+      // Admin reading via client SDK should be denied (read: if false)
+      const sosDoc = await getDoc(sosRef)
+      expect(sosDoc.exists()).toBe(false)
     })
   })
 

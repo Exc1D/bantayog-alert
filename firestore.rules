@@ -46,6 +46,17 @@ service cloud.firestore {
       return request.auth.token.emailVerified == true;
     }
 
+    // Check if a responder owns an ops document via normalized responderId field
+    // or legacy assignedTo field (migration compatibility).
+    // responderId is authoritative; assignedTo is a fallback only when responderId is unset.
+    function isResponderOwner() {
+      return isAuthenticated()
+        && ((resource.data.responderId != null
+              && resource.data.responderId == request.auth.uid)
+            || (resource.data.responderId == null
+              && resource.data.assignedTo == request.auth.uid));
+    }
+
     // ============================================================
     // GLOBAL RULES
     // ============================================================
@@ -136,8 +147,8 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/reports/$(opsId)).data.approximateLocation.municipality == getMunicipality();
 
       // Responders can read ops data for reports assigned to them
-      allow read: if hasRole('responder')
-        && resource.data.assignedTo == request.auth.uid;
+      // (checked via normalized responderId or legacy assignedTo)
+      allow read: if hasRole('responder') && isResponderOwner();
 
       // Provincial superadmins can read all ops data
       allow read: if hasRole('provincial_superadmin');
@@ -145,15 +156,57 @@ service cloud.firestore {
       // Only admins can update ops data
       allow update: if hasRole('municipal_admin') || hasRole('provincial_superadmin');
 
-      // Responders can add timeline entries for their assigned reports
+      // Responders can update allowed fields on their assigned reports
+      // Fields: responderStatus, status, responderNotes, responderArrivalTime,
+      //         responderDepartureTime, statusUpdatedAt, timeline
       allow update: if hasRole('responder')
-        && resource.data.assignedTo == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeline']);
+        && isResponderOwner()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['responderStatus', 'status', 'responderNotes',
+                    'responderArrivalTime', 'responderDepartureTime',
+                    'statusUpdatedAt', 'timeline']);
 
       // Only superadmins can delete ops data (audit trail protection)
       // Note: DPA Article 17 Right to Erasure - timeline entries from citizens remain for audit
       // Citizens can request anonymization via privacy@bantayogalert.gov.ph
       allow delete: if hasRole('provincial_superadmin');
+    }
+
+    // ============================================================
+    // SOS_EVENTS COLLECTION (Responder SOS Activations)
+    // ============================================================
+
+    match /sos_events/{eventId} {
+      // Client SDK cannot read sos_events — audit trail only accessible via Admin SDK
+      allow read: if false;
+
+      // Responders can create sos_events for their own responderId
+      // Required fields validated; extra fields rejected to preserve audit integrity
+      allow create: if isAuthenticated()
+        && hasRole('responder')
+        && request.resource.data.responderId == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.activatedAt is int
+        && request.resource.data.expiresAt is int
+        && request.resource.data.cancellationWindowEndsAt is int
+        && request.resource.data.keys().hasOnly([
+          'responderId', 'type', 'status', 'location',
+          'activatedAt', 'expiresAt', 'cancellationWindowEndsAt',
+          'cancelledAt', 'cancellationReason', 'timeline', 'createdAt'
+        ]);
+
+      // Responders can update sos_events for their own responderId
+      // Only allowed fields: status, cancelledAt, cancellationReason, timeline
+      // Status value is validated to prevent garbage data
+      allow update: if hasRole('responder')
+        && resource.data.responderId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'cancelledAt', 'cancellationReason', 'timeline'])
+        && (request.resource.data.status == resource.data.status
+            || request.resource.data.status in ['active', 'resolved', 'cancelled']);
+
+      // Client cannot delete sos_events — preserve audit trail
+      allow delete: if false;
     }
 
     // ============================================================

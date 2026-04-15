@@ -1,5 +1,23 @@
 # Learnings - 2026-04-15
 
+## Simplify Review: Firestore Rules Task 10 Fixes
+
+**Session:** Post-PR-review simplify phase on Task 10 (Firestore Rules responder dispatch hardening).
+
+### Issues Fixed
+
+**1. Dead `opsId` argument in `isResponderOwner(opsId)` calls (firestore.rules:148, 160):**
+`isResponderOwner()` function takes zero parameters. Both `report_ops` read and update rules were calling `isResponderOwner(opsId)` passing `opsId`, which Firestore Rules silently ignores. Fixed by removing the argument on both call sites: `isResponderOwner()`.
+
+**2. SOS events test cleanup ID mismatch (firestore.rules.test.ts:58-79):**
+`afterEach` cleanup used `reportId` (auto-generated) as the document ID for `sos_events` deletion, but SOS tests use fixed string IDs (`test-sos-event`, `test-sos-create`, `test-sos-other`, `test-sos-admin-read`). This caused silent cleanup failures for all SOS events. Fixed by adding explicit `sosEventIds` array with known string IDs and deleting them before the report loop.
+
+### Key Insight: Firestore Rules Function Arguments
+
+In Firestore Rules DSL, function parameters are silently discarded if the function doesn't reference them. `isResponderOwner(opsId)` compiles and runs fine — `opsId` is just ignored. This is a security code smell: misleading function call syntax implies the parameter is used. Always match call sites to actual function signatures.
+
+---
+
 ## PR Review Fixes: useSOS + SOSButton
 
 **Session:** Fixed 11 issues found in PR #20 review (Task 9 — SOSButton).
