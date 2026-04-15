@@ -108,6 +108,28 @@ describe('useSOS', () => {
     vi.restoreAllMocks()
   })
 
+  describe('initial state', () => {
+    it('should have correct initial state values', () => {
+      const { result } = renderHook(() => useSOS())
+
+      expect(result.current.sosState).toBe(null)
+      expect(result.current.error).toBe(null)
+      expect(result.current.locationSharing).toBe(false)
+      expect(result.current.canCancel).toBe(false)
+    })
+
+    it('should expose all required return values', () => {
+      const { result } = renderHook(() => useSOS())
+
+      expect(result.current).toHaveProperty('activateSOS')
+      expect(result.current).toHaveProperty('cancelSOS')
+      expect(result.current).toHaveProperty('sosState')
+      expect(result.current).toHaveProperty('error')
+      expect(result.current).toHaveProperty('locationSharing')
+      expect(result.current).toHaveProperty('canCancel')
+    })
+  })
+
   describe('activateSOS', () => {
     it('should activate SOS and start location sharing', async () => {
       const mockTransaction = {
@@ -218,6 +240,46 @@ describe('useSOS', () => {
       expect(result.current.error?.code).toBe('INVALID_COORDS')
       expect(result.current.error?.message).toBe('Invalid GPS coordinates (0,0)')
     })
+
+    it('should set sosState to active after successful activation', async () => {
+      const mockTransaction = {
+        set: vi.fn(),
+        get: vi.fn().mockResolvedValue({ empty: true }),
+        update: vi.fn(),
+      }
+      runTransactionMock.mockImplementation(
+        async (_db: unknown, callback: (t: typeof mockTransaction) => Promise<void>) => {
+          await callback(mockTransaction)
+        }
+      )
+
+      const { result } = renderHook(() => useSOS())
+
+      await act(async () => {
+        await result.current.activateSOS()
+      })
+
+      expect(result.current.error).toBe(null)
+      expect(result.current.sosState).not.toBeNull()
+      expect(result.current.sosState?.status).toBe('active')
+    })
+
+    it('should not set locationSharing when offline validation fails', async () => {
+      canActivateSOSMock.mockResolvedValue({
+        valid: false,
+        code: 'SOS_OFFLINE',
+        message: 'No internet connection',
+      })
+
+      const { result } = renderHook(() => useSOS())
+
+      await act(async () => {
+        await result.current.activateSOS()
+      })
+
+      expect(result.current.locationSharing).toBe(false)
+      expect(result.current.sosState).toBe(null)
+    })
   })
 
   describe('cancelSOS', () => {
@@ -274,6 +336,105 @@ describe('useSOS', () => {
 
       expect(result.current.error?.code).toBe('CANCEL_WINDOW_EXPIRED')
       expect(result.current.error?.message).toBe('No active SOS to cancel')
+    })
+
+    it('should set CANCEL_WINDOW_EXPIRED when SOS window has expired in transaction', async () => {
+      const mockTransaction = {
+        set: vi.fn(),
+        get: vi.fn(),
+        update: vi.fn(),
+      }
+
+      // Activate SOS first
+      runTransactionMock.mockImplementation(
+        async (_db: unknown, callback: (t: typeof mockTransaction) => Promise<void>) => {
+          await callback(mockTransaction)
+        }
+      )
+
+      const { result } = renderHook(() => useSOS())
+
+      await act(async () => {
+        await result.current.activateSOS()
+      })
+
+      // Now mock a cancel that fails because window expired
+      runTransactionMock.mockImplementation(async () => {
+        throw new Error('Cancellation window has expired')
+      })
+
+      await act(async () => {
+        await result.current.cancelSOS('False alarm')
+      })
+
+      expect(result.current.error?.code).toBe('CANCEL_WINDOW_EXPIRED')
+    })
+
+    it('should set CANCEL_WINDOW_EXPIRED when SOS document not found during cancel', async () => {
+      const mockTransaction = {
+        set: vi.fn(),
+        get: vi.fn(),
+        update: vi.fn(),
+      }
+
+      // Activate SOS first
+      runTransactionMock.mockImplementation(
+        async (_db: unknown, callback: (t: typeof mockTransaction) => Promise<void>) => {
+          await callback(mockTransaction)
+        }
+      )
+
+      const { result } = renderHook(() => useSOS())
+
+      await act(async () => {
+        await result.current.activateSOS()
+      })
+
+      // Mock cancel where document is not found
+      runTransactionMock.mockImplementation(async () => {
+        throw new Error('SOS document not found')
+      })
+
+      await act(async () => {
+        await result.current.cancelSOS('False alarm')
+      })
+
+      expect(result.current.error?.code).toBe('CANCEL_WINDOW_EXPIRED')
+    })
+
+    it('should set NETWORK_ERROR when cancel fails with generic network error', async () => {
+      // Mock transaction for activation (with proper get returning empty)
+      const activateTransaction = {
+        set: vi.fn(),
+        get: vi.fn().mockResolvedValue({ empty: true }),
+        update: vi.fn(),
+      }
+
+      const { result } = renderHook(() => useSOS())
+
+      // Activation succeeds
+      runTransactionMock.mockImplementation(
+        async (_db: unknown, callback: (t: typeof activateTransaction) => Promise<void>) => {
+          await callback(activateTransaction)
+        }
+      )
+
+      await act(async () => {
+        await result.current.activateSOS()
+      })
+
+      expect(result.current.sosState?.status).toBe('active')
+
+      // Cancel transaction throws network error (simulate Firestore unavailable)
+      runTransactionMock.mockImplementation(async () => {
+        throw new Error('Firestore unavailable')
+      })
+
+      await act(async () => {
+        await result.current.cancelSOS('False alarm')
+      })
+
+      expect(result.current.error?.code).toBe('NETWORK_ERROR')
     })
   })
 

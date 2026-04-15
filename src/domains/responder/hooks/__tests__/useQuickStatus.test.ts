@@ -4,7 +4,7 @@
  * Tests optimistic status update behavior with validation and rollback.
  */
 
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { useQuickStatus } from '../useQuickStatus'
 import { runTransaction } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
@@ -33,6 +33,15 @@ vi.mock('../../services/validation.service', () => ({
 describe('useQuickStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('should have correct initial state', () => {
+    const { result } = renderHook(() => useQuickStatus())
+
+    expect(result.current.isUpdating).toBe(false)
+    expect(result.current.isValidating).toBe(false)
+    expect(result.current.error).toBe(null)
+    expect(result.current.pendingStatus.size).toBe(0)
   })
 
   it('should update status optimistically', async () => {
@@ -144,5 +153,62 @@ describe('useQuickStatus', () => {
     expect(result.current.error?.code).toBe('NETWORK_ERROR')
     expect(result.current.error?.isFatal).toBe(false)
     expect(result.current.pendingStatus.has('dispatch-1')).toBe(false)
+  })
+
+  it('should handle not-found error from Firestore', async () => {
+    canUpdateStatus.mockResolvedValue({ valid: true })
+    const notFoundError = new Error('Not found') as Error & { code: string }
+    notFoundError.code = 'not-found'
+    runTransaction.mockRejectedValue(notFoundError)
+
+    const { result } = renderHook(() => useQuickStatus())
+
+    await act(async () => {
+      await result.current.updateStatus('dispatch-1', 'en_route')
+    })
+
+    expect(result.current.error?.code).toBe('NOT_ASSIGNED')
+    expect(result.current.pendingStatus.has('dispatch-1')).toBe(false)
+  })
+
+  it('should expose all required return values', () => {
+    const { result } = renderHook(() => useQuickStatus())
+
+    expect(result.current).toHaveProperty('updateStatus')
+    expect(result.current).toHaveProperty('isUpdating')
+    expect(result.current).toHaveProperty('error')
+    expect(result.current).toHaveProperty('pendingStatus')
+    expect(result.current).toHaveProperty('isValidating')
+  })
+
+  it('should handle validation error with unknown code as INVALID_STATUS', async () => {
+    canUpdateStatus.mockResolvedValue({
+      valid: false,
+      code: 'SOME_OTHER_CODE',
+      message: 'Unknown validation issue'
+    })
+
+    const { result } = renderHook(() => useQuickStatus())
+
+    await act(async () => {
+      await result.current.updateStatus('dispatch-1', 'en_route')
+    })
+
+    expect(result.current.error?.code).toBe('INVALID_STATUS')
+  })
+
+  it('should handle offline/unavailable Firestore error gracefully', async () => {
+    canUpdateStatus.mockResolvedValue({ valid: true })
+    const unavailableError = new Error('Service unavailable') as Error & { code: string }
+    unavailableError.code = 'unavailable'
+    runTransaction.mockRejectedValue(unavailableError)
+
+    const { result } = renderHook(() => useQuickStatus())
+
+    await act(async () => {
+      await result.current.updateStatus('dispatch-1', 'en_route')
+    })
+
+    expect(result.current.error?.code).toBe('NETWORK_ERROR')
   })
 })
