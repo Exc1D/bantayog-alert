@@ -465,19 +465,20 @@ describe('Firestore Security Rules', () => {
         'responder'
       )
 
-      // Create sos_event with all required fields and matching responderId
+      // Create sos_event with all required fields and matching responderId.
+      // Note: getDoc(read) is always denied (audit-only collection via client SDK),
+      // so we verify success by confirming setDoc does not throw.
       const sosRef = doc(db, 'sos_events', 'test-sos-create')
-      await setDoc(sosRef, {
-        responderId: responderUid,
-        status: 'active',
-        activatedAt: Date.now(),
-        expiresAt: Date.now() + 3600000,
-        cancellationWindowEndsAt: Date.now() + 300000,
-        createdAt: Date.now(),
-      })
-
-      const sosDoc = await getDoc(sosRef)
-      expect(sosDoc.exists()).toBe(true)
+      await expect(
+        setDoc(sosRef, {
+          responderId: responderUid,
+          status: 'active',
+          activatedAt: Date.now(),
+          expiresAt: Date.now() + 3600000,
+          cancellationWindowEndsAt: Date.now() + 300000,
+          createdAt: Date.now(),
+        })
+      ).resolves.toBeUndefined()
     })
 
     it('should deny responder from creating sos_events for another responder', async () => {
@@ -586,7 +587,7 @@ describe('Firestore Security Rules', () => {
       const sosRef = doc(db, 'sos_events', 'test-sos-admin-read')
       await setDoc(sosRef, {
         responderId: responderUid,
-        status: 'resolved',
+        status: 'active',
         activatedAt: Date.now(),
         expiresAt: Date.now() + 3600000,
         cancellationWindowEndsAt: Date.now() + 300000,
