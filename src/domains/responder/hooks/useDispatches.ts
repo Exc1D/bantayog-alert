@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import type { AssignedDispatch, QuickStatus } from '../types'
+import { useUserContext } from '@/shared/hooks/UserContext'
 import type { DispatchesError } from '../types'
 import { MAX_SYNC_RETRIES, SYNC_RETRY_DELAY_MS, SYNC_MAX_DELAY_MS } from '../config/time.config'
 
@@ -30,12 +31,18 @@ interface UseDispatchesReturn {
 }
 
 /**
- * Build the Firestore query for active dispatches assigned to a responder.
+ * Build the Firestore query for active dispatches assigned to a responder,
+ * scoped to a specific municipality for access-control filtering.
  */
-function buildDispatchesQuery(db: ReturnType<typeof getFirestore>, uid: string) {
+function buildDispatchesQuery(
+  db: ReturnType<typeof getFirestore>,
+  uid: string,
+  municipality: string
+) {
   return query(
     collection(db, 'report_ops'),
     where('assignedTo', '==', uid),
+    where('municipality', '==', municipality),
     where('responderStatus', 'not-in', ['completed']),
     orderBy('assignedAt', 'desc')
   )
@@ -116,6 +123,10 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<DispatchesError | null>(null)
 
+  // municipality is required for access-control filtering — without it we cannot
+  // safely scope the query and must return no data.
+  const { municipality } = useUserContext()
+
   const abortControllerRef = useRef<AbortController | null>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -148,10 +159,21 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
         return
       }
 
+      // Guard: municipality filter is required for access control.
+      // If the user has no municipality in their profile, deny access.
+      if (!municipality) {
+        setError({
+          code: 'AUTH_EXPIRED',
+          message: 'Municipality not set — cannot load dispatches',
+          isFatal: true
+        })
+        return
+      }
+
       if (!dbRef.current) {
         dbRef.current = getFirestore()
       }
-      const q = buildDispatchesQuery(dbRef.current, user.uid)
+      const q = buildDispatchesQuery(dbRef.current, user.uid, municipality)
 
       const snapshot = await getDocs(q)
 
@@ -188,10 +210,13 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
       const user = getAuth().currentUser
       if (!user || !mounted) return
 
+      // Guard: municipality filter is required for access control.
+      if (!municipality) return
+
       if (!dbRef.current) {
         dbRef.current = getFirestore()
       }
-      const q = buildDispatchesQuery(dbRef.current, user.uid)
+      const q = buildDispatchesQuery(dbRef.current, user.uid, municipality)
 
       const unsubscribe = onSnapshot(
         q,
@@ -263,7 +288,7 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
       reconnectTimeoutRef.current && clearTimeout(reconnectTimeoutRef.current)
       abortControllerRef.current?.abort()
     }
-  }, [options?.subscribe, refresh])
+  }, [options?.subscribe, refresh, municipality])
 
   return { dispatches, isLoading, error, refresh }
 }

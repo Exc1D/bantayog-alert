@@ -17,6 +17,7 @@ const orderByMock = vi.hoisted(() => vi.fn())
 const getFirestoreMock = vi.hoisted(() => vi.fn())
 
 const getAuthMock = vi.hoisted(() => vi.fn(() => ({ currentUser: { uid: 'responder-1' } })))
+const useUserContextMock = vi.hoisted(() => vi.fn(() => ({ municipality: 'Daet', role: undefined, isLoading: false })))
 
 vi.mock('firebase/firestore', () => ({
   collection: collectionMock,
@@ -34,6 +35,10 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('@/app/firebase/config', () => ({
   db: {},
+}))
+
+vi.mock('@/shared/hooks/UserContext', () => ({
+  useUserContext: useUserContextMock,
 }))
 
 // ── Test data factory ────────────────────────────────────────────────────────────

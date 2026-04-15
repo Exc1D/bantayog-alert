@@ -344,7 +344,7 @@ git commit -m "fix(queue): surface auto-sync errors to UI (HIGH-ERROR-1)"
 
 - [ ] **Step 1:** `npm run typecheck` — clean.
 - [ ] **Step 2:** `npm run test -- --run` — all green.
-- [ ] **Step 3:** Deploy indexes to dev: `firebase deploy --only firestore:indexes --project bantayog-alert-dev`
+- [ ] **Step 3:** Deploy indexes to staging: `firebase deploy --only firestore:indexes --project bantayog-alert-staging`
 - [ ] **Step 4:** Update `docs/progress.md` and `docs/learnings.md`.
 - [ ] **Step 5:** Open PR.
 

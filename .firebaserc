@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "bantayog-alert"
+    "default": "bantayog-alert",
+    "staging": "bantayog-alert-staging"
   }
 }
