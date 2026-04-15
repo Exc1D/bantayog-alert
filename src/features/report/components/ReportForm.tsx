@@ -20,6 +20,7 @@ import { useDuplicateCheck } from '../hooks/useDuplicateCheck'
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus'
 import { useGeolocation } from '@/shared/hooks/useGeolocation'
 import { isValidPHCoordinate } from '@/shared/utils/geoValidation'
+import { PhotoValidationError } from '../services/reportStorage.service'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -169,9 +170,12 @@ export function ReportForm({
       setPhoto(files[0] ?? null)
       setPhotoError(null)
     } catch (err: unknown) {
-      // File access errors (SecurityError, NotAllowedError, AbortError) land here
-      console.error('[FILE_ACCESS_ERROR]', err instanceof Error ? err.message : err)
-      setPhotoError('Unable to access file. Please try again.')
+      if (err instanceof PhotoValidationError) {
+        setPhotoError(err.message)
+      } else {
+        console.error('[FILE_ACCESS_ERROR]', err instanceof Error ? err.message : err)
+        setPhotoError('Unable to access file. Please try again.')
+      }
     }
   }
 

@@ -7,6 +7,31 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/app/firebase/config'
 
+export const MAX_PHOTO_BYTES = 5 * 1024 * 1024 // 5MB
+export const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+
+export class PhotoValidationError extends Error {
+  constructor(
+    public code: 'PHOTO_TOO_LARGE' | 'PHOTO_INVALID_TYPE',
+    msg: string
+  ) {
+    super(msg)
+    this.name = 'PhotoValidationError'
+  }
+}
+
+export function validatePhoto(file: File): void {
+  if (file.size > MAX_PHOTO_BYTES) {
+    throw new PhotoValidationError(
+      'PHOTO_TOO_LARGE',
+      `Photo exceeds ${MAX_PHOTO_BYTES / 1024 / 1024}MB limit`
+    )
+  }
+  if (!ALLOWED_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_TYPES)[number])) {
+    throw new PhotoValidationError('PHOTO_INVALID_TYPE', `Unsupported type: ${file.type}`)
+  }
+}
+
 /**
  * Upload a report photo to Firebase Storage
  *
@@ -16,6 +41,7 @@ import { storage } from '@/app/firebase/config'
  * @throws Error if upload fails
  */
 export async function uploadReportPhoto(file: File, reportId: string): Promise<string> {
+  validatePhoto(file)
   try {
     // Create a unique filename: reportId_timestamp.ext
     const timestamp = Date.now()
@@ -51,6 +77,7 @@ export async function uploadReportPhotos(
 ): Promise<{ successful: string[]; failed: { file: File; error: string }[] }> {
   const results = await Promise.allSettled(
     files.map(async (file, index) => {
+      validatePhoto(file)
       const timestamp = Date.now()
       const extension = file.name.split('.').pop() || 'jpg'
       const filename = `${reportId}_${index}_${timestamp}.${extension}`
