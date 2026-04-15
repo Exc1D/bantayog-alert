@@ -1,5 +1,31 @@
 # Learnings - 2026-04-15
 
+## P0 Security: Auto-Sync Infinite Loop and the useEffect([syncFn]) Escape Hatch
+
+**Session:** HIGH-ERROR-1 fix for `useReportQueue`
+
+**Issue:** `syncQueue` needed `queue` in its `useCallback` deps so tests calling it directly could see queue items from `getAll()`. But the auto-sync `useEffect` also had `queue` in deps — adding `queue` to `syncQueue` deps created a circular dependency: queue changes → `syncQueue` recreated → auto-sync fires → queue changes → infinite loop.
+
+**Root Cause:** Putting `syncFnRef.current = syncQueue` in the render body causes it to run on every render. When `syncQueue` is memoized without `queue` deps, it doesn't change and there's no loop. When `queue` IS added to `syncQueue` deps, every render that changes `queue` recreates `syncQueue`, and the render-body assignment fires before effects — so `syncFnRef.current` points to the new `syncQueue`, the auto-sync effect fires, `queue` changes, and the cycle repeats.
+
+**Fix:** Two changes:
+1. Add `queue` to `syncQueue` deps: `useCallback(..., [isOnline, queue])` — direct calls now see the right queue
+2. Move `syncFnRef.current = syncQueue` into a `useEffect(() => { syncFnRef.current = syncQueue }, [syncQueue])` — the effect fires AFTER the render, so `syncInProgressRef.current` is already `true` when the new `syncQueue` starts executing, blocking re-entry
+
+**Key insight:** `useEffect` runs after the render phase, so state updates triggered by a `useEffect` cannot cause that same effect to re-fire synchronously within the same render. This is the fundamental difference between render-body assignments and `useEffect` assignments — the former creates a synchronous chain that can loop; the latter breaks it because the guard (`syncInProgressRef`) is set before the effect fires.
+
+## P0 Security: Municipality Filter Strictness Decision
+
+**Session:** CRITICAL-AUTH-3 fix for `useDispatches`
+
+**Issue:** `useDispatches` had no municipality filter — a responder could see dispatches from any municipality.
+
+**Decision:** Used a strict guard rather than an optional filter. When `municipality` is `undefined` (user has no profile entry), the hook sets `AUTH_EXPIRED` error and returns without querying. The query only runs when municipality is confirmed present.
+
+**Alternative rejected:** Passing `municipality ?? 'none'` — this would query with an impossible value, effectively filtering nothing while appearing to filter. That pattern would pass tests but still expose data silently.
+
+**Rule:** For access-control filters where the absence of a value means "deny", never use a fallback that produces a permissive query. Always guard with an explicit error or early return.
+
 ## Meta: AI Collaboration Process Learnings
 
 Distilled from the mistakes captured in the sessions below. These are the process rules we keep relearning — codified here so future sessions don't repeat them. The enforceable versions now live in `CLAUDE.md` §6 and §8.

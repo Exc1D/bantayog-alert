@@ -1,5 +1,85 @@
 # Progress - 2026-04-15
 
+## P0 Security: Auto-Sync Error Surfacing (HIGH-ERROR-1)
+
+**Branch:** `fix/p0-security-task1`
+
+### What Changed
+
+**`src/features/report/hooks/useReportQueue.ts`**:
+- Added `syncError: string | null` state
+- `syncQueue` now has `queue` in its `useCallback` deps so direct calls see the updated queue from `getAll()`
+- `syncFnRef.current` is kept in sync via `useEffect(() => { syncFnRef.current = syncQueue }, [syncQueue])` — this effect fires AFTER the render where `syncQueue` was recreated, so `syncInProgressRef` is already `true` when the new `syncQueue` runs, preventing the infinite loop
+- `setSyncError(message)` called in the auto-sync `useEffect` `.catch()` handler
+- `setSyncError(null)` called in `enqueueReport` before triggering immediate sync
+
+**`src/features/report/components/QueueIndicator.tsx`**:
+- Destructures `syncError` from `useReportQueue()`
+- Displays error message below the banner when `syncError` is non-null
+
+**`src/features/report/hooks/__tests__/useReportQueue.test.ts`**:
+- Added `syncError: null` to all mock return objects
+- Added test: `should set syncError state when auto-sync fails`
+- Added test: `should clear syncError when retrying sync`
+- Added test: `should log [AUTO_SYNC_ERROR] when syncQueue promise rejects`
+- Added test: `should handle non-Error rejections in syncQueue`
+
+**`src/features/report/components/__tests__/QueueIndicator.test.tsx`**:
+- Added `syncError: null` to all mock return objects (8 tests)
+
+### Design Decisions
+
+- **`useEffect([syncQueue])` for `syncFnRef`**: Moving the `syncFnRef.current = syncQueue` assignment into a `useEffect` (instead of the render body) breaks the infinite loop: the effect fires after the render, so `syncInProgressRef` is already `true` by the time the new `syncQueue` starts executing. This allows `syncQueue` to have `queue` in its deps (so direct calls see the right queue) without the auto-sync triggering recursively.
+- **`syncInProgressRef` as concurrency guard**: A boolean ref (not a function comparison) prevents concurrent syncs. The render-body initialization ensures the first render's auto-sync has a callable function.
+
+### Test Summary
+
+- **useReportQueue tests:** 14/14 passing
+- **QueueIndicator tests:** 8/8 passing
+- **TypeScript:** Clean (`npm run typecheck` passes)
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/features/report/hooks/useReportQueue.ts` | Added `syncError` state, `useEffect([syncQueue])` for `syncFnRef`, `queue` in `syncQueue` deps |
+| `src/features/report/hooks/__tests__/useReportQueue.test.ts` | Added 4 new tests, updated all mock returns |
+| `src/features/report/components/QueueIndicator.tsx` | Destructure and display `syncError` |
+| `src/features/report/components/__tests__/QueueIndicator.test.tsx` | Added `syncError: null` to all mock returns |
+
+## P0 Security: useDispatches Municipality Filter (CRITICAL-AUTH-3)
+
+**Branch:** `fix/p0-security-task1`
+
+### What Changed
+
+**`src/domains/responder/hooks/useDispatches.ts`** — Added municipality filter:
+- `buildDispatchesQuery` now takes a `municipality: string` parameter and adds `where('municipality', '==', municipality)` to the query constraints
+- `useDispatches` calls `useUserContext()` to get the authenticated user's municipality from Firestore `users/{uid}`
+- Guards in both `refresh` and `subscribe` paths: if `municipality` is undefined, sets `AUTH_EXPIRED` error and returns — no unfiltered data is ever loaded
+- `useEffect` dependency array includes `municipality` so re-subscription fires when the value is resolved
+
+**Index:** The composite index `[assignedTo ASC, municipality ASC, assignedAt DESC]` was already added in Task 2. No new index needed.
+
+### Design Decisions
+
+- **No optional filter:** The guard is strict — if `municipality` is not in the user's Firestore profile, the hook returns an `AUTH_EXPIRED` error rather than querying with no filter. This prevents accidental cross-municipality data exposure even for edge cases.
+- **`AUTH_EXPIRED` for missing municipality:** Used the same error code as unauthenticated — the message is specific ("Municipality not set — cannot load dispatches") to help responders understand what to do.
+- **Re-subscription on municipality resolution:** The `useEffect` dependency on `municipality` ensures that when `UserContext` loads asynchronously, the hook re-runs the subscribe path once the municipality is available.
+
+### Test Summary
+
+- **useDispatches tests:** 17/17 passing (added `useUserContext` mock to test file)
+- **TypeScript:** Clean (`npm run typecheck` passes)
+- **Pre-existing DispatchList.test.tsx failure:** Unrelated firebase mock gap (requires `UserProvider` wrapper, existed before this change)
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/domains/responder/hooks/useDispatches.ts` | Added municipality filter to `buildDispatchesQuery`, added `useUserContext()` call with guard, added `municipality` to useEffect dependency |
+| `src/domains/responder/hooks/__tests__/useDispatches.test.ts` | Added `useUserContext` mock via `vi.hoisted()` to bypass async UserContext in tests |
+
 ## Task 11 — Firestore Indexes
 
 **Branch:** `fix/firestore-indexes-task11-2026-04-15` (worktree at `/home/exxeed/dev/projects/bantayog-alert-task11`)
