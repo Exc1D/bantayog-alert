@@ -90,7 +90,7 @@ export async function getMunicipalityReports(
 ): Promise<Array<{ report: Report; private?: ReportPrivate }>> {
   if (!municipality) throw new Error('municipality is required')
   const constraints: QueryConstraint[] = [
-    where('location.municipality', '==', municipality),
+    where('approximateLocation.municipality', '==', municipality),
     orderBy('createdAt', 'desc'),
     limit(100),
   ]
