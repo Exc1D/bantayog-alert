@@ -27,6 +27,7 @@ interface UseSOSReturn {
   sosState: SOSEvent | null
   error: SOSError | null
   locationSharing: boolean
+  gpsError: string | null
   canCancel: boolean
 }
 
@@ -34,6 +35,7 @@ export function useSOS(): UseSOSReturn {
   const [sosState, setSosState] = useState<SOSEvent | null>(null)
   const [error, setError] = useState<SOSError | null>(null)
   const [locationSharing, setLocationSharing] = useState(false)
+  const [gpsError, setGpsError] = useState<string | null>(null)
 
   const geoWatchIdRef = useRef<number | null>(null)
   const locationCacheRef = useRef<RichLocation | null>(null)
@@ -73,6 +75,8 @@ export function useSOS(): UseSOSReturn {
       },
       (err) => {
         console.error('[SOS] GPS error:', err)
+        setLocationSharing(false)
+        setGpsError(err.message ?? 'GPS tracking failed')
       },
       {
         enableHighAccuracy: true,
@@ -216,14 +220,55 @@ export function useSOS(): UseSOSReturn {
       // Start GPS tracking
       startLocationSharing()
     } catch (err: unknown) {
-      console.error('[SOS_ERROR]', err)
+      const errorId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)
+      console.error(`[SOS_ERROR][${errorId}] activateSOS failed`, err)
+      const errCode = (err as { code?: string }).code
       const message = err instanceof Error ? err.message : 'Failed to activate SOS'
-      const code = message.includes('already active')
-        ? 'ALREADY_ACTIVE'
-        : message.includes('permission') || message.includes('not authenticated')
-          ? 'PERMISSION_DENIED'
-          : 'NETWORK_ERROR'
-      setError({ code: code as SOSError['code'], message })
+
+      // Map Firestore structured error codes — check err.code first (stable) over string matching (fragile)
+      if (errCode === 'already-exists' || message.includes('already active')) {
+        setError({ code: 'ALREADY_ACTIVE', message })
+      } else if (errCode === 'permission-denied' || message.includes('permission') || message.includes('not authenticated')) {
+        setError({ code: 'PERMISSION_DENIED', message })
+      } else if (errCode === 'deadline-exceeded' || errCode === 'unavailable') {
+        // Transient — retry once with 1s backoff
+        await new Promise<void>((resolve) => setTimeout(resolve, 1_000))
+        try {
+          if (!dbRef.current) dbRef.current = getFirestore()
+          await runTransaction(dbRef.current, async (transaction) => {
+            const user = getAuth().currentUser
+            if (!user) throw new Error('User not authenticated')
+            const existingSosQuery = query(
+              collection(dbRef.current!, 'sos_events'),
+              where('responderId', '==', user.uid),
+              where('status', '==', 'active')
+            )
+            const existingSnap = await transaction.get(existingSosQuery as unknown as Parameters<typeof transaction.get>[0]) as unknown as { empty: boolean }
+            if (!existingSnap.empty) throw new Error('SOS already active')
+            const sosRef = doc(collection(dbRef.current!, 'sos_events'))
+            transaction.set(sosRef, {
+              type: 'sos',
+              status: 'active',
+              responderId: user.uid,
+              location,
+              activatedAt: now,
+              expiresAt: now + SOS_EXPIRATION_MS,
+              cancellationWindowEndsAt: now + SOS_CANCELLATION_WINDOW_MS,
+              timeline: [{ type: 'status_change', from: null, to: 'active', timestamp: now, actor: 'responder', actorId: user.uid }],
+            })
+            setSosState({ id: sosRef.id, status: 'active', responderId: user.uid, activatedAt: now, expiresAt: now + SOS_EXPIRATION_MS, cancellationWindowEndsAt: now + SOS_CANCELLATION_WINDOW_MS, location })
+          })
+          startLocationSharing()
+          return
+        } catch (retryErr: unknown) {
+          console.error(`[SOS_ERROR][${errorId}] activateSOS retry failed`, retryErr)
+          const retryMessage = retryErr instanceof Error ? retryErr.message : 'Failed to activate SOS'
+          setError({ code: 'NETWORK_ERROR', message: retryMessage })
+          return
+        }
+      } else {
+        setError({ code: 'NETWORK_ERROR', message })
+      }
     }
   }, [startLocationSharing])
 
@@ -299,17 +344,48 @@ export function useSOS(): UseSOSReturn {
 
         stopLocationSharing()
       } catch (err: unknown) {
-        console.error('[SOS_ERROR]', err)
+        const errorId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)
+        console.error(`[SOS_ERROR][${errorId}] cancelSOS failed`, err)
         const errCode = (err as { code?: string }).code
         const message = err instanceof Error ? err.message : 'Failed to cancel SOS'
-        const code = errCode === 'permission-denied'
-          ? 'PERMISSION_DENIED'
-          : message.includes('not found')
-            ? 'SOS_NOT_FOUND'
-            : message.includes('window') || message.includes('expired')
-              ? 'CANCEL_WINDOW_EXPIRED'
-              : 'NETWORK_ERROR'
-        setError({ code: code as SOSError['code'], message })
+
+        if (errCode === 'permission-denied') {
+          setError({ code: 'PERMISSION_DENIED', message })
+        } else if (errCode === 'not-found' || message.includes('not found')) {
+          setError({ code: 'SOS_NOT_FOUND', message })
+        } else if (message.includes('window') || message.includes('expired')) {
+          setError({ code: 'CANCEL_WINDOW_EXPIRED', message })
+        } else if (errCode === 'deadline-exceeded' || errCode === 'unavailable') {
+          // Transient — retry once with 1s backoff
+          await new Promise<void>((resolve) => setTimeout(resolve, 1_000))
+          try {
+            if (!dbRef.current) dbRef.current = getFirestore()
+            const retrySosRef = doc(dbRef.current, 'sos_events', sosState.id)
+            await runTransaction(dbRef.current, async (transaction) => {
+              const user = getAuth().currentUser
+              if (!user) throw new Error('User not authenticated')
+              const sosSnap = await transaction.get(retrySosRef)
+              if (!sosSnap.exists()) throw new Error('SOS document not found')
+              if (Date.now() > sosSnap.data().cancellationWindowEndsAt) throw new Error('Cancellation window has expired')
+              transaction.update(retrySosRef, {
+                status: 'cancelled',
+                cancelledAt: Date.now(),
+                cancellationReason: reason,
+                timeline: arrayUnion({ type: 'status_change', from: 'active', to: 'cancelled', timestamp: Date.now(), actor: 'responder', actorId: user.uid }),
+              })
+            })
+            setSosState((prev) => prev ? { ...prev, status: 'cancelled', cancelledAt: Date.now(), cancellationReason: reason } : null)
+            stopLocationSharing()
+            return
+          } catch (retryErr: unknown) {
+            console.error(`[SOS_ERROR][${errorId}] cancelSOS retry failed`, retryErr)
+            const retryMessage = retryErr instanceof Error ? retryErr.message : 'Failed to cancel SOS'
+            setError({ code: 'NETWORK_ERROR', message: retryMessage })
+            return
+          }
+        } else {
+          setError({ code: 'NETWORK_ERROR', message })
+        }
       }
     },
     [sosState, canCancel, stopLocationSharing]
@@ -340,5 +416,5 @@ export function useSOS(): UseSOSReturn {
     return () => clearTimeout(timer)
   }, [sosState?.expiresAt, sosState?.status, stopLocationSharing])
 
-  return { activateSOS, cancelSOS, sosState, error, locationSharing, canCancel }
+  return { activateSOS, cancelSOS, sosState, error, locationSharing, gpsError, canCancel }
 }
