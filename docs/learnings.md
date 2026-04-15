@@ -1,3 +1,30 @@
+# Learnings - 2026-04-15
+
+## Testing requestAnimationFrame in Vitest
+
+**Issue:** `vi.useFakeTimers()` does not reliably auto-spy `requestAnimationFrame` in jsdom environment in Vitest 3. Tests using `vi.advanceTimersByTime(3000)` inside `act()` failed because RAF callbacks were not being flushed.
+
+**Fix:** Explicitly mock `requestAnimationFrame` using `vi.hoisted()` to capture the callback reference, then invoke it directly in tests:
+
+```typescript
+const savedRAFCallback = vi.hoisted(() => ({
+  current: ((_cb: FrameRequestCallback): number => 0) as ((cb: FrameRequestCallback) => number) | null,
+}))
+
+vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback): number => {
+  savedRAFCallback.current = cb
+  return ++id
+})
+
+// In test:
+const cb = savedRAFCallback.current
+if (cb) cb(performance.now())  // advance time
+```
+
+This pattern guarantees the tick runs synchronously in tests without relying on Vitest's auto-spy RAF behavior, which is unreliable in jsdom.
+
+---
+
 # Learnings - 2026-04-14
 
 ## QA Edge Case Scan Findings

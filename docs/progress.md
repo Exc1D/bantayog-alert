@@ -1,3 +1,52 @@
+# Progress - 2026-04-15
+
+## Task 9 — SOSButton Component
+
+**Branch:** `feat-responder-dispatch-workflow-task8`
+
+### What Changed
+
+**`SOSButton.tsx`** (282 lines) — Self-contained component calling `useSOS()` internally:
+- **Hold-to-activate**: 3-second press-and-hold using `requestAnimationFrame` loop. SVG progress ring fills over 3 seconds via `stroke-dashoffset` animation.
+- **Activating state**: Button shows `bg-red-700` while held; aria-label updates to "Hold to activate SOS — in progress"
+- **Active state**: Confirmation panel with location coordinates, GPS sharing status, cancel window status, and Cancel SOS button (shown only when `canCancel = true`)
+- **Cancelled state**: Brief panel showing cancellation reason; SOS button hidden
+- **Error state**: Red-bordered alert panel showing error code and message from `useSOS().error`
+- **Cancel confirmation**: Uses `window.confirm()` for intentional emergency guard
+
+**`SOSButton.test.tsx`** (427 lines) — 23 tests covering:
+- Idle state (button renders, no panels)
+- Hold-to-activate (3s triggers, early release cancels, touch events, disabled when active)
+- Active state (panel, coordinates, cancel button visibility, cancel confirmation flow)
+- Cancelled state (reason display, button hidden)
+- Error state (GPS_TIMEOUT, SOS_OFFLINE)
+- className forwarding
+- Location unavailable fallback
+
+### Design Decisions
+
+- **RAF loop vs setInterval**: Used `requestAnimationFrame` for smoother progress animation (smoother than 60fps setInterval)
+- **Circular SVG progress ring**: Visual feedback matches common mobile patterns (circular countdown)
+- **Inline panel vs Modal**: Small confirmation panel avoids Modal dependency complexity; positioned in top-right by consumer
+- **window.confirm()**: Simple, synchronous, blocks the thread — unambiguous for emergency cancellation confirmation
+- **No props**: Component self-contained (calls `useSOS()` internally, matches `QuickStatusButtons`/`DispatchList` pattern)
+
+### Test Summary
+
+- **SOSButton tests:** 23/23 passing
+- **All responder domain tests:** 103/103 passing
+- **TypeScript:** Clean (no new errors)
+- **Pre-existing failures:** MapView.test.tsx and other unrelated tests (infrastructure/firebase mock gaps)
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/domains/responder/components/SOSButton.tsx` | New — SOS button with hold-to-activate and cancellation UI |
+| `src/domains/responder/components/__tests__/SOSButton.test.tsx` | New — 23 tests |
+
+---
+
 # Progress - 2026-04-14
 
 ## QA Edge Case Scan
