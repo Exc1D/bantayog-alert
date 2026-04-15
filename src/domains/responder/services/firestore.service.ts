@@ -85,7 +85,7 @@ export async function getIncidentDetails(
  */
 export async function updateResponderStatus(
   reportId: string,
-  status: 'en_route' | 'on_scene' | 'awaiting_backup' | 'completed',
+  status: 'en_route' | 'on_scene' | 'needs_assistance' | 'completed',
   notes?: string,
   responderUid?: string
 ): Promise<void> {

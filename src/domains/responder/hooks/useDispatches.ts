@@ -18,7 +18,7 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
-import type { AssignedDispatch } from '../types'
+import type { AssignedDispatch, QuickStatus } from '../types'
 import type { DispatchesError } from '../types'
 import { MAX_SYNC_RETRIES, SYNC_RETRY_DELAY_MS, SYNC_MAX_DELAY_MS } from '../config/time.config'
 
@@ -41,6 +41,43 @@ function buildDispatchesQuery(db: ReturnType<typeof getFirestore>, uid: string) 
   )
 }
 
+/** Valid QuickStatus values — must match QuickStatus type exactly */
+const VALID_DISPATCH_STATUSES: QuickStatus[] = ['en_route', 'on_scene', 'needs_assistance', 'completed']
+
+/**
+ * Validate incidentLocation structure.
+ * Returns true if the object has valid latitude, longitude, and address.
+ */
+function isValidIncidentLocation(location: unknown): location is { latitude: number; longitude: number; address: string } {
+  if (!location || typeof location !== 'object') return false
+  const loc = location as Record<string, unknown>
+  return (
+    Number.isFinite(loc.latitude) &&
+    Number.isFinite(loc.longitude) &&
+    typeof loc.address === 'string'
+  )
+}
+
+/**
+ * Normalize assignedAt to a numeric epoch timestamp.
+ * Handles Firestore Timestamp objects and numbers.
+ */
+function normalizeAssignedAt(assignedAt: unknown): number {
+  if (Number.isFinite(assignedAt)) {
+    return assignedAt as number
+  }
+  if (assignedAt && typeof assignedAt === 'object') {
+    const timestamp = assignedAt as Record<string, unknown>
+    if (typeof timestamp.toMillis === 'function') {
+      return (timestamp.toMillis as () => number)()
+    }
+    if (typeof timestamp.toDate === 'function') {
+      return ((timestamp.toDate as () => Date)()).getTime()
+    }
+  }
+  return Date.now()
+}
+
 /**
  * Convert a Firestore snapshot to AssignedDispatch array.
  */
@@ -48,15 +85,27 @@ function snapshotToDispatches(snap: QuerySnapshot) {
   const dispatches: AssignedDispatch[] = []
   snap.forEach((doc: QueryDocumentSnapshot) => {
     const data = doc.data()
-    // Map Firestore's responderStatus to the type's status field
+    // Validate both status and responderStatus against QuickStatus whitelist
+    const status: QuickStatus = (data.responderStatus && VALID_DISPATCH_STATUSES.includes(data.responderStatus))
+      ? data.responderStatus
+      : (data.status && VALID_DISPATCH_STATUSES.includes(data.status)
+          ? data.status
+          : 'en_route') as QuickStatus
+    // responderStatus on the dispatched object is also validated — raw data.responderStatus
+    // could be an invalid value (e.g. 'pending', 'dispatch') that would cause type mismatches
+    const validatedResponderStatus: QuickStatus = VALID_DISPATCH_STATUSES.includes(data.responderStatus)
+      ? data.responderStatus
+      : status
     dispatches.push({
       id: doc.id,
       type: data.type,
-      status: data.responderStatus ?? data.status,
+      status,
       urgency: data.urgency,
-      incidentLocation: data.incidentLocation,
-      assignedAt: data.assignedAt,
-      responderStatus: data.responderStatus,
+      incidentLocation: isValidIncidentLocation(data.incidentLocation)
+        ? data.incidentLocation
+        : { latitude: 0, longitude: 0, address: 'Location pending...' },
+      assignedAt: normalizeAssignedAt(data.assignedAt),
+      responderStatus: validatedResponderStatus,
     } as AssignedDispatch)
   })
   return dispatches

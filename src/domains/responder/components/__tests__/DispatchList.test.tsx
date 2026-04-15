@@ -277,12 +277,12 @@ describe('DispatchList', () => {
     expect(screen.getByRole('button', { name: /request assistance/i })).toBeDisabled()
   })
 
-  it('should show "Updating..." when dispatch is in pending state', () => {
+  it('should disable buttons when dispatch is in pending state', () => {
     const pendingStatus = new Map([['dispatch-1', 'en_route']])
 
     ;(useDispatches as any).mockReturnValue({
       dispatches: [
-        { id: 'dispatch-1', type: 'rescue', status: 'pending', urgency: 'high', incidentLocation: { address: '123 Main St' } }
+        { id: 'dispatch-1', type: 'rescue', status: 'en_route', urgency: 'high', incidentLocation: { address: '123 Main St' } }
       ],
       isLoading: false,
       error: null
@@ -295,7 +295,11 @@ describe('DispatchList', () => {
 
     render(<DispatchList />)
 
-    expect(screen.getByText('Updating...')).toBeVisible()
+    // All buttons should be disabled when dispatch is in pending state
+    expect(screen.getByRole('button', { name: /en route/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /on scene/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /request assistance/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /complete/i })).toBeDisabled()
   })
 
   it('should call onDispatchClick when a dispatch card is clicked', () => {
