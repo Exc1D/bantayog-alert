@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useDispatches } from '../hooks/useDispatches'
-import { useQuickStatus } from '../hooks/useQuickStatus'
+import { QuickStatusButtons } from './QuickStatusButtons'
 import type { AssignedDispatch } from '../types'
 
 interface DispatchListProps {
@@ -10,7 +10,6 @@ interface DispatchListProps {
 export function DispatchList({ onDispatchClick }: DispatchListProps) {
   const navigate = useNavigate()
   const { dispatches, isLoading, error } = useDispatches({ subscribe: true })
-  const { updateStatus, isUpdating, pendingStatus } = useQuickStatus()
 
   if (isLoading) {
     return <DispatchListSkeleton />
@@ -47,9 +46,6 @@ export function DispatchList({ onDispatchClick }: DispatchListProps) {
         <DispatchCard
           key={dispatch.id}
           dispatch={dispatch}
-          onUpdateStatus={(status) => updateStatus(dispatch.id, status)}
-          isUpdating={isUpdating}
-          isPending={pendingStatus.has(dispatch.id)}
           onClick={() => onDispatchClick?.(dispatch)}
         />
       ))}
@@ -81,16 +77,13 @@ const URGENCY_COLORS = {
 // Individual dispatch card component
 interface DispatchCardProps {
   dispatch: AssignedDispatch
-  onUpdateStatus: (status: 'en_route' | 'on_scene' | 'needs_assistance' | 'completed') => void
-  isUpdating: boolean
-  isPending: boolean
   onClick?: () => void
 }
 
-function DispatchCard({ dispatch, onUpdateStatus, isUpdating, isPending, onClick }: DispatchCardProps) {
+function DispatchCard({ dispatch, onClick }: DispatchCardProps) {
   return (
     <div
-      className={`border-l-4 rounded-lg p-4 ${URGENCY_COLORS[dispatch.urgency]} ${isPending ? 'opacity-70' : ''}`}
+      className={`border-l-4 rounded-lg p-4 ${URGENCY_COLORS[dispatch.urgency]}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
@@ -114,33 +107,7 @@ function DispatchCard({ dispatch, onUpdateStatus, isUpdating, isPending, onClick
         </span>
       </div>
 
-      {isPending && (
-        <div className="mt-2 text-sm text-blue-600">Updating...</div>
-      )}
-
-      <div className="mt-3 flex gap-2">
-        <button
-          onClick={(e) => { e.stopPropagation(); onUpdateStatus('en_route'); }}
-          disabled={isUpdating || isPending}
-          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          En Route
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onUpdateStatus('on_scene'); }}
-          disabled={isUpdating || isPending}
-          className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-        >
-          On Scene
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onUpdateStatus('needs_assistance'); }}
-          disabled={isUpdating || isPending}
-          className="px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
-        >
-          Request Assistance
-        </button>
-      </div>
+      <QuickStatusButtons dispatchId={dispatch.id} />
     </div>
   )
 }
