@@ -5,7 +5,7 @@
  * Municipal admins can view and manage all data within their municipality.
  */
 
-import { where, orderBy, limit } from 'firebase/firestore'
+import { where, orderBy, limit, type QueryConstraint } from 'firebase/firestore'
 import {
   getDocument,
   getCollection,
@@ -30,12 +30,17 @@ import type {
  * @param municipality - Municipality name
  */
 export async function getMunicipalityReports(
-  _municipality: string
+  municipality: string
 ): Promise<Array<{ report: Report; private?: ReportPrivate }>> {
+  if (!municipality) {
+    throw new Error('municipality is required')
+  }
   try {
-    // Note: Municipality filtering requires proper index
-    // This is a simplified implementation
-    const constraints = [orderBy('createdAt', 'desc'), limit(100)]
+    const constraints: QueryConstraint[] = [
+      where('location.municipality', '==', municipality),
+      orderBy('createdAt', 'desc'),
+      limit(100),
+    ]
 
     const reports = await getCollection<Report>('reports', constraints)
 
