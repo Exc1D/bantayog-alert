@@ -159,7 +159,7 @@ export interface ReportOps {
   assignedBy?: string // UID of admin who assigned
 
   // Response tracking
-  responderStatus?: 'en_route' | 'on_scene' | 'awaiting_backup' | 'completed'
+  responderStatus?: 'en_route' | 'on_scene' | 'needs_assistance' | 'completed'
   responderNotes?: string
   responderArrivalTime?: number
   responderDepartureTime?: number

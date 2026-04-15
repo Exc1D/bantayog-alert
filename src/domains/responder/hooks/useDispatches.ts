@@ -18,7 +18,7 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
-import type { AssignedDispatch } from '../types'
+import type { AssignedDispatch, QuickStatus } from '../types'
 import type { DispatchesError } from '../types'
 import { MAX_SYNC_RETRIES, SYNC_RETRY_DELAY_MS, SYNC_MAX_DELAY_MS } from '../config/time.config'
 
@@ -41,6 +41,9 @@ function buildDispatchesQuery(db: ReturnType<typeof getFirestore>, uid: string) 
   )
 }
 
+/** Valid QuickStatus values — must match QuickStatus type exactly */
+const VALID_DISPATCH_STATUSES: QuickStatus[] = ['en_route', 'on_scene', 'needs_assistance', 'completed']
+
 /**
  * Convert a Firestore snapshot to AssignedDispatch array.
  */
@@ -48,14 +51,19 @@ function snapshotToDispatches(snap: QuerySnapshot) {
   const dispatches: AssignedDispatch[] = []
   snap.forEach((doc: QueryDocumentSnapshot) => {
     const data = doc.data()
-    // Map Firestore's responderStatus to the type's status field
+    // Prefer responderStatus; fall back to status (migration compat). Validate against QuickStatus.
+    const status: QuickStatus = (data.responderStatus && VALID_DISPATCH_STATUSES.includes(data.responderStatus))
+      ? data.responderStatus
+      : (data.status && VALID_DISPATCH_STATUSES.includes(data.status)
+          ? data.status
+          : 'en_route') as QuickStatus
     dispatches.push({
       id: doc.id,
       type: data.type,
-      status: data.responderStatus ?? data.status,
+      status,
       urgency: data.urgency,
-      incidentLocation: data.incidentLocation,
-      assignedAt: data.assignedAt,
+      incidentLocation: data.incidentLocation ?? { latitude: 0, longitude: 0, address: 'Location pending...' },
+      assignedAt: data.assignedAt ?? Date.now(),
       responderStatus: data.responderStatus,
     } as AssignedDispatch)
   })
