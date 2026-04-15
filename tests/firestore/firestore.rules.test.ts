@@ -298,6 +298,196 @@ describe('Firestore Security Rules', () => {
       const opsDoc = await getDoc(doc(db, 'report_ops', reportRef.id))
       expect(opsDoc.exists()).toBe(false)
     })
+
+    it('should allow responder to read report_ops via normalized responderId field', async () => {
+      const responderUid = await createTestUser(
+        'responder2@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Create test report with ops using normalized responderId (not assignedTo)
+      const reportRef = await addDoc(collection(db, 'reports'), {
+        approximateLocation: {
+          barangay: 'Test Barangay',
+          municipality: 'Daet',
+          approximateCoordinates: { latitude: 14.1, longitude: 122.9 },
+        },
+        incidentType: 'fire',
+        severity: 'high',
+        status: 'assigned',
+        description: 'Test report',
+        isAnonymous: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      testReports.push(reportRef.id)
+
+      await setDoc(doc(db, 'report_ops', reportRef.id), {
+        id: reportRef.id,
+        reportId: reportRef.id,
+        responderId: responderUid, // Normalized field, not legacy assignedTo
+        timeline: [],
+      })
+
+      // Responder should be able to read via responderId
+      const opsDoc = await getDoc(doc(db, 'report_ops', reportRef.id))
+      expect(opsDoc.exists()).toBe(true)
+    })
+
+    it('should allow responder to update allowed fields on their report_ops', async () => {
+      const responderUid = await createTestUser(
+        'responder3@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const reportRef = await addDoc(collection(db, 'reports'), {
+        approximateLocation: {
+          barangay: 'Test Barangay',
+          municipality: 'Daet',
+          approximateCoordinates: { latitude: 14.1, longitude: 122.9 },
+        },
+        incidentType: 'fire',
+        severity: 'high',
+        status: 'assigned',
+        description: 'Test report',
+        isAnonymous: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      testReports.push(reportRef.id)
+
+      await setDoc(doc(db, 'report_ops', reportRef.id), {
+        id: reportRef.id,
+        reportId: reportRef.id,
+        assignedTo: responderUid,
+        responderStatus: 'en_route',
+        status: 'assigned',
+        timeline: [],
+      })
+
+      // Responder can update allowed fields
+      await updateDoc(doc(db, 'report_ops', reportRef.id), {
+        responderStatus: 'on_scene',
+        responderNotes: 'Arrived at location',
+      })
+
+      const opsDoc = await getDoc(doc(db, 'report_ops', reportRef.id))
+      expect(opsDoc.exists()).toBe(true)
+      expect(opsDoc.data().responderStatus).toBe('on_scene')
+      expect(opsDoc.data().responderNotes).toBe('Arrived at location')
+    })
+
+    it('should deny responder from reassigning report_ops to another responder', async () => {
+      const responderUid = await createTestUser(
+        'responder4@example.com',
+        'pass123',
+        'responder'
+      )
+
+      const reportRef = await addDoc(collection(db, 'reports'), {
+        approximateLocation: {
+          barangay: 'Test Barangay',
+          municipality: 'Daet',
+          approximateCoordinates: { latitude: 14.1, longitude: 122.9 },
+        },
+        incidentType: 'fire',
+        severity: 'high',
+        status: 'assigned',
+        description: 'Test report',
+        isAnonymous: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      testReports.push(reportRef.id)
+
+      await setDoc(doc(db, 'report_ops', reportRef.id), {
+        id: reportRef.id,
+        reportId: reportRef.id,
+        assignedTo: responderUid,
+        responderStatus: 'en_route',
+        timeline: [],
+      })
+
+      // Attempt to reassign — should be denied by field whitelist
+      await expect(async () => {
+        await updateDoc(doc(db, 'report_ops', reportRef.id), {
+          assignedTo: 'another-responder-uid',
+        })
+      }).rejects.toThrow()
+    })
+  })
+
+  describe('SOS_Events Collection', () => {
+    it('should deny all client reads on sos_events', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Create an sos_event
+      const sosRef = doc(db, 'sos_events', 'test-sos-event')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        createdAt: Date.now(),
+      })
+
+      // Client SDK should be denied read
+      const sosDoc = await getDoc(sosRef)
+      expect(sosDoc.exists()).toBe(false)
+    })
+
+    it('should allow responder to create sos_events for their own responderId', async () => {
+      const responderUid = await createTestUser(
+        'sos-responder2@example.com',
+        'pass123',
+        'responder'
+      )
+
+      // Create sos_event with matching responderId
+      const sosRef = doc(db, 'sos_events', 'test-sos-create')
+      await setDoc(sosRef, {
+        responderId: responderUid,
+        status: 'active',
+        createdAt: Date.now(),
+      })
+
+      const sosDoc = await getDoc(sosRef)
+      expect(sosDoc.exists()).toBe(true)
+    })
+
+    it('should deny responder from creating sos_events for another responder', async () => {
+      await createTestUser('sos-responder3@example.com', 'pass123', 'responder')
+
+      // Attempt to create sos_event with different responderId
+      const sosRef = doc(db, 'sos_events', 'test-sos-other')
+      await expect(async () => {
+        await setDoc(sosRef, {
+          responderId: 'different-responder-uid', // Not this user's UID
+          status: 'active',
+          createdAt: Date.now(),
+        })
+      }).rejects.toThrow()
+    })
+
+    it('should deny admin from reading sos_events via client SDK', async () => {
+      await createTestUser('sos-admin@daet.gov.ph', 'pass123', 'municipal_admin', 'Daet')
+
+      // Create sos_event
+      const sosRef = doc(db, 'sos_events', 'test-sos-admin-read')
+      await setDoc(sosRef, {
+        responderId: 'some-responder-uid',
+        status: 'resolved',
+        createdAt: Date.now(),
+      })
+
+      // Admin reading via client SDK should be denied (read: if false)
+      const sosDoc = await getDoc(sosRef)
+      expect(sosDoc.exists()).toBe(false)
+    })
   })
 
   describe('Municipality Access Control', () => {
