@@ -82,12 +82,15 @@ describe('validatePhoto', () => {
 
   it('PHOTO_TOO_LARGE message includes the size limit', () => {
     const file = makeFile({ size: 10 * 1024 * 1024 })
+    let thrownError: unknown
     try {
       validatePhoto(file)
     } catch (err: unknown) {
-      expect(err).toBeInstanceOf(PhotoValidationError)
-      expect((err as PhotoValidationError).message).toContain('5MB')
+      thrownError = err
     }
+    // Assert exception was thrown before checking its message
+    expect(thrownError).toBeInstanceOf(PhotoValidationError)
+    expect((thrownError as PhotoValidationError).message).toContain('5MB')
   })
 
   it('PHOTO_INVALID_TYPE message includes the actual MIME type', () => {
