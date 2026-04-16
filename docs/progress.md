@@ -10,7 +10,7 @@
 
 | ID | Issue | Fix |
 |----|-------|-----|
-| CRITICAL-AUTH-2 | `getMunicipalityReports` ignores municipality filter | Added `where('location.municipality', '==', municipality)` |
+| CRITICAL-AUTH-2 | `getMunicipalityReports` ignores municipality filter | Added `where('approximateLocation.municipality', '==', municipality)` |
 | CRITICAL-AUTH-3 | `getAssignedIncidents` ignores municipality | Added municipality filter with strict guard |
 | CRITICAL-DATA-1 | Silent photo upload failure | Changed from `Promise.allSettled` silent success to throw on failure |
 | CRITICAL-INPUT-1 | GPS `(0,0)` and out-of-range coords accepted | Created `geoValidation.ts` with PH/Camarines Norte bounds checks |

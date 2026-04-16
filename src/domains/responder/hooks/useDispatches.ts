@@ -167,6 +167,7 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
           message: 'Municipality not set — cannot load dispatches',
           isFatal: true
         })
+        setDispatches([])
         setIsLoading(false)
         return
       }

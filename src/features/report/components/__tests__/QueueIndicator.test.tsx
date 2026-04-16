@@ -208,7 +208,7 @@ describe('QueueIndicator', () => {
 
       const errorElement = screen.getByTestId('sync-error')
       expect(errorElement).toBeInTheDocument()
-      expect(errorElement).toHaveTextContent('Auto-sync failed')
+      expect(errorElement).toHaveTextContent('Unable to sync queued reports. Please try again.')
     })
   })
 

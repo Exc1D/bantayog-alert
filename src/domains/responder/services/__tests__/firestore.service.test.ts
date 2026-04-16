@@ -29,7 +29,6 @@ describe('getAssignedIncidents', () => {
     await expect(getAssignedIncidents('responder-uid', '')).rejects.toThrow(
       'municipality is required'
     )
-    await expect(getAssignedIncidents('responder-uid', '')).rejects.toThrow()
     await expect(getAssignedIncidents('responder-uid', undefined as unknown as string)).rejects.toThrow(
       'municipality is required'
     )

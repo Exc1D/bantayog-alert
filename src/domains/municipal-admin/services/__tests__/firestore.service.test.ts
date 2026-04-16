@@ -38,8 +38,8 @@ describe('getMunicipalityReports', () => {
 
     const constraints = getCollectionSpy.mock.calls[0][1]
     // Check that at least one constraint is a where clause on location.municipality
-    const hasMunicipalityFilter = constraints?.some((c: any) => {
-      return c?.fieldPath === 'approximateLocation.municipality'
+    const hasMunicipalityFilter = constraints?.some((c: unknown) => {
+      return (c as { fieldPath?: string })?.fieldPath === 'approximateLocation.municipality'
     })
     expect(hasMunicipalityFilter).toBe(true)
   })
