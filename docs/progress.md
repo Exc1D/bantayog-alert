@@ -16,7 +16,7 @@
 | CRITICAL-INPUT-1 | GPS `(0,0)` and out-of-range coords accepted | Created `geoValidation.ts` with PH/Camarines Norte bounds checks |
 | CRITICAL-INPUT-2 | Photo size not validated | Added 5MB cap + MIME type validation (JPEG/PNG/WebP only) |
 | HIGH-ERROR-1 | Auto-sync failure silent | Added `syncError` state surfaced in `QueueIndicator` |
-| HIGH-ERROR-2 | Queue service failure silent | Already handled via existing `loadError` state |
+| HIGH-ERROR-2 | Queue service failure silent | Already handled — `loadError` state surfaces IndexedDB errors in the UI |
 
 ### Files Changed
 

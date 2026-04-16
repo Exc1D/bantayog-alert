@@ -92,12 +92,15 @@ describe('validatePhoto', () => {
 
   it('PHOTO_INVALID_TYPE message includes the actual MIME type', () => {
     const file = makeFile({ type: 'image/gif' })
+    let thrownError: unknown
     try {
       validatePhoto(file)
     } catch (err: unknown) {
-      expect(err).toBeInstanceOf(PhotoValidationError)
-      expect((err as PhotoValidationError).message).toContain('image/gif')
+      thrownError = err
     }
+    // Assert exception was thrown before checking its message
+    expect(thrownError).toBeInstanceOf(PhotoValidationError)
+    expect((thrownError as PhotoValidationError).message).toContain('image/gif')
   })
 })
 
