@@ -152,7 +152,9 @@ export function ReportForm({
   )
 
   const isGpsAvailable = Boolean(resolvedUserLocation && !resolvedGpsError)
-  const showManualDropdowns = Boolean(resolvedGpsError)
+  // Show manual dropdowns when: GPS error occurred OR GPS returned invalid coords (rejected by validation).
+  // This allows the user to select municipality/barangay manually when GPS fails or is rejected.
+  const showManualDropdowns = Boolean(resolvedGpsError || (resolvedUserLocation && !isValidPHCoordinate(resolvedUserLocation.latitude, resolvedUserLocation.longitude)))
 
   function handlePhotoButtonClick() {
     fileInputRef.current?.click()

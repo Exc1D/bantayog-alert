@@ -28,7 +28,7 @@ export const CAMARINES_NORTE_BOUNDS = {
  * Guards against:
  * - The default "0, 0" that some devices return when GPS is unavailable
  * - Non-finite values (NaN, Infinity) from faulty sensors
- * - Coordinates clearly outside PH (e.g., Manila, New York)
+ * - Coordinates clearly outside PH (e.g., New York, Tokyo)
  */
 export function isValidPHCoordinate(lat: number, lng: number): boolean {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false

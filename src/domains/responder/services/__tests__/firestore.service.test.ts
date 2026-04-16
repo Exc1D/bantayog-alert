@@ -26,12 +26,15 @@ describe('getAssignedIncidents', () => {
   })
 
   it('should throw if municipality is missing', async () => {
+    getCollectionMock.mockResolvedValue([])
     await expect(getAssignedIncidents('responder-uid', '')).rejects.toThrow(
       'municipality is required'
     )
     await expect(getAssignedIncidents('responder-uid', undefined as unknown as string)).rejects.toThrow(
       'municipality is required'
     )
+    // Verify getCollection was never called (no downstream Firestore call for invalid input)
+    expect(getCollectionMock).not.toHaveBeenCalled()
   })
 
   it('should query with assignedTo and municipality constraints', async () => {

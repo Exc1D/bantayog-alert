@@ -30,9 +30,9 @@ describe('isValidPHCoordinate', () => {
 
   it('accepts PH upper-bound', () => expect(isValidPHCoordinate(PH_BOUNDS.maxLat, PH_BOUNDS.maxLng)).toBe(true))
 
-  it('accepts negative latitude within PH', () => expect(isValidPHCoordinate(5.0, 118.0)).toBe(true))
+  it('accepts latitude near PH southern bound', () => expect(isValidPHCoordinate(5.0, 118.0)).toBe(true))
 
-  it('accepts negative longitude within PH', () => expect(isValidPHCoordinate(14.0, -125.0)).toBe(false))
+  it('rejects longitude outside PH range', () => expect(isValidPHCoordinate(14.0, -125.0)).toBe(false))
 })
 
 describe('isWithinCamarinesNorte', () => {

@@ -203,7 +203,7 @@ export function useDispatches(options?: { subscribe?: boolean }): UseDispatchesR
       // Clear abort controller ref on completion (aborted or success)
       abortControllerRef.current = null
     }
-  }, [])
+  }, [municipality])
 
   useEffect(() => {
     let mounted = true

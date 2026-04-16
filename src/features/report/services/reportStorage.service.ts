@@ -28,7 +28,8 @@ export function validatePhoto(file: File): void {
     )
   }
   if (!ALLOWED_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_TYPES)[number])) {
-    throw new PhotoValidationError('PHOTO_INVALID_TYPE', `Unsupported type: ${file.type}`)
+    const type = file.type || '(empty)'
+    throw new PhotoValidationError('PHOTO_INVALID_TYPE', `Unsupported type: ${type}`)
   }
 }
 

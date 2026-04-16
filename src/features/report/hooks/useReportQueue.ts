@@ -199,6 +199,8 @@ export function useReportQueue(): UseReportQueueResult {
   // syncFnRef.current is kept in sync via the [syncQueue] useEffect above.
   useEffect(() => {
     if (isOnline && queueRef.current.length > 0) {
+      // Clear any previous sync error when starting a new auto-sync so the UI reflects the latest state.
+      setSyncError(null)
       syncFnRef.current().catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'Auto-sync failed'
         console.error('[AUTO_SYNC_ERROR]', message)

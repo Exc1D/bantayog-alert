@@ -42,6 +42,16 @@ describe('getMunicipalityReports', () => {
       return (c as { fieldPath?: string })?.fieldPath === 'approximateLocation.municipality'
     })
     expect(hasMunicipalityFilter).toBe(true)
+    // Verify orderBy and limit constraints are also applied
+    const hasOrderBy = constraints?.some((c: unknown) => {
+      return (c as { fieldPath?: string })?.fieldPath === 'createdAt'
+    })
+    const hasLimit = constraints?.some((c: unknown) => {
+      const fieldPath = (c as { fieldPath?: string })?.fieldPath
+      return fieldPath === 'limit' || (c as { limit?: number })?.limit === 100
+    })
+    expect(hasOrderBy).toBe(true)
+    expect(hasLimit).toBe(true)
   })
 
   it('throws when municipality is missing', async () => {

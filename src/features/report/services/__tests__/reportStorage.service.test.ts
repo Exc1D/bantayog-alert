@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { validatePhoto, PhotoValidationError, MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES } from '../reportStorage.service'
 
 vi.mock('@/app/firebase/config', () => ({
