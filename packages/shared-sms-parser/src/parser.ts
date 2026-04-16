@@ -1,5 +1,5 @@
 /** §3 — SMS inbound type synonyms: English / Tagalog */
-const TYPE_SYNONYMS: Record<string, string> = {
+const TYPE_SYNONYMS: Record<string, SmsReportType> = {
   FLOOD: 'flood',
   BAHA: 'flood',
   FIRE: 'fire',
@@ -14,9 +14,11 @@ const TYPE_SYNONYMS: Record<string, string> = {
   IBA: 'other',
 }
 
+export type SmsReportType = 'flood' | 'fire' | 'landslide' | 'accident' | 'medical' | 'other'
+
 export interface SmsParseSuccess {
   success: true
-  type: string
+  type: SmsReportType
   barangay: string
   originalType: string
   originalBarangay: string
@@ -24,7 +26,7 @@ export interface SmsParseSuccess {
 
 export interface SmsParseFailure {
   success: false
-  reason: 'missing_keyword' | 'unknown_type' | 'missing_barangay'
+  reason: 'missing_keyword' | 'missing_type' | 'unknown_type' | 'missing_barangay'
   raw: string
 }
 
@@ -39,7 +41,7 @@ export function parseSmsReport(body: string): SmsParseResult {
 
   if (parts.length < 3) {
     if (parts.length < 2) {
-      return { success: false, reason: 'unknown_type', raw: body }
+      return { success: false, reason: 'missing_type', raw: body }
     }
     return { success: false, reason: 'missing_barangay', raw: body }
   }

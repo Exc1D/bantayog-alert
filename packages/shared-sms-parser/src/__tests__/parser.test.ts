@@ -35,6 +35,15 @@ describe('parseSmsReport', () => {
     })
   })
 
+  it('should parse multi-word barangay', () => {
+    const result = parseSmsReport('BANTAYOG FLOOD SAN JOSE')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.barangay).toBe('san-jose')
+      expect(result.originalBarangay).toBe('SAN JOSE')
+    }
+  })
+
   it('should be case-insensitive', () => {
     const result = parseSmsReport('bantayog flood calasgasan')
     expect(result.success).toBe(true)
@@ -46,15 +55,36 @@ describe('parseSmsReport', () => {
   it('should fail on missing keyword', () => {
     const result = parseSmsReport('FLOOD CALASGASAN')
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reason).toBe('missing_keyword')
+      expect(result.raw).toBe('FLOOD CALASGASAN')
+    }
+  })
+
+  it('should fail on missing type', () => {
+    const result = parseSmsReport('BANTAYOG')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reason).toBe('missing_type')
+      expect(result.raw).toBe('BANTAYOG')
+    }
   })
 
   it('should fail on unknown type', () => {
     const result = parseSmsReport('BANTAYOG TORNADO CALASGASAN')
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reason).toBe('unknown_type')
+      expect(result.raw).toBe('BANTAYOG TORNADO CALASGASAN')
+    }
   })
 
   it('should fail on missing barangay', () => {
     const result = parseSmsReport('BANTAYOG FLOOD')
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reason).toBe('missing_barangay')
+      expect(result.raw).toBe('BANTAYOG FLOOD')
+    }
   })
 })
