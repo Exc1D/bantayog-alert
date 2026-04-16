@@ -96,6 +96,19 @@ importers:
         specifier: ^5.4.0
         version: 5.4.21
 
+  packages/shared-firebase:
+    dependencies:
+      '@bantayog/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1
+
   packages/shared-types:
     devDependencies:
       typescript:
