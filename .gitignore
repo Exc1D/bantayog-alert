@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.turbo/
+*.local
+.env
+.env.*
+!.env.example
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+ui-debug.log
+.firebase/
+coverage/
