@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "dev": "bantayog-dev",
+    "staging": "bantayog-staging",
+    "prod": "bantayog-prod"
+  }
+}

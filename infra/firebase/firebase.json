@@ -1,0 +1,40 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "functions": [
+    {
+      "source": "../../functions",
+      "codebase": "bantayog",
+      "runtime": "nodejs20",
+      "ignore": ["node_modules", ".git"]
+    }
+  ],
+  "hosting": [
+    {
+      "target": "citizen",
+      "public": "../../apps/citizen/dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    },
+    {
+      "target": "admin",
+      "public": "../../apps/admin/dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    }
+  ],
+  "emulators": {
+    "auth": { "port": 9099 },
+    "firestore": { "port": 8080 },
+    "database": { "port": 9000 },
+    "storage": { "port": 9199 },
+    "functions": { "port": 5001 },
+    "hosting": { "port": 5000 },
+    "ui": { "enabled": true, "port": 4000 }
+  }
+}
