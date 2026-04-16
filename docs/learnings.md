@@ -69,7 +69,9 @@ const latestAlertsRef = useRef(alerts) // captures initial state only
 
 // CORRECT — separate effect syncs them
 const latestAlertsRef = useRef(alerts)
-useEffect(() => { latestAlertsRef.current = alerts }, [alerts])
+useEffect(() => {
+  latestAlertsRef.current = alerts
+}, [alerts])
 ```
 
 ---
@@ -84,7 +86,9 @@ const geo = useGeolocation()
 const resolved = userLocation ?? geo.coordinates ?? undefined
 
 // OR require it — explicit, caught at compile time
-interface Props { userLocation: Coordinates; }
+interface Props {
+  userLocation: Coordinates
+}
 ```
 
 ---
@@ -100,7 +104,7 @@ vi.hoisted(() => ({ mock })) // mock not yet declared
 
 // CORRECT
 const { mockFn } = vi.hoisted(() => ({
-  mockFn: vi.fn().mockResolvedValue([])
+  mockFn: vi.fn().mockResolvedValue([]),
 }))
 vi.mock('../../service', () => ({ service: { fn: mockFn } }))
 ```
@@ -133,12 +137,18 @@ When a component uses Firestore contexts, mocks are needed at module level:
 vi.mock('@/app/firebase/config', () => ({ db: {}, auth: {} }))
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(),
-  collection: vi.fn(), query: vi.fn(), where: vi.fn(),
-  onSnapshot: vi.fn(), getDocs: vi.fn(),
+  collection: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
+  onSnapshot: vi.fn(),
+  getDocs: vi.fn(),
 }))
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(),
-  onAuthStateChanged: vi.fn((cb) => { cb(null); return vi.fn() }),
+  onAuthStateChanged: vi.fn((cb) => {
+    cb(null)
+    return vi.fn()
+  }),
 }))
 ```
 
@@ -147,6 +157,16 @@ vi.mock('firebase/auth', () => ({
 ## Firestore Rules: Function Arguments
 
 **In Firestore Rules DSL, function parameters are silently discarded if unused.** `isResponderOwner(opsId)` compiles fine — `opsId` is ignored. This is a security code smell: always match call sites to actual function signatures.
+
+---
+
+## Testing: Firebase Rules Unit Testing Singleton Issues
+
+**When using `@firebase/rules-unit-testing` with Vitest (shared-process model), `initializeTestEnvironment` creates a singleton Firestore app per project ID.** Multiple `beforeAll` calls in different test files all resolve to the same underlying Firestore instance. This causes "Firestore has already been started" errors when a test file tries to initialize after another test file has already connected.
+
+**Mitigation:** Do NOT cache the `RulesTestEnvironment` as a module-level singleton across test files. Each test file should call `getTestEnv()` fresh. For full isolation, consider `--parallel` mode or running emulator exec separately per test file.
+
+**`afterAll` in each `describe` block is dangerous** when multiple `describe` blocks share a singleton `testEnv` — the first block's cleanup destroys the env before the second block's `beforeEach` runs. Use a single `afterAll` at the outer scope, or ensure each test file creates its own env instance and never shares across describe blocks.
 
 ---
 

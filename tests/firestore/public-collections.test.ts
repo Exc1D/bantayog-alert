@@ -13,7 +13,6 @@ describe('public collection rules', () => {
 
   beforeEach(async () => {
     await testEnv.clearFirestore()
-    // Seed data needed for isActivePrivileged() checks
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'active_accounts', 'superadmin_1'), {
         accountStatus: 'active',
