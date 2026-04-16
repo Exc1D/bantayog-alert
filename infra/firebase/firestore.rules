@@ -1,0 +1,253 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Identity helpers ---
+    function isAuthed() {
+      return request.auth != null
+          && request.auth.token.accountStatus == 'active';
+    }
+    function role()           { return request.auth.token.role; }
+    function uid()            { return request.auth.uid; }
+    function myMunicipality() { return request.auth.token.municipalityId; }
+    function myAgency()       { return request.auth.token.agencyId; }
+    function permittedMunis() {
+      return request.auth.token.permittedMunicipalityIds != null
+        ? request.auth.token.permittedMunicipalityIds : [];
+    }
+
+    function isCitizen()    { return isAuthed() && role() == 'citizen'; }
+    function isResponder()  { return isAuthed() && role() == 'responder'; }
+    function isMuniAdmin()  { return isAuthed() && role() == 'municipal_admin'; }
+    function isAgencyAdmin(){ return isAuthed() && role() == 'agency_admin'; }
+    function isSuperadmin() { return isAuthed() && role() == 'provincial_superadmin'; }
+
+    function isActivePrivileged() {
+      return exists(/databases/$(database)/documents/active_accounts/$(uid()))
+          && get(/databases/$(database)/documents/active_accounts/$(uid()))
+             .data.accountStatus == 'active';
+    }
+
+    function adminOf(muniId) {
+      return (isMuniAdmin() && myMunicipality() == muniId)
+          || (isSuperadmin() && muniId in permittedMunis());
+    }
+
+    function canReadReportDoc(data) {
+      return (data.visibilityClass == 'public_alertable' && isAuthed())
+          || adminOf(data.municipalityId)
+          || (isMuniAdmin() && myMunicipality() in data.get('visibility', {}).get('sharedWith', []));
+    }
+
+    function validResponderTransition(from, to) {
+      return (from == 'accepted'     && to == 'acknowledged')
+          || (from == 'acknowledged' && to == 'in_progress')
+          || (from == 'in_progress'  && to == 'resolved')
+          || (from == 'pending'      && to == 'declined');
+    }
+
+    // --- Citizen inbox ---
+    match /report_inbox/{inboxId} {
+      allow create: if isAuthed()
+                    && request.resource.data.reporterUid == uid()
+                    && request.resource.data.keys().hasAll(['reporterUid','clientCreatedAt','payload','idempotencyKey'])
+                    && request.resource.data.payload is map
+                    && !('source' in request.resource.data.payload
+                         && request.resource.data.payload.source == 'responder_witness');
+      allow read, update, delete: if false;
+    }
+
+    // --- Report triptych ---
+    match /reports/{reportId} {
+      allow read: if canReadReportDoc(resource.data);
+      allow create, delete: if false;
+      allow update: if adminOf(resource.data.municipalityId)
+                    && isActivePrivileged()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status','severity','verifiedAt','resolvedAt',
+                                 'archivedAt','deletedAt','retentionExempt',
+                                 'visibilityClass','duplicateClusterId',
+                                 'source','witnessPriorityFlag','hasPhotoAndGPS',
+                                 'reporterRole','mergedInto','visibility','updatedAt']);
+
+      match /status_log/{e} {
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow write: if false;
+      }
+      match /media/{m} {
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow write: if false;
+      }
+      match /messages/{m} {
+        allow read: if isActivePrivileged() && (
+          adminOf(get(/databases/$(database)/documents/reports/$(reportId)).data.municipalityId)
+          || (isAgencyAdmin() && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds)
+          || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid())))
+        );
+        allow write: if false;
+      }
+      match /field_notes/{n} {
+        allow read: if isActivePrivileged() && (
+          adminOf(get(/databases/$(database)/documents/reports/$(reportId)).data.municipalityId)
+          || (isAgencyAdmin() && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds)
+          || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid())))
+        );
+        allow write: if false;
+      }
+    }
+
+    match /report_private/{r} {
+      allow read: if isActivePrivileged() && adminOf(resource.data.municipalityId);
+      allow write: if false;
+    }
+
+    match /report_ops/{r} {
+      allow read: if isActivePrivileged() && (
+        adminOf(resource.data.municipalityId)
+        || (isAgencyAdmin() && myAgency() in resource.data.agencyIds)
+        || (isMuniAdmin() && myMunicipality() in resource.data.visibility.sharedWith)
+      );
+      allow write: if false;
+    }
+
+    match /report_contacts/{r} {
+      allow read: if isActivePrivileged() && adminOf(resource.data.municipalityId);
+      allow write: if false;
+    }
+
+    match /report_lookup/{publicRef} {
+      allow read, write: if false;
+    }
+
+    // --- Dispatches ---
+    match /dispatches/{d} {
+      allow read: if isActivePrivileged() && (
+        (isResponder() && resource.data.responderId == uid())
+        || adminOf(resource.data.municipalityId)
+        || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
+      );
+      allow update: if isResponder()
+                    && isActivePrivileged()
+                    && resource.data.responderId == uid()
+                    && validResponderTransition(resource.data.status, request.resource.data.status)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status','statusUpdatedAt','acknowledgedAt',
+                                 'inProgressAt','resolvedAt','declineReason',
+                                 'resolutionSummary','proofPhotoUrl']);
+      allow create, delete: if false;
+    }
+
+    // --- Responders and Users ---
+    match /responders/{rUid} {
+      allow read: if isAuthed() && (
+        uid() == rUid
+        || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
+        || (isMuniAdmin() && myMunicipality() == resource.data.municipalityId)
+        || isSuperadmin()
+      );
+      allow update: if uid() == rUid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['availabilityStatus']);
+      allow create, delete: if false;
+    }
+
+    match /users/{uUid} {
+      allow read: if isAuthed() && (
+        uid() == uUid
+        || (isMuniAdmin() && myMunicipality() == resource.data.municipalityId)
+        || isSuperadmin()
+      );
+      allow update: if uid() == uUid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['displayName','phone','barangayId']);
+      allow create, delete: if false;
+    }
+
+    // --- Auth support ---
+    match /claim_revocations/{cUid} {
+      allow read: if uid() == cUid;
+      allow write: if false;
+    }
+
+    match /active_accounts/{aUid} {
+      allow read: if uid() == aUid;
+      allow write: if false;
+    }
+
+    // --- Public collections ---
+    match /alerts/{a}        { allow read: if isAuthed(); allow write: if false; }
+    match /emergencies/{e}   { allow read: if isAuthed(); allow write: if false; }
+    match /agencies/{a}      { allow read: if isAuthed(); allow write: if isSuperadmin() && isActivePrivileged(); }
+    match /system_config/{c} { allow read: if isAuthed(); allow write: if isSuperadmin() && isActivePrivileged(); }
+    match /audit_logs/{l}    { allow read: if isSuperadmin() && isActivePrivileged(); allow write: if false; }
+    match /rate_limits/{r}   { allow read, write: if false; }
+    match /dead_letters/{d}  { allow read: if isSuperadmin() && isActivePrivileged(); allow write: if false; }
+    match /moderation_incidents/{m} {
+      allow read: if isActivePrivileged() && (isMuniAdmin() || isSuperadmin());
+      allow write: if false;
+    }
+
+    // --- SMS layer ---
+    match /sms_inbox/{msgId}   { allow read, write: if false; }
+    match /sms_outbox/{msgId}  { allow read: if isSuperadmin() && isActivePrivileged(); allow write: if false; }
+    match /sms_sessions/{hash} { allow read, write: if false; }
+    match /sms_provider_health/{id} { allow read: if isSuperadmin(); allow write: if false; }
+
+    // --- Break-glass ---
+    match /breakglass_events/{id} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    // --- Event streams ---
+    match /report_events/{eventId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isSuperadmin()
+                      || (isAgencyAdmin() && resource.data.agencyId == myAgency()));
+      allow write: if false;
+    }
+
+    // --- Agency assistance requests ---
+    match /agency_assistance_requests/{requestId} {
+      allow read: if isActivePrivileged() && (
+        (isMuniAdmin() && resource.data.requestedByMunicipality == myMunicipality())
+        || (isAgencyAdmin() && resource.data.targetAgencyId == myAgency())
+        || isSuperadmin()
+      );
+      allow write: if false;
+    }
+
+    // --- Command channel ---
+    match /command_channel_threads/{threadId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
+                  && request.auth.uid in resource.data.participantUids;
+      allow write: if false;
+    }
+    match /command_channel_messages/{messageId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
+                  && get(/databases/$(database)/documents/command_channel_threads/$(resource.data.threadId))
+                       .data.participantUids[request.auth.uid] != null;
+      allow write: if false;
+    }
+
+    // --- Mass alert requests ---
+    match /mass_alert_requests/{requestId} {
+      allow read: if isActivePrivileged() && (
+        isSuperadmin()
+        || (isMuniAdmin() && resource.data.requestedByMunicipality == myMunicipality())
+      );
+      allow write: if false;
+    }
+
+    // --- Shift handoffs ---
+    match /shift_handoffs/{handoffId} {
+      allow read: if isActivePrivileged()
+                  && (request.auth.uid == resource.data.fromUid
+                      || request.auth.uid == resource.data.toUid
+                      || isSuperadmin());
+      allow write: if false;
+    }
+  }
+}
