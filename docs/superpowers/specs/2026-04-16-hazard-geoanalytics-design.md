@@ -94,7 +94,7 @@ interface HazardZone {
   // Indexed geometry — simplified, bounded
   geohashPrefix: string                      // 6-char prefix for bbox lookup
   bbox: { minLat: number, minLng: number, maxLat: number, maxLng: number }
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon  // ≤500 vertices, enforced server-side
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon  // vertex cap from system_config/hazard_zone_limits.maxVertices (default 500), enforced server-side
   geometryStorageUrl?: string                // Cloud Storage URL for unsimplified source (reference layers only)
 
   // Reference-layer specific
@@ -128,7 +128,7 @@ interface HazardZone {
 }
 ```
 
-**Subcollection:** `hazard_zones/{zoneId}/history/{version}` — snapshot of prior zone state written before each edit. Read-only after write; CF Admin SDK is the only writer.
+**Subcollection:** `hazard_zones/{zoneId}/history/{version}` — snapshot of prior zone state written before each edit. Read-only after write; CF Admin SDK is the only writer. Each history doc carries denormalized `zoneType` and `municipalityId` fields (written at creation time), so security rules can scope reads without a `get()` on the parent zone.
 
 ### 2.2 Touch points on existing schemas
 
@@ -234,6 +234,8 @@ CREATE TABLE hazards.report_tags (
 
 Analytics queries use native `ST_Contains` / `ST_Area` / `ST_Within`. Denormalized `municipality_id`, `hazard_type`, `severity` on `report_tags` means the common admin query needs no join; clustering keeps it fast.
 
+**BigQuery is for analytics (aggregate queries, time-windowed reports, compliance forensics), not operational truth.** Zone version status, custom zone active lists, and any admin UI that must reflect just-committed state reads from Firestore directly. BigQuery mirror lag (up to 5 min) is acceptable for trend dashboards and compliance queries, but not for the version-status panel where a superadmin validates an upload they just performed. This split is consistent with the existing §9.1 state-ownership principle: Firestore SDK is the authoritative client-side view of server state.
+
 ### 2.5 Composite indexes (add to `firestore.indexes.json`)
 
 | Collection | Index | Purpose |
@@ -276,11 +278,13 @@ match /hazard_zones/{zoneId} {
   allow create, update, delete: if false;
 
   match /history/{version} {
+    // Denormalized zoneType + municipalityId on each history doc — no get() needed.
+    // Written at history-creation time by CF; immutable after write.
     allow read: if isActivePrivileged() && (
       isSuperadmin()
       || (isMuniAdmin() && (
-        get(/databases/$(database)/documents/hazard_zones/$(zoneId)).data.zoneType == 'reference'
-        || get(/databases/$(database)/documents/hazard_zones/$(zoneId)).data.municipalityId == myMunicipality()
+        resource.data.zoneType == 'reference'
+        || resource.data.municipalityId == myMunicipality()
       ))
     );
     allow write: if false;
@@ -292,7 +296,7 @@ match /hazard_zones/{zoneId} {
 
 - **Muni admin read scope** narrowed to: all reference layers (province-wide hazard data, needed for muni-area coverage) + own-muni custom zones only. Provincial-scope custom zones are invisible; Superadmin loops in affected munis via Command Channel threads.
 - **Agency Admin / Responder / Citizen** have no read path → default-deny applies. Matches confirmed scope decisions.
-- **History subcollection reads** re-derive parent scope via `get()`. Accessed rarely (forensic); 1-read cost acceptable, same pattern as `reports/{id}/messages`.
+- **History subcollection reads** use denormalized `zoneType` and `municipalityId` fields on each history doc (written at creation by CF). No `get()` needed — avoids unbounded billable reads when superadmin bulk-reviews zone histories post-typhoon or inspects reference layer versions in the management panel.
 - **CI negative tests required:** muni admin attempting to read other-muni custom zone fails; agency admin attempting any read fails; responder / citizen attempting any read fails; non-admin attempting any write fails.
 
 ### 3.2 Existing rules touched
@@ -319,8 +323,8 @@ service firebase.storage {
 | `uploadHazardReferenceLayer` | `provincial_superadmin` | Upload new reference-layer version for one `hazardType`. Writes source GeoJSON to Cloud Storage + simplified polygons to Firestore as new zone IDs. |
 | `supersedeHazardReferenceLayer` | `provincial_superadmin` | Mark prior version's zones `supersededAt`; clients stop rendering, history preserved. |
 | `createCustomHazardZone` | `municipal_admin`, `provincial_superadmin` | Create event-bounded custom zone. Muni admin limited to `scope: 'municipal'` with own `municipalityId`. |
-| `updateCustomHazardZone` | `municipal_admin`, `provincial_superadmin` | Edit geometry / `expiresAt` / `purposeDescription` / `severity`. Rule-scoped by authorship. |
-| `deleteCustomHazardZone` | `municipal_admin`, `provincial_superadmin` | Soft-delete (sets `deletedAt`, `deletedBy`). Reference zones cannot be deleted, only superseded. |
+| `updateCustomHazardZone` | `municipal_admin`, `provincial_superadmin` | Edit geometry / `expiresAt` / `purposeDescription` / `severity`. Muni admin scoped by `municipalityId == own` (any zone in own muni, regardless of who authored it); Superadmin scoped to any custom zone. Authorship is an audit field, not an authorization boundary (Principle #11). |
+| `deleteCustomHazardZone` | `municipal_admin`, `provincial_superadmin` | Soft-delete (sets `deletedAt`, `deletedBy`). Same municipality scope as update — any muni admin can delete any custom zone in own muni. Superadmin can delete any. Reference zones cannot be deleted, only superseded. |
 | `requestHazardUploadUrl` | `provincial_superadmin` | Signed Cloud Storage URL for reference-layer upload (10-min expiry, Content-Type + size restricted). |
 
 ### 3.5 Existing callables extended
@@ -337,6 +341,7 @@ service firebase.storage {
 | Trigger | Function | Purpose |
 |---|---|---|
 | `onWrite hazard_zones/{zoneId}` where `zoneType === 'custom'` | `hazardZoneSweep` | Recompute bbox delta (old ∪ new), geohash-prefix query on `reports`/`report_ops`, re-tag affected reports atomically. Idempotent on `(zoneId, version)`. |
+| Scheduled every 5 min | `hazardTagBackfillSweep` | Queries `report_ops` where `locationGeohash != null AND hazardZoneIds == null AND createdAt > now - 90d`. Tags untagged reports. Primary recovery for ingest auto-tag failures. Same pattern as `inboxReconciliationSweep`. |
 | Scheduled hourly | `hazardZoneExpirationSweep` | Mark zones past `expiresAt` with `expiredAt`. Does NOT remove tags. |
 | Scheduled 5-min | `hazardReferenceBigQueryMirror` | Export zone + tag deltas to BigQuery `hazards.*`. Reuses existing audit batch pipeline. |
 
@@ -374,6 +379,8 @@ Per `rate_limits/{key}` framework:
 
 Hard limit returns structured error; soft limit (80% of cap) logs moderation-elevation per §7.1 pattern.
 
+**Emergency rate-limit elevation.** During a declared emergency (§7.5 `declareEmergency`) or active surge pre-warm (§10.2), all hazard zone rate limits are multiplied by `system_config/hazard_zone_limits.emergencyMultiplier` (default: 5×). Same mechanism as the `minInstances` pre-warm — automatic, logged, reverts when the emergency declaration ends. This prevents the 50/day custom zone cap from pinching a muni admin drawing rapid-evolving evacuation zones during typhoon landfall.
+
 ### 3.10 Deny matrix
 
 | Role | Read `hazard_zones` | Read history | Call any hazard callable | Polygon-target mass alert |
@@ -381,7 +388,7 @@ Hard limit returns structured error; soft limit (80% of cap) logs moderation-ele
 | Citizen | ❌ | ❌ | ❌ | ❌ |
 | Responder | ❌ | ❌ | ❌ | ❌ |
 | Agency Admin | ❌ | ❌ | ❌ | ❌ |
-| Municipal Admin | ✅ reference + own-muni custom | ✅ for readable zones | ✅ own-muni custom only | ✅ own muni (≤5k) or escalate |
+| Municipal Admin | ✅ reference + own-muni custom | ✅ for readable zones | ✅ own-muni custom (any author) | ✅ own muni (≤5k) or escalate |
 | Provincial Superadmin | ✅ all | ✅ all | ✅ all | ✅ with Reach Plan |
 
 All denials get explicit CI negative tests per §5.7.
@@ -400,7 +407,7 @@ All denials get explicit CI negative tests per §5.7.
 6. Client calls `uploadHazardReferenceLayer` with temp path + metadata.
 7. Callable server-side:
    - Loads GeoJSON from temp path; validates schema
-   - For each feature: Douglas-Peucker simplification to ≤500 vertices, computes bbox + 6-char geohash prefix, assigns new `zoneId`
+   - For each feature: Douglas-Peucker simplification to `system_config/hazard_zone_limits.maxVertices` (default 500), computes bbox + 6-char geohash prefix, assigns new `zoneId`
    - Writes `hazard_zones` docs with `zoneType: 'reference'`, `scope: 'provincial'`
    - Writes source GeoJSON to permanent path `reference/{hazardType}/{sourceVersion}/{zoneId}.geojson`
    - Streams audit event per new zone
@@ -420,9 +427,11 @@ All denials get explicit CI negative tests per §5.7.
    - Validates vertex cap, closure, bbox inside municipality boundary (for muni admin)
    - Douglas-Peucker normalization (canonical form)
    - Computes bbox + geohash prefix
-   - Writes `hazard_zones/{newZoneId}` + `history/v1`
+   - Writes `hazard_zones/{newZoneId}` + `history/v1` atomically in a single Firestore transaction (prevents race where two parallel creates could collide on the same zoneId)
    - Streams audit event
 6. `onWrite` trigger fires `hazardZoneSweep` (see 4.4).
+
+**All custom zone mutations (create/update/delete) use Firestore transactions** that atomically read the current zone state, verify the expected version, and write both the zone update and the `history/{version}` snapshot in one commit. This prevents the race where two parallel callables both read version N and silently overwrite each other's `history/v(N+1)`. The second writer's transaction retries, reads version N+1, and fails with a structured CONFLICT error that the UI surfaces.
 
 ### 4.3 Ingest auto-tag (inside `processInboxItem`)
 
@@ -432,7 +441,8 @@ Hot path. Runs on every inbox event.
 2. Existing triptych materialization runs inside its transaction. During this transaction, `processInboxItem` also writes `locationGeohash` (6-char geohash of exact GPS location) to `report_ops` — this is a field addition to the existing `report_ops` write, not a new transaction.
 3. **After the triptych transaction commits, a follow-up auto-tag step runs:**
    - If `locationPrecision === 'gps'`:
-     - Query `hazard_zones` where `geohashPrefix` starts with first 4 chars of report's geohash, `deletedAt == null`, `supersededBy == null`, `expiredAt == null` → candidates (typically 1–20)
+     - Compute the report's 4-char geohash prefix AND its 8 neighboring 4-char prefixes (via `ngeohash.neighbors()`) to handle boundary-straddling — a point on a cell edge may fall inside a zone indexed in the adjacent cell
+     - Query `hazard_zones` where `geohashPrefix` starts with any of these 9 prefixes, `deletedAt == null`, `supersededBy == null`, `expiredAt == null` → candidates (typically 1–20; worst case ~50 with neighbors, still fast)
      - Turf.js `booleanPointInPolygon` on each candidate
      - Build `HazardTag[]` from matches
    - Update `report_ops` with `hazardZoneIds: HazardTag[]` + `hazardZoneIdList: string[]`
@@ -441,7 +451,11 @@ Hot path. Runs on every inbox event.
 
 **Why NOT inside the triptych transaction:** Adding a `hazard_zones` query to the triptych transaction expands its read set. If any matched zone is edited between the read and the commit, the transaction retries. During a surge + simultaneous zone edit, this creates a retry storm on the hot path. Separating auto-tag into a follow-up write means: the report always materializes (life-safety-critical), and tagging is best-effort with a safety net.
 
-**Failure handling:** If the follow-up auto-tag step fails (query error, timeout, CF crash), the report exists untagged. `processInboxItem` appends a `dead_letters/{id}` entry with `category: 'hazard_tag_failed'`. The `hazardZoneSweep` background path picks up untagged reports on the next zone edit; an ops replay callable is available for manual recovery. No citizen report is degraded by an auto-tag failure.
+**Failure handling:** If the follow-up auto-tag step fails (query error, timeout, CF crash), the report exists untagged. `processInboxItem` appends a `dead_letters/{id}` entry with `category: 'hazard_tag_failed'`. No citizen report is degraded by an auto-tag failure. Recovery has two paths:
+
+1. **`hazardTagBackfillSweep`** (scheduled, every 5 minutes) — queries `report_ops` where `locationGeohash IS NOT NULL` AND `hazardZoneIds` is empty/null AND `createdAt > now - 90d`. For each match, runs the same geohash-prefix → Turf.js pipeline and tags. This is the **primary** recovery path; it catches untagged reports regardless of whether any zone is later edited. Same pattern as `inboxReconciliationSweep` in Architecture §10.2 — periodic backfill as safety net, not event-triggered-only.
+2. **`hazardZoneSweep`** — catches reports when a zone is edited (already described in §4.4). This is a secondary path for re-tagging, not the primary recovery for ingest failures.
+3. **Manual ops replay callable** — available for targeted recovery of specific reports.
 
 ### 4.4 Custom zone sweep
 
@@ -487,6 +501,16 @@ Extends §3 / §7.5.1 workflow.
 
 **Why reverse-geocode to barangay, not direct GPS match against users?** Citizen locations mostly stale (no continuous polling for privacy + battery); registered citizen addresses are at barangay granularity by design. Polygon precision becomes a filter refinement ON TOP of barangay routing: "send to registered users in affected barangays whose most recent known location is inside polygon," falling back to barangay-level when no recent location.
 
+**De minimis boundary intersection handling.** Philippine LGU boundary data has known gaps and overlaps. A polygon that clips 50 meters into a neighboring municipality due to GIS data quality should not force NDRRMC escalation when the alert is operationally single-municipality. The routing rule is:
+
+- Compute polygon-municipality intersection area for each municipality the polygon touches.
+- The **primary municipality** is the one with the largest intersection area.
+- A secondary municipality is **de minimis** if BOTH: (a) its intersection area is < `system_config/polygon_alert_thresholds.deMinimisAreaPct` (default: 5%) of total polygon area, AND (b) estimated recipients in the clipped area < `system_config/polygon_alert_thresholds.deMinimisRecipientCount` (default: 50).
+- If ALL secondary municipalities are de minimis → treat as single-municipality (primary). Recipients in clipped areas are still included in the alert.
+- If ANY secondary municipality exceeds the de minimis threshold → multi-municipality routing applies (escalation per §3).
+- The Reach Plan preview shows the intersection breakdown so the admin sees exactly which munis are involved and whether de minimis applies.
+- Both thresholds are in `system_config` and adjustable without redeploy.
+
 ### 4.6 Analytics queries
 
 Analytics live in BigQuery. Callable wrappers for the admin dashboard:
@@ -528,8 +552,8 @@ Capability-level only. Pixel-level UX deferred to `frontend-design` pass.
 | View hazard reference overlays (flood, landslide, storm surge) | Province-wide reference data | Firestore listener filtered by `zoneType == 'reference'` |
 | View own-muni custom hazard zones | Own municipality | Firestore listener filtered by `municipalityId == own` |
 | Author own-muni custom zones | Own municipality | `createCustomHazardZone` callable |
-| Edit own-authored custom zones | Own municipality, own authorship | `updateCustomHazardZone` callable |
-| Delete own-authored custom zones | Own municipality, own authorship | `deleteCustomHazardZone` callable |
+| Edit any own-muni custom zone | Own municipality (any author) | `updateCustomHazardZone` callable |
+| Delete any own-muni custom zone | Own municipality (any author) | `deleteCustomHazardZone` callable |
 | View auto-tagged hazard zones on reports | Own municipality reports | `report_ops.hazardZoneIdList` on existing listener |
 | Send polygon-targeted mass alerts | Own muni polygons (≤5k direct, else escalate) | Extended `massAlertReachPlanPreview` / `sendMassAlert` / `requestMassAlertEscalation` |
 | View muni hazard analytics | Own municipality only | `hazardAnalytics*` callables |
@@ -542,13 +566,13 @@ Capability-level only. Pixel-level UX deferred to `frontend-design` pass.
 | Edit provincial-scope custom zones | Out of jurisdiction |
 | View other munis' custom zones | Jurisdiction boundary |
 | Author custom zones outside own municipality | Rule-enforced bbox check |
-| Edit or delete custom zones authored by Superadmin | Attribution integrity |
+| Edit or delete provincial-scope custom zones (Superadmin-created) | Out of jurisdiction — provincial zones are not scoped to any single municipality |
 
 **New §4.X "Hazard Overlay & Custom Zones":**
 - Map layer panel (toggleable): 3 reference-layer checkboxes, severity-coded fills, low opacity.
 - Custom zone panel: own-muni active zones (not-expired, not-deleted). Row: purpose, severity, time-to-expiry, tagged-report count.
 - "Draw new zone" affordance: `hazardType` / `purpose` / `severity` / `expiresAt` selection; Leaflet-Draw polygon; client-side vertex + bbox validation.
-- Zone editor for own-authored zones: inline geometry edit, update `expiresAt` / `purposeDescription` / `severity`. Cannot change `hazardType` or `scope`.
+- Zone editor for any own-muni custom zone (regardless of who authored it — Principle #11: authorization by data-class reach, not authorship): inline geometry edit, update `expiresAt` / `purposeDescription` / `severity`. Cannot change `hazardType` or `scope`.
 - Auto-tag visibility in triage queue: reports with `hazardZoneIdList.length > 0` show colored hazard badge; tooltip expands to zone list.
 - Queue filter: "Show only reports inside hazard zones" + per-zone filter.
 
@@ -582,9 +606,9 @@ Capability-level only. Pixel-level UX deferred to `frontend-design` pass.
 
 Fits the dual-monitor layout:
 - **Primary (Analytics Dashboard)** gains hazard analytics panel:
-  - Province-wide "reports in hazard zones last 30d" by muni
-  - Reference layer version status (active per `hazardType`, last upload, uploader)
-  - Custom zone activity: active count, expiring-within-24h, recently-created
+  - Province-wide "reports in hazard zones last 30d" by muni (BigQuery-backed — analytics-grade, eventual consistency OK)
+  - Reference layer version status: active per `hazardType`, last upload, uploader (**reads from Firestore `hazard_zones` directly**, not BigQuery — must reflect real-time state immediately after upload/supersede, not lag 5 min behind)
+  - Custom zone activity: active count, expiring-within-24h, recently-created (**reads from Firestore** for same reason)
 - **Secondary (Provincial Map)** gains:
   - All 3 reference layer toggles
   - Custom zone list (all munis, filterable)
@@ -704,7 +728,7 @@ Content outline:
 | BigQuery mirror drift masks incorrect analytics | Stale / wrong dashboard numbers | Mirror-lag SLO alert; freshness indicator on dashboard |
 | Event-bounded zone never expires (sweep bug) | Zone stays "active" forever | Client-side fallback filter on `expiresAt < now()`; monitoring alert |
 | Barangay boundary dataset goes stale | Wrong-barangay reverse-geocode | Dataset version pinned per CF deploy; yearly minimum update cadence |
-| Two admins edit same zone simultaneously | One edit overwrites other | Version check in update callable (`if zone.version !== expectedVersion → CONFLICT`); UI surfaces + reloads |
+| Two admins edit same zone simultaneously | One edit overwrites other | Optimistic version check inside a Firestore transaction that atomically reads `hazard_zones/{id}`, verifies `version === expectedVersion`, writes the updated zone AND `history/{version}` snapshot in one commit. Second writer's transaction retries, reads the new version, and fails with CONFLICT. No silent history overwrite. |
 | Admin creates zone with past `expiresAt` | Expires immediately, never visible | Server-side `expiresAt > now() + 5min`; max 30d out |
 | Large custom zone triggers runaway sweep | CF memory/timeout | Bbox area cap ~100km² |
 
@@ -751,7 +775,8 @@ Content outline:
 | Signal | Threshold | Owner |
 |---|---|---|
 | Hazard auto-tag failure rate | > 0.1% over 1h | Backend on-call |
-| Hazard sweep backlog | > 10 pending | Backend on-call |
+| Hazard tag backfill backlog | > 5 untagged reports older than 5 min | Backend on-call |
+| Hazard zone sweep backlog | > 10 pending | Backend on-call |
 | Hazard BigQuery mirror lag | > 5min | Backend → Compliance if persistent |
 | Expiration sweep error rate | > 0 errors / hour | Backend on-call |
 | Custom zone authorship anomaly | > 2× 7-day baseline | Ops |
