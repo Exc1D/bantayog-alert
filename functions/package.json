@@ -1,0 +1,28 @@
+{
+  "name": "@bantayog/functions",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@bantayog/shared-types": "workspace:*",
+    "@bantayog/shared-validators": "workspace:*",
+    "@bantayog/shared-firebase": "workspace:*",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
