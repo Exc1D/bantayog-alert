@@ -58,7 +58,7 @@ export const suspendStaffAccount = onCall(async (request) => {
   await adminDb
     .collection('claim_revocations')
     .doc(input.uid)
-    .set(buildClaimRevocationDoc(input.uid, revokedAt, 'suspended'))
+    .set(buildClaimRevocationDoc(input.uid, revokedAt, input.reason))
 
   return { uid: input.uid, status: 'suspended' }
 })
