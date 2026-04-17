@@ -94,38 +94,35 @@ export function useCitizenShell(): ShellState {
 
     void ensurePseudonymousSignIn(auth)
       .then((user) => {
+        // Set auth state once immediately after sign-in
+        if (!unmounted.current) {
+          setState((current) => ({
+            ...current,
+            status: 'ready',
+            authState: 'signed-in',
+            user: { uid: user.uid },
+          }))
+        }
+
         cleanup.current.stopVersion = subscribeMinAppVersion(db, (minAppVersion) => {
           if (!unmounted.current) {
-            setState((current) => ({
-              ...current,
-              status: 'ready',
-              authState: 'signed-in',
-              user: { uid: user.uid },
-              minAppVersion,
-            }))
+            setState((current) => ({ ...current, minAppVersion }))
           }
         })
 
         cleanup.current.stopAlerts = subscribeAlerts(db, (alerts) => {
           if (!unmounted.current) {
-            setState((current) => ({
-              ...current,
-              status: 'ready',
-              authState: 'signed-in',
-              user: { uid: user.uid },
-              alerts,
-            }))
+            setState((current) => ({ ...current, alerts }))
           }
         })
       })
       .catch((error: unknown) => {
         if (!unmounted.current) {
-          setState({
-            ...initialState,
+          setState((current) => ({
+            ...current,
             status: 'error',
-            appCheckState: 'failed',
             error: error instanceof Error ? error.message : 'Pseudonymous sign-in failed',
-          })
+          }))
         }
       })
 
