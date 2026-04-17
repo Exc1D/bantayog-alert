@@ -1,11 +1,4 @@
 export * from './branded.js'
 export * from './enums.js'
 export * from './geo.js'
-export * from './report.js'
-export * from './dispatch.js'
-export * from './user.js'
-export * from './alert.js'
-export * from './audit.js'
-export * from './coordination.js'
-export * from './sms.js'
-export * from './system.js'
+// Stubs are internal — not exported from the public barrel
