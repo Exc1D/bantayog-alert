@@ -1,2 +1,49 @@
-# Git worktrees (local, hidden)
-.worktrees/
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+lib/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Test + coverage
+coverage/
+.vitest-cache/
+playwright-report/
+test-results/
+
+# Environment + secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+ui-debug.log
+
+# Terraform — note: .terraform.lock.hcl is COMMITTED
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+crash.*.log
+
+# Capacitor native (deferred to Phase 6)
+ios/
+android/
+
+# OS + editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
