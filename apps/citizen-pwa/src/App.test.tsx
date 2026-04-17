@@ -1,7 +1,6 @@
 import '@testing-library/jest-dom'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
 import { App } from './App.js'
 
 vi.mock('./useCitizenShell.js', () => ({
@@ -18,6 +17,7 @@ vi.mock('./useCitizenShell.js', () => ({
     },
     alerts: [
       {
+        id: 'phase1-hello',
         title: 'System online',
         body: 'Citizen shell wired for Phase 1.',
         severity: 'info',
@@ -33,9 +33,41 @@ describe('App', () => {
   it('renders auth status, app version, and the hello-world alert feed', () => {
     render(<App />)
 
-    expect(screen.getByText(/anon-123/)).toBeInTheDocument()
-    expect(screen.getByText(/System online/)).toBeInTheDocument()
-    expect(screen.getByText(/0.1.0/)).toBeInTheDocument()
-    expect(screen.getByText(/signed-in/)).toBeInTheDocument()
+    expect(screen.getByText('anon-123')).toBeInTheDocument()
+    expect(screen.getByText('System online')).toBeInTheDocument()
+    expect(screen.getByText('0.1.0')).toBeInTheDocument()
+    expect(screen.getByText('signed-in')).toBeInTheDocument()
+  })
+
+  it('renders error message when status is error', () => {
+    vi.mock('./useCitizenShell.js', () => ({
+      useCitizenShell: () => ({
+        status: 'error',
+        authState: 'signed-out',
+        appCheckState: 'failed',
+        user: null,
+        minAppVersion: null,
+        alerts: [],
+        error: 'Firebase initialization failed',
+      }),
+    }))
+    render(<App />)
+    expect(screen.getByText('Firebase initialization failed')).toBeInTheDocument()
+  })
+
+  it('renders signed-out state correctly', () => {
+    vi.mock('./useCitizenShell.js', () => ({
+      useCitizenShell: () => ({
+        status: 'ready',
+        authState: 'signed-out',
+        appCheckState: 'pending',
+        user: null,
+        minAppVersion: null,
+        alerts: [],
+        error: null,
+      }),
+    }))
+    render(<App />)
+    expect(screen.getByText('signed-out')).toBeInTheDocument()
   })
 })

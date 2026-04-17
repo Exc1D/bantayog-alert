@@ -4,7 +4,7 @@
 
 **Branch:** `feature/phase-1-identity-spine`
 **Plan:** See `docs/superpowers/specs/2026-04-17-phase-0-design.md`
-**Status:** Verification complete (see findings below)
+**Status:** Verification incomplete (see findings below)
 
 ### Verification checklist
 
@@ -21,6 +21,7 @@
 - **Step 2:** Phase 1 auth tests (4 tests) pass in `functions/src/__tests__/phase1-auth.test.ts`.
 - **Step 3:** Rules tests require Firebase emulator (`initializeTestEnvironment` requires emulator connection). Not available in local environment.
 - **Step 4:** 14 lint tasks, 14 typecheck tasks, and 10 build tasks all pass.
+- **Remediation:** Re-run full test suite until all pass; run Firestore rules tests against local emulator; obtain explicit staging approval before any prod deployment. For changes touching rules/auth/functions, deploy to dev emulator first, run full suite, and get staging sign-off.
 
 ### What was built
 

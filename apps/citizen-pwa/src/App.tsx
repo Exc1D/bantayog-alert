@@ -40,10 +40,7 @@ export function App() {
 
         <div className={styles.feed}>
           {state.alerts.map((alert) => (
-            <article
-              key={`${alert.publishedBy}-${String(alert.publishedAt)}`}
-              className={styles.alert}
-            >
+            <article key={alert.id} className={styles.alert}>
               <h2>{alert.title}</h2>
               <p>{alert.body}</p>
               <span>{alert.severity}</span>

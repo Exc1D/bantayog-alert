@@ -13,7 +13,10 @@
     "test:rules": "vitest run src/__tests__/firestore.rules.test.ts",
     "serve": "pnpm build && firebase emulators:start --only functions",
     "shell": "pnpm build && firebase functions:shell",
-    "deploy": "firebase deploy --only functions",
+    "deploy": "echo 'Use deploy:dev, deploy:staging, or deploy:prod' && exit 1",
+    "deploy:dev": "firebase emulators:exec --only firestore,functions 'pnpm run test:unit && pnpm run test:rules' && pnpm build && firebase deploy --only functions --project bantayog-alert-dev",
+    "deploy:staging": "pnpm build && firebase deploy --only functions --project bantayog-alert-staging",
+    "deploy:prod": "pnpm build && firebase deploy --only functions --project bantayog-alert-prod",
     "bootstrap:phase1": "tsx scripts/bootstrap-phase1.ts"
   },
   "engines": {

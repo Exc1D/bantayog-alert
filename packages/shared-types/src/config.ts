@@ -8,6 +8,7 @@ export interface MinAppVersionDoc {
 }
 
 export interface AlertDoc {
+  id: string
   title: string
   body: string
   severity: 'info' | 'low' | 'medium' | 'high' | 'critical'
