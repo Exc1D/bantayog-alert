@@ -240,3 +240,7 @@ No headers, sections, or insights blocks when a sentence suffices.
 ### Vitest: `vitest.workspace.ts` vs `vitest.config.ts`
 
 Vitest auto-discovers `vitest.config.ts` but NOT `vitest.workspace.ts`. Use `vitest.workspace.ts` when you want to define a workspace at the root but do NOT want individual packages to auto-pick it up (unless explicitly targeted). This is the correct pattern for monorepos where most packages do not have tests.
+
+### Terraform: `google_project_iam_member` vs `google_service_account_iam_member`
+
+When a service account needs to impersonate another SA, always use `google_service_account_iam_member` scoped to the _specific_ target SA — not `google_project_iam_member` at project level. Project-level `roles/iam.serviceAccountUser` grants impersonation of _every_ SA in the project, violating least privilege. The `google_service_account_iam_member` resource requires `service_account_id = google_service_account.target.name` (not email) and grants impersonation rights on that specific SA only.
