@@ -273,6 +273,42 @@ describe('moderation_incidents — privileged muni-admin or superadmin read', ()
     )
     await assertFails(getDoc(doc(db, 'moderation_incidents/mod-1')))
   })
+
+  it('superadmin reads moderation_incidents succeeds (positive)', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDoc(doc(db, 'moderation_incidents/mod-1')))
+  })
+
+  it('suspended superadmin reads moderation_incidents fails (isActivePrivileged gate)', async () => {
+    const db = authed(
+      env,
+      'super-suspended',
+      staffClaims({
+        role: 'provincial_superadmin',
+        permittedMunicipalityIds: ['daet'],
+        accountStatus: 'suspended',
+      }),
+    )
+    await assertFails(getDoc(doc(db, 'moderation_incidents/mod-1')))
+  })
+
+  it('citizen reads moderation_incidents fails (negative)', async () => {
+    const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen', municipalityId: 'daet' }))
+    await assertFails(getDoc(doc(db, 'moderation_incidents/mod-1')))
+  })
+
+  it('responder reads moderation_incidents fails (negative)', async () => {
+    const db = authed(
+      env,
+      'resp-1',
+      staffClaims({ role: 'responder', agencyId: 'bfp', municipalityId: 'daet' }),
+    )
+    await assertFails(getDoc(doc(db, 'moderation_incidents/mod-1')))
+  })
 })
 
 describe('breakglass_events — superadmin only', () => {

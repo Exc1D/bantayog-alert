@@ -41,6 +41,11 @@ service cloud.firestore {
       return (data.visibilityClass == 'public_alertable' && isAuthed())
           || adminOf(data.municipalityId);
     }
+    function canReadEventDoc(data) {
+      return isActivePrivileged()
+          && (isMuniAdmin() || isSuperadmin()
+              || (isAgencyAdmin() && data.agencyId == myAgency()));
+    }
     function validResponderTransition(from, to) {
       return (from == 'accepted'     && to == 'acknowledged')
           || (from == 'acknowledged' && to == 'in_progress')
@@ -169,11 +174,6 @@ service cloud.firestore {
     // claim_revocations, rate_limits.
     // ================================================================
 
-    match /alerts/{alertId} {
-      allow read: if isAuthed();
-      allow write: if false;
-    }
-
     match /system_config/{configId} {
       allow read: if isAuthed();
       allow write: if isSuperadmin() && isActivePrivileged();
@@ -248,16 +248,12 @@ service cloud.firestore {
     }
 
     match /report_events/{eventId} {
-      allow read: if isActivePrivileged()
-                  && (isMuniAdmin() || isSuperadmin()
-                      || (isAgencyAdmin() && resource.data.agencyId == myAgency()));
+      allow read: if canReadEventDoc(resource.data);
       allow write: if false;
     }
 
     match /dispatch_events/{eventId} {
-      allow read: if isActivePrivileged()
-                  && (isMuniAdmin() || isSuperadmin()
-                      || (isAgencyAdmin() && resource.data.agencyId == myAgency()));
+      allow read: if canReadEventDoc(resource.data);
       allow write: if false;
     }
 
