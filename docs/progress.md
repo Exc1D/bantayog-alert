@@ -107,3 +107,31 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 | 3    | `terraform validate`            | PASS    |
 | 4    | `terraform fmt -check`          | PASS    |
 | 5    | GitHub Actions CI (rules-check) | Pending |
+
+---
+
+## PR #29 CI Investigation — pnpm/action-setup v6 (2026-04-17)
+
+**Branch:** `pr-29-fix`
+**Status:** Local fix applied, local verification passed
+
+### Findings
+
+- PR #29 only changes `.github/workflows/ci.yml`
+- Four CI runs failed in the `Install` job before lint/typecheck/test/build started
+- Failure signature was consistent: `ERR_PNPM_BROKEN_LOCKFILE` from `pnpm install --frozen-lockfile`
+- The lockfile at the exact failing merge commit was structurally clean when fetched from GitHub
+- Local reproduction with Node `20.20.2` and `corepack prepare pnpm@9.12.0 --activate` succeeded
+
+### Fix Applied
+
+- Replaced `pnpm/action-setup@v6` usage in CI with explicit Corepack pnpm activation at `9.12.0`
+- Removed `cache: pnpm` from `actions/setup-node` because pnpm is now installed after Node setup
+
+### Verification
+
+- `PATH=$HOME/.local/share/mise/installs/node/20.20.2/bin:$PATH ~/.local/share/mise/installs/node/20.20.2/bin/corepack prepare pnpm@9.12.0 --activate && ... pnpm install --frozen-lockfile` PASS
+- `pnpm lint` PASS
+- `pnpm typecheck` PASS
+- `pnpm test` PASS
+- `pnpm format:check` PASS
