@@ -15,26 +15,61 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function uid() {
+      return request.auth.uid;
+    }
+
     function role() {
       return request.auth.token.role;
     }
 
-    // Phase 0 stub: always false until active_accounts/ lands in Phase 1.
-    // This is correct behavior — nobody is active-privileged yet.
-    // Phase 1 will fill the body to check exists() on active_accounts/{uid}.
-    function isActivePrivileged() {
-      return false;
+    function permittedMunis() {
+      return request.auth.token.permittedMunicipalityIds != null
+        ? request.auth.token.permittedMunicipalityIds
+        : [];
     }
 
-    function isCitizen()     { return isAuthed() && role() == 'citizen'; }
-    function isResponder()   { return isAuthed() && role() == 'responder'; }
-    function isMuniAdmin()   { return isAuthed() && role() == 'municipal_admin'; }
-    function isAgencyAdmin() { return isAuthed() && role() == 'agency_admin'; }
-    function isSuperadmin()  { return isAuthed() && role() == 'provincial_superadmin'; }
+    function isSuperadmin() {
+      return isAuthed() && role() == 'provincial_superadmin';
+    }
+
+    function isActivePrivileged() {
+      return exists(/databases/$(database)/documents/active_accounts/$(uid()))
+        && get(/databases/$(database)/documents/active_accounts/$(uid())).data.accountStatus == 'active';
+    }
 
     // ================================================================
-    // Default deny — every collection is explicitly locked.
-    // Phase 2+ will add specific `match` blocks for reports, report_private,
+    // Phase 1: identity spine — alerts, system_config, active_accounts,
+    // claim_revocations, rate_limits.
+    // ================================================================
+
+    match /alerts/{alertId} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /system_config/{configId} {
+      allow read: if isAuthed();
+      allow write: if isSuperadmin() && isActivePrivileged();
+    }
+
+    match /active_accounts/{accountUid} {
+      allow read: if isAuthed() && uid() == accountUid;
+      allow write: if false;
+    }
+
+    match /claim_revocations/{accountUid} {
+      allow read: if isAuthed() && uid() == accountUid;
+      allow write: if false;
+    }
+
+    match /rate_limits/{rateKey} {
+      allow read, write: if false;
+    }
+
+    // ================================================================
+    // Default deny — every collection not explicitly matched above.
+    // Phase 2+ will add specific match blocks for reports, report_private,
     // report_ops, dispatches, responders, etc.
     // ================================================================
 
