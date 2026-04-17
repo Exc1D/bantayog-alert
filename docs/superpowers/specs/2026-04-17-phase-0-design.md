@@ -3,6 +3,7 @@
 **Date:** 2026-04-17
 **Status:** Design approved — awaiting implementation plan
 **Driver documents:**
+
 - `prd/bantayog-alert-architecture-spec-v8.md` (spec v8.0)
 - `prd/bantayog-alert-implementation-plan-v1.0.md` (13-phase plan)
 
@@ -12,15 +13,16 @@
 
 Phase 0 in the implementation plan contains three tracks:
 
-| Track | Type | In scope for this task? |
-|-------|------|--------------------------|
-| A — Stakeholder / legal (MOU, NPC DPIA, break-glass envelopes) | Human work | ❌ Out of scope — cannot be implemented by code |
-| B — Cloud provisioning (GCP project creation, Firebase enablement, Terraform applies) | Gated human work | ❌ Out of scope — requires explicit human approval + break-glass custody |
-| C — Code scaffolding + cloud-config-as-code (monorepo, apps, packages, rules, CI, Terraform code) | Code work | ✅ In scope |
+| Track                                                                                             | Type             | In scope for this task?                                                  |
+| ------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| A — Stakeholder / legal (MOU, NPC DPIA, break-glass envelopes)                                    | Human work       | ❌ Out of scope — cannot be implemented by code                          |
+| B — Cloud provisioning (GCP project creation, Firebase enablement, Terraform applies)             | Gated human work | ❌ Out of scope — requires explicit human approval + break-glass custody |
+| C — Code scaffolding + cloud-config-as-code (monorepo, apps, packages, rules, CI, Terraform code) | Code work        | ✅ In scope                                                              |
 
 **This design covers Track C only.** Tracks A and B land outside this conversation via human workflow and are prerequisites to later phases, not to Phase 0 code landing.
 
 **Exit criteria for this implementation task:**
+
 - Monorepo builds clean from a fresh `pnpm install` on Node 20
 - `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` all pass
 - `firebase emulators:start` boots cleanly with default-deny rules
@@ -74,6 +76,7 @@ bantayog-alert/
 ```
 
 **Rationale:**
+
 - `apps/` for end-user-facing surfaces; `packages/` for shared libraries; `functions/` separate because Firebase CLI needs it at root level; `infra/` for non-code infrastructure.
 - Three separate apps (not a single app with role-gating) because: different build targets (web vs native), different accessibility requirements, different offline models.
 - `shared-sms-parser` separate from `shared-validators` because SMS parsing runs in Cloud Functions (Node) only — isolating it prevents bloating browser bundles.
@@ -86,21 +89,22 @@ bantayog-alert/
 
 **Granular file split** (approved over monolithic `types.ts`):
 
-| File | Types |
-|------|-------|
-| `branded.ts` | Branded string types: `ReportId`, `DispatchId`, `UserUid`, `AgencyId`, `MunicipalityId`, `BarangayId`, `AlertId` |
-| `enums.ts` | `UserRole`, `AccountStatus`, `ReportStatus`, `DispatchStatus`, `Severity`, `ReportType`, `IncidentSource`, `VisibilityClass`, `HazardType`, `TelemetryStatus`, `ReporterRole` |
-| `geo.ts` | `GeoPoint`, `BoundingBox`, `Geohash` |
-| `report.ts` | `Report`, `ReportPrivate`, `ReportOps`, `ReportSharing`, `ReportContact`, `ReportLookup`, `HazardTag`, `VisibilityScope` |
-| `dispatch.ts` | `Dispatch`, `DispatchEvent` |
-| `user.ts` | `User`, `Responder`, `Agency`, `CustomClaims` |
-| `alert.ts` | `Alert`, `Emergency`, `HazardSignal`, `HazardZone` |
-| `audit.ts` | `AuditLog`, `ReportEvent`, `IncidentResponseEvent` (NOT `DispatchEvent` — that lives in `dispatch.ts`) |
-| `coordination.ts` | `AgencyAssistanceRequest`, `MassAlertRequest`, `CommandChannelThread`, `CommandChannelMessage`, `ShiftHandoff`, `ResponderShiftHandoff` |
-| `sms.ts` | `SmsInboxMessage`, `SmsOutboxMessage`, `SmsSession`, `SmsProviderHealth` |
-| `system.ts` | `SystemConfig`, `RateLimit`, `IdempotencyKey`, `DeadLetter`, `ActiveAccount`, `ClaimRevocation`, `DeviceRegistration`, `BreakglassEvent`, `SyncFailure`, `ModerationIncident` |
+| File              | Types                                                                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `branded.ts`      | Branded string types: `ReportId`, `DispatchId`, `UserUid`, `AgencyId`, `MunicipalityId`, `BarangayId`, `AlertId`                                                              |
+| `enums.ts`        | `UserRole`, `AccountStatus`, `ReportStatus`, `DispatchStatus`, `Severity`, `ReportType`, `IncidentSource`, `VisibilityClass`, `HazardType`, `TelemetryStatus`, `ReporterRole` |
+| `geo.ts`          | `GeoPoint`, `BoundingBox`, `Geohash`                                                                                                                                          |
+| `report.ts`       | `Report`, `ReportPrivate`, `ReportOps`, `ReportSharing`, `ReportContact`, `ReportLookup`, `HazardTag`, `VisibilityScope`                                                      |
+| `dispatch.ts`     | `Dispatch`, `DispatchEvent`                                                                                                                                                   |
+| `user.ts`         | `User`, `Responder`, `Agency`, `CustomClaims`                                                                                                                                 |
+| `alert.ts`        | `Alert`, `Emergency`, `HazardSignal`, `HazardZone`                                                                                                                            |
+| `audit.ts`        | `AuditLog`, `ReportEvent`, `IncidentResponseEvent` (NOT `DispatchEvent` — that lives in `dispatch.ts`)                                                                        |
+| `coordination.ts` | `AgencyAssistanceRequest`, `MassAlertRequest`, `CommandChannelThread`, `CommandChannelMessage`, `ShiftHandoff`, `ResponderShiftHandoff`                                       |
+| `sms.ts`          | `SmsInboxMessage`, `SmsOutboxMessage`, `SmsSession`, `SmsProviderHealth`                                                                                                      |
+| `system.ts`       | `SystemConfig`, `RateLimit`, `IdempotencyKey`, `DeadLetter`, `ActiveAccount`, `ClaimRevocation`, `DeviceRegistration`, `BreakglassEvent`, `SyncFailure`, `ModerationIncident` |
 
 **Branded types pattern:**
+
 ```typescript
 export type ReportId = string & { readonly __brand: 'ReportId' }
 export type UserUid = string & { readonly __brand: 'UserUid' }
@@ -111,6 +115,7 @@ export type UserUid = string & { readonly __brand: 'UserUid' }
 ### 2.2 `shared-validators`
 
 **Pre-implemented in Phase 0:**
+
 - `canonicalPayloadHash(payload: unknown): string` — per spec §6.2
   - Recursively sorts object keys (all levels)
   - `JSON.stringify` with no whitespace
@@ -122,12 +127,12 @@ export type UserUid = string & { readonly __brand: 'UserUid' }
 
 ### 2.3 Other packages — Phase 0 state
 
-| Package | Phase 0 content |
-|---------|-----------------|
-| `shared-firebase` | Empty scaffolding + `package.json` + `tsconfig.json` + placeholder barrel |
-| `shared-ui` | Empty scaffolding + `theme.css` (CSS custom properties) + `package.json` |
-| `shared-sms-parser` | Empty scaffolding |
-| `shared-data` | `README.md` describing data sources (PSA, PhilGIS) + `package.json` + empty `data/` folder |
+| Package             | Phase 0 content                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `shared-firebase`   | Empty scaffolding + `package.json` + `tsconfig.json` + placeholder barrel                  |
+| `shared-ui`         | Empty scaffolding + `theme.css` (CSS custom properties) + `package.json`                   |
+| `shared-sms-parser` | Empty scaffolding                                                                          |
+| `shared-data`       | `README.md` describing data sources (PSA, PhilGIS) + `package.json` + empty `data/` folder |
 
 All packages compile clean; none have substantive code beyond scaffolding + barrel exports.
 
@@ -137,11 +142,11 @@ All packages compile clean; none have substantive code beyond scaffolding + barr
 
 ### 3.1 App identifiers (Capacitor + manifest)
 
-| App | Capacitor appId | Manifest start_url |
-|-----|-----------------|---------------------|
-| `citizen-pwa` | `ph.gov.camnorte.bantayog.citizen` | `/` |
-| `responder-app` | `ph.gov.camnorte.bantayog.responder` | `/` |
-| `admin-desktop` | `ph.gov.camnorte.bantayog.admin` | `/` |
+| App             | Capacitor appId                      | Manifest start_url |
+| --------------- | ------------------------------------ | ------------------ |
+| `citizen-pwa`   | `ph.gov.camnorte.bantayog.citizen`   | `/`                |
+| `responder-app` | `ph.gov.camnorte.bantayog.responder` | `/`                |
+| `admin-desktop` | `ph.gov.camnorte.bantayog.admin`     | `/`                |
 
 **Note:** `camnorte` (Camarines Norte province), NOT `daet` (which is one of 12 municipalities). Bundle identifiers are permanent once published — province-level naming prevents forced migration when other municipalities onboard.
 
@@ -182,6 +187,7 @@ apps/citizen-pwa/
 ```
 
 Same shape for `responder-app` and `admin-desktop`, differing in:
+
 - `responder-app`: adds `capacitor.config.ts`, no PWA manifest at same level
 - `admin-desktop`: PWA manifest targets desktop (larger icon set, different display mode)
 
@@ -206,9 +212,9 @@ Same shape for `responder-app` and `admin-desktop`, differing in:
 {
   "projects": {
     "default": "bantayog-alert-dev",
-    "dev":     "bantayog-alert-dev",
+    "dev": "bantayog-alert-dev",
     "staging": "bantayog-alert-staging",
-    "prod":    "bantayog-alert"
+    "prod": "bantayog-alert"
   }
 }
 ```
@@ -243,7 +249,7 @@ service cloud.firestore {
 
 **Role set rationale:** Exact 5-role model from spec §5.7 (lines 609-622). No `dispatcher`, no `provincial_admin`, no platform-level `super_admin` — the spec intentionally unifies provincial+platform authority into `provincial_superadmin`. Municipal admins handle dispatch; there is no separate dispatcher role.
 
-**Why stubs returning `false` for `isActivePrivileged`:** Phase 0 has no `active_accounts/` collection. Returning `false` is *correct* behavior — nobody is active-privileged yet. Later phases fill the body; signature stays stable.
+**Why stubs returning `false` for `isActivePrivileged`:** Phase 0 has no `active_accounts/` collection. Returning `false` is _correct_ behavior — nobody is active-privileged yet. Later phases fill the body; signature stays stable.
 
 **Per spec §5.7 warning:** Firestore Rules silently discards unused function parameters — helper names that don't match real spec roles are a security code smell. This design commits to the exact spec names to prevent that drift.
 
@@ -292,6 +298,7 @@ infra/terraform/
 ```
 
 **Deferred modules** (not created in Phase 0):
+
 - `bigquery/` — deferred to Phase 7 when hazard ingestion starts. Phase 0's principle "every file has a Phase 0 justification" rules out creating datasets that no Phase 0 test or build exercises.
 
 ### 5.3 Provider pins
@@ -333,14 +340,14 @@ Init pattern: `terraform init -backend-config=envs/dev/backend.hcl`.
 
 ### 5.7 Module content — Phase 0
 
-| Module | Phase 0 resources |
-|--------|--------------------|
+| Module             | Phase 0 resources                                                                                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `firebase-project` | Enable APIs: `firebase.googleapis.com`, `firestore.googleapis.com`, `appcheck.googleapis.com`, `fcm.googleapis.com`, `cloudfunctions.googleapis.com`, `cloudbuild.googleapis.com` |
-| `iam` | Service accounts: `bantayog-functions@`, `bantayog-ci-deploy@`. Minimal role bindings per spec §10 |
-| `secret-manager` | Empty secret shells: `SEMAPHORE_API_KEY`, `GLOBE_LABS_SECRET`, `SENTRY_DSN`, `FCM_SERVER_KEY` (no values) |
-| `pubsub` | Dead-letter topics: `reports-dead-letter`, `sms-inbound-dead-letter` (30-day retention) |
+| `iam`              | Service accounts: `bantayog-functions@`, `bantayog-ci-deploy@`. Minimal role bindings per spec §10                                                                                |
+| `secret-manager`   | Empty secret shells: `SEMAPHORE_API_KEY`, `GLOBE_LABS_SECRET`, `SENTRY_DSN`, `FCM_SERVER_KEY` (no values)                                                                         |
+| `pubsub`           | Dead-letter topics: `reports-dead-letter`, `sms-inbound-dead-letter` (30-day retention)                                                                                           |
 
-*(BigQuery module deferred to Phase 7 — see 5.2.)*
+_(BigQuery module deferred to Phase 7 — see 5.2.)_
 
 ### 5.8 Out of scope for Phase 0
 
@@ -367,15 +374,15 @@ Init pattern: `terraform init -backend-config=envs/dev/backend.hcl`.
 
 ### 6.2 `ci.yml` jobs
 
-| Job | Purpose |
-|-----|---------|
-| `setup` | `pnpm install --frozen-lockfile` with pnpm-store cache |
-| `lint` | `turbo run lint` |
-| `typecheck` | `turbo run typecheck` |
-| `test` | `turbo run test` |
-| `build` | `turbo run build` |
-| `rules-check` | `firebase emulators:exec --only firestore "pnpm test:rules"` |
-| `terraform-validate` | `terraform fmt -check` + `terraform validate` per env |
+| Job                  | Purpose                                                      |
+| -------------------- | ------------------------------------------------------------ |
+| `setup`              | `pnpm install --frozen-lockfile` with pnpm-store cache       |
+| `lint`               | `turbo run lint`                                             |
+| `typecheck`          | `turbo run typecheck`                                        |
+| `test`               | `turbo run test`                                             |
+| `build`              | `turbo run build`                                            |
+| `rules-check`        | `firebase emulators:exec --only firestore "pnpm test:rules"` |
+| `terraform-validate` | `terraform fmt -check` + `terraform validate` per env        |
 
 **Triggers:** PR-to-main + push-to-main.
 **Concurrency:** `group: ci-${{ github.ref }}`, `cancel-in-progress: true`.
@@ -400,19 +407,19 @@ GitHub's default JavaScript/TypeScript query pack. Catches hardcoded credentials
 ```yaml
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule: { interval: "weekly" }
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule: { interval: 'weekly' }
     groups:
-      typescript-eslint: { patterns: ["@typescript-eslint/*", "typescript-eslint"] }
-      vitest:            { patterns: ["vitest", "@vitest/*"] }
-      firebase:          { patterns: ["firebase", "firebase-admin", "firebase-functions"] }
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule: { interval: "weekly" }
-  - package-ecosystem: "terraform"
-    directory: "/infra/terraform"
-    schedule: { interval: "weekly" }
+      typescript-eslint: { patterns: ['@typescript-eslint/*', 'typescript-eslint'] }
+      vitest: { patterns: ['vitest', '@vitest/*'] }
+      firebase: { patterns: ['firebase', 'firebase-admin', 'firebase-functions'] }
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule: { interval: 'weekly' }
+  - package-ecosystem: 'terraform'
+    directory: '/infra/terraform'
+    schedule: { interval: 'weekly' }
 ```
 
 ### 6.7 CODEOWNERS
@@ -431,6 +438,7 @@ updates:
 ### 6.8 Branch protection (documented in README, not automated)
 
 Required settings for `main`:
+
 - 1 PR approval (2 for security surfaces)
 - Required CI checks: `lint`, `typecheck`, `test`, `build`, `rules-check`, `terraform-validate`
 - No force-push
@@ -486,6 +494,7 @@ Each package has its own `tsconfig.json` extending this base.
 ### 7.2 `eslint.config.js` — flat config (ESLint 9)
 
 Rule stack (in order):
+
 1. `@eslint/js` recommended
 2. `typescript-eslint` strict-type-checked
 3. `typescript-eslint` stylistic-type-checked
@@ -494,6 +503,7 @@ Rule stack (in order):
 6. Project overrides
 
 **Project overrides:**
+
 ```js
 {
   rules: {
@@ -521,6 +531,7 @@ Rule stack (in order):
 **Phase-2 re-enablement tracking:** A `TODO(phase-2)` comment on the `no-unsafe-assignment: 'off'` line + a checklist item in Phase 2's exit criteria (when writing-plans produces the Phase 2 plan).
 
 **Per-package scoping:**
+
 - `functions/` — Node-only, no React, no jsx-a11y
 - `packages/shared-*` — isomorphic, no browser/Node globals
 - `apps/*` — full browser + React + a11y
@@ -553,9 +564,9 @@ Enforced via CI (`prettier --check`). ESLint does NOT lint formatting.
       "outputs": ["dist/**"],
       "inputs": ["src/**", "tsconfig.json", "package.json"]
     },
-    "lint":      { "dependsOn": ["^build"], "outputs": [] },
+    "lint": { "dependsOn": ["^build"], "outputs": [] },
     "typecheck": { "dependsOn": ["^build"], "outputs": [] },
-    "test":      { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
+    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
     "test:rules": {
       "dependsOn": [],
       "outputs": [],
@@ -572,14 +583,11 @@ Enforced via CI (`prettier --check`). ESLint does NOT lint formatting.
 // vitest.config.ts
 import { defineWorkspace } from 'vitest/config'
 
-export default defineWorkspace([
-  'packages/*',
-  'apps/*',
-  'functions',
-])
+export default defineWorkspace(['packages/*', 'apps/*', 'functions'])
 ```
 
 Per-package `vitest.config.ts` sets:
+
 - `environment: 'happy-dom'` (apps + shared-ui) or `'node'` (functions, shared-validators, shared-sms-parser)
 - `globals: true`
 - `coverage.provider: 'v8'`
@@ -588,11 +596,13 @@ Per-package `vitest.config.ts` sets:
 ### 7.6 Git hooks
 
 **Husky pre-commit:**
+
 ```bash
 pnpm lint-staged
 ```
 
 **`.lintstagedrc.json`:**
+
 ```json
 {
   "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
@@ -635,11 +645,13 @@ trim_trailing_whitespace = false
 Phase 0 includes running `terraform init -backend=false` (does NOT require cloud credentials, does NOT touch remote state) to generate `.terraform.lock.hcl`. The lock file is committed to the repo.
 
 **Why committed:**
+
 - HashiCorp's stated best practice is to commit the lock file for provider version reproducibility across developer machines and CI runners.
 - Without it, CI's `terraform validate` may pull different provider patch versions than the developer ran locally, producing confusing "works on my machine" failures.
 - `terraform init -backend=false` is safe in Phase 0 because the backend GCS bucket doesn't exist yet — skipping backend init is the correct workflow.
 
 **Phase 0 flow:**
+
 1. Developer runs `cd infra/terraform && terraform init -backend=false` once.
 2. The generated `.terraform.lock.hcl` is committed.
 3. CI's `terraform-validate` job uses the committed lock file for deterministic provider versions.
@@ -691,6 +703,7 @@ These apply across all 7 sections:
 Landing Phase 0 means all of these exist and pass:
 
 ### Code
+
 - [ ] Root: `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `eslint.config.js`, `.prettierrc`, `.editorconfig`, `.gitattributes`, `.gitignore`, `.nvmrc`, `firebase.json`, `.firebaserc`
 - [ ] 3 apps scaffolded under `apps/` — each builds to `dist/` with Vite
 - [ ] 6 packages scaffolded under `packages/` — each compiles to declarations
@@ -699,10 +712,12 @@ Landing Phase 0 means all of these exist and pass:
 - [ ] All `shared-types` files exist with branded types + enums
 
 ### Infrastructure code
+
 - [ ] `infra/firebase/` — 4 rule files (firestore, database, storage, indexes)
 - [ ] `infra/terraform/` — 5 modules + 3 env configs + README
 
 ### CI + hygiene
+
 - [ ] `.github/workflows/ci.yml` — all 7 jobs green
 - [ ] `.github/workflows/codeql.yml`
 - [ ] `.github/dependabot.yml`
@@ -710,6 +725,7 @@ Landing Phase 0 means all of these exist and pass:
 - [ ] `.husky/pre-commit` + `.lintstagedrc.json`
 
 ### Verification
+
 - [ ] `pnpm install --frozen-lockfile` succeeds on fresh clone
 - [ ] `pnpm lint` green
 - [ ] `pnpm typecheck` green
@@ -720,6 +736,7 @@ Landing Phase 0 means all of these exist and pass:
 - [ ] GitHub Actions CI passes on PR
 
 ### Documentation
+
 - [ ] `README.md` at root — setup instructions, required Node version, emulator startup, branch protection checklist
 - [ ] `infra/terraform/README.md` — bootstrap instructions, per-env init commands
 - [ ] `docs/progress.md` updated with Phase 0 completion
@@ -728,27 +745,27 @@ Landing Phase 0 means all of these exist and pass:
 
 ## 10. Explicitly Out of Scope (Consolidated)
 
-| Area | Lands in |
-|------|----------|
-| Stakeholder MOU, NPC DPIA | Track A (human) |
+| Area                                          | Lands in              |
+| --------------------------------------------- | --------------------- |
+| Stakeholder MOU, NPC DPIA                     | Track A (human)       |
 | Actual cloud provisioning (`terraform apply`) | Track B (gated human) |
-| `active_accounts/` + claim revocation logic | Phase 1 |
-| `reports/` rules + converters + UI | Phase 2 |
-| Dispatch collection + workflow | Phase 4 |
-| Media upload rules + Cloud Storage paths | Phase 3 |
-| RTDB presence/heartbeats | Phase 6 |
-| Cloud Function triggers | Phase 2+ |
-| BigQuery table schemas + ETL | Phase 7 |
-| FCM push notification config | Phase 5 |
-| SMS Semaphore/Globe Labs integration | Phase 6 |
-| App Check enforcement | Phase 1 |
-| E2E tests (Playwright) | Phase 11 |
-| Native iOS/Android project directories | Phase 11 |
-| Routing within apps | Phase 2+ |
-| UI screens beyond "Hello" | Phase 2+ |
-| Storybook / design system build-out | Phase 3 |
-| Monitoring / alerting / Sentry | Phase 10 |
-| Deploy workflows (CI) | Phase 11 |
+| `active_accounts/` + claim revocation logic   | Phase 1               |
+| `reports/` rules + converters + UI            | Phase 2               |
+| Dispatch collection + workflow                | Phase 4               |
+| Media upload rules + Cloud Storage paths      | Phase 3               |
+| RTDB presence/heartbeats                      | Phase 6               |
+| Cloud Function triggers                       | Phase 2+              |
+| BigQuery table schemas + ETL                  | Phase 7               |
+| FCM push notification config                  | Phase 5               |
+| SMS Semaphore/Globe Labs integration          | Phase 6               |
+| App Check enforcement                         | Phase 1               |
+| E2E tests (Playwright)                        | Phase 11              |
+| Native iOS/Android project directories        | Phase 11              |
+| Routing within apps                           | Phase 2+              |
+| UI screens beyond "Hello"                     | Phase 2+              |
+| Storybook / design system build-out           | Phase 3               |
+| Monitoring / alerting / Sentry                | Phase 10              |
+| Deploy workflows (CI)                         | Phase 11              |
 
 ---
 
@@ -758,16 +775,18 @@ Surfaced during design review. Both items need human decision before the impleme
 
 ### 11.1 Deviation — Barangay dataset not in Phase 0
 
-**Plan §0 Deliverable #10** specifies: *"Barangay boundary dataset sourced and versioned in `packages/shared-data/`."*
+**Plan §0 Deliverable #10** specifies: _"Barangay boundary dataset sourced and versioned in `packages/shared-data/`."_
 
 **This design delivers:** Package structure (types, enums, README describing data source) — NOT the dataset itself.
 
 **Why deferred:**
+
 - Dataset sourcing requires licensing decisions for PSA (Philippine Statistics Authority) and PhilGIS data — human legal work, not code work.
 - A GeoJSON with all 625 barangays in Camarines Norte (12 municipalities × ~52 barangays) is likely 5-15 MB compressed. Committing binary-ish geometry blobs to git is a long-term maintenance anti-pattern. The dataset belongs in Cloud Storage with signed-download endpoints via Cloud Functions.
 - No Phase 0 test or build exercises barangay geometry. It's first needed in Phase 2 (report municipality/barangay classification) and heavily used in Phase 10 (hazard geoanalytics).
 
 **Resolution (decided 2026-04-17):** **Option B — Move dataset delivery to Phase 2 prerequisite.**
+
 - Phase 0 delivers: `packages/shared-data/` scaffolding (types, enums for `MunicipalityId` / `BarangayId`, README documenting data sources, empty `data/` folder with `.gitkeep`).
 - Phase 2 gains a new prerequisite gate: before Phase 2 code starts, the barangay dataset must be sourced (licensing cleared), uploaded to Cloud Storage with version manifest, and a thin `shared-data` loader added that fetches + caches it. Dataset itself never commits to git.
 - Plan §0 Deliverable #10 is formally revised: exit criterion for Phase 0 becomes "barangay data package structure ready; dataset sourcing deferred to Phase 2 prerequisite."
@@ -779,11 +798,13 @@ Surfaced during design review. Both items need human decision before the impleme
 **The risk:** This design commits to Capacitor "Level II" (config only, no native project directories) for the responder app in Phase 0, consistent with the plan. However, Phase 11 (the plan's designated Capacitor phase) is the last phase before production. Delaying all native scaffolding + background-location plugin integration + Android foreground services until Phase 11 concentrates unknown-unknowns at the worst possible moment.
 
 **Concrete concerns per Arch Spec §2.1:**
+
 - iOS background-location behavior differs by iOS major version; discovering a blocker at Phase 11 could delay production by weeks.
 - Android foreground services require `notification channels` + runtime permission flows that can fail on device-specific OEM skins (Xiaomi, Huawei).
 - Capacitor plugin version-lock drift between responder feature development (Phase 6) and native integration (Phase 11) may produce runtime crashes invisible to web-only testing.
 
 **Resolution (decided 2026-04-17):** **Split accepted.**
+
 - **End of Phase 6** gains: `ios/` + `android/` scaffolding via `npx cap add ios` / `cap add android`, a "smoke build" step (app installs on physical device, renders blank screen, talks to Firestore emulator), and plugin dependency lock-in (`@capacitor/geolocation`, `@capacitor/push-notifications`, `@capacitor/background-runner`).
 - **Phase 11 retains**: Production signing (iOS provisioning profiles + Android keystore management), MDM distribution config for responder devices, App Store / Play Store submission workflow.
 

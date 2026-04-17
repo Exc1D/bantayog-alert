@@ -8,8 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@bantayog/shared-types": "workspace:*",

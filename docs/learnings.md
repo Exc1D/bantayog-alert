@@ -69,7 +69,9 @@ const latestAlertsRef = useRef(alerts) // captures initial state only
 
 // CORRECT — separate effect syncs them
 const latestAlertsRef = useRef(alerts)
-useEffect(() => { latestAlertsRef.current = alerts }, [alerts])
+useEffect(() => {
+  latestAlertsRef.current = alerts
+}, [alerts])
 ```
 
 ---
@@ -84,7 +86,9 @@ const geo = useGeolocation()
 const resolved = userLocation ?? geo.coordinates ?? undefined
 
 // OR require it — explicit, caught at compile time
-interface Props { userLocation: Coordinates; }
+interface Props {
+  userLocation: Coordinates
+}
 ```
 
 ---
@@ -100,7 +104,7 @@ vi.hoisted(() => ({ mock })) // mock not yet declared
 
 // CORRECT
 const { mockFn } = vi.hoisted(() => ({
-  mockFn: vi.fn().mockResolvedValue([])
+  mockFn: vi.fn().mockResolvedValue([]),
 }))
 vi.mock('../../service', () => ({ service: { fn: mockFn } }))
 ```
@@ -133,12 +137,18 @@ When a component uses Firestore contexts, mocks are needed at module level:
 vi.mock('@/app/firebase/config', () => ({ db: {}, auth: {} }))
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(),
-  collection: vi.fn(), query: vi.fn(), where: vi.fn(),
-  onSnapshot: vi.fn(), getDocs: vi.fn(),
+  collection: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
+  onSnapshot: vi.fn(),
+  getDocs: vi.fn(),
 }))
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(),
-  onAuthStateChanged: vi.fn((cb) => { cb(null); return vi.fn() }),
+  onAuthStateChanged: vi.fn((cb) => {
+    cb(null)
+    return vi.fn()
+  }),
 }))
 ```
 
@@ -202,3 +212,31 @@ Always include rollback command in PR description before deploying.
 ## General: Short Answers for Simple Questions
 
 No headers, sections, or insights blocks when a sentence suffices.
+
+---
+
+## Phase 0 Final Verification (2026-04-17)
+
+### Vitest Workspace Path Resolution
+
+**Problem:** Root `vitest.config.ts` used `defineWorkspace(['packages/*', 'apps/*'])`. When individual packages (e.g., `shared-data`) ran `vitest run --passWithNoTests` from their own directory, vitest walked up and found the root config. The workspace entries (`packages/shared-data`, etc.) were resolved relative to the CWD, not the config file's directory. Since `shared-data` has no `vitest.config.ts`, vitest tried to load `packages/shared-data/vitest.config.ts` (wrong path) and errored with "config must export or return an object."
+
+**Fix:** Two-part:
+
+1. Renamed `vitest.config.ts` → `vitest.workspace.ts` (vitest does not auto-discover `vitest.workspace.ts`)
+2. Removed `test` scripts from all packages/apps that have no test files; kept only `packages/shared-validators` (the only package with tests) in the workspace
+3. Changed root `pnpm test` to `vitest run` (auto-discovers `vitest.workspace.ts` from root) instead of `turbo run test`
+
+**Rule:** When using vitest workspace configs, workspace entries must be resolvable from every CWD that might run vitest. Prefer explicit package paths over glob patterns, and remove test scripts from packages that don't have tests.
+
+### Prettier: Do Not Copy Unformatted Files
+
+**Problem:** `.claude/rules/*.md`, `docs/roles/*.md`, `prd/*.md`, and `docs/superpowers/specs/*.md` were copied from the original project into the new branch without running Prettier. When `format:check` was added to the CI pipeline (new in this branch), all 14 files failed.
+
+**Fix:** Run `pnpm prettier --write` on all docs files before committing when adding a format-check pipeline to a project that previously did not enforce formatting.
+
+**Rule:** When introducing `format:check` to a project, Prettier-format all existing docs files in the same commit so the new gate does not immediately fail on pre-existing content.
+
+### Vitest: `vitest.workspace.ts` vs `vitest.config.ts`
+
+Vitest auto-discovers `vitest.config.ts` but NOT `vitest.workspace.ts`. Use `vitest.workspace.ts` when you want to define a workspace at the root but do NOT want individual packages to auto-pick it up (unless explicitly targeted). This is the correct pattern for monorepos where most packages do not have tests.

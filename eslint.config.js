@@ -101,7 +101,9 @@ export default tseslint.config(
   {
     ignores: [
       'vitest.config.ts',
+      'vitest.workspace.ts',
       '**/vitest.config.ts',
+      '**/vitest.workspace.ts',
       'vite.config.ts',
       '**/vite.config.ts',
       'capacitor.config.ts',

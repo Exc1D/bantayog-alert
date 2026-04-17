@@ -5,6 +5,7 @@
 **Status:** Pilot-bound, pre-implementation
 **Owner:** Exxeed (solo developer) + Province of Camarines Norte stakeholders
 **Companion documents:**
+
 - Architecture Spec v8.0 — source of truth for technical detail
 - Implementation Plan v1.0 — phased delivery schedule
 - Role specs v2.x — per-role capability detail
@@ -29,7 +30,7 @@ The specific failures this platform addresses:
 
 **Jurisdictional data boundaries aren't enforced at the technical layer.** RA 10173 (Data Privacy Act) requires that cross-municipality data access be logged and controlled. That control exists on paper. In software, admin accounts commonly see things they shouldn't.
 
-**National alerting is a different lane.** Province-wide mass evacuation alerts belong to NDRRMC via the Emergency Cell Broadcast System (ECBS) under RA 10639. Bantayog Alert is not that system. But there is no structured path *from* a provincial-level situation *to* an NDRRMC escalation today — it happens by phone call to a number that may or may not be answered.
+**National alerting is a different lane.** Province-wide mass evacuation alerts belong to NDRRMC via the Emergency Cell Broadcast System (ECBS) under RA 10639. Bantayog Alert is not that system. But there is no structured path _from_ a provincial-level situation _to_ an NDRRMC escalation today — it happens by phone call to a number that may or may not be answered.
 
 ---
 
@@ -58,6 +59,7 @@ Five distinct user types. Each has different devices, different network conditio
 **Network profile:** Unreliable. Mountainous terrain, cell-site congestion during typhoons, extended outages after the storm. Must work offline with local queue.
 
 **Key journeys:**
+
 - Submit a report (text, photo, GPS) from the web or by SMS keyword
 - Receive status updates (verified, dispatched, resolved) via push or SMS
 - Recover a dropped draft after app crash or phone restart
@@ -76,6 +78,7 @@ Five distinct user types. Each has different devices, different network conditio
 **Network profile:** Typically online while on duty, but transient drops are routine. Battery life over 12-hour shifts is a hard constraint.
 
 **Key journeys:**
+
 - Receive dispatch notification, accept or decline
 - Navigate to scene with in-app map
 - Post field notes and status updates
@@ -96,6 +99,7 @@ Five distinct user types. Each has different devices, different network conditio
 **Network profile:** Office desk during blue-sky; may operate from an evacuation center or field command post during surge.
 
 **Key journeys:**
+
 - Verify or reject incoming reports, set type and severity
 - Dispatch own-muni responders directly; request agency assistance via structured request
 - Send municipality-scoped mass alerts with Reach Plan preview (≤5k SMS direct, else NDRRMC escalation)
@@ -117,6 +121,7 @@ Five distinct user types. Each has different devices, different network conditio
 **Network profile:** Typically office-based. Connectivity generally good.
 
 **Key journeys:**
+
 - Create, edit, suspend responder accounts within their agency
 - Set shifts and specialization tags (Swift Water Rescue, Hazmat Certified, etc.)
 - Accept or decline assistance requests from municipal admins
@@ -137,6 +142,7 @@ Five distinct user types. Each has different devices, different network conditio
 **Network profile:** Command-center grade. Backup connectivity expected.
 
 **Key journeys:**
+
 - All Municipal Admin capabilities, province-wide
 - Create, suspend, promote staff accounts across all roles
 - Declare provincial emergency (fans out FCM + SMS)
@@ -162,63 +168,63 @@ Measured during the Camarines Norte pilot. Each metric has a target and a measur
 
 ### 4.1 Availability & Reach
 
-| Goal | Metric | Target |
-|---|---|---|
-| Citizens can reach the system | Report acceptance latency, network present | p95 < 3s |
-| Feature-phone citizens aren't second-class | SMS inbound parse accuracy (Tagalog + English) | ≥ 95% on ground-truth sample |
-| No report is silently dropped | Dead-letter items unresolved > 24h | Zero tolerance; every item replayed or escalated |
-| System survives the surge | Cost during pre-warmed surge | ≤ 2× baseline daily spend |
-| Regional outage has a fallback | Degraded-mode runbook execution | SMS-only fallback + paper forms within 15 min of declared outage |
+| Goal                                       | Metric                                         | Target                                                           |
+| ------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------- |
+| Citizens can reach the system              | Report acceptance latency, network present     | p95 < 3s                                                         |
+| Feature-phone citizens aren't second-class | SMS inbound parse accuracy (Tagalog + English) | ≥ 95% on ground-truth sample                                     |
+| No report is silently dropped              | Dead-letter items unresolved > 24h             | Zero tolerance; every item replayed or escalated                 |
+| System survives the surge                  | Cost during pre-warmed surge                   | ≤ 2× baseline daily spend                                        |
+| Regional outage has a fallback             | Degraded-mode runbook execution                | SMS-only fallback + paper forms within 15 min of declared outage |
 
 ### 4.2 Operational Speed
 
-| Goal | Metric | Target |
-|---|---|---|
-| Dispatchers move fast | Dispatch creation latency (admin click → responder FCM) | p95 < 10s |
-| Agencies respond to requests | Agency assistance accept/decline | p95 < 3 min |
-| Responder-witness verification is fast | Submit → muni admin verify | p95 < 5 min |
-| Push notifications land | FCM delivery attempt success | > 95% over rolling 1h |
-| Priority SMS lands | SMS priority delivery | > 90% over rolling 1h |
-| Transaction contention holds under load | p99 on hot paths (`acceptDispatch`, `verifyReport`) | < 5s at 500 concurrent |
+| Goal                                    | Metric                                                  | Target                 |
+| --------------------------------------- | ------------------------------------------------------- | ---------------------- |
+| Dispatchers move fast                   | Dispatch creation latency (admin click → responder FCM) | p95 < 10s              |
+| Agencies respond to requests            | Agency assistance accept/decline                        | p95 < 3 min            |
+| Responder-witness verification is fast  | Submit → muni admin verify                              | p95 < 5 min            |
+| Push notifications land                 | FCM delivery attempt success                            | > 95% over rolling 1h  |
+| Priority SMS lands                      | SMS priority delivery                                   | > 90% over rolling 1h  |
+| Transaction contention holds under load | p99 on hot paths (`acceptDispatch`, `verifyReport`)     | < 5s at 500 concurrent |
 
 ### 4.3 Data Boundaries & Audit
 
-| Goal | Metric | Target |
-|---|---|---|
-| No cross-municipality leakage | Negative-test coverage on Firestore rules | 100% (CI-enforced) |
-| Privileged reads are auditable | Superadmin reads of `report_private` / `report_contacts` | 100% streaming-audited within 60s |
-| Breach notification can happen | Annual 72-hour drill | Runbook executes end-to-end |
-| MFA is real | Staff MFA adoption | 100% for admin+ roles before production cutover |
-| Capability contract holds | UI-to-rule capability contract tests | 100% passing in CI |
+| Goal                           | Metric                                                   | Target                                          |
+| ------------------------------ | -------------------------------------------------------- | ----------------------------------------------- |
+| No cross-municipality leakage  | Negative-test coverage on Firestore rules                | 100% (CI-enforced)                              |
+| Privileged reads are auditable | Superadmin reads of `report_private` / `report_contacts` | 100% streaming-audited within 60s               |
+| Breach notification can happen | Annual 72-hour drill                                     | Runbook executes end-to-end                     |
+| MFA is real                    | Staff MFA adoption                                       | 100% for admin+ roles before production cutover |
+| Capability contract holds      | UI-to-rule capability contract tests                     | 100% passing in CI                              |
 
 ### 4.4 Hazard & Geoanalytics
 
-| Goal | Metric | Target |
-|---|---|---|
-| Reference layers load cleanly | Upload-simplify-persist fidelity | ≥ 95% IoU vs source GeoJSON |
-| Custom zones re-tag correctly | Sweep accuracy on edit (≤100km²) | ≥ 99% re-tagged within 10s |
-| Auto-tag at ingest | Accuracy on verified sample of 100 reports | 100% agreement with Turf.js ground truth |
-| Polygon mass alerts estimate well | Reach Plan vs actual delivery | Within ±10% |
-| Analytics are fast | p95 dashboard query over 30-day window | < 3s |
+| Goal                              | Metric                                     | Target                                   |
+| --------------------------------- | ------------------------------------------ | ---------------------------------------- |
+| Reference layers load cleanly     | Upload-simplify-persist fidelity           | ≥ 95% IoU vs source GeoJSON              |
+| Custom zones re-tag correctly     | Sweep accuracy on edit (≤100km²)           | ≥ 99% re-tagged within 10s               |
+| Auto-tag at ingest                | Accuracy on verified sample of 100 reports | 100% agreement with Turf.js ground truth |
+| Polygon mass alerts estimate well | Reach Plan vs actual delivery              | Within ±10%                              |
+| Analytics are fast                | p95 dashboard query over 30-day window     | < 3s                                     |
 
 ### 4.5 User Experience
 
-| Goal | Metric | Target |
-|---|---|---|
-| Citizens trust the system | Status update receipt | ≥ 95% of verified reports receive push or SMS within 5 min of status change |
-| Responders don't burn batteries | Battery drop at 12-hour shift | < 15% with motion-activity sampling |
-| Dropped drafts recover | localForage recovery post-IndexedDB-eviction | ≥ 99% on iOS test fleet |
-| Shift handoffs happen | Unaccepted handoffs over 30-day window | < 10% |
-| Admins use the right channel | Mass alert Reach Plan preview surfaces SMS-vs-NDRRMC correctly | 100% — no silent routing |
+| Goal                            | Metric                                                         | Target                                                                      |
+| ------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Citizens trust the system       | Status update receipt                                          | ≥ 95% of verified reports receive push or SMS within 5 min of status change |
+| Responders don't burn batteries | Battery drop at 12-hour shift                                  | < 15% with motion-activity sampling                                         |
+| Dropped drafts recover          | localForage recovery post-IndexedDB-eviction                   | ≥ 99% on iOS test fleet                                                     |
+| Shift handoffs happen           | Unaccepted handoffs over 30-day window                         | < 10%                                                                       |
+| Admins use the right channel    | Mass alert Reach Plan preview surfaces SMS-vs-NDRRMC correctly | 100% — no silent routing                                                    |
 
 ### 4.6 Adoption (Pilot Municipality)
 
-| Goal | Metric | Target |
-|---|---|---|
-| Staff actually use the tool | Active muni admin sessions | ≥ 80% of rostered admins log in during any given weekly window |
-| Responders accept and execute | Dispatch accept rate | ≥ 75% within 5 min during active incidents |
-| Citizens submit real reports | Citizen submissions | ≥ 50 per week per municipality during blue-sky, ≥ 500 per week during typhoon |
-| SMS citizens are reached | SMS-submitted reports | ≥ 10% of total submissions (signal of feature-phone reach) |
+| Goal                          | Metric                     | Target                                                                        |
+| ----------------------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| Staff actually use the tool   | Active muni admin sessions | ≥ 80% of rostered admins log in during any given weekly window                |
+| Responders accept and execute | Dispatch accept rate       | ≥ 75% within 5 min during active incidents                                    |
+| Citizens submit real reports  | Citizen submissions        | ≥ 50 per week per municipality during blue-sky, ≥ 500 per week during typhoon |
+| SMS citizens are reached      | SMS-submitted reports      | ≥ 10% of total submissions (signal of feature-phone reach)                    |
 
 ---
 
@@ -279,15 +285,15 @@ These govern product decisions across the 12 phases. They mirror and complement 
 
 ### 7.1 External Dependencies
 
-| Dependency | Owner | Criticality | Fallback |
-|---|---|---|---|
-| Firebase (Firestore, RTDB, Auth, Functions, Storage, Hosting) | Google | Core platform; entire stack | None — migration to Postgres triggered per Arch Spec §19 if thresholds cross |
-| Semaphore SMS API | Semaphore (PH aggregator) | Primary outbound SMS | Globe Labs failover via circuit-breaker |
-| Globe Labs SMS API | Globe Telecom | Secondary outbound SMS + inbound routing | Semaphore primary still available |
-| PAGASA public bulletins | PAGASA (national weather agency) | TCWS signal ingest (§10.2) | Scraper tier; manual superadmin toggle as last resort |
-| MGB hazard maps | Mines and Geosciences Bureau | Reference layer source | Data entered manually by Superadmin; no automated feed |
-| NDRRMC escalation channel | National agency | Province-wide mass alerts | Escalation workflow is the fallback; direct SMS blast is not permitted |
-| Barangay boundary dataset | LGU survey / OpenStreetMap-derived | Polygon mass alert reverse-geocoding | Dataset versioned per CF deploy; sourcing is an implementation-plan prerequisite |
+| Dependency                                                    | Owner                              | Criticality                              | Fallback                                                                         |
+| ------------------------------------------------------------- | ---------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| Firebase (Firestore, RTDB, Auth, Functions, Storage, Hosting) | Google                             | Core platform; entire stack              | None — migration to Postgres triggered per Arch Spec §19 if thresholds cross     |
+| Semaphore SMS API                                             | Semaphore (PH aggregator)          | Primary outbound SMS                     | Globe Labs failover via circuit-breaker                                          |
+| Globe Labs SMS API                                            | Globe Telecom                      | Secondary outbound SMS + inbound routing | Semaphore primary still available                                                |
+| PAGASA public bulletins                                       | PAGASA (national weather agency)   | TCWS signal ingest (§10.2)               | Scraper tier; manual superadmin toggle as last resort                            |
+| MGB hazard maps                                               | Mines and Geosciences Bureau       | Reference layer source                   | Data entered manually by Superadmin; no automated feed                           |
+| NDRRMC escalation channel                                     | National agency                    | Province-wide mass alerts                | Escalation workflow is the fallback; direct SMS blast is not permitted           |
+| Barangay boundary dataset                                     | LGU survey / OpenStreetMap-derived | Polygon mass alert reverse-geocoding     | Dataset versioned per CF deploy; sourcing is an implementation-plan prerequisite |
 
 ### 7.2 Organizational Dependencies
 
@@ -311,18 +317,18 @@ These govern product decisions across the 12 phases. They mirror and complement 
 
 Product-level risks. Technical risks are in Arch Spec §16.
 
-| Risk | Severity | Mitigation |
-|---|---|---|
-| PDRRMO commitment wavers mid-pilot | High | MOU signed at Phase 0; monthly steering committee through Phase 12 |
-| Pilot muni staff don't adopt | High | Training curriculum built in Phase 11; usage metrics reviewed weekly from Phase 9 onward |
-| Citizens don't trust SMS channel | Medium | Tracking reference as paper-like artifact; confirmation SMS on every submit; public barangay outreach in Phase 11 |
-| Agency MOUs delayed | Medium | Parallel-track; per-agency onboarding decoupled from platform readiness |
-| Typhoon hits mid-development | High | Development sequenced so SMS + basic triage ship by Phase 6 (before season peak); degraded-mode runbook written before Phase 7 |
-| Single-developer bus factor | High | Architecture spec + implementation plan + role specs are the recovery artifacts; runbooks written to be executed by a generalist engineer |
-| Legal/regulatory interpretation shifts | Medium | DPIA review quarterly; legal counsel on retainer for NPC questions; break-glass procedure drilled quarterly |
-| Break-glass procedure fails in real emergency | High | Quarterly drill with fake envelopes in staging; physical chain-of-custody reviewed annually |
-| Pilot extended beyond typhoon season | Medium | Each phase has independent value; platform is deployable at Phase 9 even if Phase 10-12 slips |
-| Cost explodes under real surge | Medium | Cost dashboard from Phase 5 onward; 5× baseline alert; circuit breakers on hot paths (Arch Spec §10.4) |
+| Risk                                          | Severity | Mitigation                                                                                                                                |
+| --------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| PDRRMO commitment wavers mid-pilot            | High     | MOU signed at Phase 0; monthly steering committee through Phase 12                                                                        |
+| Pilot muni staff don't adopt                  | High     | Training curriculum built in Phase 11; usage metrics reviewed weekly from Phase 9 onward                                                  |
+| Citizens don't trust SMS channel              | Medium   | Tracking reference as paper-like artifact; confirmation SMS on every submit; public barangay outreach in Phase 11                         |
+| Agency MOUs delayed                           | Medium   | Parallel-track; per-agency onboarding decoupled from platform readiness                                                                   |
+| Typhoon hits mid-development                  | High     | Development sequenced so SMS + basic triage ship by Phase 6 (before season peak); degraded-mode runbook written before Phase 7            |
+| Single-developer bus factor                   | High     | Architecture spec + implementation plan + role specs are the recovery artifacts; runbooks written to be executed by a generalist engineer |
+| Legal/regulatory interpretation shifts        | Medium   | DPIA review quarterly; legal counsel on retainer for NPC questions; break-glass procedure drilled quarterly                               |
+| Break-glass procedure fails in real emergency | High     | Quarterly drill with fake envelopes in staging; physical chain-of-custody reviewed annually                                               |
+| Pilot extended beyond typhoon season          | Medium   | Each phase has independent value; platform is deployable at Phase 9 even if Phase 10-12 slips                                             |
+| Cost explodes under real surge                | Medium   | Cost dashboard from Phase 5 onward; 5× baseline alert; circuit breakers on hot paths (Arch Spec §10.4)                                    |
 
 ---
 
@@ -346,18 +352,21 @@ The 39 pilot acceptance criteria in Arch Spec §20 are the technical signoff. In
 Directional only. Pilot findings will re-shape this.
 
 **v1.1 — Post-pilot stabilization (months 1-3 after pilot signoff)**
+
 - Bikol UI translation
 - Admin mobile companion app (read-only situational awareness)
 - Expanded hazard analytics beyond tag counts
 - Automated PAGASA webhook integration (if NDRRMC coordination yields the endpoint)
 
 **v2 — Province-wide rollout with lessons learned (months 3-12)**
+
 - Full 12-municipality rollout
 - Seismic hazard support if pilot data justifies
 - Risk-scoring formulas informed by pilot data
 - Possible Postgres hybrid migration if Arch Spec §19 triggers fire
 
 **v3 — Horizons**
+
 - Multi-province deployment (another PDRRMO adopts)
 - Deeper PAGASA/NDRRMC integration if API channels open
 - Citizen-facing hazard awareness (public reference layer visibility) — only if legal + operational review clears

@@ -12,8 +12,7 @@
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --emitDeclarationOnly --outDir lib",
-    "test": "vitest run --passWithNoTests"
+    "build": "tsc --emitDeclarationOnly --outDir lib"
   },
   "peerDependencies": {
     "react": "^18.3.1",

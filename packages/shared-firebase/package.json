@@ -11,8 +11,7 @@
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --emitDeclarationOnly --outDir lib",
-    "test": "vitest run --passWithNoTests"
+    "build": "tsc --emitDeclarationOnly --outDir lib"
   },
   "dependencies": {
     "@bantayog/shared-types": "workspace:*"

@@ -5,6 +5,7 @@
 **Status:** Pre-implementation; Phase 0 ready to start
 **Scope:** Full platform, zero-to-pilot, 12 phases
 **Companion documents:**
+
 - Architecture Spec v8.0 — technical authority
 - PRD v1.0 — product authority
 - Role specs v2.x — per-role capability detail
@@ -16,6 +17,7 @@
 This plan sequences the construction of Bantayog Alert from absolute zero to production-cutover-ready. No code has been written yet. No infrastructure provisioned. No MOUs signed.
 
 **Each phase has:**
+
 - **Goal** — the demonstrable thing this phase produces
 - **Scope** — capabilities and components in-phase
 - **Deliverables** — concrete artifacts and features
@@ -34,6 +36,7 @@ This plan sequences the construction of Bantayog Alert from absolute zero to pro
 6. **Audit and rules are built with the feature, not bolted on later.** Every phase that introduces a new data class writes the rule + negative tests in the same phase.
 
 **What this plan is not:**
+
 - Not a Gantt chart. Phase order is firm; in-phase task order is flexible.
 - Not a staffing plan. Assumes solo developer (Exxeed) with periodic consultation from Anthropic's Claude for review and pair-programming.
 - Not a go-to-market plan. Stakeholder engagement, agency onboarding, and citizen outreach run in parallel tracks documented separately.
@@ -43,21 +46,21 @@ This plan sequences the construction of Bantayog Alert from absolute zero to pro
 
 ## Phase Summary
 
-| # | Phase | Demonstrable Milestone | Duration est. |
-|---|---|---|---|
-| 0 | Project Foundation & Stakeholder Anchoring | Signed MOU with Province; dev environment operational; monorepo scaffolded | 2-3 weeks |
-| 1 | Infrastructure & Identity Spine | Firebase project stack provisioned via Terraform; pseudonymous auth working end-to-end | 2-3 weeks |
-| 2 | Data Model & Security Rules Foundation | Full schema deployed; 100% negative-test coverage on rules; emulator-validated | 3-4 weeks |
-| 3 | End-to-End Thin Slice: Citizen → Admin → Responder | One citizen report completes the full lifecycle in staging | 4-5 weeks |
-| 4 | SMS Layer (Inbound + Outbound) | Feature-phone citizen submits report via SMS; receives status updates | 3-4 weeks |
-| 5 | Admin Desktop: Triage, Dispatch, Agency Coordination | Daet MDRRMO drills the verify → dispatch → resolve loop at scale | 4-5 weeks |
-| 6 | Responder App: Capacitor Wrap, Telemetry, Race-Loss Recovery | BFP responder drills a full shift on device | 4-5 weeks |
-| 7 | Provincial Superadmin + NDRRMC Escalation + Break-Glass | PDRRMO exercises the full escalation workflow in tabletop drill | 3-4 weeks |
-| 8 | Surge Readiness: Load, Cost, Pre-Warm | k6 500-concurrent surge test passes all SLOs | 3-4 weeks |
-| 9 | Pilot-Deployable Milestone (Core Platform Freeze) | Daet pilot launches with citizen + muni admin + BFP responder onboarded | 2-3 weeks |
-| 10 | Hazard & Geoanalytics | Reference layers uploaded; custom zones operational; polygon mass alerts deliver | 4-5 weeks |
-| 11 | Incident Response, Audit Hardening, Training | 72-hour breach drill passes; 5+ trained operators; quarterly break-glass drill executed | 3-4 weeks |
-| 12 | Production Cutover Readiness | Third-party security review signed off; 30 continuous days of pilot operation; provincial government signoff | 2-3 weeks |
+| #   | Phase                                                        | Demonstrable Milestone                                                                                       | Duration est. |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------- |
+| 0   | Project Foundation & Stakeholder Anchoring                   | Signed MOU with Province; dev environment operational; monorepo scaffolded                                   | 2-3 weeks     |
+| 1   | Infrastructure & Identity Spine                              | Firebase project stack provisioned via Terraform; pseudonymous auth working end-to-end                       | 2-3 weeks     |
+| 2   | Data Model & Security Rules Foundation                       | Full schema deployed; 100% negative-test coverage on rules; emulator-validated                               | 3-4 weeks     |
+| 3   | End-to-End Thin Slice: Citizen → Admin → Responder           | One citizen report completes the full lifecycle in staging                                                   | 4-5 weeks     |
+| 4   | SMS Layer (Inbound + Outbound)                               | Feature-phone citizen submits report via SMS; receives status updates                                        | 3-4 weeks     |
+| 5   | Admin Desktop: Triage, Dispatch, Agency Coordination         | Daet MDRRMO drills the verify → dispatch → resolve loop at scale                                             | 4-5 weeks     |
+| 6   | Responder App: Capacitor Wrap, Telemetry, Race-Loss Recovery | BFP responder drills a full shift on device                                                                  | 4-5 weeks     |
+| 7   | Provincial Superadmin + NDRRMC Escalation + Break-Glass      | PDRRMO exercises the full escalation workflow in tabletop drill                                              | 3-4 weeks     |
+| 8   | Surge Readiness: Load, Cost, Pre-Warm                        | k6 500-concurrent surge test passes all SLOs                                                                 | 3-4 weeks     |
+| 9   | Pilot-Deployable Milestone (Core Platform Freeze)            | Daet pilot launches with citizen + muni admin + BFP responder onboarded                                      | 2-3 weeks     |
+| 10  | Hazard & Geoanalytics                                        | Reference layers uploaded; custom zones operational; polygon mass alerts deliver                             | 4-5 weeks     |
+| 11  | Incident Response, Audit Hardening, Training                 | 72-hour breach drill passes; 5+ trained operators; quarterly break-glass drill executed                      | 3-4 weeks     |
+| 12  | Production Cutover Readiness                                 | Third-party security review signed off; 30 continuous days of pilot operation; provincial government signoff | 2-3 weeks     |
 
 **Total order-of-magnitude:** 9-12 months elapsed from Phase 0 kickoff to production-cutover-ready. Real schedule depends on PDRRMO engagement pace, typhoon-season impact on stakeholder availability, and agency MOU turnaround.
 
@@ -738,6 +741,7 @@ These don't live in a specific phase but apply throughout.
 ### A.1 Continuous Integration & Test Coverage
 
 From Phase 1 onward:
+
 - Vitest unit tests on all domain logic, validators, state-machine transitions
 - Firebase Emulator rule tests with 100% positive + negative coverage
 - Playwright E2E tests on critical workflows
@@ -747,6 +751,7 @@ From Phase 1 onward:
 ### A.2 Security & Compliance Continuous
 
 From Phase 2 onward:
+
 - Secrets rotation quarterly via Secret Manager
 - Access reviews quarterly (who has superadmin? agency admin? dev environment access?)
 - DPIA review quarterly with legal counsel
@@ -755,6 +760,7 @@ From Phase 2 onward:
 ### A.3 Stakeholder Communication Continuous
 
 Throughout all phases:
+
 - Monthly steering committee with PDRRMO Director + provincial government representative + solo developer
 - Weekly dev update posted to a stakeholder-visible channel
 - Phase-transition demos scheduled with stakeholders before exit-criteria signoff
@@ -762,6 +768,7 @@ Throughout all phases:
 ### A.4 Documentation Continuous
 
 Every phase updates:
+
 - Runbooks where operational procedures change
 - Role specs where capabilities change
 - Architecture spec decision log if a decision is reopened
@@ -777,21 +784,21 @@ Monthly review of Arch Spec §16 risks + plan-level risks. New risks added. Miti
 
 Quick-lookup table of where in the Architecture Spec each phase's deliverables are specified.
 
-| Phase | Primary Arch Spec Sections |
-|---|---|
-| 0 | §0 (reading order), §2.3 (monorepo), §13.1 (environments), §13.6 (break-glass ceremony) |
-| 1 | §4 (identity), §5.7 helpers, §6.2 (idempotency), §13 (ops) |
-| 2 | §5 (data model), §5.7 (rules), §5.8 (RTDB rules), §5.9 (indexes), §13.12 (schema migration) |
-| 3 | §5.1 (triptych), §5.3 (report state), §5.4 (dispatch state), §6.1 (write authority), §7.1-7.2 (citizen + responder), §10.3 (cold-start) |
-| 4 | §3 (SMS architecture), §6.1 (inbound webhook), §9.2 (offline) |
-| 5 | §5.6 (agency assistance), §7.3 (muni admin), §7.3.2-7.3.3 (border incidents + command channel), §7.6 (shift handoff) |
-| 6 | §2.1 (deployment surfaces), §7.2 (responder), §8 (responder location), §9.4 (race-loss) |
-| 7 | §7.5 (superadmin), §7.5.1 (NDRRMC escalation), §12 (audit), §13.5-13.6 (security ops + break-glass) |
-| 8 | §10.2-10.3 (PAGASA ingest + surge pre-warm), §10.4 (contention), §13.7 (monitoring) |
-| 9 | §13.4 (rollout/rollback), §13.10 (disaster strategy), §20 (pilot acceptance) |
-| 10 | §22 (entire section) |
-| 11 | §13.11 (pre-prod checklist), §14 (incident response), §15 (testing) |
-| 12 | §20 (pilot acceptance), §13.11, §21 (what this spec is not) |
+| Phase | Primary Arch Spec Sections                                                                                                              |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | §0 (reading order), §2.3 (monorepo), §13.1 (environments), §13.6 (break-glass ceremony)                                                 |
+| 1     | §4 (identity), §5.7 helpers, §6.2 (idempotency), §13 (ops)                                                                              |
+| 2     | §5 (data model), §5.7 (rules), §5.8 (RTDB rules), §5.9 (indexes), §13.12 (schema migration)                                             |
+| 3     | §5.1 (triptych), §5.3 (report state), §5.4 (dispatch state), §6.1 (write authority), §7.1-7.2 (citizen + responder), §10.3 (cold-start) |
+| 4     | §3 (SMS architecture), §6.1 (inbound webhook), §9.2 (offline)                                                                           |
+| 5     | §5.6 (agency assistance), §7.3 (muni admin), §7.3.2-7.3.3 (border incidents + command channel), §7.6 (shift handoff)                    |
+| 6     | §2.1 (deployment surfaces), §7.2 (responder), §8 (responder location), §9.4 (race-loss)                                                 |
+| 7     | §7.5 (superadmin), §7.5.1 (NDRRMC escalation), §12 (audit), §13.5-13.6 (security ops + break-glass)                                     |
+| 8     | §10.2-10.3 (PAGASA ingest + surge pre-warm), §10.4 (contention), §13.7 (monitoring)                                                     |
+| 9     | §13.4 (rollout/rollback), §13.10 (disaster strategy), §20 (pilot acceptance)                                                            |
+| 10    | §22 (entire section)                                                                                                                    |
+| 11    | §13.11 (pre-prod checklist), §14 (incident response), §15 (testing)                                                                     |
+| 12    | §20 (pilot acceptance), §13.11, §21 (what this spec is not)                                                                             |
 
 ---
 

@@ -13,7 +13,7 @@ This is the authoritative architecture specification for Bantayog Alert. It defi
 
 **Reading order for new contributors:** §1 (context) → §2 (surfaces + stack) → §5 (data model) → §6 (write authority) → §7 (role workflows) → §15 (risks). The rest is reference material for specific concerns.
 
-**When this document and code disagree:** The Zod schemas in `packages/shared-validators` are source of truth for payload shapes. Firestore security rules in `infra/firebase/firestore.rules` are source of truth for access boundaries. This document is source of truth for *why* — the rationale, the rejected alternatives, and the invariants that implementation must preserve.
+**When this document and code disagree:** The Zod schemas in `packages/shared-validators` are source of truth for payload shapes. Firestore security rules in `infra/firebase/firestore.rules` are source of truth for access boundaries. This document is source of truth for _why_ — the rationale, the rejected alternatives, and the invariants that implementation must preserve.
 
 **When to reopen a decision:** The §18 Decision Log is the correct place. Every architectural decision in this spec has a rationale, a rejected alternative, and a residual risk. If conditions change — pilot data contradicts an assumption, a threshold is crossed, a regulatory shift occurs — add a new entry below the last number with reasoning. Do not edit prior entries.
 
@@ -60,11 +60,11 @@ Bantayog Alert is a crowd-sourced disaster reporting and real-time coordination 
 
 There are three distinct deployables. Each has its own bundle, its own state-ownership profile, its own offline strategy, and its own auth friction level. They share one Firebase project per environment.
 
-| Surface | Audience | Platform | Offline Strategy | Auth |
-|---|---|---|---|---|
-| Citizen PWA | Citizens | React PWA (iOS Safari, Android Chrome) | localForage + Firestore SDK dual-write; SMS fallback for submission | Pseudonymous (auto) or phone-OTP registered |
-| Responder App | Responders | Capacitor-wrapped React | Firestore SDK cache; Capacitor plugins for background location, foreground service, motion activity | Managed staff + MFA (TOTP mandatory) |
-| Admin Desktop | Municipal / Agency / Superadmin | React PWA (desktop-first, dual-monitor for superadmin) | Firestore SDK cache only — admins require connectivity for all mutations | Managed staff + MFA + TOTP |
+| Surface       | Audience                        | Platform                                               | Offline Strategy                                                                                    | Auth                                        |
+| ------------- | ------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Citizen PWA   | Citizens                        | React PWA (iOS Safari, Android Chrome)                 | localForage + Firestore SDK dual-write; SMS fallback for submission                                 | Pseudonymous (auto) or phone-OTP registered |
+| Responder App | Responders                      | Capacitor-wrapped React                                | Firestore SDK cache; Capacitor plugins for background location, foreground service, motion activity | Managed staff + MFA (TOTP mandatory)        |
+| Admin Desktop | Municipal / Agency / Superadmin | React PWA (desktop-first, dual-monitor for superadmin) | Firestore SDK cache only — admins require connectivity for all mutations                            | Managed staff + MFA + TOTP                  |
 
 **Why PWA-only is acceptable for citizens (with SMS fallback):** The Firestore SDK's IndexedDB-backed offline persistence durably queues writes across app restarts on Android. iOS PWAs have known service-worker eviction risk under storage pressure. Rather than force Capacitor on every citizen, we accept PWA limitations and provide SMS as the universal fallback channel. Every outbound-critical alert fans out on both FCM and SMS.
 
@@ -73,6 +73,7 @@ There are three distinct deployables. Each has its own bundle, its own state-own
 **Why Admin Desktop has no offline write queue:** Admin writes are high-stakes multi-document operations (dispatch, verify, mass-alert). An admin silently queuing a `sendMassAlert` for replay 2 hours later is a worse failure mode than forcing them to wait for connectivity. If connectivity is lost, all mutation UI is blocked with a "reconnect to continue" banner.
 
 **Admin field mode — explicit offline write scope.** Municipal and Agency Admins operating from a tablet in the field may enable field mode, a deliberate opt-in UI state. In field mode, the following write classes are queued to Firestore SDK offline cache and replayed on reconnect:
+
 - `addFieldNote` (writes to `report_notes/{id}`)
 - `addMessage` (writes to `reports/{id}/messages/{id}`)
 - `responders/{self}.availabilityStatus` is not applicable (admins are not responders)
@@ -80,45 +81,48 @@ There are three distinct deployables. Each has its own bundle, its own state-own
 All other mutations — verify, dispatch, cancel, close, reopen, mass-alert, assistance requests, break-glass actions, role changes — are blocked with the reconnect banner regardless of field mode. Entering field mode requires a 4-hour re-auth and is itself a streaming audit event. Field mode auto-exits after 12 hours or on reconnect, whichever comes first. This is the only carve-out from the "no admin offline writes" rule.
 
 **Citizen PWA — surface detail:**
+
 - URL: `bantayog.daet.gov.ph` (or equivalent provincial domain). No app store. Installable as PWA on iOS and Android; also accessible as a regular website.
 - Target devices: Chrome 90+ (Android), Safari 14+ (iOS). Also usable on desktop browser for citizens at a computer.
 - Performance budget: First Contentful Paint < 2s on 3G. Bundle < 500KB gzipped on initial route; map tiles and Leaflet lazy-loaded.
 
 **Responder App — surface detail:**
+
 - Distributed as a signed APK (Android sideload or managed MDM) and a TestFlight-then-App-Store iOS build. Loaded onto responder-issued devices by Agency Admins during onboarding.
 - Target devices: Android 10+ (API 29+) for foreground service support; iOS 15+ for background location entitlement and CMMotionActivityManager.
 - Performance budget: App cold start < 3s on mid-range Android (Cherry Mobile / Vivo entry tier common in PH). Background battery < 15% per 12-hour shift at typical motion mix (measured in pilot). Dispatch-received to notification-visible < 5s p95.
 - iOS build calendar reality: Apple Developer Program enrollment, provisioning profile setup, TestFlight review, and App Store first-submission collectively require 3–6 weeks of wall time including rejection-and-resubmit cycles. This is on the critical path for Responder App ship and is tracked in §13.11.
 
 **Admin Desktop — surface detail:**
+
 - URL: `admin.bantayog.daet.gov.ph`. Optimized for 1920×1080 monitors; dual-monitor capable for superadmin workstations.
 - Target devices: Desktop Chrome/Edge 100+. Tablet-responsive down to 1024px for mobile command post scenarios. Phone-sized viewport renders a "please use a desktop" gate with a link to the Citizen PWA for anyone who hits it by accident.
 - Performance budget: Admin dashboard p95 load time < 5s under normal conditions (§19 migration trigger if this degrades). Queue triage mode: 47 pending reports must render and be interactable within 2s on first load. Map with 50 incident pins + 30 live responder markers must maintain 30fps pan/zoom.
 
 ### 2.2 Technology Stack
 
-| Layer | Technology | Why |
-|---|---|---|
-| UI Framework | React 18 | Concurrent rendering for real-time updates |
-| Build Tool | Vite | Fast builds, optimized code splitting |
-| State (UI ephemeral) | Zustand | Lightweight; UI-only, no server data |
-| State (server cache) | Firestore SDK local persistence | **Single authoritative server cache** |
-| State (query orchestration) | TanStack Query | Non-Firestore HTTP calls, callables, derived views |
-| State (outbound queue + drafts) | localForage | Dual-write with Firestore SDK for draft durability (Citizen PWA only) |
-| Maps | Leaflet + OpenStreetMap | Open source, free, offline tile caching |
-| Database (structured) | Firestore | Real-time listeners, offline persistence, security rules |
-| Database (GPS) | Firebase Realtime Database | Bandwidth-priced for high-frequency location |
-| Auth | Firebase Auth | Custom claims, anonymous (pseudonymous) auth, MFA |
-| Client integrity | Firebase App Check | Reduces abuse from non-genuine clients |
-| Storage | Cloud Storage for Firebase | Resumable photo/video uploads |
-| Functions | Cloud Functions v2 (Node.js 20) | Server-authoritative writes, triggers, scheduled jobs |
-| Long-window async | Cloud Tasks | Multi-day retry windows for downstream API calls during outages |
-| Push | Firebase Cloud Messaging | Dispatch notifications, SOS, in-app mass alerts |
-| SMS outbound | Semaphore API (primary) + Globe Labs (failover) | Domestic aggregators; better rates, telco compliance, last-mile reliability vs Twilio |
-| SMS inbound | Globe Labs keyword routing → Cloud Function webhook | Citizens on feature phones; zero-data emergency reports |
-| Responder native | Capacitor + `@capacitor-community/background-geolocation` + Motion Activity plugin | Background GPS, foreground services, hardware motion detection |
-| Audit export | Cloud Logging → BigQuery (5-min batch + streaming for security events) | Durable, separately governed audit trail with low-latency security path |
-| IaC | Terraform for GCP/IAM/BigQuery; Firebase CLI for rules/functions/indexes | Named, reproducible infrastructure recovery |
+| Layer                           | Technology                                                                         | Why                                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| UI Framework                    | React 18                                                                           | Concurrent rendering for real-time updates                                            |
+| Build Tool                      | Vite                                                                               | Fast builds, optimized code splitting                                                 |
+| State (UI ephemeral)            | Zustand                                                                            | Lightweight; UI-only, no server data                                                  |
+| State (server cache)            | Firestore SDK local persistence                                                    | **Single authoritative server cache**                                                 |
+| State (query orchestration)     | TanStack Query                                                                     | Non-Firestore HTTP calls, callables, derived views                                    |
+| State (outbound queue + drafts) | localForage                                                                        | Dual-write with Firestore SDK for draft durability (Citizen PWA only)                 |
+| Maps                            | Leaflet + OpenStreetMap                                                            | Open source, free, offline tile caching                                               |
+| Database (structured)           | Firestore                                                                          | Real-time listeners, offline persistence, security rules                              |
+| Database (GPS)                  | Firebase Realtime Database                                                         | Bandwidth-priced for high-frequency location                                          |
+| Auth                            | Firebase Auth                                                                      | Custom claims, anonymous (pseudonymous) auth, MFA                                     |
+| Client integrity                | Firebase App Check                                                                 | Reduces abuse from non-genuine clients                                                |
+| Storage                         | Cloud Storage for Firebase                                                         | Resumable photo/video uploads                                                         |
+| Functions                       | Cloud Functions v2 (Node.js 20)                                                    | Server-authoritative writes, triggers, scheduled jobs                                 |
+| Long-window async               | Cloud Tasks                                                                        | Multi-day retry windows for downstream API calls during outages                       |
+| Push                            | Firebase Cloud Messaging                                                           | Dispatch notifications, SOS, in-app mass alerts                                       |
+| SMS outbound                    | Semaphore API (primary) + Globe Labs (failover)                                    | Domestic aggregators; better rates, telco compliance, last-mile reliability vs Twilio |
+| SMS inbound                     | Globe Labs keyword routing → Cloud Function webhook                                | Citizens on feature phones; zero-data emergency reports                               |
+| Responder native                | Capacitor + `@capacitor-community/background-geolocation` + Motion Activity plugin | Background GPS, foreground services, hardware motion detection                        |
+| Audit export                    | Cloud Logging → BigQuery (5-min batch + streaming for security events)             | Durable, separately governed audit trail with low-latency security path               |
+| IaC                             | Terraform for GCP/IAM/BigQuery; Firebase CLI for rules/functions/indexes           | Named, reproducible infrastructure recovery                                           |
 
 **Selection boundaries.** App Check is an abuse-reduction control, not a trust boundary. TanStack Query is a cache and orchestration layer for non-Firestore calls, not a consistency layer. Firestore SDK cache is the authoritative client-side view of server state — never TanStack Query or Zustand. Capacitor improves access to native capabilities but does not guarantee background execution. BigQuery audit export improves durability but does not remove the need for retention-policy control, privileged-access monitoring, and export health checks. Custom claims are a performance optimization for authorization; they are not a revocation channel. **SMS is a delivery attempt, not a delivery guarantee** — telcos may queue messages during congestion and drop after TTL.
 
@@ -151,8 +155,8 @@ One Firebase project per environment (`bantayog-dev`, `bantayog-staging`, `banta
 
 SMS serves **four distinct purposes**, each with different reliability requirements and authority boundaries:
 
-1. **Targeted citizen status updates** (outbound, one-to-one). *"Your report has been received, reference 2026-DAET-0471. Responders dispatched."* Ordinary Semaphore queue. Highest legitimate volume.
-2. **Municipality-scoped operational advisories** (outbound, ≤5,000 recipients). *"Barangay Calasgasan residents: road flooding on Maharlika Hwy km 12; avoid route."* Semaphore priority queue. Municipal Admin authority only (§7.3).
+1. **Targeted citizen status updates** (outbound, one-to-one). _"Your report has been received, reference 2026-DAET-0471. Responders dispatched."_ Ordinary Semaphore queue. Highest legitimate volume.
+2. **Municipality-scoped operational advisories** (outbound, ≤5,000 recipients). _"Barangay Calasgasan residents: road flooding on Maharlika Hwy km 12; avoid route."_ Semaphore priority queue. Municipal Admin authority only (§7.3).
 3. **Province-wide or multi-municipality mass alerts → ESCALATE to NDRRMC ECBS, do NOT send ourselves.** For anything requiring broad reach, the system **requests escalation** to NDRRMC/PAGASA (§7.5.1). We do not blast 600,000 SMS via a commercial aggregator — that is slower, more expensive, and legally awkward under RA 10639, which assigns this channel to NDRRMC operating ECBS.
 4. **Inbound citizen reports** (inbound). A feature-phone user texts `BANTAYOG <TYPE> <BARANGAY>` to a shared keyword. Globe Labs routes the SMS to a Cloud Function webhook that writes to `report_inbox` — the same collection the web app writes to. Unified ingestion.
 
@@ -170,6 +174,7 @@ SMS serves **four distinct purposes**, each with different reliability requireme
 **The SMS abstraction layer.** A single Cloud Function callable/internal API `sendSMS(to, body, priority, purpose)` hides provider details from all callers. Circuit-breaker logic: if Semaphore returns errors or its p95 latency exceeds 30s over a 5-minute window, new sends route to Globe Labs; a health probe continues hitting Semaphore to decide when to return. Re-entry after 5 minutes of healthy probes. Every attempt is logged to `sms_outbox/{id}` with delivery-report callbacks from both providers writing back status.
 
 Content rules enforced in the abstraction:
+
 - Alphanumeric sender ID only (telco requirement) — `BANTAYOG` once approved; Semaphore default sender until then
 - No URL shorteners (Smart blocks them) — only full destination URLs, or no URL at all
 - **GSM-7 vs UCS-2 detection is explicit.** If the message body contains characters outside GSM-7 (including `ñ`, `Ñ`, em-dashes, curly quotes, and emojis), the message is sent as UCS-2 with a per-segment limit of 70 characters instead of 160. The admin UI shows a live segment count and unicode warning before send. Emojis are not stripped automatically — a message like "Bgy. Calasgasan: Baha sa Maharlika Hwy km 12" should reach the citizen with correct Tagalog orthography, not mangled ASCII.
@@ -185,16 +190,16 @@ Per-msisdn rate limits: max 5 submissions per msisdn per hour, max 20 per day. T
 
 ### 4.1 Identity Matrix
 
-| Identity Level | Auth Method | UID | Surface | MFA | Notes |
-|---|---|---|---|---|---|
-| Pseudonymous citizen | `signInAnonymously()` | Temporary | Citizen PWA | No | Auto on launch |
-| SMS-identified citizen | `sms_sessions/{msisdnHash}` | Implicit | None (SMS only) | No | Phone number = credential via rate limits |
-| Registered citizen | Phone OTP (`linkWithCredential`) | Persistent | Citizen PWA | Optional (phone-OTP repeat) | Links pseudonymous history |
-| Responder | Managed staff + phone OTP | Persistent | Responder App | **Required (TOTP)** | Created by Agency Admin |
-| Municipal Admin | Managed staff + phone OTP | Persistent | Admin Desktop | **Required (TOTP)** | Created by Superadmin |
-| Agency Admin | Managed staff + phone OTP | Persistent | Admin Desktop | **Required (TOTP)** | Created by Superadmin |
-| Provincial Superadmin | Managed staff + phone OTP | Persistent | Admin Desktop | **Required (TOTP) + isPrivileged session** | Quarterly re-verify |
-| Break-glass | Sealed escrow + dual-control | Persistent but disabled | Admin Desktop | **Required (TOTP)** | §11.6 |
+| Identity Level         | Auth Method                      | UID                     | Surface         | MFA                                        | Notes                                     |
+| ---------------------- | -------------------------------- | ----------------------- | --------------- | ------------------------------------------ | ----------------------------------------- |
+| Pseudonymous citizen   | `signInAnonymously()`            | Temporary               | Citizen PWA     | No                                         | Auto on launch                            |
+| SMS-identified citizen | `sms_sessions/{msisdnHash}`      | Implicit                | None (SMS only) | No                                         | Phone number = credential via rate limits |
+| Registered citizen     | Phone OTP (`linkWithCredential`) | Persistent              | Citizen PWA     | Optional (phone-OTP repeat)                | Links pseudonymous history                |
+| Responder              | Managed staff + phone OTP        | Persistent              | Responder App   | **Required (TOTP)**                        | Created by Agency Admin                   |
+| Municipal Admin        | Managed staff + phone OTP        | Persistent              | Admin Desktop   | **Required (TOTP)**                        | Created by Superadmin                     |
+| Agency Admin           | Managed staff + phone OTP        | Persistent              | Admin Desktop   | **Required (TOTP)**                        | Created by Superadmin                     |
+| Provincial Superadmin  | Managed staff + phone OTP        | Persistent              | Admin Desktop   | **Required (TOTP) + isPrivileged session** | Quarterly re-verify                       |
+| Break-glass            | Sealed escrow + dual-control     | Persistent but disabled | Admin Desktop   | **Required (TOTP)**                        | §11.6                                     |
 
 **Privacy-language commitment:** Anonymous Firebase Auth is **not** equivalent to guaranteed real-world anonymity. It provides a pseudonymous technical identity that may later be linked to a registered account via `linkWithCredential()` if the user chooses to upgrade. A court order can compel linkage. App Check retains abuse signals. Firebase logs retain IP short-term. Citizen-facing copy must use language like "without registering" or "pseudonymous" — not "anonymous." Privacy notices must explicitly list what is retained for a pseudonymous report: pseudonymous UID, optional voluntary contact (goes to `report_contacts`), GPS, photos (EXIF-stripped), IP (short-term), msisdn hash if SMS.
 
@@ -202,14 +207,14 @@ Per-msisdn rate limits: max 5 submissions per msisdn per hour, max 20 per day. T
 
 ```typescript
 interface CustomClaims {
-  role: 'citizen' | 'responder' | 'municipal_admin' | 'agency_admin' | 'provincial_superadmin';
-  municipalityId?: string;              // For municipal_admin; and for agency_admin scoped to one muni
-  agencyId?: string;                    // For agency_admin and responder
-  permittedMunicipalityIds?: string[];  // For superadmin: all 12; for scoped roles: typically [municipalityId]
-  accountStatus: 'active' | 'suspended' | 'disabled';
-  mfaEnrolled: boolean;
-  lastClaimIssuedAt: number;            // epoch ms; used for revocation detection
-  breakGlassSession?: boolean;          // set only on break-glass activation
+  role: 'citizen' | 'responder' | 'municipal_admin' | 'agency_admin' | 'provincial_superadmin'
+  municipalityId?: string // For municipal_admin; and for agency_admin scoped to one muni
+  agencyId?: string // For agency_admin and responder
+  permittedMunicipalityIds?: string[] // For superadmin: all 12; for scoped roles: typically [municipalityId]
+  accountStatus: 'active' | 'suspended' | 'disabled'
+  mfaEnrolled: boolean
+  lastClaimIssuedAt: number // epoch ms; used for revocation detection
+  breakGlassSession?: boolean // set only on break-glass activation
 }
 ```
 
@@ -226,6 +231,7 @@ Firebase ID tokens are valid for 1 hour regardless of backend state. A suspended
 ### 4.4 Session Timeout
 
 "Session timeout" at the app layer means prompt-for-OTP-again, not hard-expire the Firebase token. Intervals:
+
 - Responder: 12 hours
 - Municipal / Agency Admin: 8 hours
 - Superadmin: 4 hours; plus re-auth required to enter `isPrivileged` state for sensitive reads
@@ -452,25 +458,25 @@ dispatches/{dispatchId}
 
 **Transitions, actor, and write authority:**
 
-| From | To | Actor | Write | Side effects |
-|---|---|---|---|---|
-| — | `draft_inbox` | Client | Direct (`report_inbox`) | None yet |
-| `draft_inbox` | `new` | System (trigger) | Server | Triptych materialized |
-| `draft_inbox` | `new` | System (callable) | Server | Responder-witness path (§7.2) |
-| `draft_inbox` | `rejected` | System (trigger) | Server | `moderation_incidents` entry |
-| `new` | `awaiting_verify` | Municipal Admin or Superadmin | Server callable | Audit event |
-| `new` | `merged_as_duplicate` | Municipal Admin or Superadmin | Server callable | `mergedInto` set; duplicate cluster updated |
-| `awaiting_verify` | `verified` | Municipal Admin or Superadmin | Server callable | `verifiedBy`, `verifiedAt`; FCM + SMS to reporter |
-| `awaiting_verify` | `merged_as_duplicate` | Municipal Admin or Superadmin | Server callable | As above |
-| `awaiting_verify` | `cancelled_false_report` | Municipal Admin or Superadmin | Server callable | Audit + moderation event |
-| `verified` | `assigned` | Municipal Admin or Agency Admin | Server callable | Dispatch created; responder FCM |
-| `assigned` | `acknowledged` | Responder | Direct | Dispatch state linked |
-| `acknowledged` | `en_route` | Responder | Direct | RTDB telemetry begins |
-| `en_route` | `on_scene` | Responder | Direct | Geofence exit event logged |
-| `on_scene` | `resolved` | Responder | Direct | Resolution summary required |
-| `resolved` | `closed` | Municipal Admin | Server callable | Report locks; SMS closure to reporter if opted in |
-| `closed` | `reopened` | Municipal Admin | Server callable | Returns to `assigned`; audit event |
-| Any active | `cancelled` | Admin (with reason) | Server callable | All active dispatches cancelled |
+| From              | To                       | Actor                           | Write                   | Side effects                                      |
+| ----------------- | ------------------------ | ------------------------------- | ----------------------- | ------------------------------------------------- |
+| —                 | `draft_inbox`            | Client                          | Direct (`report_inbox`) | None yet                                          |
+| `draft_inbox`     | `new`                    | System (trigger)                | Server                  | Triptych materialized                             |
+| `draft_inbox`     | `new`                    | System (callable)               | Server                  | Responder-witness path (§7.2)                     |
+| `draft_inbox`     | `rejected`               | System (trigger)                | Server                  | `moderation_incidents` entry                      |
+| `new`             | `awaiting_verify`        | Municipal Admin or Superadmin   | Server callable         | Audit event                                       |
+| `new`             | `merged_as_duplicate`    | Municipal Admin or Superadmin   | Server callable         | `mergedInto` set; duplicate cluster updated       |
+| `awaiting_verify` | `verified`               | Municipal Admin or Superadmin   | Server callable         | `verifiedBy`, `verifiedAt`; FCM + SMS to reporter |
+| `awaiting_verify` | `merged_as_duplicate`    | Municipal Admin or Superadmin   | Server callable         | As above                                          |
+| `awaiting_verify` | `cancelled_false_report` | Municipal Admin or Superadmin   | Server callable         | Audit + moderation event                          |
+| `verified`        | `assigned`               | Municipal Admin or Agency Admin | Server callable         | Dispatch created; responder FCM                   |
+| `assigned`        | `acknowledged`           | Responder                       | Direct                  | Dispatch state linked                             |
+| `acknowledged`    | `en_route`               | Responder                       | Direct                  | RTDB telemetry begins                             |
+| `en_route`        | `on_scene`               | Responder                       | Direct                  | Geofence exit event logged                        |
+| `on_scene`        | `resolved`               | Responder                       | Direct                  | Resolution summary required                       |
+| `resolved`        | `closed`                 | Municipal Admin                 | Server callable         | Report locks; SMS closure to reporter if opted in |
+| `closed`          | `reopened`               | Municipal Admin                 | Server callable         | Returns to `assigned`; audit event                |
+| Any active        | `cancelled`              | Admin (with reason)             | Server callable         | All active dispatches cancelled                   |
 
 **Only Municipal Admins and Provincial Superadmins can execute the `awaiting_verify → verified` transition.** Agency Admins have no verification authority — this keeps the report state machine clean, the audit trail unambiguous, and matches PH emergency management doctrine where LGUs hold the triage function. It also prevents the race where two agency admins and one municipal admin all hit "Verify" simultaneously with different severity classifications.
 
@@ -495,6 +501,7 @@ All transitions record actor, timestamp, and reason where applicable, and emit a
 **Dispatch timeouts are data-driven, not hardcoded.** `acknowledgementDeadlineAt` is set per dispatch based on severity and agency defaults. A flat timeout window is operationally insufficient — a fire call at peak day is different from a structural-engineer callout at 2am.
 
 Default timeout configuration in `system_config/dispatch_timeouts/{severity}`:
+
 - `high: 3min`
 - `medium: 5min`
 - `low: 10min`
@@ -961,6 +968,7 @@ service cloud.firestore {
 Defined in `firestore.indexes.json` and deployed before first app launch.
 
 **Core collections:**
+
 - `reports`: (municipalityId + status + createdAt desc), (municipalityId + severity desc + createdAt desc), (visibilityClass + createdAt desc)
 - `report_ops`: (municipalityId + status + severity desc + createdAt desc), (agencyIds CONTAINS + status + createdAt desc), (duplicateClusterId + createdAt)
 - `report_sharing`: (sharedWith CONTAINS + updatedAt desc), (ownerMunicipalityId + updatedAt desc)
@@ -970,17 +978,21 @@ Defined in `firestore.indexes.json` and deployed before first app launch.
 - Lifecycle/cleanup: (deletedAt + retentionExempt), (archivedAt + retentionExempt)
 
 **SMS layer:**
+
 - `sms_outbox`: (providerId + status + createdAt desc), (purpose + createdAt desc)
 
 **Event streams:**
+
 - `report_events`: (reportId + createdAt desc), (actor + createdAt desc)
 - `dispatch_events`: (dispatchId + createdAt desc)
 
 **Coordination collections:**
+
 - `agency_assistance_requests`: (targetAgencyId + status + createdAt desc), (requestedByMunicipality + status + createdAt desc)
 - `shift_handoffs`: (toUid + status + createdAt desc)
 
 **Hazard collections (§22):**
+
 - `hazard_zones`: (zoneType + hazardType + createdAt desc) — admin list by type
 - `hazard_zones`: (scope + municipalityId + zoneType + createdAt desc) — muni admin's zone list
 - `hazard_zones`: (geohashPrefix + deletedAt + hazardType) — ingest auto-tag candidate lookup
@@ -995,6 +1007,7 @@ Defined in `firestore.indexes.json` and deployed before first app launch.
 ### 6.1 The Honest Split
 
 **Server-authoritative mutations** (Cloud Functions / triggers):
+
 - Inbox processing (`onCreate report_inbox` → materializes triptych)
 - Inbound SMS webhook (`POST /smsInbound` → parses → writes `report_inbox`)
 - Outbound SMS sending (`sendSMS` internal API → Semaphore/Globe Labs)
@@ -1019,6 +1032,7 @@ Defined in `firestore.indexes.json` and deployed before first app launch.
 - Hazard analytics: `hazardAnalyticsZoneTagCounts`, `hazardAnalyticsMunicipalityRiskDensity`, `hazardAnalyticsReportsInZone`
 
 **Direct client writes with rule-bounded scope:**
+
 - Citizen → `report_inbox` (web; SMS goes via webhook)
 - Responder → `dispatches/{id}` for `accepted→acknowledged→in_progress→resolved` and `pending→declined`
 - Responder → `responders/{self}.availabilityStatus`
@@ -1057,6 +1071,7 @@ Capability is defined by data-class reach. Every capability listed here has a co
 **Primary surface:** Citizen PWA. Feature-phone users hit the SMS ingest path.
 
 **Capabilities:**
+
 - Submit reports via app form or SMS keyword
 - Upload photos/videos (EXIF-stripped server-side)
 - Provide GPS location (auto-detected) or select municipality/barangay as fallback
@@ -1069,12 +1084,14 @@ Capability is defined by data-class reach. Every capability listed here has a co
 - Upgrade pseudonymous session to registered account (preserves UID and report history)
 
 **Constraints:**
+
 - No verification authority
 - No dispatch visibility beyond own report status
 - No citizen contact info of others visible
 - Admin identity (individual names) never surfaced; institutional labels only
 
 **Submit flow:**
+
 1. User completes report form. Photos are handled separately via resumable Storage upload (`uploadBytesResumable`) — independent from command submission so a failed photo doesn't block the report.
 2. On submit, client writes to `report_inbox/{newId}` via Firestore SDK with `clientCreatedAt`, payload, and idempotency key.
 3. Firestore SDK queues the write durably in IndexedDB and survives app close/restart on Android.
@@ -1085,6 +1102,7 @@ Capability is defined by data-class reach. Every capability listed here has a co
 Orphaned Storage objects (media without a referencing report doc after 24h) are deleted by the `cleanupOrphanedMedia` scheduled function.
 
 **Rate limits:**
+
 - Per pseudonymous UID: 3 reports / hour, 10 / day
 - Per msisdn hash (SMS): 3 reports / hour, 10 / day
 - Per IP (fallback gate): 20 reports / day
@@ -1095,6 +1113,7 @@ Orphaned Storage objects (media without a referencing report doc after 24h) are 
 **Primary surface:** Responder Capacitor app.
 
 **Capabilities:**
+
 - Receive dispatch notifications (FCM high-priority)
 - Accept via `acceptDispatch` callable (server-authoritative, resolves races) or decline (direct write with reason)
 - Transition own dispatch through `acknowledged → en_route → on_scene → resolved` (direct writes, rule-validated)
@@ -1121,12 +1140,14 @@ Orphaned Storage objects (media without a referencing report doc after 24h) are 
 8. If the responder is geo-resolved to a municipality outside their `permittedMunicipalityIds`, the report is still created but flagged `crossJurisdictionFlag: true` for superadmin attention.
 
 **Race-loss recovery UX.** When a responder's direct dispatch-status write is rejected (admin cancelled/superseded the dispatch in parallel), the Responder App must:
+
 - Not show a generic error modal.
 - Re-fetch the dispatch document.
 - Transition to a "This dispatch is no longer active" screen with the institutional label of the canceller (never the admin's personal name) and the cancellation reason if present.
 - Offer "Return to queue" as the only action. This is tested in §14 pilot-blocker scenario 25.
 
 **Constraints:**
+
 - Cannot verify, classify, or change severity of reports
 - Cannot see reports outside active assignment (jurisdiction scope)
 - Cannot see citizen contact info
@@ -1134,12 +1155,14 @@ Orphaned Storage objects (media without a referencing report doc after 24h) are 
 - No Facebook Messenger integration — external third-party, RA 10173 data residency, no SLA, no audit hook, unreliable in degraded networks
 
 **Location sharing:**
+
 - Active only during `acknowledged → en_route → on_scene` states (dispatch active)
 - Motion-driven cadence per §8.2
 - Retention: 90 days (post-incident review requires this duration)
 - Opt-out exists in settings but moves responder to `unavailable` — admin must have telemetry on live dispatches
 
 **Auth:**
+
 - Phone OTP + TOTP mandatory
 - 12-hour re-auth interval
 - Cannot self-register (Agency Admin creates)
@@ -1151,6 +1174,7 @@ Orphaned Storage objects (media without a referencing report doc after 24h) are 
 **Scope:** One municipality. No cross-municipality authority except shared border incidents (§7.3.2).
 
 **Capabilities:**
+
 - **Verify reports:** `verifyReport` callable, transitions `awaiting_verify → verified`, sets `reportType` and `severity`, triggers FCM + SMS to reporter with institutional attribution
 - **Reject reports:** `rejectReport` callable, transitions `awaiting_verify → cancelled_false_report`, logs moderation incident
 - **Merge duplicates:** `mergeReports` callable
@@ -1171,6 +1195,7 @@ Orphaned Storage objects (media without a referencing report doc after 24h) are 
 - **Field mode:** `enterFieldMode`, `exitFieldMode` — limited offline writes (§2.1)
 
 **Constraints:**
+
 - Cannot view or write to reports outside own municipality, except shared border incidents
 - Cannot dispatch responders outside own municipality
 - Cannot see other municipalities' analytics (anonymized comparisons OK)
@@ -1211,6 +1236,7 @@ Per-incident messaging between admins (municipal ↔ agency, municipal ↔ munic
 **Scope:** One agency (BFP, PNP, Red Cross, DPWH, etc.). May operate across multiple municipalities if the agency does (e.g., PNP Provincial).
 
 **Capabilities:**
+
 - **Manage agency roster:** create/edit/suspend responders via `createResponder`, `updateResponder`, `suspendResponder` callables, all rule-gated to own `agencyId`
 - **Set shifts:** bulk on-duty / off-duty toggles via `bulkSetResponderAvailability` callable
 - **Tag responder specializations** (`Swift Water Rescue`, `Hazmat Certified`, etc.) — fields on `responders/{uid}.specializations[]`
@@ -1227,6 +1253,7 @@ Per-incident messaging between admins (municipal ↔ agency, municipal ↔ munic
 - **Field mode:** `enterFieldMode`, `exitFieldMode` — limited offline writes (§2.1)
 
 **Constraints:**
+
 - **No report verification authority.** Only Municipal Admins and Provincial Superadmins verify. The Verified Responder Report bypass (§7.2) still routes through a municipal admin for final verification — the agency admin is not in that path.
 - **No mass alerts to citizens** — operational messaging to own responders only via the message subcollection.
 - **No dispatching other agencies.**
@@ -1236,6 +1263,7 @@ Per-incident messaging between admins (municipal ↔ agency, municipal ↔ munic
 - **No hazard-zone access whatsoever (§22).** Agency admins cannot read reference layers, custom zones, or zone history; cannot call any hazard callable; cannot send polygon-targeted mass alerts; cannot see hazard analytics. Matches their vertical scope (authority over own agency's roster, not LGU triage/mapping tools). Rule-enforced default-deny + UI-enforced (no Hazard Layers tab rendered).
 
 **Hub-and-Spoke Flow (Primary):**
+
 1. Citizen submits → `report_inbox`
 2. Municipal Admin verifies → `verified`
 3. Municipal Admin clicks "Request Agency Assistance" → `agency_assistance_requests/{id}`
@@ -1252,6 +1280,7 @@ Per-incident messaging between admins (municipal ↔ agency, municipal ↔ munic
 **Scope:** Entire province (12 municipalities).
 
 **Capabilities:**
+
 - All Municipal Admin capabilities, province-wide
 - **User management:** create/suspend/promote staff accounts for all roles; self-demotion prohibited
 - **Declare provincial emergency:** `declareEmergency` callable, fans out FCM + SMS to all active staff + authorized citizen subset
@@ -1269,6 +1298,7 @@ Per-incident messaging between admins (municipal ↔ agency, municipal ↔ munic
 - **Incident response actions** (§14): declare data incident, mark breach notifications sent
 
 **Constraints:**
+
 - Requires MFA + TOTP + 4h re-auth interval
 - Cannot read citizen data without audit trail
 - Cannot change own role
@@ -1290,6 +1320,7 @@ The UI everywhere distinguishes "Escalation submitted to NDRRMC" from "Sent via 
 ### 7.6 Admin Shift Handoff (All Admin Roles)
 
 `initiateShiftHandoff` callable creates `shift_handoffs/{id}` with:
+
 - `fromUid`, `toUid`, `fromRole`, `toRole`
 - `activeIncidentSnapshot`: active incident summaries (IDs, status, age, responders assigned)
 - `urgentItems`: admin-flagged concerns
@@ -1311,13 +1342,13 @@ Telemetry written to RTDB only while responder is on active assignment or explic
 
 GPS-speed inference kills batteries in 3–4 hours at real staging durations. Hardware motion detection is the only viable path to 12+ hour shifts. The device emission cadence:
 
-| Hardware-reported activity | GPS polling | Rationale |
-|---|---|---|
-| `running` / `in_vehicle` (high priority dispatch) | 10s ± 2s | Real-time tracking during active response |
-| `walking` (normal priority) | 30s ± 5s | Moving but not urgent |
-| `still` + on active dispatch | Geofence-only + 5-minute GPS ping | Stationary at staging; rely on geofence exit to resume |
-| `still` + low battery (<20%) | Geofence-only + 10-minute GPS ping | Battery preservation |
-| No active dispatch | No tracking | Zero-telemetry off-duty |
+| Hardware-reported activity                        | GPS polling                        | Rationale                                              |
+| ------------------------------------------------- | ---------------------------------- | ------------------------------------------------------ |
+| `running` / `in_vehicle` (high priority dispatch) | 10s ± 2s                           | Real-time tracking during active response              |
+| `walking` (normal priority)                       | 30s ± 5s                           | Moving but not urgent                                  |
+| `still` + on active dispatch                      | Geofence-only + 5-minute GPS ping  | Stationary at staging; rely on geofence exit to resume |
+| `still` + low battery (<20%)                      | Geofence-only + 10-minute GPS ping | Battery preservation                                   |
+| No active dispatch                                | No tracking                        | Zero-telemetry off-duty                                |
 
 - **Android:** Activity Recognition API via `@capacitor-community/background-geolocation`.
 - **iOS:** CMMotionActivityManager via Capacitor plugin.
@@ -1330,12 +1361,12 @@ Jitter (± values above) prevents thundering-herd reconnection when a cell tower
 
 Admin display freshness bands are calibrated to the emission model:
 
-| `telemetryStatus` | Definition | Operator UX |
-|---|---|---|
-| `live` | `receivedAt` within 2× expected interval for current motion state | Normal display |
-| `degraded` | Within 4× expected interval | Yellow tint, age label |
-| `stale` | Exceeds 4× expected interval | Gray, "last seen X ago", warning banner |
-| `offline` | No `receivedAt` for 5+ min during active dispatch | Red, dispatcher alert, manual contact prompt |
+| `telemetryStatus` | Definition                                                        | Operator UX                                  |
+| ----------------- | ----------------------------------------------------------------- | -------------------------------------------- |
+| `live`            | `receivedAt` within 2× expected interval for current motion state | Normal display                               |
+| `degraded`        | Within 4× expected interval                                       | Yellow tint, age label                       |
+| `stale`           | Exceeds 4× expected interval                                      | Gray, "last seen X ago", warning banner      |
+| `offline`         | No `receivedAt` for 5+ min during active dispatch                 | Red, dispatcher alert, manual contact prompt |
 
 ### 8.4 Cost Behavior Under Degraded Networks
 
@@ -1361,6 +1392,7 @@ Letting 12 agencies each subscribe to every other agency's full RTDB tree is a c
 Own-agency responders are read directly from `responder_locations/{uid}` at full fidelity via the existing rule.
 
 **Capacitor plugins required for Responder App:**
+
 - `@capacitor-community/background-geolocation` — hardware motion + geofence-aware GPS polling
 - `@capacitor/push-notifications` — FCM on Android, APNS on iOS
 - `@capacitor/preferences` — persisted state (foreground service status, last-known motion activity)
@@ -1378,38 +1410,39 @@ Per Principle #10, state has exactly one authority per category. Three surfaces 
 
 **Citizen PWA:**
 
-| Data category | Authority | Everything else must | Rationale |
-|---|---|---|---|
-| Server documents (reports, alerts) | Firestore SDK local persistence | Read via listeners, never cache separately | Single source of server truth; offline persistence is SDK-native |
-| UI state (modal, form field, tab) | Zustand | Never duplicate in server cache | UI-only; not persisted to server |
-| Non-Firestore HTTP (callables, tracking lookup) | TanStack Query | Never hand-cache in Zustand | Built-in invalidation + retry |
-| Drafts + queued submissions | localForage + Firestore SDK queue | Always write to both | SDK queue alone is vulnerable to IndexedDB eviction on iOS |
-| Tracking secrets | localForage | Never in Zustand | Survives app restart |
-| Session / auth state | Firebase Auth SDK | Everything reads via `onAuthStateChanged` | Auth SDK is authoritative |
+| Data category                                   | Authority                         | Everything else must                       | Rationale                                                        |
+| ----------------------------------------------- | --------------------------------- | ------------------------------------------ | ---------------------------------------------------------------- |
+| Server documents (reports, alerts)              | Firestore SDK local persistence   | Read via listeners, never cache separately | Single source of server truth; offline persistence is SDK-native |
+| UI state (modal, form field, tab)               | Zustand                           | Never duplicate in server cache            | UI-only; not persisted to server                                 |
+| Non-Firestore HTTP (callables, tracking lookup) | TanStack Query                    | Never hand-cache in Zustand                | Built-in invalidation + retry                                    |
+| Drafts + queued submissions                     | localForage + Firestore SDK queue | Always write to both                       | SDK queue alone is vulnerable to IndexedDB eviction on iOS       |
+| Tracking secrets                                | localForage                       | Never in Zustand                           | Survives app restart                                             |
+| Session / auth state                            | Firebase Auth SDK                 | Everything reads via `onAuthStateChanged`  | Auth SDK is authoritative                                        |
 
 **Responder App:**
 
-| Data category | Authority |
-|---|---|
-| Server documents (dispatches, reports, messages) | Firestore SDK |
-| UI state | Zustand |
-| Non-Firestore HTTP (callables) | TanStack Query |
-| Foreground-service status | Capacitor Preferences |
-| Last known motion activity | Capacitor Preferences + in-memory |
-| GPS telemetry | Write-only to RTDB; no local persistence |
+| Data category                                    | Authority                                |
+| ------------------------------------------------ | ---------------------------------------- |
+| Server documents (dispatches, reports, messages) | Firestore SDK                            |
+| UI state                                         | Zustand                                  |
+| Non-Firestore HTTP (callables)                   | TanStack Query                           |
+| Foreground-service status                        | Capacitor Preferences                    |
+| Last known motion activity                       | Capacitor Preferences + in-memory        |
+| GPS telemetry                                    | Write-only to RTDB; no local persistence |
 
 No outbox layer. Responder writes are single-actor sequential transitions on dispatches the responder owns; SDK queue handles reconnection correctly.
 
 **Admin Desktop:**
 
-| Data category | Authority |
-|---|---|
-| Server documents (reports, dispatches, responders, analytics) | Firestore SDK |
-| UI state (map viewport, selected entity, panel, filters) | Zustand |
-| Non-Firestore HTTP (callables, analytics aggregates, exports) | TanStack Query |
-| Field-mode queue (notes, messages only) | Firestore SDK offline cache — replayed on reconnect |
+| Data category                                                 | Authority                                           |
+| ------------------------------------------------------------- | --------------------------------------------------- |
+| Server documents (reports, dispatches, responders, analytics) | Firestore SDK                                       |
+| UI state (map viewport, selected entity, panel, filters)      | Zustand                                             |
+| Non-Firestore HTTP (callables, analytics aggregates, exports) | TanStack Query                                      |
+| Field-mode queue (notes, messages only)                       | Firestore SDK offline cache — replayed on reconnect |
 
 **Rules the codebase enforces:**
+
 1. No component reads a report from Zustand. Reports come from Firestore listeners.
 2. No component writes a server-synced field to Zustand. Edits go to the outbox (localForage + Firestore write queue), and the UI reflects the optimistic change via TanStack Query's `setQueryData`.
 3. TanStack Query does not own data — it caches views of what Firestore's listeners return.
@@ -1422,15 +1455,17 @@ Client states: `draft` → `queued` → `submitting` → `server_confirmed` | `f
 **Draft durability against IndexedDB eviction.** Mobile browsers — especially iOS Safari and Android Chrome under storage pressure — can evict IndexedDB data silently. If a citizen drafts offline and the OS evicts before reconnection, the Firestore queue is gone.
 
 Mitigation:
+
 1. **Dual-write on draft save.** The client writes to both the Firestore SDK write queue AND a localForage entry keyed `draft:{clientUuid}`. localForage uses IndexedDB under the hood but with a separate database name; on init failure it falls back to WebSQL and localStorage.
 2. **On app start, reconcile.** If the Firestore queue is empty but localForage has `draft:{uuid}` entries, the client re-enqueues them. If Firestore already accepted (verified by listener), the localForage entry is cleared.
-3. **User-visible persistence confirmation.** After submit, the UI shows *"Your report is saved on this device. Reference: 2026-DAET-0471. Take a screenshot or save this code."* This converts the reference into a paper-form fallback.
+3. **User-visible persistence confirmation.** After submit, the UI shows _"Your report is saved on this device. Reference: 2026-DAET-0471. Take a screenshot or save this code."_ This converts the reference into a paper-form fallback.
 4. **iOS-specific fallback.** On iOS, if IndexedDB appears compromised (detected via write-then-read probe), the UI prompts the user to send via SMS instead, pre-filling a `sms:` link with the correct keyword format.
 5. **Background Sync API** is used where available (Chromium browsers) to retry when the browser is closed. iOS does not implement Background Sync; iOS users rely on the app being reopened — which is why SMS fallback exists.
 
 ### 9.3 Failure-State UX
 
 Critical screens display:
+
 - Network state indicator (online / offline / degraded)
 - Last successful sync timestamp
 - Stale data warnings
@@ -1449,6 +1484,7 @@ See §5.4 and §7.2 for responder race-loss recovery UX. This is an enforced pat
 ### 10.1 Function Types
 
 **Event-driven triggers:**
+
 - `onCreate report_inbox` → `processInboxItem` (materializes triptych, elevates for moderation on App Check fail)
 - `onWrite dispatches/{id}` → `onDispatchStatusChange` (audit + downstream notifications)
 - `onCreate dispatch_events/{id}` → `onDispatchEvent` (metrics rollup)
@@ -1459,11 +1495,13 @@ See §5.4 and §7.2 for responder race-loss recovery UX. This is an enforced pat
 **Callables (client-invoked, server-authoritative):** See §6.1 inventory.
 
 **Webhooks:**
+
 - `POST /smsInbound` — Globe Labs keyword-routed SMS inbound
 - `POST /smsDeliveryReport` — Semaphore and Globe Labs delivery status callbacks
 - `POST /pagasaWebhook` — PAGASA hazard signal ingest (§10.2); webhook if available, polling fallback otherwise
 
 **Scheduled jobs:**
+
 - `processRetentionLifecycle` daily
 - `reconcileSmsDeliveryStatus` every 10 minutes
 - `computeMetrics` every 5 minutes
@@ -1511,6 +1549,7 @@ Pilot validates: (a) scraper accuracy over a full typhoon season, (b) manual tog
 A typhoon surge brings hundreds of citizens online simultaneously. Cloud Functions cold-starts could cause `processInboxItem` timeouts, leaving `report_inbox` items with no corresponding triptych.
 
 **Configuration for `processInboxItem`:**
+
 - `minInstances: 3` during normal operation
 - `maxInstances: 100`
 - `concurrency: 80`
@@ -1526,6 +1565,7 @@ Cost at idle: ~$45-60/month for the three warm instances.
 ### 10.4 Concurrency & Cross-Document Invariants
 
 Mutations spanning multiple documents execute inside Firestore transactions. Examples:
+
 - `acceptDispatch`: transaction on `dispatches/{id}` + `report_ops/{reportId}` (activeResponderCount increment)
 - `verifyReport`: transaction on `reports/{reportId}` + `report_ops/{reportId}` + append to `report_events/{eventId}`
 - `submitResponderWitnessedReport`: transaction on `reports/{id}` + `report_private/{id}` + `report_ops/{id}` + `report_lookup/{ref}` + `report_events/{eventId}`
@@ -1542,6 +1582,7 @@ Mutations spanning multiple documents execute inside Firestore transactions. Exa
 ### 10.6 Signed URL Hardening
 
 `requestUploadUrl` callable:
+
 - Enforces `Content-Type` restriction in the signed URL (only `image/jpeg`, `image/png`, `image/heic`, `image/webp`, `video/mp4`, `video/quicktime`)
 - Enforces `x-goog-content-length-range` of 0–20MB for images and 0–200MB for videos — Cloud Storage rejects out-of-range uploads at the URL layer
 - Signed URL expires in 10 minutes
@@ -1564,6 +1605,7 @@ When a citizen submits without registering, the system stores no direct contact 
 ### 11.2 Data Retention and Deletion Semantics
 
 Reports transition through lifecycle states; they are not moved between collections.
+
 - 6 months non-exempt → `archivedAt`, excluded from default queries
 - 12 months eligible → `deletedAt` (pending purge)
 - Irreversible purge within **7-day deletion SLA**, logged to `audit_logs`, verifiable in BigQuery
@@ -1583,16 +1625,16 @@ Reports transition through lifecycle states; they are not moved between collecti
 
 A formal Data Privacy Impact Assessment must be completed before production:
 
-| Data class | Sensitivity | Source | Retention | Cross-border | DPIA gate |
-|---|---|---|---|---|---|
-| Pseudonymous UID | Low | Firebase Auth | 30d after inactivity | Singapore (Firebase) | Declare in privacy notice |
-| Msisdn hash | Medium | SMS inbound | 12 months | Singapore + PH (SMS aggregator) | **Required** |
-| GPS exact location | High | Client geolocation | 12 months | Singapore | **Required** |
-| Voluntary contact info | High | User-provided | 12 months | Singapore | **Required** |
-| Photos/videos | High | User-uploaded | 12 months | Singapore | **Required** + EXIF stripping |
-| Admin notes | Medium | Staff-entered | 12 months | Singapore | **Required** |
-| Responder GPS trails | High | Capacitor plugin | 90 days | Singapore | **Required** |
-| SMS message bodies (inbound) | Medium | Globe Labs webhook | 90 days | PH + Singapore | **Required** |
+| Data class                   | Sensitivity | Source             | Retention            | Cross-border                    | DPIA gate                     |
+| ---------------------------- | ----------- | ------------------ | -------------------- | ------------------------------- | ----------------------------- |
+| Pseudonymous UID             | Low         | Firebase Auth      | 30d after inactivity | Singapore (Firebase)            | Declare in privacy notice     |
+| Msisdn hash                  | Medium      | SMS inbound        | 12 months            | Singapore + PH (SMS aggregator) | **Required**                  |
+| GPS exact location           | High        | Client geolocation | 12 months            | Singapore                       | **Required**                  |
+| Voluntary contact info       | High        | User-provided      | 12 months            | Singapore                       | **Required**                  |
+| Photos/videos                | High        | User-uploaded      | 12 months            | Singapore                       | **Required** + EXIF stripping |
+| Admin notes                  | Medium      | Staff-entered      | 12 months            | Singapore                       | **Required**                  |
+| Responder GPS trails         | High        | Capacitor plugin   | 90 days              | Singapore                       | **Required**                  |
+| SMS message bodies (inbound) | Medium      | Globe Labs webhook | 90 days              | PH + Singapore                  | **Required**                  |
 
 Cross-border transfer to Singapore (Firebase `asia-southeast1`) is covered under NPC guidelines for legitimate cloud processing with standard contractual safeguards. DPIA must document this explicitly and obtain NPC concurrence if required.
 
@@ -1609,6 +1651,7 @@ Application convenience logs may exist in `audit_logs/{logId}`; the primary audi
 The 5-minute batch-to-BigQuery export is acceptable for analytics and forensic reconstruction of general activity. It is **not acceptable** for security-critical events where a 5-minute gap can erase evidence during a live incident.
 
 **Streaming-path events** (via BigQuery Storage Write API, sub-second to dataset):
+
 - `accountStatus` changes (suspension, reactivation, disabling)
 - `claim_revocations` writes
 - `breakglass_events` — every use
@@ -1622,6 +1665,7 @@ The 5-minute batch-to-BigQuery export is acceptable for analytics and forensic r
 - Hazard zone mutations (§22): `uploadHazardReferenceLayer`, `supersedeHazardReferenceLayer`, `createCustomHazardZone`, `updateCustomHazardZone`, `deleteCustomHazardZone` — every mutation streamed; polygon-targeted mass alerts inherit existing mass-alert streaming classification
 
 **Batch-path events** (5-minute schedule, cost-optimized):
+
 - Routine dispatch lifecycle events
 - Report status transitions
 - Routine admin reads
@@ -1648,29 +1692,29 @@ Every privileged action, status transition, media registration, notification sen
 
 ### 13.2 Service Level Objectives
 
-| Metric | Target | Window |
-|---|---|---|
-| Citizen report acceptance latency (network present) | p95 < 3s | rolling 5min |
-| Dispatch creation latency (admin click → responder FCM) | p95 < 10s | rolling 5min |
-| Push delivery attempt success | > 95% | rolling 1h |
-| SMS delivery attempt success (priority) | > 90% | rolling 1h |
-| SMS delivery attempt success (normal) | > 80% | rolling 1h |
-| Telemetry freshness (live responders) | > 90% of dispatched responders | rolling 5min |
-| RPO | ≤ 24h | per incident |
-| RTO | ≤ 4h | per incident |
-| Audit export gap (streaming path) | ≤ 60s | continuous |
-| Audit export gap (batch path) | ≤ 15min | continuous |
-| Inbox reconciliation backlog | < 5 items older than 5min | continuous |
-| Admin dashboard load (p95) | < 5s | rolling 1h |
-| Agency assistance request response time (p95) | < 3min accept/decline | rolling 1h |
-| Responder-witnessed report → municipal admin verification (p95) | < 5min | rolling 1h |
-| Transaction contention p99 (hot paths) | < 5s | rolling 5min |
-| Hazard auto-tag latency (in `processInboxItem`) | p95 < 30ms | rolling 5min |
-| Hazard zone sweep completion | p95 < 10s | rolling 1h |
-| Hazard BigQuery mirror lag | < 5min | continuous |
-| Hazard analytics dashboard query | p95 < 3s | rolling 1h |
-| Polygon Reach Plan estimation | p95 < 2s | rolling 1h |
-| Auto-tag failure rate | < 0.1% of ingest events | rolling 1h |
+| Metric                                                          | Target                         | Window       |
+| --------------------------------------------------------------- | ------------------------------ | ------------ |
+| Citizen report acceptance latency (network present)             | p95 < 3s                       | rolling 5min |
+| Dispatch creation latency (admin click → responder FCM)         | p95 < 10s                      | rolling 5min |
+| Push delivery attempt success                                   | > 95%                          | rolling 1h   |
+| SMS delivery attempt success (priority)                         | > 90%                          | rolling 1h   |
+| SMS delivery attempt success (normal)                           | > 80%                          | rolling 1h   |
+| Telemetry freshness (live responders)                           | > 90% of dispatched responders | rolling 5min |
+| RPO                                                             | ≤ 24h                          | per incident |
+| RTO                                                             | ≤ 4h                           | per incident |
+| Audit export gap (streaming path)                               | ≤ 60s                          | continuous   |
+| Audit export gap (batch path)                                   | ≤ 15min                        | continuous   |
+| Inbox reconciliation backlog                                    | < 5 items older than 5min      | continuous   |
+| Admin dashboard load (p95)                                      | < 5s                           | rolling 1h   |
+| Agency assistance request response time (p95)                   | < 3min accept/decline          | rolling 1h   |
+| Responder-witnessed report → municipal admin verification (p95) | < 5min                         | rolling 1h   |
+| Transaction contention p99 (hot paths)                          | < 5s                           | rolling 5min |
+| Hazard auto-tag latency (in `processInboxItem`)                 | p95 < 30ms                     | rolling 5min |
+| Hazard zone sweep completion                                    | p95 < 10s                      | rolling 1h   |
+| Hazard BigQuery mirror lag                                      | < 5min                         | continuous   |
+| Hazard analytics dashboard query                                | p95 < 3s                       | rolling 1h   |
+| Polygon Reach Plan estimation                                   | p95 < 2s                       | rolling 1h   |
+| Auto-tag failure rate                                           | < 0.1% of ingest events        | rolling 1h   |
 
 The provincial government has agreed to these SLOs. They are commitments, not aspirations.
 
@@ -1718,33 +1762,33 @@ This is deliberately heavy. Emergency access is the highest-risk category of pri
 
 ### 13.7 Monitoring and Alerting
 
-| Signal | Threshold | Owner |
-|---|---|---|
-| Function error rate | > 1% over 5min | Backend on-call |
-| Quota burn | > 80% of any quota | Backend on-call |
-| Dead-letter growth | > 10 items/hour | Backend on-call |
-| Inbox processing backlog | > 100 unprocessed items | Backend on-call |
-| Stale telemetry rate | > 20% of dispatched responders | Ops on-call |
-| FCM delivery failure | > 5% over 1h | Backend on-call |
-| Cost anomaly | > 150% of 7-day rolling baseline | Ops + Finance |
-| RTDB connection storm | > 5× baseline reconnections | Backend on-call |
-| Batch audit gap | > 15min | Compliance team |
-| SMS provider error rate (Semaphore) | > 5% over 5min | Backend on-call → circuit-break to Globe Labs |
-| SMS delivery success (priority) | < 85% over 1h | Backend on-call |
-| Inbox reconciliation backlog | > 5 items older than 5min | Backend on-call |
-| Break-glass activation | Any | Superadmin + Governor's office notified |
-| Streaming audit gap | > 60s | Compliance + Backend (immediate) |
-| RTDB cost spike | > 5× baseline | Ops + Finance |
-| Agency assistance request response time | p95 > 3min | Ops on-call |
-| Transaction contention p99 | > 5s | Backend on-call |
-| PAGASA scraper parse failure | Any consecutive 2 cycles | Backend on-call |
-| Incident response event written | Any | Compliance + Superadmin (immediate) |
-| Hazard auto-tag failure rate | > 0.1% over 1h | Backend on-call |
-| Hazard tag backfill backlog | > 5 untagged reports older than 5min | Backend on-call |
-| Hazard zone sweep backlog | > 10 pending | Backend on-call |
-| Hazard BigQuery mirror lag | > 5min | Backend → Compliance if persistent |
-| Hazard expiration sweep error rate | > 0 errors / hour | Backend on-call |
-| Hazard custom-zone authorship anomaly | > 2× 7-day baseline | Ops |
+| Signal                                  | Threshold                            | Owner                                         |
+| --------------------------------------- | ------------------------------------ | --------------------------------------------- |
+| Function error rate                     | > 1% over 5min                       | Backend on-call                               |
+| Quota burn                              | > 80% of any quota                   | Backend on-call                               |
+| Dead-letter growth                      | > 10 items/hour                      | Backend on-call                               |
+| Inbox processing backlog                | > 100 unprocessed items              | Backend on-call                               |
+| Stale telemetry rate                    | > 20% of dispatched responders       | Ops on-call                                   |
+| FCM delivery failure                    | > 5% over 1h                         | Backend on-call                               |
+| Cost anomaly                            | > 150% of 7-day rolling baseline     | Ops + Finance                                 |
+| RTDB connection storm                   | > 5× baseline reconnections          | Backend on-call                               |
+| Batch audit gap                         | > 15min                              | Compliance team                               |
+| SMS provider error rate (Semaphore)     | > 5% over 5min                       | Backend on-call → circuit-break to Globe Labs |
+| SMS delivery success (priority)         | < 85% over 1h                        | Backend on-call                               |
+| Inbox reconciliation backlog            | > 5 items older than 5min            | Backend on-call                               |
+| Break-glass activation                  | Any                                  | Superadmin + Governor's office notified       |
+| Streaming audit gap                     | > 60s                                | Compliance + Backend (immediate)              |
+| RTDB cost spike                         | > 5× baseline                        | Ops + Finance                                 |
+| Agency assistance request response time | p95 > 3min                           | Ops on-call                                   |
+| Transaction contention p99              | > 5s                                 | Backend on-call                               |
+| PAGASA scraper parse failure            | Any consecutive 2 cycles             | Backend on-call                               |
+| Incident response event written         | Any                                  | Compliance + Superadmin (immediate)           |
+| Hazard auto-tag failure rate            | > 0.1% over 1h                       | Backend on-call                               |
+| Hazard tag backfill backlog             | > 5 untagged reports older than 5min | Backend on-call                               |
+| Hazard zone sweep backlog               | > 10 pending                         | Backend on-call                               |
+| Hazard BigQuery mirror lag              | > 5min                               | Backend → Compliance if persistent            |
+| Hazard expiration sweep error rate      | > 0 errors / hour                    | Backend on-call                               |
+| Hazard custom-zone authorship anomaly   | > 2× 7-day baseline                  | Ops                                           |
 
 Alerts without runbooks are noise and must be downgraded or removed.
 
@@ -1755,6 +1799,7 @@ Alerts without runbooks are noise and must be downgraded or removed.
 ### 13.9 Observability Dashboards
 
 **Operations Dashboard (Ops on-call):**
+
 - Queue depths: inbox unprocessed, dispatch pending, SMS outbox queued
 - Stale telemetry rate by municipality
 - Dispatch acceptance latency, agency assistance response time, responder-witness verification latency
@@ -1762,6 +1807,7 @@ Alerts without runbooks are noise and must be downgraded or removed.
 - Hazard sweep queue depth; auto-tag success rate by muni (§22)
 
 **Backend Dashboard (Backend on-call):**
+
 - Function invocations, errors, p95 latency per function
 - Dead-letter growth rate, type breakdown
 - Firestore quota burn, RTDB bandwidth, Cloud Tasks queue depth and retry age
@@ -1769,6 +1815,7 @@ Alerts without runbooks are noise and must be downgraded or removed.
 - Hazard callable invocations / errors / p95; auto-tag latency contribution to `processInboxItem` overall (§22)
 
 **Compliance Dashboard (Compliance officer):**
+
 - Audit export gap (streaming + batch)
 - Privileged reads of `report_private` / `report_contacts`
 - Cross-municipality data access events
@@ -1779,6 +1826,7 @@ Alerts without runbooks are noise and must be downgraded or removed.
 - Hazard reference layer upload history; custom zone deletion log (§22)
 
 **Cost Dashboard (Ops + Finance):**
+
 - Daily spend by service (Firestore, Functions, Storage, RTDB, SMS Semaphore, SMS Globe Labs separately)
 - 7-day rolling baseline and anomaly detection
 - Surge pre-warm instance hours (attributable to hazard signals)
@@ -1826,6 +1874,7 @@ RA 10173 (Data Privacy Act) requires notification to the National Privacy Commis
 ### 14.1 Scope
 
 A data incident for this system is any event involving:
+
 - Unauthorized access to `report_private`, `report_contacts`, or `audit_logs`
 - Leak of responder GPS trails to an unauthorized party
 - SMS provider compromise leading to msisdn hash exposure
@@ -1838,6 +1887,7 @@ This is distinct from an operational outage (which has its own degraded-mode run
 ### 14.2 Declaration
 
 The superadmin (or, during superadmin unavailability, a break-glass session) calls `declareDataIncident` with:
+
 - `incidentType` from the scope list above
 - `discoveredAt` timestamp
 - `initialScope`: affected data classes, estimated record count, known-affected UIDs
@@ -1875,15 +1925,15 @@ Citizen-facing communication during an incident must not overstate confidentiali
 
 Testing prioritizes failure behavior over coverage percentages.
 
-| Layer | Tool | Target |
-|---|---|---|
-| Unit | Vitest | Domain logic, validation, state-machine transitions |
-| Security rules | Firebase Emulator + Vitest | Positive AND negative cases per rule; cross-muni leakage attempts; agency write-to-other-agency-responder attempts must fail; responder write-to-another-responder's-dispatch must fail. CI fails if any rule lacks negative tests. |
-| RTDB rules | Firebase Emulator | Positive + negative for every path; timestamp validation; cross-role scoping; cross-municipality projection read permissions |
-| Integration | Emulator + staging | Callable commands, retries, dedup, event fan-out, restore compatibility |
-| E2E | Playwright + real-device smoke tests | Critical workflows under reconnect, permission revocation, stale claims, failed push, app restart during queue replay |
-| Load | k6 + synthetic replay | Surge patterns beyond expected peak: 500 concurrent citizen submits, 100 admin dashboards, 60 GPS streams, duplicate submissions, notification bursts, websocket reconnection storms, transaction contention on hot paths |
-| Chaos / resilience | Scripted fault injection | Network loss mid-submission, delayed retries, dead-letter growth, regional dependency drills, FCM degradation, PAGASA scraper parse failure |
+| Layer              | Tool                                 | Target                                                                                                                                                                                                                              |
+| ------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit               | Vitest                               | Domain logic, validation, state-machine transitions                                                                                                                                                                                 |
+| Security rules     | Firebase Emulator + Vitest           | Positive AND negative cases per rule; cross-muni leakage attempts; agency write-to-other-agency-responder attempts must fail; responder write-to-another-responder's-dispatch must fail. CI fails if any rule lacks negative tests. |
+| RTDB rules         | Firebase Emulator                    | Positive + negative for every path; timestamp validation; cross-role scoping; cross-municipality projection read permissions                                                                                                        |
+| Integration        | Emulator + staging                   | Callable commands, retries, dedup, event fan-out, restore compatibility                                                                                                                                                             |
+| E2E                | Playwright + real-device smoke tests | Critical workflows under reconnect, permission revocation, stale claims, failed push, app restart during queue replay                                                                                                               |
+| Load               | k6 + synthetic replay                | Surge patterns beyond expected peak: 500 concurrent citizen submits, 100 admin dashboards, 60 GPS streams, duplicate submissions, notification bursts, websocket reconnection storms, transaction contention on hot paths           |
+| Chaos / resilience | Scripted fault injection             | Network loss mid-submission, delayed retries, dead-letter growth, regional dependency drills, FCM degradation, PAGASA scraper parse failure                                                                                         |
 
 Success criteria are scenario-based and tied to §13.2 SLOs, not coverage percentages.
 
@@ -1943,56 +1993,56 @@ Success criteria are scenario-based and tied to §13.2 SLOs, not coverage percen
 
 ## 16. Risks & Residual Reality
 
-| Risk | Residual Reality | Mitigation |
-|---|---|---|
-| Regional cloud outage | Real-time backend unavailable | Degraded-mode runbook, SMS-only fallback workflow, paper forms, communications plan |
-| Mobile background execution degraded | Telemetry stale silently | Silent-device detection, stale-state UI, permission recovery, operator alerts |
-| Cross-jurisdiction data leakage | RA 10173 failure | Scoped rules, negative tests in CI, access reviews, least-privilege defaults, moderation logging |
-| Abuse / false reporting | App Check insufficient alone | Rate limits (per-UID, per-msisdn), moderation workflow, token hardening, anomaly detection |
-| Deletion incompleteness | Soft-delete ≠ purge | 7-day SLA, completion logging, BigQuery verification |
-| Duplicate side effects | Retries can multiply work | End-to-end dedup keys, event idempotency, replay-safe handlers |
-| Backup restore mismatch | Raw data restore ≠ full system | Quarterly full-stack restore drills including Terraform/Firebase CLI |
-| JWT staleness | Up to 60min window | Three-layer mitigation (§4.3) |
-| Dispatch split-brain | Two responders both believe they accepted | `pending→accepted` is server-authoritative (§5.4) |
-| Inbox abuse / DoS | Direct-write inbox more exposed | Per-UID rate limits + App Check + reconciliation sweep + surge pre-warm |
-| RTDB reconnect cost explosion | Websocket churn under outage | Jitter, backoff, 5× cost alert |
-| BigQuery audit gap | Pipeline failure = blind | Streaming path for critical events (60s gap alert), batch for analytics (15min alert) |
-| Cyclone-driven extended outage | Multi-day cell coverage loss | Cloud Tasks 72h retry, paper fallback, post-restoration reconciliation |
-| IndexedDB eviction wipes draft | Silent loss on iOS | Dual-write to localForage + SMS fallback prompt + tracking reference as paper fallback |
-| Inbox trigger cold-start timeout | Citizen report stuck in inbox | `minInstances: 3` + concurrency 80 + reconciliation sweep + surge pre-warm |
-| GPS battery drain killing responders mid-shift | Responders become uncontactable | Motion Activity API + geofence-at-staging + 10-min GPS at low battery |
-| Security event lost to 5-min audit gap | Forensic blind spot during incident | Streaming audit path for suspensions, revocations, break-glass, incident response |
-| Signed URL abuse (5GB upload DoS) | Storage quota exhaustion | `x-goog-content-length-range` + MIME restriction + per-UID rate limit + magic-byte verification |
-| Superadmin incapacitated mid-emergency | No provincial oversight | Break-glass dual-control with 4h time-limited session |
-| SMS provider outage during mass alert | Life-safety channel silent | Semaphore + Globe Labs dual-provider circuit-breaker |
-| Client state inconsistency (cache soup) | Ghost states, duplicate fetches, stale listeners | State Ownership Matrix (§9) enforced in code review |
-| SMS inbound abuse (spam from feature phones) | Moderation queue overwhelmed | Per-msisdn rate limit + elevated moderation default + keyword validation + duplicate-cluster detection |
-| Role capability drift between UI and rules | UI shows a button the rules reject → user confused, audit noisy | Capability contract tests: every UI action maps to a rule check; CI enforces |
-| Verified Responder Report abuse | Responders create fake reports | 10/24h rate limit + GPS + photo required + audit trail + superadmin review of cross-jurisdiction flags |
-| Agency assistance requests pile up during surge | Municipal admin blocked waiting | 30-min auto-escalate to superadmin; pending age shown prominently |
-| Admin without connectivity tries to write | Silent queuing creates stale mutations replayed out of order | Admin Desktop explicitly blocks writes when offline; field mode is narrow, audited exception |
-| Command channel messages leak between incidents | PII or operational info crosses incident boundaries | Thread ID tied to report; membership controlled by incident stake; rule tests for negative cases |
-| Admin identity not enforced at data layer | Citizen discovers admin UID through aggregation | `report_lookup` and citizen-facing listeners never include actor fields; CF-projected from `report_events` with stripping |
-| Cross-agency projection staleness | Agency Admin sees outdated other-agency responder position | 90s TTL on projection entries; "last updated X ago" on ghosted markers |
-| Shift handoff never accepted | Incoming admin doesn't see notification | 30-min escalation to superadmin; handoff doc persists even if unread |
-| SMS content policy drift | Admin composes message with emoji/shortener; aggregator rejects | Server-side sanitization in `sendSMS` abstraction; UI preview shows exactly what will send |
-| Responder-vs-admin dispatch race | Responder sees generic error during concurrent cancel | Race-loss recovery UX rebuilds screen from server state with institutional label |
-| Transaction contention on hot paths | Surge write latency exceeds SLO | k6 load test gate + sharded counter fallback if measured |
-| PAGASA signal ingest fragility | Surge pre-warm doesn't fire | Three-tier ingest (webhook, scraper, manual); manual toggle always available |
-| Semaphore sender ID rejection | Branded sender unavailable | Interim default sender + UI labeling; escalation path with Semaphore support |
-| Data breach regulatory exposure | RA 10173 72-hour NPC notification | Incident response runbook (§14); annual drill; legal-hold export capability |
-| Operational dependence on primary engineer | Recovery and diagnosis bottleneck | Documented as a residual risk owned by the provincial government; runbooks written to be executed by a generalist engineer |
-| Hazard auto-tag silently drops on ingest failure | Untagged reports; admins miss correlation | Dead-letter entry; `hazardTagBackfillSweep` primary recovery (5-min cadence); manual ops replay; next zone edit sweeps it in (§22.4) |
-| Custom zone edit at 2 AM creates bad geometry | Wrong-jurisdiction / over-large / wrong-severity zones | Server-side vertex cap + bbox-in-muni check; history subcollection for rollback |
-| Reference upload malformed GeoJSON DOSes CF | Memory exhaustion, cold-start failure | Signed URL size cap; schema validation before simplification; per-feature timeout |
-| Polygon mass alert routes wrong audience | Message delivered to wrong people | Server-side threshold check (defense in depth); polygon-to-barangay reverse-geocode validated against jurisdictions; streaming audit with polygon geometry |
-| Superseded reference zone queried after supersede | Auto-tag or sweep matches old version | Query filter `supersededBy == null && deletedAt == null`; composite index |
-| BigQuery hazard mirror drift masks incorrect analytics | Stale / wrong dashboard numbers | Mirror-lag SLO alert; freshness indicator on dashboard; version-status panel reads Firestore directly, not BigQuery |
-| Event-bounded zone never expires (sweep bug) | Zone stays "active" forever | Client-side fallback filter on `expiresAt < now()`; monitoring alert on sweep error rate |
-| Barangay boundary dataset goes stale | Wrong-barangay reverse-geocode for polygon mass alerts | Dataset version pinned per CF deploy; yearly minimum update cadence |
-| Two admins edit same custom zone simultaneously | One edit overwrites the other; history loss | Optimistic version check inside Firestore transaction: atomically reads zone, verifies `version === expectedVersion`, writes zone update AND `history/{version}` in one commit. Second writer retries, reads new version, fails with structured CONFLICT. |
-| Admin creates custom zone with past `expiresAt` | Expires immediately, never visible | Server-side `expiresAt > now() + 5min`; max 30d out |
-| Large custom zone triggers runaway sweep | CF memory/timeout during tag recomputation | Bbox area cap ~100km² enforced server-side |
+| Risk                                                   | Residual Reality                                                | Mitigation                                                                                                                                                                                                                                                |
+| ------------------------------------------------------ | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Regional cloud outage                                  | Real-time backend unavailable                                   | Degraded-mode runbook, SMS-only fallback workflow, paper forms, communications plan                                                                                                                                                                       |
+| Mobile background execution degraded                   | Telemetry stale silently                                        | Silent-device detection, stale-state UI, permission recovery, operator alerts                                                                                                                                                                             |
+| Cross-jurisdiction data leakage                        | RA 10173 failure                                                | Scoped rules, negative tests in CI, access reviews, least-privilege defaults, moderation logging                                                                                                                                                          |
+| Abuse / false reporting                                | App Check insufficient alone                                    | Rate limits (per-UID, per-msisdn), moderation workflow, token hardening, anomaly detection                                                                                                                                                                |
+| Deletion incompleteness                                | Soft-delete ≠ purge                                             | 7-day SLA, completion logging, BigQuery verification                                                                                                                                                                                                      |
+| Duplicate side effects                                 | Retries can multiply work                                       | End-to-end dedup keys, event idempotency, replay-safe handlers                                                                                                                                                                                            |
+| Backup restore mismatch                                | Raw data restore ≠ full system                                  | Quarterly full-stack restore drills including Terraform/Firebase CLI                                                                                                                                                                                      |
+| JWT staleness                                          | Up to 60min window                                              | Three-layer mitigation (§4.3)                                                                                                                                                                                                                             |
+| Dispatch split-brain                                   | Two responders both believe they accepted                       | `pending→accepted` is server-authoritative (§5.4)                                                                                                                                                                                                         |
+| Inbox abuse / DoS                                      | Direct-write inbox more exposed                                 | Per-UID rate limits + App Check + reconciliation sweep + surge pre-warm                                                                                                                                                                                   |
+| RTDB reconnect cost explosion                          | Websocket churn under outage                                    | Jitter, backoff, 5× cost alert                                                                                                                                                                                                                            |
+| BigQuery audit gap                                     | Pipeline failure = blind                                        | Streaming path for critical events (60s gap alert), batch for analytics (15min alert)                                                                                                                                                                     |
+| Cyclone-driven extended outage                         | Multi-day cell coverage loss                                    | Cloud Tasks 72h retry, paper fallback, post-restoration reconciliation                                                                                                                                                                                    |
+| IndexedDB eviction wipes draft                         | Silent loss on iOS                                              | Dual-write to localForage + SMS fallback prompt + tracking reference as paper fallback                                                                                                                                                                    |
+| Inbox trigger cold-start timeout                       | Citizen report stuck in inbox                                   | `minInstances: 3` + concurrency 80 + reconciliation sweep + surge pre-warm                                                                                                                                                                                |
+| GPS battery drain killing responders mid-shift         | Responders become uncontactable                                 | Motion Activity API + geofence-at-staging + 10-min GPS at low battery                                                                                                                                                                                     |
+| Security event lost to 5-min audit gap                 | Forensic blind spot during incident                             | Streaming audit path for suspensions, revocations, break-glass, incident response                                                                                                                                                                         |
+| Signed URL abuse (5GB upload DoS)                      | Storage quota exhaustion                                        | `x-goog-content-length-range` + MIME restriction + per-UID rate limit + magic-byte verification                                                                                                                                                           |
+| Superadmin incapacitated mid-emergency                 | No provincial oversight                                         | Break-glass dual-control with 4h time-limited session                                                                                                                                                                                                     |
+| SMS provider outage during mass alert                  | Life-safety channel silent                                      | Semaphore + Globe Labs dual-provider circuit-breaker                                                                                                                                                                                                      |
+| Client state inconsistency (cache soup)                | Ghost states, duplicate fetches, stale listeners                | State Ownership Matrix (§9) enforced in code review                                                                                                                                                                                                       |
+| SMS inbound abuse (spam from feature phones)           | Moderation queue overwhelmed                                    | Per-msisdn rate limit + elevated moderation default + keyword validation + duplicate-cluster detection                                                                                                                                                    |
+| Role capability drift between UI and rules             | UI shows a button the rules reject → user confused, audit noisy | Capability contract tests: every UI action maps to a rule check; CI enforces                                                                                                                                                                              |
+| Verified Responder Report abuse                        | Responders create fake reports                                  | 10/24h rate limit + GPS + photo required + audit trail + superadmin review of cross-jurisdiction flags                                                                                                                                                    |
+| Agency assistance requests pile up during surge        | Municipal admin blocked waiting                                 | 30-min auto-escalate to superadmin; pending age shown prominently                                                                                                                                                                                         |
+| Admin without connectivity tries to write              | Silent queuing creates stale mutations replayed out of order    | Admin Desktop explicitly blocks writes when offline; field mode is narrow, audited exception                                                                                                                                                              |
+| Command channel messages leak between incidents        | PII or operational info crosses incident boundaries             | Thread ID tied to report; membership controlled by incident stake; rule tests for negative cases                                                                                                                                                          |
+| Admin identity not enforced at data layer              | Citizen discovers admin UID through aggregation                 | `report_lookup` and citizen-facing listeners never include actor fields; CF-projected from `report_events` with stripping                                                                                                                                 |
+| Cross-agency projection staleness                      | Agency Admin sees outdated other-agency responder position      | 90s TTL on projection entries; "last updated X ago" on ghosted markers                                                                                                                                                                                    |
+| Shift handoff never accepted                           | Incoming admin doesn't see notification                         | 30-min escalation to superadmin; handoff doc persists even if unread                                                                                                                                                                                      |
+| SMS content policy drift                               | Admin composes message with emoji/shortener; aggregator rejects | Server-side sanitization in `sendSMS` abstraction; UI preview shows exactly what will send                                                                                                                                                                |
+| Responder-vs-admin dispatch race                       | Responder sees generic error during concurrent cancel           | Race-loss recovery UX rebuilds screen from server state with institutional label                                                                                                                                                                          |
+| Transaction contention on hot paths                    | Surge write latency exceeds SLO                                 | k6 load test gate + sharded counter fallback if measured                                                                                                                                                                                                  |
+| PAGASA signal ingest fragility                         | Surge pre-warm doesn't fire                                     | Three-tier ingest (webhook, scraper, manual); manual toggle always available                                                                                                                                                                              |
+| Semaphore sender ID rejection                          | Branded sender unavailable                                      | Interim default sender + UI labeling; escalation path with Semaphore support                                                                                                                                                                              |
+| Data breach regulatory exposure                        | RA 10173 72-hour NPC notification                               | Incident response runbook (§14); annual drill; legal-hold export capability                                                                                                                                                                               |
+| Operational dependence on primary engineer             | Recovery and diagnosis bottleneck                               | Documented as a residual risk owned by the provincial government; runbooks written to be executed by a generalist engineer                                                                                                                                |
+| Hazard auto-tag silently drops on ingest failure       | Untagged reports; admins miss correlation                       | Dead-letter entry; `hazardTagBackfillSweep` primary recovery (5-min cadence); manual ops replay; next zone edit sweeps it in (§22.4)                                                                                                                      |
+| Custom zone edit at 2 AM creates bad geometry          | Wrong-jurisdiction / over-large / wrong-severity zones          | Server-side vertex cap + bbox-in-muni check; history subcollection for rollback                                                                                                                                                                           |
+| Reference upload malformed GeoJSON DOSes CF            | Memory exhaustion, cold-start failure                           | Signed URL size cap; schema validation before simplification; per-feature timeout                                                                                                                                                                         |
+| Polygon mass alert routes wrong audience               | Message delivered to wrong people                               | Server-side threshold check (defense in depth); polygon-to-barangay reverse-geocode validated against jurisdictions; streaming audit with polygon geometry                                                                                                |
+| Superseded reference zone queried after supersede      | Auto-tag or sweep matches old version                           | Query filter `supersededBy == null && deletedAt == null`; composite index                                                                                                                                                                                 |
+| BigQuery hazard mirror drift masks incorrect analytics | Stale / wrong dashboard numbers                                 | Mirror-lag SLO alert; freshness indicator on dashboard; version-status panel reads Firestore directly, not BigQuery                                                                                                                                       |
+| Event-bounded zone never expires (sweep bug)           | Zone stays "active" forever                                     | Client-side fallback filter on `expiresAt < now()`; monitoring alert on sweep error rate                                                                                                                                                                  |
+| Barangay boundary dataset goes stale                   | Wrong-barangay reverse-geocode for polygon mass alerts          | Dataset version pinned per CF deploy; yearly minimum update cadence                                                                                                                                                                                       |
+| Two admins edit same custom zone simultaneously        | One edit overwrites the other; history loss                     | Optimistic version check inside Firestore transaction: atomically reads zone, verifies `version === expectedVersion`, writes zone update AND `history/{version}` in one commit. Second writer retries, reads new version, fails with structured CONFLICT. |
+| Admin creates custom zone with past `expiresAt`        | Expires immediately, never visible                              | Server-side `expiresAt > now() + 5min`; max 30d out                                                                                                                                                                                                       |
+| Large custom zone triggers runaway sweep               | CF memory/timeout during tag recomputation                      | Bbox area cap ~100km² enforced server-side                                                                                                                                                                                                                |
 
 ---
 
@@ -2000,93 +2050,93 @@ Success criteria are scenario-based and tied to §13.2 SLOs, not coverage percen
 
 System defines access by **data class**, not collection name. New collections must declare data class, permitted roles, sharing conditions, and rule block with negative tests before implementation.
 
-| Data Class | Permitted Roles | Conditions |
-|---|---|---|
-| Public alertable (feed, alerts, public map) | All authenticated (including pseudonymous) | Institutional attribution only |
-| Restricted operational (reports, dispatches) | Municipal admin of muni; agency admin of assigned agency; assigned responder | `isActivePrivileged()` required |
-| Restricted personal (`report_private`, `report_contacts`) | Data subject; municipal admin of muni (with streaming audit); superadmin (with streaming audit) | |
-| Sharing state (`report_sharing`) | Owner muni admin; muni admins in `sharedWith`; superadmin | Streaming audit on mutation |
-| Responder telemetry — RTDB full fidelity | Self; municipal admin of muni; agency admin of agency; superadmin | Active status required |
-| Responder telemetry — cross-municipality projection | Municipal admin of that muni; agency admins (any); superadmin | 100m grid, 30s sampled |
-| SMS audit (`sms_outbox`, `sms_inbox`, `sms_sessions`) | Superadmin only | Streaming audit on every read |
-| Break-glass audit (`breakglass_events`) | Superadmin + Governor's Office designated reviewer | Append-only |
-| Agency assistance requests | Requesting muni admin; target agency admin; superadmin | |
-| Command channel threads | Participating admins; superadmin | Tied to incident |
-| Shift handoffs | From/to admins; superadmin | |
-| Hazard signals (`hazard_signals`) | All authenticated (read); CF write only | Scraper/webhook/manual |
-| Hazard zones — reference layers (`hazard_zones` where `zoneType == 'reference'`) | Municipal admin (province-wide read); Superadmin (full read/write) | `isActivePrivileged()` required; callable-only mutations (Superadmin-only); streaming audit on every mutation (§22) |
-| Hazard zones — custom (own-muni) | Municipal admin of that muni (read/write any, regardless of authorship); Superadmin (full read/write) | `isActivePrivileged()` required; callable-only mutations; event-bounded `expiresAt` required; streaming audit (§22) |
-| Hazard zones — custom (provincial scope) | Superadmin only | Muni admins coordinated via Command Channel threads, not direct zone visibility (§22) |
-| Hazard zone history (`hazard_zones/{id}/history`) | Same read scope as parent zone; write by CF Admin SDK only | Denormalized `zoneType` + `municipalityId` on each history doc so rules don't need `get()` |
-| Incident response events | Superadmin only | Streaming audit on every write |
-| Audit data (BigQuery) | Separate IAM; superadmin read via documented request path | |
+| Data Class                                                                       | Permitted Roles                                                                                       | Conditions                                                                                                          |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Public alertable (feed, alerts, public map)                                      | All authenticated (including pseudonymous)                                                            | Institutional attribution only                                                                                      |
+| Restricted operational (reports, dispatches)                                     | Municipal admin of muni; agency admin of assigned agency; assigned responder                          | `isActivePrivileged()` required                                                                                     |
+| Restricted personal (`report_private`, `report_contacts`)                        | Data subject; municipal admin of muni (with streaming audit); superadmin (with streaming audit)       |                                                                                                                     |
+| Sharing state (`report_sharing`)                                                 | Owner muni admin; muni admins in `sharedWith`; superadmin                                             | Streaming audit on mutation                                                                                         |
+| Responder telemetry — RTDB full fidelity                                         | Self; municipal admin of muni; agency admin of agency; superadmin                                     | Active status required                                                                                              |
+| Responder telemetry — cross-municipality projection                              | Municipal admin of that muni; agency admins (any); superadmin                                         | 100m grid, 30s sampled                                                                                              |
+| SMS audit (`sms_outbox`, `sms_inbox`, `sms_sessions`)                            | Superadmin only                                                                                       | Streaming audit on every read                                                                                       |
+| Break-glass audit (`breakglass_events`)                                          | Superadmin + Governor's Office designated reviewer                                                    | Append-only                                                                                                         |
+| Agency assistance requests                                                       | Requesting muni admin; target agency admin; superadmin                                                |                                                                                                                     |
+| Command channel threads                                                          | Participating admins; superadmin                                                                      | Tied to incident                                                                                                    |
+| Shift handoffs                                                                   | From/to admins; superadmin                                                                            |                                                                                                                     |
+| Hazard signals (`hazard_signals`)                                                | All authenticated (read); CF write only                                                               | Scraper/webhook/manual                                                                                              |
+| Hazard zones — reference layers (`hazard_zones` where `zoneType == 'reference'`) | Municipal admin (province-wide read); Superadmin (full read/write)                                    | `isActivePrivileged()` required; callable-only mutations (Superadmin-only); streaming audit on every mutation (§22) |
+| Hazard zones — custom (own-muni)                                                 | Municipal admin of that muni (read/write any, regardless of authorship); Superadmin (full read/write) | `isActivePrivileged()` required; callable-only mutations; event-bounded `expiresAt` required; streaming audit (§22) |
+| Hazard zones — custom (provincial scope)                                         | Superadmin only                                                                                       | Muni admins coordinated via Command Channel threads, not direct zone visibility (§22)                               |
+| Hazard zone history (`hazard_zones/{id}/history`)                                | Same read scope as parent zone; write by CF Admin SDK only                                            | Denormalized `zoneType` + `municipalityId` on each history doc so rules don't need `get()`                          |
+| Incident response events                                                         | Superadmin only                                                                                       | Streaming audit on every write                                                                                      |
+| Audit data (BigQuery)                                                            | Separate IAM; superadmin read via documented request path                                             |                                                                                                                     |
 
 ---
 
 ## 18. Decision Log
 
-| # | Decision | Rationale | Rejected Alternative | Residual Cost / Risk |
-|---|---|---|---|---|
-| 1 | Report triptych | Document-level security boundary | Single doc + field masking | Multi-doc transactions, eventual-consistency window |
-| 2 | Pseudonymous Auth universal | UID for rules + App Check for all | Unauthenticated reads | Pseudonymity ≠ anonymity; must communicate honestly |
-| 3 | Mixed-mode writes | Server-authoritative for contended; direct for sequential | All-CF | UX must distinguish queued vs server-confirmed |
-| 4 | Capacitor for responders | Better mobile capability than PWA-only | PWA-only | Native wrapper reduces but doesn't eliminate background issues; iOS ship calendar |
-| 5 | App Check | Reduces abuse from non-genuine clients | Device fingerprinting | Not a trust boundary |
-| 6 | RTDB for GPS | Bandwidth-priced, native real-time | Firestore-only | Reconnect storms; rules required |
-| 7 | Soft-delete retention | Firestore cannot recursively move subcollections | Archive collection | Deletion completion lag; SLA + audit needed |
-| 8 | BigQuery audit | Better durability than Firestore-only | Firestore-only audit | Pipeline depends on export health |
-| 9 | Dispatches source of truth | No dual-representation sync bugs | `dispatchedTo[]` array | Read amplification; denormalization needed |
-| 10 | State machine in rules + server | Rules prevent invalid transitions; server validates cross-doc | Rules-only | Some logic duplication |
-| 11 | Denormalize auth fields onto guarded docs | Rules can reference `resource.data` | `get()` lookups | Write amplification |
-| 12 | No device fingerprinting | RA 10173 risk; brittle | Fingerprint hash | App Check less precise |
-| 13 | Inbox + trigger for citizen submission | Firestore SDK offline persistence beats custom callable queue | `submitReport` callable | Inbox more exposed; rate limits + trigger validation required |
-| 14 | `pending→accepted` is callable | Prevents split-brain | Direct write with rules | Acceptance requires online |
-| 15 | `active_accounts` on privileged paths only | Bounds JWT staleness without amplifying cost on broad reads | Check-on-every-read | 1 extra read per privileged op; modeled in §5.7 |
-| 16 | `trustScore` excluded until NPC-compliant governance is drafted | RA 10173 profiling exposure without governance | Keep as advisory field | Manual triage only |
-| 17 | Cloud Tasks for downstream API calls | 72h retry windows | CF native retry | Additional infra |
-| 18 | Tracking reference + secret separated | Human-readable ref not a credential | Single token | Users must store secret |
-| 19 | Denormalize `status`/`severity`/`createdAt` onto `report_ops` | Cross-cutting admin queries possible | Client-side join | Mirrored fields require transactional updates |
-| 20 | MFA required for all staff | Field accounts are targets too | Superadmin-only MFA | TOTP friction |
-| 21 | Semaphore primary + Globe Labs failover for SMS | Domestic aggregators, 20× cheaper than Twilio, better PH telco compliance | Twilio (Firebase Extension available) | Dual-provider ops; circuit-breaker required; sender ID approval lead time |
-| 22 | Inbound SMS via Globe Labs keyword → `report_inbox` | Feature-phone + zero-data citizens reachable; unified ingestion | Separate inbound SMS pipeline | Per-msisdn rate limits; barangay-only precision |
-| 23 | localForage dual-write for citizen drafts | Firestore SDK alone vulnerable to IndexedDB eviction | Firestore SDK only | Reconciliation logic; two storage layers to monitor |
-| 24 | `minInstances: 3` for `processInboxItem` + reconciliation sweep | Cold-start surge failure would drop reports; reconciliation is safety net | Scale from zero | ~$45-60/mo idle cost; surge pre-warm adds more |
-| 25 | Motion Activity API + geofence-at-staging for responders | GPS-speed inference kills batteries over long shifts | GPS-speed motion detection | Plugin dependency; motion-API accuracy varies by device |
-| 26 | Streaming audit for security events, batch for analytics | 5-min gap unacceptable for suspensions/revocations during incident | All-batch | Higher BQ streaming cost on critical events; worth it |
-| 27 | Break-glass sealed credentials with dual-control unseal | Superadmin incapacitation during typhoon cannot lock out province | Only named superadmin has access | Physical chain of custody; quarterly drill; post-event review |
-| 28 | State Ownership Matrix enforced in code review | Cache soup across Firestore/TanStack Query/Zustand is a real failure mode | Implicit ownership | Requires review discipline |
-| 29 | Report lifecycle state machine formalized (13 states) | Dispatch-only state machine left report transitions implicit and untested | Implicit report transitions | More state to test; rule updates for every transition |
-| 30 | Terraform + Firebase CLI as named IaC stack | "Version-controlled" isn't a command | Firebase CLI alone | Terraform state management overhead |
-| 31 | Signed URL size/MIME/content-range enforcement | 5GB DoS upload risk without it | Client-side size check | More complex URL issuance logic |
-| 32 | Stay on Firebase; no Postgres migration until triggers fire | Single developer, pilot scope; migration is 3+ months of work with no pilot data yet | Hybrid with Postgres for dispatch core | Document-store ceiling acknowledged; migration triggers defined (§19) |
-| 33 | Defer province-wide mass alerting to NDRRMC ECBS | RA 10639 assigns this channel to NDRRMC; ECBS is cell broadcast; commercial SMS aggregators are slower, pricier, legally awkward at that scale | Blast 100k+ SMS via Semaphore | Must build + maintain escalation workflow with PDRRMO → NDRRMC |
-| 34 | Three deployment surfaces, not one app | Citizen/Responder/Admin have incompatible offline, auth, and device profiles | Monolithic PWA | 3× build targets, shared packages discipline, iOS ship calendar |
-| 35 | Agency admins do NOT verify reports | Clean state machine; matches PH LGU doctrine; prevents verification races | Agencies verify in their jurisdiction | Muni admin is bottleneck during surge; pre-warm + reconciliation mitigate |
-| 36 | Verified Responder Report = accelerated intake, not bypass | Legitimate field-witness case without compromising LGU verification | Full bypass (skip `awaiting_verify`) | Still requires admin tap; trade speed for review |
-| 37 | Admin Desktop blocks offline writes; field mode is narrow carve-out | High-stakes mutations silently replayed out of order is worse than blocking; field mode scope is notes + messages only | localForage outbox for admins universally | Admins must be online for mutations; field mode entry is a streaming audit event |
-| 38 | Citizen-facing projection strips `actorId` | Admin identity hidden at data layer, not just UI | Rely on UI to hide | CF projection adds complexity; worth it for rule-level enforcement |
-| 39 | Cross-agency responder visibility via per-municipality RTDB projection | Privacy-preserving (100m grid) + cost-bounded + write amplification lower than per-agency projection | Full RTDB cross-reads; per-agency projection | Projection staleness bounded by 30s cadence + 90s TTL |
-| 40 | Municipal mass alerts route through Reach Plan | Surfaces SMS-vs-ECBS decision to admin before send | Silent routing based on thresholds | UI complexity; admin must understand channels |
-| 41 | Agency assistance requests are first-class documents | Audit trail for inter-agency coordination; timeout escalation | Informal via command channel | New collection + rules + callables |
-| 42 | No Facebook Messenger integration for any role | RA 10173 data residency, no SLA, no audit hook, unreliable in degraded networks | Keep as fallback per responder spec | Responders must use in-app messages + PSTN calls |
-| 43 | Responder GPS retention: 90 days, not 24h | Post-incident review needs it; 24h is insufficient | 24h | Privacy notice must state clearly |
-| 44 | Session timeout is re-auth interval, not token TTL | Firebase ID tokens are 1h regardless; "timeout" at app layer means prompt-for-OTP | Hard-expire sessions at 8h | Requires explicit handling at app level |
-| 45 | No "Incident Commander" tag | Existing state machine answers every operational ownership question; ambiguous tag with no transition rules adds vocabulary without clarity | Incident Commander role for inter-agency conflicts | Conflicts resolved via Command Channel threads |
-| 46 | `report_sharing` is a separate document, not a field on `report_ops` | Isolating mutable sharing state prevents listener thrash on `report_ops` during border-incident auto-share storms | `visibility.sharedWith` field on `report_ops` | One additional collection; CONTAINS index on `sharedWith`; sharing mutations require the sibling doc |
-| 47 | Idempotency check is transactional dedup-table-first, with document-side fields for traceability | Same key + different payload must fail deterministically; document fields alone can't enforce this | Document field + last-write-wins | `idempotency_keys` collection + canonical-hash computation in shared validators package |
-| 48 | GSM-7 vs UCS-2 detection, no emoji/ñ stripping | Tagalog orthography (`ñ`) is linguistically required; stripping produces wrong words; admins must see segment count explicitly | Silent ASCII strip | UCS-2 halves segment capacity (70 vs 160); admin UI surfaces this |
-| 49 | Responder race-loss recovery is a specified UX, not ad-hoc error handling | Generic error modals during admin-cancel races produce angry field feedback and undermine trust | Generic error modal | Pilot-blocker test scenario; specific "dispatch cancelled by [institutional]" screen |
-| 50 | Transaction contention budget explicit, measured in k6 load test | Hot-path p99 regressions show up only at surge; don't discover at incident time | Measure only at incident | Pre-prod load test gate; fallback is sharded counters |
-| 51 | PAGASA ingest has three tiers (webhook, scraper, manual) | No single-point ingest is reliable; manual toggle is always available | Scraper-only | Quarterly manual-toggle drill; scraper health alert |
-| 52 | Incident response has a dedicated §14 and runbook | RA 10173 72-hour clock is a hard regulatory requirement; vague intentions fail audits | Assume "we'll handle it" | Annual drill with compliance officer + PDRRMO counsel |
-| 53 | Schema migration has a documented protocol, not "both versions accepted for a window" | Hand-waved migrations leave old-version orphans and surprise breakage months later | Implicit rolling window | Migration plan doc per breaking change; backfill completion gate |
-| 54 | Third-party security review is a pre-prod checklist item | Implementing engineer reviewing own rules misses failure modes; government customer will ask | Rely on internal review | External consultancy cost; scheduled in §13.11 |
-| 55 | Hazard zones are admin-only (muni + superadmin); citizens, responders, agency admins have no read path | Citizen exposure to hazard overlays leaks operational info (admin response posture, evacuation intent); matches Principle #11 — capability by data-class reach, not by UI. Agency admins operate vertically on their roster, not LGU triage/mapping. | Citizen-visible reference layers; agency-admin read access | Citizens don't see known risk passively; reached only via mass alert. Agency admin sees hazard correlation only via report badges exposed on their assigned incidents. |
-| 56 | Hazard reference layers are immutable + versioned; custom zones are mutable + event-bounded with required `expiresAt` | Reference = frozen risk profile (PAGASA/MGB authoritative data, historical audit integrity); custom = current operational reality (typhoon impact, evac, curfew) that must expire to prevent zone accumulation | Single mutable model for both | More state classes; explicit version bumps in audit; sweep logic differs (reference never sweeps; custom sweeps on edit; expiration preserves tags; deletion removes tags) |
-| 57 | Hybrid spatial storage: Cloud Storage for unsimplified source + Firestore for indexed zones + BigQuery GIS for analytics | Auto-tag at ingest cannot afford a Cloud Storage read (50–200ms breaks p95 <3s ingest SLO) or a BigQuery query (cost + latency) per inbox event. Analytics cannot afford client-side polygon scan. Each store answers a different question. | Single-store (pure Firestore, pure BigQuery, or pure Cloud Storage) | Three layers to keep coherent via 5-min batch mirror; version-status panel reads Firestore directly (not BigQuery) to reflect just-committed uploads |
-| 58 | Auto-tag forward-only for reference layers; sweep for custom zones; tags survive expiration; tags purged on deletion | Reference supersede must not retroactively re-tag history (audit integrity). Custom zone edits represent admin intent to correct geometry, so existing reports must be re-tagged. Expiration is a lifecycle state (the zone existed and tagged legitimately); deletion is a retraction (the zone should not have been in effect). | Always-sweep or never-sweep for both | Asymmetry must be explicit in docs and CI tests; pilot-blocker scenarios #32 + #36 cover it |
-| 59 | Muni admin reads all reference layers + own-muni custom zones only; provincial-scope custom zones invisible | Reference data is public-ish (agency-authoritative, province-covering); custom is operational. Superadmin uses Command Channel threads to loop affected munis on provincial-scope zones, preserving jurisdictional framing. | Muni admin reads all provincial-scope custom zones | Superadmin must explicitly loop munis via Command Channel when provincial zones affect them; captured by auto-attach trigger on provincial-scope zone creation |
-| 60 | Hazard auto-tag runs AFTER the triptych materialization transaction, not inside it | Adding a `hazard_zones` query to the triptych transaction expands its read set. Under surge + concurrent zone edit, this creates a retry storm on the life-safety-critical ingest path. Separating auto-tag as follow-up write keeps report materialization robust; tagging failure falls to dead-letter + backfill-sweep safety net. | Auto-tag inside triptych transaction | Report materializes without hazard tags if auto-tag step fails; primary recovery is `hazardTagBackfillSweep` (5-min cadence, same pattern as `inboxReconciliationSweep`); tagging is best-effort with SLA of p95 <30ms in-budget and 100% caught by backfill within 1h |
+| #   | Decision                                                                                                                 | Rationale                                                                                                                                                                                                                                                                                                                             | Rejected Alternative                                                | Residual Cost / Risk                                                                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Report triptych                                                                                                          | Document-level security boundary                                                                                                                                                                                                                                                                                                      | Single doc + field masking                                          | Multi-doc transactions, eventual-consistency window                                                                                                                                                                                                                    |
+| 2   | Pseudonymous Auth universal                                                                                              | UID for rules + App Check for all                                                                                                                                                                                                                                                                                                     | Unauthenticated reads                                               | Pseudonymity ≠ anonymity; must communicate honestly                                                                                                                                                                                                                    |
+| 3   | Mixed-mode writes                                                                                                        | Server-authoritative for contended; direct for sequential                                                                                                                                                                                                                                                                             | All-CF                                                              | UX must distinguish queued vs server-confirmed                                                                                                                                                                                                                         |
+| 4   | Capacitor for responders                                                                                                 | Better mobile capability than PWA-only                                                                                                                                                                                                                                                                                                | PWA-only                                                            | Native wrapper reduces but doesn't eliminate background issues; iOS ship calendar                                                                                                                                                                                      |
+| 5   | App Check                                                                                                                | Reduces abuse from non-genuine clients                                                                                                                                                                                                                                                                                                | Device fingerprinting                                               | Not a trust boundary                                                                                                                                                                                                                                                   |
+| 6   | RTDB for GPS                                                                                                             | Bandwidth-priced, native real-time                                                                                                                                                                                                                                                                                                    | Firestore-only                                                      | Reconnect storms; rules required                                                                                                                                                                                                                                       |
+| 7   | Soft-delete retention                                                                                                    | Firestore cannot recursively move subcollections                                                                                                                                                                                                                                                                                      | Archive collection                                                  | Deletion completion lag; SLA + audit needed                                                                                                                                                                                                                            |
+| 8   | BigQuery audit                                                                                                           | Better durability than Firestore-only                                                                                                                                                                                                                                                                                                 | Firestore-only audit                                                | Pipeline depends on export health                                                                                                                                                                                                                                      |
+| 9   | Dispatches source of truth                                                                                               | No dual-representation sync bugs                                                                                                                                                                                                                                                                                                      | `dispatchedTo[]` array                                              | Read amplification; denormalization needed                                                                                                                                                                                                                             |
+| 10  | State machine in rules + server                                                                                          | Rules prevent invalid transitions; server validates cross-doc                                                                                                                                                                                                                                                                         | Rules-only                                                          | Some logic duplication                                                                                                                                                                                                                                                 |
+| 11  | Denormalize auth fields onto guarded docs                                                                                | Rules can reference `resource.data`                                                                                                                                                                                                                                                                                                   | `get()` lookups                                                     | Write amplification                                                                                                                                                                                                                                                    |
+| 12  | No device fingerprinting                                                                                                 | RA 10173 risk; brittle                                                                                                                                                                                                                                                                                                                | Fingerprint hash                                                    | App Check less precise                                                                                                                                                                                                                                                 |
+| 13  | Inbox + trigger for citizen submission                                                                                   | Firestore SDK offline persistence beats custom callable queue                                                                                                                                                                                                                                                                         | `submitReport` callable                                             | Inbox more exposed; rate limits + trigger validation required                                                                                                                                                                                                          |
+| 14  | `pending→accepted` is callable                                                                                           | Prevents split-brain                                                                                                                                                                                                                                                                                                                  | Direct write with rules                                             | Acceptance requires online                                                                                                                                                                                                                                             |
+| 15  | `active_accounts` on privileged paths only                                                                               | Bounds JWT staleness without amplifying cost on broad reads                                                                                                                                                                                                                                                                           | Check-on-every-read                                                 | 1 extra read per privileged op; modeled in §5.7                                                                                                                                                                                                                        |
+| 16  | `trustScore` excluded until NPC-compliant governance is drafted                                                          | RA 10173 profiling exposure without governance                                                                                                                                                                                                                                                                                        | Keep as advisory field                                              | Manual triage only                                                                                                                                                                                                                                                     |
+| 17  | Cloud Tasks for downstream API calls                                                                                     | 72h retry windows                                                                                                                                                                                                                                                                                                                     | CF native retry                                                     | Additional infra                                                                                                                                                                                                                                                       |
+| 18  | Tracking reference + secret separated                                                                                    | Human-readable ref not a credential                                                                                                                                                                                                                                                                                                   | Single token                                                        | Users must store secret                                                                                                                                                                                                                                                |
+| 19  | Denormalize `status`/`severity`/`createdAt` onto `report_ops`                                                            | Cross-cutting admin queries possible                                                                                                                                                                                                                                                                                                  | Client-side join                                                    | Mirrored fields require transactional updates                                                                                                                                                                                                                          |
+| 20  | MFA required for all staff                                                                                               | Field accounts are targets too                                                                                                                                                                                                                                                                                                        | Superadmin-only MFA                                                 | TOTP friction                                                                                                                                                                                                                                                          |
+| 21  | Semaphore primary + Globe Labs failover for SMS                                                                          | Domestic aggregators, 20× cheaper than Twilio, better PH telco compliance                                                                                                                                                                                                                                                             | Twilio (Firebase Extension available)                               | Dual-provider ops; circuit-breaker required; sender ID approval lead time                                                                                                                                                                                              |
+| 22  | Inbound SMS via Globe Labs keyword → `report_inbox`                                                                      | Feature-phone + zero-data citizens reachable; unified ingestion                                                                                                                                                                                                                                                                       | Separate inbound SMS pipeline                                       | Per-msisdn rate limits; barangay-only precision                                                                                                                                                                                                                        |
+| 23  | localForage dual-write for citizen drafts                                                                                | Firestore SDK alone vulnerable to IndexedDB eviction                                                                                                                                                                                                                                                                                  | Firestore SDK only                                                  | Reconciliation logic; two storage layers to monitor                                                                                                                                                                                                                    |
+| 24  | `minInstances: 3` for `processInboxItem` + reconciliation sweep                                                          | Cold-start surge failure would drop reports; reconciliation is safety net                                                                                                                                                                                                                                                             | Scale from zero                                                     | ~$45-60/mo idle cost; surge pre-warm adds more                                                                                                                                                                                                                         |
+| 25  | Motion Activity API + geofence-at-staging for responders                                                                 | GPS-speed inference kills batteries over long shifts                                                                                                                                                                                                                                                                                  | GPS-speed motion detection                                          | Plugin dependency; motion-API accuracy varies by device                                                                                                                                                                                                                |
+| 26  | Streaming audit for security events, batch for analytics                                                                 | 5-min gap unacceptable for suspensions/revocations during incident                                                                                                                                                                                                                                                                    | All-batch                                                           | Higher BQ streaming cost on critical events; worth it                                                                                                                                                                                                                  |
+| 27  | Break-glass sealed credentials with dual-control unseal                                                                  | Superadmin incapacitation during typhoon cannot lock out province                                                                                                                                                                                                                                                                     | Only named superadmin has access                                    | Physical chain of custody; quarterly drill; post-event review                                                                                                                                                                                                          |
+| 28  | State Ownership Matrix enforced in code review                                                                           | Cache soup across Firestore/TanStack Query/Zustand is a real failure mode                                                                                                                                                                                                                                                             | Implicit ownership                                                  | Requires review discipline                                                                                                                                                                                                                                             |
+| 29  | Report lifecycle state machine formalized (13 states)                                                                    | Dispatch-only state machine left report transitions implicit and untested                                                                                                                                                                                                                                                             | Implicit report transitions                                         | More state to test; rule updates for every transition                                                                                                                                                                                                                  |
+| 30  | Terraform + Firebase CLI as named IaC stack                                                                              | "Version-controlled" isn't a command                                                                                                                                                                                                                                                                                                  | Firebase CLI alone                                                  | Terraform state management overhead                                                                                                                                                                                                                                    |
+| 31  | Signed URL size/MIME/content-range enforcement                                                                           | 5GB DoS upload risk without it                                                                                                                                                                                                                                                                                                        | Client-side size check                                              | More complex URL issuance logic                                                                                                                                                                                                                                        |
+| 32  | Stay on Firebase; no Postgres migration until triggers fire                                                              | Single developer, pilot scope; migration is 3+ months of work with no pilot data yet                                                                                                                                                                                                                                                  | Hybrid with Postgres for dispatch core                              | Document-store ceiling acknowledged; migration triggers defined (§19)                                                                                                                                                                                                  |
+| 33  | Defer province-wide mass alerting to NDRRMC ECBS                                                                         | RA 10639 assigns this channel to NDRRMC; ECBS is cell broadcast; commercial SMS aggregators are slower, pricier, legally awkward at that scale                                                                                                                                                                                        | Blast 100k+ SMS via Semaphore                                       | Must build + maintain escalation workflow with PDRRMO → NDRRMC                                                                                                                                                                                                         |
+| 34  | Three deployment surfaces, not one app                                                                                   | Citizen/Responder/Admin have incompatible offline, auth, and device profiles                                                                                                                                                                                                                                                          | Monolithic PWA                                                      | 3× build targets, shared packages discipline, iOS ship calendar                                                                                                                                                                                                        |
+| 35  | Agency admins do NOT verify reports                                                                                      | Clean state machine; matches PH LGU doctrine; prevents verification races                                                                                                                                                                                                                                                             | Agencies verify in their jurisdiction                               | Muni admin is bottleneck during surge; pre-warm + reconciliation mitigate                                                                                                                                                                                              |
+| 36  | Verified Responder Report = accelerated intake, not bypass                                                               | Legitimate field-witness case without compromising LGU verification                                                                                                                                                                                                                                                                   | Full bypass (skip `awaiting_verify`)                                | Still requires admin tap; trade speed for review                                                                                                                                                                                                                       |
+| 37  | Admin Desktop blocks offline writes; field mode is narrow carve-out                                                      | High-stakes mutations silently replayed out of order is worse than blocking; field mode scope is notes + messages only                                                                                                                                                                                                                | localForage outbox for admins universally                           | Admins must be online for mutations; field mode entry is a streaming audit event                                                                                                                                                                                       |
+| 38  | Citizen-facing projection strips `actorId`                                                                               | Admin identity hidden at data layer, not just UI                                                                                                                                                                                                                                                                                      | Rely on UI to hide                                                  | CF projection adds complexity; worth it for rule-level enforcement                                                                                                                                                                                                     |
+| 39  | Cross-agency responder visibility via per-municipality RTDB projection                                                   | Privacy-preserving (100m grid) + cost-bounded + write amplification lower than per-agency projection                                                                                                                                                                                                                                  | Full RTDB cross-reads; per-agency projection                        | Projection staleness bounded by 30s cadence + 90s TTL                                                                                                                                                                                                                  |
+| 40  | Municipal mass alerts route through Reach Plan                                                                           | Surfaces SMS-vs-ECBS decision to admin before send                                                                                                                                                                                                                                                                                    | Silent routing based on thresholds                                  | UI complexity; admin must understand channels                                                                                                                                                                                                                          |
+| 41  | Agency assistance requests are first-class documents                                                                     | Audit trail for inter-agency coordination; timeout escalation                                                                                                                                                                                                                                                                         | Informal via command channel                                        | New collection + rules + callables                                                                                                                                                                                                                                     |
+| 42  | No Facebook Messenger integration for any role                                                                           | RA 10173 data residency, no SLA, no audit hook, unreliable in degraded networks                                                                                                                                                                                                                                                       | Keep as fallback per responder spec                                 | Responders must use in-app messages + PSTN calls                                                                                                                                                                                                                       |
+| 43  | Responder GPS retention: 90 days, not 24h                                                                                | Post-incident review needs it; 24h is insufficient                                                                                                                                                                                                                                                                                    | 24h                                                                 | Privacy notice must state clearly                                                                                                                                                                                                                                      |
+| 44  | Session timeout is re-auth interval, not token TTL                                                                       | Firebase ID tokens are 1h regardless; "timeout" at app layer means prompt-for-OTP                                                                                                                                                                                                                                                     | Hard-expire sessions at 8h                                          | Requires explicit handling at app level                                                                                                                                                                                                                                |
+| 45  | No "Incident Commander" tag                                                                                              | Existing state machine answers every operational ownership question; ambiguous tag with no transition rules adds vocabulary without clarity                                                                                                                                                                                           | Incident Commander role for inter-agency conflicts                  | Conflicts resolved via Command Channel threads                                                                                                                                                                                                                         |
+| 46  | `report_sharing` is a separate document, not a field on `report_ops`                                                     | Isolating mutable sharing state prevents listener thrash on `report_ops` during border-incident auto-share storms                                                                                                                                                                                                                     | `visibility.sharedWith` field on `report_ops`                       | One additional collection; CONTAINS index on `sharedWith`; sharing mutations require the sibling doc                                                                                                                                                                   |
+| 47  | Idempotency check is transactional dedup-table-first, with document-side fields for traceability                         | Same key + different payload must fail deterministically; document fields alone can't enforce this                                                                                                                                                                                                                                    | Document field + last-write-wins                                    | `idempotency_keys` collection + canonical-hash computation in shared validators package                                                                                                                                                                                |
+| 48  | GSM-7 vs UCS-2 detection, no emoji/ñ stripping                                                                           | Tagalog orthography (`ñ`) is linguistically required; stripping produces wrong words; admins must see segment count explicitly                                                                                                                                                                                                        | Silent ASCII strip                                                  | UCS-2 halves segment capacity (70 vs 160); admin UI surfaces this                                                                                                                                                                                                      |
+| 49  | Responder race-loss recovery is a specified UX, not ad-hoc error handling                                                | Generic error modals during admin-cancel races produce angry field feedback and undermine trust                                                                                                                                                                                                                                       | Generic error modal                                                 | Pilot-blocker test scenario; specific "dispatch cancelled by [institutional]" screen                                                                                                                                                                                   |
+| 50  | Transaction contention budget explicit, measured in k6 load test                                                         | Hot-path p99 regressions show up only at surge; don't discover at incident time                                                                                                                                                                                                                                                       | Measure only at incident                                            | Pre-prod load test gate; fallback is sharded counters                                                                                                                                                                                                                  |
+| 51  | PAGASA ingest has three tiers (webhook, scraper, manual)                                                                 | No single-point ingest is reliable; manual toggle is always available                                                                                                                                                                                                                                                                 | Scraper-only                                                        | Quarterly manual-toggle drill; scraper health alert                                                                                                                                                                                                                    |
+| 52  | Incident response has a dedicated §14 and runbook                                                                        | RA 10173 72-hour clock is a hard regulatory requirement; vague intentions fail audits                                                                                                                                                                                                                                                 | Assume "we'll handle it"                                            | Annual drill with compliance officer + PDRRMO counsel                                                                                                                                                                                                                  |
+| 53  | Schema migration has a documented protocol, not "both versions accepted for a window"                                    | Hand-waved migrations leave old-version orphans and surprise breakage months later                                                                                                                                                                                                                                                    | Implicit rolling window                                             | Migration plan doc per breaking change; backfill completion gate                                                                                                                                                                                                       |
+| 54  | Third-party security review is a pre-prod checklist item                                                                 | Implementing engineer reviewing own rules misses failure modes; government customer will ask                                                                                                                                                                                                                                          | Rely on internal review                                             | External consultancy cost; scheduled in §13.11                                                                                                                                                                                                                         |
+| 55  | Hazard zones are admin-only (muni + superadmin); citizens, responders, agency admins have no read path                   | Citizen exposure to hazard overlays leaks operational info (admin response posture, evacuation intent); matches Principle #11 — capability by data-class reach, not by UI. Agency admins operate vertically on their roster, not LGU triage/mapping.                                                                                  | Citizen-visible reference layers; agency-admin read access          | Citizens don't see known risk passively; reached only via mass alert. Agency admin sees hazard correlation only via report badges exposed on their assigned incidents.                                                                                                 |
+| 56  | Hazard reference layers are immutable + versioned; custom zones are mutable + event-bounded with required `expiresAt`    | Reference = frozen risk profile (PAGASA/MGB authoritative data, historical audit integrity); custom = current operational reality (typhoon impact, evac, curfew) that must expire to prevent zone accumulation                                                                                                                        | Single mutable model for both                                       | More state classes; explicit version bumps in audit; sweep logic differs (reference never sweeps; custom sweeps on edit; expiration preserves tags; deletion removes tags)                                                                                             |
+| 57  | Hybrid spatial storage: Cloud Storage for unsimplified source + Firestore for indexed zones + BigQuery GIS for analytics | Auto-tag at ingest cannot afford a Cloud Storage read (50–200ms breaks p95 <3s ingest SLO) or a BigQuery query (cost + latency) per inbox event. Analytics cannot afford client-side polygon scan. Each store answers a different question.                                                                                           | Single-store (pure Firestore, pure BigQuery, or pure Cloud Storage) | Three layers to keep coherent via 5-min batch mirror; version-status panel reads Firestore directly (not BigQuery) to reflect just-committed uploads                                                                                                                   |
+| 58  | Auto-tag forward-only for reference layers; sweep for custom zones; tags survive expiration; tags purged on deletion     | Reference supersede must not retroactively re-tag history (audit integrity). Custom zone edits represent admin intent to correct geometry, so existing reports must be re-tagged. Expiration is a lifecycle state (the zone existed and tagged legitimately); deletion is a retraction (the zone should not have been in effect).     | Always-sweep or never-sweep for both                                | Asymmetry must be explicit in docs and CI tests; pilot-blocker scenarios #32 + #36 cover it                                                                                                                                                                            |
+| 59  | Muni admin reads all reference layers + own-muni custom zones only; provincial-scope custom zones invisible              | Reference data is public-ish (agency-authoritative, province-covering); custom is operational. Superadmin uses Command Channel threads to loop affected munis on provincial-scope zones, preserving jurisdictional framing.                                                                                                           | Muni admin reads all provincial-scope custom zones                  | Superadmin must explicitly loop munis via Command Channel when provincial zones affect them; captured by auto-attach trigger on provincial-scope zone creation                                                                                                         |
+| 60  | Hazard auto-tag runs AFTER the triptych materialization transaction, not inside it                                       | Adding a `hazard_zones` query to the triptych transaction expands its read set. Under surge + concurrent zone edit, this creates a retry storm on the life-safety-critical ingest path. Separating auto-tag as follow-up write keeps report materialization robust; tagging failure falls to dead-letter + backfill-sweep safety net. | Auto-tag inside triptych transaction                                | Report materializes without hazard tags if auto-tag step fails; primary recovery is `hazardTagBackfillSweep` (5-min cadence, same pattern as `inboxReconciliationSweep`); tagging is best-effort with SLA of p95 <30ms in-budget and 100% caught by backfill within 1h |
 
 ---
 
@@ -2095,24 +2145,26 @@ System defines access by **data class**, not collection name. New collections mu
 The system stays on Firebase for the current pilot phase. Migrating before pilot data exists means migrating on theory. The document-store ceiling — where Firestore's lack of joins and transactional guarantees actually hurts — hasn't been hit yet at 600k population scope.
 
 **Why not migrate now:**
+
 - Team capacity. Introducing Postgres means migrations layer, connection pooling, read replicas, backup rotation, separate IaC, separate monitoring — a full-time ops person's worth of new work before any user value is delivered.
 - Cost structure. Firebase pricing scales with usage; a Postgres core on AlloyDB has a baseline cost floor (~$300/month minimum for a small HA configuration) that dominates at pilot scale.
 - Rollback risk. If the migration goes wrong mid-deployment, the emergency system is the thing going wrong. Not an acceptable failure mode before pilot stability is proven.
 
 **Named migration triggers.** The architecture moves toward a hybrid Firebase + Postgres core when **any two** of these are observed in production for 30+ consecutive days:
 
-| Trigger | Threshold | Why it signals Postgres |
-|---|---|---|
-| Admin dashboard p95 load time | > 5 seconds | Firestore client-side join cost exceeded |
-| Concurrent active dispatches province-wide | > 500 sustained | Contention on dispatch collection |
-| Cross-collection reporting queries per day | > 1,000 | BigQuery batch too slow for operational reporting |
-| Firestore document update amplification | > 10× write fan-out per business event | Denormalization cost exceeds relational cost |
-| Cost of Firestore reads | > ₱50,000/month (~$900) | Relational DB cost model becomes more favorable |
-| Dispatch state machine needing multi-table FK enforcement | Any compliance-mandated case | Firestore cannot enforce FK; Postgres can |
-| Regulatory requirement for SQL-based audit access | Any formal government audit request | Relational reporting tools assumed |
-| Cross-collection feature requests blocked by join cost | ≥ 3 in a single quarter | Developer-velocity signal; denormalization is paying a hidden tax |
+| Trigger                                                   | Threshold                              | Why it signals Postgres                                           |
+| --------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------- |
+| Admin dashboard p95 load time                             | > 5 seconds                            | Firestore client-side join cost exceeded                          |
+| Concurrent active dispatches province-wide                | > 500 sustained                        | Contention on dispatch collection                                 |
+| Cross-collection reporting queries per day                | > 1,000                                | BigQuery batch too slow for operational reporting                 |
+| Firestore document update amplification                   | > 10× write fan-out per business event | Denormalization cost exceeds relational cost                      |
+| Cost of Firestore reads                                   | > ₱50,000/month (~$900)                | Relational DB cost model becomes more favorable                   |
+| Dispatch state machine needing multi-table FK enforcement | Any compliance-mandated case           | Firestore cannot enforce FK; Postgres can                         |
+| Regulatory requirement for SQL-based audit access         | Any formal government audit request    | Relational reporting tools assumed                                |
+| Cross-collection feature requests blocked by join cost    | ≥ 3 in a single quarter                | Developer-velocity signal; denormalization is paying a hidden tax |
 
 **What a hybrid would look like (for planning, not current scope):**
+
 - Firestore stays authoritative for real-time views, offline sync, mobile-first reads, citizen-facing data.
 - Postgres (AlloyDB) takes authoritative dispatch state, incident lifecycle, reporting/analytics, relational audit queries.
 - CDC via Datastream replicates Postgres writes to Firestore read models so mobile clients don't talk to Postgres directly.
@@ -2190,6 +2242,7 @@ Municipal and Provincial admins get a hazard-zone overlay on the admin map, back
 ### 22.1 Hazard Taxonomy & Data Sources
 
 Three hazard types in-scope for pilot:
+
 - **Flood** — PAGASA flood hazard maps (historical extents by return period)
 - **Landslide** — MGB rainfall-induced landslide susceptibility polygons
 - **Storm surge** — PAGASA storm-surge inundation zones
@@ -2205,39 +2258,39 @@ Three hazard types in-scope for pilot:
 ```typescript
 interface HazardZone {
   // Identity
-  zoneId: string                             // ULID
+  zoneId: string // ULID
   zoneType: 'reference' | 'custom'
   hazardType: 'flood' | 'landslide' | 'storm_surge'
 
   // Geographic scope
   scope: 'provincial' | 'municipal'
-  municipalityId?: string                    // required when scope === 'municipal'
+  municipalityId?: string // required when scope === 'municipal'
 
   // Indexed geometry — simplified, bounded
-  geohashPrefix: string                      // 6-char prefix for bbox lookup
-  bbox: { minLat: number, minLng: number, maxLat: number, maxLng: number }
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon  // vertex cap from system_config/hazard_zone_limits.maxVertices (default 500), enforced server-side
-  geometryStorageUrl?: string                // Cloud Storage URL for unsimplified source (reference layers only)
+  geohashPrefix: string // 6-char prefix for bbox lookup
+  bbox: { minLat: number; minLng: number; maxLat: number; maxLng: number }
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon // vertex cap from system_config/hazard_zone_limits.maxVertices (default 500), enforced server-side
+  geometryStorageUrl?: string // Cloud Storage URL for unsimplified source (reference layers only)
 
   // Reference-layer specific
   sourceAgency?: 'PAGASA' | 'MGB' | 'OTHER'
-  sourceVersion?: string                     // admin-supplied, e.g. "2024-08"
-  supersededBy?: string                      // zoneId of newer version
+  sourceVersion?: string // admin-supplied, e.g. "2024-08"
+  supersededBy?: string // zoneId of newer version
   supersededAt?: Timestamp
 
   // Custom-zone specific
-  expiresAt?: Timestamp                      // REQUIRED when zoneType === 'custom'; server enforces > now + 5min, ≤ now + 30d
-  expiredAt?: Timestamp                      // set by hourly expiration sweep
+  expiresAt?: Timestamp // REQUIRED when zoneType === 'custom'; server enforces > now + 5min, ≤ now + 30d
+  expiredAt?: Timestamp // set by hourly expiration sweep
   purpose?: 'typhoon_impact' | 'evacuation' | 'curfew' | 'other'
-  purposeDescription?: string                // ≤280 chars, server-sanitized
+  purposeDescription?: string // ≤280 chars, server-sanitized
 
   // Risk metadata
-  severity: 'high' | 'medium' | 'low'        // authored
+  severity: 'high' | 'medium' | 'low' // authored
 
   // Attribution
-  createdBy: string                          // uid
+  createdBy: string // uid
   createdByRole: 'municipal_admin' | 'provincial_superadmin'
-  createdByMunicipalityId?: string           // denormalized for rule evaluation
+  createdByMunicipalityId?: string // denormalized for rule evaluation
   createdAt: Timestamp
   updatedAt: Timestamp
   updatedBy?: string
@@ -2245,7 +2298,7 @@ interface HazardZone {
   deletedBy?: string
 
   // Versioning
-  version: number                            // monotonic per zoneId
+  version: number // monotonic per zoneId
   schemaVersion: number
 }
 ```
@@ -2314,11 +2367,12 @@ Analytics queries use native `ST_Contains` / `ST_Area` / `ST_Within`. Denormaliz
 **BigQuery is for analytics — not operational truth.** Zone version status panels, active custom zone lists, and any admin UI that must reflect just-committed state read from Firestore directly. The up-to-5-min BigQuery lag is acceptable for trend dashboards and compliance queries but not for a superadmin validating an upload they just performed. Consistent with §9.1 state-ownership principle.
 
 **Rationale for shape choices:**
-- *Why Firestore-indexed zones (not pure Cloud Storage)?* Auto-tag at ingest needs fast candidate lookup; Cloud Storage reads per inbox event add 50–200ms and break the p95 <3s ingest SLO under surge.
-- *Why not pure BigQuery for zones?* Auto-tag can't afford a BigQuery query per report (cost + latency). BigQuery is the analytics mirror.
-- *Why dual `hazardZoneIds` + `hazardZoneIdList`?* Firestore `array-contains` needs primitive equality. Map list carries audit history; flat list enables server-side "filter reports by zone X" queries without client-side scan.
-- *Why geohash prefix 6 stored / 4 queried?* Stored 6-char (~1.2km) is precise enough for zone indexing. Queried as 4-char prefix (~20km) over-reads candidates but eliminates boundary-miss errors; Turf.js is the authoritative filter.
-- *Why version reference layers by creating new `zoneId`s (not in-place)?* A report tagged with v2024 must stay attributed to v2024 after v2025 uploads. Immutable versioning is the clean model.
+
+- _Why Firestore-indexed zones (not pure Cloud Storage)?_ Auto-tag at ingest needs fast candidate lookup; Cloud Storage reads per inbox event add 50–200ms and break the p95 <3s ingest SLO under surge.
+- _Why not pure BigQuery for zones?_ Auto-tag can't afford a BigQuery query per report (cost + latency). BigQuery is the analytics mirror.
+- _Why dual `hazardZoneIds` + `hazardZoneIdList`?_ Firestore `array-contains` needs primitive equality. Map list carries audit history; flat list enables server-side "filter reports by zone X" queries without client-side scan.
+- _Why geohash prefix 6 stored / 4 queried?_ Stored 6-char (~1.2km) is precise enough for zone indexing. Queried as 4-char prefix (~20km) over-reads candidates but eliminates boundary-miss errors; Turf.js is the authoritative filter.
+- _Why version reference layers by creating new `zoneId`s (not in-place)?_ A report tagged with v2024 must stay attributed to v2024 after v2025 uploads. Immutable versioning is the clean model.
 
 ### 22.4 Functional Flow — Ingest Auto-Tag
 
@@ -2361,6 +2415,7 @@ Triggered by `onWrite hazard_zones/{zoneId}` where `zoneType === 'custom'`.
 6. Idempotency: `hazard_sweep_{zoneId}_v{version}` in `idempotency_keys`.
 
 **Deletion-vs-expiration asymmetry** (decision #58):
+
 - `deleteCustomHazardZone` (soft delete): sweep REMOVES tags from active reports. Deletion means "this zone should not have been in effect."
 - `hazardZoneExpirationSweep` (time-based): sets `expiredAt`, does NOT remove tags. Expiration is lifecycle; history preserved for analytics.
 
@@ -2430,13 +2485,14 @@ Extends §7.5.1 NDRRMC-escalation workflow.
 
 Analytics live in BigQuery. Callable wrappers:
 
-| Callable | Returns |
-|---|---|
-| `hazardAnalyticsZoneTagCounts` | Per-zone count of tagged reports in a time window, filterable by severity |
+| Callable                                 | Returns                                                                                                         |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `hazardAnalyticsZoneTagCounts`           | Per-zone count of tagged reports in a time window, filterable by severity                                       |
 | `hazardAnalyticsMunicipalityRiskDensity` | Per-barangay incident count / area, intersected with hazard zones, normalized by population (if dataset loaded) |
-| `hazardAnalyticsReportsInZone` | List of report IDs tagged with a given zone (no PII), for drill-down |
+| `hazardAnalyticsReportsInZone`           | List of report IDs tagged with a given zone (no PII), for drill-down                                            |
 
 Each is rate-limited and jurisdiction-scoped server-side:
+
 - Muni admin: `WHERE municipality_id = <own>`
 - Superadmin: unrestricted
 
@@ -2445,6 +2501,7 @@ Callables run BigQuery queries via function service account. Client never talks 
 ### 22.10 Expiration Handling
 
 `hazardZoneExpirationSweep` runs hourly:
+
 - Query `hazard_zones` where `zoneType === 'custom'`, `expiresAt <= now()`, `expiredAt == null`
 - Set `expiredAt: now()`, append history entry `{action: 'expired'}`
 - Does NOT trigger `hazardZoneSweep`. Tags preserved (decision #58).
@@ -2456,12 +2513,12 @@ Admin map clients filter live overlay by `expiredAt == null`. Analytics dashboar
 
 Per `rate_limits/{key}` framework (§5.5 / existing):
 
-| Callable | Limit |
-|---|---|
+| Callable                     | Limit                 |
+| ---------------------------- | --------------------- |
 | `uploadHazardReferenceLayer` | 10/day per superadmin |
-| `createCustomHazardZone` | 50/day per admin |
-| `updateCustomHazardZone` | 100/day per admin |
-| `deleteCustomHazardZone` | 20/day per admin |
+| `createCustomHazardZone`     | 50/day per admin      |
+| `updateCustomHazardZone`     | 100/day per admin     |
+| `deleteCustomHazardZone`     | 20/day per admin      |
 
 Hard limit returns structured error; soft limit (80% of cap) logs moderation-elevation per existing rate-limit pattern.
 
@@ -2470,19 +2527,20 @@ Hard limit returns structured error; soft limit (80% of cap) logs moderation-ele
 ### 22.12 MFA & Session
 
 No new MFA surface. Hazard mutations inherit existing Admin Desktop privilege posture (§4.5):
+
 - Superadmin: TOTP + 4h re-auth
 - Muni admin: TOTP + 8h re-auth
 - `isActivePrivileged()` check on every callable
 
 ### 22.13 Capability Deny Matrix
 
-| Role | Read `hazard_zones` | Read history | Call any hazard callable | Polygon-target mass alert |
-|---|---|---|---|---|
-| Citizen | ❌ | ❌ | ❌ | ❌ |
-| Responder | ❌ | ❌ | ❌ | ❌ |
-| Agency Admin | ❌ | ❌ | ❌ | ❌ |
-| Municipal Admin | ✅ reference (all) + own-muni custom | ✅ for readable zones | ✅ own-muni custom (any author) | ✅ own muni (≤5k direct, else escalate) |
-| Provincial Superadmin | ✅ all | ✅ all | ✅ all | ✅ with Reach Plan |
+| Role                  | Read `hazard_zones`                  | Read history          | Call any hazard callable        | Polygon-target mass alert               |
+| --------------------- | ------------------------------------ | --------------------- | ------------------------------- | --------------------------------------- |
+| Citizen               | ❌                                   | ❌                    | ❌                              | ❌                                      |
+| Responder             | ❌                                   | ❌                    | ❌                              | ❌                                      |
+| Agency Admin          | ❌                                   | ❌                    | ❌                              | ❌                                      |
+| Municipal Admin       | ✅ reference (all) + own-muni custom | ✅ for readable zones | ✅ own-muni custom (any author) | ✅ own muni (≤5k direct, else escalate) |
+| Provincial Superadmin | ✅ all                               | ✅ all                | ✅ all                          | ✅ with Reach Plan                      |
 
 All denials have explicit CI negative tests (pilot-blocker scenarios #37–#39). Capability contract tests enforce Principle #11: every UI affordance maps to a rule-enforced callable or Firestore read. CI test: no muni-admin UI bundle imports `uploadHazardReferenceLayer`; no citizen / responder / agency UI imports hazard-layer component bundle (build-time static check).
 
@@ -2495,10 +2553,12 @@ All denials have explicit CI negative tests (pilot-blocker scenarios #37–#39).
 - **Agency Admin view unchanged** — no Hazard Layers tab, no layer-toggle, no analytics (rule-enforced + UI-enforced defense in depth)
 
 **Dual-monitor Superadmin layout additions:**
+
 - **Primary (Analytics Dashboard):** hazard analytics panel (BigQuery-backed for trends); reference layer version status (Firestore-direct — must reflect just-committed state); custom zone activity (Firestore-direct: active count, expiring-within-24h, recently-created)
 - **Secondary (Provincial Map):** all 3 reference layer toggles; custom zone list (all munis, filterable); reference layer management panel (upload, inspect, supersede)
 
 **Consistency with existing patterns:**
+
 - Custom zone edit UI matches report-edit patterns (modal-over-map; §7.3 muni admin principle "Map is permanent background")
 - Reference layer rendering uses existing Leaflet tile layer pattern
 - Hazard mutation audit entries appear in existing audit viewer (Superadmin §7.5)

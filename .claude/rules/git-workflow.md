@@ -5,6 +5,7 @@ Based on industry best practices for team collaboration.
 ## Branch Strategy
 
 ### Branch Naming
+
 - Feature: `feature/description` (e.g., `feature/user-authentication`)
 - Bugfix: `fix/description` (e.g., `fix/login-redirect`)
 - Hotfix: `hotfix/critical-issue`
@@ -12,6 +13,7 @@ Based on industry best practices for team collaboration.
 - Release: `release/v1.2.0`
 
 ### Branch Types
+
 - `main`: Production-ready code, always deployable
 - `develop`: Integration branch for features
 - Feature branches: Created from `develop`
@@ -19,6 +21,7 @@ Based on industry best practices for team collaboration.
 - Release branches: Created from `develop` for release preparation
 
 ### Branch Lifetime
+
 - Feature branches: ≤ 1 week (split if longer)
 - Bugfix branches: ≤ 2 days
 - Hotfix branches: ≤ 4 hours
@@ -26,9 +29,11 @@ Based on industry best practices for team collaboration.
 ## Commit Rules
 
 ### Commit Messages
+
 Format: `type(scope): description`
 
 Types:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -40,6 +45,7 @@ Types:
 - `ci`: CI/CD changes
 
 Examples:
+
 ```
 feat(auth): add OAuth2 login
 fix(reports): correct date filtering
@@ -47,6 +53,7 @@ docs(readme): update installation steps
 ```
 
 ### Commit Guidelines
+
 - One logical change per commit
 - First line ≤ 72 characters
 - Body explains "what" and "why", not "how"
@@ -56,15 +63,17 @@ docs(readme): update installation steps
 ## Pull Request Workflow
 
 ### PR Size
-| Size | Lines Changed | Guideline |
-|------|---------------|-----------|
-| XS | < 50 | Ideal, always welcome |
-| S | 50-200 | Preferred for regular PRs |
-| M | 200-400 | Acceptable, needs justification |
-| L | 400-800 | Requires discussion first |
-| XL | > 800 | Must be split before review |
+
+| Size | Lines Changed | Guideline                       |
+| ---- | ------------- | ------------------------------- |
+| XS   | < 50          | Ideal, always welcome           |
+| S    | 50-200        | Preferred for regular PRs       |
+| M    | 200-400       | Acceptable, needs justification |
+| L    | 400-800       | Requires discussion first       |
+| XL   | > 800         | Must be split before review     |
 
 ### Before Opening PR
+
 - [ ] All tests pass locally
 - [ ] Code is linted and formatted
 - [ ] Commits are logically organized
@@ -72,6 +81,7 @@ docs(readme): update installation steps
 - [ ] No merge commits in feature branch
 
 ### PR Requirements
+
 - Descriptive title (imperative mood: "Add feature" not "Added")
 - Link to related issue
 - Screenshots for UI changes
@@ -79,21 +89,27 @@ docs(readme): update installation steps
 - Minimum 1 approval (2 for significant changes)
 
 ### PR Description Template
+
 ```markdown
 ## Summary
+
 Brief description of changes
 
 ## Motivation
+
 Why this change is needed
 
 ## Changes
+
 - List of specific changes
 - Include file names
 
 ## Testing
+
 How the changes were tested
 
 ## Checklist
+
 - [ ] Tests added/updated
 - [ ] Documentation updated
 - [ ] No console errors
@@ -101,6 +117,7 @@ How the changes were tested
 ```
 
 ### Review Guidelines
+
 - Review within 24 hours
 - Address all comments before merging
 - Use "Request changes" for blockers
@@ -109,6 +126,7 @@ How the changes were tested
 ## Merging
 
 ### Merge Strategy
+
 - Use "Squash and merge" for feature branches
 - Use "Merge commit" for release/hotfix branches
 - Never force push to `main` or `develop`
@@ -116,12 +134,14 @@ How the changes were tested
 - Never merge with unresolved comments
 
 ### Protected Branches
+
 - Require PR reviews
 - Require status checks to pass
 - No force pushes
 - Branch protection rules enforced on `main` and `develop`
 
 ### Merge Conflicts
+
 ```bash
 # Resolve conflicts step by step
 git checkout main
@@ -139,21 +159,24 @@ git rebase --abort  # Start fresh
 ```
 
 ### Rebase vs Merge
-| Scenario | Approach |
-|----------|----------|
-| Feature branch syncing with `develop` | Rebase |
-| Merging completed feature | Squash merge |
-| Hotfix to `main` | Merge commit |
-| Large feature with logical commits | Squash merge |
+
+| Scenario                              | Approach     |
+| ------------------------------------- | ------------ |
+| Feature branch syncing with `develop` | Rebase       |
+| Merging completed feature             | Squash merge |
+| Hotfix to `main`                      | Merge commit |
+| Large feature with logical commits    | Squash merge |
 
 ## Release Process
 
 ### Version Numbering (SemVer)
+
 - MAJOR: Breaking changes
 - MINOR: New features (backward compatible)
 - PATCH: Bug fixes (backward compatible)
 
 ### Release Steps
+
 1. Create release branch: `release/v1.2.0`
 2. Update version in `package.json`
 3. Run full test suite
@@ -163,6 +186,7 @@ git rebase --abort  # Start fresh
 7. Deploy from `main`
 
 ### Tags
+
 ```bash
 # Annotated tags for releases
 git tag -a v1.2.0 -m "Release version 1.2.0"
@@ -176,6 +200,7 @@ git log --oneline --tags
 ## Git Operations
 
 ### Stash (Temporary Storage)
+
 ```bash
 # Save work in progress
 git stash save "WIP: working on feature X"
@@ -195,6 +220,7 @@ git stash clear
 ```
 
 ### Useful Commands
+
 ```bash
 # Interactive rebase (clean up commits)
 git rebase -i HEAD~5
@@ -223,6 +249,7 @@ git revert <commit-hash>
 ## Code Review Best Practices
 
 ### As Author
+
 - Keep PRs small (< 400 lines preferred)
 - Respond to feedback promptly
 - Don't take feedback personally
@@ -231,6 +258,7 @@ git revert <commit-hash>
 - Don't resolve threads yourself (let reviewer do it)
 
 ### As Reviewer
+
 - Be respectful and constructive
 - Be specific about issues
 - Suggest solutions, not just problems
@@ -239,16 +267,18 @@ git revert <commit-hash>
 - Use prefixes: `[nit]`, `[suggestion]`, `[blocking]`
 
 ### What to Review
-| Priority | Focus |
-|----------|-------|
+
+| Priority | Focus                                 |
+| -------- | ------------------------------------- |
 | Critical | Security, correctness, data integrity |
-| High | Logic errors, edge cases, performance |
-| Medium | Code clarity, maintainability |
-| Low | Style, formatting, naming |
+| High     | Logic errors, edge cases, performance |
+| Medium   | Code clarity, maintainability         |
+| Low      | Style, formatting, naming             |
 
 ## Stacked PRs
 
 For large features split into multiple PRs:
+
 ```bash
 # Create dependent PRs
 git checkout feature/part-1
