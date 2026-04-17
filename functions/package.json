@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run src/__tests__/phase1-auth.test.ts",
     "test:rules": "vitest run src/__tests__/firestore.rules.test.ts",
+    "test:storage": "firebase emulators:exec --only storage 'npx vitest run src/__tests__/storage.rules.test.ts'",
     "serve": "pnpm build && firebase emulators:start --only functions",
     "shell": "pnpm build && firebase functions:shell",
     "deploy": "echo 'Use deploy:dev, deploy:staging, or deploy:prod' && exit 1",
