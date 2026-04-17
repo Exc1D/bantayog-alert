@@ -46,7 +46,7 @@ Types:
 
 Examples:
 
-```
+```text
 feat(auth): add OAuth2 login
 fix(reports): correct date filtering
 docs(readme): update installation steps

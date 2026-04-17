@@ -3,7 +3,7 @@ resource "google_service_account" "functions" {
   project      = var.project_id
   account_id   = "bantayog-functions"
   display_name = "Bantayog Cloud Functions runtime (${var.env})"
-  description  = "Runtime SA for all Cloud Functions. Grants read/write to Firestore, Storage, FCM, Secret Manager."
+  description  = "Runtime SA for all Cloud Functions. Grants Firestore (datastore.user), FCM (firebasenotifications.admin), Secret Manager (secretmanager.secretAccessor)."
 }
 
 # Service account used by CI to deploy (Firebase Hosting, Functions, rules).
@@ -48,8 +48,8 @@ resource "google_project_iam_member" "ci_functions_developer" {
   member  = "serviceAccount:${google_service_account.ci_deploy.email}"
 }
 
-resource "google_project_iam_member" "ci_sa_user" {
-  project = var.project_id
-  role    = "roles/iam.serviceAccountUser"
-  member  = "serviceAccount:${google_service_account.ci_deploy.email}"
+resource "google_service_account_iam_member" "ci_sa_impersonate_functions" {
+  service_account_id = google_service_account.functions.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.ci_deploy.email}"
 }
