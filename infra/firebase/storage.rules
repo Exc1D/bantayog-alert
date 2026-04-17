@@ -1,6 +1,32 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function isAuthed() {
+      return request.auth != null
+          && request.auth.token.accountStatus == 'active';
+    }
+
+    function role()          { return request.auth.token.role; }
+    function myMunicipality(){ return request.auth.token.municipalityId; }
+    function permittedMunis() {
+      return request.auth.token.permittedMunicipalityIds != null
+        ? request.auth.token.permittedMunicipalityIds : [];
+    }
+    function isMuniAdmin()   { return isAuthed() && role() == 'municipal_admin'; }
+    function isSuperadmin()  { return isAuthed() && role() == 'provincial_superadmin'; }
+
+    match /report_media/{municipalityId}/{reportId}/{filename} {
+      allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
+                  || (isSuperadmin() && municipalityId in permittedMunis());
+      allow write: if false;
+    }
+
+    match /hazard_layers/{version}/{filename} {
+      allow read: if isSuperadmin();
+      allow write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
