@@ -1,128 +1,290 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import {
-  assertFails,
-  initializeTestEnvironment,
-  type RulesTestEnvironment,
-} from '@firebase/rules-unit-testing'
+import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
+import { collection, getDocs, addDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
+import { authed, createTestEnv } from '../helpers/rules-harness.js'
+import { seedActiveAccount, seedAgency, staffClaims, ts } from '../helpers/seed-factories.js'
 
-let testEnv: RulesTestEnvironment
+let env: Awaited<ReturnType<typeof createTestEnv>>
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'demo-public-collections',
-    firestore: {
-      rules: readFileSync(resolve(process.cwd(), '../infra/firebase/firestore.rules'), 'utf8'),
-    },
+  env = await createTestEnv('demo-phase-2-public')
+  await seedActiveAccount(env, { uid: 'citizen-1', role: 'citizen' })
+  await seedActiveAccount(env, {
+    uid: 'daet-admin',
+    role: 'municipal_admin',
+    municipalityId: 'daet',
   })
-
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore()
-
-    // Active superadmin
-    await db
-      .collection('active_accounts')
-      .doc('super-1')
-      .set({
-        uid: 'super-1',
-        role: 'provincial_superadmin',
-        accountStatus: 'active',
-        permittedMunicipalityIds: ['daet'],
-        mfaEnrolled: true,
-        lastClaimIssuedAt: 1713350400000,
-        updatedAt: 1713350400000,
-      })
-
-    // Active municipal_admin
-    await db.collection('active_accounts').doc('muni-admin-1').set({
-      uid: 'muni-admin-1',
-      role: 'municipal_admin',
-      accountStatus: 'active',
-      municipalityId: 'daet',
-      mfaEnrolled: true,
-      lastClaimIssuedAt: 1713350400000,
-      updatedAt: 1713350400000,
-    })
-
-    // Active citizen
-    await db.collection('active_accounts').doc('citizen-1').set({
-      uid: 'citizen-1',
-      role: 'citizen',
-      accountStatus: 'active',
-      mfaEnrolled: true,
-      lastClaimIssuedAt: 1713350400000,
-      updatedAt: 1713350400000,
-    })
-  })
+  await seedAgency(env, 'agency-1', { municipalityId: 'daet' })
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await env.cleanup()
 })
 
-// ================================================================
-// Default-deny guardrail — unmapped collections must reject all access.
-// This ensures no accidental collection leak if a new collection is
-// added to Firestore without a corresponding rules block.
-// ================================================================
-describe('default-deny guardrail — unmapped collections', () => {
-  it('unauthenticated write to unmapped collection fails', async () => {
-    const db = testEnv.unauthenticatedContext().firestore()
-    const { setDoc, doc } = await import('firebase/firestore')
-    await assertFails(setDoc(doc(db, 'not_a_collection/x'), { a: 1 }))
+describe('public collections rules', () => {
+  describe('agencies', () => {
+    it('any authed user can read agencies', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertSucceeds(getDocs(collection(db, 'agencies')))
+    })
+
+    it('agency writes are callable-only', async () => {
+      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
+      await assertFails(
+        addDoc(collection(db, 'agencies'), {
+          municipalityId: 'daet',
+          name: 'Test Agency',
+          createdAt: ts,
+        }),
+      )
+    })
   })
 
-  it('citizen write to unmapped collection fails', async () => {
-    const db = testEnv
-      .authenticatedContext('citizen-1', {
-        role: 'citizen',
-        accountStatus: 'active',
-      })
-      .firestore()
-    const { setDoc, doc } = await import('firebase/firestore')
-    await assertFails(setDoc(doc(db, 'not_a_collection/x'), { a: 1 }))
+  describe('emergencies', () => {
+    it('any authed user can read emergencies', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertSucceeds(getDocs(collection(db, 'emergencies')))
+    })
+
+    it('emergency writes are callable-only', async () => {
+      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
+      await assertFails(
+        addDoc(collection(db, 'emergencies'), {
+          municipalityId: 'daet',
+          declaredAt: ts,
+          schemaVersion: 1,
+        }),
+      )
+    })
   })
 
-  it('municipal_admin write to unmapped collection fails', async () => {
-    const db = testEnv
-      .authenticatedContext('muni-admin-1', {
-        role: 'municipal_admin',
-        accountStatus: 'active',
-        municipalityId: 'daet',
-      })
-      .firestore()
-    const { setDoc, doc } = await import('firebase/firestore')
-    await assertFails(setDoc(doc(db, 'not_a_collection/x'), { a: 1 }))
+  describe('audit_logs', () => {
+    it('audit logs are callable-only reads', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(getDocs(collection(db, 'audit_logs')))
+    })
+
+    it('audit logs are callable-only writes', async () => {
+      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
+      await assertFails(
+        addDoc(collection(db, 'audit_logs'), {
+          action: 'test',
+          actorUid: 'test',
+          timestamp: ts,
+        }),
+      )
+    })
   })
 
-  it('superadmin write to unmapped collection fails', async () => {
-    const db = testEnv
-      .authenticatedContext('super-1', {
+  describe('dead_letters', () => {
+    it('dead letters are callable-only reads', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(getDocs(collection(db, 'dead_letters')))
+    })
+
+    it('dead letters are callable-only writes', async () => {
+      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
+      await assertFails(
+        addDoc(collection(db, 'dead_letters'), {
+          originalCollection: 'test',
+          payload: {},
+          failedAt: ts,
+        }),
+      )
+    })
+  })
+
+  describe('moderation_incidents', () => {
+    it('moderation incidents are callable-only reads', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(getDocs(collection(db, 'moderation_incidents')))
+    })
+
+    it('moderation incidents are callable-only writes', async () => {
+      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
+      await assertFails(
+        addDoc(collection(db, 'moderation_incidents'), {
+          reportId: 'test',
+          reason: 'test',
+          createdAt: ts,
+        }),
+      )
+    })
+  })
+
+  describe('incident_response_events', () => {
+    it('incident response events are callable-only reads', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(getDocs(collection(db, 'incident_response_events')))
+    })
+
+    it('incident response events are callable-only writes', async () => {
+      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
+      await assertFails(
+        addDoc(collection(db, 'incident_response_events'), {
+          incidentId: 'test',
+          action: 'test',
+          timestamp: ts,
+        }),
+      )
+    })
+  })
+
+  describe('breakglass_events', () => {
+    it('breakglass events are callable-only reads', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(getDocs(collection(db, 'breakglass_events')))
+    })
+
+    it('breakglass events are callable-only writes', async () => {
+      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
+      await assertFails(
+        addDoc(collection(db, 'breakglass_events'), {
+          triggerReason: 'test',
+          triggeredBy: 'admin',
+          triggeredAt: ts,
+        }),
+      )
+    })
+  })
+
+  describe('rate_limits', () => {
+    it('rate limits are callable-only reads', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(getDocs(collection(db, 'rate_limits')))
+    })
+
+    it('rate limits are callable-only writes', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(
+        addDoc(collection(db, 'rate_limits'), {
+          key: 'test',
+          count: 1,
+          windowStart: ts,
+        }),
+      )
+    })
+  })
+})
+
+describe('privileged read tests for callable collections', () => {
+  beforeAll(async () => {
+    await seedActiveAccount(env, {
+      uid: 'super-1',
+      role: 'provincial_superadmin',
+      permittedMunicipalityIds: ['daet'],
+    })
+  })
+
+  it('superadmin with active privileged claim can read audit_logs', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'audit_logs')))
+  })
+
+  it('superadmin with active privileged claim can read dead_letters', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'dead_letters')))
+  })
+
+  it('superadmin with active privileged claim can read hazard_signals', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'hazard_signals')))
+  })
+
+  it('superadmin with active privileged claim can read moderation_incidents', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'moderation_incidents')))
+  })
+
+  it('superadmin with active privileged claim can read breakglass_events', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'breakglass_events')))
+  })
+
+  it('superadmin with active privileged claim can read sms_outbox', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'sms_outbox')))
+  })
+
+  it('superadmin with active privileged claim can read command_channel_threads', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'command_channel_threads')))
+  })
+
+  it('superadmin with active privileged claim can read command_channel_messages', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'command_channel_messages')))
+  })
+
+  it('superadmin with active privileged claim can read mass_alert_requests', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'mass_alert_requests')))
+  })
+
+  it('superadmin with active privileged claim can read shift_handoffs', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'shift_handoffs')))
+  })
+
+  it('superadmin without active privileged claim cannot read audit_logs', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({
         role: 'provincial_superadmin',
-        accountStatus: 'active',
         permittedMunicipalityIds: ['daet'],
-      })
-      .firestore()
-    const { setDoc, doc } = await import('firebase/firestore')
-    await assertFails(setDoc(doc(db, 'not_a_collection/x'), { a: 1 }))
+        accountStatus: 'suspended',
+      }),
+    )
+    await assertFails(getDocs(collection(db, 'audit_logs')))
   })
 
-  it('unauthenticated read from unmapped collection fails', async () => {
-    const db = testEnv.unauthenticatedContext().firestore()
-    const { getDoc, doc } = await import('firebase/firestore')
-    await assertFails(getDoc(doc(db, 'not_a_collection/x')))
-  })
-
-  it('any role read from unmapped collection fails', async () => {
-    const db = testEnv
-      .authenticatedContext('super-1', {
-        role: 'provincial_superadmin',
-        accountStatus: 'active',
-        permittedMunicipalityIds: ['daet'],
-      })
-      .firestore()
-    const { getDoc, doc } = await import('firebase/firestore')
-    await assertFails(getDoc(doc(db, 'not_a_collection/x')))
+  it('superadmin with active privileged claim can read incident_response_events', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(getDocs(collection(db, 'incident_response_events')))
   })
 })

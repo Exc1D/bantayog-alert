@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
-import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore'
+import { addDoc, collection, setDoc, doc, getDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv, unauthed } from '../helpers/rules-harness.js'
 import { seedActiveAccount, staffClaims, ts } from '../helpers/seed-factories.js'
@@ -26,7 +26,7 @@ describe('report_inbox rules', () => {
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertSucceeds(
       addDoc(collection(db, 'report_inbox'), {
-        reportersUid: 'citizen-1',
+        reporterUid: 'citizen-1',
         clientCreatedAt: ts,
         idempotencyKey: 'k1',
         payload: { reportType: 'flood', description: 'x', source: 'web' },
@@ -34,11 +34,11 @@ describe('report_inbox rules', () => {
     )
   })
 
-  it('rejects inbox writes where reportersUid does not match the caller', async () => {
+  it('rejects inbox writes where reporterUid does not match the caller', async () => {
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertFails(
       addDoc(collection(db, 'report_inbox'), {
-        reportersUid: 'citizen-2',
+        reporterUid: 'citizen-2',
         clientCreatedAt: ts,
         idempotencyKey: 'k2',
         payload: { reportType: 'flood', description: 'x' },
@@ -50,7 +50,7 @@ describe('report_inbox rules', () => {
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertFails(
       addDoc(collection(db, 'report_inbox'), {
-        reportersUid: 'citizen-1',
+        reporterUid: 'citizen-1',
         clientCreatedAt: ts,
         payload: { reportType: 'flood' }, // missing idempotencyKey
       }),
@@ -61,7 +61,7 @@ describe('report_inbox rules', () => {
     const db = authed(env, 'resp-1', staffClaims({ role: 'responder' }))
     await assertFails(
       addDoc(collection(db, 'report_inbox'), {
-        reportersUid: 'resp-1',
+        reporterUid: 'resp-1',
         clientCreatedAt: ts,
         idempotencyKey: 'k3',
         payload: { reportType: 'flood', source: 'responder_witness', description: 'x' },
@@ -73,7 +73,7 @@ describe('report_inbox rules', () => {
     const db = unauthed(env)
     await assertFails(
       addDoc(collection(db, 'report_inbox'), {
-        reportersUid: 'citizen-1',
+        reporterUid: 'citizen-1',
         clientCreatedAt: ts,
         idempotencyKey: 'k4',
         payload: { reportType: 'flood', description: 'x' },
@@ -83,9 +83,8 @@ describe('report_inbox rules', () => {
 
   it('rejects reads from any role including the creator', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument,@typescript-eslint/no-explicit-any
-      await setDoc(doc(ctx.firestore() as any, 'report_inbox', 'inbox-1'), {
-        reportersUid: 'citizen-1',
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'inbox-1'), {
+        reporterUid: 'citizen-1',
         clientCreatedAt: ts,
         idempotencyKey: 'k',
         payload: {},

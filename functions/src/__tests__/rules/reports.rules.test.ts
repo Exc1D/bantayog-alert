@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
-import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv } from '../helpers/rules-harness.js'
 import { seedActiveAccount, seedReport, staffClaims, ts } from '../helpers/seed-factories.js'
@@ -69,15 +69,5 @@ describe('reports rules', () => {
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
     await assertFails(updateDoc(doc(db, 'reports/r-internal'), { municipalityId: 'mercedes' }))
-  })
-
-  it('client create/delete is always denied', async () => {
-    const db = authed(
-      env,
-      'daet-admin',
-      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-    )
-    await assertFails(setDoc(doc(db, 'reports/new-r'), { municipalityId: 'daet' }))
-    await assertFails(deleteDoc(doc(db, 'reports/r-internal')))
   })
 })

@@ -93,3 +93,90 @@ export async function seedReport(
     })
   })
 }
+
+export async function seedAgency(
+  env: RulesTestEnvironment,
+  agencyId: string,
+  overrides: Partial<Record<string, unknown>> = {},
+): Promise<void> {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await setDoc(doc(db, 'agencies', agencyId), {
+      municipalityId: 'daet',
+      name: 'Test Agency',
+      agencyType: 'bfp',
+      contactNumber: '+1234567890',
+      isActive: true,
+      createdAt: ts,
+      schemaVersion: 1,
+      ...overrides,
+    })
+  })
+}
+
+export async function seedUser(
+  env: RulesTestEnvironment,
+  userId: string,
+  overrides: Partial<Record<string, unknown>> = {},
+): Promise<void> {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await setDoc(doc(db, 'users', userId), {
+      uid: userId,
+      municipalityId: 'daet',
+      name: 'Test User',
+      email: 'test@example.com',
+      phoneNumber: '+1234567890',
+      isActive: true,
+      createdAt: ts,
+      schemaVersion: 1,
+      ...overrides,
+    })
+  })
+}
+
+export async function seedResponder(
+  env: RulesTestEnvironment,
+  responderId: string,
+  overrides: Partial<Record<string, unknown>> = {},
+): Promise<void> {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await setDoc(doc(db, 'responders', responderId), {
+      uid: responderId,
+      municipalityId: 'daet',
+      name: 'Test Responder',
+      phoneNumber: '+1234567890',
+      isActive: true,
+      agencyId: null,
+      currentStatus: 'available',
+      lastLocationUpdate: ts,
+      createdAt: ts,
+      schemaVersion: 1,
+      ...overrides,
+    })
+  })
+}
+
+export async function seedDispatch(
+  env: RulesTestEnvironment,
+  dispatchId: string,
+  overrides: Partial<Record<string, unknown>> = {},
+): Promise<void> {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await setDoc(doc(db, 'dispatches', dispatchId), {
+      dispatchId,
+      municipalityId: 'daet',
+      reportId: 'report-1',
+      agencyId: 'agency-1',
+      priority: 'high',
+      status: 'pending',
+      assignedResponderUids: [],
+      createdAt: ts,
+      updatedAt: ts,
+      schemaVersion: 1,
+      ...overrides,
+    })
+  })
+}

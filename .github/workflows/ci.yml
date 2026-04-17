@@ -85,6 +85,20 @@ jobs:
           restore-keys: turbo-test-
       - run: pnpm test
 
+  rule-coverage:
+    name: Rule Coverage Check
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: corepack prepare pnpm@${PNPM_VERSION} --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/check-rule-coverage.ts
+
   build:
     name: Build
     needs: setup
