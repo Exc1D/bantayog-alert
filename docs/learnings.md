@@ -219,6 +219,14 @@ No headers, sections, or insights blocks when a sentence suffices.
 
 ### Vitest Workspace Path Resolution
 
+## CI: Prefer Corepack When action-setup v6 Is Suspect
+
+If GitHub Actions reports `ERR_PNPM_BROKEN_LOCKFILE` against a lockfile that is structurally clean locally and in git, do not keep iterating on `pnpm/action-setup` flags blindly.
+
+- Compare the failing runner path against a local control case with the same Node and pnpm versions
+- If `corepack prepare pnpm@<version> --activate` succeeds locally while `pnpm/action-setup@v6` fails in CI, treat the action path as the unstable variable
+- Removing `cache: pnpm` from `actions/setup-node` is acceptable when pnpm is installed after `setup-node`; correctness beats cache optimization
+
 **Problem:** Root `vitest.config.ts` used `defineWorkspace(['packages/*', 'apps/*'])`. When individual packages (e.g., `shared-data`) ran `vitest run --passWithNoTests` from their own directory, vitest walked up and found the root config. The workspace entries (`packages/shared-data`, etc.) were resolved relative to the CWD, not the config file's directory. Since `shared-data` has no `vitest.config.ts`, vitest tried to load `packages/shared-data/vitest.config.ts` (wrong path) and errored with "config must export or return an object."
 
 **Fix:** Two-part:
