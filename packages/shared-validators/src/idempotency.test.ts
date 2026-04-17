@@ -58,4 +58,10 @@ describe('canonicalPayloadHash', () => {
     expect(a).not.toBe(b)
     expect(b).toBe(c)
   })
+
+  it('throws TypeError for Map, Set, and RegExp', () => {
+    for (const exotic of [new Map(), new Set(), /pattern/] as const) {
+      expect(() => canonicalPayloadHash({ data: exotic })).toThrow(TypeError)
+    }
+  })
 })
