@@ -66,3 +66,44 @@
 ---
 
 See `docs/learnings.md` for detailed technical decisions and lessons learned.
+
+---
+
+## PR #27 Fixes — CI JDK + Code Review Findings (2026-04-17 — Complete)
+
+**Branch:** `fix/ci-firebase-rules-check-jdk21` → targets `feature/phase-0-foundation`
+**Status:** Fixes committed and pushed — CI passing on fix branch
+
+### Fixed Issues
+
+| ID             | Severity | Issue                                                              | Fix                                                                        |
+| -------------- | -------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| CI-JDK-21      | Critical | `rules-check` uses Java 17 but firebase-tools 15.15.0 requires 21+ | Changed `java-version: '17'` → `'21'` in `.github/workflows/ci.yml`        |
+| IAM-SCOPE      | Critical | CI SA granted `iam.serviceAccountUser` at project level            | Changed to `google_service_account_iam_member` scoped to functions SA only |
+| GEOHASH-VALID  | Major    | `asGeohash()` blindly cast any string without validation           | Added base32 regex validation (1-12 chars) before branding                 |
+| TF-PLACEHOLDER | Major    | `project_number` accepts bootstrap placeholder                     | Added two TF validation blocks: numeric-only and placeholder rejection     |
+| GIT-MD040      | Minor    | Commit examples code block missing language hint (markdownlint)    | Added `text` language hint to `.claude/rules/git-workflow.md`              |
+
+### Not Addressed (deferred to later phases)
+
+| ID                      | Severity | Issue                                         | Reason                                            |
+| ----------------------- | -------- | --------------------------------------------- | ------------------------------------------------- |
+| PWA-ICON                | Critical | Manifest references missing icon files        | PWA assets deferred to Phase 3/6                  |
+| PUBSUB-CMEK             | Major    | Dead-letter topics lack CMEK encryption       | KMS infrastructure not yet provisioned — Phase 2+ |
+| TF-README-SECRETS       | Major    | README shows inline secret values in examples | Documentation-only fix — separate PR              |
+| SHARED-TYPES-EXPORT     | Major    | Runtime exports not properly declared         | Follow-up issue needed                            |
+| ESLINT-NO-UNSAFE-ASSIGN | Minor    | TODO(phase-2) untracked — disabling rule      | Phase 2 tracking issue needed                     |
+| PWA-SOURCEMAP           | Major    | Vite sourcemap settings inconsistent          | Separate Vite audit task                          |
+| TF-MODULE-DESC          | Minor    | IAM module description overstated             | Fixed (included in this PR)                       |
+| SHARED-DATA-LICENSE     | Major    | Data sources pending licensing verification   | Phase 2 compliance tracking issue needed          |
+| ENV-TFVAR-PLACEHOLDER   | Major    | Same placeholder in dev/staging tfvars        | Already addressed by TF variable validation       |
+
+### Verification
+
+| Step | Check                           | Result  |
+| ---- | ------------------------------- | ------- |
+| 1    | `pnpm lint`                     | PASS    |
+| 2    | `pnpm typecheck`                | PASS    |
+| 3    | `terraform validate`            | PASS    |
+| 4    | `terraform fmt -check`          | PASS    |
+| 5    | GitHub Actions CI (rules-check) | Pending |
