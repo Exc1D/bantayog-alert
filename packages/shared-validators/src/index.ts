@@ -37,3 +37,41 @@ export { responderDocSchema } from './responders.js'
 export type { ResponderDoc } from './responders.js'
 export { userDocSchema } from './users.js'
 export type { UserDoc } from './users.js'
+export {
+  smsInboxDocSchema,
+  smsOutboxDocSchema,
+  smsSessionDocSchema,
+  smsProviderHealthDocSchema,
+  smsProviderIdSchema,
+} from './sms.js'
+export type { SmsInboxDoc, SmsOutboxDoc, SmsSessionDoc, SmsProviderHealthDoc } from './sms.js'
+export {
+  agencyAssistanceRequestDocSchema,
+  commandChannelThreadDocSchema,
+  commandChannelMessageDocSchema,
+  massAlertRequestDocSchema,
+  shiftHandoffDocSchema,
+  breakglassEventDocSchema,
+} from './coordination.js'
+export type {
+  AgencyAssistanceRequestDoc,
+  CommandChannelThreadDoc,
+  CommandChannelMessageDoc,
+  MassAlertRequestDoc,
+  ShiftHandoffDoc,
+  BreakglassEventDoc,
+} from './coordination.js'
+export { hazardZoneDocSchema, hazardZoneHistoryDocSchema, hazardSignalDocSchema } from './hazard.js'
+export type { HazardZoneDoc, HazardZoneHistoryDoc, HazardSignalDoc } from './hazard.js'
+export { incidentResponseEventSchema } from './incident-response.js'
+export type { IncidentResponseEvent } from './incident-response.js'
+export { moderationIncidentDocSchema } from './moderation.js'
+export type { ModerationIncidentDoc } from './moderation.js'
+export { rateLimitDocSchema } from './rate-limits.js'
+export type { RateLimitDoc } from './rate-limits.js'
+export { idempotencyKeyDocSchema } from './idempotency-keys.js'
+export type { IdempotencyKeyDoc } from './idempotency-keys.js'
+export { deadLetterDocSchema } from './dead-letters.js'
+export type { DeadLetterDoc } from './dead-letters.js'
+export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
+export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
