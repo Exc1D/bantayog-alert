@@ -7,7 +7,7 @@ export type UserRole =
   | 'agency_admin'
   | 'provincial_superadmin'
 
-export type AccountStatus = 'active' | 'suspended' | 'revoked' | 'pending_verification'
+export type AccountStatus = 'active' | 'suspended' | 'disabled'
 
 export type ReportStatus =
   | 'draft'
