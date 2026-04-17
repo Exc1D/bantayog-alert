@@ -25,25 +25,35 @@ beforeAll(async () => {
     const storage = context.storage()
 
     // report_media for daet municipality
-    await storage.ref('report_media/daet/report-1/photo.jpg').put('fake-image-data', {
-      contentType: 'image/jpeg',
-    })
-    await storage.ref('report_media/daet/report-2/photo.jpg').put('fake-image-data', {
-      contentType: 'image/jpeg',
-    })
+    await storage
+      .ref('report_media/daet/report-1/photo.jpg')
+      .put(new TextEncoder().encode('fake-image-data'), {
+        contentType: 'image/jpeg',
+      })
+    await storage
+      .ref('report_media/daet/report-2/photo.jpg')
+      .put(new TextEncoder().encode('fake-image-data'), {
+        contentType: 'image/jpeg',
+      })
 
     // report_media for mercedes municipality
-    await storage.ref('report_media/mercedes/report-3/photo.jpg').put('fake-image-data', {
-      contentType: 'image/jpeg',
-    })
+    await storage
+      .ref('report_media/mercedes/report-3/photo.jpg')
+      .put(new TextEncoder().encode('fake-image-data'), {
+        contentType: 'image/jpeg',
+      })
 
     // hazard_layers
-    await storage.ref('hazard_layers/v1/base.geojson').put('fake-geojson-data', {
-      contentType: 'application/geo+json',
-    })
-    await storage.ref('hazard_layers/v2/overlay.geojson').put('fake-geojson-data', {
-      contentType: 'application/geo+json',
-    })
+    await storage
+      .ref('hazard_layers/v1/base.geojson')
+      .put(new TextEncoder().encode('fake-geojson-data'), {
+        contentType: 'application/geo+json',
+      })
+    await storage
+      .ref('hazard_layers/v2/overlay.geojson')
+      .put(new TextEncoder().encode('fake-geojson-data'), {
+        contentType: 'application/geo+json',
+      })
   })
 })
 
@@ -87,13 +97,29 @@ describe('storage write — all roles blocked', () => {
     it(`write to report_media/${label} fails`, async () => {
       const storage = testEnv.authenticatedContext(uid, token).storage()
       const ref = storage.ref('report_media/daet/report-new/photo.jpg')
-      await assertFails(ref.put('new-data', { contentType: 'image/jpeg' }))
+      await assertFails(
+        (async () => {
+          const task = ref.put(new TextEncoder().encode('new-data'), { contentType: 'image/jpeg' })
+          await new Promise((resolve, reject) => {
+            task.then(resolve, reject)
+          })
+        })(),
+      )
     })
 
     it(`write to hazard_layers/${label} fails`, async () => {
       const storage = testEnv.authenticatedContext(uid, token).storage()
       const ref = storage.ref('hazard_layers/v99/new.geojson')
-      await assertFails(ref.put('new-data', { contentType: 'application/geo+json' }))
+      await assertFails(
+        (async () => {
+          const task = ref.put(new TextEncoder().encode('new-data'), {
+            contentType: 'application/geo+json',
+          })
+          await new Promise((resolve, reject) => {
+            task.then(resolve, reject)
+          })
+        })(),
+      )
     })
   })
 })

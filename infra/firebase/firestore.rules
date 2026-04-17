@@ -12,41 +12,167 @@ service cloud.firestore {
     // ================================================================
 
     function isAuthed() {
-      return request.auth != null;
+      return request.auth != null
+          && request.auth.token.accountStatus == 'active';
     }
-
-    function uid() {
-      return request.auth.uid;
-    }
-
-    function role() {
-      return request.auth.token.role;
-    }
-
+    function role()           { return request.auth.token.role; }
+    function uid()            { return request.auth.uid; }
+    function myMunicipality() { return request.auth.token.municipalityId; }
+    function myAgency()       { return request.auth.token.agencyId; }
     function permittedMunis() {
       return request.auth.token.permittedMunicipalityIds != null
-        ? request.auth.token.permittedMunicipalityIds
-        : [];
+        ? request.auth.token.permittedMunicipalityIds : [];
     }
-
-    function isSuperadmin() {
-      return isAuthed() && role() == 'provincial_superadmin';
-    }
-
+    function isCitizen()    { return isAuthed() && role() == 'citizen'; }
+    function isResponder()  { return isAuthed() && role() == 'responder'; }
+    function isMuniAdmin()  { return isAuthed() && role() == 'municipal_admin'; }
+    function isAgencyAdmin(){ return isAuthed() && role() == 'agency_admin'; }
+    function isSuperadmin() { return isAuthed() && role() == 'provincial_superadmin'; }
     function isActivePrivileged() {
       return exists(/databases/$(database)/documents/active_accounts/$(uid()))
-        && get(/databases/$(database)/documents/active_accounts/$(uid())).data.accountStatus == 'active';
+          && get(/databases/$(database)/documents/active_accounts/$(uid()))
+             .data.accountStatus == 'active';
+    }
+    function adminOf(muniId) {
+      return (isMuniAdmin() && myMunicipality() == muniId)
+          || (isSuperadmin() && muniId in permittedMunis());
+    }
+    function canReadReportDoc(data) {
+      return (data.visibilityClass == 'public_alertable' && isAuthed())
+          || adminOf(data.municipalityId);
+    }
+    function canReadEventDoc(data) {
+      return isActivePrivileged()
+          && (isMuniAdmin() || isSuperadmin()
+              || (isAgencyAdmin() && data.agencyId == myAgency()));
+    }
+    function validResponderTransition(from, to) {
+      return (from == 'accepted'     && to == 'acknowledged')
+          || (from == 'acknowledged' && to == 'in_progress')
+          || (from == 'in_progress'  && to == 'resolved')
+          || (from == 'pending'      && to == 'declined');
+    }
+
+    // ================================================================
+    // Phase 2: citizen inbox + triptych
+    // ================================================================
+
+    match /report_inbox/{inboxId} {
+      allow read: if false;
+      allow create: if isCitizen() && request.resource.data.reportersUid == uid();
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if canReadReportDoc(resource.data);
+      allow create: if false;
+      allow update: if adminOf(resource.data.municipalityId)
+                   && request.resource.data.diff(resource.data)
+                      .affectedKeys()
+                      .hasOnly(['status', 'updatedAt', 'verifiedAt', 'assignedAt', 'closedAt', 'rejectedAt', 'rejectedReason', 'barangayId', 'severity', 'mediaRefs', 'hazardTagList']);
+      allow delete: if false;
+
+      match /status_log/{e} {
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow write: if false;
+      }
+      match /media/{m} {
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow write: if false;
+      }
+      match /messages/{m} {
+        allow read: if isActivePrivileged()
+                    && (isMuniAdmin() || isSuperadmin()
+                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))));
+        allow write: if false;
+      }
+      match /field_notes/{n} {
+        allow read: if isActivePrivileged()
+                    && (isMuniAdmin() || isSuperadmin()
+                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))));
+        allow write: if false;
+      }
+    }
+
+    match /report_private/{r} {
+      allow read: if adminOf(resource.data.municipalityId);
+      allow write: if false;
+    }
+
+    match /report_ops/{r} {
+      allow read: if adminOf(resource.data.municipalityId)
+                  || (isAgencyAdmin() && myAgency() in resource.data.agencyIds);
+      allow write: if false;
+    }
+
+    match /report_sharing/{r} {
+      allow read: if adminOf(resource.data.ownerMunicipalityId)
+                  || (isSuperadmin() && resource.data.sharedWith.hasAny([myMunicipality()]));
+      allow write: if false;
+    }
+
+    match /report_contacts/{r} {
+      allow read: if adminOf(resource.data.municipalityId);
+      allow write: if false;
+    }
+
+    match /report_lookup/{publicRef} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    // ================================================================
+    // Phase 2: dispatches, responders, users
+    // ================================================================
+
+    // --- Dispatches ---
+    match /dispatches/{d} {
+      allow read: if isActivePrivileged() && (
+        (isResponder() && resource.data.responderId == uid())
+        || adminOf(resource.data.municipalityId)
+        || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
+      );
+      allow update: if isResponder()
+                    && isActivePrivileged()
+                    && resource.data.responderId == uid()
+                    && validResponderTransition(resource.data.status, request.resource.data.status)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status','statusUpdatedAt','acknowledgedAt',
+                                 'inProgressAt','resolvedAt','declineReason',
+                                 'resolutionSummary','proofPhotoUrl']);
+      allow create, delete: if false;
+    }
+
+    // --- Responders and Users ---
+    match /responders/{rUid} {
+      allow read: if isAuthed() && (
+        uid() == rUid
+        || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
+        || (isMuniAdmin() && myMunicipality() == resource.data.municipalityId)
+        || isSuperadmin()
+      );
+      allow update: if uid() == rUid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['availabilityStatus']);
+      allow create, delete: if false;
+    }
+
+    match /users/{uUid} {
+      allow read: if isAuthed() && (
+        uid() == uUid
+        || (isMuniAdmin() && myMunicipality() == resource.data.municipalityId)
+        || isSuperadmin()
+      );
+      allow update: if uid() == uUid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['displayName','phone','barangayId']);
+      allow create, delete: if false;
     }
 
     // ================================================================
     // Phase 1: identity spine — alerts, system_config, active_accounts,
     // claim_revocations, rate_limits.
     // ================================================================
-
-    match /alerts/{alertId} {
-      allow read: if isAuthed();
-      allow write: if false;
-    }
 
     match /system_config/{configId} {
       allow read: if isAuthed();
@@ -65,6 +191,65 @@ service cloud.firestore {
 
     match /rate_limits/{rateKey} {
       allow read, write: if false;
+    }
+
+    // ================================================================
+    // Phase 2: public collections, audit, event streams
+    // ================================================================
+
+    match /alerts/{a} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /emergencies/{e} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /agencies/{a} {
+      allow read: if isAuthed();
+      allow write: if isSuperadmin() && isActivePrivileged();
+    }
+
+    match /audit_logs/{l} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /dead_letters/{d} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /hazard_signals/{s} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /moderation_incidents/{m} {
+      allow read: if isActivePrivileged() && (isMuniAdmin() || isSuperadmin());
+      allow write: if false;
+    }
+
+    match /breakglass_events/{id} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /incident_response_events/{id} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /report_events/{eventId} {
+      allow read: if canReadEventDoc(resource.data);
+      allow write: if false;
+    }
+
+    match /dispatch_events/{eventId} {
+      allow read: if canReadEventDoc(resource.data);
+      allow write: if false;
     }
 
     // ================================================================
@@ -91,7 +276,71 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // Phase 2: coordination — agency_assistance_requests,
+    // command_channel_threads, command_channel_messages,
+    // mass_alert_requests, shift_handoffs.
+    // ================================================================
+
+    match /agency_assistance_requests/{requestId} {
+      allow read: if isActivePrivileged()
+                  && ((isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality)
+                      || (isAgencyAdmin() && myAgency() == resource.data.targetAgencyId)
+                      || isSuperadmin());
+      allow write: if false;
+    }
+
+    match /command_channel_threads/{threadId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
+                  && request.auth.uid in resource.data.participantUids;
+      allow write: if false;
+    }
+
+    match /command_channel_messages/{messageId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
+                  && request.auth.uid in get(/databases/$(database)/documents/command_channel_threads/$(resource.data.threadId)).data.participantUids;
+      allow write: if false;
+    }
+
+    match /mass_alert_requests/{requestId} {
+      allow read: if isActivePrivileged()
+                  && (isSuperadmin()
+                      || (isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality));
+      allow write: if false;
+    }
+
+    match /shift_handoffs/{handoffId} {
+      allow read: if isActivePrivileged()
+                  && (request.auth.uid == resource.data.fromUid
+                      || request.auth.uid == resource.data.toUid
+                      || isSuperadmin());
+      allow write: if false;
+    }
+
+    // ================================================================
+    // Phase 2: hazard zones — read-only reference and custom flood zones
+    // ================================================================
+
+    match /hazard_zones/{zoneId} {
+      allow read: if isActivePrivileged()
+                  && (isSuperadmin()
+                      || (resource.data.zoneType == 'reference' && isMuniAdmin())
+                      || (resource.data.zoneType == 'custom' && resource.data.scope == 'municipality' && isMuniAdmin() && resource.data.municipalityId == myMunicipality()));
+      allow write: if false;
+      match /history/{version} {
+        allow read: if isActivePrivileged()
+                    && (isSuperadmin()
+                        || (resource.data.zoneType == 'reference' && isMuniAdmin())
+                        || (resource.data.zoneType == 'custom' && resource.data.scope == 'municipality' && isMuniAdmin() && resource.data.municipalityId == myMunicipality()));
+        allow write: if false;
+      }
+    }
+
+    // ================================================================
     // Default deny — every collection not explicitly matched above.
+    // Phase 2+ will add specific match blocks for reports, report_private,
+    // report_ops, dispatches, responders, etc.
     // ================================================================
 
     match /{document=**} {

@@ -12,6 +12,10 @@
     "test:unit": "vitest run src/__tests__/phase1-auth.test.ts",
     "test:rules": "vitest run src/__tests__/firestore.rules.test.ts",
     "test:storage": "firebase emulators:exec --only storage 'npx vitest run src/__tests__/storage.rules.test.ts'",
+    "test:rules:firestore": "vitest run 'src/__tests__/rules/**/*.rules.test.ts'",
+    "test:rules:rtdb": "vitest run 'src/__tests__/rtdb.rules.test.ts'",
+    "test:rules:storage": "vitest run 'src/__tests__/storage.rules.test.ts'",
+    "test:rules:coverage": "tsx ../scripts/check-rule-coverage.ts",
     "serve": "pnpm build && firebase emulators:start --only functions",
     "shell": "pnpm build && firebase functions:shell",
     "deploy": "echo 'Use deploy:dev, deploy:staging, or deploy:prod' && exit 1",
@@ -32,6 +36,7 @@
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
     "@types/node": "^20.12.0",
+    "firebase": "^12.0.0",
     "firebase-functions-test": "^3.3.0",
     "tsx": "^4.21.0"
   }

@@ -9,28 +9,37 @@ export type UserRole =
 
 export type AccountStatus = 'active' | 'suspended' | 'disabled'
 
+// Report lifecycle — spec §5.3 (13 states + `draft_inbox` pre-materialisation).
 export type ReportStatus =
-  | 'draft'
+  | 'draft_inbox'
   | 'new'
   | 'awaiting_verify'
   | 'verified'
   | 'assigned'
-  | 'in_progress'
+  | 'acknowledged'
+  | 'en_route'
+  | 'on_scene'
   | 'resolved'
   | 'closed'
+  | 'reopened'
   | 'rejected'
-  | 'duplicate'
+  | 'cancelled'
+  | 'cancelled_false_report'
+  | 'merged_as_duplicate'
 
+// Dispatch lifecycle — spec §5.4.
 export type DispatchStatus =
   | 'pending'
   | 'accepted'
-  | 'declined'
   | 'acknowledged'
   | 'in_progress'
   | 'resolved'
+  | 'declined'
+  | 'timed_out'
   | 'cancelled'
+  | 'superseded'
 
-export type Severity = 'info' | 'low' | 'medium' | 'high' | 'critical'
+export type Severity = 'low' | 'medium' | 'high'
 
 export type ReportType =
   | 'flood'
@@ -38,22 +47,62 @@ export type ReportType =
   | 'earthquake'
   | 'typhoon'
   | 'landslide'
+  | 'storm_surge'
   | 'medical'
   | 'accident'
   | 'structural'
+  | 'security'
   | 'other'
 
-export type IncidentSource = 'web' | 'sms' | 'responder_witness' | 'manual_entry'
+export type IncidentSource = 'web' | 'sms' | 'responder_witness'
 
-export type VisibilityClass = 'public' | 'private' | 'restricted'
+// Spec §5.1 — `visibilityClass` gates public readability on `reports/{id}`.
+export type VisibilityClass = 'internal' | 'public_alertable'
 
-export type HazardType =
-  | 'flood_zone'
-  | 'landslide_zone'
-  | 'earthquake_fault'
-  | 'storm_surge'
-  | 'volcanic'
+// Spec §22.2 — hazard taxonomy. Bare literals, not `_zone` suffixed.
+export type HazardType = 'flood' | 'landslide' | 'storm_surge'
+
+export type HazardZoneType = 'reference' | 'custom'
+
+export type HazardZoneScope = 'provincial' | 'municipality'
 
 export type TelemetryStatus = 'online' | 'stale' | 'offline'
 
 export type ReporterRole = 'citizen' | 'responder'
+
+export type VisibilityScope = 'municipality' | 'shared' | 'provincial'
+
+export type MediaKind = 'image' | 'video' | 'audio'
+
+export type AssistanceRequestType = 'BFP' | 'PNP' | 'PCG' | 'RED_CROSS' | 'DPWH' | 'OTHER'
+
+export type AssistanceRequestStatus = 'pending' | 'accepted' | 'declined' | 'fulfilled' | 'expired'
+
+export type MassAlertStatus =
+  | 'queued'
+  | 'submitted_to_pdrrmo'
+  | 'forwarded_to_ndrrmc'
+  | 'acknowledged_by_ndrrmc'
+  | 'cancelled'
+
+export type SmsProviderId = 'semaphore' | 'globelabs'
+
+export type SmsDirection = 'outbound' | 'inbound'
+
+export type SmsOutboxStatus =
+  | 'queued'
+  | 'sent'
+  | 'delivered'
+  | 'failed'
+  | 'undelivered'
+  | 'abandoned'
+
+export type SmsPurpose =
+  | 'receipt_ack'
+  | 'status_update'
+  | 'verification'
+  | 'resolution'
+  | 'mass_alert'
+  | 'emergency_declaration'
+
+export type LocationPrecision = 'gps' | 'barangay' | 'municipality'
