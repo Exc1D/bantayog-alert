@@ -16,17 +16,21 @@ service firebase.storage {
     function isMuniAdmin()   { return isAuthed() && role() == 'municipal_admin'; }
     function isSuperadmin()  { return isAuthed() && role() == 'provincial_superadmin'; }
 
+    // Report media: path is report_media/{municipalityId}/{reportId}/{filename}
+    // Admin SDK uploads; admin-of-muni reads.
     match /report_media/{municipalityId}/{reportId}/{filename} {
       allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
                   || (isSuperadmin() && municipalityId in permittedMunis());
       allow write: if false;
     }
 
+    // Hazard reference layer payloads — superadmin-only read; Admin SDK writes.
     match /hazard_layers/{version}/{filename} {
       allow read: if isSuperadmin();
       allow write: if false;
     }
 
+    // Default deny anything else.
     match /{allPaths=**} {
       allow read, write: if false;
     }

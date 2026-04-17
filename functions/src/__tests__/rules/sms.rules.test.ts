@@ -1,134 +1,209 @@
-import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
 import { afterAll, beforeAll, describe, it } from 'vitest'
-import { authed, createTestEnv } from '../helpers/rules-harness.js'
-import { seedActiveAccount, staffClaims, ts } from '../helpers/seed-factories.js'
 
-let env: Awaited<ReturnType<typeof createTestEnv>>
+let testEnv: RulesTestEnvironment
 
 beforeAll(async () => {
-  env = await createTestEnv('demo-sms-rules')
-
-  // Active superadmin
-  await seedActiveAccount(env, {
-    uid: 'super-1',
-    role: 'provincial_superadmin',
-    permittedMunicipalityIds: ['daet'],
+  testEnv = await initializeTestEnvironment({
+    projectId: 'demo-sms-rules',
+    firestore: {
+      rules: readFileSync(resolve(process.cwd(), '../infra/firebase/firestore.rules'), 'utf8'),
+    },
   })
 
-  // Suspended superadmin (tests isActivePrivileged gate on sms_outbox read)
-  await seedActiveAccount(env, {
-    uid: 'super-suspended',
-    role: 'provincial_superadmin',
-    permittedMunicipalityIds: ['daet'],
-    accountStatus: 'suspended',
-  })
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
 
-  // Municipal admin (non-superadmin)
-  await seedActiveAccount(env, {
-    uid: 'daet-admin',
-    role: 'municipal_admin',
-    municipalityId: 'daet',
-  })
+    // Active superadmin with municipality permissions
+    await db
+      .collection('active_accounts')
+      .doc('super-1')
+      .set({
+        uid: 'super-1',
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+        mfaEnrolled: true,
+        lastClaimIssuedAt: 1713350400000,
+        updatedAt: 1713350400000,
+      })
 
-  // Seed SMS docs for read tests
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    const db = ctx.firestore()
-    await setDoc(doc(db, 'sms_inbox/inbox-1'), { body: 'test', from: '+63900', receivedAt: ts })
-    await setDoc(doc(db, 'sms_outbox/outbox-1'), { body: 'test', to: '+63900', sentAt: ts })
-    await setDoc(doc(db, 'sms_sessions/session-1'), { msisdnHash: 'hash', active: true })
-    await setDoc(doc(db, 'sms_provider_health/twilio'), { status: 'ok', checkedAt: ts })
+    // Suspended superadmin — accountStatus is 'suspended'
+    await db
+      .collection('active_accounts')
+      .doc('suspended-super-1')
+      .set({
+        uid: 'suspended-super-1',
+        role: 'provincial_superadmin',
+        accountStatus: 'suspended',
+        permittedMunicipalityIds: ['daet'],
+        mfaEnrolled: true,
+        lastClaimIssuedAt: 1713350400000,
+        updatedAt: 1713350400000,
+      })
+
+    // Seed a minimal sms_outbox doc so reads can be tested
+    await db.collection('sms_outbox').doc('msg-1').set({
+      to: '+639000000001',
+      body: 'Test message',
+      status: 'queued',
+      createdAt: 1713350400000,
+    })
+
+    // Seed a minimal sms_provider_health doc
+    await db.collection('sms_provider_health').doc('twilio-1').set({
+      provider: 'twilio',
+      status: 'ok',
+      checkedAt: 1713350400000,
+    })
   })
 })
 
 afterAll(async () => {
-  await env.cleanup()
+  await testEnv.cleanup()
 })
 
-describe('sms rules', () => {
-  // --- sms_inbox: all access denied ---
+describe('sms_inbox rules', () => {
+  it('blocks any client read from sms_inbox', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
 
-  it('any client read from sms_inbox fails', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertFails(getDoc(doc(db, 'sms_inbox/inbox-1')))
+    await assertFails(db.collection('sms_inbox').doc('any-msg').get())
   })
 
-  it('any client write to sms_inbox fails', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertFails(
-      setDoc(doc(db, 'sms_inbox/new-msg'), { body: 'test', from: '+63900', receivedAt: ts }),
-    )
+  it('blocks any client write to sms_inbox', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
+
+    await assertFails(db.collection('sms_inbox').doc('any-msg').set({ body: 'test' }))
+  })
+})
+
+describe('sms_outbox rules', () => {
+  it('allows superadmin to read sms_outbox', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
+
+    await assertSucceeds(db.collection('sms_outbox').doc('msg-1').get())
   })
 
-  // --- sms_outbox: read superadmin+active only, write always denied ---
+  it('blocks non-superadmin from reading sms_outbox', async () => {
+    const db = testEnv
+      .authenticatedContext('citizen-1', {
+        role: 'citizen',
+        accountStatus: 'active',
+      })
+      .firestore()
 
-  it('superadmin reads sms_outbox (positive)', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertSucceeds(getDoc(doc(db, 'sms_outbox/outbox-1')))
+    await assertFails(db.collection('sms_outbox').doc('msg-1').get())
   })
 
-  it('non-superadmin reads sms_outbox fails', async () => {
-    const db = authed(
-      env,
-      'daet-admin',
-      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-    )
-    await assertFails(getDoc(doc(db, 'sms_outbox/outbox-1')))
-  })
-
-  it('suspended superadmin reads sms_outbox fails', async () => {
-    const db = authed(
-      env,
-      'super-suspended',
-      staffClaims({
+  it('blocks suspended superadmin from reading sms_outbox', async () => {
+    const db = testEnv
+      .authenticatedContext('suspended-super-1', {
         role: 'provincial_superadmin',
         accountStatus: 'suspended',
-      }),
-    )
-    await assertFails(getDoc(doc(db, 'sms_outbox/outbox-1')))
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
+
+    await assertFails(db.collection('sms_outbox').doc('msg-1').get())
   })
 
-  it('any client write to sms_outbox fails', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertFails(
-      setDoc(doc(db, 'sms_outbox/new-msg'), { body: 'test', to: '+63900', sentAt: ts }),
-    )
+  it('blocks any client write to sms_outbox', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
+
+    await assertFails(db.collection('sms_outbox').doc('new-msg').set({ body: 'test' }))
+  })
+})
+
+describe('sms_sessions rules', () => {
+  it('blocks any client read from sms_sessions', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
+
+    await assertFails(db.collection('sms_sessions').doc('any-session').get())
   })
 
-  // --- sms_sessions: all access denied ---
+  it('blocks any client write to sms_sessions', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
 
-  it('any client read from sms_sessions fails', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertFails(getDoc(doc(db, 'sms_sessions/session-1')))
+    await assertFails(db.collection('sms_sessions').doc('new-session').set({ msisdnHash: 'hash' }))
+  })
+})
+
+describe('sms_provider_health rules', () => {
+  it('allows superadmin to read sms_provider_health', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
+
+    await assertSucceeds(db.collection('sms_provider_health').doc('twilio-1').get())
   })
 
-  it('any client write to sms_sessions fails', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertFails(
-      setDoc(doc(db, 'sms_sessions/new-session'), { msisdnHash: 'hash', active: true }),
-    )
+  it('blocks non-superadmin from reading sms_provider_health', async () => {
+    const db = testEnv
+      .authenticatedContext('citizen-1', {
+        role: 'citizen',
+        accountStatus: 'active',
+      })
+      .firestore()
+
+    await assertFails(db.collection('sms_provider_health').doc('twilio-1').get())
   })
 
-  // --- sms_provider_health: read superadmin only, write always denied ---
+  it('blocks any client write to sms_provider_health', async () => {
+    const db = testEnv
+      .authenticatedContext('super-1', {
+        role: 'provincial_superadmin',
+        accountStatus: 'active',
+        permittedMunicipalityIds: ['daet'],
+      })
+      .firestore()
 
-  it('superadmin reads sms_provider_health (positive)', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertSucceeds(getDoc(doc(db, 'sms_provider_health/twilio')))
-  })
-
-  it('non-superadmin reads sms_provider_health fails', async () => {
-    const db = authed(
-      env,
-      'daet-admin',
-      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-    )
-    await assertFails(getDoc(doc(db, 'sms_provider_health/twilio')))
-  })
-
-  it('any client write to sms_provider_health fails', async () => {
-    const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
-    await assertFails(
-      setDoc(doc(db, 'sms_provider_health/new-provider'), { status: 'ok', checkedAt: ts }),
-    )
+    await assertFails(db.collection('sms_provider_health').doc('twilio-1').set({ status: 'down' }))
   })
 })
