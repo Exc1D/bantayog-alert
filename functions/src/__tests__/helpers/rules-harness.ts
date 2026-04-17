@@ -22,9 +22,13 @@ export async function createTestEnv(projectId: string): Promise<RulesTestEnviron
 }
 
 export function authed(env: RulesTestEnvironment, uid: string, claims: Record<string, unknown>) {
-  return env.authenticatedContext(uid, claims).firestore()
+  return env.authenticatedContext(uid, claims).firestore() as unknown as ReturnType<
+    RulesTestEnvironment['authenticatedContext']
+  >['firestore']
 }
 
 export function unauthed(env: RulesTestEnvironment) {
-  return env.unauthenticatedContext().firestore()
+  return env.unauthenticatedContext().firestore() as unknown as ReturnType<
+    RulesTestEnvironment['unauthenticatedContext']
+  >['firestore']
 }

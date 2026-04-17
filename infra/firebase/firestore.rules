@@ -12,30 +12,108 @@ service cloud.firestore {
     // ================================================================
 
     function isAuthed() {
-      return request.auth != null;
+      return request.auth != null
+          && request.auth.token.accountStatus == 'active';
     }
-
-    function uid() {
-      return request.auth.uid;
-    }
-
-    function role() {
-      return request.auth.token.role;
-    }
-
+    function role()           { return request.auth.token.role; }
+    function uid()            { return request.auth.uid; }
+    function myMunicipality() { return request.auth.token.municipalityId; }
+    function myAgency()       { return request.auth.token.agencyId; }
     function permittedMunis() {
       return request.auth.token.permittedMunicipalityIds != null
-        ? request.auth.token.permittedMunicipalityIds
-        : [];
+        ? request.auth.token.permittedMunicipalityIds : [];
     }
-
-    function isSuperadmin() {
-      return isAuthed() && role() == 'provincial_superadmin';
-    }
-
+    function isCitizen()    { return isAuthed() && role() == 'citizen'; }
+    function isResponder()  { return isAuthed() && role() == 'responder'; }
+    function isMuniAdmin()  { return isAuthed() && role() == 'municipal_admin'; }
+    function isAgencyAdmin(){ return isAuthed() && role() == 'agency_admin'; }
+    function isSuperadmin() { return isAuthed() && role() == 'provincial_superadmin'; }
     function isActivePrivileged() {
       return exists(/databases/$(database)/documents/active_accounts/$(uid()))
-        && get(/databases/$(database)/documents/active_accounts/$(uid())).data.accountStatus == 'active';
+          && get(/databases/$(database)/documents/active_accounts/$(uid()))
+             .data.accountStatus == 'active';
+    }
+    function adminOf(muniId) {
+      return (isMuniAdmin() && myMunicipality() == muniId)
+          || (isSuperadmin() && muniId in permittedMunis());
+    }
+    function canReadReportDoc(data) {
+      return (data.visibilityClass == 'public_alertable' && isAuthed())
+          || adminOf(data.municipalityId);
+    }
+    function validResponderTransition(from, to) {
+      return (from == 'accepted'     && to == 'acknowledged')
+          || (from == 'acknowledged' && to == 'in_progress')
+          || (from == 'in_progress'  && to == 'resolved')
+          || (from == 'pending'      && to == 'declined');
+    }
+
+    // ================================================================
+    // Phase 2: citizen inbox + triptych
+    // ================================================================
+
+    match /report_inbox/{inboxId} {
+      allow read: if false;
+      allow create: if isCitizen() && request.resource.data.reportersUid == uid();
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if canReadReportDoc(resource.data);
+      allow create: if false;
+      allow update: if adminOf(resource.data.municipalityId)
+                   && request.resource.data.diff(resource.data)
+                      .affectedKeys()
+                      .hasOnly(['status', 'updatedAt', 'verifiedAt', 'assignedAt', 'closedAt', 'rejectedAt', 'rejectedReason', 'barangayId', 'severity', 'mediaRefs', 'hazardTagList']);
+      allow delete: if false;
+
+      match /status_log/{e} {
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow write: if false;
+      }
+      match /media/{m} {
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow write: if false;
+      }
+      match /messages/{m} {
+        allow read: if isActivePrivileged()
+                    && (isMuniAdmin() || isSuperadmin()
+                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId)_$(uid()))));
+        allow write: if false;
+      }
+      match /field_notes/{n} {
+        allow read: if isActivePrivileged()
+                    && (isMuniAdmin() || isSuperadmin()
+                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId)_$(uid()))));
+        allow write: if false;
+      }
+    }
+
+    match /report_private/{r} {
+      allow read: if adminOf(resource.data.municipalityId);
+      allow write: if false;
+    }
+
+    match /report_ops/{r} {
+      allow read: if adminOf(resource.data.municipalityId)
+                  || (isAgencyAdmin() && myAgency() in resource.data.agencyIds);
+      allow write: if false;
+    }
+
+    match /report_sharing/{r} {
+      allow read: if adminOf(resource.data.ownerMunicipalityId)
+                  || (isSuperadmin() && resource.data.sharedWith.hasAny([myMunicipality()]));
+      allow write: if false;
+    }
+
+    match /report_contacts/{r} {
+      allow read: if adminOf(resource.data.municipalityId);
+      allow write: if false;
+    }
+
+    match /report_lookup/{publicRef} {
+      allow read: if isAuthed();
+      allow write: if false;
     }
 
     // ================================================================
