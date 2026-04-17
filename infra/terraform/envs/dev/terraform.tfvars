@@ -1,0 +1,5 @@
+project_id     = "bantayog-alert-dev"
+project_number = "REPLACE_WITH_PROJECT_NUMBER_AT_BOOTSTRAP"
+env            = "dev"
+region         = "asia-southeast1"
+state_bucket   = "bantayog-tf-state-dev"
