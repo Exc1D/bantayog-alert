@@ -92,8 +92,6 @@ service cloud.firestore {
 
     // ================================================================
     // Default deny — every collection not explicitly matched above.
-    // Phase 2+ will add specific match blocks for reports, report_private,
-    // report_ops, dispatches, responders, etc.
     // ================================================================
 
     match /{document=**} {
