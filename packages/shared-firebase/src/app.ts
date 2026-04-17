@@ -14,6 +14,7 @@ export function createFirebaseWebApp(env: FirebaseWebEnv): FirebaseApp {
     appId: env.appId,
     messagingSenderId: env.messagingSenderId,
     storageBucket: env.storageBucket,
+    databaseURL: env.databaseURL,
   })
 }
 

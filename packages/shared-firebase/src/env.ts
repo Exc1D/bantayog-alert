@@ -7,6 +7,7 @@ export interface FirebaseWebEnv {
   appId: string
   messagingSenderId: string
   storageBucket: string
+  databaseURL: string
   appCheckSiteKey: string
 }
 
@@ -26,6 +27,7 @@ export function parseFirebaseWebEnv(source: Record<string, string | undefined>):
     appId: requireEnvVar(source, 'VITE_FIREBASE_APP_ID'),
     messagingSenderId: requireEnvVar(source, 'VITE_FIREBASE_MESSAGING_SENDER_ID'),
     storageBucket: requireEnvVar(source, 'VITE_FIREBASE_STORAGE_BUCKET'),
+    databaseURL: requireEnvVar(source, 'VITE_FIREBASE_DATABASE_URL'),
     appCheckSiteKey: requireEnvVar(source, 'VITE_FIREBASE_APP_CHECK_SITE_KEY'),
   }
 }
