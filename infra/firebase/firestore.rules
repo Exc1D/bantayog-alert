@@ -194,6 +194,74 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // Phase 2: public collections, audit, event streams
+    // ================================================================
+
+    match /alerts/{a} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /emergencies/{e} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /agencies/{a} {
+      allow read: if isAuthed();
+      allow write: if isSuperadmin() && isActivePrivileged();
+    }
+
+    match /system_config/{c} {
+      allow read: if isAuthed();
+      allow write: if isSuperadmin() && isActivePrivileged();
+    }
+
+    match /audit_logs/{l} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /dead_letters/{d} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /hazard_signals/{s} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /moderation_incidents/{m} {
+      allow read: if isActivePrivileged() && (isMuniAdmin() || isSuperadmin());
+      allow write: if false;
+    }
+
+    match /breakglass_events/{id} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /incident_response_events/{id} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /report_events/{eventId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isSuperadmin()
+                      || (isAgencyAdmin() && resource.data.agencyId == myAgency()));
+      allow write: if false;
+    }
+
+    match /dispatch_events/{eventId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isSuperadmin()
+                      || (isAgencyAdmin() && resource.data.agencyId == myAgency()));
+      allow write: if false;
+    }
+
+    // ================================================================
     // Default deny — every collection not explicitly matched above.
     // Phase 2+ will add specific match blocks for reports, report_private,
     // report_ops, dispatches, responders, etc.
