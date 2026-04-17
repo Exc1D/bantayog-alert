@@ -21,3 +21,25 @@ export const asBarangayId = (v: string): BarangayId => v as BarangayId
 export const asAlertId = (v: string): AlertId => v as AlertId
 export const asEmergencyId = (v: string): EmergencyId => v as EmergencyId
 export const asIncidentId = (v: string): IncidentId => v as IncidentId
+
+export type HazardZoneId = string & { readonly __brand: 'HazardZoneId' }
+export type HazardZoneVersion = number & { readonly __brand: 'HazardZoneVersion' }
+export type DispatchRequestId = string & { readonly __brand: 'DispatchRequestId' }
+export type CommandThreadId = string & { readonly __brand: 'CommandThreadId' }
+export type CommandMessageId = string & { readonly __brand: 'CommandMessageId' }
+export type ShiftHandoffId = string & { readonly __brand: 'ShiftHandoffId' }
+export type MassAlertRequestId = string & { readonly __brand: 'MassAlertRequestId' }
+export type MediaRef = string & { readonly __brand: 'MediaRef' }
+export type PublicTrackingRef = string & { readonly __brand: 'PublicTrackingRef' }
+export type IdempotencyKey = string & { readonly __brand: 'IdempotencyKey' }
+
+export const asHazardZoneId = (v: string): HazardZoneId => v as HazardZoneId
+export const asHazardZoneVersion = (v: number): HazardZoneVersion => v as HazardZoneVersion
+export const asDispatchRequestId = (v: string): DispatchRequestId => v as DispatchRequestId
+export const asCommandThreadId = (v: string): CommandThreadId => v as CommandThreadId
+export const asCommandMessageId = (v: string): CommandMessageId => v as CommandMessageId
+export const asShiftHandoffId = (v: string): ShiftHandoffId => v as ShiftHandoffId
+export const asMassAlertRequestId = (v: string): MassAlertRequestId => v as MassAlertRequestId
+export const asMediaRef = (v: string): MediaRef => v as MediaRef
+export const asPublicTrackingRef = (v: string): PublicTrackingRef => v as PublicTrackingRef
+export const asIdempotencyKey = (v: string): IdempotencyKey => v as IdempotencyKey
