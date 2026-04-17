@@ -252,3 +252,35 @@ Vitest auto-discovers `vitest.config.ts` but NOT `vitest.workspace.ts`. Use `vit
 ### Terraform: `google_project_iam_member` vs `google_service_account_iam_member`
 
 When a service account needs to impersonate another SA, always use `google_service_account_iam_member` scoped to the _specific_ target SA — not `google_project_iam_member` at project level. Project-level `roles/iam.serviceAccountUser` grants impersonation of _every_ SA in the project, violating least privilege. The `google_service_account_iam_member` resource requires `service_account_id = google_service_account.target.name` (not email) and grants impersonation rights on that specific SA only.
+
+---
+
+## Phase 2: Data Model and Security Rules
+
+### Firestore rules: `resource.data.__reportId` does not exist
+
+Firestore rules do not expose a synthetic `__reportId` on `resource.data`. Cross-document sharing checks (e.g., `canReadReportDoc` helper used for report subcollections) must be implemented per-collection using the document ID from the path, not a hypothetical field on `resource.data`. The helper `canReadReportDoc(data)` was kept narrow; sharing logic lives at each collection's `match` block.
+
+### Rule coverage checker regex must match at path segment boundaries
+
+The regex `['"\`]<collection>[/'\`"]` must only match `match /<collection>/` at the start of a path segment. If the collection name appears as a substring inside another path (e.g., `hazard_zones_history` containing `hazard_zones`), the checker produces false negatives. Use `match\s+/` prefix in the regex.
+
+### Subagent commit reports are unreliable — always verify with git log
+
+Subagent implementers sometimes report commits that don't exist in the actual git history (due to hook failures, revert operations, or self-review issues). Always run `git log --oneline -3` to confirm the actual commit state before proceeding to review. The file on disk is the only source of truth.
+
+### Firebase RTDB `.validate` rules require all children at once
+
+A `.validate` rule like `newData.hasChildren([...])` only checks that those keys exist — not their types or values. It does not cascade to nested validation. For required field validation, the rule checks presence only; type validation must be done in Cloud Functions or security rules with explicit field-by-field checks.
+
+### RTDB and Storage emulators need explicit initialization in test harness
+
+The `initializeTestEnvironment` from `@firebase/rules-unit-testing` accepts an options object with `firestore`, `database`, and `storage` entries. When testing only one emulator (e.g., RTDB), you can omit storage — but if `createTestEnv` is called with all three emulators configured and only one is running, tests hang. Use `initializeTestEnvironment` directly with only the emulators you need for the test file.
+
+### Every `strict()` Zod object rejects unknown keys — critical for rule alignment
+
+Firestore `diff(resource.data).affectedKeys().hasOnly([...])` at the rule layer rejects any unknown key the same way a strict Zod schema does. If the Zod schema allows extra keys but the rules don't, production writes will be denied. Always use `.strict()` on Zod schemas that map to Firestore documents.
+
+### `allow write: if false` at collection level overrides subcollection rules
+
+When a parent collection has `allow write: if false` and a nested subcollection is defined after it, the subcollection inherits the parent rule unless explicitly overridden. To give a subcollection write access while keeping the parent deny-all, define both explicitly. Note: this inheritance is per-Firestore-rule-file structure, not a general Firestore behavior.

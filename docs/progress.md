@@ -167,3 +167,40 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 - `pnpm typecheck` PASS
 - `pnpm test` PASS
 - `pnpm format:check` PASS
+
+---
+
+## Phase 2 Data Model and Security Rules Foundation (Complete)
+
+**Branch:** `feature/phase-2-data-model-rules`
+**Plan:** See `docs/superpowers/plans/2026-04-17-phase-2-data-model-security-rules.md`
+**Status:** All implementation tasks complete.
+
+### Implementation Summary (Tasks 7-18)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Task 7 | Dispatches, Users, Responders Firestore rules | ✅ |
+| Task 8 | Public, Audit, Event Collections rules | ✅ |
+| Task 9 | SMS Layer rules | ✅ |
+| Task 10 | Coordination Collections rules | ✅ |
+| Task 11 | Hazard Zones rules | ✅ |
+| Task 12 | Final Rules Cleanup + Default-Deny Audit | ✅ |
+| Task 13 | RTDB Rules + Tests | ✅ |
+| Task 14 | Storage Rules + Tests | ✅ |
+| Task 15 | Composite Indexes deployed (30 indexes) | ✅ |
+| Task 16 | Idempotency Guard Cloud Function helper | ✅ |
+| Task 17 | Rule Coverage CI Gate | ✅ |
+| Task 18 | Schema Migration Runbook | ✅ |
+
+### What was built
+
+- Full Zod schema coverage for every collection in Arch Spec §5.5
+- Reconciled enum literals (ReportStatus 15 states, VisibilityClass `internal`/`public_alertable`, HazardType bare literals)
+- Firestore rules for inbox, triptych, dispatches, users, responders, public collections, SMS, coordination, hazards, events
+- RTDB rules for responder_locations, responder_index, shared_projection
+- Storage rules locked to callable-only uploads with admin-read paths
+- 30 composite indexes in `firestore.indexes.json` per §5.9
+- Idempotency guard Cloud Function helper (`withIdempotency`) with payload-hash deduplication
+- CI rule-coverage gate (`scripts/check-rule-coverage.ts`)
+- Schema migration protocol runbook (`docs/runbooks/schema-migration.md`)
