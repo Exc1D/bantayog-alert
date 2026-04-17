@@ -3,8 +3,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { App } from './App.js'
 
-vi.mock('./useCitizenShell.js', () => ({
-  useCitizenShell: () => ({
+const { useCitizenShell } = vi.hoisted(() => {
+  const defaultShellState = {
     status: 'ready',
     authState: 'signed-in',
     appCheckState: 'active',
@@ -26,13 +26,19 @@ vi.mock('./useCitizenShell.js', () => ({
       },
     ],
     error: null,
-  }),
+  }
+  return {
+    useCitizenShell: vi.fn().mockReturnValue(defaultShellState),
+  }
+})
+
+vi.mock('./useCitizenShell.js', () => ({
+  useCitizenShell,
 }))
 
 describe('App', () => {
   it('renders auth status, app version, and the hello-world alert feed', () => {
     render(<App />)
-
     expect(screen.getByText('anon-123')).toBeInTheDocument()
     expect(screen.getByText('System online')).toBeInTheDocument()
     expect(screen.getByText('0.1.0')).toBeInTheDocument()
@@ -40,33 +46,29 @@ describe('App', () => {
   })
 
   it('renders error message when status is error', () => {
-    vi.mock('./useCitizenShell.js', () => ({
-      useCitizenShell: () => ({
-        status: 'error',
-        authState: 'signed-out',
-        appCheckState: 'failed',
-        user: null,
-        minAppVersion: null,
-        alerts: [],
-        error: 'Firebase initialization failed',
-      }),
-    }))
+    useCitizenShell.mockReturnValueOnce({
+      status: 'error',
+      authState: 'signed-out',
+      appCheckState: 'failed',
+      user: null,
+      minAppVersion: null,
+      alerts: [],
+      error: 'Firebase initialization failed',
+    })
     render(<App />)
     expect(screen.getByText('Firebase initialization failed')).toBeInTheDocument()
   })
 
   it('renders signed-out state correctly', () => {
-    vi.mock('./useCitizenShell.js', () => ({
-      useCitizenShell: () => ({
-        status: 'ready',
-        authState: 'signed-out',
-        appCheckState: 'pending',
-        user: null,
-        minAppVersion: null,
-        alerts: [],
-        error: null,
-      }),
-    }))
+    useCitizenShell.mockReturnValueOnce({
+      status: 'ready',
+      authState: 'signed-out',
+      appCheckState: 'pending',
+      user: null,
+      minAppVersion: null,
+      alerts: [],
+      error: null,
+    })
     render(<App />)
     expect(screen.getByText('signed-out')).toBeInTheDocument()
   })
