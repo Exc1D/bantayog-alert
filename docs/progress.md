@@ -1,5 +1,37 @@
 # Progress - 2026-04-17
 
+## Phase 1 Infrastructure and Identity Spine (In Progress)
+
+**Branch:** `feature/phase-1-identity-spine`
+**Plan:** See `docs/superpowers/specs/2026-04-17-phase-0-design.md`
+**Status:** Verification incomplete (see findings below)
+
+### Verification checklist
+
+| Step | Check                                                                                     | Result                                          |
+| ---- | ----------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 1    | `pnpm test`                                                                               | FAIL (citizen-pwa test setup issue — see Notes) |
+| 2    | `pnpm --filter @bantayog/functions test:unit`                                             | PASS                                            |
+| 3    | `firebase emulators:exec --only firestore "pnpm --filter @bantayog/functions test:rules"` | SKIP (emulator not available locally)           |
+| 4    | `pnpm lint && pnpm typecheck && pnpm build`                                               | PASS                                            |
+
+### Notes
+
+- **Step 1:** `apps/citizen-pwa/src/App.test.tsx` fails with `ReferenceError: expect is not defined` — the `@testing-library/jest-dom` import path is for Jest, not Vitest. The correct import in Vitest is `@testing-library/jest-dom/vitest`. This is a pre-existing setup issue in the Phase 1 shell.
+- **Step 2:** Phase 1 auth tests (4 tests) pass in `functions/src/__tests__/phase1-auth.test.ts`.
+- **Step 3:** Rules tests require Firebase emulator (`initializeTestEnvironment` requires emulator connection). Not available in local environment.
+- **Step 4:** 14 lint tasks, 14 typecheck tasks, and 10 build tasks all pass.
+- **Remediation:** Re-run full test suite until all pass; run Firestore rules tests against local emulator; obtain explicit staging approval before any prod deployment. For changes touching rules/auth/functions, deploy to dev emulator first, run full suite, and get staging sign-off.
+
+### What was built
+
+- Identity spine: `User` + `ResponderUser` documents, Firestore rules, claim issuance and revocation Cloud Functions
+- Phase 1 auth test coverage (`src/__tests__/phase1-auth.test.ts`)
+- Phase 1 Firestore rules test coverage (`src/__tests__/firestore.rules.test.ts`)
+- Bootstrap script for Phase 1 data (`scripts/bootstrap-phase1.ts`)
+
+---
+
 ## Phase 0 Foundation (Complete)
 
 **Branch:** `feature/phase-0-foundation`

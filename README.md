@@ -32,6 +32,25 @@ pnpm build       # Build all apps and packages
 pnpm emulators   # Start Firebase emulator suite
 ```
 
+## Citizen PWA env vars
+
+Set these in `apps/citizen-pwa/.env.local` for local development:
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_APP_CHECK_SITE_KEY`
+
+## Phase 1 verification
+
+- `pnpm test`
+- `pnpm --filter @bantayog/functions test:unit`
+- `pnpm --filter @bantayog/functions test:rules`
+- `pnpm lint && pnpm typecheck && pnpm build`
+
 ## Repository layout
 
 See `docs/superpowers/specs/2026-04-17-phase-0-design.md` §1 for the canonical layout.

@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bantayog/shared-types": "workspace:*"
+    "@bantayog/shared-types": "workspace:*",
+    "zod": "^4.3.6"
   }
 }
