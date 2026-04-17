@@ -57,6 +57,8 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@20.19.39)(happy-dom@15.11.7)
 
+  packages/shared-types: {}
+
 packages:
 
   '@ampproject/remapping@2.3.0':
