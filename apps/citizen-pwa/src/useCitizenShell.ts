@@ -50,10 +50,28 @@ export function useCitizenShell(): ShellState {
   useEffect(() => {
     unmountedRef.current = false
 
-    const env = parseFirebaseWebEnv(import.meta.env)
-    const app = createFirebaseWebApp(env)
-    const db = getFirebaseDb(app)
-    const auth = getFirebaseAuth(app)
+    let env
+    let app
+    let db
+    let auth
+
+    try {
+      env = parseFirebaseWebEnv(import.meta.env)
+      app = createFirebaseWebApp(env)
+      db = getFirebaseDb(app)
+      auth = getFirebaseAuth(app)
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!unmountedRef.current) {
+        setState({
+          ...initialState,
+          status: 'error',
+          appCheckState: 'failed',
+          error: error instanceof Error ? error.message : 'Firebase initialization failed',
+        })
+      }
+      return
+    }
 
     // Capture refs in local variables to avoid exhaustive-deps warning in cleanup
     const unmounted = unmountedRef
