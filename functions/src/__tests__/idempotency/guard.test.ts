@@ -49,7 +49,8 @@ describe('withIdempotency', () => {
   })
 
   it('runs the operation and writes the key on first call', async () => {
-    const op = vi.fn(() => ({ resultId: 'x1' }))
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const op = vi.fn(async () => ({ resultId: 'x1' }))
     const result = await withIdempotency(
       db,
       {
@@ -65,7 +66,8 @@ describe('withIdempotency', () => {
   })
 
   it('returns cached result on replay with matching payload hash', async () => {
-    const op = vi.fn(() => ({ resultId: 'x1' }))
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const op = vi.fn(async () => ({ resultId: 'x1' }))
     await withIdempotency(
       db,
       {
@@ -89,7 +91,8 @@ describe('withIdempotency', () => {
   })
 
   it('throws IdempotencyMismatchError on same key with different payload', async () => {
-    const op = vi.fn(() => ({ resultId: 'x1' }))
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const op = vi.fn(async () => ({ resultId: 'x1' }))
     await withIdempotency(
       db,
       {
