@@ -18,6 +18,7 @@ export default tseslint.config(
       '**/node_modules/**',
       'infra/terraform/**',
       '**/.firebase/**',
+      'functions/scripts/**',
     ],
   },
 
