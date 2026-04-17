@@ -41,21 +41,26 @@ Phase 3 is specified as one coherent design because the state machines, triptych
 
 ### 2.3 Deferred to later phases
 
-| Item                                                               | Owning phase | Why                                                 |
-| ------------------------------------------------------------------ | ------------ | --------------------------------------------------- |
-| Merge reports / duplicate clustering                               | 5            | Requires surge triage + duplicate detection surface |
-| Dispatch timeout sweep                                             | 5            | Requires severity-tuned defaults + agency override  |
-| Cancel-report and reopen-report callables                          | 5            | Separate admin workflow; out of thin-slice          |
-| Admin triage filters, sort, search, keyboard shortcuts, surge mode | 5            | Widening the slice                                  |
-| `submitResponderWitnessedReport` callable + UI                     | 6            | Responder feature, not loop                         |
-| Responder offline persistence, battery-aware telemetry, geofence   | 6            | Capacitor-native scope                              |
-| Citizen offline drafts, localForage, SMS status                    | 4            | SMS layer                                           |
-| SMS outbound on status changes                                     | 4            | SMS layer                                           |
-| Audit streaming to BigQuery                                        | 7            | Superadmin phase                                    |
-| NDRRMC escalation, break-glass, full MFA                           | 7            | Superadmin phase                                    |
-| Hazard zone auto-tag at ingest                                     | 10           | Hazard feature                                      |
-| k6 surge tests, circuit breakers, PAGASA signal ingest             | 8            | Surge readiness                                     |
-| Apple TestFlight / native Capacitor build                          | 6            | Native wrap                                         |
+| Item                                                               | Owning phase | Why                                                                                                                |
+| ------------------------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Merge reports / duplicate clustering                               | 5            | Requires surge triage + duplicate detection surface                                                                |
+| Dispatch timeout sweep                                             | 5            | Requires severity-tuned defaults + agency override                                                                 |
+| Cancel-report and reopen-report callables                          | 5            | Separate admin workflow; out of thin-slice                                                                         |
+| Admin triage filters, sort, search, keyboard shortcuts, surge mode | 5            | Widening the slice                                                                                                 |
+| Shift handoff (active-incident snapshot + receiving-admin ack)     | 5            | Coordination surface; needs multi-admin state and active-incident materializer                                     |
+| Admin-to-reporter in-report messaging                              | 4            | Citizen comms channel lives in SMS layer; in-app messaging piggybacks on SMS outbound                              |
+| Citizen status-change push notifications (FCM)                     | 4            | Bundled with SMS status updates; Phase 3 citizen path is pull-only via `requestLookup` — documented degraded UX    |
+| Responder field notes (free-text observations on a dispatch)       | 6            | Responder feature surface; requires note subcollection + moderation path                                           |
+| Responder location telemetry (own-agency full + cross-agency grid) | 6            | Requires Capacitor background location + RTDB projection pipeline; Phase 3 dispatch modal shows name + agency only |
+| `submitResponderWitnessedReport` callable + UI                     | 6            | Responder feature, not loop                                                                                        |
+| Responder offline persistence, battery-aware telemetry, geofence   | 6            | Capacitor-native scope                                                                                             |
+| Citizen offline drafts, localForage, SMS status                    | 4            | SMS layer                                                                                                          |
+| SMS outbound on status changes                                     | 4            | SMS layer                                                                                                          |
+| Audit streaming to BigQuery                                        | 7            | Superadmin phase                                                                                                   |
+| NDRRMC escalation, break-glass, full MFA                           | 7            | Superadmin phase                                                                                                   |
+| Hazard zone auto-tag at ingest                                     | 10           | Hazard feature                                                                                                     |
+| k6 surge tests, circuit breakers, PAGASA signal ingest             | 8            | Surge readiness                                                                                                    |
+| Apple TestFlight / native Capacitor build                          | 6            | Native wrap                                                                                                        |
 
 ### 2.4 Forward-compat posture
 
@@ -228,6 +233,17 @@ match /dispatches/{id} {
 
 The `DISPATCH_TRANSITIONS` object is inlined by codegen. Same mechanism for `REPORT_TRANSITIONS`.
 
+### 4.7 Phase 2 schema deltas required before 3a
+
+Small, targeted schema additions land in `packages/shared-validators` as the first commit of 3a (before any callable or trigger work):
+
+- `ReportSchema`: add `municipalityLabel: z.string().min(1).max(64)` — denormalized at materialization from the `municipalities` lookup. Rationale in §5.3 / §5.4; avoids per-lookup join on `requestLookup` and sidesteps exposing `municipalityId` semantics to non-admin callers.
+- `ReportSchema`: add `correlationId: z.string().uuid()` — per the denormalization decision in §9.1.
+- `ReportInboxSchema`: add `publicRef: z.string().regex(/^[a-z0-9]{8}$/)`, `secretHash: z.string().regex(/^[a-f0-9]{64}$/)`, `correlationId: z.string().uuid()`.
+- `MunicipalitySchema` (new if not already in Phase 2): `{ id, label, provinceId, centroid }`. Seeded once via bootstrap script for the 12 Camarines Norte municipalities.
+
+Each delta is a `.strict()` additive change; the Phase 2 rule-coverage gate re-runs as part of the 3a PR.
+
 ---
 
 ## 5. Data Flow Walkthrough
@@ -255,9 +271,9 @@ Tracing one happy-path report. This is the reference for reviewing rules, callab
 
 1. Zod validate against `ReportInboxSchema`. Invalid → write `moderation_incidents/{inboxId}`; do not materialize.
 2. Check `idempotency_keys/{key}` via Phase 2 helper. `ALREADY_SUCCESS` → noop. `ALREADY_PROCESSING` → abort (sweep will retry).
-3. Reverse-geocode coordinates to `municipalityId` and barangay. Failure (out of jurisdiction) → `moderation_incidents` with `reason: 'out_of_jurisdiction'`; do not materialize.
+3. Reverse-geocode coordinates to `municipalityId` and barangay. Failure (out of jurisdiction) → `moderation_incidents` with `reason: 'out_of_jurisdiction'`; do not materialize. Resolve `municipalityLabel` via an in-memory map keyed by `municipalityId` (loaded once per function instance from `municipalities` collection at cold start; 12 entries for Camarines Norte).
 4. Transaction (single Firestore transaction):
-   - Write `reports/{reportId}` with `status: 'new'`, `municipalityId`, `source`, `severityDerived`, `correlationId`, `createdAt`.
+   - Write `reports/{reportId}` with `status: 'new'`, `municipalityId`, `municipalityLabel` (denormalized from step 3), `source`, `severityDerived`, `correlationId`, `createdAt`.
    - Write `report_private/{reportId}` with `reporterUid`, `rawDescription`, `coordinatesPrecise`.
    - Write `report_ops/{reportId}` with `verifyQueuePriority`, `assignedMunicipalityAdmins: []`.
    - Append `report_events/{eventId}`: `{from: 'draft_inbox', to: 'new', actor: 'system:processInboxItem', at, correlationId}`.
@@ -272,7 +288,7 @@ Tracing one happy-path report. This is the reference for reviewing rules, callab
 1. Citizen enters `publicRef + secret` on the lookup screen.
 2. Client calls `requestLookup({publicRef, secret})`.
 3. Callable: hash `secret`, compare against `tokenHash`, rate-limit (per-publicRef primary: 10 per hour; per-IP fallback: 100 per hour).
-4. Returns sanitized `{status, lastStatusAt, municipalityLabel}`. No PII, no responder data.
+4. Returns sanitized `{status, lastStatusAt, municipalityLabel}` — `municipalityLabel` is read from the denormalized field on `reports` (see §5.3 step 3). No PII, no responder data.
 5. Rules deny direct client reads of `report_lookup`. Rules deny direct client reads of `reports/{id}` by non-admin roles.
 
 ### 5.5 Admin triage (3b)
@@ -288,7 +304,7 @@ Tracing one happy-path report. This is the reference for reviewing rules, callab
 ### 5.6 Admin dispatches (3b)
 
 1. Admin sees `status: 'verified'` → clicks **Dispatch**.
-2. Modal shows eligible responders (filtered by `municipalityId`, `isOnShift: true`) read from `responders` + RTDB minimal shift flag.
+2. Modal shows eligible responders (filtered by `municipalityId`, `isOnShift: true`) read from `responders` + RTDB minimal shift flag. **Phase 3 fidelity: name + agency only.** No map pin, no real-time location, no distance/ETA calculation. Responder location telemetry (own-agency full + cross-agency grid projection per Arch Spec §6) is deferred to Phase 6 when Capacitor background location lands.
 3. Admin selects a responder → `dispatchResponder({reportId, responderUid, idempotencyKey})`.
 4. Callable transaction: verify report `status == 'verified'`; verify responder eligible; create `dispatches/{dispatchId}` with `status: 'pending'`, `assignedTo: {uid, agencyId, municipalityId}`, `acknowledgementDeadlineAt` (severity-based defaults per Arch Spec §5.4); transition report to `assigned`; log both event streams.
 5. FCM fires in 3c; in 3b the responder sees the dispatch only via `onSnapshot`.
@@ -317,6 +333,10 @@ Each write fires `dispatchMirrorToReport` which appends `dispatch_events` and mi
 2. `closeReport({reportId, idempotencyKey})` transitions `resolved → closed`.
 3. Rule: post-`closed`, report `update` denied for Phase 3 (reopen is out of scope).
 4. SMS closure to reporter deferred to Phase 4.
+
+### 5.10 Citizen notification path in Phase 3 — pull only
+
+Explicit degraded UX: the citizen receives no proactive notification of status changes during Phase 3. After submission they see the receipt screen with `publicRef + secret`; to check status, they must return to the lookup screen and call `requestLookup` manually. Both push (FCM) and SMS status updates are deferred to Phase 4 and implemented together (see §2.3). Citizen PWA copy on the receipt screen calls this out: "We'll notify you when we can; for now, check back with your reference number."
 
 ---
 
