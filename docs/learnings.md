@@ -263,7 +263,7 @@ Firestore rules do not expose a synthetic `__reportId` on `resource.data`. Cross
 
 ### Rule coverage checker regex must match at path segment boundaries
 
-The regex `['"\`]<collection>[/'\`"]` must only match `match /<collection>/` at the start of a path segment. If the collection name appears as a substring inside another path (e.g., `hazard_zones_history` containing `hazard_zones`), the checker produces false negatives. Use `match\s+/` prefix in the regex.
+The regex `['"\`]<collection>[/'\`"]`must only match`match /<collection>/`at the start of a path segment. If the collection name appears as a substring inside another path (e.g.,`hazard_zones_history`containing`hazard_zones`), the checker produces false negatives. Use `match\s+/` prefix in the regex.
 
 ### Subagent commit reports are unreliable — always verify with git log
 

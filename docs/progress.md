@@ -178,20 +178,20 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 
 ### Implementation Summary (Tasks 7-18)
 
-| Task | Description | Status |
-|------|-------------|--------|
-| Task 7 | Dispatches, Users, Responders Firestore rules | ✅ |
-| Task 8 | Public, Audit, Event Collections rules | ✅ |
-| Task 9 | SMS Layer rules | ✅ |
-| Task 10 | Coordination Collections rules | ✅ |
-| Task 11 | Hazard Zones rules | ✅ |
-| Task 12 | Final Rules Cleanup + Default-Deny Audit | ✅ |
-| Task 13 | RTDB Rules + Tests | ✅ |
-| Task 14 | Storage Rules + Tests | ✅ |
-| Task 15 | Composite Indexes deployed (30 indexes) | ✅ |
-| Task 16 | Idempotency Guard Cloud Function helper | ✅ |
-| Task 17 | Rule Coverage CI Gate | ✅ |
-| Task 18 | Schema Migration Runbook | ✅ |
+| Task    | Description                                   | Status |
+| ------- | --------------------------------------------- | ------ |
+| Task 7  | Dispatches, Users, Responders Firestore rules | ✅     |
+| Task 8  | Public, Audit, Event Collections rules        | ✅     |
+| Task 9  | SMS Layer rules                               | ✅     |
+| Task 10 | Coordination Collections rules                | ✅     |
+| Task 11 | Hazard Zones rules                            | ✅     |
+| Task 12 | Final Rules Cleanup + Default-Deny Audit      | ✅     |
+| Task 13 | RTDB Rules + Tests                            | ✅     |
+| Task 14 | Storage Rules + Tests                         | ✅     |
+| Task 15 | Composite Indexes deployed (30 indexes)       | ✅     |
+| Task 16 | Idempotency Guard Cloud Function helper       | ✅     |
+| Task 17 | Rule Coverage CI Gate                         | ✅     |
+| Task 18 | Schema Migration Runbook                      | ✅     |
 
 ### What was built
 
