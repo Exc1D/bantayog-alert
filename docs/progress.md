@@ -32,4 +32,10 @@
 
 **2026-04-14:** QA Edge Case Scan — 5 parallel agents scanned codebase, identified 12 critical issues across security,
 
+### Phase 0 Foundation
+
+| Task | Description                                                   | Status                |
+| ---- | ------------------------------------------------------------- | --------------------- |
+| 21   | Terraform main.tf, outputs.tf, env configs, README, lock file | DONE — commit 14f38a4 |
+
 See `docs/learnings.md` for detailed technical decisions and lessons learned.
