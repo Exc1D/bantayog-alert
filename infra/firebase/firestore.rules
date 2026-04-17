@@ -83,13 +83,13 @@ service cloud.firestore {
       match /messages/{m} {
         allow read: if isActivePrivileged()
                     && (isMuniAdmin() || isSuperadmin()
-                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId)_$(uid()))));
+                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))));
         allow write: if false;
       }
       match /field_notes/{n} {
         allow read: if isActivePrivileged()
                     && (isMuniAdmin() || isSuperadmin()
-                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId)_$(uid()))));
+                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))));
         allow write: if false;
       }
     }
@@ -321,6 +321,25 @@ service cloud.firestore {
                       || request.auth.uid == resource.data.toUid
                       || isSuperadmin());
       allow write: if false;
+    }
+
+    // ================================================================
+    // Phase 2: hazard zones — read-only reference and custom flood zones
+    // ================================================================
+
+    match /hazard_zones/{zoneId} {
+      allow read: if isActivePrivileged()
+                  && (isSuperadmin()
+                      || (resource.data.zoneType == 'reference' && isMuniAdmin())
+                      || (resource.data.zoneType == 'custom' && resource.data.scope == 'municipality' && isMuniAdmin() && resource.data.municipalityId == myMunicipality()));
+      allow write: if false;
+      match /history/{version} {
+        allow read: if isActivePrivileged()
+                    && (isSuperadmin()
+                        || (resource.data.zoneType == 'reference' && isMuniAdmin())
+                        || (resource.data.zoneType == 'custom' && resource.data.scope == 'municipality' && isMuniAdmin() && resource.data.municipalityId == myMunicipality()));
+        allow write: if false;
+      }
     }
 
     // ================================================================
