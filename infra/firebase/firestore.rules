@@ -117,6 +117,54 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // Phase 2: dispatches, responders, users
+    // ================================================================
+
+    // --- Dispatches ---
+    match /dispatches/{d} {
+      allow read: if isActivePrivileged() && (
+        (isResponder() && resource.data.responderId == uid())
+        || adminOf(resource.data.municipalityId)
+        || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
+      );
+      allow update: if isResponder()
+                    && isActivePrivileged()
+                    && resource.data.responderId == uid()
+                    && validResponderTransition(resource.data.status, request.resource.data.status)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status','statusUpdatedAt','acknowledgedAt',
+                                 'inProgressAt','resolvedAt','declineReason',
+                                 'resolutionSummary','proofPhotoUrl']);
+      allow create, delete: if false;
+    }
+
+    // --- Responders and Users ---
+    match /responders/{rUid} {
+      allow read: if isAuthed() && (
+        uid() == rUid
+        || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
+        || (isMuniAdmin() && myMunicipality() == resource.data.municipalityId)
+        || isSuperadmin()
+      );
+      allow update: if uid() == rUid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['availabilityStatus']);
+      allow create, delete: if false;
+    }
+
+    match /users/{uUid} {
+      allow read: if isAuthed() && (
+        uid() == uUid
+        || (isMuniAdmin() && myMunicipality() == resource.data.municipalityId)
+        || isSuperadmin()
+      );
+      allow update: if uid() == uUid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['displayName','phone','barangayId']);
+      allow create, delete: if false;
+    }
+
+    // ================================================================
     // Phase 1: identity spine — alerts, system_config, active_accounts,
     // claim_revocations, rate_limits.
     // ================================================================
