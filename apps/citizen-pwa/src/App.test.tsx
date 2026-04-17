@@ -10,7 +10,12 @@ vi.mock('./useCitizenShell.js', () => ({
     authState: 'signed-in',
     appCheckState: 'active',
     user: { uid: 'anon-123' },
-    minAppVersion: { citizen: '0.1.0', admin: '0.1.0', responder: '0.1.0' },
+    minAppVersion: {
+      citizen: '0.1.0',
+      admin: '0.1.0',
+      responder: '0.1.0',
+      updatedAt: 1713350400000,
+    },
     alerts: [
       {
         title: 'System online',
