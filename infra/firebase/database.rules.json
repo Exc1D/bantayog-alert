@@ -1,6 +1,21 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false
+    "responder_locations": {
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && auth.token.role === 'responder' && auth.token.accountStatus === 'active' && newData.child('capturedAt').isNumber() && newData.child('capturedAt').val() <= now + 60000 && newData.child('capturedAt').val() >= now - 600000",
+        ".read": "auth != null && auth.token.accountStatus === 'active' && (auth.uid === $uid || auth.token.role === 'provincial_superadmin' || (auth.token.role === 'municipal_admin' && root.child('responder_index').child($uid).child('municipalityId').val() === auth.token.municipalityId) || (auth.token.role === 'agency_admin' && root.child('responder_index').child($uid).child('agencyId').val() === auth.token.agencyId))",
+        ".validate": "newData.hasChildren(['capturedAt', 'lat', 'lng', 'accuracy', 'batteryPct', 'appVersion', 'telemetryStatus'])"
+      }
+    },
+    "responder_index": {
+      ".read": false,
+      "$uid": { ".write": false }
+    },
+    "shared_projection": {
+      "$municipalityId": {
+        ".read": "auth != null && auth.token.accountStatus === 'active' && (auth.token.role === 'provincial_superadmin' || (auth.token.role === 'municipal_admin' && auth.token.municipalityId === $municipalityId) || auth.token.role === 'agency_admin')",
+        "$uid": { ".write": false }
+      }
+    }
   }
 }
