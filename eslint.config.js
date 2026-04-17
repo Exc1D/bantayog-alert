@@ -5,6 +5,9 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 import globals from 'globals'
 
+// tseslint.config is deprecated in favor of ESLint's defineConfig, but ESLint 9.39 does
+// not expose defineConfig as a named ESM export. Safe to disable until ESLint ships it.
+// eslint-disable-next-line @typescript-eslint/no-deprecated
 export default tseslint.config(
   {
     ignores: [
@@ -68,7 +71,8 @@ export default tseslint.config(
   {
     files: ['apps/**/*.{ts,tsx}'],
     plugins: { 'jsx-a11y': jsxA11y },
-    rules: { ...jsxA11y.configs.recommended.rules },
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    rules: jsxA11y.configs.recommended.rules,
   },
 
   // Node env — functions + shared-sms-parser + shared-validators
@@ -94,6 +98,7 @@ export default tseslint.config(
 
   // Config files themselves (this file + vite configs)
   {
+    ignores: ['vitest.config.ts'],
     files: ['**/*.config.{js,ts}', '**/*.config.cjs'],
     languageOptions: {
       globals: { ...globals.node },
