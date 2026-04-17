@@ -129,7 +129,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - run: pnpm install --frozen-lockfile
       - name: Validate Firestore rules load
         run: pnpm dlx firebase-tools emulators:exec --only firestore 'exit 0' --project demo-bantayog-alert
