@@ -1,0 +1,24 @@
+# Default owner
+*                                    @davidaviado
+
+# Security-surface files — extra scrutiny required
+/infra/firebase/firestore.rules      @davidaviado
+/infra/firebase/database.rules.json  @davidaviado
+/infra/firebase/storage.rules        @davidaviado
+/infra/firebase/firestore.indexes.json @davidaviado
+
+# Infrastructure
+/infra/terraform/                    @davidaviado
+
+# Cloud Functions — runs with elevated privileges
+/functions/                          @davidaviado
+
+# Shared packages — changes ripple to every app
+/packages/shared-validators/         @davidaviado
+/packages/shared-firebase/           @davidaviado
+/packages/shared-types/              @davidaviado
+
+# CI + tooling
+/.github/                            @davidaviado
+/eslint.config.js                    @davidaviado
+/tsconfig.base.json                  @davidaviado
