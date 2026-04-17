@@ -258,6 +258,29 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // Phase 2: SMS layer — sms_inbox, sms_outbox, sms_sessions,
+    // sms_provider_health.
+    // ================================================================
+
+    match /sms_inbox/{msgId} {
+      allow read, write: if false;
+    }
+
+    match /sms_outbox/{msgId} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /sms_sessions/{msisdnHash} {
+      allow read, write: if false;
+    }
+
+    match /sms_provider_health/{providerId} {
+      allow read: if isSuperadmin();
+      allow write: if false;
+    }
+
+    // ================================================================
     // Default deny — every collection not explicitly matched above.
     // Phase 2+ will add specific match blocks for reports, report_private,
     // report_ops, dispatches, responders, etc.
