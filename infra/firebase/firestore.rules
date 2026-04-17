@@ -281,6 +281,49 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // Phase 2: coordination — agency_assistance_requests,
+    // command_channel_threads, command_channel_messages,
+    // mass_alert_requests, shift_handoffs.
+    // ================================================================
+
+    match /agency_assistance_requests/{requestId} {
+      allow read: if isActivePrivileged()
+                  && ((isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality)
+                      || (isAgencyAdmin() && myAgency() == resource.data.targetAgencyId)
+                      || isSuperadmin());
+      allow write: if false;
+    }
+
+    match /command_channel_threads/{threadId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
+                  && request.auth.uid in resource.data.participantUids;
+      allow write: if false;
+    }
+
+    match /command_channel_messages/{messageId} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
+                  && request.auth.uid in get(/databases/$(database)/documents/command_channel_threads/$(resource.data.threadId)).data.participantUids;
+      allow write: if false;
+    }
+
+    match /mass_alert_requests/{requestId} {
+      allow read: if isActivePrivileged()
+                  && (isSuperadmin()
+                      || (isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality));
+      allow write: if false;
+    }
+
+    match /shift_handoffs/{handoffId} {
+      allow read: if isActivePrivileged()
+                  && (request.auth.uid == resource.data.fromUid
+                      || request.auth.uid == resource.data.toUid
+                      || isSuperadmin());
+      allow write: if false;
+    }
+
+    // ================================================================
     // Default deny — every collection not explicitly matched above.
     // Phase 2+ will add specific match blocks for reports, report_private,
     // report_ops, dispatches, responders, etc.
