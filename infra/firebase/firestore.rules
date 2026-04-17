@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================================================================
+    // Helper functions — names and role literals match spec §5.7 exactly.
+    //
+    // DO NOT ADD: `dispatcher`, `provincial_admin`, or platform-level
+    // `super_admin` — those roles do not exist in the spec's 5-role model.
+    // The dispatcher concept is folded into municipal_admin's duties.
+    // Platform and provincial superadmin are one unified role.
+    // ================================================================
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    // Phase 0 stub: always false until active_accounts/ lands in Phase 1.
+    // This is correct behavior — nobody is active-privileged yet.
+    // Phase 1 will fill the body to check exists() on active_accounts/{uid}.
+    function isActivePrivileged() {
+      return false;
+    }
+
+    function isCitizen()     { return isAuthed() && role() == 'citizen'; }
+    function isResponder()   { return isAuthed() && role() == 'responder'; }
+    function isMuniAdmin()   { return isAuthed() && role() == 'municipal_admin'; }
+    function isAgencyAdmin() { return isAuthed() && role() == 'agency_admin'; }
+    function isSuperadmin()  { return isAuthed() && role() == 'provincial_superadmin'; }
+
+    // ================================================================
+    // Default deny — every collection is explicitly locked.
+    // Phase 2+ will add specific `match` blocks for reports, report_private,
+    // report_ops, dispatches, responders, etc.
+    // ================================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

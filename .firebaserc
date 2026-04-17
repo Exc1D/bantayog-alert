@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "default": "bantayog-alert-dev",
+    "dev": "bantayog-alert-dev",
+    "staging": "bantayog-alert-staging",
+    "prod": "bantayog-alert"
+  },
+  "targets": {
+    "bantayog-alert-dev": {
+      "hosting": {
+        "citizen": ["bantayog-citizen-dev"],
+        "admin": ["bantayog-admin-dev"]
+      }
+    }
+  }
+}

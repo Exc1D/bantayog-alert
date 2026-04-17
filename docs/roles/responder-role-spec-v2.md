@@ -11,20 +11,20 @@
 
 ## Change Summary (v1.1 → v2.0)
 
-| # | What Changed | Why |
-|---|---|---|
-| 1 | Dispatch timeout is data-driven, not hardcoded | Arch §2.5: `acknowledgementDeadlineAt` set per-dispatch based on severity. High: 3 min, Medium: 5 min, Low: 10 min. Agency can override defaults. |
-| 2 | GPS retention changed from 24h to 90 days | Arch §2.4 / §7.2: post-incident review requires 90 days. Privacy notice must state this explicitly. |
-| 3 | GPS cadence is motion-driven, not flat 30s | Arch §2.4 / §8.2: hardware motion-activity driven. 10s moving, 30s walking, geofence+5min ping when still. Flat 30s burns battery in 3–4 hours. |
-| 4 | Dispatch state machine updated | Arch §7.2: `pending → acknowledged → en_route → on_scene → resolved`. Aligned to actual Firestore state labels. |
-| 5 | No Facebook Messenger integration | Arch §2.10 / §7.2: rejected — RA 10173 data residency, no SLA, no audit, unreliable in degraded networks. |
-| 6 | Verified Responder Report added | Arch §2.9: `submitResponderWitnessedReport` callable. Accelerated intake (skips `draft_inbox`), not a verification bypass. Rate-limited 10/24h. |
-| 7 | Location opt-out behavior clarified | Arch §7.2: opting out during active dispatch moves responder to `unavailable`. Admin must have telemetry on live dispatches. |
-| 8 | Re-auth interval is 12h, handled at app layer | Arch §2.10 / §7.2: session timeout means prompt-for-OTP, not hard token expiry. |
-| 9 | No responder-to-responder direct messaging | Arch §7.2: all comms through admin or command channel. Explicit architectural choice. |
-| 10 | Dispatch accept is server-authoritative | Arch §7.2: `acceptDispatch` callable resolves simultaneous-accept races server-side. |
-| 11 | Unable-to-complete workflow added | Arch §7.2: `markDispatchUnableToComplete` callable — no penalty, triggers reassignment, admin-reviewable. |
-| 12 | Shift handoff added | Arch §7.6: `initiateResponderHandoff` callable with active incident snapshot. |
+| #   | What Changed                                   | Why                                                                                                                                               |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Dispatch timeout is data-driven, not hardcoded | Arch §2.5: `acknowledgementDeadlineAt` set per-dispatch based on severity. High: 3 min, Medium: 5 min, Low: 10 min. Agency can override defaults. |
+| 2   | GPS retention changed from 24h to 90 days      | Arch §2.4 / §7.2: post-incident review requires 90 days. Privacy notice must state this explicitly.                                               |
+| 3   | GPS cadence is motion-driven, not flat 30s     | Arch §2.4 / §8.2: hardware motion-activity driven. 10s moving, 30s walking, geofence+5min ping when still. Flat 30s burns battery in 3–4 hours.   |
+| 4   | Dispatch state machine updated                 | Arch §7.2: `pending → acknowledged → en_route → on_scene → resolved`. Aligned to actual Firestore state labels.                                   |
+| 5   | No Facebook Messenger integration              | Arch §2.10 / §7.2: rejected — RA 10173 data residency, no SLA, no audit, unreliable in degraded networks.                                         |
+| 6   | Verified Responder Report added                | Arch §2.9: `submitResponderWitnessedReport` callable. Accelerated intake (skips `draft_inbox`), not a verification bypass. Rate-limited 10/24h.   |
+| 7   | Location opt-out behavior clarified            | Arch §7.2: opting out during active dispatch moves responder to `unavailable`. Admin must have telemetry on live dispatches.                      |
+| 8   | Re-auth interval is 12h, handled at app layer  | Arch §2.10 / §7.2: session timeout means prompt-for-OTP, not hard token expiry.                                                                   |
+| 9   | No responder-to-responder direct messaging     | Arch §7.2: all comms through admin or command channel. Explicit architectural choice.                                                             |
+| 10  | Dispatch accept is server-authoritative        | Arch §7.2: `acceptDispatch` callable resolves simultaneous-accept races server-side.                                                              |
+| 11  | Unable-to-complete workflow added              | Arch §7.2: `markDispatchUnableToComplete` callable — no penalty, triggers reassignment, admin-reviewable.                                         |
+| 12  | Shift handoff added                            | Arch §7.6: `initiateResponderHandoff` callable with active incident snapshot.                                                                     |
 
 ---
 
@@ -54,15 +54,15 @@ They are **managed staff accounts**, created and managed by Agency Admins. They 
 
 ### Responder Types (Specializations)
 
-| Type | Code | Role | Examples |
-|------|------|------|----------|
-| Police | POL | Law enforcement, crowd control | MDRRMO police unit, PNP |
-| Fire | FIR | Fire suppression, rescue | Local fire station, BFP |
-| Medical | MED | First aid, ambulance | Rural health unit, ambulance |
-| Engineering | ENG | Road clearance, structural damage | Municipal engineering, DPWH |
-| Search & Rescue | SAR | Missing persons, evacuation | Coast Guard, volunteer SAR |
-| Social Welfare | SW | Evacuation centers, relief | DSWD field team, MSWDO |
-| General | GEN | Multi-purpose response | MDRRMO general response team |
+| Type            | Code | Role                              | Examples                     |
+| --------------- | ---- | --------------------------------- | ---------------------------- |
+| Police          | POL  | Law enforcement, crowd control    | MDRRMO police unit, PNP      |
+| Fire            | FIR  | Fire suppression, rescue          | Local fire station, BFP      |
+| Medical         | MED  | First aid, ambulance              | Rural health unit, ambulance |
+| Engineering     | ENG  | Road clearance, structural damage | Municipal engineering, DPWH  |
+| Search & Rescue | SAR  | Missing persons, evacuation       | Coast Guard, volunteer SAR   |
+| Social Welfare  | SW   | Evacuation centers, relief        | DSWD field team, MSWDO       |
+| General         | GEN  | Multi-purpose response            | MDRRMO general response team |
 
 Individual responders may have additional specialization tags (e.g., "Swift Water Rescue", "Hazmat Certified") set by their Agency Admin in the roster.
 
@@ -95,57 +95,57 @@ Individual responders may have additional specialization tags (e.g., "Swift Wate
 
 ### 2.1 What Responders CAN Do
 
-| Action | Details |
-|--------|---------|
-| Receive dispatch notifications | FCM high-priority |
-| Accept dispatches | Via `acceptDispatch` callable (server-authoritative, race-safe) |
-| Decline dispatches | Direct write with mandatory reason |
-| View incident details | Full details of assigned incidents only |
-| Navigate to incident | Map + [Navigate] button (opens native maps app) |
-| Update dispatch status | `acknowledged → en_route → on_scene → resolved` (direct writes) |
-| Quick status toggles | One-tap updates; same transitions, faster UX |
-| Add field notes | Direct write to `reports/{id}/field_notes/{noteId}`, rule validates assignment |
-| Upload field photos | Signed URL via `requestUploadUrl` callable |
-| Message admin | Via `reports/{id}/messages` subcollection |
-| Call admin | One-tap `tel:` intent (opens phone dialer; no in-app calling) |
-| Activate SOS | `triggerSOS` callable — FCM + SMS to all admins in municipality/agency |
-| Request backup | `requestBackup` callable → routes to assigned municipal admin |
-| Request provincial escalation | `requestProvincialEscalation` callable → routes to superadmin |
-| Mark unable to complete | `markDispatchUnableToComplete` callable — no penalty, triggers reassignment |
-| Set availability | `available / unavailable / off_duty` — direct write with required reason |
-| View own performance metrics | Via TanStack Query callable |
-| Shift handoff | `initiateResponderHandoff` callable |
-| File Verified Responder Report | `submitResponderWitnessedReport` callable (§8) |
-| View other responders on same incident | Name and status only (not location) |
+| Action                                 | Details                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| Receive dispatch notifications         | FCM high-priority                                                              |
+| Accept dispatches                      | Via `acceptDispatch` callable (server-authoritative, race-safe)                |
+| Decline dispatches                     | Direct write with mandatory reason                                             |
+| View incident details                  | Full details of assigned incidents only                                        |
+| Navigate to incident                   | Map + [Navigate] button (opens native maps app)                                |
+| Update dispatch status                 | `acknowledged → en_route → on_scene → resolved` (direct writes)                |
+| Quick status toggles                   | One-tap updates; same transitions, faster UX                                   |
+| Add field notes                        | Direct write to `reports/{id}/field_notes/{noteId}`, rule validates assignment |
+| Upload field photos                    | Signed URL via `requestUploadUrl` callable                                     |
+| Message admin                          | Via `reports/{id}/messages` subcollection                                      |
+| Call admin                             | One-tap `tel:` intent (opens phone dialer; no in-app calling)                  |
+| Activate SOS                           | `triggerSOS` callable — FCM + SMS to all admins in municipality/agency         |
+| Request backup                         | `requestBackup` callable → routes to assigned municipal admin                  |
+| Request provincial escalation          | `requestProvincialEscalation` callable → routes to superadmin                  |
+| Mark unable to complete                | `markDispatchUnableToComplete` callable — no penalty, triggers reassignment    |
+| Set availability                       | `available / unavailable / off_duty` — direct write with required reason       |
+| View own performance metrics           | Via TanStack Query callable                                                    |
+| Shift handoff                          | `initiateResponderHandoff` callable                                            |
+| File Verified Responder Report         | `submitResponderWitnessedReport` callable (§8)                                 |
+| View other responders on same incident | Name and status only (not location)                                            |
 
 ### 2.2 What Responders CANNOT Do
 
-| Action | Why |
-|--------|-----|
-| Verify reports | Admin triage function (Arch §2.1) |
-| Classify incidents | Admin decision |
-| Dispatch responders | Admin coordination role |
-| See unassigned reports | Privacy + focus |
-| View reports in other municipalities | Jurisdiction boundary |
-| Access analytics | Admin/superadmin tool |
-| View citizen contact info | RA 10173 privacy |
-| Message other responders directly | No responder-to-responder messaging (Arch §7.2); comms through admin |
-| Use Facebook Messenger for incident comms | Rejected (Arch §7.2) |
+| Action                                    | Why                                                                  |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| Verify reports                            | Admin triage function (Arch §2.1)                                    |
+| Classify incidents                        | Admin decision                                                       |
+| Dispatch responders                       | Admin coordination role                                              |
+| See unassigned reports                    | Privacy + focus                                                      |
+| View reports in other municipalities      | Jurisdiction boundary                                                |
+| Access analytics                          | Admin/superadmin tool                                                |
+| View citizen contact info                 | RA 10173 privacy                                                     |
+| Message other responders directly         | No responder-to-responder messaging (Arch §7.2); comms through admin |
+| Use Facebook Messenger for incident comms | Rejected (Arch §7.2)                                                 |
 
 ### 2.3 Data Visibility Matrix
 
-| Data Type | Visibility |
-|-----------|------------|
-| Own active dispatch details | ✅ Full |
-| Unassigned reports | ❌ Hidden |
-| Reports in other municipalities | ❌ Hidden (except active mutual aid) |
-| Citizen contact info | ❌ Hidden |
-| Admin messages (own dispatch) | ✅ Visible |
-| Admin identity | ✅ Name + role (responders need to know who to call back — Arch §2.7) |
-| Other responders on same incident | ✅ Name and status only |
-| Other responders' own dispatches | ❌ Hidden |
-| Own performance metrics | ✅ Visible |
-| Analytics (municipal, agency) | ❌ Hidden |
+| Data Type                         | Visibility                                                            |
+| --------------------------------- | --------------------------------------------------------------------- |
+| Own active dispatch details       | ✅ Full                                                               |
+| Unassigned reports                | ❌ Hidden                                                             |
+| Reports in other municipalities   | ❌ Hidden (except active mutual aid)                                  |
+| Citizen contact info              | ❌ Hidden                                                             |
+| Admin messages (own dispatch)     | ✅ Visible                                                            |
+| Admin identity                    | ✅ Name + role (responders need to know who to call back — Arch §2.7) |
+| Other responders on same incident | ✅ Name and status only                                               |
+| Other responders' own dispatches  | ❌ Hidden                                                             |
+| Own performance metrics           | ✅ Visible                                                            |
+| Analytics (municipal, agency)     | ❌ Hidden                                                             |
 
 ---
 
@@ -196,6 +196,7 @@ Individual responders may have additional specialization tags (e.g., "Swift Wate
 **Reminder notification:** Fires at 60% of the deadline window (e.g., at 1m 48s remaining for a 3-minute High severity window).
 
 **Quick Status Toggles (active dispatches):**
+
 ```
 ┌─────────────────────────────────────────┐
 │  Quick Updates:                         │
@@ -205,6 +206,7 @@ Individual responders may have additional specialization tags (e.g., "Swift Wate
 ```
 
 **Empty State:**
+
 ```
 ✓ All Clear!
 No active dispatches.
@@ -258,6 +260,7 @@ Messages are per-incident (not per-contact). They become part of the permanent i
 ### 3.5 Tab 4: Profile
 
 **4a. Your Info:**
+
 ```
 👤 Officer Juan Dela Cruz
 🚒 Type: Fire Responder · Hazmat Certified
@@ -267,15 +270,18 @@ Messages are per-incident (not per-contact). They become part of the permanent i
 ```
 
 **4b. Availability Status:**
+
 ```
 🟢 Status: AVAILABLE for dispatch
 [Set Unavailable] [Go Off-Duty]
 ```
+
 Status changes require a reason. Setting `unavailable` or `off_duty` while on an active dispatch is blocked.
 
 **4c. Your Statistics:** See §10.
 
 **4d. Settings:**
+
 ```
 🔔 Notifications
   ☑ Push notifications
@@ -304,12 +310,14 @@ Status changes require a reason. Setting `unavailable` or `off_duty` while on an
 **Activation:** Hold for 3 seconds (prevents accidental trigger).
 
 **On activation:** `triggerSOS` callable fires:
+
 - FCM to all admins in responder's municipality and agency
 - SMS to same admins
 - Entry written to `breakglass_events`-equivalent audit log
 - Never silently fails (retries if network absent; logs retry state)
 
 **SOS screen:**
+
 ```
 ┌─────────────────────────────────────────┐
 │  🆘 SOS ACTIVATED                       │
@@ -333,6 +341,7 @@ Status changes require a reason. Setting `unavailable` or `off_duty` while on an
 Responders are not forced into dispatches. Every dispatch requires acceptance.
 
 **Dispatch notification contains:**
+
 - Incident type and severity
 - Location and approximate distance
 - Admin notes
@@ -341,6 +350,7 @@ Responders are not forced into dispatches. Every dispatch requires acceptance.
 **Accepting:** Calls `acceptDispatch` callable (server-authoritative). If two responders attempt to accept simultaneously, the server resolves the race — one succeeds, one receives "Dispatch already accepted."
 
 **Declining:** Direct write with mandatory reason:
+
 ```
 Decline Reason:
 ○ Already on another assignment
@@ -378,6 +388,7 @@ Declining has no penalty. Chronic patterns (admin-configurable threshold) are fl
 ```
 
 Alternative paths:
+
 - `pending → timed_out` (deadline elapsed — CF sweep)
 - `pending → cancelled` (admin cancels — cancelDispatch callable)
 - Any active state → `unable_to_complete` (responder — markDispatchUnableToComplete callable)
@@ -450,11 +461,11 @@ Notes: "Need boat team at bridge crossing..."
 
 ### 6.1 Availability Status
 
-| Status | Color | Meaning | Required Reason |
-|--------|-------|---------|----------------|
-| Available | 🟢 | Ready for dispatch | — |
-| Unavailable | 🟡 | Temporarily unable | Yes |
-| Off-Duty | 🔴 | Not working this shift | Yes |
+| Status      | Color | Meaning                | Required Reason |
+| ----------- | ----- | ---------------------- | --------------- |
+| Available   | 🟢    | Ready for dispatch     | —               |
+| Unavailable | 🟡    | Temporarily unable     | Yes             |
+| Off-Duty    | 🔴    | Not working this shift | Yes             |
 
 **Unavailable reasons:** On break, In meeting, On another call, Other.
 
@@ -468,13 +479,13 @@ GPS is **only active during assigned dispatch** (`acknowledged → en_route → 
 
 **Motion-driven sampling cadence (Arch §8.2):**
 
-| Hardware activity | GPS polling |
-|-------------------|-------------|
-| Running / In vehicle | Every 10s ± 2s |
-| Walking | Every 30s ± 5s |
-| Still + on active dispatch | Geofence-only + 5 min ping |
+| Hardware activity           | GPS polling                 |
+| --------------------------- | --------------------------- |
+| Running / In vehicle        | Every 10s ± 2s              |
+| Walking                     | Every 30s ± 5s              |
+| Still + on active dispatch  | Geofence-only + 5 min ping  |
 | Still + low battery (< 20%) | Geofence-only + 10 min ping |
-| No active dispatch | No tracking |
+| No active dispatch          | No tracking                 |
 
 **Why motion-driven?** A flat 30s cadence drains battery in 3–4 hours on a 12-hour shift. Hardware motion detection preserves battery while keeping location responsive when needed.
 
@@ -482,16 +493,17 @@ GPS is **only active during assigned dispatch** (`acknowledged → en_route → 
 
 **Freshness indicators visible to admin:**
 
-| Status | Definition |
-|--------|------------|
-| Live | Within 2× expected interval |
-| Degraded | Within 4× expected interval |
-| Stale | Beyond 4× expected interval |
-| Offline | No update for 5+ min on active dispatch |
+| Status   | Definition                              |
+| -------- | --------------------------------------- |
+| Live     | Within 2× expected interval             |
+| Degraded | Within 4× expected interval             |
+| Stale    | Beyond 4× expected interval             |
+| Offline  | No update for 5+ min on active dispatch |
 
 ### 6.3 Pre-Arrival Information
 
 When a dispatch is accepted, the responder sees a pre-arrival summary:
+
 - Incident type, severity, and admin notes
 - Citizen's initial description and photos (if any)
 - Recommended equipment checklist (based on incident type)
@@ -516,6 +528,7 @@ Opens native phone dialer with admin's number. Auto-logs: "Called admin at [time
 ### 7.3 No Facebook Messenger Integration
 
 Facebook Messenger integration is **permanently excluded** (Arch §7.2) due to:
+
 - RA 10173 data residency concerns (data leaves PH infrastructure)
 - No SLA during emergencies
 - No audit hook for incident records
@@ -622,6 +635,7 @@ Full list of past dispatches (all states). Tap any → full incident timeline, f
 **Surface:** Capacitor wrapper over React PWA — native iOS and Android apps.
 
 **Why Capacitor:**
+
 - Background location via native Capacitor plugin (not available in PWA)
 - Foreground service for persistent dispatch notifications
 - Hardware motion activity detection (for GPS cadence)
@@ -629,14 +643,14 @@ Full list of past dispatches (all states). Tap any → full incident timeline, f
 
 ### 11.2 State Ownership (Arch §9.3)
 
-| Data Category | Authority |
-|---|---|
-| Server documents (dispatches, reports, messages) | Firestore SDK |
-| UI state | Zustand |
-| Non-Firestore callables | TanStack Query |
-| Foreground service status | Capacitor Preferences |
-| Last known motion activity | Capacitor Preferences + in-memory |
-| GPS telemetry | Write-only to RTDB; no local persistence |
+| Data Category                                    | Authority                                |
+| ------------------------------------------------ | ---------------------------------------- |
+| Server documents (dispatches, reports, messages) | Firestore SDK                            |
+| UI state                                         | Zustand                                  |
+| Non-Firestore callables                          | TanStack Query                           |
+| Foreground service status                        | Capacitor Preferences                    |
+| Last known motion activity                       | Capacitor Preferences + in-memory        |
+| GPS telemetry                                    | Write-only to RTDB; no local persistence |
 
 **No offline write outbox.** Responder writes are single-actor sequential transitions on dispatches the responder owns. Firestore SDK handles reconnection correctly for this pattern.
 

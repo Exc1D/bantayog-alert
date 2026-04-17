@@ -11,18 +11,18 @@
 
 ## Change Summary (v1.0 → v2.0)
 
-| # | What Changed | Why |
-|---|---|---|
-| 1 | "Anonymous" replaced with "pseudonymous" throughout | Arch §2.3: absolute anonymity is unenforceable. Court orders, App Check, and Firebase logs retain signals. Citizens are pseudonymous, not anonymous. |
-| 2 | `trustScore` and "Auto-Verify" removed | Arch §2.2: RA 10173 profiling exposure. Replaced with factual indicators. |
-| 3 | Offline storage model rewritten | Arch §9.2: dual-write to localForage + Firestore SDK queue; IndexedDB alone is vulnerable to iOS eviction. |
-| 4 | Tracking reference model updated | Arch §7.1: client-side UUID until server confirmation, then human-readable reference swapped in. |
-| 5 | Report submission write path clarified | Arch §7.1: citizen writes to `report_inbox/{id}` (rate-limited, App Check required). CF materializes the rest. |
-| 6 | Edit/cancel permissions clarified | Arch §7.1: pseudonymous users can edit/cancel only before verification. Correction requests post-verification require admin approval. |
-| 7 | Privacy notice rewritten for accuracy | Arch §2.3: must state plainly what is retained (pseudonymous UID, optional contact, GPS, photos with EXIF stripped, IP short-term, msisdn hash if SMS). |
-| 8 | Rate limits defined | Arch §7.1: 3 reports/hour, 10/day per UID; soft limit → moderation queue, hard limit → error. |
-| 9 | Session upgrade flow clarified | Arch §7.1: pseudonymous session can be linked to registered account, preserving UID and report history. |
-| 10 | Permissions table updated | Pseudonymous users get edit/cancel parity with registered users before verification. |
+| #   | What Changed                                        | Why                                                                                                                                                     |
+| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Anonymous" replaced with "pseudonymous" throughout | Arch §2.3: absolute anonymity is unenforceable. Court orders, App Check, and Firebase logs retain signals. Citizens are pseudonymous, not anonymous.    |
+| 2   | `trustScore` and "Auto-Verify" removed              | Arch §2.2: RA 10173 profiling exposure. Replaced with factual indicators.                                                                               |
+| 3   | Offline storage model rewritten                     | Arch §9.2: dual-write to localForage + Firestore SDK queue; IndexedDB alone is vulnerable to iOS eviction.                                              |
+| 4   | Tracking reference model updated                    | Arch §7.1: client-side UUID until server confirmation, then human-readable reference swapped in.                                                        |
+| 5   | Report submission write path clarified              | Arch §7.1: citizen writes to `report_inbox/{id}` (rate-limited, App Check required). CF materializes the rest.                                          |
+| 6   | Edit/cancel permissions clarified                   | Arch §7.1: pseudonymous users can edit/cancel only before verification. Correction requests post-verification require admin approval.                   |
+| 7   | Privacy notice rewritten for accuracy               | Arch §2.3: must state plainly what is retained (pseudonymous UID, optional contact, GPS, photos with EXIF stripped, IP short-term, msisdn hash if SMS). |
+| 8   | Rate limits defined                                 | Arch §7.1: 3 reports/hour, 10/day per UID; soft limit → moderation queue, hard limit → error.                                                           |
+| 9   | Session upgrade flow clarified                      | Arch §7.1: pseudonymous session can be linked to registered account, preserving UID and report history.                                                 |
+| 10  | Permissions table updated                           | Pseudonymous users get edit/cancel parity with registered users before verification.                                                                    |
 
 ---
 
@@ -68,44 +68,44 @@ Citizens are the primary users of Bantayog Alert — residents of Camarines Nort
 
 ### 2.1 What Citizens CAN Do
 
-| Action | Pseudonymous | Registered | Notes |
-|--------|-------------|------------|-------|
-| Submit reports | ✅ | ✅ | Rate-limited: 3/hour, 10/day |
-| Upload photos | ✅ | ✅ | EXIF stripped server-side |
-| Provide GPS location | ✅ | ✅ | Auto-detected; municipality/barangay fallback |
-| View public map | ✅ | ✅ | Verified incidents, location blurred on public feed |
-| View public feed | ✅ | ✅ | Incident type, general area, status only |
-| Receive alerts | ✅ | ✅ | FCM push (registered) + SMS (if phone provided) |
-| Track own report | ✅ Via reference + secret | ✅ Full | Tracking ref generated client-side, swapped to readable ref on server confirmation |
-| Edit unverified reports | ✅ | ✅ | Before municipal admin verification only |
-| Cancel pending reports | ✅ | ✅ | Before verification only |
-| Request correction on verified reports | ✅ | ✅ | Admin approval required |
-| Upgrade session to registered account | ✅ | N/A | Preserves UID and report history |
+| Action                                 | Pseudonymous              | Registered | Notes                                                                              |
+| -------------------------------------- | ------------------------- | ---------- | ---------------------------------------------------------------------------------- |
+| Submit reports                         | ✅                        | ✅         | Rate-limited: 3/hour, 10/day                                                       |
+| Upload photos                          | ✅                        | ✅         | EXIF stripped server-side                                                          |
+| Provide GPS location                   | ✅                        | ✅         | Auto-detected; municipality/barangay fallback                                      |
+| View public map                        | ✅                        | ✅         | Verified incidents, location blurred on public feed                                |
+| View public feed                       | ✅                        | ✅         | Incident type, general area, status only                                           |
+| Receive alerts                         | ✅                        | ✅         | FCM push (registered) + SMS (if phone provided)                                    |
+| Track own report                       | ✅ Via reference + secret | ✅ Full    | Tracking ref generated client-side, swapped to readable ref on server confirmation |
+| Edit unverified reports                | ✅                        | ✅         | Before municipal admin verification only                                           |
+| Cancel pending reports                 | ✅                        | ✅         | Before verification only                                                           |
+| Request correction on verified reports | ✅                        | ✅         | Admin approval required                                                            |
+| Upgrade session to registered account  | ✅                        | N/A        | Preserves UID and report history                                                   |
 
 ### 2.2 What Citizens CANNOT Do
 
-| Action | Why |
-|--------|-----|
-| Verify reports | LGU triage function only (Arch §2.1) |
-| Classify incident type or severity | Admin decision based on broader context |
-| See other citizens' contact info | RA 10173 data privacy |
-| Access analytics | Admin/superadmin tool |
-| Dispatch responders | Admin coordination function |
-| Promote users | Superadmin only |
-| Delete verified reports | Data integrity — public record |
+| Action                                | Why                                                                |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| Verify reports                        | LGU triage function only (Arch §2.1)                               |
+| Classify incident type or severity    | Admin decision based on broader context                            |
+| See other citizens' contact info      | RA 10173 data privacy                                              |
+| Access analytics                      | Admin/superadmin tool                                              |
+| Dispatch responders                   | Admin coordination function                                        |
+| Promote users                         | Superadmin only                                                    |
+| Delete verified reports               | Data integrity — public record                                     |
 | See admin identity (individual names) | Institutional attribution only, enforced at data layer (Arch §2.7) |
 
 ### 2.3 Data Visibility Matrix
 
-| Data Type | Pseudonymous (own) | Registered (own) | Public Feed |
-|-----------|--------------------|------------------|-------------|
-| Report content | ✅ | ✅ | General area + type only |
-| Photos | ✅ | ✅ | After verification, no EXIF |
-| Exact location | ✅ | ✅ | Approximate only on public feed |
-| Contact info provided | ✅ | ✅ | ❌ Never public |
-| Report status | ✅ Via tracking ref | ✅ | Status label only |
-| Personal identity | ❌ | ✅ Own reports only | ❌ Never |
-| Admin identity | ❌ | ❌ | ❌ — Institutional label only ("Daet MDRRMO") |
+| Data Type             | Pseudonymous (own)  | Registered (own)    | Public Feed                                   |
+| --------------------- | ------------------- | ------------------- | --------------------------------------------- |
+| Report content        | ✅                  | ✅                  | General area + type only                      |
+| Photos                | ✅                  | ✅                  | After verification, no EXIF                   |
+| Exact location        | ✅                  | ✅                  | Approximate only on public feed               |
+| Contact info provided | ✅                  | ✅                  | ❌ Never public                               |
+| Report status         | ✅ Via tracking ref | ✅                  | Status label only                             |
+| Personal identity     | ❌                  | ✅ Own reports only | ❌ Never                                      |
+| Admin identity        | ❌                  | ❌                  | ❌ — Institutional label only ("Daet MDRRMO") |
 
 ---
 
@@ -131,6 +131,7 @@ Citizens are the primary users of Bantayog Alert — residents of Camarines Nort
 **Purpose:** Visual spatial awareness of verified incidents.
 
 **Features:**
+
 - Auto-locate user's position (with permission)
 - Pins showing verified incidents (minimum: verified state)
 - Color-coded severity:
@@ -142,6 +143,7 @@ Citizens are the primary users of Bantayog Alert — residents of Camarines Nort
 - Tap pin → summary popup
 
 **Popup Contents:**
+
 ```
 ┌─────────────────────────────────┐
 │ 🚨 Flood — High Severity        │
@@ -153,6 +155,7 @@ Citizens are the primary users of Bantayog Alert — residents of Camarines Nort
 ```
 
 **Incident Details View (Public):**
+
 - Incident type and severity
 - General location (no exact address on public-facing view)
 - Time reported
@@ -165,6 +168,7 @@ Citizens are the primary users of Bantayog Alert — residents of Camarines Nort
 **Purpose:** Chronological browsing of verified public incidents.
 
 **Layout:**
+
 ```
 ┌─────────────────────────────────────────┐
 │  ☰ Filters: Last 24h ▼                 │
@@ -209,6 +213,7 @@ See §5 (Report Submission Flow) for full UX.
 ```
 
 **Priority levels:**
+
 - 🔴 Emergency (Evacuate now) — push notification + persistent banner
 - 🟡 Warning (Prepare) — push notification
 - 🟢 Advisory (Informational) — in-app only unless push enabled
@@ -220,6 +225,7 @@ See §5 (Report Submission Flow) for full UX.
 ### 3.6 Tab 5: Profile (Account & Settings)
 
 **5a. Pseudonymous State (no account)**
+
 ```
 ┌─────────────────────────────────────────┐
 │  👤 Reporting without an account        │
@@ -231,6 +237,7 @@ See §5 (Report Submission Flow) for full UX.
 ```
 
 **5b. Registered State**
+
 ```
 ┌─────────────────────────────────────────┐
 │  👤 Juan Dela Cruz                      │
@@ -241,6 +248,7 @@ See §5 (Report Submission Flow) for full UX.
 ```
 
 **5c. My Reports (My Activity)**
+
 ```
 ┌─────────────────────────────────────────┐
 │  Your Reports (3)                       │
@@ -259,6 +267,7 @@ See §5 (Report Submission Flow) for full UX.
 **Note:** "Edit" and "Cancel" are available only while report status is `new` or `awaiting_verify`. After verification, these are replaced by [Request Correction] which routes to admin for approval.
 
 **5d. Settings**
+
 ```
 ┌─────────────────────────────────────────┐
 │  ⚙️ Settings                            │
@@ -290,6 +299,7 @@ See §5 (Report Submission Flow) for full UX.
 Citizens may submit reports without creating an account. This is the fastest path and is fully supported.
 
 **What "pseudonymous" means (must be stated in privacy notice):**
+
 - A pseudonymous UID is created automatically by Firebase Auth.
 - This UID can be linked to a registered account later, preserving all report history.
 - The system retains: pseudonymous UID, optional voluntary contact (stored in `report_contacts`, shown only to admins), GPS, photos (EXIF stripped), IP address (short-term, retained per Firebase logs), and msisdn hash if submitted via SMS.
@@ -297,6 +307,7 @@ Citizens may submit reports without creating an account. This is the fastest pat
 - This is clearly stated in the privacy notice. See §8.
 
 **Post-Submission Screen:**
+
 ```
 ┌─────────────────────────────────────────┐
 │  ✅ Report Submitted                    │
@@ -311,6 +322,7 @@ Citizens may submit reports without creating an account. This is the fastest pat
 ```
 
 **Tracking Reference Model:**
+
 1. On submit: client generates a UUID as temporary reference (shown instantly, even offline).
 2. On server confirmation: human-readable reference (e.g., `DAET-2026-0471`) is swapped in.
 3. Secret code is required to view own report details when not logged in.
@@ -321,10 +333,12 @@ Citizens may submit reports without creating an account. This is the fastest pat
 Prompted — never forced — after the citizen has acted. Accounts convert the pseudonymous session without losing report history.
 
 **When to prompt (one-time, dismissible):**
+
 - After first report is confirmed by server
 - After tapping "My Reports" for the first time
 
 **Registration Flow:**
+
 1. Enter phone number → OTP verification (required)
 2. Enter name (optional, used for profile display only)
 3. Enter email (optional, for recovery only)
@@ -335,10 +349,12 @@ Prompted — never forced — after the citizen has acted. Accounts convert the 
 ### 4.3 Report Tracking
 
 Citizens track their reports via:
+
 - **Registered account:** All reports visible in Profile → My Reports with live status.
 - **Pseudonymous:** Tracking reference + secret → status-tracking view. This view shows status, institutional attribution for any admin actions (e.g., "Verified by Daet MDRRMO at 3:05 PM"), and admin-initiated messages. It never exposes individual admin names.
 
 **Status progression visible to citizen:**
+
 ```
 Received → Under Review → Verified → Response Dispatched → Resolved
 ```
@@ -348,6 +364,7 @@ Admin-internal states (`new`, `awaiting_verify`, `verified`, `dispatched`, etc.)
 ### 4.4 Receiving Alerts
 
 Citizens receive official alerts via:
+
 - **FCM push** (registered users with push enabled)
 - **SMS** (if phone number provided and alerts opted in)
 
@@ -373,6 +390,7 @@ Citizens do not receive alerts from agency admins directly. All mass alerts orig
 ```
 
 **Incident Types:**
+
 - 🌊 Flood
 - ⛰️ Landslide
 - 🔥 Fire
@@ -385,6 +403,7 @@ Citizens do not receive alerts from agency admins directly. All mass alerts orig
 ### 5.2 Submission Steps
 
 **Step 1 — Location (Required)**
+
 ```
 📍 Detecting your location...
 [Use GPS Location] ✅ (auto-filled if permission granted)
@@ -395,10 +414,12 @@ Citizens do not receive alerts from agency admins directly. All mass alerts orig
 If GPS is unavailable or denied, municipality/barangay selection is the fallback. GPS is strongly encouraged — it significantly speeds up admin triage.
 
 **Step 2 — Description (Required)**
+
 - What happened? (text field, 500 char max)
 - How severe does it seem? (optional self-assessment; admin will set official severity)
 
 **Step 3 — Photo/Video (Optional but important)**
+
 ```
 [📷 Take Photo] [🖼️ Upload Photo]
 Up to 3 photos / 1 video
@@ -407,6 +428,7 @@ Photos will have location data (EXIF) removed for privacy.
 ```
 
 **Step 4 — Contact (Optional)**
+
 ```
 Would you like to be reachable for follow-up?
 (Admins may need to ask clarifying questions.)
@@ -419,6 +441,7 @@ Never shown publicly.
 ```
 
 **Step 5 — Review & Submit**
+
 ```
 ┌─────────────────────────────────────────┐
 │  Review Your Report                     │
@@ -435,14 +458,14 @@ Never shown publicly.
 
 ### 5.3 Submission State Machine (User-Visible)
 
-| State | Label Shown | What It Means |
-|-------|------------|---------------|
-| `draft` | Saving draft... | Auto-saved locally every 30s |
-| `queued` | Queued — will send when online | Written to offline queue |
-| `submitting` | Sending... | Network write in progress |
-| `server_confirmed` | ✅ Received | Server acknowledged |
-| `failed_retryable` | ⚠️ Sending failed — will retry | Queued for replay |
-| `failed_terminal` | ❌ Could not send | Contact via SMS or barangay |
+| State              | Label Shown                    | What It Means                |
+| ------------------ | ------------------------------ | ---------------------------- |
+| `draft`            | Saving draft...                | Auto-saved locally every 30s |
+| `queued`           | Queued — will send when online | Written to offline queue     |
+| `submitting`       | Sending...                     | Network write in progress    |
+| `server_confirmed` | ✅ Received                    | Server acknowledged          |
+| `failed_retryable` | ⚠️ Sending failed — will retry | Queued for replay            |
+| `failed_terminal`  | ❌ Could not send              | Contact via SMS or barangay  |
 
 The UI must never silently drop a failed submission. Each state is visually distinct.
 
@@ -459,10 +482,12 @@ The UI must never silently drop a failed submission. Each state is visually dist
 ### 6.1 Dual-Write Model (Arch §9.2)
 
 On submit while offline:
+
 1. Firestore SDK queues the write via IndexedDB persistence.
 2. localForage outbox also records the submission payload.
 
 On reconnect:
+
 - Firestore SDK replays the queued write.
 - localForage outbox detects successful write and clears.
 - If Firestore write failed (e.g., IndexedDB evicted by iOS), localForage replay handler retries.
@@ -495,11 +520,11 @@ On reconnect:
 
 ### 7.1 Rate Limits
 
-| Scope | Limit |
-|-------|-------|
-| Per pseudonymous UID | 3 reports / hour, 10 / day |
-| Per msisdn hash (SMS) | 3 reports / hour, 10 / day |
-| Per IP (fallback gate) | 20 reports / day |
+| Scope                  | Limit                      |
+| ---------------------- | -------------------------- |
+| Per pseudonymous UID   | 3 reports / hour, 10 / day |
+| Per msisdn hash (SMS)  | 3 reports / hour, 10 / day |
+| Per IP (fallback gate) | 20 reports / day           |
 
 **Soft limit:** Report routed to moderation queue elevation. Citizen is not notified (prevents gaming).
 
@@ -533,56 +558,60 @@ This replaces the v1.0 "absolute anonymity" claim, which was inaccurate and pote
 
 ### 8.2 What Is Retained for a Pseudonymous Report
 
-| Data | What Happens |
-|------|-------------|
-| Pseudonymous UID | Retained — links reports to session |
+| Data                           | What Happens                                        |
+| ------------------------------ | --------------------------------------------------- |
+| Pseudonymous UID               | Retained — links reports to session                 |
 | Optional contact (phone/email) | Stored in `report_contacts`, visible to admins only |
-| GPS coordinates | Retained with report |
-| Photos | Stored with EXIF stripped |
-| IP address | Short-term Firebase log retention |
-| Msisdn hash (SMS path) | Retained per SMS session |
+| GPS coordinates                | Retained with report                                |
+| Photos                         | Stored with EXIF stripped                           |
+| IP address                     | Short-term Firebase log retention                   |
+| Msisdn hash (SMS path)         | Retained per SMS session                            |
 
 ### 8.3 RA 10173 (Data Privacy Act) Compliance
 
 **Consent:**
+
 - Explicit checkbox on first use: "I have read and agree to the Terms of Use and Privacy Notice." Cannot proceed without.
 - Link to full plain-language privacy notice.
 
 **Right to Access:**
+
 - Profile → [Download My Data] generates a JSON export of all reports and account info.
 - Delivered within 24 hours to provided email.
 
 **Right to Deletion:**
+
 - Account deletion available in Settings.
 - Deletes: name, email, phone from account record.
 - Retains: verified reports (public record, anonymized to "Citizen").
 - Retains: unverified reports for 6 months (anonymized, analytics), then auto-deleted.
 
 **Breach Notification:**
+
 - If a breach is detected: affected users notified within 72 hours via email and push notification.
 - Notification includes: what data was affected, what happened, and remediation steps.
 
 ### 8.4 Data Retention Policy
 
-| Data Type | Retention |
-|-----------|-----------|
-| Pseudonymous reports | 1 year |
-| Registered user account data | Until deletion request |
-| Verified reports | Indefinite (public record) |
-| Unverified reports | 6 months, then auto-deleted |
-| Photos | Same as parent report |
-| Contact info in `report_contacts` | Same as parent report |
-| IP address logs | Short-term (Firebase default) |
-| Responder GPS telemetry | Not applicable to citizens |
+| Data Type                         | Retention                     |
+| --------------------------------- | ----------------------------- |
+| Pseudonymous reports              | 1 year                        |
+| Registered user account data      | Until deletion request        |
+| Verified reports                  | Indefinite (public record)    |
+| Unverified reports                | 6 months, then auto-deleted   |
+| Photos                            | Same as parent report         |
+| Contact info in `report_contacts` | Same as parent report         |
+| IP address logs                   | Short-term (Firebase default) |
+| Responder GPS telemetry           | Not applicable to citizens    |
 
 ### 8.5 Contact Info Visibility
 
-| Viewer | Can See Contact? |
-|--------|-----------------|
+| Viewer                    | Can See Contact?       |
+| ------------------------- | ---------------------- |
 | Municipal / Agency Admins | ✅ Yes (for follow-up) |
-| Responders | ❌ No (privacy) |
-| Other citizens | ❌ No |
-| Public feed | ❌ No |
+| Responders                | ❌ No (privacy)        |
+| Other citizens            | ❌ No                  |
+| Public feed               | ❌ No                  |
 
 ---
 
@@ -591,11 +620,13 @@ This replaces the v1.0 "absolute anonymity" claim, which was inaccurate and pote
 ### 9.1 Platform
 
 **Surface:** Progressive Web App (PWA)
+
 - iOS Safari 14+ (primary mobile target)
 - Android Chrome 90+
 - Firefox 88+, Edge 90+
 
 **Why PWA:**
+
 - No app store approval needed
 - Works on all devices
 - Offline capability via service workers
@@ -619,13 +650,13 @@ This replaces the v1.0 "absolute anonymity" claim, which was inaccurate and pote
 
 ### 9.3 Offline Storage Model (Arch §9.2)
 
-| Data Category | Storage Authority |
-|---|---|
-| Server documents (reports, alerts) | Firestore SDK (IndexedDB persistence) |
-| Drafts + queued submissions | localForage + Firestore SDK queue (dual-write) |
-| Tracking secrets | localForage (survives app restart) |
-| UI state (modal, form field, tab) | Zustand (in-memory only) |
-| Cached feed / map tiles | Service worker cache (24h) |
+| Data Category                      | Storage Authority                              |
+| ---------------------------------- | ---------------------------------------------- |
+| Server documents (reports, alerts) | Firestore SDK (IndexedDB persistence)          |
+| Drafts + queued submissions        | localForage + Firestore SDK queue (dual-write) |
+| Tracking secrets                   | localForage (survives app restart)             |
+| UI state (modal, form field, tab)  | Zustand (in-memory only)                       |
+| Cached feed / map tiles            | Service worker cache (24h)                     |
 
 ### 9.4 State Management
 
@@ -656,13 +687,13 @@ Reconciliation sweep runs every 5 minutes for any unprocessed inbox items.
 
 ### 9.7 Performance Targets
 
-| Metric | Target |
-|--------|--------|
-| First Contentful Paint | < 2s |
-| Time to Interactive | < 5s |
-| Bundle size | < 500KB |
-| Photo upload | < 30s |
-| Report submission (online) | < 10s |
+| Metric                     | Target  |
+| -------------------------- | ------- |
+| First Contentful Paint     | < 2s    |
+| Time to Interactive        | < 5s    |
+| Bundle size                | < 500KB |
+| Photo upload               | < 30s   |
+| Report submission (online) | < 10s   |
 
 ### 9.8 Accessibility (WCAG 2.1 AA)
 

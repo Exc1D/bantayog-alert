@@ -11,21 +11,21 @@
 
 ## Change Summary (v1.0 → v2.0)
 
-| # | What Changed | Why |
-|---|---|---|
-| 1 | `trustScore` and "Auto-Verify" removed | Arch §2.2: RA 10173 profiling exposure. Replaced by factual indicators: `hasPhotoAndGPS`, `source`, `reporterType` (registered / pseudonymous / sms). |
-| 2 | Admin identity model corrected | Arch §2.7: admin names are hidden from citizens and public feed at the **data layer** (CF projection strips `actorId`). Citizens see "Daet MDRRMO". Responders on the same incident see admin's display name + role. |
-| 3 | Mass alert routing enforced | Arch §2.6 / §7.3: a **Reach Plan preview** is shown before send. If SMS recipients > 5,000 OR multi-municipality, the UI routes the request as an NDRRMC Escalation, not a direct send. |
-| 4 | Agency assistance replaced old "agency request" flow | Arch §6.6 / §7.3: `requestAgencyAssistance` callable creates a first-class `agency_assistance_requests` document. Agencies accept/decline formally; all logged. |
-| 5 | Dispatch timeout is data-driven | Arch §2.5: `acknowledgementDeadlineAt` per-dispatch (High: 3 min, Medium: 5 min, Low: 10 min). Admin-configurable agency overrides. |
-| 6 | No "Incident Commander" tag | Arch §2.8: removed. Dispatch ownership is defined by the state machine. Conflicts resolved via Command Channel messaging. |
-| 7 | Command Channel is a first-class feature | Arch §7.3.4: per-incident inter-admin messaging (`command_channel_threads/{threadId}`). Created automatically when: report is shared, agency assistance requested, provincial escalation requested. |
-| 8 | Border incident sharing formalized | Arch §7.3.3: `shareReportWithMunicipality` callable. CF auto-shares when geo-intersection detects border proximity (500m). Attribution logged. |
-| 9 | Shift handoff added | Arch §7.6: `initiateShiftHandoff` / `acceptShiftHandoff` callables. 30-min acceptance window; superadmin notified on timeout. |
-| 10 | Responder-Witnessed badge added to triage queue | Arch §2.9: reports from `submitResponderWitnessedReport` appear with `witnessPriorityFlag: true` at top of queue, with "Responder-Witnessed" badge. |
-| 11 | Cross-municipality constraint clarified | Arch §7.3: cannot view or write outside own municipality EXCEPT explicit border-share. |
-| 12 | Re-auth is 8h at app layer | Arch §7.3 (implied from v5): 8-hour re-auth prompt. Firebase ID token is 1h regardless; "session timeout" means prompt-for-OTP at app level. |
-| 13 | Offline mutations blocked | Arch §9.4: Admin Desktop has no outbox. All mutations require connectivity. UI blocks high-stakes writes when disconnected. |
+| #   | What Changed                                         | Why                                                                                                                                                                                                                  |
+| --- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `trustScore` and "Auto-Verify" removed               | Arch §2.2: RA 10173 profiling exposure. Replaced by factual indicators: `hasPhotoAndGPS`, `source`, `reporterType` (registered / pseudonymous / sms).                                                                |
+| 2   | Admin identity model corrected                       | Arch §2.7: admin names are hidden from citizens and public feed at the **data layer** (CF projection strips `actorId`). Citizens see "Daet MDRRMO". Responders on the same incident see admin's display name + role. |
+| 3   | Mass alert routing enforced                          | Arch §2.6 / §7.3: a **Reach Plan preview** is shown before send. If SMS recipients > 5,000 OR multi-municipality, the UI routes the request as an NDRRMC Escalation, not a direct send.                              |
+| 4   | Agency assistance replaced old "agency request" flow | Arch §6.6 / §7.3: `requestAgencyAssistance` callable creates a first-class `agency_assistance_requests` document. Agencies accept/decline formally; all logged.                                                      |
+| 5   | Dispatch timeout is data-driven                      | Arch §2.5: `acknowledgementDeadlineAt` per-dispatch (High: 3 min, Medium: 5 min, Low: 10 min). Admin-configurable agency overrides.                                                                                  |
+| 6   | No "Incident Commander" tag                          | Arch §2.8: removed. Dispatch ownership is defined by the state machine. Conflicts resolved via Command Channel messaging.                                                                                            |
+| 7   | Command Channel is a first-class feature             | Arch §7.3.4: per-incident inter-admin messaging (`command_channel_threads/{threadId}`). Created automatically when: report is shared, agency assistance requested, provincial escalation requested.                  |
+| 8   | Border incident sharing formalized                   | Arch §7.3.3: `shareReportWithMunicipality` callable. CF auto-shares when geo-intersection detects border proximity (500m). Attribution logged.                                                                       |
+| 9   | Shift handoff added                                  | Arch §7.6: `initiateShiftHandoff` / `acceptShiftHandoff` callables. 30-min acceptance window; superadmin notified on timeout.                                                                                        |
+| 10  | Responder-Witnessed badge added to triage queue      | Arch §2.9: reports from `submitResponderWitnessedReport` appear with `witnessPriorityFlag: true` at top of queue, with "Responder-Witnessed" badge.                                                                  |
+| 11  | Cross-municipality constraint clarified              | Arch §7.3: cannot view or write outside own municipality EXCEPT explicit border-share.                                                                                                                               |
+| 12  | Re-auth is 8h at app layer                           | Arch §7.3 (implied from v5): 8-hour re-auth prompt. Firebase ID token is 1h regardless; "session timeout" means prompt-for-OTP at app level.                                                                         |
+| 13  | Offline mutations blocked                            | Arch §9.4: Admin Desktop has no outbox. All mutations require connectivity. UI blocks high-stakes writes when disconnected.                                                                                          |
 
 ---
 
@@ -58,58 +58,58 @@
 
 ### 2.1 What Municipal Admins CAN Do
 
-| Action | Scope | Callable / Write |
-|--------|-------|-----------------|
-| View all reports | Own municipality | Firestore listener |
-| Verify reports | Own municipality | `verifyReport` callable |
-| Reject reports | Own municipality | `rejectReport` callable |
-| Merge duplicate reports | Own municipality | `mergeReports` callable |
-| Dispatch own municipality's responders | Own municipality | `dispatchResponder` callable |
-| Request agency assistance | Any agency | `requestAgencyAssistance` callable |
-| Cancel dispatches | Own dispatches + superadmin | `cancelDispatch` callable |
-| Redispatch after decline/timeout | Own municipality | `redispatchReport` callable |
-| Communicate with citizens | Own municipality | `addMessage` callable |
-| Command Channel messaging | Shared incidents | `postCommandChannelMessage` callable |
-| Send municipality-scoped mass alerts | Own municipality (≤5,000 SMS) | `sendMassAlert` callable |
-| Escalate to NDRRMC | Multi-municipality or >5,000 | `requestMassAlertEscalation` callable |
-| View responder real-time telemetry | Own municipality | RTDB direct read (rule-scoped) |
-| View other-agency responders on incidents | Own municipality, ghosted | Agency projection (§8.5 arch) |
-| Close resolved incidents | Own municipality | `closeReport` callable |
-| Reopen closed incidents | Own municipality | `reopenReport` callable |
-| Share border incidents | Adjacent municipalities | `shareReportWithMunicipality` callable |
-| View municipality analytics | Own municipality | TanStack Query callable |
-| Shift handoff | Own municipality | `initiateShiftHandoff` callable |
-| Classify/reclassify incident type | Own municipality | `verifyReport` / callable |
+| Action                                    | Scope                         | Callable / Write                       |
+| ----------------------------------------- | ----------------------------- | -------------------------------------- |
+| View all reports                          | Own municipality              | Firestore listener                     |
+| Verify reports                            | Own municipality              | `verifyReport` callable                |
+| Reject reports                            | Own municipality              | `rejectReport` callable                |
+| Merge duplicate reports                   | Own municipality              | `mergeReports` callable                |
+| Dispatch own municipality's responders    | Own municipality              | `dispatchResponder` callable           |
+| Request agency assistance                 | Any agency                    | `requestAgencyAssistance` callable     |
+| Cancel dispatches                         | Own dispatches + superadmin   | `cancelDispatch` callable              |
+| Redispatch after decline/timeout          | Own municipality              | `redispatchReport` callable            |
+| Communicate with citizens                 | Own municipality              | `addMessage` callable                  |
+| Command Channel messaging                 | Shared incidents              | `postCommandChannelMessage` callable   |
+| Send municipality-scoped mass alerts      | Own municipality (≤5,000 SMS) | `sendMassAlert` callable               |
+| Escalate to NDRRMC                        | Multi-municipality or >5,000  | `requestMassAlertEscalation` callable  |
+| View responder real-time telemetry        | Own municipality              | RTDB direct read (rule-scoped)         |
+| View other-agency responders on incidents | Own municipality, ghosted     | Agency projection (§8.5 arch)          |
+| Close resolved incidents                  | Own municipality              | `closeReport` callable                 |
+| Reopen closed incidents                   | Own municipality              | `reopenReport` callable                |
+| Share border incidents                    | Adjacent municipalities       | `shareReportWithMunicipality` callable |
+| View municipality analytics               | Own municipality              | TanStack Query callable                |
+| Shift handoff                             | Own municipality              | `initiateShiftHandoff` callable        |
+| Classify/reclassify incident type         | Own municipality              | `verifyReport` / callable              |
 
 ### 2.2 What Municipal Admins CANNOT Do
 
-| Action | Why |
-|--------|-----|
-| View / write outside own municipality | Jurisdiction boundary (except shared border incidents) |
-| Dispatch outside own municipality | Responders have `permittedMunicipalityIds` |
-| See other municipalities' analytics | Privacy + jurisdiction (anonymized comparison OK) |
-| Promote users or change roles | Superadmin only |
-| Delete verified reports | Data integrity |
-| Modify original citizen report text | Preserve original data |
-| Bypass responder opt-in | Responders must accept |
-| Verify responder-witnessed reports without tap | Auto-verify is permanently removed (Arch §2.2) |
+| Action                                         | Why                                                    |
+| ---------------------------------------------- | ------------------------------------------------------ |
+| View / write outside own municipality          | Jurisdiction boundary (except shared border incidents) |
+| Dispatch outside own municipality              | Responders have `permittedMunicipalityIds`             |
+| See other municipalities' analytics            | Privacy + jurisdiction (anonymized comparison OK)      |
+| Promote users or change roles                  | Superadmin only                                        |
+| Delete verified reports                        | Data integrity                                         |
+| Modify original citizen report text            | Preserve original data                                 |
+| Bypass responder opt-in                        | Responders must accept                                 |
+| Verify responder-witnessed reports without tap | Auto-verify is permanently removed (Arch §2.2)         |
 
 ### 2.3 Data Visibility Matrix
 
-| Data Type | Visibility |
-|-----------|------------|
-| All reports in own municipality | ✅ Full details |
-| Reports outside own municipality | ❌ Hidden (except shared border incidents) |
-| Border incidents (shared) | ✅ With "Shared Incident" badge; cannot change verification status |
-| Citizen contact info (`report_contacts`) | ✅ Visible (for follow-up) |
-| Citizen identity | ✅ `reporterType` label: registered / pseudonymous / sms. No score. |
-| Admin identity (own view) | ✅ Own name |
-| Admin identity (citizen-facing) | ❌ Data-layer stripped — citizens see institution only |
-| Admin identity (responder-facing) | ✅ Name + role surfaced to responders on same incident |
-| Responder status | ✅ Own municipality (full telemetry) |
-| Responder location | ✅ Real-time during active dispatch |
-| Other-agency responders on own incidents | ✅ Ghosted (30s sample, 100m precision) |
-| Analytics | ✅ Own municipality + anonymized provincial comparison |
+| Data Type                                | Visibility                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| All reports in own municipality          | ✅ Full details                                                     |
+| Reports outside own municipality         | ❌ Hidden (except shared border incidents)                          |
+| Border incidents (shared)                | ✅ With "Shared Incident" badge; cannot change verification status  |
+| Citizen contact info (`report_contacts`) | ✅ Visible (for follow-up)                                          |
+| Citizen identity                         | ✅ `reporterType` label: registered / pseudonymous / sms. No score. |
+| Admin identity (own view)                | ✅ Own name                                                         |
+| Admin identity (citizen-facing)          | ❌ Data-layer stripped — citizens see institution only              |
+| Admin identity (responder-facing)        | ✅ Name + role surfaced to responders on same incident              |
+| Responder status                         | ✅ Own municipality (full telemetry)                                |
+| Responder location                       | ✅ Real-time during active dispatch                                 |
+| Other-agency responders on own incidents | ✅ Ghosted (30s sample, 100m precision)                             |
+| Analytics                                | ✅ Own municipality + anonymized provincial comparison              |
 
 ---
 
@@ -280,6 +280,7 @@ Activated via toggle in the top bar. Switches the triage panel to a scannable li
 ### 4.3 Command Channel
 
 Per-incident inter-admin messaging. A thread is automatically created when:
+
 - A report is shared with an adjacent municipality
 - An agency assistance request is sent
 - A provincial escalation is requested
@@ -398,9 +399,9 @@ Before every mass alert send, the admin sees a **Reach Plan** — a server-compu
 
 ### 6.2 Routing Rules
 
-| Condition | Route |
-|-----------|-------|
-| Single municipality + SMS ≤ 5,000 | Direct send: FCM + Semaphore priority queue |
+| Condition                         | Route                                                    |
+| --------------------------------- | -------------------------------------------------------- |
+| Single municipality + SMS ≤ 5,000 | Direct send: FCM + Semaphore priority queue              |
 | SMS > 5,000 OR multi-municipality | NDRRMC Escalation Request → Provincial Superadmin review |
 
 **The UI clearly labels which route will be used before the admin confirms.** There is no silent routing.
@@ -431,6 +432,7 @@ Before every mass alert send, the admin sees a **Reach Plan** — a server-compu
 ### 6.4 NDRRMC Escalation Request
 
 When routing requires NDRRMC:
+
 1. `requestMassAlertEscalation` callable creates `mass_alert_requests/{id}` with draft message, target area, hazard class, and linked evidence (report IDs, PAGASA reference).
 2. FCM + priority SMS to Provincial Superadmin.
 3. Superadmin reviews and forwards to NDRRMC (Arch §7.5.1).
@@ -519,16 +521,16 @@ Retained 2 years. Visible to both admins involved and Provincial Superadmin.
 
 ## 9. Edge Cases & Solutions
 
-| Scenario | Solution |
-|---|---|
-| Two admins try to verify same report simultaneously | `verifyReport` is a callable; server-authoritative. One succeeds, one receives "Already verified." |
-| Agency declines request — no units available | Agency sends `declineAgencyAssistance` with reason. Municipal admin is notified immediately. Admin can request a different agency or escalate to superadmin. |
-| Dispatch timeout — no responder accepted | `dispatchTimeoutSweep` CF marks `timed_out`. Admin notified for redispatch. |
-| Responder goes SOS during active dispatch | Admin receives urgent FCM + red map highlight. One-tap to call responder, one-tap to dispatch backup. |
-| Connectivity lost on Admin Desktop | All mutations blocked. Yellow "Offline" banner shown. Read-only map and feed continue from Firestore cache. |
-| Border incident — adjacent municipality also has a responder nearby | Admin of originating municipality can share incident. Both admins can dispatch their own responders. Only originating admin can verify/close. |
-| Citizen requests correction on verified report | Citizen submits correction request from tracking view. Admin sees in triage queue with "Correction Requested" badge. Admin approves or rejects correction. |
-| Mass alert estimate is wrong | `massAlertReachPlanPreview` is an estimate. Actual recipient count may differ by up to ±10% (§18 acceptance criteria). Admin is told this is an estimate. |
+| Scenario                                                            | Solution                                                                                                                                                     |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Two admins try to verify same report simultaneously                 | `verifyReport` is a callable; server-authoritative. One succeeds, one receives "Already verified."                                                           |
+| Agency declines request — no units available                        | Agency sends `declineAgencyAssistance` with reason. Municipal admin is notified immediately. Admin can request a different agency or escalate to superadmin. |
+| Dispatch timeout — no responder accepted                            | `dispatchTimeoutSweep` CF marks `timed_out`. Admin notified for redispatch.                                                                                  |
+| Responder goes SOS during active dispatch                           | Admin receives urgent FCM + red map highlight. One-tap to call responder, one-tap to dispatch backup.                                                        |
+| Connectivity lost on Admin Desktop                                  | All mutations blocked. Yellow "Offline" banner shown. Read-only map and feed continue from Firestore cache.                                                  |
+| Border incident — adjacent municipality also has a responder nearby | Admin of originating municipality can share incident. Both admins can dispatch their own responders. Only originating admin can verify/close.                |
+| Citizen requests correction on verified report                      | Citizen submits correction request from tracking view. Admin sees in triage queue with "Correction Requested" badge. Admin approves or rejects correction.   |
+| Mass alert estimate is wrong                                        | `massAlertReachPlanPreview` is an estimate. Actual recipient count may differ by up to ±10% (§18 acceptance criteria). Admin is told this is an estimate.    |
 
 ---
 
@@ -537,18 +539,19 @@ Retained 2 years. Visible to both admins involved and Provincial Superadmin.
 ### 10.1 Platform
 
 **Surface:** Admin Desktop PWA (React 18 + Vite)
+
 - Desktop-first: 1920×1080 primary
 - Chrome 90+ / Edge 90+ (desktop)
 - No Capacitor wrapper — browser-based only
 
 ### 10.2 State Ownership (Arch §9.4)
 
-| Data Category | Authority |
-|---|---|
-| Server documents (reports, dispatches, responders, analytics) | Firestore SDK |
-| UI state (map viewport, selected entity, panel, filters) | Zustand |
-| Callables and analytics aggregates | TanStack Query |
-| **Offline mutations** | **Blocked** — no outbox, no queued writes |
+| Data Category                                                 | Authority                                 |
+| ------------------------------------------------------------- | ----------------------------------------- |
+| Server documents (reports, dispatches, responders, analytics) | Firestore SDK                             |
+| UI state (map viewport, selected entity, panel, filters)      | Zustand                                   |
+| Callables and analytics aggregates                            | TanStack Query                            |
+| **Offline mutations**                                         | **Blocked** — no outbox, no queued writes |
 
 **No outbox.** Admin mutations are high-stakes (verification, dispatch, cancellation). Silent replay of a queued mutation after reconnect is worse than blocking. The UI clearly shows when the admin is offline and prevents mutations until connectivity is restored.
 
@@ -569,15 +572,15 @@ Retained 2 years. Visible to both admins involved and Provincial Superadmin.
 
 ### 10.5 Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| `V` | Verify selected report (Surge Mode) |
-| `R` | Reject selected report (Surge Mode) |
-| `M` | Merge with selected (Surge Mode) |
-| `S` | Skip to next report (Surge Mode) |
-| `Escape` | Close active panel |
-| `D` | Dispatch panel for selected incident |
-| `A` | Open alert composer |
+| Key      | Action                               |
+| -------- | ------------------------------------ |
+| `V`      | Verify selected report (Surge Mode)  |
+| `R`      | Reject selected report (Surge Mode)  |
+| `M`      | Merge with selected (Surge Mode)     |
+| `S`      | Skip to next report (Surge Mode)     |
+| `Escape` | Close active panel                   |
+| `D`      | Dispatch panel for selected incident |
+| `A`      | Open alert composer                  |
 
 ---
 

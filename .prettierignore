@@ -1,0 +1,11 @@
+node_modules
+dist
+lib
+.turbo
+coverage
+.firebase
+pnpm-lock.yaml
+*.tfstate
+*.tfstate.*
+.terraform
+.terraform.lock.hcl

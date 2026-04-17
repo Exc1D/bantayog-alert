@@ -1,0 +1,50 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Manila
+    open-pull-requests-limit: 5
+    groups:
+      typescript-eslint:
+        patterns:
+          - '@typescript-eslint/*'
+          - typescript-eslint
+      vitest:
+        patterns:
+          - vitest
+          - '@vitest/*'
+      firebase:
+        patterns:
+          - firebase
+          - firebase-admin
+          - firebase-functions
+          - firebase-tools
+      react:
+        patterns:
+          - react
+          - react-dom
+          - '@types/react'
+          - '@types/react-dom'
+      vite:
+        patterns:
+          - vite
+          - '@vitejs/*'
+      capacitor:
+        patterns:
+          - '@capacitor/*'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: terraform
+    directory: /infra/terraform
+    schedule:
+      interval: weekly
+      day: monday

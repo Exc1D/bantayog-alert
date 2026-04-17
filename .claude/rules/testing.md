@@ -5,12 +5,14 @@ Best practices for writing maintainable, effective tests.
 ## Testing Philosophy
 
 ### Core Principles
+
 - Test behavior, not implementation
 - Write tests that give confidence in the code
 - Tests should be: Fast, Reliable, Isolated, Self-validating
 - Follow the Testing Trophy: More integration tests than unit tests
 
 ### Test Priority
+
 1. Critical user paths (happy path)
 2. Edge cases and error handling
 3. Boundary conditions
@@ -19,6 +21,7 @@ Best practices for writing maintainable, effective tests.
 ## Test Structure
 
 ### File Organization
+
 ```
 tests/
 ├── unit/              # Unit tests (Vitest/Jest)
@@ -34,6 +37,7 @@ tests/
 ```
 
 ### Naming Convention
+
 ```
 describe('ComponentName')
   describe('when condition')
@@ -41,22 +45,24 @@ describe('ComponentName')
 ```
 
 ### Example Structure
+
 ```typescript
 describe('UserProfile', () => {
   describe('when user is logged in', () => {
-    it('should display username', () => {});
-    it('should display logout button', () => {});
-  });
+    it('should display username', () => {})
+    it('should display logout button', () => {})
+  })
 
   describe('when user is logged out', () => {
-    it('should prompt login', () => {});
-  });
-});
+    it('should prompt login', () => {})
+  })
+})
 ```
 
 ## Unit Tests
 
 ### Rules
+
 - One assertion per test when practical
 - Use `describe` blocks to group related tests
 - Use `beforeEach` for setup, not `beforeAll`
@@ -64,27 +70,29 @@ describe('UserProfile', () => {
 - Test pure functions without mocking
 
 ### Example
+
 ```typescript
-import { calculateTotal } from './cart';
+import { calculateTotal } from './cart'
 
 describe('calculateTotal', () => {
   it('should return 0 for empty cart', () => {
-    expect(calculateTotal([])).toBe(0);
-  });
+    expect(calculateTotal([])).toBe(0)
+  })
 
   it('should sum item prices', () => {
     const items = [
       { price: 10, quantity: 2 },
       { price: 5, quantity: 1 },
-    ];
-    expect(calculateTotal(items)).toBe(25);
-  });
-});
+    ]
+    expect(calculateTotal(items)).toBe(25)
+  })
+})
 ```
 
 ## Integration Tests
 
 ### Rules
+
 - Test component interactions
 - Use React Testing Library for DOM testing
 - Prefer `userEvent` over `fireEvent`
@@ -93,6 +101,7 @@ describe('calculateTotal', () => {
 - Use `screen` for querying
 
 ### Example
+
 ```typescript
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -116,30 +125,33 @@ describe('LoginForm', () => {
 ```
 
 ### Testing Hooks
+
 ```typescript
-import { renderHook, waitFor } from '@testing-library/react';
-import { useUserStatus } from './useUserStatus';
+import { renderHook, waitFor } from '@testing-library/react'
+import { useUserStatus } from './useUserStatus'
 
 describe('useUserStatus', () => {
   it('should return online status', async () => {
-    const { result } = renderHook(() => useUserStatus('user-123'));
-    
+    const { result } = renderHook(() => useUserStatus('user-123'))
+
     await waitFor(() => {
-      expect(result.current.status).toBe('online');
-    });
-  });
-});
+      expect(result.current.status).toBe('online')
+    })
+  })
+})
 ```
 
 ## E2E Tests (Playwright)
 
 ### When to Use
+
 - Critical user flows (login, checkout)
 - Cross-browser compatibility
 - Full system integration
 - Performance regression
 
 ### Rules
+
 - E2E tests should be deterministic
 - Use `page.waitForURL` over `waitForTimeout`
 - Use data-testid for stable selectors
@@ -147,36 +159,38 @@ describe('useUserStatus', () => {
 - Run against staging environment
 
 ### Example
+
 ```typescript
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
 
 test.describe('User Authentication', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-  });
+    await page.goto('/')
+  })
 
   test('should login successfully', async ({ page }) => {
-    await page.getByRole('button', { name: 'Login' }).click();
-    await page.getByLabel('Email').fill('test@example.com');
-    await page.getByLabel('Password').fill('password123');
-    await page.getByRole('button', { name: 'Sign In' }).click();
-    
-    await expect(page).toHaveURL('/dashboard');
-    await expect(page.getByText('Welcome')).toBeVisible();
-  });
+    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByLabel('Email').fill('test@example.com')
+    await page.getByLabel('Password').fill('password123')
+    await page.getByRole('button', { name: 'Sign In' }).click()
+
+    await expect(page).toHaveURL('/dashboard')
+    await expect(page.getByText('Welcome')).toBeVisible()
+  })
 
   test('should show error for invalid credentials', async ({ page }) => {
-    await page.getByRole('button', { name: 'Login' }).click();
-    await page.getByLabel('Email').fill('invalid@example.com');
-    await page.getByLabel('Password').fill('wrongpassword');
-    await page.getByRole('button', { name: 'Sign In' }).click();
-    
-    await expect(page.getByRole('alert')).toContainText('Invalid credentials');
-  });
-});
+    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByLabel('Email').fill('invalid@example.com')
+    await page.getByLabel('Password').fill('wrongpassword')
+    await page.getByRole('button', { name: 'Sign In' }).click()
+
+    await expect(page.getByRole('alert')).toContainText('Invalid credentials')
+  })
+})
 ```
 
 ### Playwright Commands
+
 ```bash
 npx playwright test                    # Run all E2E tests
 npx playwright test --project=chromium  # Run specific browser
@@ -188,6 +202,7 @@ npx playwright show-report             # View test report
 ## Firestore/Storage Tests
 
 ### Rules
+
 - Use Firebase Emulators for integration tests
 - Test security rules with `firebase emulators:exec`
 - Use `setLogLevel` for debugging
@@ -195,58 +210,59 @@ npx playwright show-report             # View test report
 - Test both success and failure cases
 
 ### Example
+
 ```typescript
-import { initializeTestApp, loadFirestoreRules } from '@firebase/testing';
+import { initializeTestApp, loadFirestoreRules } from '@firebase/testing'
 
 describe('Firestore Security Rules', () => {
-  let app: firebase.app.App;
+  let app: firebase.app.App
 
   beforeAll(async () => {
     await loadFirestoreRules({
       projectId: 'test-project',
       rules: fs.readFileSync('firestore.rules', 'utf8'),
-    });
-  });
+    })
+  })
 
   beforeEach(async () => {
-    app = initializeTestApp({ projectId: 'test-project', auth: { uid: 'user1' } });
-    await app.firestore().clearData();
-  });
+    app = initializeTestApp({ projectId: 'test-project', auth: { uid: 'user1' } })
+    await app.firestore().clearData()
+  })
 
   afterEach(async () => {
-    await cleanup(app);
-  });
+    await cleanup(app)
+  })
 
   it('should allow read for authenticated users', async () => {
-    const db = app.firestore();
-    await assertSucceeds(db.collection('alerts').get());
-  });
+    const db = app.firestore()
+    await assertSucceeds(db.collection('alerts').get())
+  })
 
   it('should deny write for non-owner', async () => {
-    const db = app.firestore();
-    await assertFails(
-      db.collection('alerts').add({ createdBy: 'other-user', text: 'test' })
-    );
-  });
-});
+    const db = app.firestore()
+    await assertFails(db.collection('alerts').add({ createdBy: 'other-user', text: 'test' }))
+  })
+})
 ```
 
 ## Test Data Factories
 
 ### Rules
+
 - Use factories for test data creation
 - Keep factories close to the code they test
 - Override specific fields, use defaults for rest
 - Never share mutable state between tests
 
 ### Example
+
 ```typescript
 // factories/user.factory.ts
 interface UserData {
-  id: string;
-  email: string;
-  name: string;
-  role: 'user' | 'admin';
+  id: string
+  email: string
+  name: string
+  role: 'user' | 'admin'
 }
 
 function createUser(overrides: Partial<UserData> = {}): UserData {
@@ -255,18 +271,19 @@ function createUser(overrides: Partial<UserData> = {}): UserData {
     email: 'test@example.com',
     name: 'Test User',
     role: 'user',
-  };
-  return { ...defaults, ...overrides };
+  }
+  return { ...defaults, ...overrides }
 }
 
 // Usage in tests
-const adminUser = createUser({ role: 'admin', email: 'admin@test.com' });
-const regularUser = createUser();
+const adminUser = createUser({ role: 'admin', email: 'admin@test.com' })
+const regularUser = createUser()
 ```
 
 ## Mocking Guidelines
 
 ### When to Mock
+
 - External APIs (Firebase, REST)
 - Time-dependent code (use `jest.useFakeTimers`)
 - Random values
@@ -274,12 +291,14 @@ const regularUser = createUser();
 - 3rd party services
 
 ### When NOT to Mock
+
 - Pure functions
 - Simple transformations
 - Internal utility functions
 - Things being tested directly
 
 ### Example Mocks
+
 ```typescript
 // Mock Firebase Auth
 jest.mock('./firebase', () => ({
@@ -288,27 +307,29 @@ jest.mock('./firebase', () => ({
     signOut: jest.fn(),
     onAuthStateChanged: jest.fn(),
   }),
-}));
+}))
 
 // Mock timer
-jest.useFakeTimers();
-act(() => void result.current.startTimer());
-jest.advanceTimersByTime(5000);
-jest.useRealTimers();
+jest.useFakeTimers()
+act(() => void result.current.startTimer())
+jest.advanceTimersByTime(5000)
+jest.useRealTimers()
 
 // Mock random values
-jest.spyOn(Math, 'random').mockReturnValue(0.5);
+jest.spyOn(Math, 'random').mockReturnValue(0.5)
 ```
 
 ## Test Coverage
 
 ### Goals
+
 - Minimum 70% coverage for new code
 - 100% coverage for security-critical paths
 - Cover happy path and error paths
 - Cover boundary conditions
 
 ### Commands
+
 ```bash
 npm test                    # Run in watch mode
 npx vitest run              # Run all tests once
@@ -319,12 +340,14 @@ npx vitest run --coverage   # Run with coverage
 ## CI/CD Testing
 
 ### Requirements
+
 - All tests must pass before merge
 - E2E tests run on staging deployment
 - Security rules tests required for rule changes
 - Coverage must not decrease
 
 ### Pipeline
+
 ```yaml
 # GitHub Actions example
 test:
@@ -348,6 +371,7 @@ e2e:
 ## Best Practices
 
 ### DO
+
 - Write tests before fixing bugs (regression tests)
 - Keep tests independent
 - Use meaningful assertions
@@ -356,6 +380,7 @@ e2e:
 - Use `async/await` with `waitFor`
 
 ### DON'T
+
 - Test implementation details
 - Leave skipped tests
 - Write flaky tests
@@ -366,6 +391,7 @@ e2e:
 ## Debugging Tests
 
 ### Tips
+
 - Use `console.log` sparingly (use `debug` instead)
 - Use `toJSON()` to see full error diffs
 - Run single test: `npx vitest run testName`

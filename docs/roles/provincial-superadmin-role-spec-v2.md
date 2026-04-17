@@ -11,22 +11,22 @@
 
 ## Change Summary (v1.0 → v2.0)
 
-| # | What Changed | Why |
-|---|---|---|
-| 1 | `trustScore` removed province-wide | Arch §2.2: removed for all roles. No trust score anywhere in the system. |
-| 2 | NDRRMC escalation workflow formalized | Arch §7.5.1: Superadmin reviews `mass_alert_requests/{id}`, records forward method and NDRRMC receipt acknowledgment. UI distinguishes "Escalation submitted" from "SMS sent." |
-| 3 | Re-auth is TOTP-mandatory, 4h interval | Arch §7.5: Superadmin has shorter re-auth interval than municipal/agency admins (4h vs 8h) due to higher privilege scope. TOTP is required (not just OTP). |
-| 4 | `report_private` / `report_contacts` reads are audit-streamed | Arch §7.5: every superadmin read of private citizen data triggers an audit-log entry. Cannot be bypassed. |
-| 5 | Cannot change own role | Arch §7.5: self-demotion prohibited. Another superadmin must do it. |
-| 6 | Cannot disable audit streaming | Arch §7.5: hard constraint. |
-| 7 | Break-glass review requirement | Arch §7.5: any break-glass session actions get independent review within 72h. |
-| 8 | Shift handoff added (province-wide scope) | Arch §7.6: same mechanism as other admins, applied to province-wide context. |
-| 9 | Mutual-aid authorization added | Arch §7.5: Superadmin toggles cross-municipality agency visibility for mutual aid events. |
-| 10 | SMS audit and provider health dashboards | Arch §7.5: superadmin views `sms_outbox`, provider health (Semaphore / Globe Labs), and system-health dashboards. |
-| 11 | Offline mutations blocked | Arch §9.4: same as all Admin Desktop surfaces. No outbox for mutations. |
-| 12 | Surge pre-warm manual trigger | Arch §7.5: superadmin can manually trigger the surge pre-warm (normally automatic on PAGASA Signal-2+). |
-| 13 | Data subject erasure approvals | Arch §7.5: superadmin approves RA 10173 data erasure requests. |
-| 14 | BigQuery audit access | Arch §7.5: streaming + batch BigQuery access via separate IAM for compliance officers (separate from in-app audit log viewer). |
+| #   | What Changed                                                  | Why                                                                                                                                                                            |
+| --- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `trustScore` removed province-wide                            | Arch §2.2: removed for all roles. No trust score anywhere in the system.                                                                                                       |
+| 2   | NDRRMC escalation workflow formalized                         | Arch §7.5.1: Superadmin reviews `mass_alert_requests/{id}`, records forward method and NDRRMC receipt acknowledgment. UI distinguishes "Escalation submitted" from "SMS sent." |
+| 3   | Re-auth is TOTP-mandatory, 4h interval                        | Arch §7.5: Superadmin has shorter re-auth interval than municipal/agency admins (4h vs 8h) due to higher privilege scope. TOTP is required (not just OTP).                     |
+| 4   | `report_private` / `report_contacts` reads are audit-streamed | Arch §7.5: every superadmin read of private citizen data triggers an audit-log entry. Cannot be bypassed.                                                                      |
+| 5   | Cannot change own role                                        | Arch §7.5: self-demotion prohibited. Another superadmin must do it.                                                                                                            |
+| 6   | Cannot disable audit streaming                                | Arch §7.5: hard constraint.                                                                                                                                                    |
+| 7   | Break-glass review requirement                                | Arch §7.5: any break-glass session actions get independent review within 72h.                                                                                                  |
+| 8   | Shift handoff added (province-wide scope)                     | Arch §7.6: same mechanism as other admins, applied to province-wide context.                                                                                                   |
+| 9   | Mutual-aid authorization added                                | Arch §7.5: Superadmin toggles cross-municipality agency visibility for mutual aid events.                                                                                      |
+| 10  | SMS audit and provider health dashboards                      | Arch §7.5: superadmin views `sms_outbox`, provider health (Semaphore / Globe Labs), and system-health dashboards.                                                              |
+| 11  | Offline mutations blocked                                     | Arch §9.4: same as all Admin Desktop surfaces. No outbox for mutations.                                                                                                        |
+| 12  | Surge pre-warm manual trigger                                 | Arch §7.5: superadmin can manually trigger the surge pre-warm (normally automatic on PAGASA Signal-2+).                                                                        |
+| 13  | Data subject erasure approvals                                | Arch §7.5: superadmin approves RA 10173 data erasure requests.                                                                                                                 |
+| 14  | BigQuery audit access                                         | Arch §7.5: streaming + batch BigQuery access via separate IAM for compliance officers (separate from in-app audit log viewer).                                                 |
 
 ---
 
@@ -139,18 +139,18 @@ Both are parts of the same Admin Desktop PWA — panels can be toggled between s
 
 ### 2.5 Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| `D` | Analytics dashboard (primary view) |
-| `M` | Provincial map |
-| `U` | User management |
-| `A` | Declare emergency |
-| `N` | NDRRMC escalation queue |
-| `R` | Generate reports |
-| `S` | System settings |
-| `L` | Audit logs |
-| `H` | System health monitoring |
-| `Escape` | Close context panel |
+| Key      | Action                             |
+| -------- | ---------------------------------- |
+| `D`      | Analytics dashboard (primary view) |
+| `M`      | Provincial map                     |
+| `U`      | User management                    |
+| `A`      | Declare emergency                  |
+| `N`      | NDRRMC escalation queue            |
+| `R`      | Generate reports                   |
+| `S`      | System settings                    |
+| `L`      | Audit logs                         |
+| `H`      | System health monitoring           |
+| `Escape` | Close context panel                |
 
 ---
 
@@ -158,33 +158,33 @@ Both are parts of the same Admin Desktop PWA — panels can be toggled between s
 
 ### 3.1 What Provincial Superadmins CAN Do
 
-| Action | Scope | Callable / Write |
-|--------|-------|-----------------|
-| All Municipal Admin capabilities | Province-wide | Same callables, no municipal restriction |
-| Create / suspend / promote user accounts | All roles | `createUser` callable with role parameter |
-| Declare provincial emergency | Province-wide | `declareEmergency` callable |
-| Approve and forward NDRRMC escalation requests | Province-wide | `forwardMassAlertToNDRRMC` workflow |
-| Toggle mutual-aid visibility for cross-municipality agency response | Per-incident | `toggleMutualAidVisibility` callable |
-| Manage provincial resources | Province-wide | `provincial_resources/{id}` CRUD via callables |
-| View all audit logs | Province-wide | In-app + BigQuery (separate IAM) |
-| Set retention exemptions | Any record | `setRetentionExempt` callable (streams audit) |
-| Approve data subject erasure requests | Any citizen | RA 10173 compliance |
-| Trigger surge pre-warm manually | Province-wide | Manual trigger via System Health panel |
-| Break-glass: access any Firestore collection | Emergency only | Logged in `breakglass_events` |
-| Read `report_private` and `report_contacts` | Any report | Streaming audit on every read |
-| View SMS audit, provider health | Province-wide | `sms_outbox`, `sms_provider_health` |
-| View system health dashboards | Province-wide | System Health panel |
-| Shift handoff | Province-wide role | `initiateShiftHandoff` callable |
+| Action                                                              | Scope              | Callable / Write                               |
+| ------------------------------------------------------------------- | ------------------ | ---------------------------------------------- |
+| All Municipal Admin capabilities                                    | Province-wide      | Same callables, no municipal restriction       |
+| Create / suspend / promote user accounts                            | All roles          | `createUser` callable with role parameter      |
+| Declare provincial emergency                                        | Province-wide      | `declareEmergency` callable                    |
+| Approve and forward NDRRMC escalation requests                      | Province-wide      | `forwardMassAlertToNDRRMC` workflow            |
+| Toggle mutual-aid visibility for cross-municipality agency response | Per-incident       | `toggleMutualAidVisibility` callable           |
+| Manage provincial resources                                         | Province-wide      | `provincial_resources/{id}` CRUD via callables |
+| View all audit logs                                                 | Province-wide      | In-app + BigQuery (separate IAM)               |
+| Set retention exemptions                                            | Any record         | `setRetentionExempt` callable (streams audit)  |
+| Approve data subject erasure requests                               | Any citizen        | RA 10173 compliance                            |
+| Trigger surge pre-warm manually                                     | Province-wide      | Manual trigger via System Health panel         |
+| Break-glass: access any Firestore collection                        | Emergency only     | Logged in `breakglass_events`                  |
+| Read `report_private` and `report_contacts`                         | Any report         | Streaming audit on every read                  |
+| View SMS audit, provider health                                     | Province-wide      | `sms_outbox`, `sms_provider_health`            |
+| View system health dashboards                                       | Province-wide      | System Health panel                            |
+| Shift handoff                                                       | Province-wide role | `initiateShiftHandoff` callable                |
 
 ### 3.2 What Provincial Superadmins CANNOT Do
 
-| Action | Why |
-|--------|-----|
-| Change own role | Self-demotion prohibited (Arch §7.5) |
-| Disable audit streaming | Hard constraint — cannot be turned off |
-| Read citizen private data without audit trail | Every `report_private` / `report_contacts` read streams an audit entry |
-| Claim to issue an ECBS alert (NDRRMC province-wide) | RA 10639: NDRRMC owns cell broadcast. Bantayog escalates only. |
-| Skip TOTP on login | TOTP is mandatory for this role, cannot be bypassed |
+| Action                                              | Why                                                                    |
+| --------------------------------------------------- | ---------------------------------------------------------------------- |
+| Change own role                                     | Self-demotion prohibited (Arch §7.5)                                   |
+| Disable audit streaming                             | Hard constraint — cannot be turned off                                 |
+| Read citizen private data without audit trail       | Every `report_private` / `report_contacts` read streams an audit entry |
+| Claim to issue an ECBS alert (NDRRMC province-wide) | RA 10639: NDRRMC owns cell broadcast. Bantayog escalates only.         |
+| Skip TOTP on login                                  | TOTP is mandatory for this role, cannot be bypassed                    |
 
 ### 3.3 Data Visibility
 
@@ -199,6 +199,7 @@ The Superadmin has the broadest data access in the system, with all accesses to 
 Province-wide situational awareness, always visible.
 
 **Anomaly detection alerts (auto-surfaced):**
+
 ```
 ⚠️ ANOMALY: Capalonga
 • Response time up 40% (18 min vs. 12 min avg)
@@ -208,6 +209,7 @@ Province-wide situational awareness, always visible.
 ```
 
 Anomaly thresholds:
+
 - Response time spike: > 20 min for 3+ incidents in same municipality
 - Resolution rate drop: < 50% of active incidents resolved
 - Resource over-utilization: > 90% deployed for extended period
@@ -219,6 +221,7 @@ Anomaly thresholds:
 ### 4.2 Municipal Drill-Down
 
 Click any municipality row → municipal context panel:
+
 ```
 ┌────────────────────────────────────────┐
 │ Capalonga Municipality                 │
@@ -240,6 +243,7 @@ Drill further: click incident → full incident detail (same as municipal admin 
 ### 4.3 Province-Wide Operational Control
 
 As a superset of Municipal Admin, the Superadmin can:
+
 - Verify reports in any municipality
 - Dispatch responders in any municipality
 - Close / reopen incidents in any municipality
@@ -252,6 +256,7 @@ All province-wide admin actions carry `actorRole: 'provincial_superadmin'` in au
 ### 4.4 Mutual Aid Authorization
 
 When an agency needs to provide mutual aid across municipal lines:
+
 1. Municipal Admin or Agency Admin flags the need (via escalation request or direct superadmin contact)
 2. Superadmin reviews in the provincial map view
 3. `toggleMutualAidVisibility` callable enables the cross-municipality visibility for that specific incident
@@ -360,6 +365,7 @@ The Superadmin sees these in the **NDRRMC Escalation Queue** (`N` keyboard short
 `createUser` callable with role parameter. Supported roles: `municipal_admin`, `agency_admin`, `responder`, `provincial_superadmin`.
 
 For each role, required fields:
+
 - `municipal_admin`: municipality, phone, display name
 - `agency_admin`: agencyId, phone, display name
 - `responder`: agencyId, phone, display name, specializations
@@ -384,12 +390,14 @@ A Superadmin cannot change their own role. A second superadmin (or a system admi
 ### 7.1 Declare Provincial Emergency
 
 `declareEmergency` callable creates `emergencies/{id}` with:
+
 - Emergency type and severity
 - Affected municipalities
 - Declaration text
 - Authorizing superadmin UID
 
 **On declaration:**
+
 - FCM + SMS to all active staff (municipal admins, agency admins, responders)
 - FCM push to citizens with push enabled
 - Emergency banner appears on Citizen PWA (all municipalities in scope)
@@ -452,6 +460,7 @@ After confirming: TOTP re-verification required (even within re-auth window) for
 ### 8.2 Private Data Access Audit
 
 Every time the Superadmin reads `report_private/{id}` or `report_contacts/{id}`:
+
 1. An audit entry is written to `audit_logs` with: `actorId`, `actorRole`, `docRef`, `timestamp`, `reason` (if applicable).
 2. The entry is immediately streamed to BigQuery.
 3. The Superadmin sees a disclosure banner: "You are accessing private citizen data. This access is logged."
@@ -459,6 +468,7 @@ Every time the Superadmin reads `report_private/{id}` or `report_contacts/{id}`:
 ### 8.3 Break-Glass Access
 
 In a genuine emergency where normal access paths are insufficient:
+
 1. Superadmin activates break-glass session (logs to `breakglass_events`).
 2. All actions within the break-glass session are flagged separately in audit.
 3. An independent review must be completed within 72 hours.
@@ -467,6 +477,7 @@ In a genuine emergency where normal access paths are insufficient:
 ### 8.4 Data Subject Erasure (RA 10173)
 
 Citizens may request account deletion and data erasure. These requests are surfaced to the Superadmin for approval:
+
 ```
 Data Erasure Request:
 Citizen UID: [pseudonymous UID]
@@ -519,6 +530,7 @@ Superadmin can manually trigger via [Trigger Surge Pre-Warm] button in the Syste
 ### 9.4 Provincial Resources
 
 Provincial resource inventory managed via callables:
+
 - `provincial_resources/{id}` CRUD (equipment caches, staging areas, pre-positioned supplies)
 - Displayed on provincial map as resource pins
 - Available for municipal admins to request via escalation
@@ -563,16 +575,16 @@ Superadmin is notified by automated alert: "Capalonga MDRRMO has no active admin
 
 ## 11. Edge Cases & Solutions
 
-| Scenario | Solution |
-|---|---|
-| NDRRMC escalation is urgent and PDRRMO Director is unavailable | Superadmin handles directly. The callable does not require a second approver; it requires the superadmin's TOTP-confirmed session. |
-| A Municipal Admin reports that an Agency Admin is operating outside their jurisdiction | Superadmin reviews in audit log (actorAgencyId on all agency admin actions). Suspends account if confirmed via `suspendUser`. |
-| Superadmin loses TOTP device | Secure recovery process: requires verification by a second superadmin or system admin. Temporary recovery codes (printed, stored securely offline) are issued at account creation. |
-| System health shows unprocessed inbox items (> 5 min old) | `inboxReconciliationSweep` CF auto-retries up to 3 times. If dead-lettered, superadmin is alerted. Can manually trigger retry from System Health panel. |
-| Globe Labs SMS provider degrades during a surge | System falls back to Semaphore (primary). Superadmin is notified. Provincial Superadmin may choose to escalate to NDRRMC for ECBS broadcast if SMS capacity is severely degraded. |
-| A citizen submits a formal RA 10173 data access/erasure request | Request is surfaced to Superadmin via User Management. Superadmin reviews and approves erasure or generates the data export within required timeframes. |
-| Two superadmins attempt conflicting province-wide actions simultaneously | Callables are server-authoritative. Server resolves the race; one succeeds. Audit log captures both attempts. |
-| Break-glass session needed for a genuine emergency | Superadmin activates break-glass. All actions logged separately. Independent review completed within 72 hours. |
+| Scenario                                                                               | Solution                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NDRRMC escalation is urgent and PDRRMO Director is unavailable                         | Superadmin handles directly. The callable does not require a second approver; it requires the superadmin's TOTP-confirmed session.                                                 |
+| A Municipal Admin reports that an Agency Admin is operating outside their jurisdiction | Superadmin reviews in audit log (actorAgencyId on all agency admin actions). Suspends account if confirmed via `suspendUser`.                                                      |
+| Superadmin loses TOTP device                                                           | Secure recovery process: requires verification by a second superadmin or system admin. Temporary recovery codes (printed, stored securely offline) are issued at account creation. |
+| System health shows unprocessed inbox items (> 5 min old)                              | `inboxReconciliationSweep` CF auto-retries up to 3 times. If dead-lettered, superadmin is alerted. Can manually trigger retry from System Health panel.                            |
+| Globe Labs SMS provider degrades during a surge                                        | System falls back to Semaphore (primary). Superadmin is notified. Provincial Superadmin may choose to escalate to NDRRMC for ECBS broadcast if SMS capacity is severely degraded.  |
+| A citizen submits a formal RA 10173 data access/erasure request                        | Request is surfaced to Superadmin via User Management. Superadmin reviews and approves erasure or generates the data export within required timeframes.                            |
+| Two superadmins attempt conflicting province-wide actions simultaneously               | Callables are server-authoritative. Server resolves the race; one succeeds. Audit log captures both attempts.                                                                      |
+| Break-glass session needed for a genuine emergency                                     | Superadmin activates break-glass. All actions logged separately. Independent review completed within 72 hours.                                                                     |
 
 ---
 
@@ -581,28 +593,29 @@ Superadmin is notified by automated alert: "Capalonga MDRRMO has no active admin
 ### 12.1 Platform
 
 **Surface:** Admin Desktop PWA (React 18 + Vite)
+
 - 1920×1080 primary; dual-monitor support (second window/screen for map)
 - Chrome 90+ / Edge 90+ (desktop only)
 - No Capacitor wrapper — browser-based only
 
 ### 12.2 State Ownership (Arch §9.4)
 
-| Data Category | Authority |
-|---|---|
-| Server documents (all collections) | Firestore SDK |
-| UI state (dashboard view, selected entity, panel) | Zustand |
-| Analytics aggregates, callables | TanStack Query |
-| **Offline mutations** | **Blocked** — no outbox |
+| Data Category                                     | Authority               |
+| ------------------------------------------------- | ----------------------- |
+| Server documents (all collections)                | Firestore SDK           |
+| UI state (dashboard view, selected entity, panel) | Zustand                 |
+| Analytics aggregates, callables                   | TanStack Query          |
+| **Offline mutations**                             | **Blocked** — no outbox |
 
 ### 12.3 Auth (Arch §7.5)
 
-| Factor | Requirement |
-|--------|-------------|
-| Primary | Phone OTP (verified staff phone) |
-| Second factor | **TOTP (mandatory)** — Authenticator app required. SMS-based 2FA not accepted for this role. |
-| Re-auth interval | **4 hours** (shorter than municipal/agency admins due to higher privilege) |
-| Emergency declaration | TOTP re-verify required even within re-auth window |
-| Recovery | Temporary recovery codes (printed, stored securely) + second superadmin verification |
+| Factor                | Requirement                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| Primary               | Phone OTP (verified staff phone)                                                             |
+| Second factor         | **TOTP (mandatory)** — Authenticator app required. SMS-based 2FA not accepted for this role. |
+| Re-auth interval      | **4 hours** (shorter than municipal/agency admins due to higher privilege)                   |
+| Emergency declaration | TOTP re-verify required even within re-auth window                                           |
+| Recovery              | Temporary recovery codes (printed, stored securely) + second superadmin verification         |
 
 Firebase ID token is 1h regardless. "Re-auth interval" means the app prompts for TOTP at the app layer every 4 hours.
 
@@ -624,6 +637,7 @@ Provincial Superadmin has in-app audit log viewer (Firestore-backed). Compliance
 ### 12.6 Audit-Streamed Actions
 
 All admin actions are audit-logged. The following additionally stream to BigQuery in near-real-time:
+
 - Any read of `report_private/{id}` or `report_contacts/{id}`
 - Any `breakglass_events` entry
 - `declareEmergency`
