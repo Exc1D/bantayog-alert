@@ -1,5 +1,23 @@
 import { z } from 'zod'
 
+// Accepts both Firebase Storage and generic GCS URLs to support storage migration.
+// The https://firebasestorage.googleapis.com/ domain is the standard Firebase Storage API endpoint.
+// The https://storage.googleapis.com/ domain is the raw GCS API, used when we need
+// direct GCS integration or during migration between storage backends.
+const firebaseStorageUrl = z
+  .string()
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  .url()
+  .refine(
+    (val) =>
+      val.startsWith('https://firebasestorage.googleapis.com/') ||
+      val.startsWith('https://storage.googleapis.com/'),
+    {
+      message:
+        'Must be a Firebase Storage URL (https://firebasestorage.googleapis.com/...) or GCS URL (https://storage.googleapis.com/...)',
+    },
+  )
+
 export const dispatchStatusSchema = z.enum([
   'pending',
   'accepted',
@@ -33,7 +51,7 @@ export const dispatchDocSchema = z
     timeoutReason: z.string().optional(),
     declineReason: z.string().optional(),
     resolutionSummary: z.string().optional(),
-    proofPhotoUrl: z.url().optional(),
+    proofPhotoUrl: firebaseStorageUrl.optional(),
     requestedByMunicipalAdmin: z.boolean().optional(),
     requestId: z.string().optional(),
     idempotencyKey: z.string().min(1),

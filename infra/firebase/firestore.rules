@@ -212,11 +212,6 @@ service cloud.firestore {
       allow write: if isSuperadmin() && isActivePrivileged();
     }
 
-    match /system_config/{c} {
-      allow read: if isAuthed();
-      allow write: if isSuperadmin() && isActivePrivileged();
-    }
-
     match /audit_logs/{l} {
       allow read: if isSuperadmin() && isActivePrivileged();
       allow write: if false;

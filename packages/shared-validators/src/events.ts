@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ReportStatus } from '@bantayog/shared-types'
 import { dispatchStatusSchema } from './dispatches.js'
 
 const reportStatusSchema = z.enum([
@@ -17,7 +18,7 @@ const reportStatusSchema = z.enum([
   'cancelled',
   'cancelled_false_report',
   'merged_as_duplicate',
-])
+] as const satisfies readonly ReportStatus[])
 
 export const reportEventSchema = z
   .object({
