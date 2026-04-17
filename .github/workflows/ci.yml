@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@f3d73ada1fa6e5c0c19973ff70a3f5cabf225cc5
         with:
           version: 9.12.0
@@ -36,6 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@f3d73ada1fa6e5c0c19973ff70a3f5cabf225cc5
         with:
           version: 9.12.0
@@ -60,6 +64,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@f3d73ada1fa6e5c0c19973ff70a3f5cabf225cc5
         with:
           version: 9.12.0
@@ -83,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@f3d73ada1fa6e5c0c19973ff70a3f5cabf225cc5
         with:
           version: 9.12.0
@@ -106,6 +114,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@f3d73ada1fa6e5c0c19973ff70a3f5cabf225cc5
         with:
           version: 9.12.0
@@ -129,6 +139,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@f3d73ada1fa6e5c0c19973ff70a3f5cabf225cc5
         with:
           version: 9.12.0
@@ -157,6 +169,8 @@ jobs:
         working-directory: infra/terraform
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
