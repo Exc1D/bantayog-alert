@@ -347,3 +347,11 @@ describe('incident_response_events — superadmin only', () => {
     )
   })
 })
+
+describe('default-deny guardrail', () => {
+  it('any write to an unmapped collection fails default-deny', async () => {
+    const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+    const { setDoc, doc: d } = await import('firebase/firestore')
+    await assertFails(setDoc(d(db, 'not_a_collection/x'), { a: 1 }))
+  })
+})
