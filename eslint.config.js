@@ -97,8 +97,11 @@ export default tseslint.config(
   },
 
   // Config files themselves (this file + vite configs)
+  // Ignores vitest.config.ts files (TypeScript project-service boundary issue)
   {
-    ignores: ['vitest.config.ts'],
+    ignores: ['vitest.config.ts', '**/vitest.config.ts'],
+  },
+  {
     files: ['**/*.config.{js,ts}', '**/*.config.cjs'],
     languageOptions: {
       globals: { ...globals.node },
