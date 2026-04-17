@@ -94,6 +94,7 @@ export default tseslint.config(
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
     },
   },
 

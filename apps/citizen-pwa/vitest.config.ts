@@ -5,6 +5,6 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     include: ['src/**/*.test.tsx'],
-    setupFiles: ['@testing-library/jest-dom'],
+    setupFiles: ['@testing-library/jest-dom/vitest'],
   },
 })
