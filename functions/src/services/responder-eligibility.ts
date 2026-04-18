@@ -5,6 +5,7 @@ export interface EligibleResponder {
   uid: string
   displayName: string
   agencyId: string
+  municipalityId: string
 }
 
 export async function getEligibleResponders(
@@ -35,6 +36,7 @@ export async function getEligibleResponders(
         uid: doc.id,
         displayName: String(data.displayName ?? ''),
         agencyId: String(data.agencyId ?? ''),
+        municipalityId: data.municipalityId as string,
       }
     })
     .sort((a, b) => a.displayName.localeCompare(b.displayName))
