@@ -6,7 +6,10 @@ export const smsInboxDocSchema = z
   .object({
     providerId: smsProviderIdSchema,
     receivedAt: z.number().int(),
-    senderMsisdnHash: z.string().length(64),
+    senderMsisdnHash: z
+      .string()
+      .length(64)
+      .regex(/^[a-f0-9]{64}$/),
     body: z.string().max(1600),
     parseStatus: z.enum(['pending', 'parsed', 'low_confidence', 'unparseable']),
     parsedIntoInboxId: z.string().optional(),
