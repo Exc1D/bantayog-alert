@@ -13,6 +13,7 @@ export interface OwnDispatchRow {
 
 export function useOwnDispatches(uid: string | undefined) {
   const [rows, setRows] = useState<OwnDispatchRow[]>([])
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     if (!uid) {
       return
@@ -23,23 +24,32 @@ export function useOwnDispatches(uid: string | undefined) {
       where('status', 'in', ['pending', 'accepted', 'acknowledged', 'in_progress']),
       orderBy('dispatchedAt', 'desc'),
     )
-    return onSnapshot(q, (snap) => {
-      setRows(
-        snap.docs.map((d) => {
-          const data = d.data()
-          const row: OwnDispatchRow = {
-            dispatchId: d.id,
-            reportId: String(data.reportId),
-            status: String(data.status),
-            dispatchedAt: data.dispatchedAt as Timestamp,
-          }
-          if (data.acknowledgementDeadlineAt) {
-            row.acknowledgementDeadlineAt = data.acknowledgementDeadlineAt as Timestamp
-          }
-          return row
-        }),
-      )
-    })
+    return onSnapshot(
+      q,
+      (snap) => {
+        setRows(
+          snap.docs.map((d) => {
+            const data = d.data()
+            const row: OwnDispatchRow = {
+              dispatchId: d.id,
+              reportId: String(data.reportId),
+              status: String(data.status),
+              dispatchedAt: data.dispatchedAt as Timestamp,
+            }
+            if (data.acknowledgementDeadlineAt) {
+              row.acknowledgementDeadlineAt = data.acknowledgementDeadlineAt as Timestamp
+            }
+            return row
+          }),
+        )
+        setError(null)
+      },
+      (err) => {
+        console.error('[useOwnDispatches] Firestore listener error:', err)
+        setRows([])
+        setError(err.message)
+      },
+    )
   }, [uid])
-  return rows
+  return { rows, error }
 }
