@@ -74,6 +74,19 @@ export async function dispatchResponderCore(
           tx.get(reportRef),
           tx.get(responderRef),
         ])
+
+        // Re-check shift status inside transaction scope to mitigate TOCTOU race
+        const shiftSnap = await rtdb
+          .ref(`/responder_index/${deps.actor.claims.municipalityId ?? ''}/${deps.responderUid}`)
+          .get()
+        const shiftData = shiftSnap.val() as { isOnShift?: boolean } | null
+        if (shiftData?.isOnShift !== true) {
+          throw new BantayogError(
+            BantayogErrorCode.INVALID_STATUS_TRANSITION,
+            'Responder went off-shift before dispatch could be created',
+          )
+        }
+
         if (!reportSnap.exists) {
           throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found')
         }
