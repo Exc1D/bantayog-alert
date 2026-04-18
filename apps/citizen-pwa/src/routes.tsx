@@ -1,8 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { SubmitReportForm } from './components/SubmitReportForm.js'
 
-function SubmitReportForm() {
-  return <div>SubmitReportForm — coming in Task 20</div>
-}
 function ReceiptScreen() {
   return <div>ReceiptScreen — coming in Task 21</div>
 }
