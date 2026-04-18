@@ -192,6 +192,9 @@ describe('reportInboxDocSchema', () => {
         reporterUid: 'uid-1',
         clientCreatedAt: ts,
         idempotencyKey: 'k1',
+        publicRef: 'a1b2c3d4',
+        secretHash: 'f'.repeat(64),
+        correlationId: '11111111-1111-4111-8111-111111111111',
         payload: { reportType: 'flood', description: 'x', source: 'web' },
       }),
     ).toMatchObject({ reporterUid: 'uid-1' })
@@ -202,9 +205,44 @@ describe('reportInboxDocSchema', () => {
       reportInboxDocSchema.parse({
         reporterUid: 'uid-1',
         clientCreatedAt: ts,
+        publicRef: 'a1b2c3d4',
+        secretHash: 'f'.repeat(64),
+        correlationId: '11111111-1111-4111-8111-111111111111',
         payload: { reportType: 'flood' },
       }),
     ).toThrow()
+  })
+})
+
+describe('reportInboxDocSchema Phase 3 deltas', () => {
+  const validInbox = {
+    reporterUid: 'citizen-1',
+    clientCreatedAt: 1713350400000,
+    idempotencyKey: 'idem-1',
+    publicRef: 'a1b2c3d4',
+    secretHash: 'f'.repeat(64),
+    correlationId: '11111111-1111-4111-8111-111111111111',
+    payload: { reportType: 'flood', description: 'x' },
+  }
+
+  it('accepts a valid inbox doc with all Phase 3 fields', () => {
+    expect(() => reportInboxDocSchema.parse(validInbox)).not.toThrow()
+  })
+
+  it('rejects a publicRef with uppercase letters', () => {
+    expect(() => reportInboxDocSchema.parse({ ...validInbox, publicRef: 'A1B2C3D4' })).toThrow()
+  })
+
+  it('rejects a publicRef of wrong length', () => {
+    expect(() => reportInboxDocSchema.parse({ ...validInbox, publicRef: 'abc' })).toThrow()
+  })
+
+  it('rejects a secretHash that is not 64 hex chars', () => {
+    expect(() => reportInboxDocSchema.parse({ ...validInbox, secretHash: 'short' })).toThrow()
+  })
+
+  it('rejects a non-UUID correlationId', () => {
+    expect(() => reportInboxDocSchema.parse({ ...validInbox, correlationId: 'x' })).toThrow()
   })
 })
 
