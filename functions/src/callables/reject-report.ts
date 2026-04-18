@@ -1,12 +1,7 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import {
-  BantayogError,
-  BantayogErrorCode,
-  isValidReportTransition,
-  logDimension,
-} from '@bantayog/shared-validators'
+import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../firebase-admin'
 import { withIdempotency } from '../idempotency/guard'
 import { checkRateLimit } from '../services/rate-limit'
@@ -61,12 +56,13 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
         if (report.municipalityId !== deps.actor.claims.municipalityId) {
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
         }
-        const from = report.status as 'awaiting_verify'
+        const from = report.status as string
         const to = 'cancelled_false_report' as const
-        if (!isValidReportTransition(from, to)) {
+        if (from !== 'awaiting_verify') {
           throw new BantayogError(
             BantayogErrorCode.INVALID_STATUS_TRANSITION,
-            `Cannot reject report in status ${from}`,
+            `rejectReport is only valid from awaiting_verify, got ${from}`,
+            { reportId: deps.reportId, from },
           )
         }
 
