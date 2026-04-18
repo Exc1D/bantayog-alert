@@ -17,7 +17,7 @@ export interface SweepResult {
   candidates: number
   processed: number
   failed: number
-  oldestAgeMs: number
+  oldestAgeMs: number | null
 }
 
 export async function inboxReconciliationSweepCore(input: SweepInput): Promise<SweepResult> {
@@ -36,6 +36,20 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
   for (const d of snap.docs) {
     const data = d.data() as { processedAt?: number; clientCreatedAt: number }
     if (data.processedAt) continue
+    // Atomically claim this item so concurrent scheduler instances don't duplicate work
+    const claimRef = input.db.collection('report_inbox').doc(d.id)
+    let claimed = false
+    try {
+      claimed = await input.db.runTransaction(async (tx) => {
+        const snap = await tx.get(claimRef)
+        if (snap.data()?.processedAt) return false
+        tx.update(claimRef, { processedAt: now() })
+        return true
+      })
+    } catch {
+      // Transaction contention — another instance claimed it; skip
+    }
+    if (!claimed) continue
     oldestAgeMs = Math.max(oldestAgeMs, now() - data.clientCreatedAt)
     try {
       await processInboxItemCore({ db: input.db, inboxId: d.id, now })
@@ -54,7 +68,7 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
       })
     }
   }
-  return { candidates: snap.size, processed, failed, oldestAgeMs }
+  return { candidates: snap.size, processed, failed, oldestAgeMs: snap.empty ? null : oldestAgeMs }
 }
 
 export const inboxReconciliationSweep = onSchedule(
@@ -67,7 +81,10 @@ export const inboxReconciliationSweep = onSchedule(
   async () => {
     const result = await inboxReconciliationSweepCore({ db: getFirestore() })
     log({
-      severity: result.processed > 3 || result.oldestAgeMs > 15 * 60 * 1000 ? 'ERROR' : 'INFO',
+      severity:
+        result.processed > 3 || (result.oldestAgeMs !== null && result.oldestAgeMs > 15 * 60 * 1000)
+          ? 'ERROR'
+          : 'INFO',
       code: 'INBOX_RECONCILIATION_SWEEP',
       message:
         'sweep completed: ' +
