@@ -13,7 +13,6 @@
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { randomUUID, createHash } from 'node:crypto'
-import { CAMARINES_NORTE_MUNICIPALITIES } from '../packages/shared-validators/src/municipalities.js'
 import { processInboxItemCore } from '../../functions/src/triggers/process-inbox-item.js'
 
 interface Assertion {
