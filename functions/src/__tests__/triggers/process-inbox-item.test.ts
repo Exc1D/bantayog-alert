@@ -125,4 +125,109 @@ describe('processInboxItemCore', () => {
       expect(second.reportId).toBe(first.reportId)
     })
   })
+
+  it('writes moderation_incident and throws when payload schema is invalid', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-schema-bad'), {
+        reporterUid: 'citizen-1',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-schema-bad',
+        publicRef: 'c3d4e5f6',
+        secretHash: 'f'.repeat(64),
+        correlationId: '33333333-3333-4333-8333-333333333333',
+        payload: {
+          reportType: 'flood',
+          // missing required fields — severity and source omitted
+          description: 'bad',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+        },
+      })
+
+      await expect(
+        processInboxItemCore({ db, inboxId: 'ibx-schema-bad', now: () => 1713350401000 }),
+      ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+
+      const incidentSnap = await getDoc(
+        doc(ctx.firestore(), 'moderation_incidents', 'ibx-schema-bad'),
+      )
+      expect(incidentSnap.exists()).toBe(true)
+      expect(incidentSnap.data()?.reason).toBe('schema_invalid')
+    })
+  })
+
+  it('writes moderation_incident and throws when location is out of jurisdiction', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-oog'), {
+        reporterUid: 'citizen-1',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-oog',
+        publicRef: 'd4e5f6a7',
+        secretHash: 'f'.repeat(64),
+        correlationId: '44444444-4444-4444-8444-444444444444',
+        payload: {
+          reportType: 'flood',
+          description: 'somewhere far',
+          severity: 'high',
+          source: 'web',
+          publicLocation: { lat: 0.0, lng: 0.0 }, // way outside Camarines Norte
+        },
+      })
+
+      await expect(
+        processInboxItemCore({ db, inboxId: 'ibx-oog', now: () => 1713350401000 }),
+      ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+
+      const incidentSnap = await getDoc(doc(ctx.firestore(), 'moderation_incidents', 'ibx-oog'))
+      expect(incidentSnap.exists()).toBe(true)
+      expect(incidentSnap.data()?.reason).toBe('out_of_jurisdiction')
+    })
+  })
+
+  it('throws NOT_FOUND when inbox doc does not exist', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await expect(
+        processInboxItemCore({ db, inboxId: 'ibx-missing', now: () => 1713350401000 }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    })
+  })
+
+  it('throws CONFLICT when lookup doc exists with different reportId', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      // Pre-write a conflicting lookup entry
+      await setDoc(doc(ctx.firestore(), 'report_lookup', 'conflict-ref'), {
+        reportId: 'some-other-report',
+        tokenHash: 'f'.repeat(64),
+        expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
+        createdAt: Date.now(),
+        schemaVersion: 1,
+      })
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-conflict'), {
+        reporterUid: 'citizen-1',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-conflict',
+        publicRef: 'conflict-ref',
+        secretHash: 'f'.repeat(64),
+        correlationId: '55555555-5555-4555-8555-555555555555',
+        payload: {
+          reportType: 'flood',
+          description: 'conflict test',
+          severity: 'high',
+          source: 'web',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+        },
+      })
+
+      await expect(
+        processInboxItemCore({ db, inboxId: 'ibx-conflict', now: () => 1713350401000 }),
+      ).rejects.toMatchObject({ code: 'CONFLICT' })
+    })
+  })
 })
