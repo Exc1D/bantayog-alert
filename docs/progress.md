@@ -1,4 +1,4 @@
-# Progress - 2026-04-17
+# Progress
 
 ## Phase 1 Infrastructure and Identity Spine (In Progress)
 
@@ -250,51 +250,43 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 
 ---
 
-## Phase 3a Citizen Submission + Triptych Materialization (Complete)
+## Phase 3a Citizen Submission + Triptych Materialization (Complete — PR #43 Merged)
 
-**Branch:** `feature/phase-3a-citizen-submission`
-**Plan:** `docs/superpowers/plans/2026-04-18-phase-3a-citizen-submission.md`
-**Design spec:** `docs/superpowers/specs/2026-04-18-phase-3-design.md`
-
-### Implementation Summary
-
-| Task  | Description                                       | Status |
-| ----- | ------------------------------------------------- | ------ |
-| 1-5   | Schema deltas + state machines + errors + logging | ✅     |
-| 6-8   | Rules codegen + drift check                       | ✅     |
-| 9-11  | Citizen callables + muni lookup                   | ✅     |
-| 12-14 | processInboxItem trigger (triptych materializer)  | ✅     |
-| 15-17 | Media pipeline (EXIF strip + dormant relocate)    | ✅     |
-| 18    | Reconciliation sweep                              | ✅     |
-| 19-22 | Citizen PWA + bootstrap + acceptance script       | ✅     |
-| 23    | Terraform monitoring module                       | ✅     |
-| 25    | Rule-coverage gate + docs                         | ✅     |
-
-### Verification Results
-
-| Step | Check                                           | Result                 |
-| ---- | ----------------------------------------------- | ---------------------- |
-| 1    | `pnpm test`                                     | PASS (125 tests)       |
-| 2    | `pnpm exec tsx scripts/check-rule-coverage.ts`  | PASS (36 collections)  |
-| 3    | `scripts/phase-3a/acceptance.ts --env=emulator` | Pending emulator run   |
-| 4    | `scripts/phase-3a/acceptance.ts --env=staging`  | Pending staging deploy |
+**Branch:** `feature/phase-3a-citizen-submission` → merged to `main`
+**PR:** [#43](https://github.com/Exc1D/bantayog-alert/pull/43)
 
 ### What was built
 
-- Zod schema deltas: `municipalityLabel`, `correlationId`, `publicRef`, `secretHash`, `tokenHash` on report/inbox/lookup schemas
-- State-machine transition tables (`REPORT_TRANSITIONS`, `DISPATCH_TRANSITIONS`) with matrix tests
-- `BantayogError` typed error class + `logEvent` structured logging helper
-- Rules codegen pipeline (`scripts/build-rules.ts` → template → generated `firestore.rules`)
-- `requestUploadUrl` callable (signed URL + MIME/size validation)
-- `requestLookup` callable (token-hash verification + expiry check)
-- `processInboxItem` Firestore trigger (triptych materialization in single transaction)
-- `onMediaFinalize` Storage trigger (EXIF strip via sharp + MIME check via file-type)
-- `onMediaRelocate` dormant trigger (Phase 5 feature flag)
-- `inboxReconciliationSweep` scheduled function (5-min interval safety net)
-- Municipality lookup service with cold-start cache
-- Stub reverse geocoder (centroid-distance nearest-neighbor)
-- Citizen PWA: `SubmitReportForm`, `ReceiptScreen`, `LookupScreen` components
-- `submitReport` client orchestrator (upload → inbox write with dependency injection)
-- Bootstrap script for Camarines Norte municipalities
-- Terraform monitoring module (log-based metrics + alert policies)
-- Phase 3a acceptance gate script
+- **Callables**: `requestUploadUrl` (signed URL + MIME/size validation), `requestLookup` (token-hash verification + constant-time comparison)
+- **Triggers**: `processInboxItem` (triptych materialization in single transaction), `onMediaFinalize` (EXIF strip via sharp), `onMediaRelocate` (dormant, Phase 5 flag), `inboxReconciliationSweep` (5-min safety net)
+- **Shared validators**: `BantayogError` exhaustive 16-code HTTP mapping, `logEvent` with `event`+`code` backward-compat
+- **Idempotency guard**: `fromCache` flag to correctly distinguish fresh vs replayed materialization
+- **Citizen PWA**: `SubmitReportForm` (geolocation error handling), `LookupScreen`, `ReceiptScreen`, `submitReport` orchestrator with DI
+- **Bootstrap + acceptance**: Municipality seed script, Phase 3a acceptance gate
+- **Monitoring**: Terraform log metrics updated for Cloud Run v2 (`cloud_run_revision`)
+
+### Key fixes during review
+
+| Comment                                 | Fix                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Error mapping not exhaustive            | `Record<BantayogErrorCode, FunctionsErrorCode>` — compile-time coverage                  |
+| Media finalize swallows failures        | Only suppress `MEDIA_REJECTED_MIME`/`MEDIA_REJECTED_CORRUPT`, rethrow operational errors |
+| Replay detection broken                 | `withIdempotency` returns `{ result, fromCache }` instead of check-after-set             |
+| Monitoring filter misses v2 logs        | Terraform filter added `OR resource.type="cloud_run_revision"`                           |
+| Geolocation error swallowed             | `onCaptureLocation()` wraps `getLocation()` in try-catch                                 |
+| pnpm workspace missing firebase subpath | Added explicit `firebase@^12.12.0` to citizen-pwa dependencies                           |
+
+### Verification
+
+| Step | Check                            | Result                |
+| ---- | -------------------------------- | --------------------- |
+| 1    | `pnpm test`                      | PASS (127 tests)      |
+| 2    | `pnpm lint`                      | PASS (14 tasks)       |
+| 3    | `pnpm typecheck`                 | PASS (14 tasks)       |
+| 4    | `scripts/check-rule-coverage.ts` | PASS (36 collections) |
+| 5    | CI (GitHub Actions)              | PASS                  |
+
+### Pending (post-merge acceptance gates)
+
+- `scripts/phase-3a/acceptance.ts --env=emulator` — run against local emulators
+- `scripts/phase-3a/acceptance.ts --env=staging` — run against staging with real credentials

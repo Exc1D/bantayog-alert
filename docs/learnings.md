@@ -255,6 +255,42 @@ When a service account needs to impersonate another SA, always use `google_servi
 
 ---
 
+## Phase 3a: Citizen Submission (2026-04-18)
+
+### Idempotency Guard: Distinguish Fresh vs Cached
+
+`withIdempotency` must return a flag distinguishing fresh execution from cached replay. The outer-check pattern (set `processedAt` inside callback, then check it outside) fails because fresh materializations always have `processedAt` defined after the callback returns — it was just set. The correct approach:
+
+```typescript
+// WRONG — fresh materializations always have processedAt defined
+const result = await withIdempotency(...)
+if (result.materialized && (await inboxRef.get()).data()?.processedAt !== undefined) {
+  return { ...result, replayed: true }
+}
+
+// CORRECT — guard returns metadata about cache hit
+const { result, fromCache } = await withIdempotency(...)
+return { materialized: result.materialized, replayed: fromCache, reportId: result.reportId }
+```
+
+### Firebase Functions v2: Cloud Run resource type
+
+Functions v2 emit under `resource.type="cloud_run_revision"`, not `cloud_function`. Terraform logging metric filters must include both. Also add `jsonPayload.code:*` to filter to structured logs only.
+
+### Error Code Exhaustiveness
+
+`Record<string, FunctionsErrorCode>` with `?? 'internal'` silently maps unmapped codes. Use `Record<BantayogErrorCode, FunctionsErrorCode>` — TypeScript enforces coverage of all enum values at compile time.
+
+### Storage Trigger Error Handling
+
+Firebase Storage triggers only retry when handlers throw. Catching all errors and returning normally marks the event as complete — transient failures (network, sharp) will NOT retry. Only suppress explicitly terminal rejections (`MEDIA_REJECTED_MIME`, `MEDIA_REJECTED_CORRUPT`); rethrow operational failures.
+
+### pnpm Workspace: Explicit Dependencies Don't Auto-Resolve
+
+If a package imports a subpath of a workspace dep (`firebase/functions` from `firebase-admin`), the workspace `*` link does not automatically cover transitive subpaths. Always add explicit `firebase@^12.x.x` when importing subpackages directly.
+
+---
+
 ## Phase 2: Data Model and Security Rules
 
 ### Firestore rules: `resource.data.__reportId` does not exist
