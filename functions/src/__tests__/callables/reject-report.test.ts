@@ -82,6 +82,28 @@ describe('rejectReportCore', () => {
     ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
   })
 
+  it('FAILED_PRECONDITION when report is already verified', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+    await expect(
+      rejectReportCore(db, {
+        reportId,
+        reason: 'citizen_withdrew',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
+  })
+
   it('rejects cross-muni with PERMISSION_DENIED', async () => {
     const db = testEnv.unauthenticatedContext().firestore() as any
     const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
