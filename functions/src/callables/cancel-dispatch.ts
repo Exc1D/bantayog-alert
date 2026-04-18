@@ -6,6 +6,7 @@ import {
   BantayogErrorCode,
   isValidDispatchTransition,
   logDimension,
+  type DispatchStatus,
 } from '@bantayog/shared-validators'
 import { adminDb } from '../firebase-admin'
 import { withIdempotency } from '../idempotency/guard'
@@ -24,7 +25,7 @@ const InputSchema = z
   .object({
     dispatchId: z.string().min(1).max(128),
     reason: z.enum(CANCEL_REASONS),
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
   })
   .strict()
 
@@ -55,12 +56,15 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
         if (!dispatchSnap.exists) {
           throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found')
         }
-        const dispatch = dispatchSnap.data()!
-        if (dispatch.assignedTo?.municipalityId !== deps.actor.claims.municipalityId) {
-          throw new BantayogError(
-            BantayogErrorCode.FORBIDDEN,
-            'Dispatch not in your municipality',
-          )
+        const dispatch = dispatchSnap.data()
+        if (!dispatch) {
+          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch data unavailable')
+        }
+        if (
+          (dispatch.assignedTo as { municipalityId?: string } | null | undefined)
+            ?.municipalityId !== deps.actor.claims.municipalityId
+        ) {
+          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Dispatch not in your municipality')
         }
 
         const from = dispatch.status as string
@@ -73,7 +77,7 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
           )
         }
 
-        if (!isValidDispatchTransition(from as any, to)) {
+        if (!isValidDispatchTransition(from as DispatchStatus, to)) {
           throw new BantayogError(BantayogErrorCode.INVALID_STATUS_TRANSITION, 'invalid transition')
         }
 
@@ -84,27 +88,30 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
           cancelReason: deps.reason,
         })
 
-        const reportRef = db.collection('reports').doc(dispatch.reportId)
+        const reportRef = db.collection('reports').doc(dispatch.reportId as string)
         const reportSnap = await tx.get(reportRef)
-        if (reportSnap.exists && reportSnap.data()!.currentDispatchId === deps.dispatchId) {
-          tx.update(reportRef, {
-            status: 'verified',
-            currentDispatchId: null,
-            lastStatusAt: deps.now,
-            lastStatusBy: deps.actor.uid,
-          })
-          const revertEv = db.collection('report_events').doc()
-          tx.set(revertEv, {
-            eventId: revertEv.id,
-            reportId: dispatch.reportId,
-            from: 'assigned',
-            to: 'verified',
-            actor: deps.actor.uid,
-            actorRole: deps.actor.claims.role ?? 'municipal_admin',
-            at: deps.now,
-            correlationId,
-            schemaVersion: 1,
-          })
+        if (reportSnap.exists) {
+          const reportData = reportSnap.data()
+          if (reportData?.currentDispatchId === deps.dispatchId) {
+            tx.update(reportRef, {
+              status: 'verified',
+              currentDispatchId: null,
+              lastStatusAt: deps.now,
+              lastStatusBy: deps.actor.uid,
+            })
+            const revertEv = db.collection('report_events').doc()
+            tx.set(revertEv, {
+              eventId: revertEv.id,
+              reportId: dispatch.reportId,
+              from: 'assigned',
+              to: 'verified',
+              actor: deps.actor.uid,
+              actorRole: deps.actor.claims.role ?? 'municipal_admin',
+              at: deps.now,
+              correlationId,
+              schemaVersion: 1,
+            })
+          }
         }
 
         const evRef = db.collection('dispatch_events').doc()
@@ -147,7 +154,8 @@ export const cancelDispatch = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
-    const claims = (req.auth.token ?? {}) as Record<string, unknown>
+    const claims = req.auth.token as Record<string, unknown> | null
+    if (!claims) throw new HttpsError('unauthenticated', 'token required')
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
@@ -173,8 +181,8 @@ export const cancelDispatch = onCall(
         actor: {
           uid: req.auth.uid,
           claims: {
-            ...(claims.role !== undefined && { role: claims.role as string }),
-            ...(claims.municipalityId !== undefined && { municipalityId: claims.municipalityId as string }),
+            role: claims.role as string | undefined,
+            municipalityId: claims.municipalityId as string | undefined,
           },
         },
         now: Timestamp.now(),
