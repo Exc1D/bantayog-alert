@@ -63,11 +63,16 @@ export const onMediaFinalize = onObjectFinalized(
         },
       })
     } catch (err) {
+      const code = (err as { code?: string }).code
+      if (code === 'MEDIA_REJECTED_MIME' || code === 'MEDIA_REJECTED_CORRUPT') {
+        return
+      }
       log({
         severity: 'ERROR',
         code: 'MEDIA_FINALIZE_FAILED',
         message: `onMediaFinalize failed: ${(err as Error).message}`,
       })
+      throw err
     }
   },
 )
