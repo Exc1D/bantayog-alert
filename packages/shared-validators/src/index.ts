@@ -77,3 +77,14 @@ export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
 export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'
 export type { MunicipalityDoc } from './municipalities.js'
+export {
+  REPORT_STATES,
+  REPORT_TRANSITIONS,
+  isValidReportTransition,
+} from './state-machines/report-states.js'
+export {
+  DISPATCH_STATES,
+  DISPATCH_TRANSITIONS,
+  isValidDispatchTransition,
+} from './state-machines/report-states.js'
+export type { ReportStatus, DispatchStatus } from './state-machines/report-states.js'
