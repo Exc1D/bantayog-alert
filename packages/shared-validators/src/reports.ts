@@ -161,6 +161,9 @@ export const reportInboxDocSchema = z
     reporterUid: z.string().min(1),
     clientCreatedAt: z.number().int(),
     idempotencyKey: z.string().min(1),
+    publicRef: z.string().regex(/^[a-z0-9]{8}$/),
+    secretHash: z.string().regex(/^[a-f0-9]{64}$/),
+    correlationId: z.uuid(),
     payload: z.record(z.string(), z.unknown()),
   })
   .strict()
