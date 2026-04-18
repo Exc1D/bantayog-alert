@@ -84,19 +84,16 @@ export async function dispatchResponderCore(
         const responder = responderSnap.data() as Record<string, unknown>
 
         if (report.municipalityId !== deps.actor.claims.municipalityId) {
-          throw new BantayogError(
-            BantayogErrorCode.FORBIDDEN,
-            'Report not in your municipality',
-          )
+          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
         }
         if (responder.municipalityId !== deps.actor.claims.municipalityId) {
-          throw new BantayogError(
-            BantayogErrorCode.FORBIDDEN,
-            'Responder not in your municipality',
-          )
+          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Responder not in your municipality')
         }
         if (responder.isActive !== true) {
-          throw new BantayogError(BantayogErrorCode.INVALID_STATUS_TRANSITION, 'Responder is not active')
+          throw new BantayogError(
+            BantayogErrorCode.INVALID_STATUS_TRANSITION,
+            'Responder is not active',
+          )
         }
 
         const from = report.status as 'verified'
@@ -108,7 +105,8 @@ export async function dispatchResponderCore(
           )
         }
 
-        const severity = ((report.severityDerived as string) ?? 'medium') as keyof typeof DEADLINE_BY_SEVERITY
+        const severity = ((report.severityDerived as string | null | undefined) ??
+          'medium') as keyof typeof DEADLINE_BY_SEVERITY
         const deadlineMs = DEADLINE_BY_SEVERITY[severity]
 
         const dispatchRef = db.collection('dispatches').doc()
