@@ -27,6 +27,11 @@ export interface LogEntry {
    * Examples: 'VALIDATION_ERROR', 'requestUploadUrl.called'
    */
   code: string
+  /**
+   * Alias for monitoring filters expecting `event`.
+   * Duplicates `code` for backward compatibility with existing Terraform filters.
+   */
+  event: string
   /** Human-readable description of the event. */
   message: string
   /**
@@ -65,6 +70,7 @@ export function logEvent(entry: {
     timestamp: Date.now(),
     severity: entry.severity,
     code: entry.code,
+    event: entry.code,
     message: entry.message,
     dimension,
     ...(entry.data !== undefined ? { data: entry.data } : {}),
