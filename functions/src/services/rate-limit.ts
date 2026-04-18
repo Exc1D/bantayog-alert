@@ -34,11 +34,12 @@ export async function checkRateLimit(
     }
 
     fresh.push(now.toMillis())
+    const pruned = fresh.slice(-limit)
     tx.set(
       ref,
-      { timestamps: fresh, updatedAt: updatedAt ?? AdminTimestamp.now() },
+      { timestamps: pruned, updatedAt: updatedAt ?? AdminTimestamp.now() },
       { merge: true },
     )
-    return { allowed: true, remaining: limit - fresh.length, retryAfterSeconds: 0 }
+    return { allowed: true, remaining: limit - pruned.length, retryAfterSeconds: 0 }
   })
 }
