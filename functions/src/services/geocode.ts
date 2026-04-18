@@ -11,39 +11,50 @@ interface MunicipalityDoc {
   centroid?: GeoPoint
 }
 
-function squaredDistance(a: GeoPoint, b: GeoPoint): number {
-  const dLat = a.lat - b.lat
-  const dLng = a.lng - b.lng
-  return dLat * dLat + dLng * dLng
-}
-
 export interface ReverseGeocodeResult {
   municipalityId: string
   municipalityLabel: string
   barangayId: string
 }
 
+let cachedMunis: MunicipalityDoc[] | null = null
+
+async function loadMunicipalities(db: Firestore): Promise<MunicipalityDoc[]> {
+  if (cachedMunis) return cachedMunis
+  const snap = await db.collection('municipalities').get()
+  cachedMunis = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MunicipalityDoc, 'id'>) }))
+  return cachedMunis
+}
+
+function squaredDistance(a: GeoPoint, b: GeoPoint): number {
+  const dLat = a.lat - b.lat
+  const dLng = a.lng - b.lng
+  return dLat * dLat + dLng * dLng
+}
+
 export async function reverseGeocodeToMunicipality(
   db: Firestore,
   location: GeoPoint,
 ): Promise<ReverseGeocodeResult | null> {
-  const snap = await db.collection('municipalities').get()
-  if (snap.empty) return null
+  const munis = await loadMunicipalities(db)
+  if (munis.length === 0) return null
 
   let nearest: MunicipalityDoc | null = null
   let nearestDist = Infinity
 
-  for (const d of snap.docs) {
-    const data = d.data() as MunicipalityDoc
-    if (!data.centroid) continue
-    const dist = squaredDistance(location, data.centroid)
+  for (const m of munis) {
+    if (!m.centroid) continue
+    const dist = squaredDistance(location, m.centroid)
     if (dist < nearestDist) {
       nearestDist = dist
-      nearest = data
+      nearest = m
     }
   }
 
-  if (!nearest) return null
+  if (!nearest?.centroid) return null
+
+  const MAX_SQUARED_DIST = 1.0
+  if (nearestDist > MAX_SQUARED_DIST) return null
 
   return {
     municipalityId: nearest.id,

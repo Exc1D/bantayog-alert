@@ -5,6 +5,7 @@ import {
   BantayogErrorCode,
   logDimension,
   reportInboxDocSchema,
+  inboxPayloadSchema,
 } from '@bantayog/shared-validators'
 import { reverseGeocodeToMunicipality } from '../services/geocode.js'
 import { withIdempotency } from '../idempotency/guard.js'
@@ -21,14 +22,6 @@ export interface ProcessInboxItemCoreResult {
   materialized: boolean
   replayed?: boolean
   reportId: string
-}
-
-interface InboxPayload {
-  reportType: string
-  description: string
-  severity: 'low' | 'medium' | 'high'
-  source: 'web' | 'sms' | 'responder_witness'
-  publicLocation: { lat: number; lng: number }
 }
 
 export async function processInboxItemCore(
@@ -62,7 +55,26 @@ export async function processInboxItemCore(
   }
 
   const inbox = parsed.data
-  const payload = inbox.payload as unknown as InboxPayload
+  const payloadResult = inboxPayloadSchema.safeParse(inbox.payload)
+  if (!payloadResult.success) {
+    await db
+      .collection('moderation_incidents')
+      .doc(inboxId)
+      .set({
+        inboxId,
+        reason: 'payload_schema_invalid',
+        detail: payloadResult.error.issues
+          .map((i) => `${i.path.join('.')}: ${i.message}`)
+          .join('; '),
+        createdAt: now(),
+        schemaVersion: 1,
+      })
+    throw new BantayogError(
+      BantayogErrorCode.INVALID_ARGUMENT,
+      `payload schema invalid: ${payloadResult.error.issues[0]?.message ?? 'unknown'}`,
+    )
+  }
+  const payload = payloadResult.data
 
   const geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
   if (!geo) {
@@ -76,11 +88,7 @@ export async function processInboxItemCore(
   }
 
   const createdAt = now()
-  const pendingMediaIds = Array.isArray(
-    (payload as unknown as { pendingMediaIds?: unknown }).pendingMediaIds,
-  )
-    ? ((payload as unknown as { pendingMediaIds: unknown[] }).pendingMediaIds as string[])
-    : []
+  const pendingMediaIds = payload.pendingMediaIds ?? []
 
   const result = await withIdempotency<
     { inboxId: string; publicRef: string },
@@ -90,6 +98,20 @@ export async function processInboxItemCore(
     { key: `processInboxItem:${inboxId}`, payload: { inboxId, publicRef: inbox.publicRef }, now },
     async () => {
       const reportId = randomUUID()
+
+      const pendingMediaDocs = new Map<
+        string,
+        { storagePath: string; mimeType: string; strippedAt: number }
+      >()
+      for (const uploadId of pendingMediaIds) {
+        const pendingSnap = await db.collection('pending_media').doc(uploadId).get()
+        if (pendingSnap.exists) {
+          pendingMediaDocs.set(
+            uploadId,
+            pendingSnap.data() as { storagePath: string; mimeType: string; strippedAt: number },
+          )
+        }
+      }
 
       await db.runTransaction(async (tx) => {
         const lookupRef = db.collection('report_lookup').doc(inbox.publicRef)
@@ -169,14 +191,8 @@ export async function processInboxItemCore(
         })
 
         for (const uploadId of pendingMediaIds) {
-          const pendingRef = db.collection('pending_media').doc(uploadId)
-          const pendingSnap = await tx.get(pendingRef)
-          if (!pendingSnap.exists) continue
-          const data = pendingSnap.data() as {
-            storagePath: string
-            mimeType: string
-            strippedAt: number
-          }
+          const data = pendingMediaDocs.get(uploadId)
+          if (!data) continue
           tx.set(db.collection('reports').doc(reportId).collection('media').doc(uploadId), {
             uploadId,
             storagePath: data.storagePath,
@@ -185,9 +201,11 @@ export async function processInboxItemCore(
             addedAt: createdAt,
             schemaVersion: 1,
           })
-          tx.delete(pendingRef)
+          tx.delete(db.collection('pending_media').doc(uploadId))
         }
       })
+
+      await inboxRef.update({ processedAt: now() })
 
       log({
         severity: 'INFO',

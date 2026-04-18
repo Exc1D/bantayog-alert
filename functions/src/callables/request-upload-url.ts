@@ -1,8 +1,21 @@
 import { randomUUID } from 'node:crypto'
-import { onCall } from 'firebase-functions/v2/https'
+import { onCall, HttpsError, type FunctionsErrorCode } from 'firebase-functions/v2/https'
 import { getStorage } from 'firebase-admin/storage'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
+
+const BANTAYOG_TO_HTTPS_CODE: Record<string, FunctionsErrorCode> = {
+  UNAUTHORIZED: 'unauthenticated',
+  FORBIDDEN: 'permission-denied',
+  NOT_FOUND: 'not-found',
+  INVALID_ARGUMENT: 'invalid-argument',
+  CONFLICT: 'already-exists',
+  RATE_LIMITED: 'resource-exhausted',
+}
+
+function bantayogErrorToHttps(err: BantayogError): HttpsError {
+  return new HttpsError(BANTAYOG_TO_HTTPS_CODE[err.code] ?? 'internal', err.message, err.data)
+}
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_SIZE_BYTES = 10 * 1024 * 1024
@@ -72,17 +85,18 @@ export async function requestUploadUrlImpl(
   const bucket = storage.bucket(input.bucket)
   const file = bucket.file(storagePath)
 
+  const expiresAt = Date.now() + SIGNED_URL_TTL_MS
   const [uploadUrl] = await file.getSignedUrl({
     version: 'v4',
     action: 'write',
-    expires: Date.now() + SIGNED_URL_TTL_MS,
+    expires: expiresAt,
   })
 
   return {
     uploadUrl,
     uploadId,
     storagePath,
-    expiresAt: Date.now() + SIGNED_URL_TTL_MS,
+    expiresAt,
   }
 }
 
@@ -91,15 +105,12 @@ export const requestUploadUrl = onCall(async (request) => {
     return await requestUploadUrlImpl({
       auth: request.auth ?? undefined,
       data: request.data,
-      bucket: 'bantayog-alert.appspot.com',
+      bucket: process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com',
     })
   } catch (err: unknown) {
     if (err instanceof BantayogError) {
-      throw err
+      throw bantayogErrorToHttps(err)
     }
-    throw new BantayogError(
-      BantayogErrorCode.INTERNAL_ERROR,
-      err instanceof Error ? err.message : 'Unknown error',
-    )
+    throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error')
   }
 })

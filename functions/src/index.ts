@@ -7,9 +7,25 @@ export { requestLookup } from './callables/request-lookup.js'
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
 import { onObjectFinalized } from 'firebase-functions/v2/storage'
+import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { getStorage } from 'firebase-admin/storage'
 import { getFirestore } from 'firebase-admin/firestore'
 import { onMediaFinalizeCore } from './triggers/on-media-finalize.js'
+import { processInboxItemCore } from './triggers/process-inbox-item.js'
+
+export const processInboxItem = onDocumentCreated(
+  {
+    document: 'report_inbox/{inboxId}',
+    region: 'asia-southeast1',
+    minInstances: 3,
+    maxInstances: 100,
+    timeoutSeconds: 30,
+    memory: '512MiB',
+  },
+  async (event) => {
+    await processInboxItemCore({ db: getFirestore(), inboxId: event.params.inboxId })
+  },
+)
 
 export const onMediaFinalize = onObjectFinalized(
   {

@@ -167,6 +167,7 @@ export const reportInboxDocSchema = z
     secretHash: z.string().regex(/^[a-f0-9]{64}$/),
     correlationId: z.uuid(),
     payload: z.record(z.string(), z.unknown()),
+    processedAt: z.number().int().optional(),
   })
   .strict()
 
@@ -178,3 +179,22 @@ export type ReportSharingDoc = z.infer<typeof reportSharingDocSchema>
 export type ReportContactsDoc = z.infer<typeof reportContactsDocSchema>
 export type ReportLookupDoc = z.infer<typeof reportLookupDocSchema>
 export type ReportInboxDoc = z.infer<typeof reportInboxDocSchema>
+
+// inboxPayloadSchema — validated payload inside report_inbox docs
+export const inboxPayloadSchema = z
+  .object({
+    reportType: z.string().min(1).max(32),
+    description: z.string().min(1).max(5000),
+    severity: z.enum(['low', 'medium', 'high']),
+    source: z.enum(['web', 'sms', 'responder_witness']),
+    publicLocation: z
+      .object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+      })
+      .strict(),
+    pendingMediaIds: z.array(z.string().min(1)).optional(),
+  })
+  .strict()
+
+export type InboxPayload = z.infer<typeof inboxPayloadSchema>

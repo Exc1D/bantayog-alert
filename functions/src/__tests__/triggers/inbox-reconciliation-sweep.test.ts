@@ -30,9 +30,23 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await env!.withSecurityRulesDisabled(async (ctx) => {
-    const inboxDocs = await ctx.firestore().collection('report_inbox').get()
-    for (const d of inboxDocs.docs) {
-      await d.ref.delete()
+    const db = ctx.firestore()
+    const collections = [
+      'report_inbox',
+      'reports',
+      'report_private',
+      'report_ops',
+      'report_events',
+      'report_lookup',
+      'moderation_incidents',
+      'idempotency_keys',
+      'pending_media',
+    ]
+    for (const col of collections) {
+      const docs = await db.collection(col).get()
+      for (const d of docs.docs) {
+        await d.ref.delete()
+      }
     }
   })
 })

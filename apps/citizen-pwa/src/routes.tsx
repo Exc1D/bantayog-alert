@@ -1,12 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { SubmitReportForm } from './components/SubmitReportForm.js'
-
-function ReceiptScreen() {
-  return <div>ReceiptScreen — coming in Task 21</div>
-}
-function LookupScreen() {
-  return <div>LookupScreen — coming in Task 21</div>
-}
+import { ReceiptScreen } from './components/ReceiptScreen.js'
+import { LookupScreen } from './components/LookupScreen.js'
 
 const router = createBrowserRouter([
   { path: '/', element: <SubmitReportForm /> },

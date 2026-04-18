@@ -27,9 +27,7 @@ export async function onMediaFinalizeCore(
   if (!input.objectName.startsWith('pending/')) {
     return { status: 'accepted' }
   }
-  const file = (input.bucket as unknown as { file(name: string): FileHandle }).file(
-    input.objectName,
-  )
+  const file = input.bucket.file(input.objectName)
   const [buf] = await file.download()
   const ft = await fileTypeFromBuffer(buf)
   if (!ft || !ALLOWED.has(ft.mime)) {
@@ -46,7 +44,7 @@ export async function onMediaFinalizeCore(
     resumable: false,
     contentType: ft.mime,
     metadata: { cacheControl: 'private, no-transform' },
-  } as object)
+  })
   const uploadId = input.objectName.slice('pending/'.length)
   await input.writePending({
     uploadId,
@@ -59,6 +57,9 @@ export async function onMediaFinalizeCore(
 
 interface FileHandle {
   download(): Promise<[Buffer]>
-  save(buf: Buffer, opts: object): Promise<void>
+  save(
+    buf: Buffer,
+    opts: { resumable: boolean; contentType: string; metadata: Record<string, string> },
+  ): Promise<void>
   delete(): Promise<void>
 }

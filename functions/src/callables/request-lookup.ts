@@ -1,8 +1,21 @@
 import { createHash } from 'node:crypto'
-import { onCall } from 'firebase-functions/v2/https'
+import { onCall, HttpsError, type FunctionsErrorCode } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
+
+const BANTAYOG_TO_HTTPS_CODE: Record<string, FunctionsErrorCode> = {
+  UNAUTHORIZED: 'unauthenticated',
+  FORBIDDEN: 'permission-denied',
+  NOT_FOUND: 'not-found',
+  INVALID_ARGUMENT: 'invalid-argument',
+  CONFLICT: 'already-exists',
+  RATE_LIMITED: 'resource-exhausted',
+}
+
+function bantayogErrorToHttps(err: BantayogError): HttpsError {
+  return new HttpsError(BANTAYOG_TO_HTTPS_CODE[err.code] ?? 'internal', err.message, err.data)
+}
 
 const payloadSchema = z
   .object({
@@ -77,11 +90,8 @@ export const requestLookup = onCall(async (request) => {
     })
   } catch (err: unknown) {
     if (err instanceof BantayogError) {
-      throw err
+      throw bantayogErrorToHttps(err)
     }
-    throw new BantayogError(
-      BantayogErrorCode.INTERNAL_ERROR,
-      err instanceof Error ? err.message : 'Unknown error',
-    )
+    throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error')
   }
 })

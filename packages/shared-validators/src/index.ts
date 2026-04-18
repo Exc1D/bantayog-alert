@@ -15,6 +15,7 @@ export {
   reportContactsDocSchema,
   reportLookupDocSchema,
   reportInboxDocSchema,
+  inboxPayloadSchema,
   hazardTagSchema,
 } from './reports.js'
 export type {
@@ -25,6 +26,7 @@ export type {
   ReportContactsDoc,
   ReportLookupDoc,
   ReportInboxDoc,
+  InboxPayload,
   HazardTag,
 } from './reports.js'
 export { dispatchDocSchema, dispatchStatusSchema } from './dispatches.js'
@@ -86,8 +88,9 @@ export {
   DISPATCH_STATES,
   DISPATCH_TRANSITIONS,
   isValidDispatchTransition,
-} from './state-machines/report-states.js'
-export type { ReportStatus, DispatchStatus } from './state-machines/report-states.js'
+} from './state-machines/dispatch-states.js'
+export type { ReportStatus } from './state-machines/report-states.js'
+export type { DispatchStatus } from './state-machines/dispatch-states.js'
 export {
   BantayogErrorCode,
   isBantayogErrorCode,

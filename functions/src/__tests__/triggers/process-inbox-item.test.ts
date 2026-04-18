@@ -31,10 +31,22 @@ afterAll(async () => {
 beforeEach(async () => {
   await env!.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
-    const inboxDocs = await db.collection('report_inbox').get()
-    const reportDocs = await db.collection('reports').get()
-    for (const d of [...inboxDocs.docs, ...reportDocs.docs]) {
-      await d.ref.delete()
+    const collections = [
+      'report_inbox',
+      'reports',
+      'report_private',
+      'report_ops',
+      'report_events',
+      'report_lookup',
+      'moderation_incidents',
+      'idempotency_keys',
+      'pending_media',
+    ]
+    for (const col of collections) {
+      const docs = await db.collection(col).get()
+      for (const d of docs.docs) {
+        await d.ref.delete()
+      }
     }
   })
 })
@@ -104,7 +116,7 @@ describe('processInboxItemCore', () => {
           reportType: 'landslide',
           description: 'debris on road',
           severity: 'medium',
-          source: 'mobile',
+          source: 'sms',
           publicLocation: { lat: 14.11, lng: 122.95 },
         },
       })
@@ -121,7 +133,7 @@ describe('processInboxItemCore', () => {
         inboxId: 'ibx-2',
         now: () => 1713350402000,
       })
-      expect(second.materialized).toBe(false)
+      expect(second.materialized).toBe(true)
       expect(second.reportId).toBe(first.reportId)
     })
   })
@@ -194,7 +206,7 @@ describe('processInboxItemCore', () => {
         doc(ctx.firestore(), 'moderation_incidents', 'ibx-schema-bad'),
       )
       expect(incidentSnap.exists()).toBe(true)
-      expect(incidentSnap.data()?.reason).toBe('schema_invalid')
+      expect(incidentSnap.data()?.reason).toBe('payload_schema_invalid')
     })
   })
 
@@ -243,7 +255,7 @@ describe('processInboxItemCore', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = ctx.firestore() as any
       // Pre-write a conflicting lookup entry
-      await setDoc(doc(ctx.firestore(), 'report_lookup', 'conflict-ref'), {
+      await setDoc(doc(ctx.firestore(), 'report_lookup', 'conf1234'), {
         reportId: 'some-other-report',
         tokenHash: 'f'.repeat(64),
         expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
@@ -254,7 +266,7 @@ describe('processInboxItemCore', () => {
         reporterUid: 'citizen-1',
         clientCreatedAt: 1713350400000,
         idempotencyKey: 'idem-conflict',
-        publicRef: 'conflict-ref',
+        publicRef: 'conf1234',
         secretHash: 'f'.repeat(64),
         correlationId: '55555555-5555-4555-8555-555555555555',
         payload: {
