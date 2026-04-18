@@ -28,7 +28,10 @@
       "source": "functions",
       "codebase": "default",
       "runtime": "nodejs20",
-      "predeploy": ["pnpm --filter @bantayog/functions build"]
+      "predeploy": [
+        "pnpm exec tsx scripts/build-rules.ts",
+        "pnpm --filter @bantayog/functions build"
+      ]
     }
   ],
   "emulators": {
