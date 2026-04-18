@@ -11,7 +11,7 @@ resource "google_logging_metric" "inbox_processed" {
 resource "google_logging_metric" "function_errors" {
   name    = "phase3_function_errors_${var.environment}"
   project = var.project_id
-  filter  = "severity=\"ERROR\" AND resource.type=\"cloud_function\""
+  filter  = "severity=\"ERROR\" AND jsonPayload.code:* AND (resource.type=\"cloud_function\" OR resource.type=\"cloud_run_revision\")"
   metric_descriptor {
     metric_kind = "DELTA"
     value_type  = "INT64"
