@@ -15,8 +15,17 @@ export function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      void navigate('/dispatches', { replace: true })
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      const tokenResult = await cred.user.getIdTokenResult()
+      const role = (tokenResult.claims as Record<string, unknown> | undefined)?.role
+      if (role !== 'responder') {
+        const { signOut } = await import('firebase/auth')
+        await signOut(auth)
+        setError('This account is not registered as a responder.')
+        setLoading(false)
+        return
+      }
+      void navigate('/', { replace: true })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
       setLoading(false)
