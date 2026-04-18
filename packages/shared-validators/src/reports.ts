@@ -148,8 +148,10 @@ export const reportContactsDocSchema = z
 // reportLookupDocSchema — lookup document
 export const reportLookupDocSchema = z
   .object({
-    publicTrackingRef: z.string().min(1),
+    publicTrackingRef: z.string().regex(/^[a-z0-9]{8}$/),
     reportId: z.string().min(1),
+    tokenHash: z.string().regex(/^[a-f0-9]{64}$/),
+    expiresAt: z.number().int(),
     createdAt: z.number().int(),
     schemaVersion: z.number().int().positive(),
   })

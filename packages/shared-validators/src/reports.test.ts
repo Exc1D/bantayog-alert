@@ -181,12 +181,14 @@ describe('reportLookupDocSchema', () => {
   it('accepts a lookup doc', () => {
     expect(
       reportLookupDocSchema.parse({
-        publicTrackingRef: 'TRK-ABC-123',
+        publicTrackingRef: 'a1b2c3d4',
         reportId: 'r-1',
+        tokenHash: 'f'.repeat(64),
+        expiresAt: 1716000000000,
         createdAt: ts,
         schemaVersion: 1,
       }),
-    ).toMatchObject({ publicTrackingRef: 'TRK-ABC-123' })
+    ).toMatchObject({ publicTrackingRef: 'a1b2c3d4' })
   })
 })
 
@@ -254,6 +256,25 @@ describe('reportDocSchema Phase 3 deltas', () => {
 
   it('rejects an empty municipalityLabel', () => {
     expect(() => reportDocSchema.parse({ ...validBase, municipalityLabel: '' })).toThrow()
+  })
+})
+
+describe('reportLookupDocSchema Phase 3 deltas', () => {
+  const valid = {
+    publicTrackingRef: 'a1b2c3d4',
+    reportId: 'rpt-1',
+    tokenHash: 'a'.repeat(64),
+    expiresAt: 1716000000000,
+    createdAt: 1713350400000,
+    schemaVersion: 1,
+  }
+
+  it('accepts a lookup with tokenHash and expiresAt', () => {
+    expect(() => reportLookupDocSchema.parse(valid)).not.toThrow()
+  })
+
+  it('rejects a non-hex tokenHash', () => {
+    expect(() => reportLookupDocSchema.parse({ ...valid, tokenHash: 'z'.repeat(64) })).toThrow()
   })
 })
 
