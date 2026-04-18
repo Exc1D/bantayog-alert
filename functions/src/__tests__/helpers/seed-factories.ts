@@ -180,3 +180,43 @@ export async function seedDispatch(
     })
   })
 }
+
+import type { Firestore } from 'firebase-admin/firestore'
+import type { Database } from 'firebase-admin/database'
+
+export async function seedResponderDoc(
+  db: Firestore,
+  o: {
+    uid: string
+    municipalityId: string
+    agencyId: string
+    isActive: boolean
+    displayName?: string
+  },
+): Promise<void> {
+  await db
+    .collection('responders')
+    .doc(o.uid)
+    .set({
+      uid: o.uid,
+      municipalityId: o.municipalityId,
+      agencyId: o.agencyId,
+      displayName: o.displayName ?? `Responder ${o.uid}`,
+      isActive: o.isActive,
+      fcmTokens: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      schemaVersion: 1,
+    })
+}
+
+export async function seedResponderShift(
+  rtdb: Database,
+  municipalityId: string,
+  uid: string,
+  isOnShift: boolean,
+): Promise<void> {
+  await rtdb
+    .ref(`/responder_index/${municipalityId}/${uid}`)
+    .set({ isOnShift, updatedAt: Date.now() })
+}
