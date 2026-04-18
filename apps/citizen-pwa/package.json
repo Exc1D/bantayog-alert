@@ -16,7 +16,8 @@
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-ui": "workspace:*",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.0",
