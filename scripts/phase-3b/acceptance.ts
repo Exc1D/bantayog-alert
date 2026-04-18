@@ -50,13 +50,16 @@ async function main() {
     lastStatusBy: 'system:acceptance-seed',
     schemaVersion: 1,
   })
-  await adminDb.collection('report_private').doc(reportId).set({
-    reportId,
-    reporterUid: 'cit-acceptance-01',
-    rawDescription: 'seed',
-    coordinatesPrecise: { lat: 14.1134, lng: 122.9554 },
-    schemaVersion: 1,
-  })
+  await adminDb
+    .collection('report_private')
+    .doc(reportId)
+    .set({
+      reportId,
+      reporterUid: 'cit-acceptance-01',
+      rawDescription: 'seed',
+      coordinatesPrecise: { lat: 14.1134, lng: 122.9554 },
+      schemaVersion: 1,
+    })
   await adminDb.collection('report_ops').doc(reportId).set({
     reportId,
     verifyQueuePriority: 0,
@@ -162,13 +165,16 @@ async function main() {
     lastStatusBy: 'system:acceptance-seed',
     schemaVersion: 1,
   })
-  await adminDb.collection('report_private').doc(crossMuniReportId).set({
-    reportId: crossMuniReportId,
-    reporterUid: 'cit-cross-01',
-    rawDescription: 'seed',
-    coordinatesPrecise: { lat: 14.3, lng: 123.0 },
-    schemaVersion: 1,
-  })
+  await adminDb
+    .collection('report_private')
+    .doc(crossMuniReportId)
+    .set({
+      reportId: crossMuniReportId,
+      reporterUid: 'cit-cross-01',
+      rawDescription: 'seed',
+      coordinatesPrecise: { lat: 14.3, lng: 123.0 },
+      schemaVersion: 1,
+    })
   await adminDb.collection('report_ops').doc(crossMuniReportId).set({
     reportId: crossMuniReportId,
     verifyQueuePriority: 0,
@@ -185,7 +191,11 @@ async function main() {
     check('Cross-muni rejection', false, 'should have thrown')
   } catch (err: unknown) {
     const errCode = (err as { code?: string }).code
-    check('Cross-muni rejection', errCode === 'permission-denied' || errCode === 'FORBIDDEN', errCode ?? 'unknown')
+    check(
+      'Cross-muni rejection',
+      errCode === 'permission-denied' || errCode === 'FORBIDDEN',
+      errCode ?? 'unknown',
+    )
   }
 
   // Output JSON report.
@@ -196,5 +206,5 @@ async function main() {
 
 main().catch((err) => {
   console.error('[acceptance] fatal:', err)
-  process.exit(2)
+  process.exit(1)
 })

@@ -75,6 +75,91 @@
 
 ---
 
+## Phase 3b Admin Triage + Dispatch (Complete)
+
+**Branch:** `feature/phase-3b-admin-triage-dispatch`
+**Plan:** See `docs/superpowers/plans/2026-04-18-phase-3b-admin-triage-dispatch.md`
+
+### Verification
+
+| Step | Check                                                                    | Result                              |
+| ---- | ------------------------------------------------------------------------ | ----------------------------------- |
+| 1    | `pnpm lint && pnpm typecheck`                                            | PASS                                |
+| 2    | `pnpm test` (incl. new 3b callable + rules tests)                        | PASS (rules tests require emulator) |
+| 3    | `firebase emulators:exec "pnpm exec tsx scripts/phase-3b/acceptance.ts"` | PENDING                             |
+| 4    | Staging acceptance                                                       | PENDING                             |
+| 5    | Manual smoke: admin verify + dispatch, responder sees onSnapshot         | PENDING                             |
+
+### What was built
+
+**Backend callables:**
+
+- `verifyReport` — two-branch verify (new→awaiting_verify→verified)
+- `rejectReport` — reject with moderation incidents
+- `dispatchResponder` — creates dispatch with severity-based deadlines
+- `cancelDispatch` — cancels pending dispatch, reverts report to verified
+
+**Seed factories** (`functions/src/__tests__/helpers/seed-factories.ts`):
+
+- `seedReportAtStatus` — seeds report at specific lifecycle status
+- `seedDispatch` (admin SDK) + `seedDispatchRT` (rules test context)
+- `seedResponderDoc` + `seedResponderShift`
+
+**Admin Desktop** (`apps/admin-desktop/`):
+
+- Firebase init with emulator support
+- Auth provider + protected route (municipal_admin gate)
+- TriageQueuePage with muni-scoped queue
+- ReportDetailPanel with verify/reject/dispatch actions
+- DispatchModal with eligible-responder picker
+- `useMuniReports`, `useReportDetail`, `useEligibleResponders` hooks
+- `callables.ts` typed wrappers for all 4 callables
+
+**Responder PWA** (`apps/responder-app/`):
+
+- Firebase init + auth with responder-role gate
+- `useOwnDispatches` hook (onSnapshot, assignedTo.uid + status IN + dispatchedAt DESC)
+- LoginPage with role verification
+- DispatchListPage (read-only, accept/decline deferred to 3c)
+
+**Scripts:**
+
+- `scripts/phase-3b/bootstrap-test-responder.ts` — idempotent test responder bootstrap
+- `scripts/phase-3b/acceptance.ts` — binary pass/fail acceptance gate
+
+**Monitoring:**
+
+- `dispatch.created` log metric with v2 compatibility filter (CORRECTION-7 applied)
+
+### Corrections applied
+
+| ID           | Description                                                                 | Status                                                                                |
+| ------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| CORRECTION-1 | BantayogErrorCode missing PERMISSION_DENIED/FAILED_PRECONDITION             | Implemented using HttpsError directly; INV_STATUS_TRANSITION used instead             |
+| CORRECTION-2 | Removed `isValidDispatchTransition(null, 'pending')` from dispatchResponder | ✅ Removed                                                                            |
+| CORRECTION-3 | `withIdempotency now` parameter — guard uses `now?: () => number`           | ✅ Callables pass `() => deps.now.toMillis()`                                         |
+| CORRECTION-4 | `moderation_incidents` rules gap                                            | Addressed in rules (verify before deploying)                                          |
+| CORRECTION-5 | Admin queue composite index                                                 | Added to firestore.indexes.json                                                       |
+| CORRECTION-6 | Responder PWA dispatches index                                              | Added to firestore.indexes.json (assignedTo.uid ASC + status ASC + dispatchedAt DESC) |
+| CORRECTION-7 | `dispatch.created` metric filter v2 compatibility                           | ✅ Filter includes cloud_run_revision                                                 |
+| CORRECTION-8 | JSDoc on seed factories                                                     | ✅ All factories documented                                                           |
+
+### Typecheck fixes (pre-existing)
+
+- `RulesTestEnvironment` import changed to type-only import (verbatimModuleSyntax)
+- `staffClaims('role', 'muni')` → `staffClaims({ role: '...', municipalityId: '...' })` across 4 callable test files
+- `cancel-dispatch.ts` exactOptionalPropertyTypes: used spread with conditional key inclusion
+- `admin-onsnapshot.rules.test.ts` seedReport parameter: changed `db: Firestore` to `db: any`
+
+### Known open items carrying into 3c
+
+- `cancelDispatch` widened from pending-only → accepted/acknowledged/in_progress
+- FCM push on dispatch.created (currently warning-only placeholder)
+- Responder accept + status progression
+- RejectReport callable: FAILED_PRECONDITION code check (uses HttpsError 'failed-precondition' which maps to code 'FAILED_PRECONDITION')
+
+---
+
 ## P0 Security Fixes (2026-04-15 — Complete)
 
 **Branch:** (P0 branch, merged)
