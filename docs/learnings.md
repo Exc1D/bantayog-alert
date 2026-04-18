@@ -328,3 +328,37 @@ Hand-rolled `validResponderTransition` helpers in Firestore rules drift from the
 ### Dependency injection in client-side orchestrators enables clean unit testing
 
 The `submitReport` orchestrator in `apps/citizen-pwa/src/services/submit-report.ts` accepts a `SubmitReportDeps` interface instead of importing Firebase directly. This allowed 2 focused unit tests with `vi.fn()` mocks — zero Firebase SDK involvement in the test. When the orchestrator needs to coordinate multiple async steps (get signed URL, PUT blob, write inbox), the DI pattern avoids the "20-line mock setup" smell entirely.
+
+---
+
+## QA Edge Hunter Session (2026-04-18)
+
+### Subagent commits can land on wrong branch
+
+A subagent reported committing to `fix/qa-edge-hunter-fixes-2026-04-18` but `git log` showed the commit was on `main`. Root cause: the worktree's HEAD was detached (the worktree creation didn't checkout the branch immediately, it was created with `-b` but the branch was not yet created when the subagent ran `git commit`). The subagent's `git commit` landed on `main` because that's what the worktree considered its HEAD.
+
+**Fix:** After creating a worktree with `git worktree add .worktrees/X -b feature/X`, immediately checkout the new branch explicitly. Rebase the worktree onto `main` if the branch commits are elsewhere.
+
+**Rule:** Always run `git log --oneline -3 && git status` after a subagent reports a commit to verify the commit landed on the correct branch.
+
+### Pre-commit hook auto-revert on lint failure
+
+When lint-staged runs eslint and finds errors, it:
+
+1. Fails the pre-commit hook
+2. Auto-reverts staged changes
+3. Leaves working tree with the pre-lint (unlinted) state
+
+To recover: fix the lint error, stage again, and commit.
+
+### `git diff HEAD` vs `git diff main` matters
+
+The worktree showed `git diff functions/src/triggers/on-media-finalize.ts` as clean (no changes) because the file on disk matched the latest commit on the worktree's branch. But `git diff main -- functions/src/triggers/on-media-finalize.ts` showed the fix. Always diff against the right baseline when verifying worktree state.
+
+### Zod `.refine()` with `||` triggers `prefer-nullish-coalescing` lint
+
+When a Zod `.refine()` uses `||` in its predicate (e.g., `(d.supersededBy && d.supersededAt) || (!d.supersededBy && !d.supersededAt)`), ESLint's `@typescript-eslint/prefer-nullish-coalescing` rule fires because `!!d.supersededBy` is truthy but not specifically nullish. The fix is to use explicit `!== undefined` comparisons to avoid the rule triggering on the logical-or expression.
+
+### Worktree rebase can land commits out-of-order
+
+Commit `6546a0e` ("fix validators: cap pendingMediaIds at 20") was made by a subagent and appeared in `git log` but wasn't in the worktree's HEAD. It was on `main`. After `git rebase main`, it appeared at the correct position in history. Always rebase worktrees onto main before starting implementation to avoid this confusion.
