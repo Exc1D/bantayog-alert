@@ -59,10 +59,7 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
         }
         const report = snap.data() as Record<string, unknown>
         if (report.municipalityId !== deps.actor.claims.municipalityId) {
-          throw new BantayogError(
-            BantayogErrorCode.FORBIDDEN,
-            'Report not in your municipality',
-          )
+          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
         }
         const from = report.status as 'awaiting_verify'
         const to = 'cancelled_false_report' as const
@@ -128,7 +125,8 @@ export const rejectReport = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
-    const claims = (req.auth.token ?? {}) as Record<string, unknown>
+    const claims = req.auth.token as Record<string, unknown> | null
+    if (!claims) throw new HttpsError('unauthenticated', 'sign-in required')
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
@@ -156,8 +154,8 @@ export const rejectReport = onCall(
         actor: {
           uid: req.auth.uid,
           claims: {
-            role: claims.role as string ?? undefined,
-            municipalityId: claims.municipalityId as string ?? undefined,
+            role: claims.role as string,
+            municipalityId: claims.municipalityId as string,
           },
         },
         now: Timestamp.now(),

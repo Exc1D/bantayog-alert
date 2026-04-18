@@ -92,9 +92,6 @@ export function TriageQueuePage() {
           onClose={() => {
             setDispatchForReportId(null)
           }}
-          onError={(msg) => {
-            setBanner(msg)
-          }}
         />
       )}
     </main>

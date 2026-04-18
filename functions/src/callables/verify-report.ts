@@ -1,7 +1,12 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import { BantayogError, BantayogErrorCode, isValidReportTransition, type ReportStatus } from '@bantayog/shared-validators'
+import {
+  BantayogError,
+  BantayogErrorCode,
+  isValidReportTransition,
+  type ReportStatus,
+} from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from './https-error.js'
 import { adminDb } from '../firebase-admin'
 import { withIdempotency } from '../idempotency/guard'
@@ -11,7 +16,7 @@ import { logDimension } from '@bantayog/shared-validators'
 const InputSchema = z
   .object({
     reportId: z.string().min(1).max(128),
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
   })
   .strict()
 
@@ -49,7 +54,11 @@ export async function verifyReportCore(
 
   const { result } = await withIdempotency<VerifyReportCoreDeps, VerifyReportResult>(
     db,
-    { key: `verifyReport:${deps.actor.uid}:${deps.idempotencyKey}`, payload: deps, now: () => deps.now.toMillis() },
+    {
+      key: `verifyReport:${deps.actor.uid}:${deps.idempotencyKey}`,
+      payload: deps,
+      now: () => deps.now.toMillis(),
+    },
     async () => {
       return db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)
@@ -67,10 +76,7 @@ export async function verifyReportCore(
         }
         const report = reportData
         if (report.municipalityId !== deps.actor.claims.municipalityId) {
-          throw new BantayogError(
-            BantayogErrorCode.FORBIDDEN,
-            'Report is not in your municipality',
-          )
+          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report is not in your municipality')
         }
 
         const from = report.status as ReportStatus
@@ -86,10 +92,14 @@ export async function verifyReportCore(
         }
 
         if (!isValidReportTransition(from, to)) {
-          throw new BantayogError(BantayogErrorCode.INVALID_STATUS_TRANSITION, 'invalid transition', {
-            from,
-            to,
-          })
+          throw new BantayogError(
+            BantayogErrorCode.INVALID_STATUS_TRANSITION,
+            'invalid transition',
+            {
+              from,
+              to,
+            },
+          )
         }
 
         const updates: Record<string, unknown> = {
@@ -135,7 +145,8 @@ export const verifyReport = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
-    const claims = (req.auth.token ?? {}) as Record<string, unknown>
+    const claims = req.auth.token as Record<string, unknown> | null
+    if (!claims) throw new HttpsError('unauthenticated', 'sign-in required')
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
@@ -165,9 +176,9 @@ export const verifyReport = onCall(
         actor: {
           uid: req.auth.uid,
           claims: {
-            role: claims.role as string ?? undefined,
-            municipalityId: claims.municipalityId as string ?? undefined,
-            active: (claims.active as boolean) ?? undefined,
+            role: claims.role as string,
+            municipalityId: claims.municipalityId as string,
+            active: claims.active as boolean,
           },
         },
         now: Timestamp.now(),

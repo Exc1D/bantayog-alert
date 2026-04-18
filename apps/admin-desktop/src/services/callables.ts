@@ -1,11 +1,12 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
+import type { ReportStatus, DispatchStatus } from '@bantayog/shared-types'
 
 type IdempotencyKey = string
 
 export const callables = {
   verifyReport: (payload: { reportId: string; idempotencyKey: IdempotencyKey }) =>
-    httpsCallable<typeof payload, { status: string; reportId: string }>(
+    httpsCallable<typeof payload, { status: ReportStatus; reportId: string }>(
       functions,
       'verifyReport',
     )(payload).then((r) => r.data),
@@ -15,7 +16,7 @@ export const callables = {
     notes?: string
     idempotencyKey: IdempotencyKey
   }) =>
-    httpsCallable<typeof payload, { status: string; reportId: string }>(
+    httpsCallable<typeof payload, { status: ReportStatus; reportId: string }>(
       functions,
       'rejectReport',
     )(payload).then((r) => r.data),
@@ -24,7 +25,7 @@ export const callables = {
     responderUid: string
     idempotencyKey: IdempotencyKey
   }) =>
-    httpsCallable<typeof payload, { dispatchId: string; status: string; reportId: string }>(
+    httpsCallable<typeof payload, { dispatchId: string; status: DispatchStatus; reportId: string }>(
       functions,
       'dispatchResponder',
     )(payload).then((r) => r.data),
@@ -33,7 +34,7 @@ export const callables = {
     reason: 'responder_unavailable' | 'duplicate_report' | 'admin_error' | 'citizen_withdrew'
     idempotencyKey: IdempotencyKey
   }) =>
-    httpsCallable<typeof payload, { status: string; dispatchId: string }>(
+    httpsCallable<typeof payload, { status: DispatchStatus; dispatchId: string }>(
       functions,
       'cancelDispatch',
     )(payload).then((r) => r.data),
