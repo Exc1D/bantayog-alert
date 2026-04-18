@@ -51,7 +51,7 @@ describe('withIdempotency', () => {
   it('runs the operation and writes the key on first call', async () => {
     // eslint-disable-next-line @typescript-eslint/require-await
     const op = vi.fn(async () => ({ resultId: 'x1' }))
-    const result = await withIdempotency(
+    const { result, fromCache } = await withIdempotency(
       db,
       {
         key: 'cb:verifyReport:u1',
@@ -61,6 +61,7 @@ describe('withIdempotency', () => {
       op,
     )
     expect(result).toEqual({ resultId: 'x1' })
+    expect(fromCache).toBe(false)
     expect(op).toHaveBeenCalledTimes(1)
     expect(db._store.has('idempotency_keys/cb:verifyReport:u1')).toBe(true)
   })
@@ -77,7 +78,7 @@ describe('withIdempotency', () => {
       },
       op,
     )
-    const replay = await withIdempotency(
+    const { result: cachedResult, fromCache } = await withIdempotency(
       db,
       {
         key: 'cb:verifyReport:u1',
@@ -87,7 +88,8 @@ describe('withIdempotency', () => {
       op,
     )
     expect(op).toHaveBeenCalledTimes(1)
-    expect(replay).toEqual({ resultId: 'x1' })
+    expect(cachedResult).toEqual({ resultId: 'x1' })
+    expect(fromCache).toBe(true)
   })
 
   it('throws IdempotencyMismatchError on same key with different payload', async () => {

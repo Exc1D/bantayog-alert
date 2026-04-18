@@ -23,7 +23,7 @@ export async function withIdempotency<TPayload, TResult>(
   db: Firestore,
   opts: WithIdempotencyOptions<TPayload>,
   op: () => Promise<TResult>,
-): Promise<TResult> {
+): Promise<{ result: TResult; fromCache: boolean }> {
   const now = opts.now ?? (() => Date.now())
   const hash = canonicalPayloadHash(opts.payload)
   const keyRef = db.collection('idempotency_keys').doc(opts.key)
@@ -50,10 +50,10 @@ export async function withIdempotency<TPayload, TResult>(
   })
 
   if (cached != null) {
-    return cached
+    return { result: cached, fromCache: true }
   }
 
   const result = await op()
   await keyRef.update({ resultPayload: result, completedAt: now() })
-  return result
+  return { result, fromCache: false }
 }

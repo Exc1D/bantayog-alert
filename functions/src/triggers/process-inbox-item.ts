@@ -90,9 +90,9 @@ export async function processInboxItemCore(
   const createdAt = now()
   const pendingMediaIds = payload.pendingMediaIds ?? []
 
-  const result = await withIdempotency<
+  const idempotencyResult = await withIdempotency<
     { inboxId: string; publicRef: string },
-    ProcessInboxItemCoreResult
+    { materialized: true; reportId: string }
   >(
     db,
     { key: `processInboxItem:${inboxId}`, payload: { inboxId, publicRef: inbox.publicRef }, now },
@@ -217,12 +217,10 @@ export async function processInboxItemCore(
         data: { reportId, inboxId, municipalityId: geo.municipalityId },
       })
 
-      return { materialized: true, replayed: false, reportId }
+      return { materialized: true, reportId }
     },
   )
 
-  if (result.materialized && (await inboxRef.get()).data()?.processedAt !== undefined) {
-    return { ...result, replayed: true }
-  }
-  return { ...result, replayed: false }
+  const { result, fromCache } = idempotencyResult
+  return { materialized: result.materialized, replayed: fromCache, reportId: result.reportId }
 }
