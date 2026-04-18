@@ -7,6 +7,7 @@ import {
   reportContactsDocSchema,
   reportLookupDocSchema,
   reportInboxDocSchema,
+  hazardTagSchema,
 } from './reports.js'
 
 const ts = 1713350400000
@@ -46,7 +47,7 @@ describe('reportDocSchema', () => {
         reporterRole: 'citizen',
         reportType: 'flood',
         severity: 'high',
-        status: 'triaged', // not a valid ReportStatus
+        status: 'triaged',
         mediaRefs: [],
         description: 'x',
         submittedAt: ts,
@@ -80,7 +81,7 @@ describe('reportDocSchema', () => {
         hasPhotoAndGPS: false,
         schemaVersion: 1,
         correlationId: '11111111-1111-4111-8111-111111111111',
-        unknownField: 'oops', // should be rejected
+        unknownField: 'oops',
       }),
     ).toThrow()
   })
@@ -153,7 +154,7 @@ describe('reportSharingDocSchema', () => {
       reportSharingDocSchema.parse({
         ownerMunicipalityId: 'daet',
         reportId: 'r-1',
-        sharedWith: 'mercedes', // should be array
+        sharedWith: 'mercedes',
         createdAt: ts,
         updatedAt: ts,
         schemaVersion: 1,
@@ -212,7 +213,32 @@ describe('reportInboxDocSchema', () => {
       reportInboxDocSchema.parse({
         reporterUid: 'uid-1',
         clientCreatedAt: ts,
+        publicRef: 'a1b2c3d4',
+        secretHash: 'f'.repeat(64),
+        correlationId: '11111111-1111-4111-8111-111111111111',
         payload: { reportType: 'flood' },
+      }),
+    ).toThrow()
+  })
+})
+
+describe('hazardTagSchema', () => {
+  it('accepts a hazard tag', () => {
+    expect(
+      hazardTagSchema.parse({
+        hazardZoneId: 'hz-1',
+        geohash: 'qxdsun',
+        hazardType: 'flood',
+      }),
+    ).toMatchObject({ geohash: 'qxdsun' })
+  })
+
+  it('rejects invalid hazardType', () => {
+    expect(() =>
+      hazardTagSchema.parse({
+        hazardZoneId: 'hz-1',
+        geohash: 'qxdsun',
+        hazardType: 'fire',
       }),
     ).toThrow()
   })
