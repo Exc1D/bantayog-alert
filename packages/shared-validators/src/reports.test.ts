@@ -17,6 +17,7 @@ describe('reportDocSchema', () => {
     expect(
       reportDocSchema.parse({
         municipalityId: 'daet',
+        municipalityLabel: 'Daet',
         barangayId: 'calasgasan',
         reporterRole: 'citizen',
         reportType: 'flood',
@@ -33,6 +34,7 @@ describe('reportDocSchema', () => {
         source: 'web',
         hasPhotoAndGPS: false,
         schemaVersion: 1,
+        correlationId: '11111111-1111-4111-8111-111111111111',
       }),
     ).toMatchObject({ status: 'verified' })
   })
@@ -41,10 +43,11 @@ describe('reportDocSchema', () => {
     expect(() =>
       reportDocSchema.parse({
         municipalityId: 'daet',
+        municipalityLabel: 'Daet',
         reporterRole: 'citizen',
         reportType: 'flood',
         severity: 'high',
-        status: 'triaged', // not a valid ReportStatus
+        status: 'triaged',
         mediaRefs: [],
         description: 'x',
         submittedAt: ts,
@@ -54,6 +57,7 @@ describe('reportDocSchema', () => {
         source: 'web',
         hasPhotoAndGPS: false,
         schemaVersion: 1,
+        correlationId: '11111111-1111-4111-8111-111111111111',
       }),
     ).toThrow()
   })
@@ -62,6 +66,7 @@ describe('reportDocSchema', () => {
     expect(() =>
       reportDocSchema.parse({
         municipalityId: 'daet',
+        municipalityLabel: 'Daet',
         reporterRole: 'citizen',
         reportType: 'flood',
         severity: 'high',
@@ -75,7 +80,8 @@ describe('reportDocSchema', () => {
         source: 'web',
         hasPhotoAndGPS: false,
         schemaVersion: 1,
-        unknownField: 'oops', // should be rejected
+        correlationId: '11111111-1111-4111-8111-111111111111',
+        unknownField: 'oops',
       }),
     ).toThrow()
   })
@@ -148,7 +154,7 @@ describe('reportSharingDocSchema', () => {
       reportSharingDocSchema.parse({
         ownerMunicipalityId: 'daet',
         reportId: 'r-1',
-        sharedWith: 'mercedes', // should be array
+        sharedWith: 'mercedes',
         createdAt: ts,
         updatedAt: ts,
         schemaVersion: 1,
@@ -176,12 +182,14 @@ describe('reportLookupDocSchema', () => {
   it('accepts a lookup doc', () => {
     expect(
       reportLookupDocSchema.parse({
-        publicTrackingRef: 'TRK-ABC-123',
+        publicTrackingRef: 'a1b2c3d4',
         reportId: 'r-1',
+        tokenHash: 'f'.repeat(64),
+        expiresAt: 1716000000000,
         createdAt: ts,
         schemaVersion: 1,
       }),
-    ).toMatchObject({ publicTrackingRef: 'TRK-ABC-123' })
+    ).toMatchObject({ publicTrackingRef: 'a1b2c3d4' })
   })
 })
 
@@ -214,6 +222,88 @@ describe('reportInboxDocSchema', () => {
   })
 })
 
+describe('hazardTagSchema', () => {
+  it('accepts a hazard tag', () => {
+    expect(
+      hazardTagSchema.parse({
+        hazardZoneId: 'hz-1',
+        geohash: 'qxdsun',
+        hazardType: 'flood',
+      }),
+    ).toMatchObject({ geohash: 'qxdsun' })
+  })
+
+  it('rejects invalid hazardType', () => {
+    expect(() =>
+      hazardTagSchema.parse({
+        hazardZoneId: 'hz-1',
+        geohash: 'qxdsun',
+        hazardType: 'fire',
+      }),
+    ).toThrow()
+  })
+})
+
+describe('reportDocSchema Phase 3 deltas', () => {
+  const validBase = {
+    municipalityId: 'daet',
+    municipalityLabel: 'Daet',
+    barangayId: 'daet-1',
+    reporterRole: 'citizen' as const,
+    reportType: 'flood' as const,
+    severity: 'high' as const,
+    status: 'new' as const,
+    publicLocation: { lat: 14.1, lng: 122.9 },
+    mediaRefs: [],
+    description: 'flooded road',
+    submittedAt: 1713350400000,
+    retentionExempt: false,
+    visibilityClass: 'internal' as const,
+    visibility: { scope: 'municipality' as const, sharedWith: [] },
+    source: 'web' as const,
+    hasPhotoAndGPS: false,
+    schemaVersion: 1,
+    correlationId: '11111111-1111-4111-8111-111111111111',
+  }
+
+  it('accepts a valid report with municipalityLabel and correlationId', () => {
+    expect(() => reportDocSchema.parse(validBase)).not.toThrow()
+  })
+
+  it('rejects a missing municipalityLabel', () => {
+    const { municipalityLabel, ...rest } = validBase
+    void municipalityLabel
+    expect(() => reportDocSchema.parse(rest)).toThrow()
+  })
+
+  it('rejects a non-UUID correlationId', () => {
+    expect(() => reportDocSchema.parse({ ...validBase, correlationId: 'not-a-uuid' })).toThrow()
+  })
+
+  it('rejects an empty municipalityLabel', () => {
+    expect(() => reportDocSchema.parse({ ...validBase, municipalityLabel: '' })).toThrow()
+  })
+})
+
+describe('reportLookupDocSchema Phase 3 deltas', () => {
+  const valid = {
+    publicTrackingRef: 'a1b2c3d4',
+    reportId: 'rpt-1',
+    tokenHash: 'a'.repeat(64),
+    expiresAt: 1716000000000,
+    createdAt: 1713350400000,
+    schemaVersion: 1,
+  }
+
+  it('accepts a lookup with tokenHash and expiresAt', () => {
+    expect(() => reportLookupDocSchema.parse(valid)).not.toThrow()
+  })
+
+  it('rejects a non-hex tokenHash', () => {
+    expect(() => reportLookupDocSchema.parse({ ...valid, tokenHash: 'z'.repeat(64) })).toThrow()
+  })
+})
+
 describe('reportInboxDocSchema Phase 3 deltas', () => {
   const validInbox = {
     reporterUid: 'citizen-1',
@@ -243,27 +333,5 @@ describe('reportInboxDocSchema Phase 3 deltas', () => {
 
   it('rejects a non-UUID correlationId', () => {
     expect(() => reportInboxDocSchema.parse({ ...validInbox, correlationId: 'x' })).toThrow()
-  })
-})
-
-describe('hazardTagSchema', () => {
-  it('accepts a hazard tag', () => {
-    expect(
-      hazardTagSchema.parse({
-        hazardZoneId: 'hz-1',
-        geohash: 'qxdsun',
-        hazardType: 'flood',
-      }),
-    ).toMatchObject({ geohash: 'qxdsun' })
-  })
-
-  it('rejects invalid hazardType', () => {
-    expect(() =>
-      hazardTagSchema.parse({
-        hazardZoneId: 'hz-1',
-        geohash: 'qxdsun',
-        hazardType: 'fire', // not in HazardType enum
-      }),
-    ).toThrow()
   })
 })

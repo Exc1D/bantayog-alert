@@ -46,13 +46,7 @@ service cloud.firestore {
           && (isMuniAdmin() || isSuperadmin()
               || (isAgencyAdmin() && data.agencyId == myAgency()));
     }
-    function validResponderTransition(from, to) {
-      return       (from == 'accepted' && to == 'acknowledged')
-          ||       (from == 'acknowledged' && to == 'in_progress')
-          ||       (from == 'in_progress' && to == 'resolved')
-          ||       (from == 'pending' && to == 'declined')
-          || false;
-    }
+    // @@TRANSITION_TABLES@@
 
     // ================================================================
     // Phase 2: citizen inbox + triptych

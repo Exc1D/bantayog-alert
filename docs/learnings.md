@@ -284,3 +284,11 @@ Firestore `diff(resource.data).affectedKeys().hasOnly([...])` at the rule layer 
 ### `allow write: if false` at collection level overrides subcollection rules
 
 When a parent collection has `allow write: if false` and a nested subcollection is defined after it, the subcollection inherits the parent rule unless explicitly overridden. To give a subcollection write access while keeping the parent deny-all, define both explicitly. Note: this inheritance is per-Firestore-rule-file structure, not a general Firestore behavior.
+
+### Rules codegen eliminates a whole class of drift bugs
+
+Hand-rolled `validResponderTransition` helpers in Firestore rules drift from the TypeScript source of truth. The codegen pipeline (`scripts/build-rules.ts` + template with `@@TRANSITION_TABLES@@` marker) guarantees the rules file matches `shared-validators/src/state-machines/`. CI drift-check gate (`git diff --exit-code` after codegen) catches any local edit to the generated file. This pattern should extend to any future transition tables or validation helpers that exist in both TypeScript and rules layers.
+
+### Dependency injection in client-side orchestrators enables clean unit testing
+
+The `submitReport` orchestrator in `apps/citizen-pwa/src/services/submit-report.ts` accepts a `SubmitReportDeps` interface instead of importing Firebase directly. This allowed 2 focused unit tests with `vi.fn()` mocks — zero Firebase SDK involvement in the test. When the orchestrator needs to coordinate multiple async steps (get signed URL, PUT blob, write inbox), the DI pattern avoids the "20-line mock setup" smell entirely.

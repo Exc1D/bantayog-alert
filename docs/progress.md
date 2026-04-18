@@ -247,3 +247,54 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 - CI rule-coverage gate (`scripts/check-rule-coverage.ts`) - enforced in `.github/workflows/ci.yml`
 - Schema migration protocol runbook (`docs/runbooks/schema-migration.md`)
 - Comprehensive test harness with seed factories (`seedActiveAccount`, `seedReport`, `seedAgency`, `seedUser`, `seedResponder`, `seedDispatch`)
+
+---
+
+## Phase 3a Citizen Submission + Triptych Materialization (Complete)
+
+**Branch:** `feature/phase-3a-citizen-submission`
+**Plan:** `docs/superpowers/plans/2026-04-18-phase-3a-citizen-submission.md`
+**Design spec:** `docs/superpowers/specs/2026-04-18-phase-3-design.md`
+
+### Implementation Summary
+
+| Task  | Description                                       | Status |
+| ----- | ------------------------------------------------- | ------ |
+| 1-5   | Schema deltas + state machines + errors + logging | ✅     |
+| 6-8   | Rules codegen + drift check                       | ✅     |
+| 9-11  | Citizen callables + muni lookup                   | ✅     |
+| 12-14 | processInboxItem trigger (triptych materializer)  | ✅     |
+| 15-17 | Media pipeline (EXIF strip + dormant relocate)    | ✅     |
+| 18    | Reconciliation sweep                              | ✅     |
+| 19-22 | Citizen PWA + bootstrap + acceptance script       | ✅     |
+| 23    | Terraform monitoring module                       | ✅     |
+| 25    | Rule-coverage gate + docs                         | ✅     |
+
+### Verification Results
+
+| Step | Check                                           | Result                 |
+| ---- | ----------------------------------------------- | ---------------------- |
+| 1    | `pnpm test`                                     | PASS (125 tests)       |
+| 2    | `pnpm exec tsx scripts/check-rule-coverage.ts`  | PASS (36 collections)  |
+| 3    | `scripts/phase-3a/acceptance.ts --env=emulator` | Pending emulator run   |
+| 4    | `scripts/phase-3a/acceptance.ts --env=staging`  | Pending staging deploy |
+
+### What was built
+
+- Zod schema deltas: `municipalityLabel`, `correlationId`, `publicRef`, `secretHash`, `tokenHash` on report/inbox/lookup schemas
+- State-machine transition tables (`REPORT_TRANSITIONS`, `DISPATCH_TRANSITIONS`) with matrix tests
+- `BantayogError` typed error class + `logEvent` structured logging helper
+- Rules codegen pipeline (`scripts/build-rules.ts` → template → generated `firestore.rules`)
+- `requestUploadUrl` callable (signed URL + MIME/size validation)
+- `requestLookup` callable (token-hash verification + expiry check)
+- `processInboxItem` Firestore trigger (triptych materialization in single transaction)
+- `onMediaFinalize` Storage trigger (EXIF strip via sharp + MIME check via file-type)
+- `onMediaRelocate` dormant trigger (Phase 5 feature flag)
+- `inboxReconciliationSweep` scheduled function (5-min interval safety net)
+- Municipality lookup service with cold-start cache
+- Stub reverse geocoder (centroid-distance nearest-neighbor)
+- Citizen PWA: `SubmitReportForm`, `ReceiptScreen`, `LookupScreen` components
+- `submitReport` client orchestrator (upload → inbox write with dependency injection)
+- Bootstrap script for Camarines Norte municipalities
+- Terraform monitoring module (log-based metrics + alert policies)
+- Phase 3a acceptance gate script

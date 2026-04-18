@@ -98,6 +98,13 @@ jobs:
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsx scripts/check-rule-coverage.ts
+      - run: pnpm exec tsx scripts/build-rules.ts
+      - name: Verify firestore.rules is not out of date
+        run: |
+          if ! git diff --exit-code -- infra/firebase/firestore.rules; then
+            echo "::error::firestore.rules is out of sync with scripts/build-rules.ts. Run 'pnpm exec tsx scripts/build-rules.ts' locally and commit."
+            exit 1
+          fi
 
   build:
     name: Build
