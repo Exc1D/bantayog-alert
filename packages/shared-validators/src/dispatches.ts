@@ -33,9 +33,11 @@ export const dispatchStatusSchema = z.enum([
 export const dispatchDocSchema = z
   .object({
     reportId: z.string().min(1),
-    responderId: z.string().min(1),
-    municipalityId: z.string().min(1),
-    agencyId: z.string().min(1),
+    assignedTo: z.object({
+      uid: z.string().min(1),
+      agencyId: z.string().min(1),
+      municipalityId: z.string().min(1),
+    }),
     dispatchedBy: z.string().min(1),
     dispatchedByRole: z.enum(['municipal_admin', 'agency_admin']),
     dispatchedAt: z.number().int(),

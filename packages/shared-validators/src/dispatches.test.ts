@@ -8,9 +8,11 @@ describe('dispatchDocSchema', () => {
     expect(
       dispatchDocSchema.parse({
         reportId: 'r-1',
-        responderId: 'resp-1',
-        municipalityId: 'daet',
-        agencyId: 'bfp',
+        assignedTo: {
+          uid: 'resp-1',
+          agencyId: 'bfp',
+          municipalityId: 'daet',
+        },
         dispatchedBy: 'admin-1',
         dispatchedByRole: 'municipal_admin',
         dispatchedAt: ts,
@@ -28,9 +30,11 @@ describe('dispatchDocSchema', () => {
     expect(() =>
       dispatchDocSchema.parse({
         reportId: 'r-1',
-        responderId: 'resp-1',
-        municipalityId: 'daet',
-        agencyId: 'bfp',
+        assignedTo: {
+          uid: 'resp-1',
+          agencyId: 'bfp',
+          municipalityId: 'daet',
+        },
         dispatchedBy: 'admin-1',
         dispatchedByRole: 'municipal_admin',
         dispatchedAt: ts,
