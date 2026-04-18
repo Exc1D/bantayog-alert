@@ -76,6 +76,11 @@ export async function processInboxItemCore(
   }
 
   const createdAt = now()
+  const pendingMediaIds = Array.isArray(
+    (payload as unknown as { pendingMediaIds?: unknown }).pendingMediaIds,
+  )
+    ? ((payload as unknown as { pendingMediaIds: unknown[] }).pendingMediaIds as string[])
+    : []
 
   const result = await withIdempotency<
     { inboxId: string; publicRef: string },
@@ -102,7 +107,7 @@ export async function processInboxItemCore(
           severity: payload.severity,
           status: 'new',
           publicLocation: payload.publicLocation,
-          mediaRefs: [],
+          mediaRefs: pendingMediaIds,
           description: payload.description,
           submittedAt: inbox.clientCreatedAt,
           retentionExempt: false,
@@ -162,6 +167,26 @@ export async function processInboxItemCore(
           at: createdAt,
           schemaVersion: 1,
         })
+
+        for (const uploadId of pendingMediaIds) {
+          const pendingRef = db.collection('pending_media').doc(uploadId)
+          const pendingSnap = await tx.get(pendingRef)
+          if (!pendingSnap.exists) continue
+          const data = pendingSnap.data() as {
+            storagePath: string
+            mimeType: string
+            strippedAt: number
+          }
+          tx.set(db.collection('reports').doc(reportId).collection('media').doc(uploadId), {
+            uploadId,
+            storagePath: data.storagePath,
+            mimeType: data.mimeType,
+            strippedAt: data.strippedAt,
+            addedAt: createdAt,
+            schemaVersion: 1,
+          })
+          tx.delete(pendingRef)
+        }
       })
 
       log({

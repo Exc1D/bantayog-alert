@@ -126,6 +126,47 @@ describe('processInboxItemCore', () => {
     })
   })
 
+  it('moves pending_media references into reports/{id}/media', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'pending_media', 'upload-x'), {
+        uploadId: 'upload-x',
+        storagePath: 'pending/upload-x',
+        strippedAt: 1713350400000,
+        mimeType: 'image/jpeg',
+      })
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-3'), {
+        reporterUid: 'citizen-1',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-3',
+        publicRef: 'd4e5f607',
+        secretHash: 'c'.repeat(64),
+        correlationId: '44444444-4444-4444-8444-444444444444',
+        payload: {
+          reportType: 'flood',
+          description: 'x',
+          severity: 'low',
+          source: 'web',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+          pendingMediaIds: ['upload-x'],
+        },
+      })
+      const result = await processInboxItemCore({
+        db,
+        inboxId: 'ibx-3',
+        now: () => 1713350401000,
+      })
+      const mediaSnap = await getDoc(
+        doc(ctx.firestore(), 'reports', result.reportId, 'media', 'upload-x'),
+      )
+      expect(mediaSnap.exists()).toBe(true)
+      expect(mediaSnap.data()?.storagePath).toBe('pending/upload-x')
+      const pendingSnap = await getDoc(doc(ctx.firestore(), 'pending_media', 'upload-x'))
+      expect(pendingSnap.exists()).toBe(false)
+    })
+  })
+
   it('writes moderation_incident and throws when payload schema is invalid', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
