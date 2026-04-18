@@ -36,6 +36,8 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now: Timestamp.now(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updatedAt: Date.now() as any,
       })
       expect(result.allowed).toBe(true)
       expect(result.remaining).toBe(59)
@@ -47,6 +49,7 @@ describe('checkRateLimit', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = ctx.firestore() as any
       const now = Timestamp.now()
+      const nowMs = now.toMillis()
       for (let i = 0; i < 60; i++) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         await checkRateLimit(db, {
@@ -54,6 +57,8 @@ describe('checkRateLimit', () => {
           limit: 60,
           windowSeconds: 60,
           now,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          updatedAt: nowMs as any,
         })
       }
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -62,9 +67,41 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updatedAt: nowMs as any,
       })
       expect(denied.allowed).toBe(false)
       expect(denied.retryAfterSeconds).toBeGreaterThan(0)
+    })
+  })
+
+  it('evicts timestamps outside the window', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      const now = Timestamp.fromMillis(1_000_000)
+      const old = Timestamp.fromMillis(900_000) // 100 s before window start (window = 60 s)
+      // Seed an old timestamp outside the 60s window
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      await checkRateLimit(db, {
+        key: 'evict-test',
+        limit: 60,
+        windowSeconds: 60,
+        now: old,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updatedAt: old.toMillis() as any,
+      })
+      // Now call with current time — old entry must be filtered out
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      const result = await checkRateLimit(db, {
+        key: 'evict-test',
+        limit: 60,
+        windowSeconds: 60,
+        now,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updatedAt: now.toMillis() as any,
+      })
+      expect(result.allowed).toBe(true)
     })
   })
 })

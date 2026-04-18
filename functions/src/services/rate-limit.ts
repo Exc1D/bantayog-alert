@@ -6,6 +6,7 @@ export interface RateLimitCheck {
   limit: number
   windowSeconds: number
   now: Timestamp
+  updatedAt?: Timestamp | number
 }
 
 export interface RateLimitResult {
@@ -16,7 +17,7 @@ export interface RateLimitResult {
 
 export async function checkRateLimit(
   db: Firestore,
-  { key, limit, windowSeconds, now }: RateLimitCheck,
+  { key, limit, windowSeconds, now, updatedAt }: RateLimitCheck,
 ): Promise<RateLimitResult> {
   const ref = db.collection('rate_limits').doc(key)
   return db.runTransaction(async (tx) => {
@@ -33,7 +34,11 @@ export async function checkRateLimit(
     }
 
     fresh.push(now.toMillis())
-    tx.set(ref, { timestamps: fresh, updatedAt: AdminTimestamp.now() }, { merge: true })
+    tx.set(
+      ref,
+      { timestamps: fresh, updatedAt: updatedAt ?? AdminTimestamp.now() },
+      { merge: true },
+    )
     return { allowed: true, remaining: limit - fresh.length, retryAfterSeconds: 0 }
   })
 }
