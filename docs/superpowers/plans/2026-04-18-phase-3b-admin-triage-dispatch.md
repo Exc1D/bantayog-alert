@@ -1583,9 +1583,12 @@ export async function dispatchResponderCore(
         const dispatchRef = db.collection('dispatches').doc()
         const dispatchId = dispatchRef.id
 
-        if (!isValidDispatchTransition(null, 'pending')) {
-          throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'Cannot create dispatch')
-        }
+        // [CORRECTION-2] REMOVE this entire block — null→'pending' is not a valid
+        // dispatch-state transition (rules enforce responder transitions only).
+        // The callable is the authoritative source of 'pending' dispatches.
+        // if (!isValidDispatchTransition(null, 'pending')) {
+        //   throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'Cannot create dispatch')
+        // }
 
         tx.set(dispatchRef, {
           dispatchId,
@@ -2937,7 +2940,23 @@ export const callables = {
 }
 ```
 
-- [ ] **Step 6: Type-check**
+- [ ] **[CORRECTION-5] Step 6: Admin queue composite index**
+
+The `useMuniReports` query uses `status IN ['new', 'awaiting_verify', 'verified', 'assigned']` with `orderBy('createdAt', 'desc')`. Firestore requires a composite index for `IN` + range `orderBy`. Check `infra/firebase/firestore.indexes.json`; if no index exists for `municipalityId ASC + status ASC + createdAt DESC`, add:
+
+```json
+{
+  "collectionGroup": "reports",
+  "queryScope": "COLLECTION",
+  "fields": [
+    { "fieldPath": "municipalityId", "order": "ASCENDING" },
+    { "fieldPath": "status", "order": "ASCENDING" },
+    { "fieldPath": "createdAt", "order": "DESCENDING" }
+  ]
+}
+```
+
+- [ ] **Step 7: Type-check**
 
 ```bash
 pnpm --filter @bantayog/admin-desktop typecheck
@@ -3309,7 +3328,9 @@ git commit -m "feat(responder-app): read-only own-dispatches list for 3b visibil
 resource "google_logging_metric" "dispatch_created" {
   name        = "${var.env}-bantayog-dispatch-created"
   description = "Count of dispatches created via dispatchResponder"
-  filter      = "resource.type=\"cloud_function\" AND jsonPayload.event=\"dispatch.created\""
+  # [CORRECTION-7] Include cloud_run_revision for Firebase Functions v2 compatibility
+  # (Phase 3a monitoring fix added this pattern — apply here too):
+  filter      = "resource.type=\"cloud_function\" AND jsonPayload.event=\"dispatch.created\" OR resource.type=\"cloud_run_revision\" AND jsonPayload.event=\"dispatch.created\""
   metric_descriptor {
     metric_kind = "DELTA"
     value_type  = "INT64"
@@ -3784,11 +3805,210 @@ git commit -m "docs(phase-3b): update rule-coverage gate and progress tracker"
 
 ---
 
+## Pre-Implementation Corrections
+
+The following issues were identified during plan review (2026-04-18) and must be resolved before Tasks 4–13 are implemented. All issues are code-level only; the architectural approach is sound.
+
+---
+
+### CORRECTION-1 (CRITICAL): `BantayogErrorCode` Missing `PERMISSION_DENIED` and `FAILED_PRECONDITION`
+
+**File:** `packages/shared-validators/src/errors.ts`
+
+The plan's callable TypeScript samples reference `BantayogErrorCode.PERMISSION_DENIED` and `BantayogErrorCode.FAILED_PRECONDITION`, but these codes do not exist in the enum. The callable implementations correctly use `HttpsError` directly (bypassing `BantayogError.toFunctionsCode()`), so business logic is unaffected — but the `import { BantayogErrorCode }` statements and any non-HttpsError error paths are non-compilable.
+
+**Fix — add to `BantayogErrorCode` enum:**
+
+```typescript
+CALLABLE_PERMISSION_DENIED = 'PERMISSION_DENIED',    // maps to HttpsError 'permission-denied'
+CALLABLE_FAILED_PRECONDITION = 'FAILED_PRECONDITION',  // maps to HttpsError 'failed-precondition'
+```
+
+Then update the `toFunctionsCode()` mapping (if any exists in `errors.ts`) to map these to the correct `FunctionsErrorCode` strings, and replace all string-literal error throws in callables with the typed constants.
+
+**Impact on plan code:** Tasks 4–13 sample code uses `HttpsError` exclusively, so only the `import { BantayogErrorCode }` line and any non-HttpsError `throw new BantayogError(...)` paths need updating.
+
+---
+
+### CORRECTION-2 (CRITICAL): `isValidDispatchTransition(null, 'pending')` Always Throws
+
+**File:** `functions/src/callables/dispatch-responder.ts` (Task 10)
+
+The plan includes this guard in `dispatchResponderCore`:
+
+```typescript
+if (!isValidDispatchTransition(null, 'pending')) {
+  throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'Cannot create dispatch')
+}
+```
+
+This check is **inverted**. The `DISPATCH_TRANSITIONS` table only contains responder-direct transitions enforced at the **rules layer** (`accepted→acknowledged`, `acknowledged→in_progress`, `in_progress→resolved`, `pending→declined`). The callable is the **authoritative source** creating `pending` dispatches — `null→'pending'` is not and cannot be in the transition table.
+
+**Fix — remove the check entirely.** The callable creates `pending` dispatches unconditionally (after eligibility checks). The rules layer handles responder-side transitions only.
+
+---
+
+### CORRECTION-3 (CRITICAL): `withIdempotency` `now` Parameter Type Mismatch
+
+**Files:** `functions/src/idempotency/guard.ts` + all 4 callables (Tasks 4, 5, 10, 11)
+
+The `withIdempotency` helper calls `opts.now()` as a function:
+
+```typescript
+const now = opts.now ?? (() => Date.now())
+```
+
+All 4 callables pass `now: Timestamp.now()` — a `Timestamp` **object**, not a function. This crashes at runtime with `TypeError: timestamp.now is not a function`.
+
+**Fix — pass `now` as a function in all callables:**
+
+```typescript
+// Before (broken):
+now: Timestamp.now(),
+
+// After (correct):
+now: () => Timestamp.now().toMillis(),
+```
+
+Then update `guard.ts` to accept epoch milliseconds from `now()`:
+
+```typescript
+interface WithIdempotencyOptions<TPayload> {
+  key: string
+  payload: TPayload
+  now?: () => number // epoch milliseconds
+}
+```
+
+Alternatively, keep `now` returning `Timestamp` in the guard and update all callers to pass `() => Timestamp.now()`. Whichever direction, the callable/guard must agree on the type.
+
+---
+
+### CORRECTION-4 (SIGNIFICANT): `moderation_incidents` Firestore Rules May Not Allow `municipal_admin` Write
+
+**Pre-flight check:** `firestore.rules` must be verified for `match /moderation_incidents/{id}` with `allow write: if isActivePrivileged()` or equivalent before Tasks 4–13 are run against staging. `rejectReportCore` writes to this collection; if rules deny it, the callable fails at the rules layer with `PERMISSION_DENIED` regardless of callable-level checks.
+
+**Fix:** As part of Task 23 Step 1, verify `moderation_incidents` rules exist. If missing, add:
+
+```
+allow write: if isActivePrivileged() && resource == null;
+```
+
+(NOTE: This is a Firestore rules delta — must be shown to user before deploying per AGENTS.md §6 risk protocol.)
+
+---
+
+### CORRECTION-5 (SIGNIFICANT): Admin Queue Composite Index Not Verified
+
+**File:** `infra/firebase/firestore.indexes.json`
+
+The admin `useMuniReports` hook uses:
+
+```typescript
+where('municipalityId', '==', municipalityId),
+where('status', 'in', ['new', 'awaiting_verify', 'verified', 'assigned']),
+orderBy('createdAt', 'desc'),
+limit(100),
+```
+
+Firestore `IN` queries on `status` with a range `orderBy('createdAt')` require a composite index. Phase 2 deployed indexes for `municipalityId + createdAt DESC` and `municipalityId + status ASC + createdAt DESC` — verify these cover the `IN` operator, or add:
+
+```json
+{
+  "collectionGroup": "reports",
+  "queryScope": "COLLECTION",
+  "fields": [
+    { "fieldPath": "municipalityId", "order": "ASCENDING" },
+    { "fieldPath": "status", "order": "ASCENDING" },
+    { "fieldPath": "createdAt", "order": "DESCENDING" }
+  ]
+}
+```
+
+Add explicit index check to **Task 19 Step 2**.
+
+---
+
+### CORRECTION-6 (SIGNIFICANT): Responder PWA Dispatches Index Not Explicitly Added
+
+**File:** `infra/firebase/firestore.indexes.json`
+
+The `useOwnDispatches` query:
+
+```typescript
+;(where('assignedTo.uid', '==', uid),
+  where('status', 'in', ['pending', 'accepted', 'acknowledged', 'in_progress']),
+  orderBy('dispatchedAt', 'desc'))
+```
+
+Requires `(assignedTo.uid ASC, status ASC, dispatchedAt DESC)`. Task 19 Step 2 mentions checking for this index but does not explicitly add it. If missing, the query fails at runtime.
+
+**Fix:** Add to **Task 19 Step 2**:
+
+```json
+{
+  "collectionGroup": "dispatches",
+  "queryScope": "COLLECTION",
+  "fields": [
+    { "fieldPath": "assignedTo.uid", "order": "ASCENDING" },
+    { "fieldPath": "status", "order": "ASCENDING" },
+    { "fieldPath": "dispatchedAt", "order": "DESCENDING" }
+  ]
+}
+```
+
+---
+
+### CORRECTION-7 (MODERATE): `dispatch.created` Log Metric Filter Missing v2 Compatibility
+
+**File:** `infra/terraform/modules/monitoring/phase-3/main.tf` (Task 20)
+
+The metric filter uses:
+
+```
+resource.type="cloud_function" AND jsonPayload.event="dispatch.created"
+```
+
+Phase 3a monitoring fix added `OR resource.type="cloud_run_revision"` to the existing metrics for v2 compatibility. The new `dispatch.created` metric should include the same pattern:
+
+```
+resource.type="cloud_function" AND jsonPayload.event="dispatch.created"
+OR resource.type="cloud_run_revision" AND jsonPayload.event="dispatch.created"
+```
+
+---
+
+### CORRECTION-8 (MINOR): Seed Factory API Divergence Not Documented
+
+**File:** `functions/src/__tests__/helpers/seed-factories.ts`
+
+Existing Phase 2 factories take `RulesTestEnvironment`:
+
+```typescript
+export async function seedActiveAccount(env: RulesTestEnvironment, opts: {...})
+```
+
+New Phase 3b factories (Task 3) take a raw Firestore reference:
+
+```typescript
+export async function seedReportAtStatus(db: FirebaseFirestore.Firestore, status, o)
+```
+
+Both patterns are valid for their respective contexts. Add JSDoc to both sets of factories clarifying which context each expects, to prevent misuse.
+
+---
+
 ## Appendix — Risks and Notes
 
 **Risk: `currentDispatchId` drift.** The `dispatchResponder` callable sets `reports.currentDispatchId`, and `cancelDispatch` clears it. If a future callable creates a second dispatch without cleaning up the first, `currentDispatchId` points to a stale dispatch. Phase 3b ships single-dispatch-per-report only; Phase 5 duplicate-cluster + re-dispatch will need a `currentDispatchId`-aware revision.
 
 **Risk: RTDB `/responder_index` shift data is not in the Firestore transaction.** The pre-tx read of shift state creates a TOCTOU window: responder goes off-shift between the read and the transaction commit. Acceptable for Phase 3 — the responder UI at dispatch time is municipality-scoped and the window is sub-second. Phase 6 considers whether shift state should move into Firestore for transactional consistency.
+
+**Risk: `isValidDispatchTransition(null, 'pending')` is not a valid check.** The dispatch state machine only enforces responder-direct transitions at the rules layer. The callable is the authoritative source for `pending` creation. See CORRECTION-2.
+
+**Risk: `withIdempotency` `now` parameter type mismatch.** `guard.ts` calls `opts.now()` as a function but all callers pass `Timestamp.now()` (an object). All 4 callables and the guard must agree on `() => number` or `Timestamp`. See CORRECTION-3.
+
+**Risk: `moderation_incidents` rules gap.** `rejectReportCore` writes to `moderation_incidents`. If Phase 2 rules do not explicitly allow `municipal_admin` writes to this collection, the callable fails at the rules layer. See CORRECTION-4.
 
 **Risk: `verifyReport` two-branch UX.** A tired admin at 2 AM clicks **Verify** once, sees `awaiting_verify`, thinks "nothing happened," clicks again. The second click advances to `verified`. The current UI label switches to "Verify" after the first click — the runbook in Task 18 must explicitly document this two-click pattern.
 
