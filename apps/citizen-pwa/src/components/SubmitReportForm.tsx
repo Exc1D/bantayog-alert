@@ -58,6 +58,14 @@ export function SubmitReportForm() {
     setLng(pos.coords.longitude)
   }
 
+  async function onCaptureLocation(): Promise<void> {
+    try {
+      await getLocation()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'location failed')
+    }
+  }
+
   async function onSubmit(e: React.SubmitEvent): Promise<void> {
     e.preventDefault()
     if (lat === null || lng === null) {
@@ -157,7 +165,12 @@ export function SubmitReportForm() {
           }}
         />
       </label>
-      <button type="button" onClick={() => void getLocation()}>
+      <button
+        type="button"
+        onClick={() => {
+          void onCaptureLocation()
+        }}
+      >
         Capture location
       </button>
       {lat !== null && lng !== null && (
