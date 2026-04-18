@@ -32,3 +32,5 @@ export const onMediaFinalize = onObjectFinalized(
     })
   },
 )
+
+export { onMediaRelocate } from './triggers/on-media-relocate.js'
