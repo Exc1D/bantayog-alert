@@ -93,7 +93,7 @@ describe('rejectReportCore', () => {
     await expect(
       rejectReportCore(db, {
         reportId,
-        reason: 'citizen_withdrew',
+        reason: 'insufficient_detail',
         idempotencyKey: crypto.randomUUID(),
         actor: {
           uid: 'admin-1',

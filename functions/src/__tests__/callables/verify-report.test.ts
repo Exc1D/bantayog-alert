@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { verifyReportCore } from '../../callables/verify-report'
 import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories'
 import { Timestamp } from 'firebase-admin/firestore'
@@ -37,7 +37,10 @@ describe('verifyReportCore', () => {
     const result = await verifyReportCore(db, {
       reportId,
       idempotencyKey: crypto.randomUUID(),
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now: Timestamp.now(),
     })
 
@@ -66,7 +69,10 @@ describe('verifyReportCore', () => {
     const result = await verifyReportCore(db, {
       reportId,
       idempotencyKey: crypto.randomUUID(),
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now: Timestamp.now(),
     })
 
@@ -90,13 +96,19 @@ describe('verifyReportCore', () => {
     const first = await verifyReportCore(db, {
       reportId,
       idempotencyKey: key,
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now: Timestamp.now(),
     })
     const second = await verifyReportCore(db, {
       reportId,
       idempotencyKey: key,
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now: Timestamp.now(),
     })
 
@@ -120,7 +132,10 @@ describe('verifyReportCore error paths', () => {
       verifyReportCore(db, {
         reportId,
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' })
@@ -138,7 +153,10 @@ describe('verifyReportCore error paths', () => {
       verifyReportCore(db, {
         reportId,
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
@@ -192,7 +210,10 @@ describe('verifyReportCore error paths', () => {
       verifyReportCore(db, {
         reportId: 'does-not-exist',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
