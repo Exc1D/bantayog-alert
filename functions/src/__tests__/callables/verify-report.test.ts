@@ -1,16 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { verifyReportCore } from '../../callables/verify-report'
 import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories'
 import { Timestamp } from 'firebase-admin/firestore'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+const FIRESTORE_RULES_PATH = resolve(process.cwd(), '../infra/firebase/firestore.rules')
+const ts = 1713350400000
 
 let testEnv: RulesTestEnvironment
 
 beforeEach(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'verify-report-test',
-    firestore: { host: 'localhost', port: 8080 },
+    firestore: {
+      host: 'localhost',
+      port: 8080,
+      rules: readFileSync(FIRESTORE_RULES_PATH, 'utf8'),
+    },
   })
   await testEnv.clearFirestore()
 })
@@ -28,10 +37,7 @@ describe('verifyReportCore', () => {
     const result = await verifyReportCore(db, {
       reportId,
       idempotencyKey: crypto.randomUUID(),
-      actor: {
-        uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
+      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
       now: Timestamp.now(),
     })
 
@@ -60,10 +66,7 @@ describe('verifyReportCore', () => {
     const result = await verifyReportCore(db, {
       reportId,
       idempotencyKey: crypto.randomUUID(),
-      actor: {
-        uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
+      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
       now: Timestamp.now(),
     })
 
@@ -87,19 +90,13 @@ describe('verifyReportCore', () => {
     const first = await verifyReportCore(db, {
       reportId,
       idempotencyKey: key,
-      actor: {
-        uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
+      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
       now: Timestamp.now(),
     })
     const second = await verifyReportCore(db, {
       reportId,
       idempotencyKey: key,
-      actor: {
-        uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
+      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
       now: Timestamp.now(),
     })
 
@@ -123,10 +120,7 @@ describe('verifyReportCore error paths', () => {
       verifyReportCore(db, {
         reportId,
         idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' })
@@ -144,11 +138,45 @@ describe('verifyReportCore error paths', () => {
       verifyReportCore(db, {
         reportId,
         idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
         now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+  })
+
+  it('returns INVALID_STATUS_TRANSITION when report is in terminal state', async () => {
+    const municipalityId = 'daet'
+    const reportId = `terminal-${crypto.randomUUID().slice(0, 8)}`
+    // seedReportAtStatus does not support terminal statuses; write directly with numeric ts
+    await testEnv.withSecurityRulesDisabled(async (innerCtx) => {
+      await innerCtx
+        .firestore()
+        .collection('reports')
+        .doc(reportId)
+        .set({
+          reportId,
+          status: 'cancelled_false_report',
+          municipalityId,
+          approximateLocation: { municipality: municipalityId },
+          createdAt: ts,
+          lastStatusAt: ts,
+          schemaVersion: 1,
+        })
+    })
+    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId })
+    const adminDb = testEnv
+      .authenticatedContext('admin-1', {
+        role: 'municipal_admin',
+        municipalityId,
+        accountStatus: 'active',
+      })
+      .firestore() as any
+    await expect(
+      verifyReportCore(adminDb, {
+        reportId,
+        actor: { uid: 'admin-1', claims: staffClaims({ role: 'municipal_admin', municipalityId }) },
+        now: Timestamp.now(),
+        idempotencyKey: crypto.randomUUID(),
       }),
     ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
   })
@@ -164,10 +192,7 @@ describe('verifyReportCore error paths', () => {
       verifyReportCore(db, {
         reportId: 'does-not-exist',
         idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
