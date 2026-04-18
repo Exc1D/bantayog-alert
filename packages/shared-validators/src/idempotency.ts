@@ -10,7 +10,8 @@ import { createHash } from 'node:crypto'
  *   3. SHA-256 the result; return hex.
  *
  * Arrays are NOT reordered — element order is semantic.
- * `undefined` values are dropped by JSON.stringify (matching its default behavior).
+ * `undefined` values are rejected with TypeError (JSON.stringify would silently
+ * drop them, causing hash collisions between `{ a: 1 }` and `{ a: 1, b: undefined }`).
  *
  * @throws TypeError for unsupported types (Map, Set, RegExp)
  * @throws Error for circular references
@@ -22,6 +23,9 @@ export function canonicalPayloadHash(payload: unknown): string {
 }
 
 function canonicalize(value: unknown): unknown {
+  if (value === undefined) {
+    throw new TypeError('undefined is not supported in idempotency payloads')
+  }
   if (value === null || typeof value !== 'object') {
     return value
   }

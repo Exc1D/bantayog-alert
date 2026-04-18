@@ -42,7 +42,10 @@ export async function onMediaFinalizeCore(
   }
   let cleaned: Buffer
   try {
-    cleaned = await sharp(buf).rotate().toBuffer()
+    cleaned = await sharp(buf)
+      .rotate()
+      .withMetadata(false as never)
+      .toBuffer()
   } catch {
     await file.delete()
     log({

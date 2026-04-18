@@ -49,14 +49,9 @@ describe('canonicalPayloadHash', () => {
     expect(hash).toMatch(/^[a-f0-9]{64}$/)
   })
 
-  it('treats null and undefined distinctly', () => {
-    const a = canonicalPayloadHash({ v: null })
-    // JSON.stringify drops undefined keys entirely, so the canonical form
-    // of { v: undefined } is `{}`. Document and assert this behavior.
-    const b = canonicalPayloadHash({ v: undefined })
-    const c = canonicalPayloadHash({})
-    expect(a).not.toBe(b)
-    expect(b).toBe(c)
+  it('rejects undefined values in payloads', () => {
+    expect(() => canonicalPayloadHash({ v: undefined })).toThrow(TypeError)
+    expect(() => canonicalPayloadHash({ a: 1, b: undefined })).toThrow(TypeError)
   })
 
   it('throws TypeError for Map, Set, and RegExp', () => {

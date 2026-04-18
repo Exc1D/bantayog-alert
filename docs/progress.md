@@ -290,3 +290,66 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 
 - `scripts/phase-3a/acceptance.ts --env=emulator` — run against local emulators
 - `scripts/phase-3a/acceptance.ts --env=staging` — run against staging with real credentials
+
+---
+
+## QA Edge Hunter Fixes (2026-04-18 — Complete)
+
+**Branch:** `fix/qa-edge-hunter-fixes-2026-04-18`
+**Status:** All fixes implemented, verified, and approved — ready for PR
+
+### Fixed Issues
+
+| ID        | Severity | Issue                                                              | Fix                                                |
+| --------- | -------- | ------------------------------------------------------------------ | -------------------------------------------------- |
+| EXIF-1    | CRITICAL | `onMediaFinalize` retained GPS EXIF in processed images            | Added `.withMetadata(false)` to strip all EXIF/GPS |
+| MEDIA-2   | CRITICAL | Unbounded `pendingMediaIds` array — DoS via Firestore read storm   | Added `.max(20)` cap                               |
+| IDEM-3    | CRITICAL | `canonicalPayloadHash` — `undefined` caused silent hash collisions | Throw `TypeError` on `undefined`                   |
+| SWEEP-4   | CRITICAL | Concurrent `inboxReconciliationSweep` race condition               | Atomic Firestore transaction claim                 |
+| LOOKUP-5  | HIGH     | `reportLookupDocSchema.expiresAt` had no upper bound               | Added `.max(Date.now() + 365d)`                    |
+| SMS-6     | HIGH     | `senderMsisdnHash` accepted any 64-char string                     | Added `/^[a-f0-9]{64}$/` regex                     |
+| SWEEP-7   | HIGH     | Empty sweep returned `oldestAgeMs=0` hiding failures               | Return `null` when `processed === 0`               |
+| HAZARD-10 | MEDIUM   | `supersededBy`/`supersededAt` not enforced as a pair               | Added `.refine()` for pairwise presence            |
+| SHIFT-11  | MEDIUM   | `shiftHandoffDocSchema` had no `expiresAt > createdAt` check       | Added `.refine()`                                  |
+
+### Files Changed
+
+| File                                                         | Change                                              |
+| ------------------------------------------------------------ | --------------------------------------------------- |
+| `functions/src/triggers/on-media-finalize.ts`                | `.withMetadata(false)` to strip GPS EXIF            |
+| `functions/src/__tests__/triggers/on-media-finalize.test.ts` | Added EXIF stripping test, renamed existing test    |
+| `functions/src/triggers/inbox-reconciliation-sweep.ts`       | Atomic claim transaction + null oldestAgeMs         |
+| `packages/shared-validators/src/idempotency.ts`              | Reject `undefined` with `TypeError`                 |
+| `packages/shared-validators/src/idempotency.test.ts`         | Flipped bug-documenting test to assert rejection    |
+| `packages/shared-validators/src/reports.ts`                  | `pendingMediaIds.max(20)`, `expiresAt` max 1 year   |
+| `packages/shared-validators/src/sms.ts`                      | Hex regex for `senderMsisdnHash`                    |
+| `packages/shared-validators/src/hazard.ts`                   | Pairwise `refine` for `supersededBy`/`supersededAt` |
+| `packages/shared-validators/src/coordination.ts`             | `expiresAt > createdAt` refine for shift handoff    |
+
+### Commits (7)
+
+- `fix(media): strip all EXIF metadata including GPS in onMediaFinalize`
+- `test(media): rename misleading test name in on-media-finalize`
+- `fix(idempotency): reject undefined values in canonicalPayloadHash`
+- `fix(sweep): atomic claim + null oldestAgeMs on empty sweep`
+- `fix(sweep): fix oldestAgeMs calculation placement and return null on full contention`
+- `fix(validators): require hex string for senderMsisdnHash in sms.ts`
+- `fix(validators): add supersededBy/At pairwise refine and shiftHandoff expiresAt check`
+
+### Verification
+
+| Step | Check             | Result           |
+| ---- | ----------------- | ---------------- |
+| 1    | `pnpm test`       | PASS (127 tests) |
+| 2    | `pnpm lint`       | PASS (14 tasks)  |
+| 3    | `pnpm typecheck`  | PASS (14 tasks)  |
+| 4    | `pnpm build`      | PASS (10 tasks)  |
+| 5    | Final code review | APPROVED         |
+
+### Deferred (follow-up)
+
+| Issue                                                    | Reason                                        |
+| -------------------------------------------------------- | --------------------------------------------- |
+| HIGH #8 — `withIdempotency` replay path untested         | Requires emulator-based integration test      |
+| MEDIUM #9 — `hasPhotoAndGPS` derived field not validated | Data consistency issue, not functional bug    |
+| LOW #12-14 — Informational only                          | Case sensitivity, hardcoded flags, MIME check |

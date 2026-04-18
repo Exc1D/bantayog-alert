@@ -84,6 +84,9 @@ export const shiftHandoffDocSchema = z
     schemaVersion: z.number().int().positive(),
   })
   .strict()
+  .refine((d) => d.expiresAt > d.createdAt, {
+    message: 'expiresAt must be after createdAt',
+  })
 
 export const breakglassEventDocSchema = z
   .object({
