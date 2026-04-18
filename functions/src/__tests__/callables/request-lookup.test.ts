@@ -23,7 +23,7 @@ describe('requestLookupImpl', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
-  it('returns PERMISSION_DENIED on secret mismatch', async () => {
+  it('returns FORBIDDEN on secret mismatch', async () => {
     mockGet.mockResolvedValue({
       exists: true,
       data: () => ({ reportId: 'r1', tokenHash: 'x'.repeat(64), expiresAt: Date.now() + 1e6 }),
