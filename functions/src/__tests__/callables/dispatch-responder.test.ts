@@ -108,3 +108,86 @@ describe('dispatchResponderCore', () => {
     )
   })
 })
+
+describe('dispatchResponderCore error paths', () => {
+  it('PERMISSION_DENIED when responder is in another municipality', async () => {
+    const ctx = testEnv.unauthenticatedContext()
+    const db = ctx.firestore() as any
+    const rtdb = ctx.database() as any
+    const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+
+    await testEnv.withSecurityRulesDisabled(async () => {
+      await seedResponderDoc(db, {
+        uid: 'r-wrong-muni',
+        municipalityId: 'mercedes',
+        agencyId: 'bfp-mercedes',
+        isActive: true,
+      })
+    })
+    await seedResponderShift(rtdb, 'mercedes', 'r-wrong-muni', true)
+    await expect(
+      dispatchResponderCore(db, rtdb, {
+        reportId,
+        responderUid: 'r-wrong-muni',
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
+  })
+
+  it('INVALID_STATUS_TRANSITION when report is not verified', async () => {
+    const ctx = testEnv.unauthenticatedContext()
+    const db = ctx.firestore() as any
+    const rtdb = ctx.database() as any
+    const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+
+    await testEnv.withSecurityRulesDisabled(async () => {
+      await seedResponderDoc(db, {
+        uid: 'r1',
+        municipalityId: 'daet',
+        agencyId: 'bfp-daet',
+        isActive: true,
+      })
+    })
+    await seedResponderShift(rtdb, 'daet', 'r1', true)
+    await expect(
+      dispatchResponderCore(db, rtdb, {
+        reportId,
+        responderUid: 'r1',
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+  })
+
+  it('INVALID_STATUS_TRANSITION when responder is not on shift', async () => {
+    const ctx = testEnv.unauthenticatedContext()
+    const db = ctx.firestore() as any
+    const rtdb = ctx.database() as any
+    const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+
+    await testEnv.withSecurityRulesDisabled(async () => {
+      await seedResponderDoc(db, {
+        uid: 'r1',
+        municipalityId: 'daet',
+        agencyId: 'bfp-daet',
+        isActive: true,
+      })
+    })
+    await seedResponderShift(rtdb, 'daet', 'r1', false)
+    await expect(
+      dispatchResponderCore(db, rtdb, {
+        reportId,
+        responderUid: 'r1',
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+  })
+})
