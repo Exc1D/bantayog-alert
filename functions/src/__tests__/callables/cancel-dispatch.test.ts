@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+
+// Mock rtdb before importing callable modules that depend on firebase-admin.ts
+vi.mock('firebase-admin/database', () => ({
+  getDatabase: vi.fn(() => ({})),
+}))
 import { cancelDispatchCore } from '../../callables/cancel-dispatch'
 import {
   seedReportAtStatus,
@@ -115,5 +120,45 @@ describe('cancelDispatchCore (3b branches)', () => {
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
+  })
+
+  it('INVALID_STATUS_TRANSITION when dispatch is already cancelled', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
+    const { dispatchId } = await seedDispatch(db, {
+      reportId,
+      responderUid: 'r1',
+      municipalityId: 'daet',
+      status: 'pending',
+    })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+    // First cancel succeeds
+    await cancelDispatchCore(db, {
+      dispatchId,
+      reason: 'responder_unavailable',
+      idempotencyKey: crypto.randomUUID(),
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
+      now: Timestamp.now(),
+    })
+    // Second cancel should fail with INVALID_STATUS_TRANSITION
+    await expect(
+      cancelDispatchCore(db, {
+        dispatchId,
+        reason: 'admin_error',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
   })
 })
