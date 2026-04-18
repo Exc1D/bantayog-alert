@@ -218,5 +218,8 @@ export async function processInboxItemCore(
     },
   )
 
+  if (result.materialized && (await inboxRef.get()).data()?.processedAt !== undefined) {
+    return { ...result, replayed: true }
+  }
   return result
 }

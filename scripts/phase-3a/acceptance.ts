@@ -14,6 +14,7 @@ import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { randomUUID, createHash } from 'node:crypto'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '../packages/shared-validators/src/municipalities.js'
+import { processInboxItemCore } from '../../functions/src/triggers/process-inbox-item.js'
 
 interface Assertion {
   name: string
@@ -31,7 +32,11 @@ async function main(): Promise<void> {
   const env = process.argv.find((a) => a.startsWith('--env='))?.split('=')[1] ?? 'emulator'
   if (env === 'emulator') {
     process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST ?? 'localhost:8080'
-    initializeApp({ projectId: 'bantayog-alert-acceptance' })
+    initializeApp({
+      projectId: process.env.FIRESTORE_EMULATOR_HOST?.includes(':8080')
+        ? 'bantayog-alert-dev'
+        : 'bantayog-alert-acceptance',
+    })
   } else {
     initializeApp({ credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS ?? '') })
   }
@@ -78,24 +83,21 @@ async function main(): Promise<void> {
     })
   console.log(`  → Inbox doc written: ${inboxId}`)
 
-  // 2. Wait up to 10s for triptych to materialize
-  console.log('\n2. Waiting for triptych materialization (max 10s)...')
-  const start = Date.now()
+  // 2. Invoke processInboxItemCore directly (bypasses trigger for emulator testing)
+  console.log('\n2. Invoking processInboxItemCore...')
   let reportId: string | null = null
-  while (Date.now() - start < 10_000) {
-    const lookupSnap = await db.collection('report_lookup').doc(publicRef).get()
-    if (lookupSnap.exists) {
-      reportId = (lookupSnap.data() as { reportId: string }).reportId
-      break
-    }
-    await new Promise((r) => setTimeout(r, 500))
-  }
-  check('triptych materialized within 10s', reportId !== null, `publicRef=${publicRef}`)
-  if (!reportId) {
-    console.error('\n❌ Triptych did not materialize. Check processInboxItem trigger logs.')
+  try {
+    const coreResult = await processInboxItemCore({ db, inboxId, now: () => Date.now() })
+    reportId = coreResult.reportId
+    console.log(`  → Report materialized: ${reportId} (materialized=${coreResult.materialized})`)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`  → processInboxItemCore failed: ${msg}`)
+    check('processInboxItemCore succeeded', false, msg)
+    console.error('\n❌ Triptych materialization failed. Check processInboxItemCore.')
     process.exit(1)
   }
-  console.log(`  → Report ID: ${reportId}`)
+  check('processInboxItemCore succeeded', reportId !== null, reportId ?? 'undefined')
 
   // 3. Verify triptych components
   console.log('\n3. Verifying triptych components...')

@@ -1,7 +1,7 @@
 resource "google_logging_metric" "inbox_processed" {
   name    = "phase3_inbox_processed_${var.environment}"
   project = var.project_id
-  filter  = "jsonPayload.event=\"inbox.processed\""
+  filter  = "jsonPayload.code=\"INBOX_MATERIALIZED\""
   metric_descriptor {
     metric_kind = "DELTA"
     value_type  = "INT64"
@@ -21,7 +21,7 @@ resource "google_logging_metric" "function_errors" {
 resource "google_logging_metric" "sweep_heavy" {
   name    = "phase3_sweep_heavy_${var.environment}"
   project = var.project_id
-  filter  = "jsonPayload.event=\"inbox.reconciliation_sweep\" AND severity=\"ERROR\""
+  filter  = "jsonPayload.code=\"INBOX_RECONCILIATION_RETRY_FAILED\" AND severity=\"WARNING\""
   metric_descriptor {
     metric_kind = "DELTA"
     value_type  = "INT64"

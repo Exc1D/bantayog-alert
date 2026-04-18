@@ -134,6 +134,7 @@ describe('processInboxItemCore', () => {
         now: () => 1713350402000,
       })
       expect(second.materialized).toBe(true)
+      expect(second.replayed).toBe(true)
       expect(second.reportId).toBe(first.reportId)
     })
   })

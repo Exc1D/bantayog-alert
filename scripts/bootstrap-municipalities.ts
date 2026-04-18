@@ -19,7 +19,11 @@ async function main(): Promise<void> {
   console.log(`Bootstrapping municipalities (env=${env})...`)
 
   if (env === 'emulator') {
-    initializeApp({ projectId: 'bantayog-alert-dev' })
+    initializeApp({
+      projectId: process.env.FIRESTORE_EMULATOR_HOST?.includes(':8080')
+        ? 'bantayog-alert-dev'
+        : 'bantayog-alert-acceptance',
+    })
   } else {
     const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
     if (!keyPath) {
