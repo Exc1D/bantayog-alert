@@ -31,7 +31,8 @@
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
     "firebase-admin": "^13.8.0",
-    "firebase-functions": "^7.2.5"
+    "firebase-functions": "^7.2.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
