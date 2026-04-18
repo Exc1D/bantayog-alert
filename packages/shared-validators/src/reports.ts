@@ -151,7 +151,10 @@ export const reportLookupDocSchema = z
     publicTrackingRef: z.string().regex(/^[a-z0-9]{8}$/),
     reportId: z.string().min(1),
     tokenHash: z.string().regex(/^[a-f0-9]{64}$/),
-    expiresAt: z.number().int(),
+    expiresAt: z
+      .number()
+      .int()
+      .max(Date.now() + 365 * 24 * 60 * 60 * 1000),
     createdAt: z.number().int(),
     schemaVersion: z.number().int().positive(),
   })
@@ -193,7 +196,7 @@ export const inboxPayloadSchema = z
         lng: z.number().min(-180).max(180),
       })
       .strict(),
-    pendingMediaIds: z.array(z.string().min(1)).optional(),
+    pendingMediaIds: z.array(z.string().min(1)).max(20).optional(),
   })
   .strict()
 
