@@ -26,7 +26,7 @@ export function createMunicipalityLookup(db: Firestore): MunicipalityLookup {
       const v = map.get(id)
       if (v === undefined) {
         throw new BantayogError(
-          BantayogErrorCode.FORBIDDEN,
+          BantayogErrorCode.MUNICIPALITY_NOT_FOUND,
           `Municipality '${id}' is not in jurisdiction.`,
         )
       }

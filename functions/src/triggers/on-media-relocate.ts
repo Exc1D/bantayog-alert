@@ -19,6 +19,7 @@ export const onMediaRelocate = onObjectFinalized(
         severity: 'DEBUG',
         code: 'MEDIA_RELOCATE_SKIPPED_DISABLED',
         message: 'media_canonical_migration disabled, no-op',
+        data: { event: 'media_relocate' },
       })
       return
     }
@@ -26,7 +27,7 @@ export const onMediaRelocate = onObjectFinalized(
       severity: 'WARNING',
       code: 'MEDIA_RELOCATE_FLAG_ON_BUT_IMPL_ABSENT',
       message: 'flag enabled but relocation not implemented',
-      data: { objectName: event.data.name },
+      data: { event: 'media_relocate', objectName: event.data.name },
     })
   },
 )

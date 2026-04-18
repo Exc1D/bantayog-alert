@@ -9,6 +9,7 @@ const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp'])
 export interface OnMediaFinalizeInput {
   bucket: { file(name: string): FileHandle }
   objectName: string
+  now?: () => number
   writePending: (doc: {
     uploadId: string
     storagePath: string
@@ -39,23 +40,35 @@ export async function onMediaFinalizeCore(
     })
     return { status: 'rejected_mime' }
   }
-  const cleaned = await sharp(buf).rotate().toBuffer()
+  let cleaned: Buffer
+  try {
+    cleaned = await sharp(buf).rotate().toBuffer()
+  } catch {
+    await file.delete()
+    log({
+      severity: 'WARNING',
+      code: 'MEDIA_REJECTED_CORRUPT',
+      message: `Deleted corrupt image: ${input.objectName}`,
+    })
+    return { status: 'rejected_mime' }
+  }
   await file.save(cleaned, {
     resumable: false,
     contentType: ft.mime,
     metadata: { cacheControl: 'private, no-transform' },
   })
   const uploadId = input.objectName.slice('pending/'.length)
+  const strippedAt = input.now ? input.now() : Date.now()
   await input.writePending({
     uploadId,
     storagePath: input.objectName,
-    strippedAt: Date.now(),
+    strippedAt,
     mimeType: ft.mime,
   })
   return { status: 'accepted' }
 }
 
-interface FileHandle {
+export interface FileHandle {
   download(): Promise<[Buffer]>
   save(
     buf: Buffer,

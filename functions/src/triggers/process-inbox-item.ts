@@ -20,7 +20,7 @@ export interface ProcessInboxItemCoreInput {
 
 export interface ProcessInboxItemCoreResult {
   materialized: boolean
-  replayed?: boolean
+  replayed: boolean
   reportId: string
 }
 
@@ -113,6 +113,9 @@ export async function processInboxItemCore(
         }
       }
 
+      // pending_media docs are write-once by onMediaFinalize and only deleted here,
+      // so reads outside the transaction are safe by design.
+
       await db.runTransaction(async (tx) => {
         const lookupRef = db.collection('report_lookup').doc(inbox.publicRef)
         const lookupSnap = await tx.get(lookupRef)
@@ -175,7 +178,7 @@ export async function processInboxItemCore(
         tx.set(db.collection('report_lookup').doc(inbox.publicRef), {
           reportId,
           tokenHash: inbox.secretHash,
-          expiresAt: now() + 90 * 24 * 60 * 60 * 1000,
+          expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
           createdAt,
           schemaVersion: 1,
         })
@@ -214,12 +217,12 @@ export async function processInboxItemCore(
         data: { reportId, inboxId, municipalityId: geo.municipalityId },
       })
 
-      return { materialized: true, reportId }
+      return { materialized: true, replayed: false, reportId }
     },
   )
 
   if (result.materialized && (await inboxRef.get()).data()?.processedAt !== undefined) {
     return { ...result, replayed: true }
   }
-  return result
+  return { ...result, replayed: false }
 }

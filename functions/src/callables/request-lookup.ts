@@ -1,21 +1,9 @@
 import { createHash } from 'node:crypto'
-import { onCall, HttpsError, type FunctionsErrorCode } from 'firebase-functions/v2/https'
+import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
-
-const BANTAYOG_TO_HTTPS_CODE: Record<string, FunctionsErrorCode> = {
-  UNAUTHORIZED: 'unauthenticated',
-  FORBIDDEN: 'permission-denied',
-  NOT_FOUND: 'not-found',
-  INVALID_ARGUMENT: 'invalid-argument',
-  CONFLICT: 'already-exists',
-  RATE_LIMITED: 'resource-exhausted',
-}
-
-function bantayogErrorToHttps(err: BantayogError): HttpsError {
-  return new HttpsError(BANTAYOG_TO_HTTPS_CODE[err.code] ?? 'internal', err.message, err.data)
-}
+import { bantayogErrorToHttps } from './https-error.js'
 
 const payloadSchema = z
   .object({

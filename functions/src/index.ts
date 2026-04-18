@@ -10,8 +10,11 @@ import { onObjectFinalized } from 'firebase-functions/v2/storage'
 import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { getStorage } from 'firebase-admin/storage'
 import { getFirestore } from 'firebase-admin/firestore'
-import { onMediaFinalizeCore } from './triggers/on-media-finalize.js'
+import { onMediaFinalizeCore, type FileHandle } from './triggers/on-media-finalize.js'
 import { processInboxItemCore } from './triggers/process-inbox-item.js'
+import { BantayogError, logDimension } from '@bantayog/shared-validators'
+
+const log = logDimension('index')
 
 export const processInboxItem = onDocumentCreated(
   {
@@ -23,7 +26,19 @@ export const processInboxItem = onDocumentCreated(
     memory: '512MiB',
   },
   async (event) => {
-    await processInboxItemCore({ db: getFirestore(), inboxId: event.params.inboxId })
+    try {
+      await processInboxItemCore({ db: getFirestore(), inboxId: event.params.inboxId })
+    } catch (err) {
+      if (err instanceof BantayogError) {
+        log({
+          severity: 'ERROR',
+          code: err.code,
+          message: `processInboxItem failed for inbox ${event.params.inboxId}: ${err.message}`,
+        })
+        return // terminal error — do not retry
+      }
+      throw err // unexpected error — retry
+    }
   },
 )
 
@@ -38,14 +53,22 @@ export const onMediaFinalize = onObjectFinalized(
   async (event) => {
     const bucket = getStorage().bucket(event.data.bucket)
     const db = getFirestore()
-    await onMediaFinalizeCore({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      bucket: bucket as any,
-      objectName: event.data.name,
-      writePending: async (payload) => {
-        await db.collection('pending_media').doc(payload.uploadId).set(payload)
-      },
-    })
+    try {
+      await onMediaFinalizeCore({
+        bucket: bucket as unknown as { file(name: string): FileHandle },
+        objectName: event.data.name,
+        now: () => Date.now(),
+        writePending: async (payload) => {
+          await db.collection('pending_media').doc(payload.uploadId).set(payload)
+        },
+      })
+    } catch (err) {
+      log({
+        severity: 'ERROR',
+        code: 'MEDIA_FINALIZE_FAILED',
+        message: `onMediaFinalize failed: ${(err as Error).message}`,
+      })
+    }
   },
 )
 

@@ -70,9 +70,20 @@ export function logEvent(entry: {
     ...(entry.data !== undefined ? { data: entry.data } : {}),
   }
 
-  // In Cloud Functions, console.error/json serializes to Cloud Logging with ERROR
-  // severity. In local dev, this writes to stderr for visibility.
-  console.error(JSON.stringify(logEntry))
+  // Route to appropriate console method so Cloud Logging reads correct severity.
+  const json = JSON.stringify(logEntry)
+  if (entry.severity === 'ERROR' || entry.severity === 'CRITICAL') {
+    console.error(json)
+  } else if (entry.severity === 'WARNING') {
+    console.warn(json)
+  } else if (entry.severity === 'INFO') {
+    // eslint-disable-next-line no-console
+    console.log(json)
+  } else {
+    // DEBUG and any other value
+    // eslint-disable-next-line no-console
+    console.debug(json)
+  }
 
   return logEntry
 }

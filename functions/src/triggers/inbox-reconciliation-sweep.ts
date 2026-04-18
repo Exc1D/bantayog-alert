@@ -42,6 +42,11 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
       processed++
     } catch (err: unknown) {
       failed++
+      // Check if a moderation incident was written (permanent failure) and mark processed
+      const incidentSnap = await input.db.collection('moderation_incidents').doc(d.id).get()
+      if (incidentSnap.exists) {
+        await d.ref.update({ processedAt: now() })
+      }
       log({
         severity: 'WARNING',
         code: 'INBOX_RECONCILIATION_RETRY_FAILED',

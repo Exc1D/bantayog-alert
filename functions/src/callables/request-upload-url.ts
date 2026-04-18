@@ -1,21 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { onCall, HttpsError, type FunctionsErrorCode } from 'firebase-functions/v2/https'
+import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getStorage } from 'firebase-admin/storage'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
-
-const BANTAYOG_TO_HTTPS_CODE: Record<string, FunctionsErrorCode> = {
-  UNAUTHORIZED: 'unauthenticated',
-  FORBIDDEN: 'permission-denied',
-  NOT_FOUND: 'not-found',
-  INVALID_ARGUMENT: 'invalid-argument',
-  CONFLICT: 'already-exists',
-  RATE_LIMITED: 'resource-exhausted',
-}
-
-function bantayogErrorToHttps(err: BantayogError): HttpsError {
-  return new HttpsError(BANTAYOG_TO_HTTPS_CODE[err.code] ?? 'internal', err.message, err.data)
-}
+import { bantayogErrorToHttps } from './https-error.js'
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_SIZE_BYTES = 10 * 1024 * 1024
@@ -25,7 +13,6 @@ const payloadSchema = z
   .object({
     mimeType: z.string(),
     sizeBytes: z.number().int().positive(),
-    sha256: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict()
 
