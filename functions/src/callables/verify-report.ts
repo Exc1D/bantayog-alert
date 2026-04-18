@@ -59,7 +59,13 @@ export async function verifyReportCore(
             reportId: deps.reportId,
           })
         }
-        const report = reportSnap.data()!
+        const reportData = reportSnap.data()
+        if (!reportData) {
+          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report data missing', {
+            reportId: deps.reportId,
+          })
+        }
+        const report = reportData
         if (report.municipalityId !== deps.actor.claims.municipalityId) {
           throw new BantayogError(
             BantayogErrorCode.FORBIDDEN,
