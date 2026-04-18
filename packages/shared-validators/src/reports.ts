@@ -67,6 +67,8 @@ export const reportDocSchema = z
     source: z.enum(['web', 'sms', 'responder_witness']),
     hasPhotoAndGPS: z.boolean().default(false),
     schemaVersion: z.number().int().positive(),
+    municipalityLabel: z.string().min(1).max(64),
+    correlationId: z.uuid(),
   })
   .strict()
 

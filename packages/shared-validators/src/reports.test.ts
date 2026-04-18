@@ -17,6 +17,7 @@ describe('reportDocSchema', () => {
     expect(
       reportDocSchema.parse({
         municipalityId: 'daet',
+        municipalityLabel: 'Daet',
         barangayId: 'calasgasan',
         reporterRole: 'citizen',
         reportType: 'flood',
@@ -33,6 +34,7 @@ describe('reportDocSchema', () => {
         source: 'web',
         hasPhotoAndGPS: false,
         schemaVersion: 1,
+        correlationId: '11111111-1111-4111-8111-111111111111',
       }),
     ).toMatchObject({ status: 'verified' })
   })
@@ -41,6 +43,7 @@ describe('reportDocSchema', () => {
     expect(() =>
       reportDocSchema.parse({
         municipalityId: 'daet',
+        municipalityLabel: 'Daet',
         reporterRole: 'citizen',
         reportType: 'flood',
         severity: 'high',
@@ -54,6 +57,7 @@ describe('reportDocSchema', () => {
         source: 'web',
         hasPhotoAndGPS: false,
         schemaVersion: 1,
+        correlationId: '11111111-1111-4111-8111-111111111111',
       }),
     ).toThrow()
   })
@@ -62,6 +66,7 @@ describe('reportDocSchema', () => {
     expect(() =>
       reportDocSchema.parse({
         municipalityId: 'daet',
+        municipalityLabel: 'Daet',
         reporterRole: 'citizen',
         reportType: 'flood',
         severity: 'high',
@@ -75,6 +80,7 @@ describe('reportDocSchema', () => {
         source: 'web',
         hasPhotoAndGPS: false,
         schemaVersion: 1,
+        correlationId: '11111111-1111-4111-8111-111111111111',
         unknownField: 'oops', // should be rejected
       }),
     ).toThrow()
@@ -205,6 +211,47 @@ describe('reportInboxDocSchema', () => {
         payload: { reportType: 'flood' },
       }),
     ).toThrow()
+  })
+})
+
+describe('reportDocSchema Phase 3 deltas', () => {
+  const validBase = {
+    municipalityId: 'daet',
+    municipalityLabel: 'Daet',
+    barangayId: 'daet-1',
+    reporterRole: 'citizen' as const,
+    reportType: 'flood' as const,
+    severity: 'high' as const,
+    status: 'new' as const,
+    publicLocation: { lat: 14.1, lng: 122.9 },
+    mediaRefs: [],
+    description: 'flooded road',
+    submittedAt: 1713350400000,
+    retentionExempt: false,
+    visibilityClass: 'internal' as const,
+    visibility: { scope: 'municipality' as const, sharedWith: [] },
+    source: 'web' as const,
+    hasPhotoAndGPS: false,
+    schemaVersion: 1,
+    correlationId: '11111111-1111-4111-8111-111111111111',
+  }
+
+  it('accepts a valid report with municipalityLabel and correlationId', () => {
+    expect(() => reportDocSchema.parse(validBase)).not.toThrow()
+  })
+
+  it('rejects a missing municipalityLabel', () => {
+    const { municipalityLabel, ...rest } = validBase
+    void municipalityLabel
+    expect(() => reportDocSchema.parse(rest)).toThrow()
+  })
+
+  it('rejects a non-UUID correlationId', () => {
+    expect(() => reportDocSchema.parse({ ...validBase, correlationId: 'not-a-uuid' })).toThrow()
+  })
+
+  it('rejects an empty municipalityLabel', () => {
+    expect(() => reportDocSchema.parse({ ...validBase, municipalityLabel: '' })).toThrow()
   })
 })
 
