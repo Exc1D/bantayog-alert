@@ -88,3 +88,14 @@ export {
   isValidDispatchTransition,
 } from './state-machines/report-states.js'
 export type { ReportStatus, DispatchStatus } from './state-machines/report-states.js'
+export {
+  BantayogErrorCode,
+  isBantayogErrorCode,
+  isTerminalReportStatus,
+  isTerminalDispatchStatus,
+  BantayogError,
+  notFoundError,
+  invalidTransitionError,
+} from './errors.js'
+export { logEvent, logDimension, LOG_DIMENSION_MAX } from './logging.js'
+export type { LogEntry, LogSeverity } from './logging.js'
