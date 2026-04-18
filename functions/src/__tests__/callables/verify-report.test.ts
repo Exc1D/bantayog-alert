@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { verifyReportCore } from '../../callables/verify-report'
 import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories'
