@@ -60,7 +60,7 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
         const to = 'cancelled_false_report' as const
         if (from !== 'awaiting_verify') {
           throw new BantayogError(
-            BantayogErrorCode.INVALID_STATUS_TRANSITION,
+            BantayogErrorCode.FAILED_PRECONDITION,
             `rejectReport is only valid from awaiting_verify, got ${from}`,
             { reportId: deps.reportId, from },
           )
