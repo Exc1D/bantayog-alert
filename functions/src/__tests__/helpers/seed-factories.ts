@@ -184,7 +184,7 @@ export async function seedResponder(
  * Seeds a dispatches document using RulesTestEnvironment context.
  * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
  */
-export async function seedDispatch(
+export async function seedDispatchRT(
   env: RulesTestEnvironment,
   dispatchId: string,
   overrides: Partial<Record<string, unknown>> = {},
@@ -320,7 +320,7 @@ export async function seedResponderShift(
  * Seeds a dispatch document using Firestore admin SDK directly.
  * Use with withSecurityRulesDisabled() or in Cloud Functions — not for RulesTestEnvironment context.
  */
-export async function seedDispatchDoc(
+export async function seedDispatch(
   db: Firestore,
   o: {
     dispatchId?: string
