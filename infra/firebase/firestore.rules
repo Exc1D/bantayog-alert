@@ -60,7 +60,7 @@ service cloud.firestore {
 
     match /report_inbox/{inboxId} {
       allow read: if false;
-      allow create: if isCitizen() && request.resource.data.reportersUid == uid();
+      allow create: if isCitizen() && request.resource.data.reporterUid == uid();
       allow update, delete: if false;
     }
 
