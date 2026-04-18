@@ -35,6 +35,12 @@ export const hazardZoneDocSchema = z
     schemaVersion: z.number().int().positive(),
   })
   .strict()
+  .refine(
+    (d) =>
+      (d.supersededBy !== undefined && d.supersededAt !== undefined) ||
+      (d.supersededBy === undefined && d.supersededAt === undefined),
+    { message: 'supersededBy and supersededAt must both be present or both absent' },
+  )
 
 export const hazardZoneHistoryDocSchema = hazardZoneDocSchema.extend({
   historyVersion: z.number().int().positive(),
