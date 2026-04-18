@@ -9,15 +9,20 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSignIn(email: string, password: string) {
     setError(null)
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      navigate('/', { replace: true })
+      void navigate('/', { replace: true })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign-in failed')
     }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    void handleSignIn(email, password)
   }
 
   return (
@@ -26,7 +31,14 @@ export function LoginPage() {
       <form onSubmit={onSubmit}>
         <label>
           Email{' '}
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+            }}
+          />
         </label>
         <label>
           Password{' '}
@@ -34,7 +46,9 @@ export function LoginPage() {
             type="password"
             required
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+            }}
           />
         </label>
         <button type="submit">Sign in</button>

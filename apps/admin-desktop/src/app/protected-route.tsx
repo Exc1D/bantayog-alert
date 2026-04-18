@@ -12,11 +12,12 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   if (claims?.role !== 'municipal_admin' && claims?.role !== 'provincial_superadmin') {
     return (
       <div role="alert">
-        You don't have admin access on this account. Contact your municipality's superadmin.
+        You don&apos;t have admin access on this account. Contact your municipality&apos;s
+        superadmin.
       </div>
     )
   }
-  if (claims?.active !== true) {
+  if (claims.active !== true) {
     return <div role="alert">Your account is not active. Please contact your superadmin.</div>
   }
   if (claims.role === 'municipal_admin' && !claims.municipalityId) {

@@ -19,11 +19,11 @@ export const firebaseApp = initializeApp(firebaseConfig)
 
 if (!useEmulator) {
   initializeAppCheck(firebaseApp, {
-    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
+    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY as string),
     isTokenAutoRefreshEnabled: true,
   })
 } else if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- Firebase App Check debug token is a browser global
   ;(self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN ?? true
 }
 

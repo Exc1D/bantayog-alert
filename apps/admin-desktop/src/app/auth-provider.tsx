@@ -3,7 +3,7 @@ import { onAuthStateChanged, signOut as fbSignOut, type User } from 'firebase/au
 import { auth } from './firebase'
 
 export interface AdminClaims {
-  role?: 'municipal_admin' | 'provincial_superadmin' | string
+  role?: string
   municipalityId?: string
   active?: boolean
 }
@@ -37,20 +37,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u)
       if (u) {
-        const tok = await u.getIdTokenResult()
-        setClaims({
-          role: tok.claims.role as string | undefined,
-          municipalityId: tok.claims.municipalityId as string | undefined,
-          active: tok.claims.active === true,
-        } as AdminClaims)
+        void u.getIdTokenResult().then((tok) => {
+          setClaims({
+            role: tok.claims.role as string | undefined,
+            municipalityId: tok.claims.municipalityId as string | undefined,
+            active: tok.claims.active === true,
+          } as AdminClaims)
+          setLoading(false)
+        })
       } else {
         setClaims(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
+    return unsubscribe
   }, [])
 
   return (
