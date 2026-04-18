@@ -84,3 +84,46 @@ describe('verifyReportCore', () => {
     expect(events.docs).toHaveLength(1) // no double event
   })
 })
+
+describe('verifyReportCore error paths', () => {
+  it('returns FORBIDDEN when admin is in a different municipality', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'mercedes' })
+    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await expect(
+      verifyReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+  })
+
+  it('returns INVALID_STATUS_TRANSITION on a report already verified', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await expect(
+      verifyReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+  })
+
+  it('returns NOT_FOUND on missing report', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await expect(
+      verifyReportCore(db, {
+        reportId: 'does-not-exist',
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
