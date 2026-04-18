@@ -2,7 +2,10 @@
 export { setStaffClaims, suspendStaffAccount } from './auth/account-lifecycle.js'
 export { withIdempotency, IdempotencyMismatchError } from './idempotency/guard.js'
 export { requestUploadUrl } from './callables/request-upload-url.js'
+export { verifyReport } from './callables/verify-report.js'
 export { requestLookup } from './callables/request-lookup.js'
+export { dispatchResponder } from './callables/dispatch-responder.js'
+export { cancelDispatch } from './callables/cancel-dispatch.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
