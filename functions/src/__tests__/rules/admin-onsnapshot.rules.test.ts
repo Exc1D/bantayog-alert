@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, beforeEach } from 'vitest'
 import {
   initializeTestEnvironment,
-  RulesTestEnvironment,
+  type RulesTestEnvironment,
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing'
@@ -15,7 +16,7 @@ const ts = 1713350400000
 
 let testEnv: RulesTestEnvironment
 
-function seedReport(db: Firestore, reportId: string, municipalityId: string, status: string) {
+function seedReport(db: any, reportId: string, municipalityId: string, status: string) {
   return setDoc(doc(db, 'reports', reportId), {
     reportId,
     status,
@@ -45,7 +46,7 @@ beforeEach(async () => {
 describe('admin muni-scoped onSnapshot queue', () => {
   it('allows muni admin to read reports filtered by own municipalityId + queue statuses', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
+      const db = ctx.firestore() as any
       await seedReport(db, 'r1', 'daet', 'new')
       await seedReport(db, 'r2', 'daet', 'awaiting_verify')
       await setDoc(doc(db, 'users', 'admin-1'), {
@@ -76,7 +77,7 @@ describe('admin muni-scoped onSnapshot queue', () => {
 
   it('denies cross-muni reads', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
+      const db = ctx.firestore() as any
       await seedReport(db, 'rx', 'mercedes', 'new')
       await setDoc(doc(db, 'users', 'admin-1'), {
         uid: 'admin-1',
@@ -104,7 +105,7 @@ describe('admin muni-scoped onSnapshot queue', () => {
 
   it('denies citizen-role reads', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
+      const db = ctx.firestore() as any
       await setDoc(doc(db, 'users', 'cit-1'), {
         uid: 'cit-1',
         role: 'citizen',

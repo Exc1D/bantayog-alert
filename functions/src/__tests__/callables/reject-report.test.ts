@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { rejectReportCore } from '../../callables/reject-report'
 import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories'
 import { Timestamp } from 'firebase-admin/firestore'
@@ -29,7 +29,10 @@ describe('rejectReportCore', () => {
       reason: 'obviously_false',
       notes: 'duplicate from known troll',
       idempotencyKey: crypto.randomUUID(),
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now: Timestamp.now(),
     })
 
@@ -70,7 +73,10 @@ describe('rejectReportCore', () => {
         reportId,
         reason: 'obviously_false',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
@@ -91,7 +97,10 @@ describe('rejectReportCore', () => {
         reportId,
         reason: 'obviously_false',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })

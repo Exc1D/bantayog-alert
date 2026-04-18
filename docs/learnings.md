@@ -362,3 +362,23 @@ When a Zod `.refine()` uses `||` in its predicate (e.g., `(d.supersededBy && d.s
 ### Worktree rebase can land commits out-of-order
 
 Commit `6546a0e` ("fix validators: cap pendingMediaIds at 20") was made by a subagent and appeared in `git log` but wasn't in the worktree's HEAD. It was on `main`. After `git rebase main`, it appeared at the correct position in history. Always rebase worktrees onto main before starting implementation to avoid this confusion.
+
+### `seedReportAtStatus` uses Firebase Admin Timestamp, incompatible with RulesTestContext
+
+`seedReportAtStatus` (seed-factories.ts) uses `firebase-admin/firestore` `Timestamp.now()` which is incompatible with RulesTestEnvironment's `withSecurityRulesDisabled` context (uses JS SDK). Error: `FirebaseError: Function DocumentReference.set() called with invalid data. Unsupported field value: a custom Timestamp object`. Fix: write inline seeding with numeric `ts` timestamps (like other rules tests) instead of calling `seedReportAtStatus`.
+
+### ESLint `no-explicit-any` requires combined disable comment for multiple rules on same line
+
+When accessing `self` as `any` for Firebase App Check debug token (`self as any).FIREBASE_APPCHECK_DEBUG_TOKEN`), ESLint fires both `@typescript-eslint/no-explicit-any` AND `@typescript-eslint/no-unsafe-member-access`. Two separate `// eslint-disable-next-line` comments don't work — the second one is consumed by the same tool call. Solution: use a single combined comment: `// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access`.
+
+### `no-floating-promises` requires `void` prefix on all Promise-returning functions passed as event handlers
+
+ESLint's `no-floating-promises` (from `typescript-eslint/strict-type-checked`) treats any Promise-returning function passed to an event handler (like `onClick`, `onSubmit`) as a violation. The fix is to wrap the call: `void handleSignIn(email, password)` instead of just `handleSignIn(email, password)`.
+
+### `no-confusing-void-expression` fires on arrow function shorthand with void-returning callback
+
+When an event handler like `onClick` calls a void-returning function with arrow shorthand `() => setBanner(msg)`, ESLint's `no-confusing-void-expression` fires because the callback itself doesn't return void explicitly. The fix is to use block body: `onClick={() => { setBanner(msg) }}`.
+
+### `React.FormEvent` deprecated — use inline `// eslint-disable-next-line @typescript-eslint/no-deprecated`
+
+The `@typescript-eslint/no-deprecated` rule flags `React.FormEvent`. Since React's own type definition marks it deprecated, and there's no clean replacement that works across all React versions, the correct approach is to add an inline disable comment on the specific line: `// eslint-disable-next-line @typescript-eslint/no-deprecated`.

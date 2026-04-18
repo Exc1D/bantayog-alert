@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { cancelDispatchCore } from '../../callables/cancel-dispatch'
 import {
   seedReportAtStatus,
@@ -28,13 +29,20 @@ describe('cancelDispatchCore (3b branches)', () => {
       municipalityId: 'daet',
       status: 'pending',
     })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
 
     const result = await cancelDispatchCore(db, {
       dispatchId,
       reason: 'responder_unavailable',
       idempotencyKey: crypto.randomUUID(),
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now: Timestamp.now(),
     })
 
@@ -62,13 +70,20 @@ describe('cancelDispatchCore (3b branches)', () => {
       municipalityId: 'mercedes',
       status: 'pending',
     })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
     await expect(
       cancelDispatchCore(db, {
         dispatchId,
         reason: 'responder_unavailable',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
@@ -83,13 +98,20 @@ describe('cancelDispatchCore (3b branches)', () => {
       municipalityId: 'daet',
       status: 'accepted',
     })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
     await expect(
       cancelDispatchCore(db, {
         dispatchId,
         reason: 'responder_unavailable',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })

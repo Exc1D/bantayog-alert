@@ -181,8 +181,11 @@ export const cancelDispatch = onCall(
         actor: {
           uid: req.auth.uid,
           claims: {
-            role: claims.role as string | undefined,
-            municipalityId: claims.municipalityId as string | undefined,
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            ...(claims.role !== undefined && { role: claims.role as string }),
+            ...(claims.municipalityId !== undefined && {
+              municipalityId: claims.municipalityId as string,
+            }),
           },
         },
         now: Timestamp.now(),

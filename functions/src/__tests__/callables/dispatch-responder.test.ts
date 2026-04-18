@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { dispatchResponderCore } from '../../callables/dispatch-responder'
 import {
   seedReportAtStatus,
@@ -29,7 +30,11 @@ describe('dispatchResponderCore', () => {
     const rtdb = ctx.database() as any
 
     const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
 
     await testEnv.withSecurityRulesDisabled(async () => {
       await seedResponderDoc(db, {
@@ -45,7 +50,10 @@ describe('dispatchResponderCore', () => {
       reportId,
       responderUid: 'r1',
       idempotencyKey: crypto.randomUUID(),
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now: Timestamp.now(),
     })
 
@@ -82,7 +90,11 @@ describe('dispatchResponderCore', () => {
       municipalityId: 'daet',
       severity: 'high',
     })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
 
     await testEnv.withSecurityRulesDisabled(async () => {
       await seedResponderDoc(db, {
@@ -98,7 +110,10 @@ describe('dispatchResponderCore', () => {
       reportId,
       responderUid: 'r1',
       idempotencyKey: crypto.randomUUID(),
-      actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
       now,
     })
     const dispatch = (await db.collection('dispatches').doc(result.dispatchId).get()).data()
@@ -115,7 +130,11 @@ describe('dispatchResponderCore error paths', () => {
     const db = ctx.firestore() as any
     const rtdb = ctx.database() as any
     const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
 
     await testEnv.withSecurityRulesDisabled(async () => {
       await seedResponderDoc(db, {
@@ -131,7 +150,10 @@ describe('dispatchResponderCore error paths', () => {
         reportId,
         responderUid: 'r-wrong-muni',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
@@ -142,7 +164,11 @@ describe('dispatchResponderCore error paths', () => {
     const db = ctx.firestore() as any
     const rtdb = ctx.database() as any
     const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
 
     await testEnv.withSecurityRulesDisabled(async () => {
       await seedResponderDoc(db, {
@@ -158,7 +184,10 @@ describe('dispatchResponderCore error paths', () => {
         reportId,
         responderUid: 'r1',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
@@ -169,7 +198,11 @@ describe('dispatchResponderCore error paths', () => {
     const db = ctx.firestore() as any
     const rtdb = ctx.database() as any
     const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId: 'daet' })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
 
     await testEnv.withSecurityRulesDisabled(async () => {
       await seedResponderDoc(db, {
@@ -185,7 +218,10 @@ describe('dispatchResponderCore error paths', () => {
         reportId,
         responderUid: 'r1',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'admin-1', claims: staffClaims('municipal_admin', 'daet') },
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
         now: Timestamp.now(),
       }),
     ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })

@@ -353,3 +353,54 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 | HIGH #8 — `withIdempotency` replay path untested         | Requires emulator-based integration test      |
 | MEDIUM #9 — `hasPhotoAndGPS` derived field not validated | Data consistency issue, not functional bug    |
 | LOW #12-14 — Informational only                          | Case sensitivity, hardcoded flags, MIME check |
+
+---
+
+## Phase 3b Admin Triage Dispatch (In Progress)
+
+**Branch:** `phase-3b-impl`
+**Status:** Implementation in progress — rules tests being added
+
+### Task 14: Admin onSnapshot Rules Test — COMPLETE
+
+**File:** `functions/src/__tests__/rules/admin-onsnapshot.rules.test.ts`
+
+| Step | Check                                           | Result  |
+| ---- | ----------------------------------------------- | ------- |
+| 1    | Tests implemented (4 cases)                     | ✅ PASS |
+| 2    | `firebase emulators:exec --only firestore` test | ✅ PASS |
+| 3    | Lint + commit                                   | ✅ PASS |
+
+**Test cases:**
+
+- `allows muni admin to read reports filtered by own municipalityId + queue statuses` — ✅ PASS
+- `denies cross-muni reads` — ✅ PASS
+- `denies unauthenticated reads` — ✅ PASS
+- `denies citizen-role reads` — ✅ PASS
+
+### Task 15: Scaffold Admin-Desktop Auth Init — COMPLETE
+
+**Files created:**
+
+- `apps/admin-desktop/src/app/firebase.ts` — Firebase init with App Check + emulator support
+- `apps/admin-desktop/src/app/auth-provider.tsx` — AuthProvider with claim refresh
+- `apps/admin-desktop/src/app/protected-route.tsx` — Role-gated route wrapper
+- `apps/admin-desktop/src/routes.tsx` — React Router with protected root route
+- `apps/admin-desktop/src/App.tsx` — Router + AuthProvider bootstrap
+- `apps/admin-desktop/src/pages/LoginPage.tsx` — Email/password sign-in stub
+- `apps/admin-desktop/src/pages/TriageQueuePage.tsx` — Queue placeholder stub
+
+**Verification:**
+
+- `pnpm --filter @bantayog/admin-desktop typecheck` — ✅ PASS
+- `npx eslint apps/admin-desktop/src/app/firebase.ts apps/admin-desktop/src/app/auth-provider.tsx apps/admin-desktop/src/app/protected-route.tsx apps/admin-desktop/src/pages/LoginPage.tsx apps/admin-desktop/src/pages/TriageQueuePage.tsx` — ✅ PASS
+
+**Key decisions:**
+
+- `AdminClaims.role` typed as `string` (not union) to avoid `@typescript-eslint/no-redundant-type-constituents`
+- `onAuthStateChanged` callback not async — chained with `.then()` to satisfy `no-misused-promises`
+- All async handlers wrapped in `void` IIFEs to satisfy `no-floating-promises`
+- Firebase debug token uses combined eslint-disable comment to suppress both rules
+- `React.FormEvent` suppressed with `// eslint-disable-next-line @typescript-eslint/no-deprecated` since the project consistently uses the React event type across forms
+
+**Key fix during implementation:** `seedReportAtStatus` uses `firebase-admin/firestore` `Timestamp.now()` which is incompatible with `RulesTestEnvironment.withSecurityRulesDisabled` context (uses JS SDK). Wrote inline seeding with numeric `ts` timestamps instead.
