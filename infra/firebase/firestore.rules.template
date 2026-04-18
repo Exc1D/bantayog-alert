@@ -222,6 +222,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /pending_media/{uploadId} {
+      allow read, write: if false;
+    }
+
     match /moderation_incidents/{m} {
       allow read: if isActivePrivileged() && (isMuniAdmin() || isSuperadmin());
       allow write: if false;
