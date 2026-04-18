@@ -68,7 +68,12 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
       })
     }
   }
-  return { candidates: snap.size, processed, failed, oldestAgeMs: snap.empty ? null : oldestAgeMs }
+  return {
+    candidates: snap.size,
+    processed,
+    failed,
+    oldestAgeMs: processed === 0 ? null : oldestAgeMs,
+  }
 }
 
 export const inboxReconciliationSweep = onSchedule(
