@@ -39,7 +39,7 @@ export function useReportDetail(reportId: string | undefined) {
         )
       },
       (err) => {
-        setError(err.message)
+        setError(`reports: ${err.message}`)
       },
     )
     const u2 = onSnapshot(
@@ -48,7 +48,9 @@ export function useReportDetail(reportId: string | undefined) {
         setOps(s.exists() ? (s.data() as ReportOps) : null)
       },
       (err) => {
-        setError(err.message)
+        setError((prev) =>
+          prev ? `${prev}; report_ops: ${err.message}` : `report_ops: ${err.message}`,
+        )
       },
     )
     return () => {
