@@ -3,6 +3,7 @@ import { useAuth } from '../app/auth-provider'
 import { useMuniReports } from '../hooks/useMuniReports'
 import { ReportDetailPanel } from './ReportDetailPanel'
 import { DispatchModal } from './DispatchModal'
+import { CloseReportModal } from './CloseReportModal'
 import { callables } from '../services/callables'
 
 export function TriageQueuePage() {
@@ -10,6 +11,7 @@ export function TriageQueuePage() {
   const { rows, loading, error } = useMuniReports(claims?.municipalityId)
   const [selected, setSelected] = useState<string | null>(null)
   const [dispatchForReportId, setDispatchForReportId] = useState<string | null>(null)
+  const [closeForReportId, setCloseForReportId] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
 
   const handleVerify = (reportId: string) => {
@@ -83,6 +85,7 @@ export function TriageQueuePage() {
             onVerify={handleVerify}
             onReject={handleReject}
             onDispatch={setDispatchForReportId}
+            onClose={setCloseForReportId}
           />
         )}
       </section>
@@ -91,6 +94,17 @@ export function TriageQueuePage() {
           reportId={dispatchForReportId}
           onClose={() => {
             setDispatchForReportId(null)
+          }}
+          onError={(msg: string) => {
+            setBanner(msg)
+          }}
+        />
+      )}
+      {closeForReportId && (
+        <CloseReportModal
+          reportId={closeForReportId}
+          onClose={() => {
+            setCloseForReportId(null)
           }}
           onError={(msg: string) => {
             setBanner(msg)

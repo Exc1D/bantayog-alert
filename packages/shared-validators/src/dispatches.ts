@@ -66,4 +66,17 @@ export const dispatchDocSchema = z
   })
   .strict()
 
+const advanceDispatchTargetSchema = z.enum(['acknowledged', 'en_route', 'on_scene', 'resolved'])
+
+export const advanceDispatchRequestSchema = z
+  .object({
+    dispatchId: z.string().min(1),
+    to: advanceDispatchTargetSchema,
+    resolutionSummary: z.string().optional(),
+    idempotencyKey: z.uuid(),
+  })
+  .strict()
+
+export type AdvanceDispatchTarget = z.infer<typeof advanceDispatchTargetSchema>
+export type AdvanceDispatchRequest = z.infer<typeof advanceDispatchRequestSchema>
 export type DispatchDoc = z.infer<typeof dispatchDocSchema>

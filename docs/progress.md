@@ -100,8 +100,9 @@
 
 **❌ Blocked:**
 
-- SSL certificate error prevents web app access
+- `staging.bantayog.web.app` is NOT a valid Firebase Hosting domain (cert for `firebaseapp.com`, SAN mismatch) — use `bantayog-alert-staging.web.app` instead
 - IAM Service Account Credentials API not enabled (blocks acceptance test)
+- No hosting deploy to staging (404 on both URLs)
 
 **📋 Details:** See `docs/phase-3b-staging-verification.md`
 
@@ -202,6 +203,80 @@ The Phase 3c implementation plan is ready (33 tasks, 20-40 hours). All state mac
 - FCM push on dispatch.created (currently warning-only placeholder)
 - Responder accept + status progression
 - RejectReport callable: FAILED_PRECONDITION code check (uses HttpsError 'failed-precondition' which maps to code 'FAILED_PRECONDITION')
+
+---
+
+## Phase 3c Responder Loop End-to-End (Complete)
+
+**Branch:** `feature/phase-3c-responder-loop-e2e`
+**Status:** All 33 tasks complete — all tests passing — ready for PR
+
+### Verification (2026-04-19)
+
+| Step | Check                                      | Result              |
+| ---- | ------------------------------------------ | ------------------- |
+| 1    | `pnpm lint`                                | PASS (14 tasks)     |
+| 2    | `pnpm typecheck`                           | PASS (14 tasks)     |
+| 3    | `pnpm test`                                | PASS (142 tests)    |
+| 4    | E2e spec files committed                   | PASS (4 spec files) |
+| 5    | `scripts/phase-3c/acceptance.ts` committed | PASS                |
+
+### What was built
+
+**Responder PWA lifecycle:**
+
+- `useDispatch` hook + `DispatchDetailPage` — responder sees assigned dispatches via `onSnapshot`
+- `useAcceptDispatch` hook + Accept button — responder accepts via `acceptDispatch` callable
+- `useAdvanceDispatch` hook + progression buttons — acknowledge → en_route → on_scene → resolve
+- `CancelledScreen` + race-loss re-fetch — responder sees cancelled state when dispatch cancelled mid-flight
+- `dispatchTransition` helper — DRY consolidation of 4 status-step assertions in acceptance test
+
+**Acceptance gate (`scripts/phase-3c/acceptance.ts`):**
+
+- Complete lifecycle: dispatch → accept → acknowledge → en_route → on_scene → resolve → close
+- Idempotency guard: second `acceptDispatch` call with same idempotency key returns `accepted` (no error)
+- Cancel from accepted: `cancelDispatch` widens to accepted state (Phase 3c)
+- Terminal-state guard: `cancelDispatch` on resolved throws `FAILED_PRECONDITION`
+- Mirror sync: `dispatchMirrorToReport` fires async, updates `reports.status` on dispatch transitions
+
+**Playwright e2e specs (unblocked — SSL issue resolved):**
+
+- `citizen.spec.ts` — 6 passing tests (form, geolocation denial, lookup, invalid ref/secret)
+- `admin.spec.ts` — 7 tests for auth + triage + dispatch (BASE_URL fixed to localhost:5175)
+- `responder.spec.ts` — 10 tests for auth + dispatch list + progression
+- `full-loop.spec.ts` + `race-loss.spec.ts` — stub tests for full loop and race conditions
+
+### Known remaining blockers
+
+| Blocker                                            | Impact                                   | Workaround                                          |
+| -------------------------------------------------- | ---------------------------------------- | --------------------------------------------------- |
+| `staging.bantayog.web.app` not a Firebase domain   | Staging E2E needs `BASE_URL` env var set | Use `bantayog-alert-staging.web.app` or local tests |
+| Firebase module-level init in admin/responder apps | Apps crash without valid API key         | Emulator-only testing for web UI flows              |
+| No hosting deploy to staging                       | Staging URL returns 404                  | `firebase deploy --only hosting` (needs approval)   |
+
+### Key corrections during implementation
+
+| ID  | Issue                                                                                               | Fix                                                               |
+| --- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| C1  | `dispatchMirrorToReport` writes `reports.status`, not `reports.responderStatus`                     | Acceptance assertions corrected to check `status` field           |
+| C2  | Idempotency key requires UUID format (`z.string().uuid()`)                                          | Test uses `11111111-1111-1111-1111-111111111111`                  |
+| C3  | `acceptDispatch` callable sets dispatch to `accepted` — mirror then writes `acknowledged` to report | Two-step status check: dispatch=`accepted`, report=`acknowledged` |
+| C4  | `connectFunctionsEmulator` v10+ takes `(functions, host, port)` — no options object                 | Called with `(webFunctions, 'localhost', 5001)`                   |
+
+### PR #46 review fixes (2026-04-19)
+
+**30 CodeRabbit comments triaged, 3 false positives dismissed, 22 fixes applied across ~20 files.**
+
+| Group | Count | What                                                                                                     |
+| ----- | ----- | -------------------------------------------------------------------------------------------------------- |
+| A CI  | 6     | Lint errors (unused imports, unnecessary conditions), rule coverage gap for `agency_assistance_requests` |
+| B     | 4     | Rate-limit-after-idempotency, assignedTo guard, schema narrowing, role validation                        |
+| C     | 7     | SW guard, nested HTML, idempotency key reset, upsert resilience, VAPID validation                        |
+| D     | 7     | Rules test doc structure, event ordering, placeholder tests → `test.skip()`, tsconfig cleanup            |
+| E     | 4     | Auth user creation, responder sign-in, idempotency key reuse, callable-based progression                 |
+| F     | 3     | Batch size guard in timeout sweep, SW error logging, seed-factory status types                           |
+
+**Dismissed false positives:** provincial_superadmin in close-report (already included), enforceAppCheck on advance-dispatch (already set), dispatch-mirror skip for non-current dispatch (correct behavior).
 
 ---
 

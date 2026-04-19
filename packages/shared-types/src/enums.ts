@@ -27,12 +27,13 @@ export type ReportStatus =
   | 'cancelled_false_report'
   | 'merged_as_duplicate'
 
-// Dispatch lifecycle — spec §5.4.
+// Dispatch lifecycle — spec §5.4 (Phase 3c: en_route + on_scene).
 export type DispatchStatus =
   | 'pending'
   | 'accepted'
   | 'acknowledged'
-  | 'in_progress'
+  | 'en_route'
+  | 'on_scene'
   | 'resolved'
   | 'declined'
   | 'timed_out'

@@ -48,26 +48,22 @@ service cloud.firestore {
     }
     function validResponderTransition(from, to) {
       return       (from == 'pending' && to == 'accepted')
-          ||       (from == 'accepted' && to == 'acknowledged')
-          ||       (from == 'acknowledged' && to == 'en_route')
-          ||       (from == 'en_route' && to == 'on_scene')
-          ||       (from == 'on_scene' && to == 'resolved')
           ||       (from == 'pending' && to == 'declined')
           ||       (from == 'pending' && to == 'cancelled')
+          ||       (from == 'pending' && to == 'timed_out')
           ||       (from == 'pending' && to == 'superseded')
+          ||       (from == 'accepted' && to == 'acknowledged')
           ||       (from == 'accepted' && to == 'cancelled')
           ||       (from == 'accepted' && to == 'superseded')
+          ||       (from == 'acknowledged' && to == 'en_route')
           ||       (from == 'acknowledged' && to == 'cancelled')
           ||       (from == 'acknowledged' && to == 'superseded')
+          ||       (from == 'en_route' && to == 'on_scene')
           ||       (from == 'en_route' && to == 'cancelled')
           ||       (from == 'en_route' && to == 'superseded')
+          ||       (from == 'on_scene' && to == 'resolved')
           ||       (from == 'on_scene' && to == 'cancelled')
           ||       (from == 'on_scene' && to == 'superseded')
-          ||       (from == 'pending' && to == 'timed_out')
-          ||       (from == 'accepted' && to == 'timed_out')
-          ||       (from == 'acknowledged' && to == 'timed_out')
-          ||       (from == 'en_route' && to == 'resolved')
-          ||       (from == 'on_scene' && to == 'resolved')
           || false;
     }
 
@@ -84,6 +80,12 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow read: if canReadReportDoc(resource.data);
       allow create: if false;
+
+      // reports.status is written by:
+      //   - system triggers: processInboxItem, dispatchMirrorToReport
+      //   - callables only: verifyReport, dispatchResponder, cancelDispatch, closeReport
+      // Responders NEVER write reports.status directly.
+      deny update: if isResponder();
       allow update: if adminOf(resource.data.municipalityId)
                    && request.resource.data.diff(resource.data)
                       .affectedKeys()
@@ -146,18 +148,31 @@ service cloud.firestore {
     // --- Dispatches ---
     match /dispatches/{d} {
       allow read: if isActivePrivileged() && (
-        (isResponder() && resource.data.responderId == uid())
+        (isResponder() && resource.data.assignedTo.uid == uid())
         || adminOf(resource.data.municipalityId)
         || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
       );
-      allow update: if isResponder()
-                    && isActivePrivileged()
-                    && resource.data.responderId == uid()
-                    && validResponderTransition(resource.data.status, request.resource.data.status)
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['status','statusUpdatedAt','acknowledgedAt',
-                                 'inProgressAt','resolvedAt','declineReason',
-                                 'resolutionSummary','proofPhotoUrl']);
+
+      function isAssignedResponder() {
+        return isResponder()
+          && isActivePrivileged()
+          && resource.data.assignedTo.uid == request.auth.uid;
+      }
+
+      function isAllowedDispatchFieldSet(newStatus) {
+        let base = ['status','lastStatusAt'];
+        let withSummary = base.concat(['resolutionSummary']);
+        return newStatus == 'resolved'
+          ? request.resource.data.diff(resource.data).affectedKeys().hasOnly(withSummary)
+             && request.resource.data.resolutionSummary is string
+             && request.resource.data.resolutionSummary.size() >= 1
+             && request.resource.data.resolutionSummary.size() <= 2000
+          : request.resource.data.diff(resource.data).affectedKeys().hasOnly(base);
+      }
+
+      allow update: if isAssignedResponder()
+        && validResponderTransition(resource.data.status, request.resource.data.status)
+        && isAllowedDispatchFieldSet(request.resource.data.status);
       allow create, delete: if false;
     }
 

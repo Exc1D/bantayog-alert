@@ -33,3 +33,16 @@ export const BANTAYOG_TO_HTTPS_CODE: Record<BantayogErrorCode, FunctionsErrorCod
 export function bantayogErrorToHttps(err: BantayogError): HttpsError {
   return new HttpsError(BANTAYOG_TO_HTTPS_CODE[err.code], err.message, err.data)
 }
+
+export function requireAuth(
+  request: { auth?: { uid: string; token: Record<string, unknown> } | null },
+  allowedRoles: string[],
+): { uid: string; claims: Record<string, unknown> } {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'sign-in required')
+  const claims = request.auth.token
+  const role = claims.role
+  if (typeof role !== 'string' || !allowedRoles.includes(role)) {
+    throw new HttpsError('permission-denied', `role ${String(role)} is not allowed`)
+  }
+  return { uid: request.auth.uid, claims }
+}

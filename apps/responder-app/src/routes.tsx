@@ -3,6 +3,7 @@ import { AuthProvider } from './app/auth-provider'
 import { ProtectedRoute } from './app/protected-route'
 import { LoginPage } from './pages/LoginPage'
 import { DispatchListPage } from './pages/DispatchListPage'
+import { DispatchDetailPage } from './pages/DispatchDetailPage'
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -11,6 +12,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <DispatchListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dispatches/:dispatchId',
+    element: (
+      <ProtectedRoute>
+        <DispatchDetailPage />
       </ProtectedRoute>
     ),
   },

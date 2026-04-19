@@ -29,7 +29,13 @@ const InputSchema = z
   })
   .strict()
 
-const CANCELLABLE_FROM_STATES: readonly string[] = ['pending']
+const CANCELLABLE_FROM_STATES: readonly DispatchStatus[] = [
+  'pending',
+  'accepted',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+]
 
 export interface CancelDispatchCoreDeps {
   dispatchId: string
@@ -42,11 +48,13 @@ export interface CancelDispatchCoreDeps {
 export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCoreDeps) {
   const correlationId = crypto.randomUUID()
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency(
     db,
     {
       key: `cancelDispatch:${deps.actor.uid}:${deps.idempotencyKey}`,
-      payload: deps,
+      payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
     async () =>
@@ -70,10 +78,10 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
         const from = dispatch.status as string
         const to = 'cancelled' as const
 
-        if (!CANCELLABLE_FROM_STATES.includes(from)) {
+        if (!CANCELLABLE_FROM_STATES.includes(from as DispatchStatus)) {
           throw new BantayogError(
             BantayogErrorCode.FAILED_PRECONDITION,
-            `Cannot cancel dispatch in status ${from} (3b scope: pending-only)`,
+            `Cannot cancel dispatch in status ${from} (allowed: ${CANCELLABLE_FROM_STATES.join(', ')})`,
           )
         }
 

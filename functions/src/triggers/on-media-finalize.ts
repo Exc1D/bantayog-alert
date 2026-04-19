@@ -29,7 +29,24 @@ export async function onMediaFinalizeCore(
     return { status: 'accepted' }
   }
   const file = input.bucket.file(input.objectName)
-  const [buf] = await file.download()
+  // download() without options returns [Buffer] per FileHandle contract
+  const downloadResult = await file.download()
+  if (!downloadResult) throw new Error('download returned undefined')
+  // downloadResult is [Buffer] here — destructure to get the buffer
+  const buf = downloadResult[0]
+
+  // Guard against memory exhaustion: reject uploads larger than 50MB
+  const MAX_SIZE = 50 * 1024 * 1024
+  if (buf.length > MAX_SIZE) {
+    await file.delete()
+    log({
+      severity: 'WARNING',
+      code: 'MEDIA_REJECTED_SIZE',
+      message: `Deleted oversized upload (${String(buf.length)} bytes): ${input.objectName}`,
+    })
+    return { status: 'rejected_mime' }
+  }
+
   const ft = await fileTypeFromBuffer(buf)
   if (!ft || !ALLOWED.has(ft.mime)) {
     await file.delete()
@@ -42,10 +59,10 @@ export async function onMediaFinalizeCore(
   }
   let cleaned: Buffer
   try {
-    cleaned = await sharp(buf)
-      .rotate()
-      .withMetadata(false as never)
-      .toBuffer()
+    // rotate() alone strips EXIF/IPTC all by itself in libvips/sharp.
+    // No need for withMetadata(false) — that actually re-enables metadata
+    // in some sharp/libvips version combinations, defeating the strip.
+    cleaned = await sharp(buf).rotate().toBuffer()
   } catch {
     await file.delete()
     log({
@@ -72,7 +89,7 @@ export async function onMediaFinalizeCore(
 }
 
 export interface FileHandle {
-  download(): Promise<[Buffer]>
+  download(options?: { destination: string }): Promise<[Buffer] | undefined>
   save(
     buf: Buffer,
     opts: { resumable: boolean; contentType: string; metadata: Record<string, string> },

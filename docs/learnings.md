@@ -382,3 +382,43 @@ When an event handler like `onClick` calls a void-returning function with arrow 
 ### `React.FormEvent` deprecated — use inline `// eslint-disable-next-line @typescript-eslint/no-deprecated`
 
 The `@typescript-eslint/no-deprecated` rule flags `React.FormEvent`. Since React's own type definition marks it deprecated, and there's no clean replacement that works across all React versions, the correct approach is to add an inline disable comment on the specific line: `// eslint-disable-next-line @typescript-eslint/no-deprecated`.
+
+---
+
+## Phase 3c: E2E SSL Debugging (2026-04-19)
+
+### `staging.bantayog.web.app` is not a Firebase Hosting domain
+
+Firebase Hosting sites get URLs in the format `<site-id>.web.app`. The project `bantayog-alert-staging` has one site: `bantayog-alert-staging.web.app`. The domain `staging.bantayog.web.app` resolves to the same Firebase CDN IP but the SSL certificate is for `CN=firebaseapp.com` — it does not include this hostname as a SAN, causing `ERR_CERT_COMMON_NAME_INVALID`.
+
+**Rule:** Never assume a Firebase Hosting URL format. Always verify with `firebase hosting:sites:list` and `firebase hosting:channel:list`. Custom domains must be explicitly configured in Firebase Hosting.
+
+### E2E test BASE_URL must match webServer config
+
+When `playwright.config.ts` defines `webServer` entries for local dev servers (e.g., admin on port 5175), the corresponding spec files must default to the same localhost URL, not a staging URL. Otherwise tests fail with SSL errors when run locally even though the dev server is running.
+
+**Rule:** Spec file `BASE_URL` defaults should match the `webServer` ports in `playwright.config.ts`. Override with `process.env.BASE_URL` only for staging/CI runs.
+
+### Rate limit must be charged only on first execution, not idempotent replays
+
+When a callable uses both rate limiting and idempotency, the rate limit check must happen INSIDE the idempotency callback — after the cache miss path is confirmed. Otherwise, a legitimate client retry with the same idempotency key burns rate limit budget and can get `RATE_LIMITED` instead of the cached success response.
+
+**Rule:** Always place rate limit checks inside the `withIdempotency` callback, never before it.
+
+### Schema narrowing must propagate through the type chain
+
+When a Zod schema is narrowed (e.g., `advanceDispatchRequestSchema.to` from full `DispatchStatus` to a subset), all consumers of the inferred type must be updated. The typecheck won't flag the schema itself — it flags the call sites that pass wider types. Check all downstream consumers before narrowing a shared schema.
+
+**Rule:** After narrowing a shared validator schema, run `pnpm typecheck` immediately and fix all downstream call sites.
+
+### Firestore rules test doc structure must match actual schema
+
+If Firestore rules reference `resource.data.assignedTo.uid`, the test seed data must use `{ assignedTo: { uid: 'resp-1' } }`, not a flat `{ responderUid: 'resp-1' }`. Tests with wrong structure pass `assertFails` for the wrong reason (missing field → permission denied) and give false confidence.
+
+**Rule:** Before writing rules tests, read the actual Firestore rules to confirm which fields are checked. Cross-reference with the production document schema.
+
+### Placeholder e2e tests must use `test.skip()`, not empty bodies
+
+In Playwright (and Vitest), `test('name', async () => { /* comment */ })` passes green. This inflates coverage metrics. Use `test.skip()` or `test.fixme()` to make the intent explicit in CI reports.
+
+**Rule:** Every placeholder test must be `test.skip()` or `test.fixme()`. Never leave an empty test body.

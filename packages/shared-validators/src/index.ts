@@ -29,8 +29,12 @@ export type {
   InboxPayload,
   HazardTag,
 } from './reports.js'
-export { dispatchDocSchema, dispatchStatusSchema } from './dispatches.js'
-export type { DispatchDoc } from './dispatches.js'
+export {
+  dispatchDocSchema,
+  dispatchStatusSchema,
+  advanceDispatchRequestSchema,
+} from './dispatches.js'
+export type { DispatchDoc, AdvanceDispatchRequest, AdvanceDispatchTarget } from './dispatches.js'
 export { reportEventSchema, dispatchEventSchema } from './events.js'
 export type { ReportEvent, DispatchEvent } from './events.js'
 export { agencyDocSchema } from './agencies.js'
@@ -79,6 +83,7 @@ export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
 export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'
 export type { MunicipalityDoc } from './municipalities.js'
+export { dispatchToReportState } from './state-machines/dispatch-to-report.js'
 export {
   REPORT_STATES,
   REPORT_TRANSITIONS,

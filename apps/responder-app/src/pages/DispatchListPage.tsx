@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../app/auth-provider'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 
@@ -17,7 +18,9 @@ export function DispatchListPage() {
         <ul>
           {rows.map((r) => (
             <li key={r.dispatchId}>
-              <strong>{r.status}</strong> — report {r.reportId.slice(0, 8)}
+              <Link to={`/dispatches/${r.dispatchId}`}>
+                <strong>{r.status}</strong> — report {r.reportId.slice(0, 8)}
+              </Link>
               {r.acknowledgementDeadlineAt && (
                 <small> · ack by {r.acknowledgementDeadlineAt.toDate().toLocaleTimeString()}</small>
               )}
@@ -25,9 +28,6 @@ export function DispatchListPage() {
           ))}
         </ul>
       )}
-      <p>
-        <em>Accept/Decline actions land in Phase 3c.</em>
-      </p>
     </main>
   )
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dispatchDocSchema, dispatchStatusSchema } from './dispatches.js'
+import { isValidDispatchTransition } from './state-machines/dispatch-states.js'
 
 const ts = 1713350400000
 
@@ -70,5 +71,25 @@ describe('dispatchStatusSchema', () => {
 
   it('rejects invalid status value', () => {
     expect(() => dispatchStatusSchema.parse('invalid')).toThrow()
+  })
+})
+
+describe('DISPATCH_TRANSITIONS — 3c additions', () => {
+  it('allows acknowledged → en_route', () => {
+    expect(isValidDispatchTransition('acknowledged', 'en_route')).toBe(true)
+  })
+  it('allows en_route → on_scene', () => {
+    expect(isValidDispatchTransition('en_route', 'on_scene')).toBe(true)
+  })
+  it('allows on_scene → resolved', () => {
+    expect(isValidDispatchTransition('on_scene', 'resolved')).toBe(true)
+  })
+  it('denies en_route → resolved (must pass through on_scene)', () => {
+    expect(isValidDispatchTransition('en_route', 'resolved')).toBe(false)
+  })
+  it('admin can cancel from accepted/acknowledged/en_route/on_scene', () => {
+    for (const from of ['accepted', 'acknowledged', 'en_route', 'on_scene'] as const) {
+      expect(isValidDispatchTransition(from, 'cancelled')).toBe(true)
+    }
   })
 })

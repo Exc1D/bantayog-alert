@@ -328,7 +328,17 @@ export async function seedDispatch(
     responderUid: string
     agencyId?: string
     municipalityId?: string
-    status?: 'pending' | 'accepted' | 'acknowledged' | 'in_progress'
+    status?:
+      | 'pending'
+      | 'accepted'
+      | 'acknowledged'
+      | 'en_route'
+      | 'on_scene'
+      | 'resolved'
+      | 'declined'
+      | 'timed_out'
+      | 'superseded'
+      | 'cancelled'
   },
 ): Promise<{ dispatchId: string }> {
   const dispatchId = o.dispatchId ?? db.collection('dispatches').doc().id

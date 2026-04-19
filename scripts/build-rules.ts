@@ -47,23 +47,48 @@ async function main() {
 }
 
 function extractTransitions(source: string, constantName: string): Transition[] {
-  // Match: export const DISPATCH_TRANSITIONS: readonly [DispatchStatus, DispatchStatus][] = [
-  //                                                    or: readonly [string, string][] = [
-  const regex = new RegExp(
+  // Array format: export const DISPATCH_TRANSITIONS: readonly [DispatchStatus, DispatchStatus][] = [
+  const arrayRegex = new RegExp(
     `export\\s+const\\s+${constantName}\\s*:\\s*readonly\\s+\\[(?:DispatchStatus|string),\\s*(?:DispatchStatus|string)\\]\\[\\]\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*as\\s*const`,
     'm',
   )
-  const match = source.match(regex)
-  if (!match) return []
-
-  const body = match[1]
-  const tupleRegex = /\[\s*'([^']+)'\s*,\s*'([^']+)'\s*\]/g
-  const transitions: Transition[] = []
-  let tupleMatch
-  while ((tupleMatch = tupleRegex.exec(body)) !== null) {
-    transitions.push({ from: tupleMatch[1], to: tupleMatch[2] })
+  const arrayMatch = source.match(arrayRegex)
+  if (arrayMatch) {
+    const body = arrayMatch[1]
+    const tupleRegex = /\[\s*'([^']+)'\s*,\s*'([^']+)'\s*\]/g
+    const transitions: Transition[] = []
+    let tupleMatch
+    while ((tupleMatch = tupleRegex.exec(body)) !== null) {
+      transitions.push({ from: tupleMatch[1], to: tupleMatch[2] })
+    }
+    return transitions
   }
-  return transitions
+
+  // Record format: export const DISPATCH_TRANSITIONS: Readonly<Record<DispatchStatus, readonly DispatchStatus[]>> = {
+  const recordRegex = new RegExp(
+    `export\\s+const\\s+${constantName}\\s*:\\s*Readonly<Record<[^>]+>>\\s*=\\s*\\{([^}]+)\\}`,
+    'm',
+  )
+  const recordMatch = source.match(recordRegex)
+  if (recordMatch) {
+    const body = recordMatch[1]
+    // Match each state entry: stateName: ['value1', 'value2', ...]
+    const entryRegex = /\b(\w+)\s*:\s*\[([^\]]*)\]/g
+    const transitions: Transition[] = []
+    let entryMatch
+    while ((entryMatch = entryRegex.exec(body)) !== null) {
+      const from = entryMatch[1]
+      const valuesBlock = entryMatch[2]
+      const valueRegex = /'([^']+)'/g
+      let valueMatch
+      while ((valueMatch = valueRegex.exec(valuesBlock)) !== null) {
+        transitions.push({ from, to: valueMatch[1] })
+      }
+    }
+    return transitions
+  }
+
+  return []
 }
 
 function generateValidResponderTransitionFn(transitions: Transition[]): string {
