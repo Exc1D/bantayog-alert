@@ -206,6 +206,14 @@ export async function processInboxItemCore(
               nowMs: createdAt,
               providerId: 'semaphore',
             })
+            tx.set(db.collection('report_sms_consent').doc(reportId), {
+              reportId,
+              phone: payload.contact.phone,
+              locale: muniLocale,
+              smsConsent: true,
+              createdAt,
+              schemaVersion: 1,
+            })
           }
         }
 

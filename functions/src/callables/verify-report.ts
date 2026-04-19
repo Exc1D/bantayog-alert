@@ -11,6 +11,7 @@ import { bantayogErrorToHttps } from './https-error.js'
 import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
+import { enqueueSms } from '../services/send-sms.js'
 import { logDimension } from '@bantayog/shared-validators'
 
 const InputSchema = z
@@ -120,6 +121,34 @@ export async function verifyReportCore(
           updates.verifiedAt = deps.now
         }
         tx.update(reportRef, updates)
+
+        // Enqueue verification SMS if reporter consented — read consent + lookup inside tx
+        const salt = process.env.SMS_MSISDN_HASH_SALT
+        if (salt) {
+          const consentSnap = await tx.get(db.collection('report_sms_consent').doc(deps.reportId))
+          if (consentSnap.exists) {
+            const consentData = consentSnap.data()
+            if (consentData?.phone) {
+              const lookupQ = db
+                .collection('report_lookup')
+                .where('reportId', '==', deps.reportId)
+                .limit(1)
+              const lookupSnap = await tx.get(lookupQ)
+              const lookupDoc = lookupSnap.docs[0]
+              const publicRef = lookupDoc?.id ?? `report-${deps.reportId.slice(0, 8)}`
+              enqueueSms(db, tx, {
+                reportId: deps.reportId,
+                purpose: 'verification',
+                recipientMsisdn: consentData.phone,
+                locale: consentData.locale ?? 'tl',
+                publicRef,
+                salt,
+                nowMs: deps.now.toMillis(),
+                providerId: 'semaphore',
+              })
+            }
+          }
+        }
 
         const eventRef = db.collection('report_events').doc()
         tx.set(eventRef, {
