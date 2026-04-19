@@ -32,7 +32,7 @@ export async function acceptDispatchCore(
 
   // Enforce rate limit: 30 accepts/minute per responder
   const rl = await checkRateLimit(db, {
-    key: `acceptDispatch:${deps.actor.uid}`,
+    key: `accept::${deps.actor.uid}`,
     limit: 30,
     windowSeconds: 60,
     now: deps.now,
