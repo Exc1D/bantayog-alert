@@ -56,8 +56,8 @@ describe('dispatch state machine', () => {
     expect(DISPATCH_STATES).toHaveLength(9)
   })
 
-  it('DISPATCH_TRANSITIONS has 4 declared responder transitions', () => {
-    expect(DISPATCH_TRANSITIONS).toHaveLength(4)
+  it('DISPATCH_TRANSITIONS has 5 declared transitions', () => {
+    expect(DISPATCH_TRANSITIONS).toHaveLength(5)
   })
 
   it('every declared responder-direct transition is valid', () => {
