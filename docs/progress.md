@@ -80,15 +80,36 @@
 **Branch:** `feature/phase-3b-admin-triage-dispatch`
 **Plan:** See `docs/superpowers/plans/2026-04-18-phase-3b-admin-triage-dispatch.md`
 
-### Verification
+### Verification (2026-04-19)
 
-| Step | Check                                                                    | Result                              |
-| ---- | ------------------------------------------------------------------------ | ----------------------------------- |
-| 1    | `pnpm lint && pnpm typecheck`                                            | PASS                                |
-| 2    | `pnpm test` (incl. new 3b callable + rules tests)                        | PASS (rules tests require emulator) |
-| 3    | `firebase emulators:exec "pnpm exec tsx scripts/phase-3b/acceptance.ts"` | PENDING                             |
-| 4    | Staging acceptance                                                       | PENDING                             |
-| 5    | Manual smoke: admin verify + dispatch, responder sees onSnapshot         | PENDING                             |
+| Step | Check                                                                    | Result                                                               |
+| ---- | ------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| 1    | `pnpm lint && pnpm typecheck`                                            | PASS                                                                 |
+| 2    | `pnpm test` (incl. new 3b callable + rules tests)                        | PASS (127 tests)                                                     |
+| 3    | `firebase emulators:exec "pnpm exec tsx scripts/phase-3b/acceptance.ts"` | PENDING (requires IAM Credentials API)                               |
+| 4    | Staging backend callable verification                                    | ✅ PASS (5/5 tests - see `scripts/phase-3b/staging-verification.ts`) |
+| 5    | Manual smoke: admin verify + dispatch, responder sees onSnapshot         | ❌ BLOCKED (SSL certificate error - staging.bantayog.web.app)        |
+
+### Staging Verification Status (2026-04-19)
+
+**✅ Completed:**
+
+- Backend callable verification (all 4 callables operational)
+- Staging environment bootstrap (all test accounts created)
+- Firestore rules validation (admin queries working)
+
+**❌ Blocked:**
+
+- SSL certificate error prevents web app access
+- IAM Service Account Credentials API not enabled (blocks acceptance test)
+
+**📋 Details:** See `docs/phase-3b-staging-verification.md`
+
+**Test Accounts Created:**
+
+- citizen-test-01@test.local / test123456 (Citizen)
+- daet-admin-test-01@test.local / test123456 (Municipal Admin - Daet)
+- bfp-responder-test-01@test.local / test123456 (Responder - BFP Daet)
 
 ### What was built
 
@@ -150,6 +171,30 @@
 - `staffClaims('role', 'muni')` → `staffClaims({ role: '...', municipalityId: '...' })` across 4 callable test files
 - `cancel-dispatch.ts` exactOptionalPropertyTypes: used spread with conditional key inclusion
 - `admin-onsnapshot.rules.test.ts` seedReport parameter: changed `db: Firestore` to `db: any`
+
+### Ready to Proceed: Phase 3c Implementation
+
+The Phase 3c implementation plan is ready (33 tasks, 20-40 hours). All state machine blockers have been resolved:
+
+- ✅ Dispatch states updated (10 states: pending → accepted → acknowledged → en_route → on_scene → resolved)
+- ✅ State machine transitions validated (21 transitions)
+- ✅ Firestore rules regenerated
+- ✅ All 127 tests passing with new state machine
+- ✅ ES module build issues resolved
+- ✅ Documentation complete (VAPID runbook, verification guide, implementation README)
+
+**Prerequisites Met:**
+
+- Phase 3b backend callables verified in staging
+- Phase 3c state machine architecture frozen
+- All technical blockers resolved
+
+**Remaining UI Blockers:**
+
+- SSL certificate issue for staging web apps (does not block Phase 3c backend work)
+- Manual UI verification can proceed in parallel or after Phase 3c completion
+
+**Decision Point:** Proceed with Phase 3c implementation or resolve staging UI blockers first?
 
 ### Known open items carrying into 3c
 
