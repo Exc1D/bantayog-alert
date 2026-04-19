@@ -122,6 +122,67 @@ describe('cancelDispatchCore (3b branches)', () => {
     ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
   })
 
+  it('NOT_FOUND when dispatch does not exist', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+    await expect(
+      cancelDispatchCore(db, {
+        dispatchId: 'nonexistent-dispatch-id',
+        reason: 'admin_error',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('cancels non-current dispatch without reverting report status', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
+    // Point the report at a different (newer) dispatch so this one is superseded
+    await db.collection('reports').doc(reportId).update({ currentDispatchId: 'newer-dispatch-id' })
+
+    const { dispatchId } = await seedDispatch(db, {
+      reportId,
+      responderUid: 'r1',
+      municipalityId: 'daet',
+      status: 'pending',
+    })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+
+    const result = await cancelDispatchCore(db, {
+      dispatchId,
+      reason: 'admin_error',
+      idempotencyKey: crypto.randomUUID(),
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
+      now: Timestamp.now(),
+    })
+
+    expect(result.status).toBe('cancelled')
+
+    const dispatch = (await db.collection('dispatches').doc(dispatchId).get()).data()
+    expect(dispatch.status).toBe('cancelled')
+
+    // Report must NOT be reverted — it's bound to the newer dispatch
+    const report = (await db.collection('reports').doc(reportId).get()).data()
+    expect(report.status).toBe('assigned')
+    expect(report.currentDispatchId).toBe('newer-dispatch-id')
+  })
+
   it('INVALID_STATUS_TRANSITION when dispatch is already cancelled', async () => {
     const db = testEnv.unauthenticatedContext().firestore() as any
     const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
