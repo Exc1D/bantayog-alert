@@ -4,6 +4,7 @@ import {
   smsOutboxDocSchema,
   smsSessionDocSchema,
   smsProviderHealthDocSchema,
+  smsMinuteWindowDocSchema,
 } from './sms'
 
 describe('SMS Schemas', () => {
@@ -60,20 +61,22 @@ describe('SMS Schemas', () => {
   })
 
   describe('smsOutboxDocSchema', () => {
-    it('accepts valid sms outbox document', () => {
+    it('accepts valid sms outbox document (v2)', () => {
       const validDoc = {
         providerId: 'semaphore' as const,
         recipientMsisdnHash: 'b'.repeat(64),
+        recipientMsisdn: '+639171234567',
         purpose: 'receipt_ack' as const,
-        encoding: 'GSM-7' as const,
-        segmentCount: 1,
+        predictedEncoding: 'GSM-7' as const,
+        predictedSegmentCount: 1,
         bodyPreviewHash: 'c'.repeat(64),
         status: 'queued' as const,
         idempotencyKey: 'key-12345',
+        retryCount: 0,
+        locale: 'en' as const,
         createdAt: 1713350400000,
-        sentAt: 1713350401000,
-        providerMessageId: 'sent-12345',
-        schemaVersion: 1,
+        queuedAt: 1713350400000,
+        schemaVersion: 2,
       }
       expect(() => smsOutboxDocSchema.parse(validDoc)).not.toThrow()
     })
@@ -82,14 +85,18 @@ describe('SMS Schemas', () => {
       const invalidDoc = {
         providerId: 'semaphore' as const,
         recipientMsisdnHash: 'b'.repeat(64),
+        recipientMsisdn: '+639171234567',
         purpose: 'receipt_ack' as const,
-        encoding: 'GSM-7' as const,
-        segmentCount: 1,
+        predictedEncoding: 'GSM-7' as const,
+        predictedSegmentCount: 1,
         bodyPreviewHash: 'c'.repeat(64),
         status: 'invalid-status', // not in union
         idempotencyKey: 'key-12345',
+        retryCount: 0,
+        locale: 'en' as const,
         createdAt: 1713350400000,
-        schemaVersion: 1,
+        queuedAt: 1713350400000,
+        schemaVersion: 2,
       }
       expect(() => smsOutboxDocSchema.parse(invalidDoc)).toThrow()
     })
@@ -98,14 +105,18 @@ describe('SMS Schemas', () => {
       const docWithExtraKey = {
         providerId: 'semaphore' as const,
         recipientMsisdnHash: 'b'.repeat(64),
+        recipientMsisdn: '+639171234567',
         purpose: 'receipt_ack' as const,
-        encoding: 'GSM-7' as const,
-        segmentCount: 1,
+        predictedEncoding: 'GSM-7' as const,
+        predictedSegmentCount: 1,
         bodyPreviewHash: 'c'.repeat(64),
         status: 'queued' as const,
         idempotencyKey: 'key-12345',
+        retryCount: 0,
+        locale: 'en' as const,
         createdAt: 1713350400000,
-        schemaVersion: 1,
+        queuedAt: 1713350400000,
+        schemaVersion: 2,
         unknownField: 'should not be allowed',
       }
       expect(() => smsOutboxDocSchema.parse(docWithExtraKey)).toThrow()
@@ -186,5 +197,104 @@ describe('SMS Schemas', () => {
       }
       expect(() => smsProviderHealthDocSchema.parse(docWithExtraKey)).toThrow()
     })
+  })
+})
+
+describe('smsOutboxDocSchema v2', () => {
+  const baseV2 = {
+    providerId: 'semaphore' as const,
+    recipientMsisdnHash: 'a'.repeat(64),
+    recipientMsisdn: '+639171234567',
+    purpose: 'receipt_ack' as const,
+    predictedEncoding: 'GSM-7' as const,
+    predictedSegmentCount: 1,
+    bodyPreviewHash: 'b'.repeat(64),
+    status: 'queued' as const,
+    idempotencyKey: 'ik-1',
+    retryCount: 0,
+    locale: 'tl' as const,
+    createdAt: 1_700_000_000_000,
+    queuedAt: 1_700_000_000_000,
+    schemaVersion: 2,
+  }
+
+  it('parses a minimal queued doc', () => {
+    expect(() => smsOutboxDocSchema.parse(baseV2)).not.toThrow()
+  })
+
+  it('allows sending and deferred status values', () => {
+    expect(() => smsOutboxDocSchema.parse({ ...baseV2, status: 'sending' })).not.toThrow()
+    expect(() => smsOutboxDocSchema.parse({ ...baseV2, status: 'deferred' })).not.toThrow()
+  })
+
+  it('rejects the removed undelivered status', () => {
+    expect(() => smsOutboxDocSchema.parse({ ...baseV2, status: 'undelivered' })).toThrow()
+  })
+
+  it('requires predictedEncoding and predictedSegmentCount', () => {
+    const { predictedEncoding, predictedSegmentCount, ...rest } = baseV2
+    expect(predictedEncoding).toBeDefined() // suppress unused var lint
+    expect(predictedSegmentCount).toBeDefined()
+    expect(() => smsOutboxDocSchema.parse(rest)).toThrow()
+  })
+
+  it('accepts null recipientMsisdn after plaintext clear', () => {
+    expect(() => smsOutboxDocSchema.parse({ ...baseV2, recipientMsisdn: null })).not.toThrow()
+  })
+
+  it('encoding and segmentCount are optional (set only after provider success)', () => {
+    expect(() =>
+      smsOutboxDocSchema.parse({ ...baseV2, status: 'sent', encoding: 'GSM-7', segmentCount: 1 }),
+    ).not.toThrow()
+  })
+})
+
+describe('smsProviderHealthDocSchema v2', () => {
+  const base = {
+    providerId: 'semaphore' as const,
+    circuitState: 'closed' as const,
+    errorRatePct: 0,
+    updatedAt: 1_700_000_000_000,
+  }
+
+  it('parses a closed-state health doc', () => {
+    expect(() => smsProviderHealthDocSchema.parse(base)).not.toThrow()
+  })
+
+  it('accepts optional openedAt + lastTransitionReason', () => {
+    expect(() =>
+      smsProviderHealthDocSchema.parse({
+        ...base,
+        circuitState: 'open',
+        openedAt: 1_700_000_000_000,
+        lastTransitionReason: 'error rate 42% over 5 windows',
+      }),
+    ).not.toThrow()
+  })
+})
+
+describe('smsMinuteWindowDocSchema', () => {
+  const base = {
+    providerId: 'semaphore' as const,
+    windowStartMs: 1_700_000_000_000,
+    attempts: 10,
+    failures: 2,
+    rateLimitedCount: 0,
+    latencySumMs: 1500,
+    maxLatencyMs: 200,
+    updatedAt: 1_700_000_000_000,
+    schemaVersion: 1,
+  }
+
+  it('parses a minimal minute window', () => {
+    expect(() => smsMinuteWindowDocSchema.parse(base)).not.toThrow()
+  })
+
+  it('rejects negative counters', () => {
+    expect(() => smsMinuteWindowDocSchema.parse({ ...base, attempts: -1 })).toThrow()
+  })
+
+  it('rejects schemaVersion other than 1', () => {
+    expect(() => smsMinuteWindowDocSchema.parse({ ...base, schemaVersion: 2 })).toThrow()
   })
 })
