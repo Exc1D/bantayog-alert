@@ -38,4 +38,13 @@ export const callables = {
       functions,
       'cancelDispatch',
     )(payload).then((r) => r.data),
+  closeReport: (payload: {
+    reportId: string
+    idempotencyKey: IdempotencyKey
+    closureSummary?: string
+  }) =>
+    httpsCallable<typeof payload, { status: ReportStatus; reportId: string }>(
+      functions,
+      'closeReport',
+    )(payload).then((r) => r.data),
 }

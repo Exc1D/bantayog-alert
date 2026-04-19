@@ -5,11 +5,13 @@ export function ReportDetailPanel({
   onVerify,
   onReject,
   onDispatch,
+  onClose,
 }: {
   reportId: string
   onVerify: (reportId: string) => void
   onReject: (reportId: string) => void
   onDispatch: (reportId: string) => void
+  onClose: (reportId: string) => void
 }) {
   const { report, ops, error } = useReportDetail(reportId)
   if (error) return <aside role="alert">Error loading report: {error}</aside>
@@ -18,6 +20,7 @@ export function ReportDetailPanel({
   const canVerify = report.status === 'new' || report.status === 'awaiting_verify'
   const canReject = report.status === 'awaiting_verify'
   const canDispatch = report.status === 'verified'
+  const canClose = report.status === 'resolved'
 
   return (
     <aside>
@@ -62,6 +65,14 @@ export function ReportDetailPanel({
           }}
         >
           Dispatch
+        </button>
+        <button
+          disabled={!canClose}
+          onClick={() => {
+            onClose(reportId)
+          }}
+        >
+          Close
         </button>
       </div>
     </aside>
