@@ -57,39 +57,15 @@ export const REPORT_TRANSITIONS: readonly [ReportStatus, ReportStatus][] = [
 ] as const
 
 // Spec §5.4 — dispatch lifecycle states.
-export const DISPATCH_STATES = [
-  'pending',
-  'accepted',
-  'acknowledged',
-  'in_progress',
-  'resolved',
-  'declined',
-  'timed_out',
-  'cancelled',
-  'superseded',
-] as const
+// Re-exported from dispatch-states.ts to keep a single source of truth.
+export { DISPATCH_STATES } from './dispatch-states.js'
 
-/**
- * Only responder-direct transitions are enforced at the rules layer.
- * Server-authoritative transitions (e.g. pending→resolved when incident is closed)
- * are enforced in Cloud Functions callables.
- */
-export const DISPATCH_TRANSITIONS: readonly [DispatchStatus, DispatchStatus][] = [
-  ['accepted', 'acknowledged'],
-  ['acknowledged', 'in_progress'],
-  ['in_progress', 'resolved'],
-  ['pending', 'cancelled'],
-  ['pending', 'declined'],
-] as const
+// Spec §5.4 — dispatch transitions.
+// Re-exported from dispatch-states.ts to keep a single source of truth.
+export { DISPATCH_TRANSITIONS } from './dispatch-states.js'
 
 export function isValidReportTransition(from: ReportStatus, to: ReportStatus): boolean {
   return (REPORT_TRANSITIONS as readonly [string, string][]).some(
-    ([f, t]) => f === from && t === to,
-  )
-}
-
-export function isValidDispatchTransition(from: DispatchStatus, to: DispatchStatus): boolean {
-  return (DISPATCH_TRANSITIONS as readonly [string, string][]).some(
     ([f, t]) => f === from && t === to,
   )
 }

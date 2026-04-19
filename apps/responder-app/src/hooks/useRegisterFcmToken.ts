@@ -5,7 +5,7 @@
  * to the responder's Firestore document via arrayUnion.
  */
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import { acquireFcmToken, type FcmTokenResult } from '../services/fcm-client.js'
@@ -17,14 +17,11 @@ export interface RegisterFcmTokenOptions {
 
 export interface UseRegisterFcmTokenReturn {
   register: () => Promise<FcmTokenResult>
-  registered: boolean
 }
 
 export function useRegisterFcmToken({
   responderDocPath,
 }: RegisterFcmTokenOptions): UseRegisterFcmTokenReturn {
-  const registeredRef = useRef(false)
-
   const register = useCallback(async (): Promise<FcmTokenResult> => {
     // Guard against browsers without service worker support.
     const swContainer = Object.hasOwn(navigator, 'serviceWorker') ? navigator.serviceWorker : null
@@ -45,7 +42,6 @@ export function useRegisterFcmToken({
         fcmTokens: arrayUnion(result.token),
         fcmTokenRegisteredAt: serverTimestamp(),
       })
-      registeredRef.current = true
     } catch (err) {
       return { token: null, error: err instanceof Error ? err.message : 'firestore_error' }
     }
@@ -53,5 +49,5 @@ export function useRegisterFcmToken({
     return result
   }, [responderDocPath])
 
-  return { register, registered: registeredRef.current }
+  return { register }
 }

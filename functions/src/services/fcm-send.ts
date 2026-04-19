@@ -47,8 +47,17 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
   }
 
   // Step 2: Send with one retry on transport failure.
-  let result: BatchResponse | null = null
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let result: BatchResponse
+  try {
+    const messaging = getMessaging()
+    const msg: Parameters<typeof messaging.sendEachForMulticast>[0] = {
+      tokens,
+      notification: { title, body },
+    }
+    if (data) msg.data = data
+    result = await messaging.sendEachForMulticast(msg)
+  } catch {
+    // Retry once on transport failure.
     try {
       const messaging = getMessaging()
       const msg: Parameters<typeof messaging.sendEachForMulticast>[0] = {
@@ -57,20 +66,10 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
       }
       if (data) msg.data = data
       result = await messaging.sendEachForMulticast(msg)
-      break // success — exit retry loop
     } catch {
-      const isLastAttempt = attempt === 1
-      if (isLastAttempt) {
-        warnings.push('fcm_network_error')
-        return { warnings }
-      }
-      // else retry
+      warnings.push('fcm_network_error')
+      return { warnings }
     }
-  }
-
-  if (!result) {
-    warnings.push('fcm_network_error')
-    return { warnings }
   }
 
   // Step 3: Collect invalid tokens for cleanup.
@@ -82,7 +81,8 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
         code === 'messaging/invalid-registration-token' ||
         code === 'messaging/registration-token-not-registered'
       ) {
-        invalidTokens.push(tokens[i])
+        const token = tokens[i]
+        if (token) invalidTokens.push(token)
       }
     }
   })
