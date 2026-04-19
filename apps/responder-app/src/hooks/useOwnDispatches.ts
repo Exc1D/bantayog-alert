@@ -23,7 +23,7 @@ export function useOwnDispatches(uid: string | undefined) {
     const q = query(
       collection(db, 'dispatches'),
       where('assignedTo.uid', '==', uid),
-      where('status', 'in', ['pending', 'accepted', 'acknowledged', 'in_progress']),
+      where('status', 'in', ['pending', 'accepted', 'acknowledged', 'en_route', 'on_scene']),
       orderBy('dispatchedAt', 'desc'),
     )
     return onSnapshot(
