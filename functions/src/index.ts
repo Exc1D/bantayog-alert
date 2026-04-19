@@ -89,3 +89,4 @@ export { inboxReconciliationSweep } from './triggers/inbox-reconciliation-sweep.
 export { dispatchMirrorToReport } from './triggers/dispatch-mirror-to-report.js'
 export { dispatchTimeoutSweep } from './triggers/dispatch-timeout-sweep.js'
 export { dispatchSmsOutbox } from './triggers/dispatch-sms-outbox.js'
+export { evaluateSmsProviderHealth } from './triggers/evaluate-sms-provider-health.js'
