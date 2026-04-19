@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react'
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../app/firebase'
+import { httpsCallable } from 'firebase/functions'
+import { functions } from '../app/firebase'
 import type { DispatchStatus } from '@bantayog/shared-types'
+import type { AdvanceDispatchRequest } from '@bantayog/shared-validators'
 
 export function useAdvanceDispatch(dispatchId: string) {
   const [loading, setLoading] = useState(false)
@@ -12,18 +13,19 @@ export function useAdvanceDispatch(dispatchId: string) {
       setLoading(true)
       setError(undefined)
       try {
-        const ref = doc(db, 'dispatches', dispatchId)
-        const patch: Record<string, unknown> = {
-          status: to,
-          lastStatusAt: serverTimestamp(),
+        if (to === 'resolved' && !extras?.resolutionSummary) {
+          throw new Error('resolutionSummary_required')
         }
-        if (to === 'resolved') {
-          if (!extras?.resolutionSummary) {
-            throw new Error('resolutionSummary_required')
-          }
-          patch.resolutionSummary = extras.resolutionSummary
-        }
-        await updateDoc(ref, patch)
+        const advanceDispatch = httpsCallable<AdvanceDispatchRequest, { status: DispatchStatus }>(
+          functions,
+          'advanceDispatch'
+        )
+        await advanceDispatch({
+          dispatchId,
+          to,
+          resolutionSummary: extras?.resolutionSummary,
+          idempotencyKey: crypto.randomUUID(),
+        })
       } catch (err: unknown) {
         if (err instanceof Error) setError(err)
         else setError(new Error(String(err)))

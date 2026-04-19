@@ -29,8 +29,8 @@ export type {
   InboxPayload,
   HazardTag,
 } from './reports.js'
-export { dispatchDocSchema, dispatchStatusSchema } from './dispatches.js'
-export type { DispatchDoc } from './dispatches.js'
+export { dispatchDocSchema, dispatchStatusSchema, advanceDispatchRequestSchema } from './dispatches.js'
+export type { DispatchDoc, AdvanceDispatchRequest } from './dispatches.js'
 export { reportEventSchema, dispatchEventSchema } from './events.js'
 export type { ReportEvent, DispatchEvent } from './events.js'
 export { agencyDocSchema } from './agencies.js'

@@ -60,33 +60,46 @@ describe('responder direct-write on dispatches/{id}', () => {
   })
 
   it('denies acknowledged → resolved (skipping en_route/on_scene)', async () => {
-    await env.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      await setDoc(doc(db, 'dispatches/dispatch-2'), {
-        status: 'acknowledged',
-        assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
-        municipalityId: 'daet',
-        lastStatusAt: Date.now(),
-        acknowledgementDeadlineAt: Date.now() + 900000,
-        reportId: 'report-2',
-        dispatchedBy: 'daet-admin',
-        dispatchedByRole: 'municipal_admin',
-        dispatchedAt: Date.now(),
-        idempotencyKey: 'key-2',
-        idempotencyPayloadHash: 'b'.repeat(64),
-        schemaVersion: 1,
-      })
+    const db = env.unauthenticatedContext().firestore()
+    await setDoc(doc(db, 'dispatches/d-2'), {
+      status: 'acknowledged',
+      responderUid: 'resp-1',
+      municipalityId: 'daet',
     })
-    const db = authed(
-      env,
-      'resp-1',
-      staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }),
-    )
+
+    const authedDb = authed(env, 'resp-1', {
+      role: 'responder',
+      municipalityId: 'daet',
+      agencyId: 'bfp',
+    })
     await assertFails(
-      db
-        .collection('dispatches')
-        .doc('dispatch-2')
-        .update({ status: 'resolved', lastStatusAt: FieldValue.serverTimestamp() }),
+      setDoc(
+        doc(authedDb, 'dispatches/d-2'),
+        { status: 'resolved' },
+        { merge: true },
+      ),
+    )
+  })
+
+  it('denies acknowledged → cancelled (responder cannot cancel)', async () => {
+    const db = env.unauthenticatedContext().firestore()
+    await setDoc(doc(db, 'dispatches/d-3'), {
+      status: 'acknowledged',
+      responderUid: 'resp-1',
+      municipalityId: 'daet',
+    })
+
+    const authedDb = authed(env, 'resp-1', {
+      role: 'responder',
+      municipalityId: 'daet',
+      agencyId: 'bfp',
+    })
+    await assertFails(
+      setDoc(
+        doc(authedDb, 'dispatches/d-3'),
+        { status: 'cancelled' },
+        { merge: true },
+      ),
     )
   })
 

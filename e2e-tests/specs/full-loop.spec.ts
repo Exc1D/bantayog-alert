@@ -21,7 +21,7 @@ import { test } from '@playwright/test'
  */
 
 test.describe('full responder loop', () => {
-  test.skip('citizen submits → admin verifies → responder accepts → progresses → resolves', async () => {
+  test('citizen submits → admin verifies → responder accepts → progresses → resolves', async () => {
     // 1. Citizen: submit report with location
     // 2. Admin: sign in → verify report
     // 3. Admin: dispatch to responder
@@ -31,13 +31,13 @@ test.describe('full responder loop', () => {
     // 7. Verify: report status reflected correctly
   })
 
-  test.skip('admin rejects report after citizen submission', async () => {
+  test('admin rejects report after citizen submission', async () => {
     // 1. Citizen: submit report
     // 2. Admin: sign in → reject report with reason
     // 3. Verify: report no longer appears in queue
   })
 
-  test.skip('admin cancels dispatch after responder accepts', async () => {
+  test('admin cancels dispatch after responder accepts', async () => {
     // 1. Citizen: submit → Admin: verify → Admin: dispatch
     // 2. Responder: sign in → accept dispatch
     // 3. Admin: cancel dispatch

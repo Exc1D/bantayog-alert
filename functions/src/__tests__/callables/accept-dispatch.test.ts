@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
 
@@ -16,12 +16,21 @@ const ts = 1713350400000
 
 let testEnv: RulesTestEnvironment
 
-beforeEach(async () => {
+beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'accept-dispatch-test',
     firestore: { host: 'localhost', port: 8080 },
   })
+})
+
+beforeEach(async () => {
   await testEnv.clearFirestore()
+})
+
+afterAll(async () => {
+  if (testEnv) {
+    await testEnv.cleanup()
+  }
 })
 
 /**
@@ -125,25 +134,41 @@ describe('acceptDispatchCore', () => {
   })
 
   it('denies when caller is not the assigned responder', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-2', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-2', 'report-2', 'responder-1', 'pending')
+    await seedReportAtStatusJS(testEnv, 'report-1', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-1', 'report-1', 'responder-1', 'pending')
     await seedActiveAccount(testEnv, {
       uid: 'responder-2',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async () => {
-      const db = testEnv.unauthenticatedContext().firestore() as any
-      await expect(
-        acceptDispatchCore(db, {
-          dispatchId: 'dispatch-2',
-          idempotencyKey: crypto.randomUUID(),
-          actor: { uid: 'responder-2' },
-          now: Timestamp.now(),
-        }),
-      ).rejects.toMatchObject({ code: 'permission-denied' })
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    await expect(
+      acceptDispatchCore(db, {
+        dispatchId: 'dispatch-1',
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'responder-2', claims: { role: 'responder', municipalityId: 'daet' } as any },
+        now: Timestamp.fromMillis(ts),
+      }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
+  })
+
+  it('rejects when dispatch is not found (NOT_FOUND)', async () => {
+    await seedActiveAccount(testEnv, {
+      uid: 'responder-1',
+      role: 'responder',
+      municipalityId: 'daet',
     })
+
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    await expect(
+      acceptDispatchCore(db, {
+        dispatchId: 'missing-dispatch-id',
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'responder-1', claims: { role: 'responder', municipalityId: 'daet' } as any },
+        now: Timestamp.fromMillis(ts),
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
   it('returns ALREADY_EXISTS when dispatch is no longer pending', async () => {

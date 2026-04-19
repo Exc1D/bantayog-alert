@@ -1,31 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { Timestamp, FieldValue } from 'firebase-admin/firestore'
 
-// Mock rtdb before importing callable modules that depend on firebase-admin.ts
 vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
 }))
+
 import { closeReportCore } from '../../callables/close-report.js'
 import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
-import { Timestamp } from 'firebase-admin/firestore'
-
-const FIRESTORE_RULES_PATH = resolve(process.cwd(), '../infra/firebase/firestore.rules')
 
 let testEnv: RulesTestEnvironment
 
-beforeEach(async () => {
+beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'close-report-test',
-    firestore: {
-      host: 'localhost',
-      port: 8080,
-      rules: readFileSync(FIRESTORE_RULES_PATH, 'utf8'),
-    },
+    firestore: { host: 'localhost', port: 8080 },
   })
+})
+
+beforeEach(async () => {
   await testEnv.clearFirestore()
+})
+
+afterAll(async () => {
+  if (testEnv) {
+    await testEnv.cleanup()
+  }
 })
 
 describe('closeReportCore', () => {
@@ -57,7 +58,7 @@ describe('closeReportCore', () => {
     const db = testEnv.unauthenticatedContext().firestore() as any
     const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
     await seedActiveAccount(testEnv, {
-      uid: 'admin-wrong',
+      uid: 'admin-mercedes',
       role: 'municipal_admin',
       municipalityId: 'mercedes',
     })
@@ -67,12 +68,33 @@ describe('closeReportCore', () => {
         reportId,
         idempotencyKey: crypto.randomUUID(),
         actor: {
-          uid: 'admin-wrong',
+          uid: 'admin-mercedes',
           claims: staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
         },
         now: Timestamp.now(),
       }),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
+  })
+
+  it('rejects close on a non-existent report (NOT_FOUND)', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+
+    await expect(
+      closeReportCore(db, {
+        reportId: 'missing-report-id',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
   it('rejects close on a non-resolved report', async () => {

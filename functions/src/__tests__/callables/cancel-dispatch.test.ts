@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 
 // Mock rtdb before importing callable modules that depend on firebase-admin.ts
@@ -16,12 +16,22 @@ import {
 import { Timestamp } from 'firebase-admin/firestore'
 
 let testEnv: RulesTestEnvironment
-beforeEach(async () => {
+
+beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'cancel-dispatch-test',
     firestore: { host: 'localhost', port: 8080 },
   })
+})
+
+beforeEach(async () => {
   await testEnv.clearFirestore()
+})
+
+afterAll(async () => {
+  if (testEnv) {
+    await testEnv.cleanup()
+  }
 })
 
 describe('cancelDispatchCore (3b branches)', () => {
