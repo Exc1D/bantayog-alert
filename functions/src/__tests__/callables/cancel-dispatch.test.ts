@@ -122,6 +122,34 @@ describe('cancelDispatchCore (3b branches)', () => {
     ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
   })
 
+  it('FAILED_PRECONDITION when dispatch is in terminal state (declined)', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
+    const { dispatchId } = await seedDispatch(db, {
+      reportId,
+      responderUid: 'r1',
+      municipalityId: 'daet',
+      status: 'declined',
+    })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+    await expect(
+      cancelDispatchCore(db, {
+        dispatchId,
+        reason: 'responder_unavailable',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
+  })
+
   it('NOT_FOUND when dispatch does not exist', async () => {
     const db = testEnv.unauthenticatedContext().firestore() as any
     await seedActiveAccount(testEnv, {
