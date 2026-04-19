@@ -10,7 +10,16 @@
       "target": "admin",
       "public": "apps/admin-desktop/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+      "rewrites": [
+        { "source": "**", "destination": "/index.html" },
+        {
+          "source": "/webhooks/sms-delivery-report",
+          "function": {
+            "functionId": "smsDeliveryReport",
+            "region": "asia-southeast1"
+          }
+        }
+      ]
     }
   ],
   "firestore": {
