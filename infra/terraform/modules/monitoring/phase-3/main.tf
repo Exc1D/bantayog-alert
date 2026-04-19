@@ -68,6 +68,50 @@ resource "google_monitoring_alert_policy" "sweep_alert" {
   notification_channels = var.notification_channel_ids
 }
 
+resource "google_logging_metric" "sms_sent" {
+  name    = "phase4a_sms_sent_${var.environment}"
+  project = var.project_id
+  filter  = "resource.type=\"cloud_run_revision\" AND jsonPayload.code=\"sms.sent\""
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
+resource "google_logging_metric" "sms_failed" {
+  name    = "phase4a_sms_failed_${var.environment}"
+  project = var.project_id
+  filter  = "resource.type=\"cloud_run_revision\" AND jsonPayload.code=\"sms.failed\""
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
+resource "google_logging_metric" "sms_abandoned" {
+  name    = "phase4a_sms_abandoned_${var.environment}"
+  project = var.project_id
+  filter  = "resource.type=\"cloud_run_revision\" AND jsonPayload.code=\"sms.abandoned\""
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
+resource "google_logging_metric" "sms_circuit_opened" {
+  name    = "phase4a_sms_circuit_opened_${var.environment}"
+  project = var.project_id
+  filter  = "resource.type=\"cloud_run_revision\" AND jsonPayload.code=\"sms.circuit.transitioned\" AND textPayload=~\".*→ open.*\""
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
 resource "google_logging_metric" "dispatch_created" {
   name        = "${var.env}-bantayog-dispatch-created"
   description = "Count of dispatches created via dispatchResponder"
