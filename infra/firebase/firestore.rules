@@ -80,6 +80,12 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow read: if canReadReportDoc(resource.data);
       allow create: if false;
+
+      // reports.status is written by:
+      //   - system triggers: processInboxItem, dispatchMirrorToReport
+      //   - callables only: verifyReport, dispatchResponder, cancelDispatch, closeReport
+      // Responders NEVER write reports.status directly.
+      deny update: if isResponder();
       allow update: if adminOf(resource.data.municipalityId)
                    && request.resource.data.diff(resource.data)
                       .affectedKeys()
