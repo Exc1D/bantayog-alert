@@ -139,7 +139,7 @@ async function main(): Promise<void> {
     agencyId: 'bfp-daet',
     active: true,
   })
-  const responderToken = await adminAuth.createCustomToken(RESPONDER_UID)
+  await adminAuth.createCustomToken(RESPONDER_UID)
   check('Responder custom token minted', true, RESPONDER_UID)
 
   // ── 3. Web SDK setup for callable invocations ──────────────────────────────
