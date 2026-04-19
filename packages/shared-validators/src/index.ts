@@ -1,4 +1,5 @@
 export { canonicalPayloadHash } from './idempotency.js'
+export { normalizeMsisdn, msisdnPhSchema, hashMsisdn, MsisdnInvalidError } from './msisdn.js'
 export {
   activeAccountSchema,
   claimRevocationSchema,
