@@ -12,6 +12,7 @@ import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
+import { enqueueSms } from '../services/send-sms.js'
 
 export const closeReportRequestSchema = z.object({
   reportId: z.string().min(1).max(128),
@@ -123,6 +124,34 @@ export async function closeReportCore(
           correlationId,
           schemaVersion: 1,
         })
+
+        // Enqueue resolution SMS if reporter consented
+        const salt = process.env.SMS_MSISDN_HASH_SALT
+        if (salt) {
+          const consentSnap = await tx.get(db.collection('report_sms_consent').doc(deps.reportId))
+          if (consentSnap.exists) {
+            const consentData = consentSnap.data()
+            if (consentData?.phone) {
+              const lookupQ = db
+                .collection('report_lookup')
+                .where('reportId', '==', deps.reportId)
+                .limit(1)
+              const lookupSnap = await tx.get(lookupQ)
+              const lookupDoc = lookupSnap.docs[0]
+              const publicRef = lookupDoc?.id ?? `report-${deps.reportId.slice(0, 8)}`
+              enqueueSms(db, tx, {
+                reportId: deps.reportId,
+                purpose: 'resolution',
+                recipientMsisdn: consentData.phone,
+                locale: consentData.locale ?? 'tl',
+                publicRef,
+                salt,
+                nowMs: deps.now.toMillis(),
+                providerId: 'semaphore',
+              })
+            }
+          }
+        }
 
         const log = logDimension('closeReport')
         log({
