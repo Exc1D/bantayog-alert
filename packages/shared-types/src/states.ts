@@ -33,8 +33,9 @@ export const REPORT_TRANSITIONS: readonly [ReportStatus, ReportStatus][] = [
 // live in callables.
 export const DISPATCH_RESPONDER_DIRECT_TRANSITIONS: readonly [DispatchStatus, DispatchStatus][] = [
   ['accepted', 'acknowledged'],
-  ['acknowledged', 'in_progress'],
-  ['in_progress', 'resolved'],
+  ['acknowledged', 'en_route'],
+  ['en_route', 'on_scene'],
+  ['on_scene', 'resolved'],
   ['pending', 'declined'],
 ] as const
 
