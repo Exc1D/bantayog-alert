@@ -21,10 +21,11 @@ const InputSchema = z
   })
   .strict()
 
-const DEADLINE_BY_SEVERITY: Record<'low' | 'medium' | 'high', number> = {
-  low: 30 * 60 * 1000,
-  medium: 15 * 60 * 1000,
+const DEADLINE_BY_SEVERITY: Record<'critical' | 'high' | 'low' | 'medium', number> = {
+  critical: 5 * 60 * 1000,
   high: 5 * 60 * 1000,
+  medium: 15 * 60 * 1000,
+  low: 30 * 60 * 1000,
 }
 
 export interface DispatchResponderCoreDeps {
@@ -120,7 +121,8 @@ export async function dispatchResponderCore(
 
         const severity = ((report.severityDerived as string | null | undefined) ??
           'medium') as keyof typeof DEADLINE_BY_SEVERITY
-        const deadlineMs = DEADLINE_BY_SEVERITY[severity]
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const deadlineMs = DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
 
         const dispatchRef = db.collection('dispatches').doc()
         const dispatchId = dispatchRef.id
