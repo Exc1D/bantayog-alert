@@ -15,7 +15,10 @@ export function useEligibleResponders(municipalityId: string | undefined) {
   const [shift, setShift] = useState<Record<string, { isOnShift: boolean }>>({})
 
   useEffect(() => {
-    if (!municipalityId) return
+    if (!municipalityId) {
+      setResponders({})
+      return
+    }
     const q = query(
       collection(db, 'responders'),
       where('municipalityId', '==', municipalityId),
@@ -36,7 +39,10 @@ export function useEligibleResponders(municipalityId: string | undefined) {
   }, [municipalityId])
 
   useEffect(() => {
-    if (!municipalityId) return
+    if (!municipalityId) {
+      setShift({})
+      return
+    }
     const rtdb = getDatabase(firebaseApp)
     const node = ref(rtdb, `/responder_index/${municipalityId}`)
     const unsub = onValue(node, (s) => {
