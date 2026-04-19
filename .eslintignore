@@ -1,0 +1,2 @@
+# Service worker is plain JS, linted separately as part of the SW authoring workflow.
+public/firebase-messaging-sw.js

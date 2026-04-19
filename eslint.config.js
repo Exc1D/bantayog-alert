@@ -20,6 +20,8 @@ export default tseslint.config(
       '**/.firebase/**',
       'functions/scripts/**',
       'scripts/**',
+      // Plain-JS service worker — excluded from TypeScript project service.
+      'apps/responder-app/public/firebase-messaging-sw.js',
     ],
   },
 
