@@ -10,7 +10,9 @@
  */
 
 import { onDocumentWritten } from 'firebase-functions/v2/firestore'
+import { FieldValue } from 'firebase-admin/firestore'
 import { logger } from 'firebase-functions'
+import type { Firestore } from 'firebase-admin/firestore'
 import type { DispatchStatus, ReportStatus } from '@bantayog/shared-validators'
 import { dispatchToReportState } from '@bantayog/shared-validators'
 
@@ -46,14 +48,111 @@ export function computeMirrorAction(
 }
 
 // ---------------------------------------------------------------------------
-// Cloud Function v2 trigger skeleton — body implemented in Task 12
+// Cloud Function v2 trigger — implementation in Task 12
 // ---------------------------------------------------------------------------
+
+export interface DispatchMirrorToReportCoreParams {
+  db: Firestore
+  dispatchId: string
+  beforeData: { status?: DispatchStatus; correlationId?: string } | undefined
+  afterData:
+    | {
+        status?: DispatchStatus
+        reportId?: string
+        correlationId?: string
+      }
+    | undefined
+}
+
+/**
+ * Core logic for dispatchMirrorToReport.
+ * Exported for direct unit testing with firebase-functions-test.
+ */
+export async function dispatchMirrorToReportCore(
+  params: DispatchMirrorToReportCoreParams,
+): Promise<void> {
+  const { db, dispatchId, beforeData, afterData } = params
+  const before = beforeData as { status?: DispatchStatus } | undefined
+  const after = afterData as
+    | { status?: DispatchStatus; reportId?: string; correlationId?: string }
+    | undefined
+  const correlationId = after?.correlationId ?? crypto.randomUUID()
+
+  if (!after?.reportId) {
+    logger.info({ event: 'dispatch_mirror.skip', reason: 'no_reportId', correlationId })
+    return
+  }
+
+  const reportRef = db.collection('reports').doc(after.reportId)
+
+  await db.runTransaction(async (tx) => {
+    const reportSnap = await tx.get(reportRef)
+    if (!reportSnap.exists) {
+      logger.warn({
+        event: 'dispatch_mirror.skip',
+        reason: 'report_missing',
+        correlationId,
+        dispatchId,
+        reportId: after.reportId,
+      })
+      return
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by exists check above
+    const currentStatus = reportSnap.data()!.status as ReportStatus
+    const decision = computeMirrorAction(before?.status, after.status, currentStatus)
+
+    if (decision.action === 'skip') {
+      logger.info({
+        event: 'dispatch_mirror.skip',
+        reason: decision.reason,
+        correlationId,
+        dispatchId,
+        reportId: after.reportId,
+      })
+      return
+    }
+
+    tx.update(reportRef, {
+      status: decision.to,
+      lastStatusAt: FieldValue.serverTimestamp(),
+    })
+
+    tx.create(db.collection('report_events').doc(), {
+      reportId: after.reportId,
+      from: currentStatus,
+      to: decision.to,
+      actor: 'system:dispatchMirrorToReport',
+      at: FieldValue.serverTimestamp(),
+      correlationId,
+    })
+
+    logger.info({
+      event: 'dispatch_mirror.applied',
+      correlationId,
+      dispatchId,
+      reportId: after.reportId,
+      from: currentStatus,
+      to: decision.to,
+    })
+  })
+}
 
 export const dispatchMirrorToReport = onDocumentWritten(
   { document: 'dispatches/{dispatchId}', region: 'asia-southeast1', timeoutSeconds: 10 },
-  // eslint-disable-next-line @typescript-eslint/require-await -- TODO(Task 12): replace with real async body
-  async () => {
-    // TODO(Task 12): implement trigger body
-    logger.info('dispatchMirrorToReport skeleton')
+  async (event) => {
+    if (!event.data) return
+    const change = event.data
+    const beforeData = change.before.data() as { status?: DispatchStatus } | undefined
+    const afterData = change.after.data() as
+      | { status?: DispatchStatus; reportId?: string; correlationId?: string }
+      | undefined
+
+    await dispatchMirrorToReportCore({
+      db: change.before.ref.firestore,
+      dispatchId: event.params.dispatchId,
+      beforeData,
+      afterData,
+    })
   },
 )

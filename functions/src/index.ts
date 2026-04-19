@@ -85,3 +85,4 @@ export const onMediaFinalize = onObjectFinalized(
 
 export { onMediaRelocate } from './triggers/on-media-relocate.js'
 export { inboxReconciliationSweep } from './triggers/inbox-reconciliation-sweep.js'
+export { dispatchMirrorToReport } from './triggers/dispatch-mirror-to-report.js'
