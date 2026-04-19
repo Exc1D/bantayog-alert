@@ -30,39 +30,19 @@ export const DISPATCH_STATES = [
  * Admin actions: cancel from mid-lifecycle states, supersede by dispatching another responder
  * Terminal states: resolved, declined, timed_out, cancelled, superseded
  */
-export const DISPATCH_TRANSITIONS: readonly [DispatchStatus, DispatchStatus][] = [
-  // Responder progression flow
-  ['pending', 'accepted'],
-  ['accepted', 'acknowledged'],
-  ['acknowledged', 'en_route'],
-  ['en_route', 'on_scene'],
-  ['on_scene', 'resolved'],
-
-  // Admin can decline pending dispatches
-  ['pending', 'declined'],
-
-  // Admin can cancel from any mid-lifecycle state
-  ['pending', 'cancelled'],
-  ['pending', 'superseded'],
-  ['accepted', 'cancelled'],
-  ['accepted', 'superseded'],
-  ['acknowledged', 'cancelled'],
-  ['acknowledged', 'superseded'],
-  ['en_route', 'cancelled'],
-  ['en_route', 'superseded'],
-  ['on_scene', 'cancelled'],
-  ['on_scene', 'superseded'],
-
-  // System transitions (timeout, resolution by incident closure)
-  ['pending', 'timed_out'],
-  ['accepted', 'timed_out'],
-  ['acknowledged', 'timed_out'],
-  ['en_route', 'resolved'], // Incident closed while en route
-  ['on_scene', 'resolved'], // Normal resolution or incident closure
-] as const
+export const DISPATCH_TRANSITIONS: Readonly<Record<DispatchStatus, readonly DispatchStatus[]>> = {
+  pending: ['accepted', 'declined', 'cancelled', 'timed_out', 'superseded'],
+  accepted: ['acknowledged', 'cancelled', 'superseded'],
+  acknowledged: ['en_route', 'cancelled', 'superseded'],
+  en_route: ['on_scene', 'cancelled', 'superseded'],
+  on_scene: ['resolved', 'cancelled', 'superseded'],
+  resolved: [],
+  declined: [],
+  timed_out: [],
+  cancelled: [],
+  superseded: [],
+}
 
 export function isValidDispatchTransition(from: DispatchStatus, to: DispatchStatus): boolean {
-  return (DISPATCH_TRANSITIONS as readonly [string, string][]).some(
-    ([f, t]) => f === from && t === to,
-  )
+  return DISPATCH_TRANSITIONS[from].includes(to)
 }

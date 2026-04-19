@@ -48,26 +48,22 @@ service cloud.firestore {
     }
     function validResponderTransition(from, to) {
       return       (from == 'pending' && to == 'accepted')
-          ||       (from == 'accepted' && to == 'acknowledged')
-          ||       (from == 'acknowledged' && to == 'en_route')
-          ||       (from == 'en_route' && to == 'on_scene')
-          ||       (from == 'on_scene' && to == 'resolved')
           ||       (from == 'pending' && to == 'declined')
           ||       (from == 'pending' && to == 'cancelled')
+          ||       (from == 'pending' && to == 'timed_out')
           ||       (from == 'pending' && to == 'superseded')
+          ||       (from == 'accepted' && to == 'acknowledged')
           ||       (from == 'accepted' && to == 'cancelled')
           ||       (from == 'accepted' && to == 'superseded')
+          ||       (from == 'acknowledged' && to == 'en_route')
           ||       (from == 'acknowledged' && to == 'cancelled')
           ||       (from == 'acknowledged' && to == 'superseded')
+          ||       (from == 'en_route' && to == 'on_scene')
           ||       (from == 'en_route' && to == 'cancelled')
           ||       (from == 'en_route' && to == 'superseded')
+          ||       (from == 'on_scene' && to == 'resolved')
           ||       (from == 'on_scene' && to == 'cancelled')
           ||       (from == 'on_scene' && to == 'superseded')
-          ||       (from == 'pending' && to == 'timed_out')
-          ||       (from == 'accepted' && to == 'timed_out')
-          ||       (from == 'acknowledged' && to == 'timed_out')
-          ||       (from == 'en_route' && to == 'resolved')
-          ||       (from == 'on_scene' && to == 'resolved')
           || false;
     }
 

@@ -56,14 +56,23 @@ describe('dispatch state machine', () => {
     expect(DISPATCH_STATES).toHaveLength(10)
   })
 
-  it('DISPATCH_TRANSITIONS has 21 declared transitions (Phase 3c)', () => {
-    expect(DISPATCH_TRANSITIONS).toHaveLength(21)
+  it('DISPATCH_TRANSITIONS declares 17 transitions', () => {
+    // Count entries across all states
+    const total = DISPATCH_STATES.reduce<number>(
+      (sum, state) => sum + (DISPATCH_TRANSITIONS[state] as readonly string[]).length,
+      0,
+    )
+    expect(total).toBe(17)
   })
 
   it('every declared responder-direct transition is valid', () => {
-    for (const [from, to] of DISPATCH_TRANSITIONS) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      expect(isValidDispatchTransition(from, to), `${from} → ${to} should be valid`).toBe(true)
+    for (const from of DISPATCH_STATES) {
+      for (const to of DISPATCH_TRANSITIONS[from] as readonly string[]) {
+        expect(
+          isValidDispatchTransition(from, to as DispatchStatus),
+          `${from} → ${to} should be valid`,
+        ).toBe(true)
+      }
     }
   })
 
@@ -74,8 +83,8 @@ describe('dispatch state machine', () => {
           expect(isValidDispatchTransition(from, to)).toBe(false)
           continue
         }
-        const declared = DISPATCH_TRANSITIONS.some(([f, t]) => f === from && t === to)
-        if (!declared) {
+        const allowed = (DISPATCH_TRANSITIONS[from] as readonly string[]).includes(to)
+        if (!allowed) {
           expect(isValidDispatchTransition(from, to), `${from}→${to} should be invalid`).toBe(false)
         }
       }
