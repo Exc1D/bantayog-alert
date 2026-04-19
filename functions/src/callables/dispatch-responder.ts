@@ -12,6 +12,7 @@ import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
+import { sendFcmToResponder, FCM_VAPID_PRIVATE_KEY } from '../services/fcm-send.js'
 
 const InputSchema = z
   .object({
@@ -192,7 +193,7 @@ export async function dispatchResponderCore(
           },
         })
 
-        return { dispatchId, status: 'pending' as const, reportId: deps.reportId }
+        return { dispatchId, status: 'pending' as const, reportId: deps.reportId, correlationId }
       })
     },
   )
@@ -200,7 +201,12 @@ export async function dispatchResponderCore(
 }
 
 export const dispatchResponder = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: true,
+    maxInstances: 100,
+    secrets: [FCM_VAPID_PRIVATE_KEY],
+  },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token as Record<string, unknown> | null
@@ -223,7 +229,7 @@ export const dispatchResponder = onCall(
       })
     }
     try {
-      return await dispatchResponderCore(adminDb, adminRtdb, {
+      const result = await dispatchResponderCore(adminDb, adminRtdb, {
         reportId: parsed.data.reportId,
         responderUid: parsed.data.responderUid,
         idempotencyKey: parsed.data.idempotencyKey,
@@ -233,6 +239,20 @@ export const dispatchResponder = onCall(
         },
         now: Timestamp.now(),
       })
+
+      // Best-effort FCM push — does not fail the callable.
+      const fcm = await sendFcmToResponder({
+        uid: parsed.data.responderUid,
+        title: 'New dispatch',
+        body: `Report ${parsed.data.reportId.slice(0, 8)} — see app for details`,
+        data: {
+          dispatchId: result.dispatchId,
+          reportId: parsed.data.reportId,
+          correlationId: result.correlationId,
+        },
+      })
+
+      return { ...result, warnings: fcm.warnings }
     } catch (err: unknown) {
       if (err instanceof BantayogError) {
         throw bantayogErrorToHttps(err)
