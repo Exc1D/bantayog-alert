@@ -50,12 +50,13 @@ describe('dispatchDocSchema', () => {
 })
 
 describe('dispatchStatusSchema', () => {
-  it('accepts all valid status values', () => {
+  it('accepts all valid status values (Phase 3c: en_route + on_scene)', () => {
     const statuses = [
       'pending',
       'accepted',
       'acknowledged',
-      'in_progress',
+      'en_route',
+      'on_scene',
       'resolved',
       'declined',
       'timed_out',

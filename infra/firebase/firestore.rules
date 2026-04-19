@@ -47,11 +47,27 @@ service cloud.firestore {
               || (isAgencyAdmin() && data.agencyId == myAgency()));
     }
     function validResponderTransition(from, to) {
-      return       (from == 'accepted' && to == 'acknowledged')
-          ||       (from == 'acknowledged' && to == 'in_progress')
-          ||       (from == 'in_progress' && to == 'resolved')
-          ||       (from == 'pending' && to == 'cancelled')
+      return       (from == 'pending' && to == 'accepted')
+          ||       (from == 'accepted' && to == 'acknowledged')
+          ||       (from == 'acknowledged' && to == 'en_route')
+          ||       (from == 'en_route' && to == 'on_scene')
+          ||       (from == 'on_scene' && to == 'resolved')
           ||       (from == 'pending' && to == 'declined')
+          ||       (from == 'pending' && to == 'cancelled')
+          ||       (from == 'pending' && to == 'superseded')
+          ||       (from == 'accepted' && to == 'cancelled')
+          ||       (from == 'accepted' && to == 'superseded')
+          ||       (from == 'acknowledged' && to == 'cancelled')
+          ||       (from == 'acknowledged' && to == 'superseded')
+          ||       (from == 'en_route' && to == 'cancelled')
+          ||       (from == 'en_route' && to == 'superseded')
+          ||       (from == 'on_scene' && to == 'cancelled')
+          ||       (from == 'on_scene' && to == 'superseded')
+          ||       (from == 'pending' && to == 'timed_out')
+          ||       (from == 'accepted' && to == 'timed_out')
+          ||       (from == 'acknowledged' && to == 'timed_out')
+          ||       (from == 'en_route' && to == 'resolved')
+          ||       (from == 'on_scene' && to == 'resolved')
           || false;
     }
 

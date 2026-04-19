@@ -11,3 +11,5 @@ export {
   isValidDispatchTransition,
 } from './dispatch-states.js'
 export type { DispatchStatus } from './dispatch-states.js'
+
+export { dispatchToReportState } from './dispatch-to-report.js'

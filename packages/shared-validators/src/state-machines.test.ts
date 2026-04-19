@@ -52,16 +52,17 @@ describe('report state machine', () => {
 // Dispatch state machine: only responder-direct transitions live in the rules
 // layer (spec §5.4). Server-authoritative transitions are enforced in callables.
 describe('dispatch state machine', () => {
-  it('DISPATCH_STATES has 9 members', () => {
-    expect(DISPATCH_STATES).toHaveLength(9)
+  it('DISPATCH_STATES has 10 members (Phase 3c: en_route + on_scene)', () => {
+    expect(DISPATCH_STATES).toHaveLength(10)
   })
 
-  it('DISPATCH_TRANSITIONS has 5 declared transitions', () => {
-    expect(DISPATCH_TRANSITIONS).toHaveLength(5)
+  it('DISPATCH_TRANSITIONS has 21 declared transitions (Phase 3c)', () => {
+    expect(DISPATCH_TRANSITIONS).toHaveLength(21)
   })
 
   it('every declared responder-direct transition is valid', () => {
     for (const [from, to] of DISPATCH_TRANSITIONS) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       expect(isValidDispatchTransition(from, to), `${from} → ${to} should be valid`).toBe(true)
     }
   })
