@@ -1,9 +1,12 @@
+import { normalizeMsisdn } from '@bantayog/shared-validators'
+
 export interface SubmitReportInput {
   reportType: string
   severity: 'low' | 'medium' | 'high'
   description: string
   publicLocation: { lat: number; lng: number }
   photo?: Blob
+  contact?: { phone: string; smsConsent: true }
 }
 
 export interface SubmitReportDeps {
@@ -65,6 +68,14 @@ export async function submitReport(
       source: 'web',
       publicLocation: input.publicLocation,
       pendingMediaIds,
+      ...(input.contact
+        ? {
+            contact: {
+              phone: normalizeMsisdn(input.contact.phone),
+              smsConsent: true as const,
+            },
+          }
+        : {}),
     },
   })
 
