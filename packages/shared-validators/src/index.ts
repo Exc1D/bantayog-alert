@@ -90,7 +90,7 @@ export {
   isValidDispatchTransition,
 } from './state-machines/dispatch-states.js'
 export type { ReportStatus } from './state-machines/report-states.js'
-export type { DispatchStatus } from './state-machines/dispatch-states.js'
+export type { DispatchStatus } from './dispatches.js'
 export {
   BantayogErrorCode,
   isBantayogErrorCode,

@@ -31,6 +31,8 @@ export const dispatchStatusSchema = z.enum([
   'superseded',
 ])
 
+export type DispatchStatus = z.infer<typeof dispatchStatusSchema>
+
 export const dispatchDocSchema = z
   .object({
     reportId: z.string().min(1),
