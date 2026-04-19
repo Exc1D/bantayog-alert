@@ -9,6 +9,7 @@ import {
 } from '@bantayog/shared-validators'
 import { reverseGeocodeToMunicipality } from '../services/geocode.js'
 import { withIdempotency } from '../idempotency/guard.js'
+import { enqueueSms } from '../services/send-sms.js'
 
 const log = logDimension('processInboxItem')
 
@@ -182,6 +183,31 @@ export async function processInboxItemCore(
           createdAt,
           schemaVersion: 1,
         })
+
+        // smsConsent check is intentional — presence of contact.phone implies smsConsent=true
+        // (schema enforces contact.smsConsent as z.literal(true))
+        if (payload.contact?.phone) {
+          const salt = process.env.SMS_MSISDN_HASH_SALT
+          if (!salt) {
+            log({
+              severity: 'ERROR',
+              code: 'sms.salt.missing',
+              message: 'SMS_MSISDN_HASH_SALT env not set — skipping enqueue',
+            })
+          } else {
+            const muniLocale = geo.defaultSmsLocale ?? 'tl'
+            enqueueSms(db, tx, {
+              reportId,
+              purpose: 'receipt_ack',
+              recipientMsisdn: payload.contact.phone,
+              locale: muniLocale,
+              publicRef: inbox.publicRef,
+              salt,
+              nowMs: createdAt,
+              providerId: 'semaphore',
+            })
+          }
+        }
 
         tx.set(db.collection('report_events').doc(), {
           reportId,
