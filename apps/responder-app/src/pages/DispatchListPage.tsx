@@ -28,9 +28,6 @@ export function DispatchListPage() {
           ))}
         </ul>
       )}
-      <p>
-        <em>Accept/Decline actions land in Phase 3c.</em>
-      </p>
     </main>
   )
 }

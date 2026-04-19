@@ -1,4 +1,4 @@
-import type { DispatchStatus, ReportStatus } from './enums.js'
+import type { ReportStatus } from './enums.js'
 
 // Spec §5.3 — every valid report transition. Any transition not in this set
 // is a rule violation and must be rejected server-side.
@@ -28,24 +28,6 @@ export const REPORT_TRANSITIONS: readonly [ReportStatus, ReportStatus][] = [
   ['on_scene', 'cancelled'],
 ] as const
 
-// Spec §5.4 — dispatch transitions. Only responder-direct transitions are
-// candidates for rule-layer enforcement; server-authoritative transitions
-// live in callables.
-export const DISPATCH_RESPONDER_DIRECT_TRANSITIONS: readonly [DispatchStatus, DispatchStatus][] = [
-  ['accepted', 'acknowledged'],
-  ['acknowledged', 'en_route'],
-  ['en_route', 'on_scene'],
-  ['on_scene', 'resolved'],
-  ['pending', 'declined'],
-] as const
-
 export function isValidReportTransition(from: ReportStatus, to: ReportStatus): boolean {
   return REPORT_TRANSITIONS.some(([f, t]) => f === from && t === to)
-}
-
-export function isValidResponderDispatchTransition(
-  from: DispatchStatus,
-  to: DispatchStatus,
-): boolean {
-  return DISPATCH_RESPONDER_DIRECT_TRANSITIONS.some(([f, t]) => f === from && t === to)
 }

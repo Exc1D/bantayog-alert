@@ -99,8 +99,8 @@ describe('computeMirrorAction', () => {
     })
   })
 
-  it('update: acknowledged → en_route', () => {
-    expect(computeMirrorAction('accepted', 'acknowledged', 'assigned')).toEqual({
+  it('update: accepted → acknowledged', () => {
+    expect(computeMirrorAction('pending', 'accepted', 'assigned')).toEqual({
       action: 'update',
       to: 'acknowledged',
     })
