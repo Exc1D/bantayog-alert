@@ -125,54 +125,102 @@ This mirrors the existing `report_inbox` → `processInboxItem` pattern from Pha
   - All templates include `{publicRef}` placeholder. `renderTemplate(purpose, locale, vars): string`.
   - File header: `// TODO(phase-5): move template bodies to Firestore for CMS-driven editing.`
 - **`src/msisdn.ts`** — PH-only regex `/^(\+63|0)9\d{9}$/`. `normalizeMsisdn(input: string): string` returns `+63XXXXXXXXXX` or throws `MSISDN_INVALID`. `hashMsisdn(msisdn: string, salt: string): string` returns `sha256(salt + msisdn).hex()`.
-- **`src/sms.ts`** (extend existing) — add:
-  - `smsProviderHealthDocSchema`: add fields `circuitState: 'closed' | 'open' | 'half_open'`, `openedAt?: Timestamp`, `lastProbeAt?: Timestamp`, `lastTransitionReason?: string`.
-  - `smsMinuteWindowDocSchema`: `{ attempts, failures, rateLimitedCount, latencySumMs, maxLatencyMs, updatedAt }`, all `.strict()`.
-  - `smsOutboxDocSchema`: extend with `predictedEncoding`, `predictedSegmentCount`, `encoding?`, `segmentCount?`, `providerMessageId?`, `recipientMsisdn?` (plaintext, cleared on terminal), `terminalReason?`, `deferralReason?`, `queuedAt?`, `sentAt?`, `deliveredAt?`, `failedAt?`, `abandonedAt?`, `retryCount`, `schemaVersion`.
+- **`src/sms.ts`** (rewrite — treat as breaking schema change; no production data exists yet so no migration). The existing `smsOutboxDocSchema` and `smsProviderHealthDocSchema` are bumped from `schemaVersion: 1` to `schemaVersion: 2`. Any writer that produces `schemaVersion: 1` in 4a is a bug — CI will enforce this via rule coverage + Zod parse in the dispatcher.
+
+  **`smsProviderIdSchema`** — unchanged. Keep `z.enum(['semaphore', 'globelabs'])` (no underscore). The `fake` provider id is a _runtime_ injection only and must not be persisted; at the Zod layer, `smsProviderIdSchema` stays restricted to real providers. The `SmsProvider.providerId` TypeScript type in functions code is `'semaphore' | 'globelabs' | 'fake'` but docs written to Firestore carry only the real ids.
+
+  **`smsOutboxDocSchema` delta (schemaVersion 1 → 2):**
+  - **Add (required):** `predictedEncoding: 'GSM-7' | 'UCS-2'`, `predictedSegmentCount: number.int().positive()`, `recipientMsisdn: string` _(plaintext, cleared to `null` on terminal — modeled as `string | null`)_, `retryCount: number.int().nonnegative()`, `locale: 'tl' | 'en'`, `queuedAt: number.int()`.
+  - **Add (optional):** `terminalReason?: 'rejected' | 'client_err' | 'orphan' | 'abandoned_after_retries' | 'dlr_failed'`, `deferralReason?: 'rate_limited' | 'provider_error' | 'network'`, `failedAt?: number.int()`, `abandonedAt?: number.int()`.
+  - **Change (required → optional):** `encoding` and `segmentCount` become optional — they are provider-authoritative values set only after a successful `send()`. Use `predictedEncoding`/`predictedSegmentCount` for enqueue-time values.
+  - **Change (enum widened):** `status` enum becomes `'queued' | 'sending' | 'sent' | 'delivered' | 'failed' | 'deferred' | 'abandoned'`. `'undelivered'` is removed (merged into `failed`).
+  - **Change:** `statusReason` kept for backward-compatible free-form notes but new writers populate `terminalReason`/`deferralReason` instead; `statusReason` is optional and unused by 4a.
+  - **Unchanged:** `providerId`, `recipientMsisdnHash`, `purpose`, `bodyPreviewHash`, `providerMessageId?`, `reportId?`, `idempotencyKey`, `createdAt`, `sentAt?`, `deliveredAt?`.
+
+  **`smsProviderHealthDocSchema` delta (schemaVersion 1 → 2):**
+  - **Add (optional):** `openedAt?: number.int()`, `lastProbeAt?: number.int()`, `lastTransitionReason?: string.max(200)`.
+  - **Unchanged:** `providerId`, `circuitState` _(already present)_, `errorRatePct`, `lastErrorAt?`, `updatedAt`.
+  - **Remove:** nothing. All existing fields retained.
+
+  **`smsMinuteWindowDocSchema` (new subcollection schema):**
+  - `.strict()` object: `providerId: smsProviderIdSchema`, `windowStartMs: number.int()` (ms at start of minute, derived from doc id), `attempts: number.int().nonnegative()`, `failures: number.int().nonnegative()`, `rateLimitedCount: number.int().nonnegative()`, `latencySumMs: number.int().nonnegative()`, `maxLatencyMs: number.int().nonnegative()`, `updatedAt: number.int()`, `schemaVersion: z.literal(1)`.
+  - Doc id is `YYYYMMDDHHMM` (UTC) — lexicographically sortable. Stored at `sms_provider_health/{providerId}/minute_windows/{YYYYMMDDHHMM}`.
+
+  **`contact` schema (added to `reportInboxPayloadSchema` in `reports.ts`, not `sms.ts`, but noted here for cross-reference):**
+
+  ```typescript
+  contact: z.object({
+    phone: msisdnPhSchema, // normalized +63 form
+    smsConsent: z.literal(true), // literal true, not boolean — absence of consent = absence of contact
+  })
+    .strict()
+    .optional()
+  ```
+
+  This enforces at the Zod layer that "phone present implies consent=true" — a payload with `phone` and `smsConsent: false` fails validation. Callers who lack consent must omit the `contact` object entirely.
 
 #### Functions (`functions/src/`)
 
-- **`services/sms-provider.ts`** — canonical interface:
+- **`services/sms-provider.ts`** — canonical interface. On success, `encoding` and `segmentCount` are authoritative. On a rejected-but-returned response (`accepted: false`), they may be omitted; the dispatcher falls back to predicted values for auditing. On a thrown error (network, 5xx, 429), the caller never sees the return object at all.
 
   ```typescript
+  export interface SmsProviderSendSuccess {
+    accepted: true
+    providerMessageId: string
+    latencyMs: number
+    segmentCount: number // authoritative
+    encoding: 'GSM-7' | 'UCS-2' // authoritative
+  }
+
+  export interface SmsProviderSendRejected {
+    accepted: false
+    providerMessageId?: string // some providers echo even on reject
+    latencyMs: number
+    reason: 'invalid_number' | 'ban' | 'bad_format' | 'other'
+    segmentCount?: number // optional — provider may not have segmented yet
+    encoding?: 'GSM-7' | 'UCS-2' // optional
+  }
+
+  export type SmsProviderSendResult = SmsProviderSendSuccess | SmsProviderSendRejected
+
   export interface SmsProvider {
-    readonly providerId: 'semaphore' | 'globe_labs' | 'fake'
+    readonly providerId: 'semaphore' | 'globelabs' | 'fake'
     send(input: {
       to: string // +63 normalized
       body: string
       encoding: 'GSM-7' | 'UCS-2'
-    }): Promise<{
-      providerMessageId: string
-      accepted: boolean
-      latencyMs: number
-      segmentCount: number // authoritative; may differ from predicted
-      encoding: 'GSM-7' | 'UCS-2'
-    }>
+    }): Promise<SmsProviderSendResult> // throws on retryable errors
   }
   ```
 
+  **Provider adapter state in 4a:**
+  - `fake.ts` — fully implemented, callable. Can impersonate any real providerId via `FAKE_SMS_IMPERSONATE='semaphore' | 'globelabs'` so that an outbox doc written in 4a carries a real providerId (`semaphore` or `globelabs`) even though the fake backend served it. This keeps the persisted provider id aligned with `smsProviderIdSchema`.
+  - `semaphore.ts` — stub that throws `NotImplementedError`. Wired into DI only when `SMS_PROVIDER_MODE='real'`.
+  - `globelabs.ts` — **also a stub in 4a** throwing `NotImplementedError`. Not used in 4a because Phase 4a ships with `SMS_PROVIDER_MODE='fake'` only; the real-provider rollout is blocked on Phase 4b + credentials.
+  - **Failover path is validated via the fake.** Because the fake can impersonate either providerId and `FAKE_SMS_FAIL_PROVIDER` gates which impersonation rejects, end-to-end failover (`semaphore` open → `globelabs` closed → route there) is exercised against the fake in 4a. The real Semaphore ↔ Globe Labs failover is validated in the Phase 4b rollout against real credentials.
+
   Fake provider honors env flags:
   - `FAKE_SMS_LATENCY_MS` — sleep before returning.
-  - `FAKE_SMS_ERROR_RATE` — 0.0..1.0, random reject.
-  - `FAKE_SMS_FAIL_PROVIDER` — `'semaphore' | 'globe_labs' | ''` — pretend that provider is down.
-
-  Real adapters (`semaphore.ts`, `globe-labs.ts`) throw `NotImplementedError` for 4a. Only `fake.ts` is callable.
+  - `FAKE_SMS_ERROR_RATE` — 0.0..1.0, random reject (resolves with `accepted: false`).
+  - `FAKE_SMS_FAIL_PROVIDER` — `'semaphore' | 'globelabs' | ''` — throw a retryable-network error when asked to impersonate this provider. Lets tests trip the breaker on a specific providerId without touching the other.
+  - `FAKE_SMS_IMPERSONATE` — `'semaphore' | 'globelabs'` — which real providerId the fake claims to be when building the outbox record.
 
 - **`services/sms-health.ts`** —
   - `readCircuitState(providerId): Promise<CircuitStateDoc>`.
-  - `pickProvider(): Promise<'semaphore' | 'globe_labs' | 'fake'>` — reads both health docs, returns first closed provider, falls back to half_open, never open. Env `SMS_PROVIDER_MODE='fake'` shortcuts to fake.
+  - `pickProvider(): Promise<'semaphore' | 'globelabs'>` — reads both health docs, returns `semaphore` if closed, else `globelabs` if closed, else falls back to whichever is `half_open`, else throws `NO_PROVIDER_AVAILABLE` (both open — caller should defer). **Does not return `'fake'`.** Selection is always a real providerId; whether a real or fake adapter serves it is a DI-layer decision controlled by `SMS_PROVIDER_MODE`.
   - `incrementMinuteWindow(providerId, outcome: { success: boolean, rateLimited: boolean, latencyMs: number }): Promise<void>` — writes/merges into `sms_provider_health/{providerId}/minute_windows/{YYYYMMDDHHMM}`.
 
 - **`services/send-sms.ts`** —
-  - `enqueueSms(tx: Transaction, args: { reportId, purpose, recipientMsisdn, locale, templateVars }): void` — writes the outbox doc with predicted encoding/segments + both plaintext and hash msisdn. Idempotency key derived from `{reportId|dispatchId, purpose}`; duplicate enqueue returns existing doc.
+  - `enqueueSms(tx: Transaction, args: { reportId, purpose, recipientMsisdn, locale: 'tl' | 'en', templateVars }): void` — writes the outbox doc with predicted encoding/segments + both plaintext and hash msisdn. Idempotency key derived from `{reportId|dispatchId, purpose}`; duplicate enqueue returns existing doc.
+  - **Locale derivation** (caller responsibility, not `enqueueSms` itself): locale is derived from `municipality.config.defaultSmsLocale` on the report's municipality document, defaulting to `'tl'` (Tagalog) when unset. Phase 4a does not capture a user-level locale preference; that is deferred to Phase 5. Callers pass the resolved locale into `enqueueSms` explicitly.
 
 - **`triggers/dispatch-sms-outbox.ts`** — `onDocumentWritten('sms_outbox/{id}', ...)`:
   1. Guard: proceed only if `isCreate || (previousStatus === 'deferred' && currentStatus === 'queued')`. Otherwise no-op.
-  2. If `isCreate`: proceed directly. If retry: run Firestore transaction CAS — re-read doc, confirm still `status='queued'`, set `status='sending'`. On conflict, exit.
-  3. `pickProvider()` → `provider.send(...)`.
-  4. On success: update `status='sent'`, set `sentAt`, `providerMessageId`, actual `encoding`, actual `segmentCount`. `incrementMinuteWindow({success: true, latencyMs})`.
-  5. On provider-reject (accepted=false) or non-retryable error: `status='failed'`, `terminalReason`. `incrementMinuteWindow({success: false, latencyMs})`.
-  6. On retryable error (network, 5xx, 429): if `retryCount < 3`, `status='deferred'` + increment `retryCount`; else `status='abandoned'`. `incrementMinuteWindow({success: false, rateLimited: is429, latencyMs})`.
+  2. Unified CAS: run Firestore transaction — re-read doc, confirm `status === 'queued'`, set `status='sending'`. On conflict (another invocation won the CAS), exit. This guard also catches at-least-once replays of `isCreate` invocations.
+  3. `pickProvider()` → `provider.send(...)`. If `pickProvider()` throws `NO_PROVIDER_AVAILABLE`, treat as retryable-defer (§step 6) with `deferralReason='provider_error'`.
+  4. On `accepted: true`: update `status='sent'`, set `sentAt`, `providerMessageId`, actual `encoding`, actual `segmentCount`. `incrementMinuteWindow({success: true, latencyMs})`.
+  5. On `accepted: false` (non-retryable): `status='failed'`, `terminalReason` mapped from provider's `reason` field. Set `encoding`/`segmentCount` from provider response if present; otherwise leave them unset (predicted values remain available for audit). `incrementMinuteWindow({success: false, rateLimited: false, latencyMs})`.
+  6. On thrown retryable error (network, 5xx, 429): if `retryCount < 3`, `status='deferred'`, increment `retryCount`, set `deferralReason` (`rate_limited` for 429, `provider_error` for 5xx, `network` for connection-level). If `retryCount >= 3`, `status='abandoned'`, `terminalReason='abandoned_after_retries'`, `abandonedAt`. `incrementMinuteWindow({success: false, rateLimited: is429, latencyMs})`.
 
 - **`triggers/evaluate-sms-provider-health.ts`** — scheduled every 1 min:
   - For each provider: read last 5 `minute_windows` docs.
@@ -181,14 +229,14 @@ This mirrors the existing `report_inbox` → `processInboxItem` pattern from Pha
   - Atomic update on provider health doc.
 
 - **`triggers/reconcile-sms-delivery-status.ts`** — scheduled every 10 min:
-  - Query `sms_outbox where status='queued' and queuedAt < now - 30m` → mark `status='abandoned'` (orphan sweep).
-  - Query `sms_outbox where status='deferred'` ordered by `updatedAt` asc, limit 100 per tick → transaction CAS `deferred → queued`. This re-fires the `onDocumentWritten` trigger.
+  - Orphan sweep: query `sms_outbox where status='queued' and queuedAt < now - 30m` → mark `status='abandoned'`, `terminalReason='orphan'`, `abandonedAt=now`.
+  - Deferred pickup: query `sms_outbox where status='deferred'` ordered by `updatedAt` asc, limit 100 per tick → transaction CAS `deferred → queued`. **`queuedAt` IS updated to `now` on this transition** (otherwise the orphan sweep would re-flag a just-retried row). `createdAt` is never touched. This re-fires the `onDocumentWritten` trigger.
 
 - **`triggers/cleanup-sms-minute-windows.ts`** — scheduled every 1 hour:
   - For each provider, paginate `minute_windows` collection in batches of 500 keyed by doc ID (`YYYYMMDDHHMM` sortable).
   - Delete docs older than 1h. Cursor-based pagination survives 50k+ docs.
 
-- **`http/sms-delivery-report.ts`** — `onRequest(...)`:
+- **`http/sms-delivery-report.ts`** — `onRequest(...)`. **Exported as `smsDeliveryReport` from `functions/src/index.ts`** → Firebase Functions v2 generates the endpoint at `https://<region>-<project>.cloudfunctions.net/smsDeliveryReport` (or, behind the Hosting rewrite declared in `firebase.json`, at `POST /webhooks/sms-delivery-report`). The Hosting rewrite is added in the same PR; providers are configured to POST to the Hosting URL.
   - Verify `X-Sms-Provider-Secret` header constant-time-equals Secret Manager value. Mismatch → 401, structured log `sms.webhook.auth_failed`.
   - Parse body per provider-specific schema (Semaphore / Globe Labs) → normalized `{ providerMessageId, status: 'delivered' | 'failed', reason? }`.
   - Look up outbox by `providerMessageId` (requires index).
@@ -207,8 +255,8 @@ This mirrors the existing `report_inbox` → `processInboxItem` pattern from Pha
 - **`functions/src/callables/dispatch-responder.ts`** — on dispatch creation, enqueue `status_update`.
 - **`functions/src/callables/close-report.ts`** — on terminal close with outcome ∈ {resolved, false_alarm}, enqueue `resolution`.
 - **`apps/citizen-pwa/src/components/SubmitReportForm.tsx`** — add phone input (PH-format validated client-side with `msisdn.ts` regex) + consent checkbox. Both optional; form submits without them. If phone present, consent required before submit.
-- **`apps/citizen-pwa/src/services/submit-report.ts`** — pass `contact: { phone?, smsConsent? }` through to `requestUploadUrl` / inbox write.
-- **`packages/shared-validators/src/reports.ts`** — extend `reportInboxPayloadSchema` with optional `contact: { phone: MsisdnPH, smsConsent: boolean }.strict()`.
+- **`apps/citizen-pwa/src/services/submit-report.ts`** — pass `contact: { phone, smsConsent: true } | undefined` through to `requestUploadUrl` / inbox write. Form validation blocks submission when `phone` is present but consent box is unchecked, so the service layer never sees a `{phone, smsConsent: false}` shape.
+- **`packages/shared-validators/src/reports.ts`** — extend `reportInboxPayloadSchema` with optional `contact` object shaped per §3.1: `{ phone: msisdnPhSchema, smsConsent: z.literal(true) }.strict().optional()`.
 - **`firestore.rules`** — extend `match /sms_provider_health/{providerId}/minute_windows/{ts}` — callable-only write, admin-only read. Add rule test.
 - **`firestore.indexes.json`** — add composite indexes:
   - `sms_outbox` by `providerMessageId ASC` (webhook lookup).
@@ -279,7 +327,9 @@ Trip conditions (any of):
 
 - (a) `failures / attempts > 0.30` over the last 5 minute windows AND `attempts >= 10`.
 - (b) `maxLatencyMs > 30000` in any of the last 5 minute windows.
-- (c) `rateLimitedCount >= 3 AND rateLimitedCount === attempts` — sustained 429s targeting us specifically.
+- (c) `rateLimitedCount >= 3 AND rateLimitedCount === attempts` over the last 5 minute windows — sustained 429s targeting us specifically (every single attempt rate-limited).
+
+**Individual 429s during normal operation** → handled as a per-message retryable defer via §4.3 (`deferred` with `deferralReason='rate_limited'`). Condition (c) fires only when the 429 rate is effectively 100% — the provider is refusing us entirely, which is a circuit-level failure distinct from one transient rate-limit. The two paths are complementary, not contradictory.
 
 Transitions are atomic writes on the provider health doc with `lastTransitionReason` filled in for audit.
 
@@ -322,7 +372,7 @@ Every outbox doc carries `predictedSegmentCount` (set at enqueue by `detectEncod
 ### 5.2 Functions unit tests
 
 - **`sms-provider.fake.test.ts`** — fake respects `FAKE_SMS_LATENCY_MS`, `FAKE_SMS_ERROR_RATE`, `FAKE_SMS_FAIL_PROVIDER`; returns valid shape.
-- **`sms-health.pickProvider.test.ts`** — matrix of (semaphore state × globe_labs state) → expected provider. Includes half_open picks.
+- **`sms-health.pickProvider.test.ts`** — matrix of (semaphore state × globelabs state) → expected provider. Includes half_open picks. Asserts `pickProvider()` throws `NO_PROVIDER_AVAILABLE` when both are open.
 - **`send-sms.test.ts`** — `enqueueSms` is idempotent across same reportId+purpose; writes correct shape; populates predicted fields.
 
 ### 5.3 Integration tests (Firestore emulator)
@@ -379,7 +429,7 @@ Binary pass/fail. Runs against Firebase emulator (Firestore + Functions + Auth).
 7. Admin calls `verifyReport` → assert new outbox doc `purpose='verification'`, lifecycle completes.
 8. Admin calls `dispatchResponder` → assert new outbox `purpose='status_update'`.
 9. Admin calls `closeReport` with outcome='resolved' → assert outbox `purpose='resolution'`.
-10. Failover scenario: set `FAKE_SMS_FAIL_PROVIDER='semaphore'`. Seed 10+ failure windows. Invoke `evaluateSmsProviderHealth` via test SDK. Assert `sms_provider_health/semaphore.circuitState='open'`. New enqueue routes to globe_labs (or fake if test mode). `afterEach` resets to baseline.
+10. **Failover routing end-to-end.** Both providers start `closed`. Set `FAKE_SMS_FAIL_PROVIDER='semaphore'` and `FAKE_SMS_IMPERSONATE` dynamic (the fake inspects the providerId `pickProvider()` returned and decides whether to throw). Send 15 messages in quick succession, driving Semaphore's minute windows to >30% failure. Invoke `evaluateSmsProviderHealth` via test SDK. Assert `sms_provider_health/semaphore.circuitState='open'` and `sms_provider_health/globelabs.circuitState='closed'`. Enqueue a new message and invoke `dispatchSmsOutbox`. **Assert the outbox doc's `providerId === 'globelabs'` (not `'semaphore'`)** — this verifies `pickProvider()` actually routed to the secondary after the primary tripped, not just that the breaker state updated. Also assert `globelabs` minute windows incremented. `afterEach` restores `FAKE_SMS_FAIL_PROVIDER=''` and resets circuit states to `closed`.
 11. Retry scenario: inject one transient failure via env flag; enqueue → first attempt deferred; invoke `reconcileSmsDeliveryStatus` via test SDK; assert CAS `deferred→queued`; next `dispatchSmsOutbox` invocation succeeds.
 12. Orphan scenario: seed outbox at `status='queued'` with `queuedAt = now - 31m`. Invoke reconcile. Assert `status='abandoned'`.
 13. Callback-after-terminal: seed outbox at `status='abandoned'`. POST valid DLR. Assert 200 + no mutation + `sms.webhook.callback_after_terminal` log line present.
@@ -409,6 +459,12 @@ Every test isolates state via emulator reset + uses its own idempotency keys.
 - **Staging soak:** deploy functions + hosting. Set `SMS_PROVIDER_MODE='fake'`. Run acceptance script. Soak overnight with health metrics visible.
 - **Prod rollout plan (not executed in 4a):** gated on 4b (inbound) + real provider credentials. Phase 4a prod deploy is `SMS_PROVIDER_MODE='fake'` — no user-visible SMS sent. Flip to `'real'` is a separate gated change.
 - **Rollback:** `SMS_PROVIDER_MODE='disabled'` short-circuits `enqueueSms` to a no-op (with a log line, `sms.disabled.skipped`). Redeploy with the env flag — no data migration required.
+
+### 6.1 Schema version policy
+
+- `sms_outbox` and `sms_provider_health` bump from `schemaVersion: 1` to `schemaVersion: 2`. No existing documents carry `schemaVersion: 1` in any environment (verified pre-deploy with a Firestore query — if any are found, staging deploy is blocked).
+- The Zod schema is a discriminated read: documents are parsed with `.passthrough()`-disabled strict mode, and any doc not at `schemaVersion: 2` surfaces a structured log `sms.schema.version_mismatch` and is skipped by downstream triggers. This is the forward-compatibility marker — if Phase 5 bumps to 3, 4a-era triggers skip those docs gracefully rather than crashing on unknown fields.
+- Any future schema change documents its migration in `docs/runbooks/schema-migration.md` alongside the code change.
 
 ---
 
