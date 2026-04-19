@@ -16,7 +16,9 @@ export const dispatchTimeoutSweep = onSchedule(
     const snap = await db.collection('dispatches').where('status', '==', 'pending').get()
 
     let timedOutCount = 0
-    const batch = db.batch()
+    const MAX_BATCH_OPS = 250
+    let batch = db.batch()
+    let batchOps = 0
 
     for (const doc of snap.docs) {
       const d = doc.data()
@@ -44,11 +46,21 @@ export const dispatchTimeoutSweep = onSchedule(
           schemaVersion: 1,
         })
         timedOutCount++
+        batchOps += 2
+
+        if (batchOps >= MAX_BATCH_OPS) {
+          await batch.commit()
+          batch = db.batch()
+          batchOps = 0
+        }
       }
     }
 
-    if (timedOutCount > 0) {
+    if (batchOps > 0) {
       await batch.commit()
+    }
+
+    if (timedOutCount > 0) {
       log({
         severity: 'INFO',
         code: 'DISPATCH_TIMEOUT_SWEEP',

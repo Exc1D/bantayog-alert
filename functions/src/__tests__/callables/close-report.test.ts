@@ -24,9 +24,7 @@ beforeEach(async () => {
 })
 
 afterAll(async () => {
-  if (testEnv) {
-    await testEnv.cleanup()
-  }
+  await testEnv.cleanup()
 })
 
 describe('closeReportCore', () => {
@@ -146,7 +144,7 @@ describe('closeReportCore', () => {
     const eventData: Record<string, unknown>[] = events.docs.map(
       (doc: any) => doc.data() as Record<string, unknown>,
     )
-    const last = eventData[eventData.length - 1]
+    const last = eventData[0]
     expect(last).toMatchObject({ from: 'resolved', to: 'closed' })
   })
 

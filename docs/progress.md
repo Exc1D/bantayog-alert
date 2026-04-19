@@ -263,6 +263,21 @@ The Phase 3c implementation plan is ready (33 tasks, 20-40 hours). All state mac
 | C3  | `acceptDispatch` callable sets dispatch to `accepted` — mirror then writes `acknowledged` to report | Two-step status check: dispatch=`accepted`, report=`acknowledged` |
 | C4  | `connectFunctionsEmulator` v10+ takes `(functions, host, port)` — no options object                 | Called with `(webFunctions, 'localhost', 5001)`                   |
 
+### PR #46 review fixes (2026-04-19)
+
+**30 CodeRabbit comments triaged, 3 false positives dismissed, 22 fixes applied across ~20 files.**
+
+| Group | Count | What                                                                                                     |
+| ----- | ----- | -------------------------------------------------------------------------------------------------------- |
+| A CI  | 6     | Lint errors (unused imports, unnecessary conditions), rule coverage gap for `agency_assistance_requests` |
+| B     | 4     | Rate-limit-after-idempotency, assignedTo guard, schema narrowing, role validation                        |
+| C     | 7     | SW guard, nested HTML, idempotency key reset, upsert resilience, VAPID validation                        |
+| D     | 7     | Rules test doc structure, event ordering, placeholder tests → `test.skip()`, tsconfig cleanup            |
+| E     | 4     | Auth user creation, responder sign-in, idempotency key reuse, callable-based progression                 |
+| F     | 3     | Batch size guard in timeout sweep, SW error logging, seed-factory status types                           |
+
+**Dismissed false positives:** provincial_superadmin in close-report (already included), enforceAppCheck on advance-dispatch (already set), dispatch-mirror skip for non-current dispatch (correct behavior).
+
 ---
 
 ## P0 Security Fixes (2026-04-15 — Complete)

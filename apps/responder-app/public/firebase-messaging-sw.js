@@ -31,8 +31,8 @@ try {
     appId,
   })
   messaging = getMessaging(app)
-} catch {
-  // Config may not be available at SW load time in some environments.
+} catch (err) {
+  console.warn('FCM SW init failed:', err)
 }
 
 if (messaging) {

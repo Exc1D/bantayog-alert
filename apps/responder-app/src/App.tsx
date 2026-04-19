@@ -12,11 +12,12 @@ function FcmSetup() {
 
   useEffect(() => {
     if (!user) return
+    if (!('serviceWorker' in navigator)) return
     navigator.serviceWorker
       .register('/firebase-messaging-sw.js')
       .then(() => register())
-      .catch(() => {
-        // SW registration failure is non-fatal — app still works.
+      .catch((err: unknown) => {
+        console.warn('SW registration failed:', err)
       })
   }, [user, register])
 

@@ -2,14 +2,14 @@ import { useCallback, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
 import type { DispatchStatus } from '@bantayog/shared-types'
-import type { AdvanceDispatchRequest } from '@bantayog/shared-validators'
+import type { AdvanceDispatchRequest, AdvanceDispatchTarget } from '@bantayog/shared-validators'
 
 export function useAdvanceDispatch(dispatchId: string) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | undefined>(undefined)
 
   const advance = useCallback(
-    async function (to: DispatchStatus, extras?: { resolutionSummary?: string }) {
+    async function (to: AdvanceDispatchTarget, extras?: { resolutionSummary?: string }) {
       setLoading(true)
       setError(undefined)
       try {
@@ -18,7 +18,7 @@ export function useAdvanceDispatch(dispatchId: string) {
         }
         const advanceDispatch = httpsCallable<AdvanceDispatchRequest, { status: DispatchStatus }>(
           functions,
-          'advanceDispatch'
+          'advanceDispatch',
         )
         await advanceDispatch({
           dispatchId,

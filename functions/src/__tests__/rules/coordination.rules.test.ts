@@ -1,5 +1,5 @@
-import { assertFails } from '@firebase/rules-unit-testing'
-import { collection, getDocs, addDoc } from 'firebase/firestore'
+import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
+import { collection, doc, getDocs, setDoc, addDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv } from '../helpers/rules-harness.js'
 import { seedActiveAccount, staffClaims, ts } from '../helpers/seed-factories.js'
@@ -131,6 +131,23 @@ describe('coordination collections rules', () => {
           requestedAt: ts,
         }),
       )
+    })
+
+    it('muni admin can read own municipality requests', async () => {
+      const unauthed = env.unauthenticatedContext().firestore()
+      await setDoc(doc(unauthed, 'agency_assistance_requests/req-1'), {
+        requestedByMunicipality: 'daet',
+        targetAgencyId: 'bfp-daet',
+        dispatchId: 'd-1',
+        requestType: 'BFP',
+        requestedAt: ts,
+      })
+      const db = authed(
+        env,
+        'daet-admin',
+        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      )
+      await assertSucceeds(getDocs(collection(db, 'agency_assistance_requests')))
     })
   })
 })

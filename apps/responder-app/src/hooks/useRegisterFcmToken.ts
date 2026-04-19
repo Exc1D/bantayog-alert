@@ -6,7 +6,7 @@
  */
 
 import { useCallback } from 'react'
-import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, arrayUnion, serverTimestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import { acquireFcmToken, type FcmTokenResult } from '../services/fcm-client.js'
 
@@ -24,7 +24,7 @@ export function useRegisterFcmToken({
 }: RegisterFcmTokenOptions): UseRegisterFcmTokenReturn {
   const register = useCallback(async (): Promise<FcmTokenResult> => {
     // Guard against browsers without service worker support.
-    const swContainer = Object.hasOwn(navigator, 'serviceWorker') ? navigator.serviceWorker : null
+    const swContainer = 'serviceWorker' in navigator ? navigator.serviceWorker : null
     if (!swContainer) {
       return { token: null, error: 'service_worker_unavailable' }
     }
@@ -38,10 +38,14 @@ export function useRegisterFcmToken({
 
     try {
       const ref = doc(db, responderDocPath)
-      await updateDoc(ref, {
-        fcmTokens: arrayUnion(result.token),
-        fcmTokenRegisteredAt: serverTimestamp(),
-      })
+      await setDoc(
+        ref,
+        {
+          fcmTokens: arrayUnion(result.token),
+          fcmTokenRegisteredAt: serverTimestamp(),
+        },
+        { merge: true },
+      )
     } catch (err) {
       return { token: null, error: err instanceof Error ? err.message : 'firestore_error' }
     }

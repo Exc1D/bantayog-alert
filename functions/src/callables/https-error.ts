@@ -40,9 +40,9 @@ export function requireAuth(
 ): { uid: string; claims: Record<string, unknown> } {
   if (!request.auth) throw new HttpsError('unauthenticated', 'sign-in required')
   const claims = request.auth.token
-  const role = claims.role as string
-  if (!allowedRoles.includes(role)) {
-    throw new HttpsError('permission-denied', `role ${role} is not allowed`)
+  const role = claims.role
+  if (typeof role !== 'string' || !allowedRoles.includes(role)) {
+    throw new HttpsError('permission-denied', `role ${String(role)} is not allowed`)
   }
   return { uid: request.auth.uid, claims }
 }

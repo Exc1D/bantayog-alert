@@ -30,9 +30,13 @@ export async function acquireFcmToken(
   }
 
   try {
+    const vapidKey = import.meta.env.VITE_FCM_VAPID_PUBLIC_KEY
+    if (!vapidKey) {
+      return { token: null, error: 'vapid_key_missing' }
+    }
     const messaging = getMessaging(app)
     const token = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FCM_VAPID_PUBLIC_KEY as string,
+      vapidKey,
       serviceWorkerRegistration,
     })
     return { token }

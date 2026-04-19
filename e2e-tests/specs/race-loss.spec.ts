@@ -15,7 +15,7 @@ import { test } from '@playwright/test'
  */
 
 test.describe('race condition handling', () => {
-  test('acceptDispatch is idempotent — concurrent accepts are safe', async () => {
+  test.skip('acceptDispatch is idempotent — concurrent accepts are safe', async () => {
     // 1. Admin: dispatch to responder
     // 2. Responder A: accepts dispatch (status → accepted via transaction)
     // 3. Responder B: tries to accept same dispatch (idempotency guard returns cached result)
@@ -23,7 +23,7 @@ test.describe('race condition handling', () => {
     // Note: This is a backend race safety test — UI may not distinguish idempotent from first accept
   })
 
-  test('responder sees cancelled screen when admin cancels after accept', async () => {
+  test.skip('responder sees cancelled screen when admin cancels after accept', async () => {
     // 1. Admin: dispatch → Responder: accept (status: pending → accepted)
     // 2. Admin: cancels dispatch (status: accepted → cancelled)
     // 3. Responder: on dispatch detail page with status=accepted (stale snapshot)
@@ -32,7 +32,7 @@ test.describe('race condition handling', () => {
     // Note: Uses onSnapshot for real-time status change detection
   })
 
-  test('dispatch list reflects status changes via onSnapshot', async () => {
+  test.skip('dispatch list reflects status changes via onSnapshot', async () => {
     // 1. Admin: dispatch to responder (status: pending)
     // 2. Responder: on dispatch list page — sees pending dispatch
     // 3. Responder: accepts dispatch (status → accepted in Firestore)
@@ -40,7 +40,7 @@ test.describe('race condition handling', () => {
     // 5. Verify: list shows updated status without manual refresh
   })
 
-  test('overdue dispatch shows deadline warning', async () => {
+  test.skip('overdue dispatch shows deadline warning', async () => {
     // 1. Admin: dispatch with acknowledgementDeadlineAt = now + 30 seconds (short deadline for test)
     // 2. Responder: accepts dispatch, does not acknowledge within deadline
     // 3. Verify: dispatch list shows overdue indicator / dispatch shows deadline-exceeded state

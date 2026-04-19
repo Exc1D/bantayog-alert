@@ -91,13 +91,13 @@ export function DispatchDetailPage() {
         </button>
       )}
       {acceptError && (
-        <p style={{ color: 'red' }}>
+        <div style={{ color: 'red' }}>
           {acceptError.message.includes('already-exists') ? (
             <RaceLostBanner />
           ) : (
             `Error: ${acceptError.message}`
           )}
-        </p>
+        </div>
       )}
       {dispatch.status === 'acknowledged' && !advanceState.loading && (
         <button

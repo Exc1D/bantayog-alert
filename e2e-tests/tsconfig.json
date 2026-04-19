@@ -1,5 +1,4 @@
 {
-  "name": "@bantayog/e2e-tests",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

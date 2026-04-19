@@ -37,11 +37,11 @@ test.describe('responder PWA', () => {
   })
 
   test.describe('dispatch list', () => {
-    test('shows empty state when no dispatches', async () => {
+    test.skip('shows empty state when no dispatches', async () => {
       // Requires authenticated responder session
     })
 
-    test('shows active dispatches when available', async () => {
+    test.skip('shows active dispatches when available', async () => {
       // Requires seeded dispatch for responder
     })
   })

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
 
@@ -7,6 +7,9 @@ export function useAcceptDispatch(dispatchId: string) {
   const [error, setError] = useState<Error | undefined>()
   // Idempotency key generated once per hook mount — equivalent to 30-second client memory
   const keyRef = useRef(crypto.randomUUID())
+  useEffect(() => {
+    keyRef.current = crypto.randomUUID()
+  }, [dispatchId])
 
   async function accept() {
     setLoading(true)

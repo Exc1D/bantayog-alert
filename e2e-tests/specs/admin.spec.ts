@@ -45,15 +45,15 @@ test.describe('admin desktop PWA', () => {
       await expect(page.getByRole('heading', { name: /triage/i })).toBeVisible()
     })
 
-    test('verifies a pending report', async () => {
+    test.skip('verifies a pending report', async () => {
       // Requires seeded report in inbox
     })
 
-    test('rejects a pending report with reason', async () => {
+    test.skip('rejects a pending report with reason', async () => {
       // Requires seeded report in inbox
     })
 
-    test('dispatches a verified report to a responder', async () => {
+    test.skip('dispatches a verified report to a responder', async () => {
       // Requires verified report + seeded responder
     })
   })

@@ -336,6 +336,8 @@ export async function seedDispatch(
       | 'on_scene'
       | 'resolved'
       | 'declined'
+      | 'timed_out'
+      | 'superseded'
       | 'cancelled'
   },
 ): Promise<{ dispatchId: string }> {

@@ -73,11 +73,7 @@ describe('responder direct-write on dispatches/{id}', () => {
       agencyId: 'bfp',
     })
     await assertFails(
-      setDoc(
-        doc(authedDb, 'dispatches/d-2'),
-        { status: 'resolved' },
-        { merge: true },
-      ),
+      setDoc(doc(authedDb, 'dispatches/d-2'), { status: 'resolved' }, { merge: true }),
     )
   })
 
@@ -85,7 +81,7 @@ describe('responder direct-write on dispatches/{id}', () => {
     const db = env.unauthenticatedContext().firestore()
     await setDoc(doc(db, 'dispatches/d-3'), {
       status: 'acknowledged',
-      responderUid: 'resp-1',
+      assignedTo: { uid: 'resp-1' },
       municipalityId: 'daet',
     })
 
@@ -95,11 +91,7 @@ describe('responder direct-write on dispatches/{id}', () => {
       agencyId: 'bfp',
     })
     await assertFails(
-      setDoc(
-        doc(authedDb, 'dispatches/d-3'),
-        { status: 'cancelled' },
-        { merge: true },
-      ),
+      setDoc(doc(authedDb, 'dispatches/d-3'), { status: 'cancelled' }, { merge: true }),
     )
   })
 

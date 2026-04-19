@@ -29,9 +29,7 @@ beforeEach(async () => {
 })
 
 afterAll(async () => {
-  if (testEnv) {
-    await testEnv.cleanup()
-  }
+  await testEnv.cleanup()
 })
 
 describe('cancelDispatchCore (3b branches)', () => {

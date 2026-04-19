@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-condition */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
@@ -61,7 +61,11 @@ describe('advanceDispatchCore', () => {
 
     const evts = await db.collection('dispatch_events').where('dispatchId', '==', dispatchId).get()
     expect(evts.docs).toHaveLength(1)
-    expect(evts.docs[0].data()).toMatchObject({ from: 'accepted', to: 'acknowledged', actorUid: 'r1' })
+    expect(evts.docs[0].data()).toMatchObject({
+      from: 'accepted',
+      to: 'acknowledged',
+      actorUid: 'r1',
+    })
   })
 
   it('rejects INVALID_STATUS_TRANSITION for backward steps (en_route -> acknowledged)', async () => {
@@ -86,7 +90,7 @@ describe('advanceDispatchCore', () => {
         idempotencyKey: crypto.randomUUID(),
         actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
         now: Timestamp.now(),
-      })
+      }),
     ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
   })
 
@@ -105,7 +109,7 @@ describe('advanceDispatchCore', () => {
         idempotencyKey: crypto.randomUUID(),
         actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
         now: Timestamp.now(),
-      })
+      }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
@@ -131,7 +135,7 @@ describe('advanceDispatchCore', () => {
         idempotencyKey: crypto.randomUUID(),
         actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
         now: Timestamp.now(),
-      })
+      }),
     ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
   })
 

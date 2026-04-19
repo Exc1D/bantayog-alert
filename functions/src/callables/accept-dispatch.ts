@@ -30,19 +30,6 @@ export async function acceptDispatchCore(
 ): Promise<{ status: 'accepted'; dispatchId: string; fromCache: boolean }> {
   const correlationId = crypto.randomUUID()
 
-  // Enforce rate limit: 30 accepts/minute per responder
-  const rl = await checkRateLimit(db, {
-    key: `accept::${deps.actor.uid}`,
-    limit: 30,
-    windowSeconds: 60,
-    now: deps.now,
-  })
-  if (!rl.allowed) {
-    throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-      retryAfterSeconds: rl.retryAfterSeconds,
-    })
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result, fromCache } = await withIdempotency(
@@ -52,15 +39,27 @@ export async function acceptDispatchCore(
       payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
-    async () =>
-      db.runTransaction(async (tx) => {
+    async () => {
+      const rl = await checkRateLimit(db, {
+        key: `accept::${deps.actor.uid}`,
+        limit: 30,
+        windowSeconds: 60,
+        now: deps.now,
+      })
+      if (!rl.allowed) {
+        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
+          retryAfterSeconds: rl.retryAfterSeconds,
+        })
+      }
+
+      return db.runTransaction(async (tx) => {
         const dispatchRef = db.collection('dispatches').doc(deps.dispatchId)
         const snap = await tx.get(dispatchRef)
         if (!snap.exists) {
           throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found')
         }
-        const d = snap.data() as { status: string; assignedTo: { uid: string } }
-        if (d.assignedTo.uid !== deps.actor.uid) {
+        const d = snap.data() as { status: string; assignedTo?: { uid: string } }
+        if (!d.assignedTo?.uid || d.assignedTo.uid !== deps.actor.uid) {
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Not assigned to this responder')
         }
         if (d.status !== 'pending') {
@@ -89,7 +88,8 @@ export async function acceptDispatchCore(
         })
 
         return { status: 'accepted' as const, dispatchId: deps.dispatchId }
-      }),
+      })
+    },
   )
 
   return { ...result, fromCache }

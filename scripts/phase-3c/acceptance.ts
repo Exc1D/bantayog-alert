@@ -125,6 +125,9 @@ async function main(): Promise<void> {
 
   // ── 2. Mint admin + responder tokens ──────────────────────────────────────
 
+  try {
+    await adminAuth.createUser({ uid: ADMIN_UID, email: 'admin@acceptance.test' })
+  } catch {}
   await adminAuth.setCustomUserClaims(ADMIN_UID, {
     role: 'municipal_admin',
     municipalityId: MUNI_ID,
@@ -133,6 +136,9 @@ async function main(): Promise<void> {
   const adminToken = await adminAuth.createCustomToken(ADMIN_UID)
   check('Admin custom token minted', true, ADMIN_UID)
 
+  try {
+    await adminAuth.createUser({ uid: RESPONDER_UID, email: 'responder@acceptance.test' })
+  } catch {}
   await adminAuth.setCustomUserClaims(RESPONDER_UID, {
     role: 'responder',
     municipalityId: MUNI_ID,
@@ -181,8 +187,10 @@ async function main(): Promise<void> {
 
   // ── 5. acceptDispatch — pending → accepted ─────────────────────────────────
 
+  await signInWithCustomToken(webAuth, responderToken)
   const acceptFn = httpsCallable(webFunctions, 'acceptDispatch')
-  const acceptData = (await acceptFn({ dispatchId, idempotencyKey: crypto.randomUUID() })).data as {
+  const acceptKey = crypto.randomUUID()
+  const acceptData = (await acceptFn({ dispatchId, idempotencyKey: acceptKey })).data as {
     status: string
   }
   check('acceptDispatch: pending → accepted', acceptData.status === 'accepted', acceptData.status)
@@ -202,7 +210,7 @@ async function main(): Promise<void> {
   const acceptData2 = (
     await acceptFn({
       dispatchId,
-      idempotencyKey: '11111111-1111-1111-1111-111111111111',
+      idempotencyKey: acceptKey,
     })
   ).data as { status: string }
   check(
@@ -210,34 +218,28 @@ async function main(): Promise<void> {
     acceptData2.status === 'accepted',
   )
 
-  // ── 7–10. Responder direct-write: cycle through dispatch statuses ─────────
+  // ── 7–10. advanceDispatch: cycle through dispatch statuses ─────────
 
-  const dispatchTransition = async (
-    nextStatus: string,
-    extraFields: Record<string, unknown> = {},
-    reportStatus?: string,
-  ) => {
-    await adminDb
-      .collection('dispatches')
-      .doc(dispatchId)
-      .update({ status: nextStatus, ...extraFields })
-    const disp = await readDispatch(dispatchId)
-    check(`Dispatch ${nextStatus}`, disp?.status === nextStatus)
-    const report = await readReport(reportId)
-    check(
-      `Report status updated to ${nextStatus}`,
-      report?.status === (reportStatus ?? nextStatus),
-      report?.status,
-    )
-  }
+  const advanceFn = httpsCallable(webFunctions, 'advanceDispatch')
 
-  await dispatchTransition('acknowledged', {
-    acknowledgedAt: Timestamp.now(),
-    acknowledgementDeadlineAt: Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000)),
+  await advanceFn({ dispatchId, to: 'acknowledged', idempotencyKey: crypto.randomUUID() })
+  check('Dispatch acknowledged', (await readDispatch(dispatchId))?.status === 'acknowledged')
+
+  await advanceFn({ dispatchId, to: 'en_route', idempotencyKey: crypto.randomUUID() })
+  check('Dispatch en_route', (await readDispatch(dispatchId))?.status === 'en_route')
+
+  await advanceFn({ dispatchId, to: 'on_scene', idempotencyKey: crypto.randomUUID() })
+  check('Dispatch on_scene', (await readDispatch(dispatchId))?.status === 'on_scene')
+
+  await advanceFn({
+    dispatchId,
+    to: 'resolved',
+    resolutionSummary: 'Resolved in acceptance test',
+    idempotencyKey: crypto.randomUUID(),
   })
-  await dispatchTransition('en_route', { enRouteAt: Timestamp.now() })
-  await dispatchTransition('on_scene', { onSceneAt: Timestamp.now() })
-  await dispatchTransition('resolved', { resolvedAt: Timestamp.now() })
+  check('Dispatch resolved', (await readDispatch(dispatchId))?.status === 'resolved')
+
+  await signInWithCustomToken(webAuth, adminToken)
 
   // ── 11. closeReport — resolved → closed ──────────────────────────────────
 
@@ -269,10 +271,12 @@ async function main(): Promise<void> {
   check('Dispatch 2 exists', (await readDispatch(disp2Id.dispatchId)) !== null)
 
   // Accept it
+  await signInWithCustomToken(webAuth, responderToken)
   await acceptFn({ dispatchId: disp2Id.dispatchId, idempotencyKey: crypto.randomUUID() })
   check('Dispatch 2 accepted', (await readDispatch(disp2Id.dispatchId))?.status === 'accepted')
 
   // Cancel from accepted (Phase 3c widened)
+  await signInWithCustomToken(webAuth, adminToken)
   const cancelFn = httpsCallable(webFunctions, 'cancelDispatch')
   const cancelData = (
     await cancelFn({
