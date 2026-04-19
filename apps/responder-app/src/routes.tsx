@@ -15,7 +15,14 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  { path: '/dispatches/:dispatchId', element: <DispatchDetailPage /> },
+  {
+    path: '/dispatches/:dispatchId',
+    element: (
+      <ProtectedRoute>
+        <DispatchDetailPage />
+      </ProtectedRoute>
+    ),
+  },
   { path: '/dispatches', element: <Navigate to="/" replace /> },
 ])
 
