@@ -125,7 +125,7 @@ export function DispatchDetailPage() {
         />
       )}
       {advanceState.loading && <p>Updating...</p>}
-      {advanceState.error && (dispatch.status as string) !== 'cancelled' && (
+      {advanceState.error && (
         <p style={{ color: 'red' }}>
           {advanceState.error.message.includes('permission-denied') ? (
             <em>Dispatch was cancelled by an administrator.</em>
