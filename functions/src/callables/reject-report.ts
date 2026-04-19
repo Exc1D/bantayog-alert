@@ -2,9 +2,9 @@ import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
-import { adminDb } from '../firebase-admin'
-import { withIdempotency } from '../idempotency/guard'
-import { checkRateLimit } from '../services/rate-limit'
+import { adminDb } from '../admin-init.js'
+import { withIdempotency } from '../idempotency/guard.js'
+import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
 
 const REJECT_REASONS = [

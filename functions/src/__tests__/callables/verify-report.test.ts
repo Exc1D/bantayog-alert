@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { verifyReportCore } from '../../callables/verify-report'
-import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories'
+import { verifyReportCore } from '../../callables/verify-report.js'
+import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
 import { Timestamp } from 'firebase-admin/firestore'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'

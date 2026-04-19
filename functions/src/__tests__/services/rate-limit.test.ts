@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
-import { checkRateLimit } from '../../services/rate-limit'
+import { checkRateLimit } from '../../services/rate-limit.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 

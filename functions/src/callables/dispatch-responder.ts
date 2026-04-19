@@ -8,10 +8,10 @@ import {
   isValidReportTransition,
   logEvent,
 } from '@bantayog/shared-validators'
-import { adminDb, rtdb as adminRtdb } from '../firebase-admin'
-import { withIdempotency } from '../idempotency/guard'
-import { checkRateLimit } from '../services/rate-limit'
-import { bantayogErrorToHttps } from './https-error'
+import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
+import { withIdempotency } from '../idempotency/guard.js'
+import { checkRateLimit } from '../services/rate-limit.js'
+import { bantayogErrorToHttps } from './https-error.js'
 
 const InputSchema = z
   .object({

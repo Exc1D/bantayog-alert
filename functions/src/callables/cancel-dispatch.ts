@@ -8,10 +8,10 @@ import {
   logDimension,
   type DispatchStatus,
 } from '@bantayog/shared-validators'
-import { adminDb } from '../firebase-admin'
-import { withIdempotency } from '../idempotency/guard'
-import { checkRateLimit } from '../services/rate-limit'
-import { bantayogErrorToHttps } from './https-error'
+import { adminDb } from '../admin-init.js'
+import { withIdempotency } from '../idempotency/guard.js'
+import { checkRateLimit } from '../services/rate-limit.js'
+import { bantayogErrorToHttps } from './https-error.js'
 
 const CANCEL_REASONS = [
   'responder_unavailable',

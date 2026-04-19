@@ -1,7 +1,11 @@
 import { initializeApp, getApp, getApps } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
-import { httpsCallable, getFunctions as webGetFunctions } from 'firebase/functions'
+import {
+  httpsCallable,
+  getFunctions as webGetFunctions,
+  connectFunctionsEmulator,
+} from 'firebase/functions'
 import { initializeApp as webInitApp } from 'firebase/app'
 import { getAuth as webGetAuth, signInWithCustomToken, connectAuthEmulator } from 'firebase/auth'
 
@@ -15,7 +19,7 @@ if (EMU) {
 }
 
 const PROJECT_ID =
-  process.env.GCLOUD_PROJECT ?? process.env.FIREBASE_PROJECT_ID ?? 'bantayog-alert-dev'
+  process.env.GCLOUD_PROJECT ?? process.env.FIREBASE_PROJECT_ID ?? 'bantayog-alert-staging'
 
 if (getApps().length === 0) {
   initializeApp({ projectId: PROJECT_ID })
@@ -78,12 +82,19 @@ async function main() {
   check('Admin custom token minted', true, adminUid)
 
   // Set up web SDK client for callable invocation.
-  const webApp = webInitApp({ appId: 'demo' })
+  // For emulator, use minimal config (API key is required even for emulator mode)
+  const webApp = webInitApp({
+    apiKey: 'emulator-api-key',
+    authDomain: 'localhost',
+    projectId: PROJECT_ID,
+    appId: 'demo-app',
+  })
   const webAuth = webGetAuth(webApp)
   const webFunctions = webGetFunctions(webApp)
 
   if (EMU) {
     connectAuthEmulator(webAuth, 'http://localhost:9099', { disableWarnings: true })
+    connectFunctionsEmulator(webFunctions, 'http://localhost:5001', { disableWarnings: true })
   }
 
   await signInWithCustomToken(webAuth, adminCustomToken)

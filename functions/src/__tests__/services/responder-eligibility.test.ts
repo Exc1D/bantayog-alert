@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import type { Firestore } from 'firebase-admin/firestore'
 import type { Database } from 'firebase-admin/database'
-import { getEligibleResponders } from '../../services/responder-eligibility'
-import { seedResponderDoc, seedResponderShift } from '../helpers/seed-factories'
+import { getEligibleResponders } from '../../services/responder-eligibility.js'
+import { seedResponderDoc, seedResponderShift } from '../helpers/seed-factories.js'
 
 let testEnv: RulesTestEnvironment
 

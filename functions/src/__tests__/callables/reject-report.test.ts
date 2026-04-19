@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { rejectReportCore } from '../../callables/reject-report'
-import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories'
+import { rejectReportCore } from '../../callables/reject-report.js'
+import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
 import { Timestamp } from 'firebase-admin/firestore'
 
 let testEnv: RulesTestEnvironment

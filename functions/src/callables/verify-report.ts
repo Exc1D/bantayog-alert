@@ -8,9 +8,9 @@ import {
   type ReportStatus,
 } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from './https-error.js'
-import { adminDb } from '../firebase-admin'
-import { withIdempotency } from '../idempotency/guard'
-import { checkRateLimit } from '../services/rate-limit'
+import { adminDb } from '../admin-init.js'
+import { withIdempotency } from '../idempotency/guard.js'
+import { checkRateLimit } from '../services/rate-limit.js'
 import { logDimension } from '@bantayog/shared-validators'
 
 const InputSchema = z

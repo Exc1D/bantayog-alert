@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { dispatchResponderCore } from '../../callables/dispatch-responder'
+import { dispatchResponderCore } from '../../callables/dispatch-responder.js'
 import {
   seedReportAtStatus,
   seedActiveAccount,
   seedResponderDoc,
   seedResponderShift,
   staffClaims,
-} from '../helpers/seed-factories'
+} from '../helpers/seed-factories.js'
 import { Timestamp } from 'firebase-admin/firestore'
 
 let testEnv: RulesTestEnvironment

@@ -3,7 +3,7 @@ import {
   setStaffClaimsInputSchema,
   suspendStaffAccountInputSchema,
 } from '@bantayog/shared-validators'
-import { adminAuth, adminDb } from '../firebase-admin.js'
+import { adminAuth, adminDb } from '../admin-init.js'
 import {
   buildActiveAccountDoc,
   buildClaimRevocationDoc,

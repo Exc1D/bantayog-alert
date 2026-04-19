@@ -6,13 +6,13 @@ import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/
 vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
 }))
-import { cancelDispatchCore } from '../../callables/cancel-dispatch'
+import { cancelDispatchCore } from '../../callables/cancel-dispatch.js'
 import {
   seedReportAtStatus,
   seedActiveAccount,
   seedDispatch,
   staffClaims,
-} from '../helpers/seed-factories'
+} from '../helpers/seed-factories.js'
 import { Timestamp } from 'firebase-admin/firestore'
 
 let testEnv: RulesTestEnvironment
