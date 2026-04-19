@@ -26,6 +26,7 @@ export const BANTAYOG_TO_HTTPS_CODE: Record<BantayogErrorCode, FunctionsErrorCod
   UPLOAD_URL_GENERATION_FAILED: 'internal',
   MEDIA_PROCESSING_FAILED: 'internal',
   INVALID_STATUS_TRANSITION: 'failed-precondition',
+  FAILED_PRECONDITION: 'failed-precondition',
   IDEMPOTENCY_KEY_CONFLICT: 'already-exists',
 }
 

@@ -11,9 +11,9 @@ import { logEvent, LOG_DIMENSION_MAX } from './logging.js'
 // ─── BantayogErrorCode enum ────────────────────────────────────────────────
 
 describe('BantayogErrorCode', () => {
-  it('has 18 named error codes', () => {
+  it('has 19 named error codes', () => {
     const codes = Object.values(BantayogErrorCode)
-    expect(codes).toHaveLength(18)
+    expect(codes).toHaveLength(19)
   })
 
   it('isBantayogErrorCode returns true for every enum member', () => {

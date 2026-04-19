@@ -78,6 +78,7 @@ export const DISPATCH_TRANSITIONS: readonly [DispatchStatus, DispatchStatus][] =
   ['accepted', 'acknowledged'],
   ['acknowledged', 'in_progress'],
   ['in_progress', 'resolved'],
+  ['pending', 'cancelled'],
   ['pending', 'declined'],
 ] as const
 

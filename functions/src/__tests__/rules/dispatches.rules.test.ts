@@ -2,7 +2,7 @@ import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv } from '../helpers/rules-harness.js'
-import { seedActiveAccount, seedDispatch, staffClaims, ts } from '../helpers/seed-factories.js'
+import { seedActiveAccount, seedDispatchRT, staffClaims, ts } from '../helpers/seed-factories.js'
 
 let env: Awaited<ReturnType<typeof createTestEnv>>
 
@@ -19,7 +19,7 @@ beforeAll(async () => {
     municipalityId: 'daet',
     agencyId: 'bfp',
   })
-  await seedDispatch(env, 'dispatch-1', { municipalityId: 'daet' })
+  await seedDispatchRT(env, 'dispatch-1', { municipalityId: 'daet' })
 })
 
 afterAll(async () => {

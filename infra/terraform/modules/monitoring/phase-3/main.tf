@@ -67,3 +67,22 @@ resource "google_monitoring_alert_policy" "sweep_alert" {
   }
   notification_channels = var.notification_channel_ids
 }
+
+resource "google_logging_metric" "dispatch_created" {
+  name        = "${var.env}-bantayog-dispatch-created"
+  description = "Count of dispatches created via dispatchResponder"
+  filter      = "resource.type=\"cloud_function\" AND jsonPayload.event=\"dispatch.created\" OR resource.type=\"cloud_run_revision\" AND jsonPayload.event=\"dispatch.created\""
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+    labels {
+      key         = "municipality_id"
+      value_type  = "STRING"
+      description = "Municipality the dispatch was created in"
+    }
+  }
+  label_extractors = {
+    "municipality_id" = "EXTRACT(jsonPayload.municipalityId)"
+  }
+}

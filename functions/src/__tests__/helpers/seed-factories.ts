@@ -1,8 +1,14 @@
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
+import { Timestamp } from 'firebase-admin/firestore'
+import type { ReportStatus } from '@bantayog/shared-types'
 
 export const ts = 1713350400000
 
+/**
+ * Seeds an active_accounts document using RulesTestEnvironment context.
+ * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
+ */
 export async function seedActiveAccount(
   env: RulesTestEnvironment,
   opts: {
@@ -46,6 +52,10 @@ export function staffClaims(opts: {
   }
 }
 
+/**
+ * Seeds reports + report_ops + report_private using RulesTestEnvironment context.
+ * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
+ */
 export async function seedReport(
   env: RulesTestEnvironment,
   reportId: string,
@@ -94,6 +104,10 @@ export async function seedReport(
   })
 }
 
+/**
+ * Seeds an agencies document using RulesTestEnvironment context.
+ * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
+ */
 export async function seedAgency(
   env: RulesTestEnvironment,
   agencyId: string,
@@ -114,6 +128,10 @@ export async function seedAgency(
   })
 }
 
+/**
+ * Seeds a users document using RulesTestEnvironment context.
+ * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
+ */
 export async function seedUser(
   env: RulesTestEnvironment,
   userId: string,
@@ -135,6 +153,10 @@ export async function seedUser(
   })
 }
 
+/**
+ * Seeds a responders document using RulesTestEnvironment context.
+ * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
+ */
 export async function seedResponder(
   env: RulesTestEnvironment,
   responderId: string,
@@ -158,7 +180,11 @@ export async function seedResponder(
   })
 }
 
-export async function seedDispatch(
+/**
+ * Seeds a dispatches document using RulesTestEnvironment context.
+ * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
+ */
+export async function seedDispatchRT(
   env: RulesTestEnvironment,
   dispatchId: string,
   overrides: Partial<Record<string, unknown>> = {},
@@ -179,4 +205,151 @@ export async function seedDispatch(
       ...overrides,
     })
   })
+}
+
+import type { Firestore } from 'firebase-admin/firestore'
+import type { Database } from 'firebase-admin/database'
+
+interface SeedVerifiedReportOptions {
+  reportId?: string
+  municipalityId?: string
+  municipalityLabel?: string
+  reporterUid?: string
+  severity?: 'low' | 'medium' | 'high' | 'critical'
+}
+
+/**
+ * Seeds a report at a specific lifecycle status using Firestore admin SDK directly.
+ * Use with withSecurityRulesDisabled() or in Cloud Functions — not for RulesTestEnvironment context.
+ * For mid-lifecycle states (new, awaiting_verify, verified) that bypass processInboxItem.
+ */
+export async function seedReportAtStatus(
+  db: Firestore,
+  status: ReportStatus,
+  o: SeedVerifiedReportOptions = {},
+): Promise<{ reportId: string }> {
+  const reportId = o.reportId ?? db.collection('reports').doc().id
+  const municipalityId = o.municipalityId ?? 'daet'
+  const municipalityLabel = o.municipalityLabel ?? 'Daet'
+  const now = Timestamp.now()
+
+  await db
+    .collection('reports')
+    .doc(reportId)
+    .set({
+      reportId,
+      status,
+      municipalityId,
+      municipalityLabel,
+      source: 'citizen_pwa',
+      severityDerived: o.severity ?? 'medium',
+      correlationId: crypto.randomUUID(),
+      createdAt: now,
+      lastStatusAt: now,
+      lastStatusBy: 'system:seed',
+      schemaVersion: 1,
+    })
+
+  await db
+    .collection('report_private')
+    .doc(reportId)
+    .set({
+      reportId,
+      reporterUid: o.reporterUid ?? 'reporter-1',
+      rawDescription: 'Seed description',
+      coordinatesPrecise: { lat: 14.1134, lng: 122.9554 },
+      schemaVersion: 1,
+    })
+
+  await db.collection('report_ops').doc(reportId).set({
+    reportId,
+    verifyQueuePriority: 0,
+    assignedMunicipalityAdmins: [],
+    schemaVersion: 1,
+  })
+
+  return { reportId }
+}
+
+/**
+ * Seeds a responders document using Firestore admin SDK directly.
+ * Use with withSecurityRulesDisabled() or in Cloud Functions — not for RulesTestEnvironment context.
+ */
+export async function seedResponderDoc(
+  db: Firestore,
+  o: {
+    uid: string
+    municipalityId: string
+    agencyId: string
+    isActive: boolean
+    displayName?: string
+  },
+): Promise<void> {
+  await db
+    .collection('responders')
+    .doc(o.uid)
+    .set({
+      uid: o.uid,
+      municipalityId: o.municipalityId,
+      agencyId: o.agencyId,
+      displayName: o.displayName ?? `Responder ${o.uid}`,
+      isActive: o.isActive,
+      fcmTokens: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      schemaVersion: 1,
+    })
+}
+
+/**
+ * Seeds a responder shift index using Firebase Realtime Database admin SDK directly.
+ * Use in Cloud Functions context — not for RulesTestEnvironment RTDB context.
+ */
+export async function seedResponderShift(
+  rtdb: Database,
+  municipalityId: string,
+  uid: string,
+  isOnShift: boolean,
+): Promise<void> {
+  await rtdb
+    .ref(`/responder_index/${municipalityId}/${uid}`)
+    .set({ isOnShift, updatedAt: Date.now() })
+}
+
+/**
+ * Seeds a dispatch document using Firestore admin SDK directly.
+ * Use with withSecurityRulesDisabled() or in Cloud Functions — not for RulesTestEnvironment context.
+ */
+export async function seedDispatch(
+  db: Firestore,
+  o: {
+    dispatchId?: string
+    reportId: string
+    responderUid: string
+    agencyId?: string
+    municipalityId?: string
+    status?: 'pending' | 'accepted' | 'acknowledged' | 'in_progress'
+  },
+): Promise<{ dispatchId: string }> {
+  const dispatchId = o.dispatchId ?? db.collection('dispatches').doc().id
+  const now = Timestamp.now()
+  await db
+    .collection('dispatches')
+    .doc(dispatchId)
+    .set({
+      dispatchId,
+      reportId: o.reportId,
+      status: o.status ?? 'pending',
+      assignedTo: {
+        uid: o.responderUid,
+        agencyId: o.agencyId ?? 'bfp-daet',
+        municipalityId: o.municipalityId ?? 'daet',
+      },
+      dispatchedAt: now,
+      lastStatusAt: now,
+      acknowledgementDeadlineAt: Timestamp.fromMillis(now.toMillis() + 15 * 60 * 1000),
+      correlationId: crypto.randomUUID(),
+      schemaVersion: 1,
+    })
+  return { dispatchId }
 }

@@ -1,10 +1,11 @@
-import styles from './App.module.css'
+import { RouterProvider } from 'react-router-dom'
+import { AuthProvider } from './app/auth-provider'
+import { router } from './routes'
 
-export function App() {
+export default function App() {
   return (
-    <main className={styles.container}>
-      <h1 className={styles.heading}>Bantayog Alert — Admin</h1>
-      <p className={styles.subheading}>Phase 0 scaffolding. Admin dashboard arrives in Phase 3.</p>
-    </main>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   )
 }
