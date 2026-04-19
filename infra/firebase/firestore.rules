@@ -50,6 +50,7 @@ service cloud.firestore {
       return       (from == 'accepted' && to == 'acknowledged')
           ||       (from == 'acknowledged' && to == 'in_progress')
           ||       (from == 'in_progress' && to == 'resolved')
+          ||       (from == 'pending' && to == 'cancelled')
           ||       (from == 'pending' && to == 'declined')
           || false;
     }
