@@ -43,11 +43,13 @@ export async function acceptDispatchCore(
     })
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
   const { result, fromCache } = await withIdempotency(
     db,
     {
       key: `acceptDispatch:${deps.actor.uid}:${deps.idempotencyKey}`,
-      payload: deps,
+      payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
     async () =>

@@ -15,15 +15,20 @@ import { requireAuth, bantayogErrorToHttps } from './https-error.js'
 
 export const advanceDispatchCore = async (
   db: FirebaseFirestore.Firestore,
-  req: AdvanceDispatchRequest & { actor: { uid: string; claims: { role: string; municipalityId?: string } }; now: Timestamp }
+  req: AdvanceDispatchRequest & {
+    actor: { uid: string; claims: { role: string; municipalityId?: string } }
+    now: Timestamp
+  },
 ) => {
   const { dispatchId, to, resolutionSummary, idempotencyKey, actor, now } = req
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = req
   const { result } = await withIdempotency(
     db,
     {
       key: `advanceDispatch:${actor.uid}:${idempotencyKey}`,
-      payload: req,
+      payload: idempotentPayload,
       now: () => now.toMillis(),
     },
     async () =>
@@ -39,7 +44,10 @@ export const advanceDispatchCore = async (
 
         // Access control
         if (actor.claims.role !== 'responder' || dispatch.assignedTo.uid !== actor.uid) {
-          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only assigned responder can advance')
+          throw new BantayogError(
+            BantayogErrorCode.FORBIDDEN,
+            'Only assigned responder can advance',
+          )
         }
 
         const from = dispatch.status
@@ -89,7 +97,7 @@ export const advanceDispatchCore = async (
         })
 
         return { status: to }
-      })
+      }),
   )
 
   return result
@@ -104,7 +112,10 @@ export const advanceDispatch = onCall(
       const data = advanceDispatchRequestSchema.parse(request.data)
       return await advanceDispatchCore(adminDb, {
         ...data,
-        actor: { uid: actor.uid, claims: actor.claims as any },
+        actor: {
+          uid: actor.uid,
+          claims: actor.claims as { role: string; municipalityId?: string },
+        },
         now: Timestamp.now(),
       })
     } catch (error) {
@@ -112,9 +123,9 @@ export const advanceDispatch = onCall(
         throw bantayogErrorToHttps(error)
       }
       if (error instanceof z.ZodError) {
-        throw new HttpsError('invalid-argument', error.errors[0]?.message ?? 'Invalid argument')
+        throw new HttpsError('invalid-argument', error.issues[0]?.message ?? 'Invalid argument')
       }
       throw error
     }
-  }
+  },
 )

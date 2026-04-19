@@ -44,11 +44,13 @@ export async function dispatchResponderCore(
 ) {
   const correlationId = crypto.randomUUID()
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency(
     db,
     {
       key: `dispatchResponder:${deps.actor.uid}:${deps.idempotencyKey}`,
-      payload: deps,
+      payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
     async () => {

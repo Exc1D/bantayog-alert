@@ -148,6 +148,9 @@ importers:
       '@bantayog/shared-ui':
         specifier: workspace:*
         version: link:../../packages/shared-ui
+      '@bantayog/shared-validators':
+        specifier: workspace:*
+        version: link:../../packages/shared-validators
       '@capacitor/core':
         specifier: ^8.3.1
         version: 8.3.1

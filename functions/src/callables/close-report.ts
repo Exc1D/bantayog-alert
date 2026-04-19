@@ -49,11 +49,13 @@ export async function closeReportCore(
 ): Promise<CloseReportResult> {
   const correlationId = crypto.randomUUID()
 
-  const { result } = await withIdempotency<CloseReportCoreDeps, CloseReportResult>(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
+  const { result } = await withIdempotency<Omit<CloseReportCoreDeps, 'now'>, CloseReportResult>(
     db,
     {
       key: `closeReport:${deps.actor.uid}:${deps.idempotencyKey}`,
-      payload: deps,
+      payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
     async () => {

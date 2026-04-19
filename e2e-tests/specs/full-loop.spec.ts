@@ -3,14 +3,13 @@ import { test } from '@playwright/test'
 /**
  * full-loop.spec.ts — End-to-end test for the complete citizen → admin → responder loop.
  *
- * ALL TESTS SKIPPED: requires all three apps working with Firebase Auth + Firestore.
+ * ALL TESTS STUBBED: requires all three apps working with Firebase Auth + Firestore.
  * Blocked by:
- * - SSL cert error on staging.bantayog.web.app (admin + responder web access)
  * - Firebase module-level init in admin/responder (no render without emulator)
  * - Citizen PWA: ensureSignedIn() redirects to Firebase Auth on submit
  *
- * When SSL and emulator setup are resolved, unskip and run:
- *   pnpm test:e2e:staging
+ * When emulator setup is resolved, implement and run:
+ *   firebase emulators:exec --only auth,firestore,pubsub "pnpm test:e2e"
  *
  * Full loop requires (per docs/progress.md Phase 3b staging verification):
  * - Seeded citizen account: citizen-test-01@test.local / test123456

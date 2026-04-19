@@ -382,3 +382,19 @@ When an event handler like `onClick` calls a void-returning function with arrow 
 ### `React.FormEvent` deprecated — use inline `// eslint-disable-next-line @typescript-eslint/no-deprecated`
 
 The `@typescript-eslint/no-deprecated` rule flags `React.FormEvent`. Since React's own type definition marks it deprecated, and there's no clean replacement that works across all React versions, the correct approach is to add an inline disable comment on the specific line: `// eslint-disable-next-line @typescript-eslint/no-deprecated`.
+
+---
+
+## Phase 3c: E2E SSL Debugging (2026-04-19)
+
+### `staging.bantayog.web.app` is not a Firebase Hosting domain
+
+Firebase Hosting sites get URLs in the format `<site-id>.web.app`. The project `bantayog-alert-staging` has one site: `bantayog-alert-staging.web.app`. The domain `staging.bantayog.web.app` resolves to the same Firebase CDN IP but the SSL certificate is for `CN=firebaseapp.com` — it does not include this hostname as a SAN, causing `ERR_CERT_COMMON_NAME_INVALID`.
+
+**Rule:** Never assume a Firebase Hosting URL format. Always verify with `firebase hosting:sites:list` and `firebase hosting:channel:list`. Custom domains must be explicitly configured in Firebase Hosting.
+
+### E2E test BASE_URL must match webServer config
+
+When `playwright.config.ts` defines `webServer` entries for local dev servers (e.g., admin on port 5175), the corresponding spec files must default to the same localhost URL, not a staging URL. Otherwise tests fail with SSL errors when run locally even though the dev server is running.
+
+**Rule:** Spec file `BASE_URL` defaults should match the `webServer` ports in `playwright.config.ts`. Override with `process.env.BASE_URL` only for staging/CI runs.

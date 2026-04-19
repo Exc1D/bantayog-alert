@@ -28,9 +28,7 @@ beforeEach(async () => {
 })
 
 afterAll(async () => {
-  if (testEnv) {
-    await testEnv.cleanup()
-  }
+  await testEnv.cleanup()
 })
 
 /**
@@ -147,7 +145,7 @@ describe('acceptDispatchCore', () => {
       acceptDispatchCore(db, {
         dispatchId: 'dispatch-1',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'responder-2', claims: { role: 'responder', municipalityId: 'daet' } as any },
+        actor: { uid: 'responder-2' },
         now: Timestamp.fromMillis(ts),
       }),
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
@@ -165,7 +163,7 @@ describe('acceptDispatchCore', () => {
       acceptDispatchCore(db, {
         dispatchId: 'missing-dispatch-id',
         idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'responder-1', claims: { role: 'responder', municipalityId: 'daet' } as any },
+        actor: { uid: 'responder-1' },
         now: Timestamp.fromMillis(ts),
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })

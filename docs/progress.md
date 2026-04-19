@@ -100,8 +100,9 @@
 
 **❌ Blocked:**
 
-- SSL certificate error prevents web app access
+- `staging.bantayog.web.app` is NOT a valid Firebase Hosting domain (cert for `firebaseapp.com`, SAN mismatch) — use `bantayog-alert-staging.web.app` instead
 - IAM Service Account Credentials API not enabled (blocks acceptance test)
+- No hosting deploy to staging (404 on both URLs)
 
 **📋 Details:** See `docs/phase-3b-staging-verification.md`
 
@@ -238,19 +239,20 @@ The Phase 3c implementation plan is ready (33 tasks, 20-40 hours). All state mac
 - Terminal-state guard: `cancelDispatch` on resolved throws `FAILED_PRECONDITION`
 - Mirror sync: `dispatchMirrorToReport` fires async, updates `reports.status` on dispatch transitions
 
-**Playwright e2e specs (all skipped — SSL blocked):**
+**Playwright e2e specs (unblocked — SSL issue resolved):**
 
 - `citizen.spec.ts` — 6 passing tests (form, geolocation denial, lookup, invalid ref/secret)
-- `admin.spec.ts` — skeleton tests for triage + dispatch (SSL + Firebase init blocker)
-- `responder.spec.ts` — skeleton tests for accept + progress + resolve (SSL + Firebase init blocker)
-- `full-loop.spec.ts` + `race-loss.spec.ts` — skeleton tests for full loop and race conditions
+- `admin.spec.ts` — 7 tests for auth + triage + dispatch (BASE_URL fixed to localhost:5175)
+- `responder.spec.ts` — 10 tests for auth + dispatch list + progression
+- `full-loop.spec.ts` + `race-loss.spec.ts` — stub tests for full loop and race conditions
 
 ### Known remaining blockers
 
-| Blocker                                                               | Impact                                           | Workaround                                   |
-| --------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------- |
-| SSL cert `ERR_CERT_COMMON_NAME_INVALID` on `staging.bantayog.web.app` | Admin + responder PWAs inaccessible from staging | Run against local emulators: `pnpm test:e2e` |
-| Firebase module-level init in admin/responder apps                    | Apps crash without valid API key                 | Emulator-only testing for web UI flows       |
+| Blocker                                            | Impact                                   | Workaround                                          |
+| -------------------------------------------------- | ---------------------------------------- | --------------------------------------------------- |
+| `staging.bantayog.web.app` not a Firebase domain   | Staging E2E needs `BASE_URL` env var set | Use `bantayog-alert-staging.web.app` or local tests |
+| Firebase module-level init in admin/responder apps | Apps crash without valid API key         | Emulator-only testing for web UI flows              |
+| No hosting deploy to staging                       | Staging URL returns 404                  | `firebase deploy --only hosting` (needs approval)   |
 
 ### Key corrections during implementation
 

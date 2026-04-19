@@ -98,9 +98,49 @@ export async function dispatchMirrorToReportCore(
       return
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by exists check above
-    const currentStatus = reportSnap.data()!.status as ReportStatus
-    const decision = computeMirrorAction(before?.status, after.status, currentStatus)
+    const currentStatus = (reportSnap.data() as { status: ReportStatus } | undefined)?.status
+    const currentDispatchId = (reportSnap.data() as { currentDispatchId?: string } | undefined)
+      ?.currentDispatchId
+
+    // Only mirror state from the currently active dispatch
+    if (currentDispatchId && currentDispatchId !== dispatchId) {
+      logger.info({
+        event: 'dispatch_mirror.skip',
+        reason: 'not_current_dispatch',
+        correlationId,
+        dispatchId,
+        reportId: after.reportId,
+      })
+      return
+    }
+
+    // Handle terminal dispatch failure states to revert report back to verified
+    if (after.status === 'timed_out' || after.status === 'declined') {
+      tx.update(reportRef, {
+        status: 'verified',
+        currentDispatchId: null,
+        lastStatusAt: FieldValue.serverTimestamp(),
+      })
+      tx.create(db.collection('report_events').doc(), {
+        reportId: after.reportId,
+        from: currentStatus,
+        to: 'verified',
+        actor: 'system:dispatchMirrorToReport',
+        at: FieldValue.serverTimestamp(),
+        correlationId,
+        schemaVersion: 1,
+      })
+      logger.info({
+        event: 'dispatch_mirror.reverted_to_verified',
+        reason: `dispatch_${after.status}`,
+        correlationId,
+        dispatchId,
+        reportId: after.reportId,
+      })
+      return
+    }
+
+    const decision = computeMirrorAction(before?.status, after.status, currentStatus ?? 'verified')
 
     if (decision.action === 'skip') {
       logger.info({
@@ -113,18 +153,22 @@ export async function dispatchMirrorToReportCore(
       return
     }
 
+    // After skip guard, decision.action === 'update' — decision.to is ReportStatus
+    const targetStatus: ReportStatus = decision.to
+
     tx.update(reportRef, {
-      status: decision.to,
+      status: targetStatus,
       lastStatusAt: FieldValue.serverTimestamp(),
     })
 
     tx.create(db.collection('report_events').doc(), {
       reportId: after.reportId,
       from: currentStatus,
-      to: decision.to,
+      to: targetStatus,
       actor: 'system:dispatchMirrorToReport',
       at: FieldValue.serverTimestamp(),
       correlationId,
+      schemaVersion: 1,
     })
 
     logger.info({
@@ -133,7 +177,7 @@ export async function dispatchMirrorToReportCore(
       dispatchId,
       reportId: after.reportId,
       from: currentStatus,
-      to: decision.to,
+      to: targetStatus,
     })
   })
 }

@@ -3,9 +3,8 @@ import { test } from '@playwright/test'
 /**
  * race-loss.spec.ts — End-to-end tests for race condition scenarios.
  *
- * ALL TESTS SKIPPED: requires all three apps working with Firebase Auth + Firestore.
+ * ALL TESTS STUBBED: requires all three apps working with Firebase Auth + Firestore.
  * Blocked by:
- * - SSL cert error on staging.bantayog.web.app
  * - Firebase module-level init in admin/responder (no render without emulator)
  *
  * These tests verify Phase 3c race-safety measures:

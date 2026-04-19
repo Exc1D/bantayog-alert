@@ -71,8 +71,9 @@ export const advanceDispatchRequestSchema = z
     dispatchId: z.string().min(1),
     to: dispatchStatusSchema,
     resolutionSummary: z.string().optional(),
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
   })
   .strict()
 
 export type AdvanceDispatchRequest = z.infer<typeof advanceDispatchRequestSchema>
+export type DispatchDoc = z.infer<typeof dispatchDocSchema>

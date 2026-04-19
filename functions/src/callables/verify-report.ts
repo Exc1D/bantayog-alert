@@ -16,12 +16,14 @@ import { logDimension } from '@bantayog/shared-validators'
 const InputSchema = z
   .object({
     reportId: z.string().min(1).max(128),
+    scrubbedDescription: z.string().min(1).max(2000).optional(),
     idempotencyKey: z.uuid(),
   })
   .strict()
 
 export interface VerifyReportInput {
   reportId: string
+  scrubbedDescription?: string
   idempotencyKey: string
 }
 
@@ -41,6 +43,7 @@ export interface VerifyReportActor {
 
 export interface VerifyReportCoreDeps {
   reportId: string
+  scrubbedDescription?: string
   idempotencyKey: string
   actor: VerifyReportActor
   now: Timestamp
@@ -52,11 +55,13 @@ export async function verifyReportCore(
 ): Promise<VerifyReportResult> {
   const correlationId = crypto.randomUUID()
 
-  const { result } = await withIdempotency<VerifyReportCoreDeps, VerifyReportResult>(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
+  const { result } = await withIdempotency<Omit<VerifyReportCoreDeps, 'now'>, VerifyReportResult>(
     db,
     {
       key: `verifyReport:${deps.actor.uid}:${deps.idempotencyKey}`,
-      payload: deps,
+      payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
     async () => {
@@ -106,6 +111,9 @@ export async function verifyReportCore(
           status: to,
           lastStatusAt: deps.now,
           lastStatusBy: deps.actor.uid,
+        }
+        if (deps.scrubbedDescription) {
+          updates.description = deps.scrubbedDescription
         }
         if (to === 'verified') {
           updates.verifiedBy = deps.actor.uid
@@ -172,6 +180,9 @@ export const verifyReport = onCall(
     try {
       return await verifyReportCore(adminDb, {
         reportId: parsed.data.reportId,
+        ...(parsed.data.scrubbedDescription !== undefined && {
+          scrubbedDescription: parsed.data.scrubbedDescription,
+        }),
         idempotencyKey: parsed.data.idempotencyKey,
         actor: {
           uid: req.auth.uid,

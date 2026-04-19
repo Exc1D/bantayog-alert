@@ -3,14 +3,11 @@ import { test, expect } from '@playwright/test'
 /**
  * End-to-end tests for the responder PWA.
  *
- * ALL TESTS SKIPPED: SSL cert on staging blocks web app access.
- * Firebase init at module level also prevents local rendering without emulator.
- *
- * Run against staging (when SSL is fixed):
- *   pnpm test:e2e:staging
- *
  * Run locally with emulators:
- *   VITE_USE_EMULATOR=true firebase emulators:exec --only auth,firestore,pubsub "pnpm test:e2e"
+ *   firebase emulators:exec --only auth,firestore,pubsub "pnpm test:e2e"
+ *
+ * Run against staging:
+ *   BASE_URL=https://bantayog-alert-staging.web.app pnpm test:e2e:staging
  *
  * Seeded test account: bfp-responder-test-01@test.local / test123456
  */

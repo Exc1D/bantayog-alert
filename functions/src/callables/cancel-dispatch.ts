@@ -48,11 +48,13 @@ export interface CancelDispatchCoreDeps {
 export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCoreDeps) {
   const correlationId = crypto.randomUUID()
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency(
     db,
     {
       key: `cancelDispatch:${deps.actor.uid}:${deps.idempotencyKey}`,
-      payload: deps,
+      payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
     async () =>

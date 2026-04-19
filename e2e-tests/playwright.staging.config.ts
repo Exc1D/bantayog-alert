@@ -10,8 +10,9 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
 
   use: {
-    baseURL: process.env.BASE_URL ?? 'https://staging.bantayog.web.app',
+    baseURL: process.env.BASE_URL ?? 'https://bantayog-alert-staging.web.app',
     trace: 'on-first-retry',
+    ignoreHTTPSErrors: true,
   },
 
   projects: [
