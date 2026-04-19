@@ -180,6 +180,19 @@
       ]
     },
     {
+      "collectionGroup": "sms_outbox",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "providerMessageId", "order": "ASCENDING" }]
+    },
+    {
+      "collectionGroup": "sms_outbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "queuedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "report_events",
       "queryScope": "COLLECTION",
       "fields": [
