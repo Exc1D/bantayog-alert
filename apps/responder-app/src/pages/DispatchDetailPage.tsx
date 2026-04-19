@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useDispatch } from '../hooks/useDispatch'
 import { useAcceptDispatch } from '../hooks/useAcceptDispatch'
 import { useAdvanceDispatch } from '../hooks/useAdvanceDispatch'
+import { CancelledScreen } from './CancelledScreen'
 
 function Skeleton() {
   return <p>Loading...</p>
@@ -72,6 +73,7 @@ export function DispatchDetailPage() {
   if (loading) return <Skeleton />
   if (error) return <p>Error: {error.message}</p>
   if (!dispatch) return <NotFound />
+  if (dispatch.status === 'cancelled') return <CancelledScreen dispatch={dispatch} />
 
   return (
     <main>
@@ -123,7 +125,7 @@ export function DispatchDetailPage() {
         />
       )}
       {advanceState.loading && <p>Updating...</p>}
-      {advanceState.error && (
+      {advanceState.error && (dispatch.status as string) !== 'cancelled' && (
         <p style={{ color: 'red' }}>
           {advanceState.error.message.includes('permission-denied') ? (
             <em>Dispatch was cancelled by an administrator.</em>
