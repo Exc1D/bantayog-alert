@@ -77,11 +77,9 @@ describe('sendFcmToResponder', () => {
       ],
     })
 
-    // Mock arrayRemove to return a string for verification
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
     const arrayRemoveSpy = vi
       .spyOn(FieldValue, 'arrayRemove')
-      .mockReturnValue('array_remove_mock' as any)
+      .mockReturnValue('array_remove_mock' as any) // eslint-disable-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
 
     const result = await sendFcmToResponder({ uid: 'r1', title: 'T', body: 'B' })
     expect(result.warnings).toEqual(['fcm_one_token_invalid'])
