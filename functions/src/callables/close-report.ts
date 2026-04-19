@@ -114,6 +114,8 @@ export async function closeReportCore(
           from,
           to,
           actor: deps.actor.uid,
+          // Falls back to 'municipal_admin' when role is undefined (should not happen for municipal_admin callers,
+          // but provincial_superadmin tokens may omit role)
           actorRole: deps.actor.claims.role ?? 'municipal_admin',
           at: deps.now,
           correlationId,
@@ -153,6 +155,10 @@ export const closeReport = onCall(
     }
     if (claims.active !== true) {
       throw new HttpsError('permission-denied', 'account is not active')
+    }
+    // municipal_admin requires a municipalityId; provincial_superadmin does not
+    if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {
+      throw new HttpsError('permission-denied', 'municipalityId missing from token claims')
     }
 
     const parsed = closeReportRequestSchema.safeParse(req.data)
