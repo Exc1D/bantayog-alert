@@ -5,6 +5,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { bantayogErrorToHttps } from './https-error.js'
+import { checkRateLimit } from '../services/rate-limit.js'
 
 export const acceptDispatchRequestSchema = z
   .object({
@@ -28,6 +29,19 @@ export async function acceptDispatchCore(
   deps: AcceptDispatchCoreDeps,
 ): Promise<{ status: 'accepted'; dispatchId: string; fromCache: boolean }> {
   const correlationId = crypto.randomUUID()
+
+  // Enforce rate limit: 30 accepts/minute per responder
+  const rl = await checkRateLimit(db, {
+    key: `acceptDispatch:${deps.actor.uid}`,
+    limit: 30,
+    windowSeconds: 60,
+    now: deps.now,
+  })
+  if (!rl.allowed) {
+    throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
+      retryAfterSeconds: rl.retryAfterSeconds,
+    })
+  }
 
   const { result, fromCache } = await withIdempotency(
     db,

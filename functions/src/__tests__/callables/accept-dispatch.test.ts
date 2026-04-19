@@ -197,4 +197,44 @@ describe('acceptDispatchCore', () => {
       expect(second.status).toBe(first.status)
     })
   })
+
+  it('returns RESOURCE_EXHAUSTED when responder exceeds 30 accepts/minute', async () => {
+    await seedActiveAccount(testEnv, {
+      uid: 'responder-rate-limit',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
+
+    // Seed 31 dispatches so we can call accept 31 times without status conflicts
+    for (let i = 0; i < 31; i++) {
+      const reportId = `report-rl-${String(i)}`
+      const dispatchId = `dispatch-rl-${String(i)}`
+      await seedReportAtStatusJS(testEnv, reportId, 'assigned')
+      await seedDispatchJS(testEnv, dispatchId, reportId, 'responder-rate-limit', 'pending')
+    }
+
+    await testEnv.withSecurityRulesDisabled(async () => {
+      const db = testEnv.unauthenticatedContext().firestore() as any
+      // Call 30 times to exhaust quota
+      for (let i = 0; i < 30; i++) {
+        const dispatchId = `dispatch-rl-${String(i)}`
+
+        await acceptDispatchCore(db, {
+          dispatchId,
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'responder-rate-limit' },
+          now: Timestamp.now(),
+        })
+      }
+      // 31st call should fail with RESOURCE_EXHAUSTED
+      await expect(
+        acceptDispatchCore(db, {
+          dispatchId: 'dispatch-rl-30',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'responder-rate-limit' },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'resource-exhausted' })
+    })
+  })
 })
