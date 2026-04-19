@@ -72,7 +72,7 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
 
         if (!CANCELLABLE_FROM_STATES.includes(from)) {
           throw new BantayogError(
-            BantayogErrorCode.INVALID_STATUS_TRANSITION,
+            BantayogErrorCode.FAILED_PRECONDITION,
             `Cannot cancel dispatch in status ${from} (3b scope: pending-only)`,
           )
         }
