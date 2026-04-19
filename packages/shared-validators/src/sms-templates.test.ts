@@ -24,29 +24,29 @@ describe('renderTemplate', () => {
 
   it('renders verification for both locales', () => {
     expect(
-      renderTemplate({ purpose: 'verification', locale: 'tl', vars: { publicRef: 'r1' } }),
-    ).toContain('r1')
+      renderTemplate({ purpose: 'verification', locale: 'tl', vars: { publicRef: 'r1r1r1r1' } }),
+    ).toContain('r1r1r1r1')
     expect(
-      renderTemplate({ purpose: 'verification', locale: 'en', vars: { publicRef: 'r1' } }),
-    ).toContain('r1')
+      renderTemplate({ purpose: 'verification', locale: 'en', vars: { publicRef: 'r1r1r1r1' } }),
+    ).toContain('r1r1r1r1')
   })
 
   it('renders status_update for both locales', () => {
     expect(
-      renderTemplate({ purpose: 'status_update', locale: 'tl', vars: { publicRef: 'r1' } }),
-    ).toContain('r1')
+      renderTemplate({ purpose: 'status_update', locale: 'tl', vars: { publicRef: 'r1r1r1r1' } }),
+    ).toContain('r1r1r1r1')
     expect(
-      renderTemplate({ purpose: 'status_update', locale: 'en', vars: { publicRef: 'r1' } }),
-    ).toContain('r1')
+      renderTemplate({ purpose: 'status_update', locale: 'en', vars: { publicRef: 'r1r1r1r1' } }),
+    ).toContain('r1r1r1r1')
   })
 
   it('renders resolution for both locales', () => {
     expect(
-      renderTemplate({ purpose: 'resolution', locale: 'tl', vars: { publicRef: 'r1' } }),
-    ).toContain('r1')
+      renderTemplate({ purpose: 'resolution', locale: 'tl', vars: { publicRef: 'r1r1r1r1' } }),
+    ).toContain('r1r1r1r1')
     expect(
-      renderTemplate({ purpose: 'resolution', locale: 'en', vars: { publicRef: 'r1' } }),
-    ).toContain('r1')
+      renderTemplate({ purpose: 'resolution', locale: 'en', vars: { publicRef: 'r1r1r1r1' } }),
+    ).toContain('r1r1r1r1')
   })
 
   it('throws when required var is missing', () => {
@@ -62,7 +62,7 @@ describe('renderTemplate', () => {
         // @ts-expect-error invalid purpose
         purpose: 'mystery',
         locale: 'tl',
-        vars: { publicRef: 'r1' },
+        vars: { publicRef: 'r1r1r1r1' },
       }),
     ).toThrow(SmsTemplateError)
   })
@@ -73,7 +73,7 @@ describe('renderTemplate', () => {
         purpose: 'receipt_ack',
         // @ts-expect-error invalid locale
         locale: 'fr',
-        vars: { publicRef: 'r1' },
+        vars: { publicRef: 'r1r1r1r1' },
       }),
     ).toThrow(SmsTemplateError)
   })

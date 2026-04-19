@@ -35,11 +35,18 @@ const TEMPLATES: Record<SmsPurpose, Record<SmsLocale, string>> = {
   },
 }
 
-const PUBLIC_REF_RE = /^[a-z0-9]+$/
+const PUBLIC_REF_RE = /^[a-z0-9]{8}$/
 
 export function renderTemplate(args: RenderArgs): string {
   const purposeMap = TEMPLATES[args.purpose]
+  // purposeMap is Record<SmsLocale, string>|undefined per TS, but runtime may differ
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (!purposeMap) {
+    throw new SmsTemplateError(`Unknown purpose: ${args.purpose}`)
+  }
   const template = purposeMap[args.locale]
+  // purposeMap is Record<SmsLocale, string>|undefined per TS, but runtime may differ
+
   if (!template) {
     throw new SmsTemplateError(`Unknown locale: ${args.locale}`)
   }
