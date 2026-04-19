@@ -8,6 +8,7 @@ export { dispatchResponder } from './callables/dispatch-responder.js'
 export { cancelDispatch } from './callables/cancel-dispatch.js'
 export { rejectReport } from './callables/reject-report.js'
 export { acceptDispatch } from './callables/accept-dispatch.js'
+export { closeReport } from './callables/close-report.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
