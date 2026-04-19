@@ -1,4 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+// Mock rtdb before importing callable modules that depend on firebase-admin.ts
+vi.mock('firebase-admin/database', () => ({
+  getDatabase: vi.fn(() => ({})),
+}))
+
 import { acceptDispatchRequestSchema } from '../../callables/accept-dispatch.js'
 
 describe('acceptDispatchRequestSchema', () => {
