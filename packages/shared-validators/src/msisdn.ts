@@ -26,6 +26,9 @@ export function normalizeMsisdn(input: string): string {
 }
 
 export function hashMsisdn(normalizedMsisdn: string, salt: string): string {
+  if (!/^\+639\d{9}$/.test(normalizedMsisdn)) {
+    throw new Error(`hashMsisdn requires normalized MSISDN, got: ${normalizedMsisdn}`)
+  }
   return createHash('sha256')
     .update(salt + normalizedMsisdn)
     .digest('hex')
