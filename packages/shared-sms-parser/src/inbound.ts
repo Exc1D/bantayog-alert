@@ -1,16 +1,18 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+import { z } from 'zod'
+
 export type Confidence = 'high' | 'medium' | 'low' | 'none'
 
-export const reportTypeSchema = [
+export const reportTypeSchema = z.enum([
   'flood',
   'fire',
   'landslide',
   'accident',
   'medical',
   'other',
-] as const
-export type ReportType = (typeof reportTypeSchema)[number]
+])
+export type ReportType = z.infer<typeof reportTypeSchema>
 
 export interface ParsedFields {
   reportType: ReportType
@@ -34,7 +36,15 @@ interface BarangayEntry {
 }
 
 function getBarangayGazetteer(): BarangayEntry[] {
-  // Fallback until shared-data is populated with real barangay data
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@bantayog/shared-data') as { BARANGAY_GAZETTEER?: unknown }
+    if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
+      return mod.BARANGAY_GAZETTEER as BarangayEntry[]
+    }
+  } catch {
+    // shared-data not yet populated — use fallback
+  }
   return FALLBACK_BARANGAYS
 }
 
@@ -98,9 +108,12 @@ const TYPE_SYNONYMS: Record<string, ReportType> = {
   IBA: 'other',
 }
 
+const MUNICIPALITY_PREFIXES = new Set(['SAN', 'STA', 'SANTA'])
+
 // ─── Auto-reply templates ─────────────────────────────────────────────────────
 
 function buildAutoReply(confidence: Confidence, publicRef?: string): string {
+  // publicRef intentionally unused — ref is appended by the trigger caller after this returns
   const ref = publicRef ? ` Ref: ${publicRef}.` : ''
   switch (confidence) {
     case 'high':
@@ -151,13 +164,19 @@ export function parseInboundSms(body: string): ParseResult {
     }
   }
 
-  const typeToken = tokens[0]
-  const barangayToken = tokens[1]
+  const typeToken = tokens[0] ?? ''
+  let barangayToken = tokens[1] ?? ''
+  let detailsStartIndex = barangayToken.length
+
+  if (tokens.length >= 3 && tokens[1] && tokens[2] && MUNICIPALITY_PREFIXES.has(tokens[1])) {
+    barangayToken = tokens[1] + ' ' + tokens[2]
+    detailsStartIndex = barangayToken.length
+  }
 
   const barangayIndex = originalRest.toUpperCase().indexOf(barangayToken.toUpperCase())
   const details =
-    barangayIndex !== -1 && barangayIndex + barangayToken.length < originalRest.length
-      ? originalRest.slice(barangayIndex + barangayToken.length).trim()
+    barangayIndex !== -1 && barangayIndex + detailsStartIndex < originalRest.length
+      ? originalRest.slice(barangayIndex + detailsStartIndex).trim()
       : undefined
 
   const rawType = typeToken.toUpperCase()
