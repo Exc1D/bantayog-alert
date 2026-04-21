@@ -200,8 +200,8 @@ afterEach(async () => {
   for (const providerId of ['semaphore', 'globelabs']) {
     const healthRef = db.collection('sms_provider_health').doc(providerId)
     const windowsSnap = await healthRef.collection('minute_windows').get()
-    for (const doc of windowsSnap.docs) {
-      await doc.ref.delete()
+    for (const windowDoc of windowsSnap.docs) {
+      await windowDoc.ref.delete()
     }
     await healthRef.delete()
   }

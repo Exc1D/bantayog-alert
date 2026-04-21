@@ -103,9 +103,15 @@ async function clearSmsProviderHealthState(db: Firestore) {
   for (const providerId of ['semaphore', 'globelabs'] as const) {
     const healthRef = db.collection('sms_provider_health').doc(providerId)
     const windowsSnap = await healthRef.collection('minute_windows').get()
-    for (const windowDoc of windowsSnap.docs) {
-      await windowDoc.ref.delete()
+    let batch = db.batch()
+    for (let i = 0; i < windowsSnap.size; i++) {
+      batch.delete(windowsSnap.docs[i]!.ref)
+      if ((i + 1) % 400 === 0) {
+        await batch.commit()
+        batch = db.batch()
+      }
     }
+    await batch.commit()
     await healthRef.delete()
   }
 }
@@ -139,7 +145,6 @@ async function resetState() {
 
   await clearSmsProviderHealthState(db)
   await testEnv.clearFirestore()
-  await clearSmsProviderHealthState(db)
   await getDatabase().ref('/').remove()
   await seedMunicipalities(db)
 }
