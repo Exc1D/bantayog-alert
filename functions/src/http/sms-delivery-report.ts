@@ -54,7 +54,7 @@ export async function smsDeliveryReportCore(
     return { status: 200, body: { ok: true } }
   }
 
-  const [doc] = querySnap.docs
+  const doc = querySnap.docs[0]
   if (!doc) {
     return { status: 200, body: { ok: true } }
   }
