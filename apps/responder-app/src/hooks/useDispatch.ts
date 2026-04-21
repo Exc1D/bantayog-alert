@@ -37,8 +37,10 @@ export function useDispatch(dispatchId: string | undefined) {
 
   useEffect(() => {
     if (!dispatchId) {
-      setDispatch(undefined)
-      setLoading(false)
+      queueMicrotask(() => {
+        setDispatch(undefined)
+        setLoading(false)
+      })
       return
     }
     const unsub = onSnapshot(
