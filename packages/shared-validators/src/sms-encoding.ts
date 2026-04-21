@@ -43,7 +43,7 @@ const GSM7_TABLE = (() => {
     [0x23, '¤'],
     [0x24, '%'],
     [0x25, '&'],
-    [0x26, '"'],
+    [0x26, "'"],
     [0x27, '('],
     [0x28, ')'],
     [0x29, '*'],
@@ -164,8 +164,8 @@ export function detectEncoding(body: string): EncodingResult {
       effectiveLength += 2
     } else {
       // Non-GSM-7 character — fall back to UCS-2
-      // eslint-disable-next-line @typescript-eslint/no-misused-spread
-      const utf16Len = [...body].length
+      // UCS-2 uses UTF-16 code units (same as .length on JS string)
+      const utf16Len = body.length
       const segmentCount = utf16Len <= 70 ? 1 : Math.ceil(utf16Len / 67)
       return { encoding: 'UCS-2', segmentCount }
     }
