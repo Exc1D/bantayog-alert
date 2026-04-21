@@ -18,15 +18,31 @@ export function FallbackCards({
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      <button onClick={onCallClick} className={`${baseCard} ${emphasizedCard}`}>
-        <div className="w-8 h-8 rounded-full bg-[#001e40] text-white flex items-center justify-center mx-auto mb-1">
+      <button
+        type="button"
+        onClick={onCallClick}
+        aria-label="Call hotline"
+        className={`${baseCard} ${emphasizedCard}`}
+      >
+        <div
+          className="w-8 h-8 rounded-full bg-[#001e40] text-white flex items-center justify-center mx-auto mb-1"
+          aria-hidden="true"
+        >
           &#9742;
         </div>
         <div className="font-semibold text-[#001e40] text-sm">Call</div>
         <div className="text-[10px] text-[#52606d]">{hotlineNumber}</div>
       </button>
-      <button onClick={onSmsClick} className={`${baseCard} ${emphasizedCard}`}>
-        <div className="w-8 h-8 rounded-full bg-[#001e40] text-white flex items-center justify-center mx-auto mb-1">
+      <button
+        type="button"
+        onClick={onSmsClick}
+        aria-label="Send SMS"
+        className={`${baseCard} ${emphasizedCard}`}
+      >
+        <div
+          className="w-8 h-8 rounded-full bg-[#001e40] text-white flex items-center justify-center mx-auto mb-1"
+          aria-hidden="true"
+        >
           &#9993;
         </div>
         <div className="font-semibold text-[#001e40] text-sm">SMS</div>

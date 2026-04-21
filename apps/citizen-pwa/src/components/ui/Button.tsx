@@ -15,7 +15,8 @@ export function Button({
   className = '',
   ...props
 }: ButtonProps) {
-  const baseStyles = 'px-4 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50'
+  const baseStyles =
+    'px-4 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#001e40]'
   const variantStyles = {
     primary: 'bg-[#001e40] text-white hover:bg-[#032038]',
     secondary: 'bg-[#f5f7fa] text-[#001e40] hover:bg-[#e5e7eb]',
@@ -25,6 +26,7 @@ export function Button({
 
   return (
     <button
+      type="button"
       className={`${baseStyles} ${variantStyles[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
       disabled={disabled}
       {...props}

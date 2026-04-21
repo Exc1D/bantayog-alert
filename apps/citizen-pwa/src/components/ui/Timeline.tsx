@@ -24,9 +24,11 @@ export function Timeline({ events }: TimelineProps) {
                     ? 'bg-[#dc2626]'
                     : 'bg-[#d1d5db]'
             }`}
+            aria-hidden="true"
           />
           <div className="text-sm font-medium text-[#1d1d1f]">{event.label}</div>
           <div className="text-[11px] text-[#7b8794]">{event.meta}</div>
+          <span className="sr-only">{event.state} status</span>
         </div>
       ))}
     </div>
