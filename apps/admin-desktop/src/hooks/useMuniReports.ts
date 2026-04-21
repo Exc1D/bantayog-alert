@@ -17,11 +17,15 @@ export function useMuniReports(municipalityId: string | undefined) {
 
   useEffect(() => {
     if (!municipalityId) {
-      setRows([])
-      setLoading(false)
+      queueMicrotask(() => {
+        setRows([])
+        setLoading(false)
+      })
       return
     }
-    setLoading(true)
+    queueMicrotask(() => {
+      setLoading(true)
+    })
     const q = query(
       collection(db, 'reports'),
       where('municipalityId', '==', municipalityId),
