@@ -34,12 +34,12 @@ const adminDb = getFirestore()
 /** Inline staff claims to avoid @shared path issues in this test location */
 function staffClaims(opts: { role: string; municipalityId?: string }): {
   role: string
-  municipalityId: string
-  active: true
+  municipalityId?: string
+  active: boolean
 } {
   return opts.municipalityId !== undefined
     ? { role: opts.role, municipalityId: opts.municipalityId, active: true }
-    : { role: opts.role, municipalityId: undefined as unknown as string, active: true }
+    : { role: opts.role, active: true }
 }
 
 // ─── Env ────────────────────────────────────────────────────────────────────

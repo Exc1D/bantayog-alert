@@ -10,6 +10,7 @@
  *     "cd functions && pnpm exec vitest run src/__tests__/acceptance/phase-4a-acceptance.test.ts --reporter=verbose"
  */
 
+import { strict as assert } from 'node:assert'
 import { describe, it, beforeAll, afterEach, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { initializeApp, getApps } from 'firebase-admin/app'
@@ -37,7 +38,9 @@ function staffClaims(opts: { role: string; municipalityId?: string }): {
   municipalityId?: string
   active: boolean
 } {
-  return { role: opts.role, municipalityId: opts.municipalityId, active: true }
+  return opts.municipalityId !== undefined
+    ? { role: opts.role, municipalityId: opts.municipalityId, active: true }
+    : { role: opts.role, active: true }
 }
 
 // ─── Env ────────────────────────────────────────────────────────────────────
@@ -252,7 +255,6 @@ describe('Phase 4a Acceptance', () => {
       db,
       inboxId,
       now: () => Date.now(),
-      resolveProvider,
     })
 
     const outboxQ = await getDocs(collection(db, 'sms_outbox'))
@@ -411,7 +413,6 @@ describe('Phase 4a Acceptance', () => {
 
     const result = await dispatchResponderCore(db, rtdb, {
       reportId,
-      severity: 'medium',
       responderUid: 'resp-t5',
       idempotencyKey: 'idemp-t5',
       actor: {
