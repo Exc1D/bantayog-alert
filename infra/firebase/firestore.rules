@@ -292,8 +292,6 @@ service cloud.firestore {
     // ================================================================
     // Phase 2: SMS layer — sms_inbox, sms_outbox, sms_sessions,
     // sms_provider_health.
-    // Phase 4a: sms_outbox, sms_provider_health, minute_windows,
-    // report_sms_consent locked to callable-only (no client access).
     // ================================================================
 
     match /sms_inbox/{msgId} {
@@ -301,7 +299,8 @@ service cloud.firestore {
     }
 
     match /sms_outbox/{msgId} {
-      allow read, write: if false;
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
     }
 
     match /sms_sessions/{msisdnHash} {
@@ -309,17 +308,8 @@ service cloud.firestore {
     }
 
     match /sms_provider_health/{providerId} {
-      allow read, write: if false;
-
-      match /minute_windows/{windowId} {
-        allow read, write: if false;
-      }
-    }
-
-    // Phase 4a: report SMS consent — written by processInboxItem,
-    // read by verifyReport / dispatchResponder / closeReport callables.
-    match /report_sms_consent/{reportId} {
-      allow read, write: if false;
+      allow read: if isSuperadmin();
+      allow write: if false;
     }
 
     // ================================================================
