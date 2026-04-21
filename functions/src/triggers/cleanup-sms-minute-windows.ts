@@ -19,9 +19,8 @@ export async function cleanupSmsMinuteWindowsCore({ db, now }: CleanupArgs): Pro
 
   for (const providerId of PROVIDERS) {
     let lastDocId: string | undefined
-    let loop = true
-    while (loop) {
-      loop = lastDocId !== undefined
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    while (true) {
       let q = db
         .collection('sms_provider_health')
         .doc(providerId)
