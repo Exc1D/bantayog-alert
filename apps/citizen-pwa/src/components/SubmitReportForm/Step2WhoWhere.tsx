@@ -9,15 +9,18 @@ interface Step2WhoWhereProps {
     patientCount: number
   }) => void
   onBack: () => void
+  isSubmitting?: boolean
 }
 
-export function Step2WhoWhere({ onNext, onBack }: Step2WhoWhereProps) {
+export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2WhoWhereProps) {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [reporterName, setReporterName] = useState('')
   const [reporterMsisdn, setReporterMsisdn] = useState('')
   const [anyoneHurt, setAnyoneHurt] = useState(false)
   const [patientCount, setPatientCount] = useState(0)
   const [locationError, setLocationError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   const handleGetLocation = async () => {
     setLocationError(null)
@@ -35,16 +38,18 @@ export function Step2WhoWhere({ onNext, onBack }: Step2WhoWhereProps) {
   }
 
   const handleNext = () => {
+    setNameError(null)
+    setPhoneError(null)
     if (!location) {
       setLocationError('Please capture your location first.')
       return
     }
     if (!reporterName.trim()) {
-      alert('Please enter your name.')
+      setNameError('Please enter your name.')
       return
     }
     if (!reporterMsisdn.trim()) {
-      alert('Please enter your phone number.')
+      setPhoneError('Please enter your phone number.')
       return
     }
     onNext({
@@ -63,6 +68,7 @@ export function Step2WhoWhere({ onNext, onBack }: Step2WhoWhereProps) {
         <button
           type="button"
           onClick={onBack}
+          aria-label="Go back"
           className="w-8 h-8 rounded-full bg-[#f2f4f6] flex items-center justify-center text-[#001e40]"
         >
           ←
@@ -120,11 +126,13 @@ export function Step2WhoWhere({ onNext, onBack }: Step2WhoWhereProps) {
           value={reporterName}
           onChange={(e) => {
             setReporterName(e.target.value)
+            setNameError(null)
           }}
           placeholder="Maria Dela Cruz"
-          className="w-full bg-[#f2f4f6] border-b-2 border-[#001e40] rounded-t-lg p-2.5 text-sm text-[#191c1e] mb-3"
+          className="w-full bg-[#f2f4f6] border-b-2 border-[#001e40] rounded-t-lg p-2.5 text-sm text-[#191c1e] mb-1"
           required
         />
+        {nameError && <p className="text-xs text-red-600 mb-2">{nameError}</p>}
       </div>
 
       <div className="mb-4">
@@ -136,12 +144,14 @@ export function Step2WhoWhere({ onNext, onBack }: Step2WhoWhereProps) {
           value={reporterMsisdn}
           onChange={(e) => {
             setReporterMsisdn(e.target.value)
+            setPhoneError(null)
           }}
           placeholder="+63 912 345 6789"
-          className="w-full bg-[#f2f4f6] border-b-2 border-[#001e40] rounded-t-lg p-2.5 text-sm text-[#191c1e] mb-1"
+          className="w-full bg-[#f2f4f6] border-b-2 border-[#001e40] rounded-t-lg p-2.5 text-sm text-[#191c1e]"
           required
         />
-        <p className="text-[10px] text-[#43474f]">
+        {phoneError && <p className="text-xs text-red-600 mt-1">{phoneError}</p>}
+        <p className="text-[10px] text-[#43474f] mt-1">
           <span className="font-semibold text-[#001e40]">Gives you faster help.</span> Admins call
           this number if they need more details. <em>Mas mabilis kang matutulungan.</em>
         </p>
@@ -209,8 +219,13 @@ export function Step2WhoWhere({ onNext, onBack }: Step2WhoWhereProps) {
         )}
       </div>
 
-      <Button variant="primary" fullWidth onClick={handleNext} disabled={!canProceed}>
-        Continue
+      <Button
+        variant="primary"
+        fullWidth
+        onClick={handleNext}
+        disabled={!canProceed || isSubmitting}
+      >
+        {isSubmitting ? 'Please wait...' : 'Continue'}
       </Button>
     </div>
   )

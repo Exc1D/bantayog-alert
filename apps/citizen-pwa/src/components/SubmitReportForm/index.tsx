@@ -6,6 +6,7 @@ import { db, fns, ensureSignedIn } from '../../services/firebase.js'
 import { type SubmitReportDeps } from '../../services/submit-report.js'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import { useSubmissionMachine } from '../../hooks/useSubmissionMachine'
+import { RevealSheet } from '../RevealSheet'
 import { Step1Evidence } from './Step1Evidence'
 import { Step2WhoWhere } from './Step2WhoWhere'
 import { Step3Review } from './Step3Review'
@@ -51,8 +52,9 @@ async function putBlob(url: string, blob: Blob): Promise<void> {
 
 export function SubmitReportForm() {
   const navigate = useNavigate()
-  const { transition, setError } = useSubmissionMachine()
+  const { transition, setError, state: machineState } = useSubmissionMachine()
   const [step, setStep] = useState(1)
+  const [publicRef, setPublicRef] = useState('')
   const [formData, setFormData] = useState<FormData>({
     reportType: 'flood',
     photoFile: null,
@@ -61,6 +63,10 @@ export function SubmitReportForm() {
     reporterMsisdn: '',
     patientCount: 0,
   })
+
+  const isSubmitting = machineState === 'submitting'
+  const showRevealSheet =
+    machineState === 'success' || machineState === 'queued' || machineState === 'failed_retryable'
 
   const handleSubmit = async () => {
     transition('submitting')
@@ -109,11 +115,13 @@ export function SubmitReportForm() {
       const description =
         formData.patientCount > 0 ? String(formData.patientCount) + ' patient(s) reported' : ''
 
+      const publicRefValue = deps.randomPublicRef()
+
       await deps.writeInbox({
         reporterUid: await deps.ensureSignedIn(),
         clientCreatedAt: deps.now(),
         idempotencyKey: deps.randomUUID(),
-        publicRef: deps.randomPublicRef(),
+        publicRef: publicRefValue,
         secretHash: await sha256Hex(deps.randomSecret()),
         correlationId: deps.randomUUID(),
         payload: {
@@ -127,14 +135,8 @@ export function SubmitReportForm() {
         },
       })
 
+      setPublicRef(publicRefValue)
       transition('success')
-      void navigate('/receipt', {
-        state: {
-          publicRef: deps.randomPublicRef(),
-          secret: deps.randomSecret(),
-          correlationId: deps.randomUUID(),
-        },
-      })
     } catch (err) {
       setError({
         code: 'SUBMIT_ERROR',
@@ -142,6 +144,19 @@ export function SubmitReportForm() {
       })
       transition('failed_retryable')
     }
+  }
+
+  if (showRevealSheet) {
+    return (
+      <RevealSheet
+        state={machineState}
+        referenceCode={publicRef}
+        onClose={() => {
+          transition('closed')
+          void navigate('/')
+        }}
+      />
+    )
   }
 
   return (
@@ -155,6 +170,7 @@ export function SubmitReportForm() {
           onBack={() => {
             void navigate('/')
           }}
+          isSubmitting={isSubmitting}
         />
       )}
       {step === 2 && (
@@ -166,6 +182,7 @@ export function SubmitReportForm() {
           onBack={() => {
             setStep(1)
           }}
+          isSubmitting={isSubmitting}
         />
       )}
       {step === 3 && (
@@ -177,6 +194,7 @@ export function SubmitReportForm() {
             void handleSubmit()
           }}
           reportData={formData}
+          isSubmitting={isSubmitting}
         />
       )}
     </div>

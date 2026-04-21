@@ -4,6 +4,7 @@ import { Button } from '../ui/Button'
 interface Step1EvidenceProps {
   onNext: (data: { reportType: string; photoFile: File | null }) => void
   onBack: () => void
+  isSubmitting?: boolean
 }
 
 const INCIDENT_TYPES = [
@@ -16,7 +17,7 @@ const INCIDENT_TYPES = [
   { value: 'other', label: 'Other', emoji: '+ Other' },
 ]
 
-export function Step1Evidence({ onNext, onBack }: Step1EvidenceProps) {
+export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
   const [reportType, setReportType] = useState('flood')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -39,6 +40,7 @@ export function Step1Evidence({ onNext, onBack }: Step1EvidenceProps) {
         <button
           type="button"
           onClick={onBack}
+          aria-label="Go back"
           className="w-8 h-8 rounded-full bg-[#f2f4f6] flex items-center justify-center text-[#001e40]"
         >
           ←
@@ -90,6 +92,7 @@ export function Step1Evidence({ onNext, onBack }: Step1EvidenceProps) {
         type="file"
         accept="image/jpeg,image/png,image/webp"
         onChange={handlePhotoChange}
+        aria-label="Upload photo"
         className="hidden"
       />
 
@@ -117,8 +120,13 @@ export function Step1Evidence({ onNext, onBack }: Step1EvidenceProps) {
         </div>
       </div>
 
-      <Button variant="primary" fullWidth onClick={handleNext} disabled={!reportType}>
-        Continue
+      <Button
+        variant="primary"
+        fullWidth
+        onClick={handleNext}
+        disabled={!reportType || isSubmitting}
+      >
+        {isSubmitting ? 'Please wait...' : 'Continue'}
       </Button>
     </div>
   )

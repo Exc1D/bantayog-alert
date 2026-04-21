@@ -11,6 +11,7 @@ interface Step3ReviewProps {
     reporterMsisdn: string
     patientCount: number
   }
+  isSubmitting?: boolean
 }
 
 const INCIDENT_EMOJIS: Record<string, string> = {
@@ -23,7 +24,12 @@ const INCIDENT_EMOJIS: Record<string, string> = {
   other: '+ Other',
 }
 
-export function Step3Review({ onBack, onSubmit, reportData }: Step3ReviewProps) {
+export function Step3Review({
+  onBack,
+  onSubmit,
+  reportData,
+  isSubmitting = false,
+}: Step3ReviewProps) {
   const [consent, setConsent] = useState(false)
 
   return (
@@ -32,6 +38,7 @@ export function Step3Review({ onBack, onSubmit, reportData }: Step3ReviewProps) 
         <button
           type="button"
           onClick={onBack}
+          aria-label="Go back"
           className="w-8 h-8 rounded-full bg-[#f2f4f6] flex items-center justify-center text-[#001e40]"
         >
           ←
@@ -81,6 +88,16 @@ export function Step3Review({ onBack, onSubmit, reportData }: Step3ReviewProps) 
         <div className="text-xs text-[#43474f]">{reportData.reporterMsisdn}</div>
       </div>
 
+      <div className="bg-[#f2f4f6] rounded-lg p-2.5 mb-4">
+        <p className="text-[9px] text-[#43474f] font-bold uppercase tracking-wider mb-0.5">
+          Location
+        </p>
+        <div className="text-sm font-semibold text-[#191c1e]">
+          {reportData.location.lat.toFixed(5)}, {reportData.location.lng.toFixed(5)}
+        </div>
+        <div className="text-[10px] text-[#43474f]">GPS coordinates</div>
+      </div>
+
       <label className="block bg-[#eaf4fb] rounded-lg p-2.5 mb-4 flex gap-2 items-start">
         <input
           type="checkbox"
@@ -95,8 +112,8 @@ export function Step3Review({ onBack, onSubmit, reportData }: Step3ReviewProps) 
         </span>
       </label>
 
-      <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent}>
-        Submit report
+      <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
+        {isSubmitting ? 'Submitting...' : 'Submit report'}
       </Button>
     </div>
   )
