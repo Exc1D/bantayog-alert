@@ -30,7 +30,7 @@ const TEMPLATES: Record<SmsPurpose, Record<SmsLocale, string>> = {
     en: 'A responder has been dispatched to your report (ref {publicRef}). Please stay safe.',
   },
   resolution: {
-    tl: 'Isinara na ang iyong report (ref {publicRef}). Salamat sa iyong pag-uurat.',
+    tl: 'Isinara na ang iyong report (ref {publicRef}). Salamat sa iyong pag-uulat.',
     en: 'Your report (ref {publicRef}) has been closed. Thank you for reporting.',
   },
 }
