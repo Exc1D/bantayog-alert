@@ -16,7 +16,9 @@ export function useEligibleResponders(municipalityId: string | undefined) {
 
   useEffect(() => {
     if (!municipalityId) {
-      setResponders({})
+      queueMicrotask(() => {
+        setResponders({})
+      })
       return
     }
     const q = query(
@@ -40,7 +42,9 @@ export function useEligibleResponders(municipalityId: string | undefined) {
 
   useEffect(() => {
     if (!municipalityId) {
-      setShift({})
+      queueMicrotask(() => {
+        setShift({})
+      })
       return
     }
     const rtdb = getDatabase(firebaseApp)

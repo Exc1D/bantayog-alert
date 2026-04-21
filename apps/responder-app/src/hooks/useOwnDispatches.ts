@@ -16,8 +16,10 @@ export function useOwnDispatches(uid: string | undefined) {
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     if (!uid) {
-      setRows([])
-      setError(null)
+      queueMicrotask(() => {
+        setRows([])
+        setError(null)
+      })
       return
     }
     const q = query(

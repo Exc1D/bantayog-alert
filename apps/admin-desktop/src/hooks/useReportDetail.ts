@@ -25,8 +25,10 @@ export function useReportDetail(reportId: string | undefined) {
 
   useEffect(() => {
     if (!reportId) {
-      setReport(null)
-      setOps(null)
+      queueMicrotask(() => {
+        setReport(null)
+        setOps(null)
+      })
       return
     }
     const u1 = onSnapshot(
