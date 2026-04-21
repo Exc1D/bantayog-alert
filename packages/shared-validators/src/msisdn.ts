@@ -1,5 +1,15 @@
-import { createHash } from 'node:crypto'
+import type { createHash as CreateHashFn } from 'node:crypto'
 import { z } from 'zod'
+
+// node:crypto is server-only (hashMsisdn). Static import crashes in browser via Vite.
+const _nodeCrypto: { createHash: typeof CreateHashFn } | null = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('node:crypto') as { createHash: typeof CreateHashFn }
+  } catch {
+    return null
+  }
+})()
 
 export class MsisdnInvalidError extends Error {
   constructor(input: string) {
@@ -26,10 +36,14 @@ export function normalizeMsisdn(input: string): string {
 }
 
 export function hashMsisdn(normalizedMsisdn: string, salt: string): string {
+  if (!_nodeCrypto) {
+    throw new Error('hashMsisdn requires Node.js crypto — not available in browser')
+  }
   if (!/^\+639\d{9}$/.test(normalizedMsisdn)) {
     throw new Error(`hashMsisdn requires normalized MSISDN, got: ${normalizedMsisdn}`)
   }
-  return createHash('sha256')
+  return _nodeCrypto
+    .createHash('sha256')
     .update(salt + normalizedMsisdn)
     .digest('hex')
 }
