@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 
+const MAX_RETRY_COUNT = 3
+
 export type SubmissionState =
   | 'idle'
   | 'submitting'
@@ -7,6 +9,7 @@ export type SubmissionState =
   | 'queued'
   | 'failed_retryable'
   | 'failed_terminal'
+  | 'closed'
 
 export interface SubmissionMachineReturn {
   state: SubmissionState
@@ -14,13 +17,15 @@ export interface SubmissionMachineReturn {
   dismiss: () => void
   setError: (error: { code: string; message: string }) => void
   incrementRetry: () => void
+  retryCount: number
+  lastError: { code: string; message: string; timestamp: number } | null
 }
 
 export function useSubmissionMachine(): SubmissionMachineReturn {
   const [state, setState] = useState<SubmissionState>('idle')
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [retryCount, setRetryCount] = useState(0)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [lastError, setLastError] = useState<{
     code: string
     message: string
@@ -47,7 +52,13 @@ export function useSubmissionMachine(): SubmissionMachineReturn {
   }, [])
 
   const incrementRetry = useCallback(() => {
-    setRetryCount((prev) => prev + 1)
+    setRetryCount((prev) => {
+      const newCount = prev + 1
+      if (newCount >= MAX_RETRY_COUNT) {
+        setState('failed_terminal')
+      }
+      return newCount
+    })
   }, [])
 
   return {
@@ -56,5 +67,7 @@ export function useSubmissionMachine(): SubmissionMachineReturn {
     dismiss,
     setError,
     incrementRetry,
+    retryCount,
+    lastError,
   }
 }
