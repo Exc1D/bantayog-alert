@@ -239,6 +239,10 @@ describe('verifyReportCore SMS enqueue', () => {
     process.env.SMS_MSISDN_HASH_SALT = 'test-sms-salt-ph4a'
   })
 
+  afterEach(() => {
+    delete process.env.SMS_MSISDN_HASH_SALT
+  })
+
   it('enqueues verification SMS when reporter consented', async () => {
     const db = testEnv.unauthenticatedContext().firestore() as any
     const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
