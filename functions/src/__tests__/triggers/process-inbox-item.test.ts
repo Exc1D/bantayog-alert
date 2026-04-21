@@ -1,17 +1,18 @@
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
 import { processInboxItemCore } from '../../triggers/process-inbox-item.js'
 
-const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/firestore.rules')
+const PERMISSIVE_RULES =
+  'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}'
 
 let env: RulesTestEnvironment | undefined
+const TEST_SALT = 'test-sms-salt-ph4a'
 beforeAll(async () => {
+  process.env.SMS_MSISDN_HASH_SALT = TEST_SALT
   env = await initializeTestEnvironment({
     projectId: 'demo-phase-3a-inbox',
-    firestore: { rules: readFileSync(RULES_PATH, 'utf8') },
+    firestore: { rules: PERMISSIVE_RULES },
   })
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
@@ -19,6 +20,7 @@ beforeAll(async () => {
       label: 'Daet',
       provinceId: 'camarines-norte',
       centroid: { lat: 14.1, lng: 122.95 },
+      defaultSmsLocale: 'tl',
       schemaVersion: 1,
     })
   })
@@ -41,6 +43,7 @@ beforeEach(async () => {
       'moderation_incidents',
       'idempotency_keys',
       'pending_media',
+      'sms_outbox',
     ]
     for (const col of collections) {
       const docs = await db.collection(col).get()
@@ -282,6 +285,118 @@ describe('processInboxItemCore', () => {
       await expect(
         processInboxItemCore({ db, inboxId: 'ibx-conflict', now: () => 1713350401000 }),
       ).rejects.toMatchObject({ code: 'CONFLICT' })
+    })
+  })
+
+  describe('SMS enqueue on consent', () => {
+    it('writes sms_outbox receipt_ack when contact.smsConsent=true', async () => {
+      await env!.withSecurityRulesDisabled(async (ctx) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = ctx.firestore() as any
+        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-sms-consent'), {
+          reporterUid: 'citizen-sms',
+          clientCreatedAt: 1713350400000,
+          idempotencyKey: 'idem-sms-consent',
+          publicRef: 'smsref01',
+          secretHash: 'f'.repeat(64),
+          correlationId: '66666666-6666-4666-8666-666666666666',
+          payload: {
+            reportType: 'flood',
+            description: 'flooded area',
+            severity: 'medium',
+            source: 'web',
+            publicLocation: { lat: 14.11, lng: 122.95 },
+            contact: { phone: '+639171234567', smsConsent: true },
+          },
+        })
+
+        const result = await processInboxItemCore({
+          db,
+          inboxId: 'ibx-sms-consent',
+          now: () => 1713350401000,
+        })
+
+        expect(result.materialized).toBe(true)
+        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
+        expect(outboxQ.size).toBe(1)
+        const outbox = outboxQ.docs[0]!.data()
+        expect(outbox.status).toBe('queued')
+        expect(outbox.recipientMsisdn).toBe('+639171234567')
+        expect(outbox.purpose).toBe('receipt_ack')
+        expect(outbox.reportId).toBe(result.reportId)
+      })
+    })
+
+    it('does NOT write sms_outbox when contact is absent', async () => {
+      await env!.withSecurityRulesDisabled(async (ctx) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = ctx.firestore() as any
+        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-no-contact'), {
+          reporterUid: 'citizen-nocontact',
+          clientCreatedAt: 1713350400000,
+          idempotencyKey: 'idem-no-contact',
+          publicRef: 'noctct01',
+          secretHash: 'f'.repeat(64),
+          correlationId: '77777777-7777-4777-8777-777777777777',
+          payload: {
+            reportType: 'flood',
+            description: 'no contact info',
+            severity: 'low',
+            source: 'web',
+            publicLocation: { lat: 14.11, lng: 122.95 },
+          },
+        })
+
+        const result = await processInboxItemCore({
+          db,
+          inboxId: 'ibx-no-contact',
+          now: () => 1713350401000,
+        })
+
+        expect(result.materialized).toBe(true)
+        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
+        expect(outboxQ.size).toBe(0)
+      })
+    })
+
+    it('is idempotent — sms_outbox is not duplicated on replay', async () => {
+      await env!.withSecurityRulesDisabled(async (ctx) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = ctx.firestore() as any
+        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-sms-replay'), {
+          reporterUid: 'citizen-replay',
+          clientCreatedAt: 1713350400000,
+          idempotencyKey: 'idem-sms-replay',
+          publicRef: 'smsrpy01',
+          secretHash: 'f'.repeat(64),
+          correlationId: '88888888-8888-4888-8888-888888888888',
+          payload: {
+            reportType: 'flood',
+            description: 'replay test',
+            severity: 'low',
+            source: 'web',
+            publicLocation: { lat: 14.11, lng: 122.95 },
+            contact: { phone: '+639178765432', smsConsent: true },
+          },
+        })
+
+        const first = await processInboxItemCore({
+          db,
+          inboxId: 'ibx-sms-replay',
+          now: () => 1713350401000,
+        })
+        expect(first.materialized).toBe(true)
+
+        const second = await processInboxItemCore({
+          db,
+          inboxId: 'ibx-sms-replay',
+          now: () => 1713350402000,
+        })
+        expect(second.replayed).toBe(true)
+
+        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
+        expect(outboxQ.size).toBe(1)
+      })
     })
   })
 })

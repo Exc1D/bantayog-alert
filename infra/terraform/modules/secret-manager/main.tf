@@ -6,6 +6,8 @@ locals {
     "GLOBE_LABS_SECRET",
     "SENTRY_DSN",
     "FCM_SERVER_KEY",
+    "SMS_MSISDN_HASH_SALT",
+    "SMS_WEBHOOK_INBOUND_SECRET",
   ]
 }
 

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { msisdnPhSchema } from './msisdn.js'
 
 // hazard tag schema
 export const hazardTagSchema = z
@@ -197,6 +198,13 @@ export const inboxPayloadSchema = z
       })
       .strict(),
     pendingMediaIds: z.array(z.string().min(1)).max(20).optional(),
+    contact: z
+      .object({
+        phone: msisdnPhSchema,
+        smsConsent: z.literal(true),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 

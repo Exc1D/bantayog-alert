@@ -1,4 +1,5 @@
 export { canonicalPayloadHash } from './idempotency.js'
+export { normalizeMsisdn, msisdnPhSchema, hashMsisdn, MsisdnInvalidError } from './msisdn.js'
 export {
   activeAccountSchema,
   claimRevocationSchema,
@@ -51,6 +52,8 @@ export {
   smsProviderIdSchema,
 } from './sms.js'
 export type { SmsInboxDoc, SmsOutboxDoc, SmsSessionDoc, SmsProviderHealthDoc } from './sms.js'
+export { detectEncoding } from './sms-encoding.js'
+export type { SmsEncoding, EncodingResult } from './sms-encoding.js'
 export {
   agencyAssistanceRequestDocSchema,
   commandChannelThreadDocSchema,
@@ -79,6 +82,8 @@ export { idempotencyKeyDocSchema } from './idempotency-keys.js'
 export type { IdempotencyKeyDoc } from './idempotency-keys.js'
 export { deadLetterDocSchema } from './dead-letters.js'
 export type { DeadLetterDoc } from './dead-letters.js'
+export { renderTemplate, SmsTemplateError } from './sms-templates.js'
+export type { SmsPurpose, SmsLocale } from './sms-templates.js'
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
 export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'

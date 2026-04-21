@@ -216,6 +216,11 @@ interface SeedVerifiedReportOptions {
   municipalityLabel?: string
   reporterUid?: string
   severity?: 'low' | 'medium' | 'high' | 'critical'
+  reporterContact?: {
+    phone: string
+    smsConsent: true
+    locale?: 'tl' | 'en'
+  }
 }
 
 /**
@@ -267,6 +272,20 @@ export async function seedReportAtStatus(
     assignedMunicipalityAdmins: [],
     schemaVersion: 1,
   })
+
+  if (o.reporterContact) {
+    await db
+      .collection('report_sms_consent')
+      .doc(reportId)
+      .set({
+        reportId,
+        phone: o.reporterContact.phone,
+        locale: o.reporterContact.locale ?? 'tl',
+        smsConsent: true,
+        createdAt: now.toMillis(),
+        schemaVersion: 1,
+      })
+  }
 
   return { reportId }
 }

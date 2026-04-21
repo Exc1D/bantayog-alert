@@ -13,6 +13,7 @@ import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
 import { sendFcmToResponder, FCM_VAPID_PRIVATE_KEY } from '../services/fcm-send.js'
+import { enqueueSms } from '../services/send-sms.js'
 
 const InputSchema = z
   .object({
@@ -127,6 +128,33 @@ export async function dispatchResponderCore(
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const deadlineMs = DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
 
+        let smsRecipientPhone: string | undefined
+        let smsLocale: 'tl' | 'en' = 'tl'
+        let smsPublicRef = deps.reportId
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+          .slice(0, 8)
+
+        const salt = process.env.SMS_MSISDN_HASH_SALT
+        if (salt) {
+          const consentSnap = await tx.get(db.collection('report_sms_consent').doc(deps.reportId))
+          if (consentSnap.exists) {
+            const consentData = consentSnap.data()
+            if (consentData?.phone) {
+              smsRecipientPhone = consentData.phone as string
+              smsLocale = (consentData.locale as 'tl' | 'en' | undefined) ?? 'tl'
+
+              const lookupQ = db
+                .collection('report_lookup')
+                .where('reportId', '==', deps.reportId)
+                .limit(1)
+              const lookupSnap = await tx.get(lookupQ)
+              const lookupDoc = lookupSnap.docs[0]
+              smsPublicRef = lookupDoc?.id ?? smsPublicRef
+            }
+          }
+        }
+
         const dispatchRef = db.collection('dispatches').doc()
         const dispatchId = dispatchRef.id
 
@@ -180,6 +208,20 @@ export async function dispatchResponderCore(
           correlationId,
           schemaVersion: 1,
         })
+
+        if (salt && smsRecipientPhone) {
+          enqueueSms(db, tx, {
+            reportId: deps.reportId,
+            dispatchId,
+            purpose: 'status_update',
+            recipientMsisdn: smsRecipientPhone,
+            locale: smsLocale,
+            publicRef: smsPublicRef,
+            salt,
+            nowMs: deps.now.toMillis(),
+            providerId: 'semaphore',
+          })
+        }
 
         logEvent({
           severity: 'INFO',

@@ -8,6 +8,7 @@ import {
   reportLookupDocSchema,
   reportInboxDocSchema,
   hazardTagSchema,
+  inboxPayloadSchema,
 } from './reports.js'
 
 const ts = 1713350400000
@@ -333,5 +334,55 @@ describe('reportInboxDocSchema Phase 3 deltas', () => {
 
   it('rejects a non-UUID correlationId', () => {
     expect(() => reportInboxDocSchema.parse({ ...validInbox, correlationId: 'x' })).toThrow()
+  })
+})
+
+describe('inboxPayloadSchema contact extension', () => {
+  const basePayload = {
+    reportType: 'flood',
+    description: 'test',
+    severity: 'medium' as const,
+    source: 'web' as const,
+    publicLocation: { lat: 14.6, lng: 121.0 },
+  }
+
+  it('accepts payload without contact (existing behavior preserved)', () => {
+    expect(() => inboxPayloadSchema.parse(basePayload)).not.toThrow()
+  })
+
+  it('accepts contact with smsConsent=true', () => {
+    expect(() =>
+      inboxPayloadSchema.parse({
+        ...basePayload,
+        contact: { phone: '+639171234567', smsConsent: true },
+      }),
+    ).not.toThrow()
+  })
+
+  it('rejects contact with smsConsent=false (consent must be literal true)', () => {
+    expect(() =>
+      inboxPayloadSchema.parse({
+        ...basePayload,
+        contact: { phone: '+639171234567', smsConsent: false },
+      }),
+    ).toThrow()
+  })
+
+  it('rejects contact with non-normalized phone', () => {
+    expect(() =>
+      inboxPayloadSchema.parse({
+        ...basePayload,
+        contact: { phone: '09171234567', smsConsent: true },
+      }),
+    ).toThrow()
+  })
+
+  it('rejects contact with extra fields (strict)', () => {
+    expect(() =>
+      inboxPayloadSchema.parse({
+        ...basePayload,
+        contact: { phone: '+639171234567', smsConsent: true, extra: 'field' },
+      }),
+    ).toThrow()
   })
 })

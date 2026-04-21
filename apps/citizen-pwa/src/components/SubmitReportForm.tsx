@@ -4,6 +4,7 @@ import { addDoc, collection } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, fns, ensureSignedIn } from '../services/firebase.js'
 import { submitReport, type SubmitReportDeps } from '../services/submit-report.js'
+import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType, Severity } from '@bantayog/shared-types'
 
 function randomPublicRef(): string {
@@ -44,6 +45,9 @@ export function SubmitReportForm() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
+  const [phone, setPhone] = useState('')
+  const [smsConsent, setSmsConsent] = useState(false)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -71,6 +75,14 @@ export function SubmitReportForm() {
     if (lat === null || lng === null) {
       setError('Please capture your location.')
       return
+    }
+    if (phone) {
+      try {
+        normalizeMsisdn(phone)
+      } catch {
+        setPhoneError('Enter a valid PH mobile number (e.g. 09171234567 or +639171234567)')
+        return
+      }
     }
     setBusy(true)
     setError(null)
@@ -101,6 +113,7 @@ export function SubmitReportForm() {
         description,
         publicLocation: { lat, lng },
         ...(photo ? { photo } : {}),
+        ...(phone && smsConsent ? { contact: { phone, smsConsent: true as const } } : {}),
       })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       nav('/receipt', { state: result })
@@ -164,6 +177,30 @@ export function SubmitReportForm() {
             setPhoto(e.target.files?.[0] ?? null)
           }}
         />
+      </label>
+      <label>
+        Mobile number (optional — for SMS alerts)
+        <input
+          type="tel"
+          value={phone}
+          placeholder="09171234567 or +639171234567"
+          onChange={(e) => {
+            setPhone(e.target.value)
+            setPhoneError(null)
+          }}
+        />
+      </label>
+      {phoneError && <p role="alert">{phoneError}</p>}
+      <label>
+        <input
+          type="checkbox"
+          checked={smsConsent}
+          onChange={(e) => {
+            setSmsConsent(e.target.checked)
+          }}
+          disabled={!phone}
+        />
+        Send me SMS updates about this report
       </label>
       <button
         type="button"

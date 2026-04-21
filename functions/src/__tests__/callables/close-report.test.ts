@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 
 vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
@@ -210,5 +211,72 @@ describe('closeReportCore', () => {
     const events = await db.collection('report_events').where('reportId', '==', reportId).get()
     const closeEvents = events.docs.filter((doc: any) => doc.data().to === 'closed')
     expect(closeEvents).toHaveLength(1)
+  })
+})
+
+describe('closeReportCore SMS enqueue', () => {
+  beforeEach(() => {
+    process.env.SMS_MSISDN_HASH_SALT = 'test-sms-salt-ph4a'
+  })
+
+  afterEach(() => {
+    delete process.env.SMS_MSISDN_HASH_SALT
+  })
+
+  it('enqueues resolution SMS when reporter consented', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'resolved', {
+      municipalityId: 'daet',
+      reporterContact: { phone: '+639171234567', smsConsent: true, locale: 'tl' },
+    })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+
+    await closeReportCore(db, {
+      reportId,
+      idempotencyKey: crypto.randomUUID(),
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
+      now: Timestamp.now(),
+    })
+
+    const outboxQ = await getDocs(collection(db, 'sms_outbox'))
+    expect(outboxQ.size).toBe(1)
+    const outbox = outboxQ.docs[0]!.data()
+    expect(outbox.purpose).toBe('resolution')
+    expect(outbox.reportId).toBe(reportId)
+    expect(outbox.recipientMsisdn).toBe('+639171234567')
+    expect(outbox.status).toBe('queued')
+  })
+
+  it('does NOT enqueue SMS when reporter had no consent', async () => {
+    const db = testEnv.unauthenticatedContext().firestore() as any
+    const { reportId } = await seedReportAtStatus(db, 'resolved', {
+      municipalityId: 'daet',
+      // no reporterContact
+    })
+    await seedActiveAccount(testEnv, {
+      uid: 'admin-1',
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+    })
+
+    await closeReportCore(db, {
+      reportId,
+      idempotencyKey: crypto.randomUUID(),
+      actor: {
+        uid: 'admin-1',
+        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      },
+      now: Timestamp.now(),
+    })
+
+    const outboxQ = await getDocs(collection(db, 'sms_outbox'))
+    expect(outboxQ.size).toBe(0)
   })
 })
