@@ -88,6 +88,6 @@ export function enqueueSms(
 ): { outboxId: string; outboxRef: FirebaseFirestore.DocumentReference } {
   const payload = buildEnqueueSmsPayload(args)
   const outboxRef = db.collection('sms_outbox').doc(payload.idempotencyKey)
-  tx.set(outboxRef, payload, { merge: false })
+  tx.set(outboxRef, payload, { merge: true })
   return { outboxId: payload.idempotencyKey, outboxRef }
 }
