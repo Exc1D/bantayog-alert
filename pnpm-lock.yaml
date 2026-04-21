@@ -111,6 +111,9 @@ importers:
       '@bantayog/shared-validators':
         specifier: workspace:*
         version: link:../../packages/shared-validators
+      '@tanstack/query-persist-client-core':
+        specifier: ^5.99.2
+        version: 5.99.2
       '@tanstack/react-query':
         specifier: ^5.99.2
         version: 5.99.2(react@19.2.5)
@@ -1425,6 +1428,9 @@ packages:
 
   '@tanstack/query-core@5.99.2':
     resolution: {integrity: sha512-1HunU0bXVsR1ZJMZbcOPE6VtaBJxsW809RE9xPe4Gz7MlB0GWwQvuTPhMoEmQ/hIzFKJ/DWAuttIe7BOaWx0tA==}
+
+  '@tanstack/query-persist-client-core@5.99.2':
+    resolution: {integrity: sha512-YYuLGBDGCsUbfN2LuYrfkRCpg1vOUZnK2bn4j7zAZv+m1B4CnLAv58Z3A43d5Cruxvld5udYFeYXw9F6g/pZcQ==}
 
   '@tanstack/react-query@5.99.2':
     resolution: {integrity: sha512-vM91UEe45QUS9ED6OklsVL15i8qKcRqNwpWzPTVWvRPRSEgDudDgHpvyTjcdlwHcrKNa80T+xXYcchT2noPnZA==}
@@ -5946,6 +5952,10 @@ snapshots:
   '@standard-schema/spec@1.1.0': {}
 
   '@tanstack/query-core@5.99.2': {}
+
+  '@tanstack/query-persist-client-core@5.99.2':
+    dependencies:
+      '@tanstack/query-core': 5.99.2
 
   '@tanstack/react-query@5.99.2(react@19.2.5)':
     dependencies:
