@@ -1,5 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firestore'
 import { logDimension } from '@bantayog/shared-validators'
 
 const log = logDimension('evaluateSmsProviderHealth')
@@ -93,7 +93,7 @@ async function evaluateOne(db: Firestore, providerId: string, nowMs: number): Pr
         providerId,
         circuitState: nextState,
         errorRatePct: Math.round(errorRate * 100),
-        openedAt: nextState === 'open' ? nowMs : undefined,
+        openedAt: nextState === 'open' ? nowMs : FieldValue.delete(),
         lastTransitionReason: reason ?? 'state change',
         updatedAt: nowMs,
       },
