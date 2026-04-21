@@ -609,3 +609,82 @@ See `docs/learnings.md` for detailed technical decisions and lessons learned.
 - `React.FormEvent` suppressed with `// eslint-disable-next-line @typescript-eslint/no-deprecated` since the project consistently uses the React event type across forms
 
 **Key fix during implementation:** `seedReportAtStatus` uses `firebase-admin/firestore` `Timestamp.now()` which is incompatible with `RulesTestEnvironment.withSecurityRulesDisabled` context (uses JS SDK). Wrote inline seeding with numeric `ts` timestamps instead.
+
+---
+
+## Phase 4a Outbound SMS Pipeline (In Progress)
+
+**Branch:** `feature/phase-4a-outbound-sms`
+**Plan:** See `docs/superpowers/plans/2026-04-19-phase-4a-outbound-sms.md`
+**Status:** Tasks 1–21 committed; Task 22 (verification) in progress
+
+### Committed Implementation
+
+| Task | Description                                                                                             | Commit           |
+| ---- | ------------------------------------------------------------------------------------------------------- | ---------------- |
+| 1–17 | Core SMS pipeline (normalization, encoding, templates, enqueue, dispatch, health, DLR, webhook, wiring) | Multiple commits |
+| 18   | Citizen PWA phone + SMS consent UI                                                                      | `19e01c5`        |
+| 19   | Firestore rules lockdown + SMS rules tests                                                              | `1cff813`        |
+| 20   | Terraform SMS secrets + log metrics                                                                     | `cfc5548`        |
+| 21   | Bootstrap + acceptance gate scripts                                                                     | `7c547f0`        |
+
+### What was built
+
+**SMS Pipeline:**
+
+- `normalizeMsisdn` / `hashMsisdn` — PH MSISDN normalization to +63 and BLAKE3-256 hashing
+- `detectSmsEncoding` — GSM-7 vs UCS-2 per-code-point analysis
+- `renderSmsTemplate` — locale-keyed template renderer with charset-aware segment counting
+- `SmsProvider` interface + `FakeProvider` (fully functional for dev/CI) + `SemaphoreProvider` / `GlobeLabsProvider` stubs (Phase 4b)
+- `CircuitBreaker` — 3-state (closed/open/half_open) per-provider with automatic transitions
+- `pickProvider` — selects best available provider based on health state
+- `enqueueSms` — transactional outbox write with idempotency key
+- `dispatchSmsOutbox` — Firestore trigger: queued→sending→sent with CAS to prevent duplicate sends
+- `evaluateSmsProviderHealth` — scheduled: health doc updates, circuit transitions
+- `reconcileSmsDeliveryStatus` — scheduled: DLR processing, plaintext clearing
+- `cleanupSmsMinuteWindows` — scheduled: 30-min window cleanup
+- `smsDeliveryReport` — HTTP webhook for provider callbacks
+
+**Wiring (4 consumer callables):**
+
+- `processInboxItem` → enqueues `receipt_ack`
+- `verifyReport` → enqueues `verification`
+- `dispatchResponder` → enqueues `status_update` (with `dispatchId`)
+- `closeReport` → enqueues `resolution`
+
+**UI (citizen-pwa):**
+
+- Phone input with real-time `normalizeMsisdn` validation
+- SMS consent checkbox (disabled until valid phone entered)
+- `SubmitReportInput` contact union type + normalized MSISDN write path
+
+**Rules lockdown:**
+
+- `sms_outbox` — `allow read, write: if false` (callable-only)
+- `sms_provider_health/{id}/minute_windows` — `allow read, write: if false`
+- `report_sms_consent/{reportId}` — `allow read, write: if false`
+
+**Terraform:**
+
+- 2 new SMS secrets (`sms-msisdn-hash-salt`, `sms-webhook-inbound-secret`) with IAM bindings on functions SA
+- 4 SMS log metrics (`sms_sent`, `sms_failed`, `sms_abandoned`, `sms_circuit_opened`)
+
+**Tests:**
+
+- 3 Firestore rules test files (sms-outbox, sms-minute-windows, sms-consent)
+- Unit + integration tests for fake provider, dispatch-sms-outbox, callable SMS wiring
+- Acceptance gate: 13 test cases covering full pipeline
+
+### Pending
+
+- Task 22: Final `pnpm test` + `pnpm lint` + `pnpm typecheck` verification + progress docs
+- Emulator-based acceptance run (`firebase emulators:exec --only firestore,functions,auth`)
+- Staging soak + explicit staging approval before prod deployment
+
+### Code Review Findings (Tasks 18–20)
+
+| Severity | Issue                                                                                          | Status                                       |
+| -------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Medium   | Rules tests only cover deny paths; callable write access to `report_sms_consent` not exercised | Accept — deferred to Phase 4b callable tests |
+| Low      | SMS checkbox a11y: `htmlFor` would be more explicit                                            | Accept as-is                                 |
+| Info     | `smsConsent: true` is a literal type; union type would be safer                                | Accept — runtime guard handles it            |
