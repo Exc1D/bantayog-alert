@@ -100,6 +100,33 @@ export async function closeReportCore(
           )
         }
 
+        let smsRecipientPhone: string | undefined
+        let smsLocale: 'tl' | 'en' = 'tl'
+        let smsPublicRef = deps.reportId
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+          .slice(0, 8)
+
+        const salt = process.env.SMS_MSISDN_HASH_SALT
+        if (salt) {
+          const consentSnap = await tx.get(db.collection('report_sms_consent').doc(deps.reportId))
+          if (consentSnap.exists) {
+            const consentData = consentSnap.data()
+            if (consentData?.phone) {
+              smsRecipientPhone = consentData.phone as string
+              smsLocale = (consentData.locale as 'tl' | 'en' | undefined) ?? 'tl'
+
+              const lookupQ = db
+                .collection('report_lookup')
+                .where('reportId', '==', deps.reportId)
+                .limit(1)
+              const lookupSnap = await tx.get(lookupQ)
+              const lookupDoc = lookupSnap.docs[0]
+              smsPublicRef = lookupDoc?.id ?? smsPublicRef
+            }
+          }
+        }
+
         const updates: Record<string, unknown> = {
           status: to,
           lastStatusAt: deps.now,
@@ -125,32 +152,17 @@ export async function closeReportCore(
           schemaVersion: 1,
         })
 
-        // Enqueue resolution SMS if reporter consented
-        const salt = process.env.SMS_MSISDN_HASH_SALT
-        if (salt) {
-          const consentSnap = await tx.get(db.collection('report_sms_consent').doc(deps.reportId))
-          if (consentSnap.exists) {
-            const consentData = consentSnap.data()
-            if (consentData?.phone) {
-              const lookupQ = db
-                .collection('report_lookup')
-                .where('reportId', '==', deps.reportId)
-                .limit(1)
-              const lookupSnap = await tx.get(lookupQ)
-              const lookupDoc = lookupSnap.docs[0]
-              const publicRef = lookupDoc?.id ?? `report-${deps.reportId.slice(0, 8)}`
-              enqueueSms(db, tx, {
-                reportId: deps.reportId,
-                purpose: 'resolution',
-                recipientMsisdn: consentData.phone,
-                locale: consentData.locale ?? 'tl',
-                publicRef,
-                salt,
-                nowMs: deps.now.toMillis(),
-                providerId: 'semaphore',
-              })
-            }
-          }
+        if (salt && smsRecipientPhone) {
+          enqueueSms(db, tx, {
+            reportId: deps.reportId,
+            purpose: 'resolution',
+            recipientMsisdn: smsRecipientPhone,
+            locale: smsLocale,
+            publicRef: smsPublicRef,
+            salt,
+            nowMs: deps.now.toMillis(),
+            providerId: 'semaphore',
+          })
         }
 
         const log = logDimension('closeReport')

@@ -6,13 +6,19 @@ const EMU = process.argv.includes('--emulator')
 if (EMU) {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080'
   process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099'
+  process.env.DATABASE_EMULATOR_HOST = 'localhost:9000'
 }
 
 const PROJECT_ID =
   process.env.GCLOUD_PROJECT ?? process.env.FIREBASE_PROJECT_ID ?? 'bantayog-alert-dev'
 
 if (getApps().length === 0) {
-  initializeApp({ projectId: PROJECT_ID })
+  initializeApp({
+    projectId: PROJECT_ID,
+    databaseURL: EMU
+      ? `http://localhost:9000?ns=${PROJECT_ID}`
+      : `https://${PROJECT_ID}.asia-southeast1.firebasedatabase.app`,
+  })
 }
 
 const TEST_USERS = [
