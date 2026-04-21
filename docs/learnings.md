@@ -26,6 +26,7 @@ Durable rules worth keeping across sessions.
 - `requestAnimationFrame` in Vitest is safer with an explicit captured callback than with timer assumptions.
 - Firebase integration tests often need module-level mocks for Firestore/Auth setup.
 - A passing test is not enough; confirm it actually exercises the changed path.
+- Firebase Admin SDK (`firebase-admin/firestore`) and Client SDK (`firebase/firestore`) are type-incompatible — never mix `setDoc(doc(adminDb, ...), data)` patterns. Use Admin SDK exclusively for admin contexts, or Client SDK exclusively for test contexts.
 
 ## React
 

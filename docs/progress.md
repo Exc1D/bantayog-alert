@@ -2,14 +2,29 @@
 
 ## Current
 
+### Phase 4a TypeScript Errors Fix (2026-04-21)
+
+- Status: COMPLETE
+- Fixes applied to `functions/src/__tests__/acceptance/phase-4a-acceptance.ts`:
+  - Replaced scheduled/onRequest wrappers (`reconcileSmsDeliveryStatus`, `evaluateSmsProviderHealth`, `smsDeliveryReport`) with their `*Core` variants
+  - Fixed Admin/Client SDK mixing by using `adminDb` (from `getFirestore()`) directly for all `setDoc` calls
+  - Removed `resolveProvider` from `processInboxItemCore` call (not in interface)
+  - Removed `severity` and `notes` from `dispatchResponderCore` call (not in `DispatchResponderCoreDeps`)
+  - Fixed `staffClaims` return type for `exactOptionalPropertyTypes` compliance
+  - Fixed `smsConsent: false` type error by omitting `reporterContact` in seed (interface requires `smsConsent: true`)
+  - Added `resolveProvider` import back (required by `dispatchSmsOutboxCore`)
+- Verification: `pnpm run typecheck` → 0 errors for `phase-4a-acceptance.ts`
+- Note: `.test.ts` sibling file still has `assert` import errors — separate issue
+
 ### Phase 4a Acceptance Fixes (2026-04-21)
 
-- Status: PASS locally via emulator acceptance gate
+- Status: PASS locally via emulator acceptance gate; typecheck now passing for `.ts` file
 - Verification: `firebase emulators:exec --only firestore,database,auth "pnpm exec tsx scripts/phase-4a/acceptance.ts"` → `13/13 passing`
 - Notes:
   Repaired the phase 4a acceptance harness to run each case against clean Firestore + RTDB emulator state.
   Fixed `verifyReport`, `closeReport`, and `dispatchResponder` so transactional reads happen before writes.
   Corrected SMS fallback `publicRef` generation when `report_lookup` is absent.
+  Fixed ~17 TypeScript errors: Admin/Client SDK mixing, wrong function imports, interface mismatches.
 
 ### Phase 1 Identity Spine
 
