@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-import { persistQueryClient, type Persister, type PersistedClient } from '@tanstack/query-persist-client-core'
+import { persistQueryClient, persistQueryClientRestore, type Persister, type PersistedClient } from '@tanstack/query-persist-client-core'
 
 export { QueryProvider } from './QueryProvider'
 
@@ -10,6 +10,11 @@ const KEY = 'query-cache'
 function createIndexedDBPersister(): Persister {
   return {
     persistClient: async (client) => {
+      const hasErrors = Object.values(client.clientState.queries).some(
+        (q) => q.state.error != null
+      )
+      if (hasErrors) return
+
       return new Promise<void>((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, 1)
         request.onerror = () => {
@@ -129,11 +134,17 @@ export let persistor: ReturnType<typeof persistQueryClient> | undefined
 export async function initializeQueryClient() {
   if (persistor) return
 
+  const persister = createIndexedDBPersister()
+
   persistor = persistQueryClient({
     queryClient,
-    persister: createIndexedDBPersister(),
+    persister,
     buster: 'v1',
   })
 
-  await persistor[1]
+  await persistQueryClientRestore({
+    queryClient,
+    persister,
+    buster: 'v1',
+  })
 }
