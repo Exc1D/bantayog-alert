@@ -4,6 +4,8 @@ import { Button } from './ui/Button'
 import { FallbackCards } from './ui/FallbackCards'
 import { Timeline } from './ui/Timeline'
 
+const HOTLINE_NUMBER = '(054) 721-1216'
+
 interface RevealSheetProps {
   state: 'success' | 'queued' | 'failed_retryable'
   referenceCode: string
@@ -20,8 +22,8 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       subline: 'Your report is with Daet MDRRMO. Keep your line open.',
       bannerVariant: 'success' as const,
       receiverText: 'Received by Daet MDRRMO',
-      receiverIcon: '',
       primaryButton: 'Track this report',
+      primaryVariant: 'primary' as const,
       secondaryButton: undefined,
       permissionText: "You can close this app. We'll text you.",
     },
@@ -32,7 +34,6 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
         "You're offline right now. The moment your phone reconnects, we'll send this to Daet MDRRMO automatically. Walang mawawala. Safe ito sa phone mo.",
       bannerVariant: 'queued' as const,
       receiverText: 'Waiting for signal · auto-retry on',
-      receiverIcon: 'pulse',
       primaryButton: 'Try sending now',
       primaryVariant: 'amber' as const,
       secondaryButton: 'Keep draft & close',
@@ -45,7 +46,6 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
         'Your report is safe on your phone. The network is having trouble reaching MDRRMO — this is not your fault. If this is life-threatening, please call now.',
       bannerVariant: 'failed' as const,
       receiverText: undefined,
-      receiverIcon: undefined,
       primaryButton: 'Try again',
       primaryVariant: 'red' as const,
       secondaryButton: 'Keep draft & close',
@@ -117,7 +117,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
         tabIndex={0}
         onClick={state === 'success' ? onClose : undefined}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') onClose?.()
+          if ((e.key === 'Enter' || e.key === ' ') && state === 'success') onClose?.()
         }}
       />
       <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5 pointer-events-auto shadow-2xl">
@@ -166,7 +166,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
 
         {state !== 'success' && (
           <FallbackCards
-            hotlineNumber="(054) 721-1216"
+            hotlineNumber={HOTLINE_NUMBER}
             emphasized={state === 'failed_retryable'}
             onCallClick={handleCallHotline}
             onSmsClick={handleSmsFallback}
@@ -174,7 +174,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
         )}
 
         {state === 'success' && (
-          <FallbackCards hotlineNumber="(054) 721-1216" onCallClick={handleCallHotline} />
+          <FallbackCards hotlineNumber={HOTLINE_NUMBER} onCallClick={handleCallHotline} />
         )}
 
         <Button variant={variant.primaryVariant} fullWidth onClick={handlePrimaryAction}>
