@@ -158,7 +158,7 @@ SMS serves **four distinct purposes**, each with different reliability requireme
 1. **Targeted citizen status updates** (outbound, one-to-one). _"Your report has been received, reference 2026-DAET-0471. Responders dispatched."_ Ordinary Semaphore queue. Highest legitimate volume.
 2. **Municipality-scoped operational advisories** (outbound, ≤5,000 recipients). _"Barangay Calasgasan residents: road flooding on Maharlika Hwy km 12; avoid route."_ Semaphore priority queue. Municipal Admin authority only (§7.3).
 3. **Province-wide or multi-municipality mass alerts → ESCALATE to NDRRMC ECBS, do NOT send ourselves.** For anything requiring broad reach, the system **requests escalation** to NDRRMC/PAGASA (§7.5.1). We do not blast 600,000 SMS via a commercial aggregator — that is slower, more expensive, and legally awkward under RA 10639, which assigns this channel to NDRRMC operating ECBS.
-4. **Inbound citizen reports** (inbound). A feature-phone user texts `BANTAYOG <TYPE> <BARANGAY>` to a shared keyword. Globe Labs routes the SMS to a Cloud Function webhook that writes to `report_inbox` — the same collection the web app writes to. Unified ingestion.
+4. **Inbound citizen reports** (inbound). Two ingress shapes, one webhook: (a) feature-phone users text `BANTAYOG <TYPE> <BARANGAY>` to a shared keyword; (b) PWA users in a degraded submission state (`queued` offline or `failed_retryable`) tap "Send as SMS," which opens their native SMS composer pre-filled with an enriched multi-line body that carries the client draft reference for server-side dedup (§9.2). Globe Labs routes both to the same Cloud Function webhook, which writes to `report_inbox` — the same collection the web app writes to. Unified ingestion; the parser in `packages/shared-sms-parser/` handles both formats.
 
 **NDRRMC escalation workflow** (for purpose #3). The `requestMassAlertEscalation` callable captures: draft message, target areas, hazard class, evidence pack (linked reports, PAGASA reference if applicable). This creates a `mass_alert_requests/{id}` document and notifies the PDRRMO Director via priority SMS. The Superadmin reviews and forwards to NDRRMC via `forwardMassAlertToNDRRMC`. ECBS dispatch remains with NDRRMC. Bantayog records the escalation for audit and tracks NDRRMC's response timestamp to measure end-to-end. **The system must not claim to have issued an ECBS alert.** The UX distinguishes "escalation submitted to NDRRMC" from "sent via our SMS layer."
 
@@ -183,6 +183,21 @@ Content rules enforced in the abstraction:
 **Inbound format (feature-phone users).** Users text `BANTAYOG <TYPE> <BARANGAY>` to the keyword. Parser accepts type synonyms: `FLOOD` / `BAHA`, `FIRE` / `SUNOG`, `LANDSLIDE` / `GUHO`, `ACCIDENT` / `AKSIDENTE`, `MEDICAL` / `MEDIKAL`, `OTHER` / `IBA`. Barangay is fuzzy-matched against the 12-municipality barangay gazetteer with Levenshtein distance ≤ 2; on ambiguous match, auto-reply lists candidates. On parse failure, the system auto-replies requesting the correct format. Location precision is barangay-level only; reports are flagged `requiresLocationFollowUp: true` and admin triage handles them the same as GPS-lacking web submissions.
 
 Per-msisdn rate limits: max 5 submissions per msisdn per hour, max 20 per day. The webhook validates that the inbound request came from the configured Globe Labs IP range + shared-secret header. SMS-sourced reports are elevated-moderation by default.
+
+**Inbound format (PWA degraded-state).** When the PWA is in `queued` or `failed_retryable` submission state, tapping "Send as SMS" opens the native SMS composer via a `sms:` URL scheme pre-filled with a multi-line enriched body:
+
+```
+BANTAYOG <draft-ref>
+<TYPE> <BARANGAY>
+<lat>,<lng>
+<name>
+<msisdn>
+Hurt: <count>
+```
+
+Example: `BANTAYOG BA-D-4L2P\nFLOOD Daet\n14.1131,122.9553\nJuan Dela Cruz\n09171234567\nHurt: 2`. Target budget: 1 GSM-7 segment (160 chars). The client truncates name to 30 chars and strips diacritics (`é`, `ñ`) on encode to stay in GSM-7 — UCS-2 would halve the budget. The leading `BANTAYOG <draft-ref>` token is the disambiguator: the parser treats presence of a `BA-[DQ]-[A-Z0-9]{4}` token as "enriched format," parses the remaining lines positionally, and sets `reporterMsisdnHash` from the webhook payload as usual.
+
+**Dedup against online retry.** When the citizen taps "Send as SMS," the client sets `draft.smsFallbackSentAt = Date.now()` in localForage. On subsequent network recovery, the online retry submission carries the same draft reference in a new field `clientDraftRef` on the `report_inbox` write. A Cloud Function (`reconcileSmsFallback`) matches on draft reference; if an SMS-originated inbox item with the same ref exists within 24 hours, the online submission is merged into the existing item (augmenting with any fields the SMS version lacked — typically photos) rather than creating a duplicate. Rate limits (3/hr, 10/day) apply per msisdn hash across both ingress shapes — an SMS + online retry pair counts as one.
 
 ---
 
@@ -1459,7 +1474,7 @@ Mitigation:
 1. **Dual-write on draft save.** The client writes to both the Firestore SDK write queue AND a localForage entry keyed `draft:{clientUuid}`. localForage uses IndexedDB under the hood but with a separate database name; on init failure it falls back to WebSQL and localStorage.
 2. **On app start, reconcile.** If the Firestore queue is empty but localForage has `draft:{uuid}` entries, the client re-enqueues them. If Firestore already accepted (verified by listener), the localForage entry is cleared.
 3. **User-visible persistence confirmation.** After submit, the UI shows _"Your report is saved on this device. Reference: 2026-DAET-0471. Take a screenshot or save this code."_ This converts the reference into a paper-form fallback.
-4. **iOS-specific fallback.** On iOS, if IndexedDB appears compromised (detected via write-then-read probe), the UI prompts the user to send via SMS instead, pre-filling a `sms:` link with the correct keyword format.
+4. **SMS fallback for any PWA in a degraded submission state.** The Reveal UI offers "Send as SMS" as a parallel fallback to "Call hotline" in two cases: (a) `queued` — the device is offline at submission time; (b) `failed_retryable` — submission reached the network but the server rejected or timed out. On iOS, this path is also triggered if IndexedDB appears compromised (write-then-read probe fails), because iOS lacks Background Sync and cannot recover the queued submission on its own. The pre-filled `sms:` link uses the enriched format defined in §3. The client records `draft.smsFallbackSentAt` and includes `clientDraftRef` in any later online retry so the server can dedupe (see §3 "Dedup against online retry"). SMS fallback is hidden on platforms where `sms:` URL schemes are unsupported (desktop browsers, locked kiosks).
 5. **Background Sync API** is used where available (Chromium browsers) to retry when the browser is closed. iOS does not implement Background Sync; iOS users rely on the app being reopened — which is why SMS fallback exists.
 
 ### 9.3 Failure-State UX
