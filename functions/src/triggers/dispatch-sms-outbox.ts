@@ -1,5 +1,5 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore'
-import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firestore'
 import { logDimension } from '@bantayog/shared-validators'
 import {
   pickProvider,
@@ -46,6 +46,13 @@ export async function dispatchSmsOutboxCore(args: DispatchSmsOutboxCoreArgs): Pr
     return
   }
 
+  // Re-read outbox doc to get plaintext PII and template data for provider.send.
+  const outboxData = (await outboxRef.get()).data() as {
+    recipientMsisdn: string
+    bodyPreviewHash: string
+    predictedEncoding?: 'GSM-7' | 'UCS-2'
+  }
+
   // Pick provider.
   let providerTarget: 'semaphore' | 'globelabs'
   try {
@@ -62,60 +69,13 @@ export async function dispatchSmsOutboxCore(args: DispatchSmsOutboxCoreArgs): Pr
 
   let latencyMs = 0
   const start = now()
+  let result: Awaited<ReturnType<typeof provider.send>>
   try {
-    const result = await provider.send({
-      to: '', // plaintext msisdn is read from the outbox doc itself in real adapters
-      body: '', // real adapters render from template; fake ignores body
-      encoding: 'GSM-7',
+    result = await provider.send({
+      to: outboxData.recipientMsisdn,
+      body: outboxData.bodyPreviewHash,
+      encoding: outboxData.predictedEncoding ?? 'GSM-7',
     })
-    latencyMs = now() - start
-
-    if (result.accepted) {
-      await outboxRef.update({
-        status: 'sent',
-        sentAt: now(),
-        providerMessageId: result.providerMessageId,
-        encoding: result.encoding,
-        segmentCount: result.segmentCount,
-        providerId: provider.providerId === 'fake' ? providerTarget : provider.providerId,
-      })
-      await incrementMinuteWindow(
-        db,
-        providerTarget,
-        { success: true, rateLimited: false, latencyMs },
-        now(),
-      )
-      log({
-        severity: 'INFO',
-        code: 'sms.sent',
-        message: outboxId,
-        data: { providerId: providerTarget },
-      })
-    } else {
-      await outboxRef.update({
-        status: 'failed',
-        failedAt: now(),
-        terminalReason:
-          result.reason === 'invalid_number' || result.reason === 'bad_format'
-            ? 'rejected'
-            : 'client_err',
-        providerId: providerTarget,
-        ...(result.encoding ? { encoding: result.encoding } : {}),
-        ...(result.segmentCount ? { segmentCount: result.segmentCount } : {}),
-      })
-      await incrementMinuteWindow(
-        db,
-        providerTarget,
-        { success: false, rateLimited: false, latencyMs },
-        now(),
-      )
-      log({
-        severity: 'INFO',
-        code: 'sms.failed',
-        message: outboxId,
-        data: { reason: result.reason },
-      })
-    }
   } catch (err) {
     latencyMs = now() - start
     const kind = err instanceof SmsProviderRetryableError ? err.kind : 'provider_error'
@@ -132,6 +92,56 @@ export async function dispatchSmsOutboxCore(args: DispatchSmsOutboxCoreArgs): Pr
       code: 'sms.dispatch.retryable_error',
       message: outboxId,
       data: { kind },
+    })
+    return
+  }
+  latencyMs = now() - start
+
+  if (result.accepted) {
+    await outboxRef.update({
+      status: 'sent',
+      sentAt: now(),
+      providerMessageId: result.providerMessageId,
+      encoding: result.encoding,
+      segmentCount: result.segmentCount,
+      providerId: provider.providerId === 'fake' ? providerTarget : provider.providerId,
+    })
+    await incrementMinuteWindow(
+      db,
+      providerTarget,
+      { success: true, rateLimited: false, latencyMs },
+      now(),
+    )
+    log({
+      severity: 'INFO',
+      code: 'sms.sent',
+      message: outboxId,
+      data: { providerId: providerTarget },
+    })
+  } else {
+    await outboxRef.update({
+      status: 'failed',
+      failedAt: now(),
+      terminalReason:
+        result.reason === 'invalid_number' || result.reason === 'bad_format'
+          ? 'rejected'
+          : 'client_err',
+      providerId: providerTarget,
+      recipientMsisdn: FieldValue.delete(),
+      ...(result.encoding ? { encoding: result.encoding } : {}),
+      ...(result.segmentCount ? { segmentCount: result.segmentCount } : {}),
+    })
+    await incrementMinuteWindow(
+      db,
+      providerTarget,
+      { success: false, rateLimited: false, latencyMs },
+      now(),
+    )
+    log({
+      severity: 'INFO',
+      code: 'sms.failed',
+      message: outboxId,
+      data: { reason: result.reason },
     })
   }
 }
@@ -150,6 +160,7 @@ async function applyDeferralOrAbandon(
       abandonedAt: nowMs,
       terminalReason: 'abandoned_after_retries',
       retryCount: nextRetry,
+      recipientMsisdn: FieldValue.delete(),
     })
   } else {
     await outboxRef.update({
