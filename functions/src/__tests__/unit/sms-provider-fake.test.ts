@@ -12,6 +12,10 @@ describe('createFakeSmsProvider', () => {
   })
 
   afterEach(() => {
+    delete process.env.FAKE_SMS_LATENCY_MS
+    delete process.env.FAKE_SMS_ERROR_RATE
+    delete process.env.FAKE_SMS_FAIL_PROVIDER
+    delete process.env.FAKE_SMS_IMPERSONATE
     Object.assign(process.env, ORIGINAL_ENV)
   })
 
