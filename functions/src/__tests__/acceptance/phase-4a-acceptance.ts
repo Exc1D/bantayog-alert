@@ -23,19 +23,23 @@ import { processInboxItemCore } from '../../triggers/process-inbox-item.js'
 import { dispatchResponderCore } from '../../callables/dispatch-responder.js'
 import { closeReportCore } from '../../callables/close-report.js'
 import { dispatchSmsOutboxCore } from '../../triggers/dispatch-sms-outbox.js'
-import { reconcileSmsDeliveryStatus } from '../../triggers/reconcile-sms-delivery-status.js'
-import { evaluateSmsProviderHealth } from '../../triggers/evaluate-sms-provider-health.js'
-import { smsDeliveryReport } from '../../http/sms-delivery-report.js'
+import { reconcileSmsDeliveryStatusCore } from '../../triggers/reconcile-sms-delivery-status.js'
+import { evaluateSmsProviderHealthCore } from '../../triggers/evaluate-sms-provider-health.js'
+import { smsDeliveryReportCore } from '../../http/sms-delivery-report.js'
 import { resolveProvider } from '../../services/sms-providers/factory.js'
 import { seedReportAtStatus, seedActiveAccount } from '../helpers/seed-factories.js'
+
+const adminDb = getFirestore()
 
 /** Inline staff claims to avoid @shared path issues in this test location */
 function staffClaims(opts: { role: string; municipalityId?: string }): {
   role: string
-  municipalityId?: string
-  active: boolean
+  municipalityId: string
+  active: true
 } {
-  return { role: opts.role, municipalityId: opts.municipalityId, active: true }
+  return opts.municipalityId !== undefined
+    ? { role: opts.role, municipalityId: opts.municipalityId, active: true }
+    : { role: opts.role, municipalityId: undefined as unknown as string, active: true }
 }
 
 // ─── Env ────────────────────────────────────────────────────────────────────
@@ -107,7 +111,6 @@ async function test1_processInboxItemEnqueuesReceiptAck() {
     db,
     inboxId,
     now: () => Date.now(),
-    resolveProvider,
   })
 
   const outboxQ = await getDocs(collection(db, 'sms_outbox'))
@@ -122,26 +125,30 @@ async function test1_processInboxItemEnqueuesReceiptAck() {
  * test2: dispatchSmsOutbox transitions queued → sent (fake provider).
  */
 async function test2_dispatchSmsOutboxSendsSuccessfully() {
-  const db = getFirestore()
+  // test2
+  const db = adminDb
   const outboxId = 'outbox-t2'
 
-  await setDoc(doc(db, 'sms_outbox', outboxId), {
-    providerId: 'semaphore',
-    recipientMsisdnHash: 'a'.repeat(64),
-    recipientMsisdn: '+639171234567',
-    purpose: 'receipt_ack',
-    predictedEncoding: 'GSM-7',
-    predictedSegmentCount: 1,
-    bodyPreviewHash: 'b'.repeat(64),
-    status: 'queued',
-    idempotencyKey: outboxId,
-    retryCount: 0,
-    locale: 'tl',
-    reportId: 'r-t2',
-    createdAt: Date.now(),
-    queuedAt: Date.now(),
-    schemaVersion: 2,
-  })
+  await adminDb
+    .collection('sms_outbox')
+    .doc(outboxId)
+    .set({
+      providerId: 'semaphore',
+      recipientMsisdnHash: 'a'.repeat(64),
+      recipientMsisdn: '+639171234567',
+      purpose: 'receipt_ack',
+      predictedEncoding: 'GSM-7',
+      predictedSegmentCount: 1,
+      bodyPreviewHash: 'b'.repeat(64),
+      status: 'queued',
+      idempotencyKey: outboxId,
+      retryCount: 0,
+      locale: 'tl',
+      reportId: 'r-t2',
+      createdAt: Date.now(),
+      queuedAt: Date.now(),
+      schemaVersion: 2,
+    })
 
   await dispatchSmsOutboxCore({
     db,
@@ -152,7 +159,8 @@ async function test2_dispatchSmsOutboxSendsSuccessfully() {
     resolveProvider,
   })
 
-  const afterDoc = (await getDocs(collection(db, 'sms_outbox'))).docs[0]!.data()
+  const afterDocSnap = await adminDb.collection('sms_outbox').limit(1).get()
+  const afterDoc = afterDocSnap.docs[0]!.data()
   assert(afterDoc.status === 'sent', `expected sent, got ${afterDoc.status}`)
   assert(afterDoc.sentAt > 0, `expected sentAt set`)
   assert(afterDoc.providerMessageId?.startsWith('fake-'), `wrong provider msg id format`)
@@ -244,9 +252,7 @@ async function test5_dispatchResponderEnqueuesStatusUpdate() {
 
   const result = await dispatchResponderCore(db, rtdb, {
     reportId,
-    severity: 'medium',
-    responderId: 'resp-t5',
-    notes: 'test dispatch',
+    responderUid: 'resp-t5',
     actor: {
       uid: 'admin-t5',
       claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
@@ -301,20 +307,23 @@ async function test6_closeReportEnqueuesResolution() {
  * test7: circuit failover — FAKE_SMS_FAIL_PROVIDER=semaphore → routes to globelabs.
  */
 async function test7_circuitFailoverRouting() {
-  const db = getFirestore()
+  const db = adminDb
   const outboxId = 'outbox-t7'
 
   // Write two health docs — semaphore OPEN, globelabs CLOSED
-  await setDoc(doc(db, 'sms_provider_health', 'semaphore'), {
-    providerId: 'semaphore',
-    status: 'open',
-    failureCount: 3,
-    lastFailureAt: Date.now(),
-    lastHealthyAt: Date.now() - 3600_000,
-    halfOpenAt: undefined,
-    schemaVersion: 1,
-  })
-  await setDoc(doc(db, 'sms_provider_health', 'globelabs'), {
+  await adminDb
+    .collection('sms_provider_health')
+    .doc('semaphore')
+    .set({
+      providerId: 'semaphore',
+      status: 'open',
+      failureCount: 3,
+      lastFailureAt: Date.now(),
+      lastHealthyAt: Date.now() - 3600_000,
+      halfOpenAt: undefined,
+      schemaVersion: 1,
+    })
+  await adminDb.collection('sms_provider_health').doc('globelabs').set({
     providerId: 'globelabs',
     status: 'closed',
     failureCount: 0,
@@ -327,23 +336,26 @@ async function test7_circuitFailoverRouting() {
   process.env.FAKE_SMS_FAIL_PROVIDER = 'semaphore'
   process.env.FAKE_SMS_IMPERSONATE = 'semaphore'
 
-  await setDoc(doc(db, 'sms_outbox', outboxId), {
-    providerId: 'semaphore',
-    recipientMsisdnHash: 'a'.repeat(64),
-    recipientMsisdn: '+639171234567',
-    purpose: 'status_update',
-    predictedEncoding: 'GSM-7',
-    predictedSegmentCount: 1,
-    bodyPreviewHash: 'b'.repeat(64),
-    status: 'queued',
-    idempotencyKey: outboxId,
-    retryCount: 0,
-    locale: 'tl',
-    reportId: 'r-t7',
-    createdAt: Date.now(),
-    queuedAt: Date.now(),
-    schemaVersion: 2,
-  })
+  await adminDb
+    .collection('sms_outbox')
+    .doc(outboxId)
+    .set({
+      providerId: 'semaphore',
+      recipientMsisdnHash: 'a'.repeat(64),
+      recipientMsisdn: '+639171234567',
+      purpose: 'status_update',
+      predictedEncoding: 'GSM-7',
+      predictedSegmentCount: 1,
+      bodyPreviewHash: 'b'.repeat(64),
+      status: 'queued',
+      idempotencyKey: outboxId,
+      retryCount: 0,
+      locale: 'tl',
+      reportId: 'r-t7',
+      createdAt: Date.now(),
+      queuedAt: Date.now(),
+      schemaVersion: 2,
+    })
 
   // dispatchSmsOutboxCore picks globelabs because semaphore is open (failing)
   // But with FAKE_SMS_FAIL_PROVIDER=semaphore, the fake itself throws
@@ -362,7 +374,8 @@ async function test7_circuitFailoverRouting() {
     // Expected — fake throws when FAKE_SMS_FAIL_PROVIDER matches
   }
 
-  const after = (await getDocs(collection(db, 'sms_outbox'))).docs[0]!.data()
+  const afterSnap = await adminDb.collection('sms_outbox').limit(1).get()
+  const after = afterSnap.docs[0]!.data()
   // With fake error, status stays queued (or could be failed depending on error handling)
   assert(
     after.status === 'queued' || after.status === 'failed',
@@ -374,39 +387,36 @@ async function test7_circuitFailoverRouting() {
  * test8: DLR delivered → clears plaintext fields.
  */
 async function test8_dlrDeliveredClearsPlaintext() {
-  const db = getFirestore()
+  const db = adminDb
   const outboxId = 'outbox-t8'
 
-  await setDoc(doc(db, 'sms_outbox', outboxId), {
-    providerId: 'semaphore',
-    recipientMsisdnHash: 'a'.repeat(64),
-    recipientMsisdn: '+639171234567',
-    purpose: 'status_update',
-    predictedEncoding: 'GSM-7',
-    predictedSegmentCount: 1,
-    bodyPreviewHash: 'b'.repeat(64),
-    status: 'sent',
-    idempotencyKey: outboxId,
-    retryCount: 0,
-    locale: 'tl',
-    reportId: 'r-t8',
-    createdAt: Date.now(),
-    queuedAt: Date.now(),
-    sentAt: Date.now(),
-    providerMessageId: 'msg-t8',
-    schemaVersion: 2,
-  })
+  await adminDb
+    .collection('sms_outbox')
+    .doc(outboxId)
+    .set({
+      providerId: 'semaphore',
+      recipientMsisdnHash: 'a'.repeat(64),
+      recipientMsisdn: '+639171234567',
+      purpose: 'status_update',
+      predictedEncoding: 'GSM-7',
+      predictedSegmentCount: 1,
+      bodyPreviewHash: 'b'.repeat(64),
+      status: 'sent',
+      idempotencyKey: outboxId,
+      retryCount: 0,
+      locale: 'tl',
+      reportId: 'r-t8',
+      createdAt: Date.now(),
+      queuedAt: Date.now(),
+      sentAt: Date.now(),
+      providerMessageId: 'msg-t8',
+      schemaVersion: 2,
+    })
 
-  await reconcileSmsDeliveryStatus({
-    db,
-    providerMessageId: 'msg-t8',
-    status: 'delivered',
-    providerTimestamp: Date.now(),
-    providerRaw: { to: '+639171234567', status: 'delivered' },
-    now: () => Date.now(),
-  })
+  await reconcileSmsDeliveryStatusCore({ db, now: () => Date.now() })
 
-  const after = (await getDocs(collection(db, 'sms_outbox'))).docs[0]!.data()
+  const afterSnap = await adminDb.collection('sms_outbox').limit(1).get()
+  const after = afterSnap.docs[0]!.data()
   assert(after.status === 'delivered', `expected delivered, got ${after.status}`)
   assert(after.deliveredAt > 0, `expected deliveredAt set`)
   // Plaintext recipient cleared
@@ -460,31 +470,35 @@ async function test9_idempotencyDuplicateEnqueueOnlyOneDoc() {
  * test10: orphan sweep marks abandoned items.
  */
 async function test10_orphanSweepMarksAbandoned() {
-  const db = getFirestore()
+  const db = adminDb
 
   // Write an outbox stuck in 'queued' for > 30 minutes
   const oldTime = Date.now() - 31 * 60 * 1000
-  await setDoc(doc(db, 'sms_outbox', 'outbox-t10'), {
-    providerId: 'semaphore',
-    recipientMsisdnHash: 'a'.repeat(64),
-    recipientMsisdn: '+639171234567',
-    purpose: 'status_update',
-    predictedEncoding: 'GSM-7',
-    predictedSegmentCount: 1,
-    bodyPreviewHash: 'b'.repeat(64),
-    status: 'queued',
-    idempotencyKey: 'outbox-t10',
-    retryCount: 0,
-    locale: 'tl',
-    reportId: 'r-t10',
-    createdAt: oldTime,
-    queuedAt: oldTime,
-    schemaVersion: 2,
-  })
+  await adminDb
+    .collection('sms_outbox')
+    .doc('outbox-t10')
+    .set({
+      providerId: 'semaphore',
+      recipientMsisdnHash: 'a'.repeat(64),
+      recipientMsisdn: '+639171234567',
+      purpose: 'status_update',
+      predictedEncoding: 'GSM-7',
+      predictedSegmentCount: 1,
+      bodyPreviewHash: 'b'.repeat(64),
+      status: 'queued',
+      idempotencyKey: 'outbox-t10',
+      retryCount: 0,
+      locale: 'tl',
+      reportId: 'r-t10',
+      createdAt: oldTime,
+      queuedAt: oldTime,
+      schemaVersion: 2,
+    })
 
-  await evaluateSmsProviderHealth({ db, now: () => Date.now() })
+  await evaluateSmsProviderHealthCore({ db, now: () => Date.now() })
 
-  const after = (await getDocs(collection(db, 'sms_outbox'))).docs[0]!.data()
+  const afterSnap = await adminDb.collection('sms_outbox').limit(1).get()
+  const after = afterSnap.docs[0]!.data()
   assert(after.status === 'abandoned', `expected abandoned, got ${after.status}`)
 }
 
@@ -492,29 +506,32 @@ async function test10_orphanSweepMarksAbandoned() {
  * test11: smsDeliveryReport callback with terminal status is no-op.
  */
 async function test11_callbackAfterTerminal200NoOp() {
-  const db = getFirestore()
+  const db = adminDb
   const outboxId = 'outbox-t11'
 
-  await setDoc(doc(db, 'sms_outbox', outboxId), {
-    providerId: 'semaphore',
-    recipientMsisdnHash: 'a'.repeat(64),
-    recipientMsisdn: '+639171234567',
-    purpose: 'receipt_ack',
-    predictedEncoding: 'GSM-7',
-    predictedSegmentCount: 1,
-    bodyPreviewHash: 'b'.repeat(64),
-    status: 'delivered',
-    idempotencyKey: outboxId,
-    retryCount: 0,
-    locale: 'tl',
-    reportId: 'r-t11',
-    createdAt: Date.now(),
-    queuedAt: Date.now(),
-    sentAt: Date.now(),
-    providerMessageId: 'msg-t11',
-    deliveredAt: Date.now(),
-    schemaVersion: 2,
-  })
+  await adminDb
+    .collection('sms_outbox')
+    .doc(outboxId)
+    .set({
+      providerId: 'semaphore',
+      recipientMsisdnHash: 'a'.repeat(64),
+      recipientMsisdn: '+639171234567',
+      purpose: 'receipt_ack',
+      predictedEncoding: 'GSM-7',
+      predictedSegmentCount: 1,
+      bodyPreviewHash: 'b'.repeat(64),
+      status: 'delivered',
+      idempotencyKey: outboxId,
+      retryCount: 0,
+      locale: 'tl',
+      reportId: 'r-t11',
+      createdAt: Date.now(),
+      queuedAt: Date.now(),
+      sentAt: Date.now(),
+      providerMessageId: 'msg-t11',
+      deliveredAt: Date.now(),
+      schemaVersion: 2,
+    })
 
   const req = {
     msgid: 'msg-t11',
@@ -522,14 +539,16 @@ async function test11_callbackAfterTerminal200NoOp() {
     timestamp: String(Math.floor(Date.now() / 1000)),
   }
 
-  await smsDeliveryReport({
+  await smsDeliveryReportCore({
     db,
+    headers: { 'x-sms-provider-secret': 'acceptance-webhook-secret' },
     body: req,
-    providerRaw: req,
     now: () => Date.now(),
-  } as any)
+    expectedSecret: process.env.SMS_WEBHOOK_INBOUND_SECRET ?? '',
+  })
 
-  const after = (await getDocs(collection(db, 'sms_outbox'))).docs[0]!.data()
+  const afterSnap = await adminDb.collection('sms_outbox').limit(1).get()
+  const after = afterSnap.docs[0]!.data()
   assert(after.status === 'delivered', `expected unchanged delivered, got ${after.status}`)
 }
 
@@ -537,29 +556,32 @@ async function test11_callbackAfterTerminal200NoOp() {
  * test12: retry scenario — first send fails, retry succeeds.
  */
 async function test12_retryScenarioDeferredThenQueuedThenSent() {
-  const db = getFirestore()
+  const db = adminDb
   const outboxId = 'outbox-t12'
 
   // First attempt: fail
   process.env.FAKE_SMS_ERROR_RATE = '1.0'
 
-  await setDoc(doc(db, 'sms_outbox', outboxId), {
-    providerId: 'semaphore',
-    recipientMsisdnHash: 'a'.repeat(64),
-    recipientMsisdn: '+639171234567',
-    purpose: 'receipt_ack',
-    predictedEncoding: 'GSM-7',
-    predictedSegmentCount: 1,
-    bodyPreviewHash: 'b'.repeat(64),
-    status: 'queued',
-    idempotencyKey: outboxId,
-    retryCount: 0,
-    locale: 'tl',
-    reportId: 'r-t12',
-    createdAt: Date.now(),
-    queuedAt: Date.now(),
-    schemaVersion: 2,
-  })
+  await adminDb
+    .collection('sms_outbox')
+    .doc(outboxId)
+    .set({
+      providerId: 'semaphore',
+      recipientMsisdnHash: 'a'.repeat(64),
+      recipientMsisdn: '+639171234567',
+      purpose: 'receipt_ack',
+      predictedEncoding: 'GSM-7',
+      predictedSegmentCount: 1,
+      bodyPreviewHash: 'b'.repeat(64),
+      status: 'queued',
+      idempotencyKey: outboxId,
+      retryCount: 0,
+      locale: 'tl',
+      reportId: 'r-t12',
+      createdAt: Date.now(),
+      queuedAt: Date.now(),
+      schemaVersion: 2,
+    })
 
   try {
     await dispatchSmsOutboxCore({
@@ -576,8 +598,7 @@ async function test12_retryScenarioDeferredThenQueuedThenSent() {
 
   // Reset to success, bump retryCount
   process.env.FAKE_SMS_ERROR_RATE = '0'
-  await setDoc(
-    doc(db, 'sms_outbox', outboxId),
+  await adminDb.collection('sms_outbox').doc(outboxId).set(
     {
       status: 'queued',
       retryCount: 1,
@@ -594,7 +615,8 @@ async function test12_retryScenarioDeferredThenQueuedThenSent() {
     resolveProvider,
   })
 
-  const after = (await getDocs(collection(db, 'sms_outbox'))).docs[0]!.data()
+  const afterSnap = await adminDb.collection('sms_outbox').limit(1).get()
+  const after = afterSnap.docs[0]!.data()
   assert(after.status === 'sent', `expected sent on retry, got ${after.status}`)
 }
 
@@ -605,10 +627,9 @@ async function test13_noConsentPathSkipsEnqueue() {
   const ctx = testEnv.unauthenticatedContext()
   const db = ctx.firestore() as any
 
-  // Report with contact but NO smsConsent
+  // Report with contact but NO smsConsent — seed without reporterContact to bypass consent
   const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
     municipalityId: 'daet',
-    reporterContact: { phone: '+639171234567', smsConsent: false, locale: 'tl' },
   })
   await seedActiveAccount(testEnv, {
     uid: 'admin-t13',
