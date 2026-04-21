@@ -3,6 +3,11 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 
 const EMU = process.argv.includes('--emulator')
+const ALLOW_PROD = process.argv.includes('--allow-prod')
+if (!EMU && !ALLOW_PROD) {
+  console.error('Bootstrap script must run with --emulator or --allow-prod flag')
+  process.exit(1)
+}
 if (EMU) {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080'
   process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099'
@@ -71,7 +76,7 @@ async function main() {
       })
       console.log(`[bootstrap] created user ${user.email}`)
     } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('already')) {
+      if (err instanceof Error && (err as any).code === 'auth/uid-already-exists') {
         console.log(`[bootstrap] user ${user.email} already exists`)
       } else {
         throw err
