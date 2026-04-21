@@ -13,14 +13,26 @@ export interface ReportTimelineEvent {
   note?: string
 }
 
+export interface ReportLocation {
+  address?: string
+  lat?: number
+  lng?: number
+}
+
 export interface ReportData {
   id: string
   status: ReportStatus
   timeline: ReportTimelineEvent[]
   type?: string
+  reportType?: string
   severity?: string
   createdAt?: number
   updatedAt?: number
+  location?: ReportLocation
+  reporterName?: string
+  reporterPhone?: string
+  resolutionNote?: string
+  closedBy?: string
 }
 
 export function useReport(reportRef: string) {
@@ -43,8 +55,7 @@ export function useReport(reportRef: string) {
       },
       (error: { message: string }) => {
         if (unmountedRef.current) return
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        queryClient.setQueryError(['reports', reportRef], new Error(error.message))
+        console.error('Report snapshot error:', error.message)
       },
     )
 
@@ -54,9 +65,9 @@ export function useReport(reportRef: string) {
     }
   }, [reportRef, queryClient])
 
-  return useQuery({
+  return useQuery<ReportData | null>({
     queryKey: ['reports', reportRef],
-    queryFn: () => queryClient.getQueryData(['reports', reportRef]) ?? null,
+    queryFn: () => (queryClient.getQueryData(['reports', reportRef]) as ReportData | null) ?? null,
     staleTime: Infinity,
     gcTime: 5 * 60 * 1000,
     retry: false,
