@@ -1,0 +1,33 @@
+:root {
+  /* Colors */
+  --color-primary: #001e40;
+  --color-success-bg: #dcfce7;
+  --color-success-fg: #16a34a;
+  --color-queued-bg: #fef3c7;
+  --color-queued-fg: #f59e0b;
+  --color-failed-bg: #fee2e2;
+  --color-failed-fg: #dc2626;
+  --color-surface: #f5f7fa;
+  --color-card: #ffffff;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --motion-fast: 100ms;
+  --motion-normal: 300ms;
+  --motion-slow: 400ms;
+  --motion-slower: 600ms;
+}
