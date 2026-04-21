@@ -20,7 +20,9 @@ export function createFakeSmsProvider(): SmsProvider {
     providerId,
     async send(input: SmsProviderSendInput): Promise<SmsProviderSendResult> {
       const latencyMs = Number(process.env.FAKE_SMS_LATENCY_MS ?? '0')
-      if (latencyMs > 0) await new Promise((r) => setTimeout(r, latencyMs))
+      if (!Number.isNaN(latencyMs) && latencyMs > 0) {
+        await new Promise((r) => setTimeout(r, latencyMs))
+      }
 
       const fail = (process.env.FAKE_SMS_FAIL_PROVIDER ?? '').trim()
       if (fail === providerId) {
@@ -31,7 +33,7 @@ export function createFakeSmsProvider(): SmsProvider {
       }
 
       const errorRate = Number(process.env.FAKE_SMS_ERROR_RATE ?? '0')
-      if (errorRate > 0 && Math.random() < errorRate) {
+      if (!Number.isNaN(errorRate) && errorRate > 0 && Math.random() < errorRate) {
         return {
           accepted: false,
           latencyMs,

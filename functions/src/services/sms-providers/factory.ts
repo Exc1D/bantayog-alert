@@ -11,8 +11,20 @@ export function getProviderMode(): ProviderMode {
   return 'fake'
 }
 
+function createDisabledSmsProvider(): SmsProvider {
+  return {
+    providerId: 'disabled',
+    send() {
+      return Promise.reject(new Error('SMS provider is disabled'))
+    },
+  }
+}
+
 export function resolveProvider(target: 'semaphore' | 'globelabs'): SmsProvider {
   const mode = getProviderMode()
+  if (mode === 'disabled') {
+    return createDisabledSmsProvider()
+  }
   if (mode === 'fake') {
     // impersonation is driven by FAKE_SMS_IMPERSONATE env in tests;
     // here we pin the fake to the requested target for production-like DI.
