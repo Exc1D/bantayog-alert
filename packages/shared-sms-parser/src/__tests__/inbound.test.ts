@@ -1,4 +1,3 @@
-// @ts-nocheck - Types from inbound.js which doesn't exist yet (created in Task 2)
 import { describe, it, expect } from 'vitest'
 import { parseInboundSms } from '../inbound.js'
 
