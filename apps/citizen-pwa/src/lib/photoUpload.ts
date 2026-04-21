@@ -10,19 +10,21 @@ export type PhotoUploadState = 'idle' | 'uploading' | 'done' | 'error'
 export interface PhotoUploadManager {
   state: PhotoUploadState
   photoUrl: string | null
+  storagePath: string | null
   error: string | null
-  uploadFile: File | null
+  selectedFile: File | null
 
   setState: (state: PhotoUploadState) => void
   setError: (error: string) => void
-  uploadFile: (file: File) => void
+  uploadFile: (file: File) => Promise<void>
 }
 
 export function createPhotoUploadManager(): PhotoUploadManager {
   let state: PhotoUploadState = 'idle'
   let photoUrl: string | null = null
+  let storagePath: string | null = null
   let error: string | null = null
-  let uploadFile: File | null = null
+  let selectedFile: File | null = null
 
   return {
     get state() {
@@ -31,8 +33,14 @@ export function createPhotoUploadManager(): PhotoUploadManager {
     get photoUrl() {
       return photoUrl
     },
+    get storagePath() {
+      return storagePath
+    },
     get error() {
       return error
+    },
+    get selectedFile() {
+      return selectedFile
     },
 
     setState(newState: PhotoUploadState) {
@@ -45,14 +53,16 @@ export function createPhotoUploadManager(): PhotoUploadManager {
     },
 
     async uploadFile(file: File): Promise<void> {
-      uploadFile = file
+      selectedFile = file
       state = 'uploading'
       error = null
       photoUrl = null
+      storagePath = null
 
       try {
         const filename = `${Date.now()}-${file.name}`
-        const storageRef = ref(getStorage(), `citizen-uploads/${filename}`)
+        storagePath = `citizen-uploads/${filename}`
+        const storageRef = ref(getStorage(), storagePath)
         await uploadBytes(storageRef, file)
         photoUrl = await getDownloadURL(storageRef)
         state = 'done'
@@ -68,10 +78,6 @@ export function createPhotoUploadManager(): PhotoUploadManager {
 export async function uploadPhotoBlocking(file: File): Promise<PhotoUploadResult> {
   const manager = createPhotoUploadManager()
 
-  if (manager.state === 'uploading') {
-    throw new Error('Photo upload in progress')
-  }
-
   await manager.uploadFile(file)
 
   if (manager.state !== 'done' || !manager.photoUrl) {
@@ -80,6 +86,6 @@ export async function uploadPhotoBlocking(file: File): Promise<PhotoUploadResult
 
   return {
     photoUrl: manager.photoUrl,
-    storagePath: `citizen-uploads/${Date.now()}-${file.name}`,
+    storagePath: manager.storagePath!,
   }
 }
