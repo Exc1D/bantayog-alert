@@ -4,6 +4,8 @@ import { StatusBanner } from './ui/StatusBanner'
 import { Button } from './ui/Button'
 import { Timeline } from './ui/Timeline'
 
+const RESPONDER_PHONE_NUMBER = '0547211216'
+
 export function TrackingScreen() {
   const { reference } = useParams<{ reference: string }>()
   const { data: report, isLoading, error } = useReport(reference ?? '')
@@ -22,18 +24,12 @@ export function TrackingScreen() {
     )
   }
 
-  if (!reference) {
-    return (
-      <div className="p-4">
-        <StatusBanner variant="failed" icon="⚠">
-          Invalid reference
-        </StatusBanner>
-      </div>
-    )
-  }
-
   const statusVariant =
-    report.status === 'verified' ? 'success' : report.status === 'resolved' ? 'success' : 'queued'
+    report.status === 'verified' || report.status === 'resolved'
+      ? 'success'
+      : report.status === 'rejected'
+        ? 'failed'
+        : 'queued'
 
   const statusConfig = {
     verified: {
@@ -43,6 +39,10 @@ export function TrackingScreen() {
     resolved: {
       icon: '✓',
       text: 'Situation is cleared.',
+    },
+    rejected: {
+      icon: '✗',
+      text: 'Report could not be verified.',
     },
     awaiting_verify: {
       icon: '👁',
@@ -102,7 +102,9 @@ export function TrackingScreen() {
         <div className="flex justify-between items-center">
           <span className="text-sm text-[#52606d]">Phone</span>
           <span className="text-sm font-medium text-[#1d1d1f]">
-            {report.reporterPhone ? `****-***-${report.reporterPhone.slice(-4)}` : 'N/A'}
+            {report.reporterPhone && report.reporterPhone.length >= 4
+              ? `****-***-${report.reporterPhone.slice(-4)}`
+              : 'N/A'}
           </span>
         </div>
       </div>
@@ -120,7 +122,11 @@ export function TrackingScreen() {
         </div>
       )}
 
-      <Timeline events={timelineEvents} />
+      {timelineEvents.length === 0 ? (
+        <div className="text-center text-sm text-[#7b8794] py-4">No updates yet</div>
+      ) : (
+        <Timeline events={timelineEvents} />
+      )}
 
       <div className="flex gap-2 mt-4">
         <Button variant="secondary" fullWidth>
@@ -129,7 +135,7 @@ export function TrackingScreen() {
         <Button
           variant="primary"
           fullWidth
-          onClick={() => (window.location.href = 'tel:0547211216')}
+          onClick={() => (window.location.href = `tel:${RESPONDER_PHONE_NUMBER}`)}
         >
           Call responders
         </Button>
