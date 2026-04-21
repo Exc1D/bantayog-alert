@@ -2,6 +2,15 @@
 
 ## Current
 
+### Phase 4a Git Recovery (2026-04-21)
+
+- Status: complete
+- Verification:
+  `git ls-remote --heads origin recovery/phase-4a-outbound-sms` → `b7dc97121ebaa4ca53f39ce1232e5cb271c99c95`
+- Notes:
+  Restored the orphaned Phase 4a branch tip to `origin/recovery/phase-4a-outbound-sms`.
+  Confirmed `main` already contains the bulk Phase 4a code via squash commit `e05a25c`; the recovery branch preserves original commit history rather than replaying the entire stack.
+
 ### Phase 4a Acceptance Fixes (2026-04-21)
 
 - Status: PASS locally via emulator acceptance gate

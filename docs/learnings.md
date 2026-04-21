@@ -7,6 +7,7 @@ Durable rules worth keeping across sessions.
 - Re-read files after edits, subagent work, or context compaction. The file on disk is the source of truth.
 - For behavior changes, get a real red test before implementation.
 - Don’t bundle unrelated fixes in the same branch or conversation.
+- After a squash merge, preserve or recreate a remote branch/ref before deleting it if the original commit history still matters; the content may be in `main` while the branch ancestry is gone.
 
 ## Firestore
 
