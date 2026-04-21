@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -22,13 +22,18 @@ afterEach(async () => {
   await testEnv.clearFirestore()
 })
 
+afterAll(async () => {
+  await testEnv.cleanup()
+  delete process.env.FIRESTORE_EMULATOR_HOST
+})
+
 describe('cleanupSmsMinuteWindowsCore', () => {
   it('deletes windows older than 1h, retains newer ones, paginates over 500-doc batches', async () => {
     const db = getFirestore()
     const now = Date.now()
 
     // 600 old (older than 1h), 50 recent
-    const batch = db.batch()
+    let batch = db.batch()
     for (let i = 0; i < 600; i++) {
       const startMs = now - 2 * 60 * 60 * 1000 - i * 60_000
       const id = String(20_000_000_000_0000 + i)
@@ -48,6 +53,7 @@ describe('cleanupSmsMinuteWindowsCore', () => {
       )
       if ((i + 1) % 400 === 0) {
         await batch.commit()
+        batch = db.batch()
       }
     }
     await batch.commit()
