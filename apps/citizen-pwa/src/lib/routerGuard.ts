@@ -4,11 +4,11 @@ import { useUIStore } from './store'
 export function useRevealGuard() {
   const { currentSheet } = useUIStore()
 
-  return useBlocker(({ currentLocation }) => {
-    if (currentSheet !== 'none' && currentLocation.action === 'POP') {
+  return useBlocker(({ currentLocation, historyAction }) => {
+    if (currentSheet !== 'none' && historyAction === 'POP') {
       const isTrackingScreen = currentLocation.pathname.startsWith('/reports/')
       if (!isTrackingScreen) {
-        return 'You have an unsent report. Please save or send it first.'
+        return true
       }
     }
     return false

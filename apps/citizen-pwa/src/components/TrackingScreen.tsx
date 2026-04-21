@@ -10,6 +10,16 @@ export function TrackingScreen() {
   const { reference } = useParams<{ reference: string }>()
   const { data: report, isLoading, error } = useReport(reference ?? '')
 
+  if (!reference) {
+    return (
+      <div className="p-4">
+        <StatusBanner variant="failed" icon="⚠">
+          Invalid tracking link
+        </StatusBanner>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return <div className="p-4">Loading...</div>
   }

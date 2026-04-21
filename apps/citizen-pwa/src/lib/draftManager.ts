@@ -7,7 +7,6 @@ export async function createDraft(reportData: Omit<DraftReport, 'uuid'>): Promis
     ...reportData,
     createdAt: Date.now(),
     state: 'queued',
-    submittedRef: undefined,
   }
   await saveDraft(draft)
   return uuid
@@ -45,10 +44,10 @@ export async function incrementDraftRetry(uuid: string): Promise<void> {
 export async function promoteDraftToSuccess(uuid: string, finalRef: string): Promise<void> {
   const draft = await getDraft(uuid)
   if (!draft) throw new Error('Draft not found')
+  const { lastError: _ignored, ...rest } = draft
   await saveDraft({
-    ...draft,
+    ...rest,
     state: 'draft',
     submittedRef: finalRef,
-    lastError: undefined,
   })
 }
