@@ -19,7 +19,7 @@ export interface SmsProviderSendRejected {
 
 export type SmsProviderSendResult = SmsProviderSendSuccess | SmsProviderSendRejected
 
-export type SmsProviderRuntimeId = 'semaphore' | 'globelabs' | 'fake'
+export type SmsProviderRuntimeId = 'semaphore' | 'globelabs' | 'fake' | 'disabled'
 
 export interface SmsProviderSendInput {
   to: string
