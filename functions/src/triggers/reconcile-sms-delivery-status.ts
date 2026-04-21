@@ -23,12 +23,13 @@ export async function reconcileSmsDeliveryStatusCore({ db, now }: ReconcileArgs)
     .get()
 
   for (const doc of orphansSnap.docs) {
-    await doc.ref.update({
-      status: 'abandoned',
-      abandonedAt: nowMs,
-      terminalReason: 'orphan',
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(doc.ref)
+      const data = snap.data() as { status?: string; queuedAt?: number }
+      if (data.status !== 'queued') return
+      tx.update(doc.ref, { status: 'abandoned', abandonedAt: nowMs, terminalReason: 'orphan' })
+      log({ severity: 'INFO', code: 'sms.abandoned.orphan', message: doc.id })
     })
-    log({ severity: 'INFO', code: 'sms.abandoned.orphan', message: doc.id })
   }
 
   // Deferred pickup.

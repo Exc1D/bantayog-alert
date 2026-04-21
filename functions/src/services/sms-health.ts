@@ -61,6 +61,13 @@ export async function incrementMinuteWindow(
     .collection('minute_windows')
     .doc(windowId)
 
+  const maxLatency = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const existing = snap.data() as { maxLatencyMs?: number } | undefined
+    const currentMax = existing?.maxLatencyMs ?? 0
+    return Math.max(currentMax, outcome.latencyMs)
+  })
+
   await ref.set(
     {
       providerId,
@@ -69,7 +76,7 @@ export async function incrementMinuteWindow(
       failures: FieldValue.increment(outcome.success ? 0 : 1),
       rateLimitedCount: FieldValue.increment(outcome.rateLimited ? 1 : 0),
       latencySumMs: FieldValue.increment(outcome.latencyMs),
-      maxLatencyMs: outcome.latencyMs,
+      maxLatencyMs: maxLatency,
       updatedAt: nowMs,
       schemaVersion: 1,
     },
