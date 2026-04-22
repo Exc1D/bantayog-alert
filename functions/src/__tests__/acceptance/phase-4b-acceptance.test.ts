@@ -179,8 +179,8 @@ describe('Phase 4b Acceptance', () => {
     expect(reportData?.municipalityId).toBe('daet')
 
     // eslint-disable-next-line @typescript-eslint/require-await
-    await db.runTransaction(async (tx) => {
-      enqueueSms(db, tx, {
+    await db.runTransaction(async (tx: unknown) => {
+      enqueueSms(db, tx as any, {
         reportId: coreResult.reportId,
         purpose: 'receipt_ack',
         recipientMsisdn: msisdn,
