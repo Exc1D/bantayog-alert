@@ -17,13 +17,15 @@
     "@bantayog/shared-ui": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
     "firebase": "^12.12.0",
+    "localforage": "^1.10.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.1"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.0.0",
+    "@types/localforage": "^0.0.34",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
