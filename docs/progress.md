@@ -2,6 +2,53 @@
 
 ## Current
 
+### PR #57 Review Fixes — feature/map-tab (2026-04-22)
+
+- Status: in progress — reviewer comments are being resolved on `feature/map-tab`
+- Scope:
+  - clipboard copy now waits for a successful write before showing success
+  - invalid Leaflet coordinates are skipped in incident and personal report layers
+  - stale map selections clear when filters or data refresh remove the selected pin
+  - local cache/report lookup failures are handled without blocking the primary submit flow
+  - `usePublicIncidents` clears stale error state on successful resubscribe
+
+### Citizen PWA — Firebase env fallback for `pnpm dev` (2026-04-22)
+
+- Status: DONE locally — citizen PWA no longer hard-crashes when `VITE_FIREBASE_*` vars are missing
+- Scope:
+  - `usePublicIncidents` now short-circuits to empty/offline state when Firebase is not configured
+  - `useMyActiveReports` now returns localForage-backed queued reports without live Firestore/Functions access
+  - `SubmitReportForm` and `LookupScreen` now show a clear Firebase-config error instead of throwing
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (filtered package suite, 51/51)
+
+### Map Tab — full implementation (2026-04-22)
+
+- Status: DONE locally — full map tab slice implemented in `feature/map-tab`
+- Scope:
+  - `CitizenShell` top/bottom chrome + route updates
+  - `MapTab` orchestrator with Leaflet map, public incident layer, own-report layer, peek/detail sheets, filters, offline banner, and empty state
+  - `PeekSheet` / `DetailSheet` / `IncidentLayer` / `MyReportLayer`
+  - `useMyActiveReports` exact-optional-property cleanup for `id`
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (filtered package suite, 38/38)
+
+### Map Tab — Task 5: usePublicIncidents hook (TDD) (2026-04-22)
+
+- Status: DONE — committed to `feature/map-tab`
+- Files created:
+  - `apps/citizen-pwa/src/components/MapTab/types.ts` — `PublicIncident`, `MyReport`, `Filters` interfaces
+  - `apps/citizen-pwa/src/hooks/usePublicIncidents.ts` — Firestore `onSnapshot` hook with severity/window filters
+  - `apps/citizen-pwa/src/hooks/usePublicIncidents.test.ts` — 4 tests (loading state, snapshot return, severity filter, error handling)
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (targeted package suite, 22/22)
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+
 ### PR #56 Review Fixes — feat(citizen-pwa): manual location fallback (2026-04-22)
 
 - Status: In progress — fixes applied to `feature/citizen-report-flow` worktree

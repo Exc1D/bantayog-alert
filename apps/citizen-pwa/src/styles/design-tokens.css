@@ -10,6 +10,11 @@
   --color-failed-fg: #dc2626;
   --color-surface: #f5f7fa;
   --color-card: #ffffff;
+  --color-secondary: #a73400;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-surface-variant: #43474f;
+  --color-tertiary-fixed: #d1e4ff;
 
   /* Typography */
   --font-primary: 'Inter', -apple-system, system-ui, sans-serif;
