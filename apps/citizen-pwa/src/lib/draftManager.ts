@@ -1,4 +1,4 @@
-import { saveDraft, getDraft, listDrafts, deleteDraft, type DraftReport } from './localforage'
+import { saveDraft, getDraft, type DraftReport } from './localforage'
 
 export async function createDraft(reportData: Omit<DraftReport, 'uuid'>): Promise<string> {
   const uuid = crypto.randomUUID()
