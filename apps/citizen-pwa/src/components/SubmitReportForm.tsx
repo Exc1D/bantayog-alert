@@ -1,43 +1,18 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { addDoc, collection } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, fns, ensureSignedIn } from '../services/firebase.js'
-import { submitReport, type SubmitReportDeps } from '../services/submit-report.js'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType, Severity } from '@bantayog/shared-types'
-
-function randomPublicRef(): string {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  const bytes = crypto.getRandomValues(new Uint8Array(8))
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('')
-}
-
-function randomSecret(): string {
-  return crypto.randomUUID()
-}
-
-async function sha256Hex(input: string | Blob): Promise<string> {
-  const buf =
-    typeof input === 'string'
-      ? new TextEncoder().encode(input)
-      : new Uint8Array(await input.arrayBuffer())
-  const digest = await crypto.subtle.digest('SHA-256', buf)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-async function putBlob(url: string, blob: Blob): Promise<void> {
-  const res = await fetch(url, {
-    method: 'PUT',
-    body: blob,
-    headers: { 'content-type': blob.type },
-  })
-  if (!res.ok) throw new Error('upload failed: ' + String(res.status))
-}
+import { createDraft } from '../services/submit-report.js'
+import type { Draft } from '../services/draft-store.js'
+import { useSubmissionMachine } from '../hooks/useSubmissionMachine.js'
+import { OfflineBanner } from './OfflineBanner.js'
+import { SmsFallbackButton } from './SmsFallbackButton.js'
 
 export function SubmitReportForm() {
+  return <FormCollector />
+}
+
+function FormCollector() {
   const nav = useNavigate()
   const [reportType, setReportType] = useState<ReportType>('flood')
   const [severity, setSeverity] = useState<Severity>('medium')
@@ -48,8 +23,8 @@ export function SubmitReportForm() {
   const [phone, setPhone] = useState('')
   const [smsConsent, setSmsConsent] = useState(false)
   const [phoneError, setPhoneError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
 
   async function getLocation(): Promise<void> {
     const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -70,7 +45,7 @@ export function SubmitReportForm() {
     }
   }
 
-  async function onSubmit(e: React.SubmitEvent): Promise<void> {
+  async function onSubmit(e: React.SyntheticEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault()
     if (lat === null || lng === null) {
       setError('Please capture your location.')
@@ -84,52 +59,36 @@ export function SubmitReportForm() {
         return
       }
     }
-    setBusy(true)
     setError(null)
-    try {
-      const deps: SubmitReportDeps = {
-        ensureSignedIn,
-        requestUploadUrl: async (args) =>
-          (await httpsCallable(fns(), 'requestUploadUrl')(args)).data as {
-            uploadUrl: string
-            uploadId: string
-            storagePath: string
-            expiresAt: number
-          },
-        putBlob,
-        writeInbox: async (doc) => {
-          const ref = await addDoc(collection(db(), 'report_inbox'), doc)
-          return ref.id
-        },
-        randomUUID: () => crypto.randomUUID(),
-        randomPublicRef,
-        randomSecret,
-        sha256Hex,
-        now: () => Date.now(),
-      }
-      const result = await submitReport(deps, {
-        reportType,
-        severity,
-        description,
-        publicLocation: { lat, lng },
-        ...(photo ? { photo } : {}),
-        ...(phone && smsConsent ? { contact: { phone, smsConsent: true as const } } : {}),
-      })
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      nav('/receipt', { state: result })
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'submission failed')
-    } finally {
-      setBusy(false)
-    }
+
+    const created = await createDraft({
+      reportType,
+      barangay: '',
+      description,
+      severity,
+      location: { lat, lng },
+      ...(phone && smsConsent ? { reporterMsisdnHash: await hashPhone(phone) } : {}),
+      clientDraftRef: crypto.randomUUID(),
+      ...(photo ? { photo: new Blob([await photo.arrayBuffer()], { type: photo.type }) } : {}),
+    })
+
+    setDraft(created)
+  }
+
+  if (draft) {
+    return (
+      <SubmissionPanel
+        draft={draft}
+        phone={phone}
+        onSuccess={(publicRef) => {
+          void nav('/receipt', { state: { publicRef, secret: 'pending' } })
+        }}
+      />
+    )
   }
 
   return (
-    <form
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      onSubmit={onSubmit}
-      aria-label="Report submission form"
-    >
+    <form onSubmit={(e) => void onSubmit(e)} aria-label="Report submission form">
       <label>
         Type
         <select
@@ -202,12 +161,7 @@ export function SubmitReportForm() {
         />
         Send me SMS updates about this report
       </label>
-      <button
-        type="button"
-        onClick={() => {
-          void onCaptureLocation()
-        }}
-      >
+      <button type="button" onClick={() => void onCaptureLocation()}>
         Capture location
       </button>
       {lat !== null && lng !== null && (
@@ -216,9 +170,58 @@ export function SubmitReportForm() {
         </p>
       )}
       {error && <p role="alert">{error}</p>}
-      <button type="submit" disabled={busy}>
-        {busy ? 'Submitting\u2026' : 'Submit report'}
-      </button>
+      <button type="submit">Submit report</button>
     </form>
   )
+}
+
+function SubmissionPanel({
+  draft,
+  phone,
+  onSuccess,
+}: {
+  draft: Draft
+  phone: string
+  onSuccess: (publicRef: string) => void
+}) {
+  const machine = useSubmissionMachine({
+    draft,
+    onSuccess,
+    onTerminal: () => {
+      return
+    },
+  })
+
+  const showSmsFallback = machine.state === 'queued' || machine.state === 'failed_terminal'
+
+  return (
+    <div aria-label="Submission status">
+      <OfflineBanner state={machine.state} retryCount={machine.retryCount} />
+
+      {machine.state === 'idle' && (
+        <button type="button" onClick={() => void machine.submit()}>
+          Submit report
+        </button>
+      )}
+
+      {showSmsFallback && (
+        <SmsFallbackButton
+          draft={draft}
+          {...(phone ? { reporterMsisdn: phone } : {})}
+          onSent={() => {
+            machine.sendSmsFallback()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+async function hashPhone(phone: string): Promise<string> {
+  const normalized = normalizeMsisdn(phone)
+  const buf = new TextEncoder().encode(normalized)
+  const digest = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
