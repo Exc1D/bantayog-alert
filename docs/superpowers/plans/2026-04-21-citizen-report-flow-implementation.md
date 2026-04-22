@@ -2255,7 +2255,6 @@ This document provides an overview of the citizen-facing PWA components and thei
 
 ```tsx
 import { SubmitReportFormNew } from './components/SubmitReportForm'
-
 ;<SubmitReportFormNew />
 ```
 ````
@@ -2279,7 +2278,6 @@ Bottom sheet modal showing submission result with three variants: success, queue
 
 ```tsx
 import { RevealSheet } from './components/RevealSheet'
-
 ;<RevealSheet state="success" referenceCode="BA-7K3M-24" onClose={() => console.log('closed')} />
 ```
 
