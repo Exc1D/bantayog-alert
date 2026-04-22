@@ -29,6 +29,7 @@ const INCIDENT_TYPES = [
 export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
   const [reportType, setReportType] = useState('flood')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  /* @extraction-note blob URL from createObjectURL is safe for img src attribute */
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const blobUrlRef = useRef<string | null>(null)
 
@@ -77,7 +78,6 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
 
       <div className="camera-viewfinder">
         {previewUrl ? (
-          /* codeql[ts/xss/dom-text-reinterpreted-as-html] */
           <img src={previewUrl} alt="Preview" className="preview-img" />
         ) : (
           <div className="camera-placeholder">
