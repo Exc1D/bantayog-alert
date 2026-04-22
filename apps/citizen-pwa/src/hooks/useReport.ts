@@ -79,21 +79,28 @@ export function useReport(reportRef: string) {
       if (cached !== undefined) return cached as ReportData | null
       if (!hasReportRef) return null
       return new Promise<ReportData | null>((resolve) => {
-        const unsub = onSnapshot(doc(db(), `reports/${reportRef}`), (snap) => {
-          if (!snap.exists()) {
+        const unsub = onSnapshot(
+          doc(db(), `reports/${reportRef}`),
+          (snap) => {
+            if (!snap.exists()) {
+              resolve(null)
+              unsub()
+              return
+            }
+            try {
+              resolve(mapReportFromFirestore(snap.data()))
+            } catch (err) {
+              console.error('Report mapping error:', err instanceof Error ? err.message : err)
+              resolve(null)
+            }
+            unsub()
+          },
+          (error) => {
+            console.error('Report fetch error:', error.message)
             resolve(null)
             unsub()
-            return
-          }
-          try {
-            resolve(mapReportFromFirestore(snap.data()))
-          } catch {
-            resolve(null)
-          }
-          setTimeout(() => {
-            unsub()
-          }, 10)
-        })
+          },
+        )
       })
     },
     enabled: hasReportRef,

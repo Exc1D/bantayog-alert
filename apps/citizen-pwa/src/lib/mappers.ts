@@ -2,7 +2,7 @@ import type { ReportStatus } from '@bantayog/shared-types'
 import type { ReportData } from '../hooks/useReport'
 
 export function mapReportFromFirestore(data: Record<string, unknown>): ReportData {
-  if (!data.id || !data.status) {
+  if (!data.id || !data.status || !Array.isArray(data.timeline)) {
     throw new Error('Invalid report data: missing required fields')
   }
 
@@ -27,7 +27,12 @@ export function mapReportFromFirestore(data: Record<string, unknown>): ReportDat
   if (data.updatedAt !== undefined) {
     result.updatedAt = data.updatedAt as number;
   }
-  if (data.location !== undefined) {
+  if (
+    data.location !== undefined &&
+    data.location !== null &&
+    typeof data.location === 'object' &&
+    !Array.isArray(data.location)
+  ) {
     const loc = data.location as Record<string, unknown>;
     result.location = {
       ...(loc.address !== undefined && { address: loc.address as string }),

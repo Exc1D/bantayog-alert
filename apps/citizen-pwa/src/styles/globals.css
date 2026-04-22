@@ -1082,6 +1082,22 @@ body {
   line-height: 1.4;
 }
 
+.consent-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.consent-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* === TrackingScreen === */
 .tracking-header {
   text-align: center;

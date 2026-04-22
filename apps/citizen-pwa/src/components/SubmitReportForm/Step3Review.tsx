@@ -131,7 +131,16 @@ export function Step3Review({
           className="consent-checkbox"
         />
         <span className="consent-text-small">
-          I confirm this report is true. You may contact me. <u>Privacy notice ›</u>
+          I confirm this report is true. You may contact me.{' '}
+          <button
+            type="button"
+            className="consent-link"
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+          >
+            Privacy notice ›
+          </button>
         </span>
       </label>
 

@@ -1,6 +1,11 @@
 import { saveDraft, getDraft, listDrafts, deleteDraft, type DraftReport } from './localforage'
 
-export async function createDraft(reportData: Omit<DraftReport, 'uuid'>): Promise<string> {
+type CreateDraftInput = Omit<
+  DraftReport,
+  'uuid' | 'createdAt' | 'state' | 'submittedRef' | 'lastError' | 'retryCount'
+>
+
+export async function createDraft(reportData: CreateDraftInput): Promise<string> {
   const uuid = crypto.randomUUID()
   const draft: DraftReport = {
     uuid,
@@ -15,7 +20,8 @@ export async function createDraft(reportData: Omit<DraftReport, 'uuid'>): Promis
 export async function updateDraft(uuid: string, updates: Partial<DraftReport>): Promise<void> {
   const draft = await getDraft(uuid)
   if (!draft) throw new Error('Draft not found')
-  const updated = { ...draft, ...updates }
+  const { uuid: _ignoredUuid, ...safeUpdates } = updates
+  const updated: DraftReport = { ...draft, ...safeUpdates, uuid }
   await saveDraft(updated)
 }
 
