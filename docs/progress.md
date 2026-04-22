@@ -4,7 +4,7 @@
 
 ### Phase 4b SMS Inbound Pipeline (2026-04-22)
 
-- Status: Core implementation complete (Tasks 1-7 done; Tasks 8-9 pending)
+- Status: Core + Integration tests complete (Tasks 1-8 done; Task 9 pending)
 - Branches:
   - `feature/phase-4b-sms-inbound` — worktree at `dae2848`
   - `main` — all commits merged here
@@ -16,6 +16,7 @@
   - `9a96e82` feat(sms-inbound): encrypt MSISDN in sms_inbox for Phase 4b auto-reply
   - `7479d28` feat(sms-inbound): add smsInboundProcessor trigger with auto-reply
   - `10d9b5b` fix(sms-inbound): add async wrapper to db.runTransaction
+  - `082b8c4` feat(sms-inbound): add integration tests for Phase 4b SMS inbound pipeline
 - Files created/modified:
   - `packages/shared-sms-parser/src/inbound.ts` — BANTAYOG parser with fuzzy barangay matching
   - `packages/shared-sms-parser/src/index.ts` — re-exports parser
@@ -24,18 +25,22 @@
   - `packages/shared-sms-parser/package.json` — added test script and zod dependency
   - `packages/shared-validators/src/sms.ts` — added `smsReportInboxFieldsSchema` + `senderMsisdnEnc` field
   - `packages/shared-validators/src/index.ts` — re-exports new schema
-  - `functions/src/http/sms-inbound.ts` — thin webhook for Globe Labs SMS ingress
+  - `functions/src/http/sms-inbound.ts` — thin webhook for Globe Labs SMS ingress (refactored to extract smsInboundWebhookCore)
   - `functions/src/firestore/sms-inbound-processor.ts` — onCreate trigger, parses SMS, writes report_inbox, queues auto-reply
   - `functions/src/triggers/process-inbox-item.ts` — added `publicRef` to ProcessInboxItemCoreResult
   - `functions/src/index.ts` — exports new webhook and trigger
+  - `functions/src/__tests__/sms-inbound.test.ts` — 13 integration tests (all passing)
   - `functions/package.json` — added `@bantayog/shared-sms-parser` dependency
+  - `docs/superpowers/plans/2026-04-22-phase-4b-sms-inbound.md` — implementation plan
+  - `docs/superpowers/specs/2026-04-22-phase-4b-sms-inbound-design.md` — design spec
 - Pending:
-  - Task 8: Integration tests for sms-inbound webhook and processor
-  - Task 9: Acceptance harness for end-to-end SMS flow
+  - Task 9: Acceptance harness for end-to-end SMS flow (requires `firebase emulators:exec`)
 - Notes:
   - MSISDN encryption: AES-256-GCM with `SMS_MSISDN_ENCRYPTION_KEY` env var
   - Pre-commits resolved via `// eslint-disable-next-line @typescript-eslint/require-await` on the one fire-and-forget transaction call
   - The `autoReplyText` from the parser is currently unused (trigger sends `receipt_ack` purpose SMS via enqueueSms)
+  - Integration tests use `env.unauthenticatedContext().firestore()` for seeding and `env.withSecurityRulesDisabled()` for test body
+  - Parser test expectations corrected: CALASGAN→low (dist=2), LANIT→none (not in gazetteer), details case preserved lowercase
 
 ### Phase 4a Git Recovery (2026-04-21)
 
