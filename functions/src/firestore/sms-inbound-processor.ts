@@ -107,7 +107,8 @@ export const smsInboundProcessor = onDocumentCreated(
       if (senderMsisdnEnc && !senderMsisdnHash.startsWith('invalid:')) {
         const recipientMsisdn = decryptMsisdn(senderMsisdnEnc)
         const salt = process.env.SMS_MSISDN_HASH_SALT ?? ''
-        await db.runTransaction((tx) => {
+        // eslint-disable-next-line @typescript-eslint/require-await
+        await db.runTransaction(async (tx) => {
           enqueueSms(db, tx, {
             reportId: coreResult.reportId,
             purpose: 'receipt_ack',
