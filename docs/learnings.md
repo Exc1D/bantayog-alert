@@ -37,6 +37,7 @@ Durable rules worth keeping across sessions.
 - `useRef(initial)` does not track later state changes; sync refs explicitly if they must stay current.
 - Critical external data should be fetched internally or required as a prop, not left optional.
 - `react-hooks/refs` will flag `ref.current` reads during render; pass render-time values through state instead of reading mutable refs in JSX.
+- If CodeQL flags a React blob-preview path as `js/xss-through-dom`, annotation-only suppressions are brittle; render the file into a `canvas` via `createImageBitmap` instead of piping a blob URL string into JSX.
 
 ## TypeScript
 

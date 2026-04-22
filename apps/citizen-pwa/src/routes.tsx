@@ -1,9 +1,11 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './components/CitizenShell.js'
 import { MapTab } from './components/MapTab/index.js'
-import { SubmitReportForm } from './components/SubmitReportForm.js'
+import { SubmitReportForm as LegacySubmitReportForm } from './components/SubmitReportForm.js'
+import { SubmitReportForm as NewSubmitReportForm } from './components/SubmitReportForm/index.js'
 import { ReceiptScreen } from './components/ReceiptScreen.js'
 import { LookupScreen } from './components/LookupScreen.js'
+import { TrackingScreen } from './components/TrackingScreen.js'
 
 function StubTab({ label }: { label: string }) {
   return (
@@ -26,9 +28,19 @@ const router = createBrowserRouter([
     path: '/report',
     element: (
       <CitizenShell>
-        <SubmitReportForm />
+        <LegacySubmitReportForm />
       </CitizenShell>
     ),
+  },
+  {
+    path: '/report/new',
+    element: <NewSubmitReportForm />,
+    handle: { hideBottomNav: true },
+  },
+  {
+    path: '/reports/:reference',
+    element: <TrackingScreen />,
+    handle: { hideBottomNav: true },
   },
   {
     path: '/feed',
