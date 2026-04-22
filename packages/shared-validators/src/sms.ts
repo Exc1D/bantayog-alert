@@ -12,7 +12,7 @@ export const smsInboxDocSchema = z
       .regex(/^[a-f0-9]{64}$/),
     senderMsisdnEnc: z.string().optional(),
     body: z.string().max(1600),
-    parseStatus: z.enum(['pending', 'parsed', 'low_confidence', 'unparseable']),
+    parseStatus: z.enum(['pending', 'parsed', 'low_confidence', 'unparseable', 'pending_review']),
     parsedIntoInboxId: z.string().optional(),
     confidenceScore: z.number().min(0).max(1).optional(),
     schemaVersion: z.number().int().positive(),

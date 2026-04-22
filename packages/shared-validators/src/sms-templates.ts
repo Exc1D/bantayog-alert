@@ -1,6 +1,11 @@
 // TODO(phase-5): move template bodies to Firestore for CMS-driven editing.
 
-export type SmsPurpose = 'receipt_ack' | 'verification' | 'status_update' | 'resolution'
+export type SmsPurpose =
+  | 'receipt_ack'
+  | 'verification'
+  | 'status_update'
+  | 'resolution'
+  | 'pending_review'
 export type SmsLocale = 'tl' | 'en'
 
 export class SmsTemplateError extends Error {
@@ -32,6 +37,10 @@ const TEMPLATES: Record<SmsPurpose, Record<SmsLocale, string>> = {
   resolution: {
     tl: 'Isinara na ang iyong report (ref {publicRef}). Salamat sa iyong pag-uulat.',
     en: 'Your report (ref {publicRef}) has been closed. Thank you for reporting.',
+  },
+  pending_review: {
+    tl: 'Natanggap ang iyong report. Ang aming team ay magsasagawa ng verification. Manatiling ligtas.',
+    en: 'Your report has been received. Our team will review and follow up with you. Please stay safe.',
   },
 }
 

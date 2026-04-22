@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto'
 import { parseInboundSms } from '@bantayog/shared-sms-parser'
 import { processInboxItemCore } from '../triggers/process-inbox-item.js'
 import { enqueueSms } from '../services/send-sms.js'
-import { logDimension } from '@bantayog/shared-validators'
+import { BantayogError, logDimension } from '@bantayog/shared-validators'
 
 const log = logDimension('smsInboundProcessor')
 
@@ -60,6 +60,8 @@ export const smsInboundProcessor = onDocumentCreated(
       return
     }
 
+    let publicRef = ''
+    let inboxId = ''
     try {
       const parseResult = parseInboundSms(data.body as string)
       const { parsed, confidence } = parseResult
@@ -70,8 +72,8 @@ export const smsInboundProcessor = onDocumentCreated(
         return
       }
 
-      const publicRef = generatePublicRef()
-      const inboxId = `sms-${msgId}`
+      publicRef = generatePublicRef()
+      inboxId = `sms-${msgId}`
       const correlationId = `sms:${msgId}`
 
       await db
@@ -127,8 +129,63 @@ export const smsInboundProcessor = onDocumentCreated(
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err)
-      await event.data.ref.update({ parseStatus: 'unparseable' })
-      log({ severity: 'ERROR', code: 'trigger.error', message: `msgId ${msgId}: ${errorMessage}` })
+      const isLocationError =
+        err instanceof BantayogError &&
+        (err.message === 'location missing from payload' || err.message === 'out of jurisdiction')
+
+      if (isLocationError) {
+        const senderMsisdnEnc = data.senderMsisdnEnc as string | undefined
+        const senderMsisdnHash = data.senderMsisdnHash as string
+        if (senderMsisdnEnc && !senderMsisdnHash.startsWith('invalid:')) {
+          let recipientMsisdn: string | null = null
+          try {
+            recipientMsisdn = decryptMsisdn(senderMsisdnEnc)
+          } catch {
+            log({
+              severity: 'WARNING',
+              code: 'decrypt.failed',
+              message: `MSISDN decryption failed for ${msgId} — skipping pending_review reply`,
+            })
+          }
+          if (recipientMsisdn) {
+            const salt = process.env.SMS_MSISDN_HASH_SALT ?? ''
+            try {
+              // eslint-disable-next-line @typescript-eslint/require-await
+              await db.runTransaction(async (tx) => {
+                enqueueSms(db, tx, {
+                  reportId: inboxId,
+                  purpose: 'pending_review',
+                  recipientMsisdn,
+                  locale: 'tl',
+                  publicRef,
+                  salt,
+                  nowMs: Date.now(),
+                  providerId: 'globelabs',
+                })
+              })
+              log({
+                severity: 'INFO',
+                code: 'auto_reply.pending_review.queued',
+                message: `pending_review reply queued for ${msgId}`,
+              })
+            } catch (replyErr) {
+              log({
+                severity: 'WARNING',
+                code: 'auto_reply.pending_review.failed',
+                message: `pending_review enqueue failed for ${msgId}: ${replyErr instanceof Error ? replyErr.message : String(replyErr)}`,
+              })
+            }
+          }
+        }
+        await event.data.ref.update({ parseStatus: 'pending_review' })
+      } else {
+        await event.data.ref.update({ parseStatus: 'unparseable' })
+        log({
+          severity: 'ERROR',
+          code: 'trigger.error',
+          message: `msgId ${msgId}: ${errorMessage}`,
+        })
+      }
     }
   },
 )

@@ -88,6 +88,9 @@ export async function processInboxItemCore(
     await db.collection('moderation_incidents').doc(inboxId).set({
       inboxId,
       reason,
+      reportType: payload.reportType,
+      description: payload.description,
+      publicRef: inbox.publicRef,
       createdAt: now(),
       schemaVersion: 1,
     })
