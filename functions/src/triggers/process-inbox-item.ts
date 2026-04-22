@@ -78,15 +78,23 @@ export async function processInboxItemCore(
   }
   const payload = payloadResult.data
 
-  const geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
+  let geo: Awaited<ReturnType<typeof reverseGeocodeToMunicipality>> | null = null
+  if (payload.publicLocation) {
+    geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
+  }
+
   if (!geo) {
+    const reason = payload.publicLocation ? 'out_of_jurisdiction' : 'location_missing'
     await db.collection('moderation_incidents').doc(inboxId).set({
       inboxId,
-      reason: 'out_of_jurisdiction',
+      reason,
       createdAt: now(),
       schemaVersion: 1,
     })
-    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'out of jurisdiction')
+    throw new BantayogError(
+      BantayogErrorCode.INVALID_ARGUMENT,
+      reason === 'location_missing' ? 'location missing from payload' : 'out of jurisdiction',
+    )
   }
 
   const createdAt = now()

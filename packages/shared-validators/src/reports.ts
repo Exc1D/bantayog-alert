@@ -196,7 +196,8 @@ export const inboxPayloadSchema = z
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),
       })
-      .strict(),
+      .strict()
+      .optional(),
     pendingMediaIds: z.array(z.string().min(1)).max(20).optional(),
     contact: z
       .object({

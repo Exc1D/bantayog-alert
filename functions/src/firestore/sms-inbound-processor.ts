@@ -89,7 +89,6 @@ export const smsInboundProcessor = onDocumentCreated(
             description: parsed.details ?? `SMS: ${parsed.reportType} at ${parsed.barangay}`,
             severity: 'medium' as const,
             source: 'sms' as const,
-            publicLocation: null,
           },
           schemaVersion: 1,
         })
