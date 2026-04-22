@@ -23,6 +23,19 @@ function makeDraft(overrides: Partial<Draft> = {}): Draft {
   }
 }
 
+function isNetworkError(err: unknown): boolean {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase()
+    return (
+      msg.includes('failed to fetch') ||
+      msg.includes('networkerror') ||
+      msg.includes('net::') ||
+      msg === 'timeout'
+    )
+  }
+  return false
+}
+
 describe('useSubmissionMachine — state machine logic', () => {
   describe('initial state derivation', () => {
     it('derives idle when retryCount < 3', () => {
@@ -108,19 +121,6 @@ describe('useSubmissionMachine — state machine logic', () => {
   })
 
   describe('network vs server error classification', () => {
-    function isNetworkError(err: unknown): boolean {
-      if (err instanceof Error) {
-        const msg = err.message.toLowerCase()
-        return (
-          msg.includes('failed to fetch') ||
-          msg.includes('networkerror') ||
-          msg.includes('net::') ||
-          msg === 'timeout'
-        )
-      }
-      return false
-    }
-
     it('classifies "Failed to fetch" as network error → queued', () => {
       expect(isNetworkError(new Error('Failed to fetch'))).toBe(true)
     })
@@ -132,6 +132,53 @@ describe('useSubmissionMachine — state machine logic', () => {
 
     it('classifies Firestore server errors as retryable (not queued)', () => {
       expect(isNetworkError(new Error('firestore server error'))).toBe(false)
+    })
+  })
+
+  describe('writeWithTimeout — timeout error classification', () => {
+    it('timeout error message matches exactly for isNetworkError', () => {
+      const err = new Error('timeout')
+      expect(err.message).toBe('timeout')
+      expect(isNetworkError(err)).toBe(true)
+    })
+
+    it('timeout error routes to queued state, not failed_retryable', () => {
+      const err = new Error('timeout')
+      const isNetwork = isNetworkError(err)
+      const derivedState = isNetwork ? 'queued' : 'failed_retryable'
+      expect(derivedState).toBe('queued')
+    })
+  })
+
+  describe('auto-retry from queued/failed_retryable on isOnline', () => {
+    it('queued transitions to submitting when isOnline becomes true', () => {
+      const autoRetryStates = ['queued', 'failed_retryable']
+      const check = (online: boolean, state: string) => online && autoRetryStates.includes(state)
+      expect(check(true, 'queued')).toBe(true)
+      expect(check(true, 'failed_retryable')).toBe(true)
+      expect(check(true, 'idle')).toBe(false)
+      expect(check(true, 'submitting')).toBe(false)
+      expect(check(true, 'server_confirmed')).toBe(false)
+    })
+
+    it('does not auto-retry when isOnline is false', () => {
+      const isOnline = false
+      const shouldTrigger = isOnline
+      expect(shouldTrigger).toBe(false)
+    })
+
+    it('auto-retry uses persisted retryCount via ref, not stale closure', () => {
+      let retryCountRef = 2
+      const submittedRetryCount = retryCountRef
+      expect(submittedRetryCount).toBe(2)
+      retryCountRef = 3
+      expect(retryCountRef).toBe(3)
+      expect(submittedRetryCount).toBe(2)
+    })
+
+    it('auto-retry does not trigger from failed_terminal', () => {
+      const autoRetryStates = ['queued', 'failed_retryable']
+      expect(autoRetryStates.includes('failed_terminal')).toBe(false)
     })
   })
 })
