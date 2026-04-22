@@ -2,6 +2,41 @@
 
 ## Current
 
+### Phase 4b SMS Inbound Pipeline (2026-04-22)
+
+- Status: Core implementation complete (Tasks 1-7 done; Tasks 8-9 pending)
+- Branches:
+  - `feature/phase-4b-sms-inbound` — worktree at `dae2848`
+  - `main` — all commits merged here
+- Key commits:
+  - `f2cdaa5` fix(sms-parser): address TypeScript strict-mode errors
+  - `f1eb24e` feat(validators): add SMS-originated report_inbox Zod schema
+  - `47c5da8` feat(process-inbox): return publicRef from processInboxItemCore
+  - `896f8ea` feat(sms-inbound): add thin webhook for Globe Labs SMS ingress
+  - `9a96e82` feat(sms-inbound): encrypt MSISDN in sms_inbox for Phase 4b auto-reply
+  - `7479d28` feat(sms-inbound): add smsInboundProcessor trigger with auto-reply
+  - `10d9b5b` fix(sms-inbound): add async wrapper to db.runTransaction
+- Files created/modified:
+  - `packages/shared-sms-parser/src/inbound.ts` — BANTAYOG parser with fuzzy barangay matching
+  - `packages/shared-sms-parser/src/index.ts` — re-exports parser
+  - `packages/shared-sms-parser/src/__tests__/inbound.test.ts` — 13 unit tests (all passing)
+  - `packages/shared-sms-parser/vitest.config.ts` — vitest configuration
+  - `packages/shared-sms-parser/package.json` — added test script and zod dependency
+  - `packages/shared-validators/src/sms.ts` — added `smsReportInboxFieldsSchema` + `senderMsisdnEnc` field
+  - `packages/shared-validators/src/index.ts` — re-exports new schema
+  - `functions/src/http/sms-inbound.ts` — thin webhook for Globe Labs SMS ingress
+  - `functions/src/firestore/sms-inbound-processor.ts` — onCreate trigger, parses SMS, writes report_inbox, queues auto-reply
+  - `functions/src/triggers/process-inbox-item.ts` — added `publicRef` to ProcessInboxItemCoreResult
+  - `functions/src/index.ts` — exports new webhook and trigger
+  - `functions/package.json` — added `@bantayog/shared-sms-parser` dependency
+- Pending:
+  - Task 8: Integration tests for sms-inbound webhook and processor
+  - Task 9: Acceptance harness for end-to-end SMS flow
+- Notes:
+  - MSISDN encryption: AES-256-GCM with `SMS_MSISDN_ENCRYPTION_KEY` env var
+  - Pre-commits resolved via `// eslint-disable-next-line @typescript-eslint/require-await` on the one fire-and-forget transaction call
+  - The `autoReplyText` from the parser is currently unused (trigger sends `receipt_ack` purpose SMS via enqueueSms)
+
 ### Phase 4a Git Recovery (2026-04-21)
 
 - Status: complete
