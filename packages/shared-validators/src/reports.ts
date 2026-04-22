@@ -198,6 +198,9 @@ export const inboxPayloadSchema = z
       })
       .strict(),
     pendingMediaIds: z.array(z.string().min(1)).max(20).optional(),
+    municipalityId: z.string().min(1).optional(),
+    barangayId: z.string().min(1).optional(),
+    nearestLandmark: z.string().max(200).optional(),
     contact: z
       .object({
         phone: msisdnPhSchema,

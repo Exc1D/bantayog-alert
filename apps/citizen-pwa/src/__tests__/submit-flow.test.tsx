@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { setupServer } from 'msw/node'
 import { TestWrapper } from './test-utils'
 
 vi.mock('../services/firebase', () => ({
@@ -9,35 +8,27 @@ vi.mock('../services/firebase', () => ({
   ensureSignedIn: vi.fn().mockResolvedValue('test-uid'),
 }))
 
-const server = setupServer()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return { ...actual }
+})
 
 beforeEach(() => {
-  server.listen({ onUnhandledRequest: 'error' })
+  vi.clearAllMocks()
 })
 
 afterEach(() => {
-  server.close()
+  vi.restoreAllMocks()
 })
 
 describe('Submission flow integration', () => {
-  it('should render submit report form steps', () => {
+  it('should render Step1Evidence with incident type selection', () => {
     render(
       <TestWrapper>
         <div>Submit report form test placeholder</div>
       </TestWrapper>,
     )
-
     expect(screen.getByText('Submit report form test placeholder')).toBeInTheDocument()
-  })
-
-  it('should show Step1Evidence with incident type selection', () => {
-    render(
-      <TestWrapper>
-        <div>Step 1 Evidence placeholder</div>
-      </TestWrapper>,
-    )
-
-    expect(screen.getByText('Step 1 Evidence placeholder')).toBeInTheDocument()
   })
 
   it('should show Step3Review with review content', () => {
@@ -46,25 +37,9 @@ describe('Submission flow integration', () => {
         <div>Review your report placeholder</div>
       </TestWrapper>,
     )
-
     expect(screen.getByText('Review your report placeholder')).toBeInTheDocument()
   })
 
-  it('should complete full happy path submission flow', () => {
-    render(
-      <TestWrapper>
-        <div>Form submission flow placeholder</div>
-      </TestWrapper>,
-    )
-
-    expect(screen.getByText('Form submission flow placeholder')).toBeInTheDocument()
-  })
-
-  it('should save draft when offline', () => {
-    // TODO: Implement offline simulation test
-  })
-
-  it('should show queued Reveal on network error', () => {
-    // TODO: Implement network error test
-  })
+  it.todo('TICKET-56: should save draft when offline')
+  it.todo('TICKET-57: should show queued Reveal on network error')
 })

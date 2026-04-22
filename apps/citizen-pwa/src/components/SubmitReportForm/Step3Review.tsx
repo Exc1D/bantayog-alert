@@ -4,10 +4,10 @@ import {
   Heart,
   Droplets,
   Flame,
-  Zap,
+  Wind,
   Mountain,
-  Construction,
-  Ambulance,
+  Waves,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
@@ -31,12 +31,11 @@ interface Step3ReviewProps {
 const INCIDENT_TYPES = [
   { value: 'flood', label: 'Flood', Icon: Droplets },
   { value: 'fire', label: 'Fire', Icon: Flame },
-  { value: 'road', label: 'Road', Icon: Construction },
-  { value: 'medical', label: 'Medical', Icon: Ambulance },
-  { value: 'power', label: 'Power', Icon: Zap },
+  { value: 'earthquake', label: 'Earthquake', Icon: AlertTriangle },
+  { value: 'typhoon', label: 'Typhoon', Icon: Wind },
   { value: 'landslide', label: 'Landslide', Icon: Mountain },
-  { value: 'other', label: 'Other', Icon: Zap },
-]
+  { value: 'storm_surge', label: 'Storm Surge', Icon: Waves },
+] as const
 
 export function Step3Review({
   onBack,
@@ -61,7 +60,7 @@ export function Step3Review({
       <div className="progress-dots">
         <div className="progress-dot progress-dot--active" />
         <div className="progress-dot progress-dot--active" />
-        <div className="progress-dot progress-dot--inactive" />
+        <div className="progress-dot progress-dot--active" />
       </div>
 
       <div className="consent-banner">

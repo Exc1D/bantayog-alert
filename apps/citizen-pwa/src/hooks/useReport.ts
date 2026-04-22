@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { doc, onSnapshot } from 'firebase/firestore'
 import type { DocumentSnapshot } from 'firebase/firestore'
 import { db } from '../services/firebase'
@@ -38,8 +38,10 @@ export interface ReportData {
 export function useReport(reportRef: string) {
   const queryClient = useQueryClient()
   const unmountedRef = useRef(false)
+  const hasReportRef = reportRef !== ''
 
   useEffect(() => {
+    if (!hasReportRef) return
     unmountedRef.current = false
 
     const unsubscribe = onSnapshot(
@@ -48,7 +50,12 @@ export function useReport(reportRef: string) {
         if (unmountedRef.current) return
         if (snapshot.exists()) {
           const data = snapshot.data()
-          queryClient.setQueryData(['reports', reportRef], mapReportFromFirestore(data))
+          try {
+            queryClient.setQueryData(['reports', reportRef], mapReportFromFirestore(data))
+          } catch (err) {
+            console.error('Report mapping error:', err instanceof Error ? err.message : err)
+            queryClient.setQueryData(['reports', reportRef], null)
+          }
         } else {
           queryClient.setQueryData(['reports', reportRef], null)
         }
@@ -63,11 +70,34 @@ export function useReport(reportRef: string) {
       unmountedRef.current = true
       unsubscribe()
     }
-  }, [reportRef, queryClient])
+  }, [reportRef, queryClient, hasReportRef])
 
   return useQuery<ReportData | null>({
     queryKey: ['reports', reportRef],
-    queryFn: () => (queryClient.getQueryData(['reports', reportRef]) as ReportData | null) ?? null,
+    queryFn: async () => {
+      const cached = queryClient.getQueryData(['reports', reportRef])
+      if (cached !== undefined) return cached
+      if (!hasReportRef) return null
+      return new Promise<ReportData | null>((resolve) => {
+        const unsub = onSnapshot(doc(db(), `reports/${reportRef}`), (snap) => {
+          if (!snap.exists()) {
+            resolve(null)
+            unsub()
+            return
+          }
+          try {
+            resolve(mapReportFromFirestore(snap.data()))
+          } catch {
+            resolve(null)
+          }
+          setTimeout(() => {
+            unsub()
+          }, 10)
+        })
+      })
+    },
+    enabled: hasReportRef,
+    placeholderData: keepPreviousData,
     staleTime: Infinity,
     gcTime: 5 * 60 * 1000,
     retry: false,

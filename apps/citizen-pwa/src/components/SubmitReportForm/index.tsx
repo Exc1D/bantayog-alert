@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { addDoc, collection } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, fns, ensureSignedIn } from '../../services/firebase.js'
-import { type SubmitReportDeps } from '../../services/submit-report.js'
+import { submitReport, type SubmitReportDeps } from '../../services/submit-report.js'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import { useSubmissionMachine } from '../../hooks/useSubmissionMachine'
 import { RevealSheet } from '../RevealSheet'
@@ -52,7 +51,10 @@ async function putBlob(url: string, blob: Blob): Promise<void> {
     body: blob,
     headers: { 'content-type': blob.type },
   })
-  if (!res.ok) throw new Error('upload failed: ' + String(res.status))
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`upload failed: ${String(res.status)} ${body}`.trim())
+  }
 }
 
 export function SubmitReportForm() {
@@ -88,6 +90,7 @@ export function SubmitReportForm() {
           },
         putBlob,
         writeInbox: async (doc) => {
+          const { addDoc, collection } = await import('firebase/firestore')
           const ref = await addDoc(collection(db(), 'report_inbox'), doc)
           return ref.id
         },
@@ -96,19 +99,6 @@ export function SubmitReportForm() {
         randomSecret,
         sha256Hex,
         now: () => Date.now(),
-      }
-
-      const pendingMediaIds: string[] = []
-
-      if (formData.photoFile) {
-        const sha = await sha256Hex(formData.photoFile)
-        const signed = await deps.requestUploadUrl({
-          mimeType: formData.photoFile.type || 'image/jpeg',
-          sizeBytes: formData.photoFile.size,
-          sha256: sha,
-        })
-        await deps.putBlob(signed.uploadUrl, formData.photoFile)
-        pendingMediaIds.push(signed.uploadId)
       }
 
       const contact = formData.reporterMsisdn.trim()
@@ -123,34 +113,24 @@ export function SubmitReportForm() {
           ? String(formData.patientCount) + ' patient(s) reported'
           : 'No description provided'
 
-      const publicRefValue = deps.randomPublicRef()
-
-      await deps.writeInbox({
-        reporterUid: await deps.ensureSignedIn(),
-        clientCreatedAt: deps.now(),
-        idempotencyKey: deps.randomUUID(),
-        publicRef: publicRefValue,
-        secretHash: await sha256Hex(deps.randomSecret()),
-        correlationId: deps.randomUUID(),
-        payload: {
-          reportType: formData.reportType,
-          severity: 'medium' as const,
-          description,
-          source: 'web',
-          publicLocation: formData.location,
-          pendingMediaIds,
-          ...(contact ? { contact } : {}),
-          ...(formData.locationMethod === 'manual' && formData.municipalityId
-            ? {
-                municipalityId: formData.municipalityId,
-                barangayId: formData.barangayId,
-                nearestLandmark: formData.nearestLandmark,
-              }
-            : {}),
-        },
+      const result = await submitReport(deps, {
+        reportType: formData.reportType,
+        severity: 'medium',
+        description,
+        publicLocation: formData.location,
+        ...(formData.photoFile ? { photo: formData.photoFile } : {}),
+        ...(contact ? { contact } : {}),
+        ...(formData.locationMethod === 'manual' && formData.municipalityId
+          ? {
+              municipalityId: formData.municipalityId,
+              barangayId: formData.barangayId,
+              nearestLandmark: formData.nearestLandmark,
+            }
+          : {}),
       })
 
-      setPublicRef(publicRefValue)
+      setPublicRef(result.publicRef)
+      void navigate('/receipt', { state: { publicRef: result.publicRef, secret: result.secret } })
       transition('success')
     } catch (err) {
       setError({

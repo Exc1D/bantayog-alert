@@ -19,7 +19,7 @@ const RESPONDER_PHONE_NUMBER = '0547211216'
 
 export function TrackingScreen() {
   const { reference } = useParams<{ reference: string }>()
-  const { data: report, isLoading, error } = useReport(reference ?? '')
+  const { data: report, isPending, error } = useReport(reference ?? '')
 
   if (!reference) {
     return (
@@ -31,7 +31,7 @@ export function TrackingScreen() {
     )
   }
 
-  if (isLoading) {
+  if (isPending) {
     return <div className="page-container">Loading...</div>
   }
 

@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   ArrowLeft,
   Camera,
   Droplets,
   Flame,
-  Zap,
+  Wind,
   Mountain,
-  Construction,
-  Ambulance,
+  Waves,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
@@ -20,23 +20,36 @@ interface Step1EvidenceProps {
 const INCIDENT_TYPES = [
   { value: 'flood', label: 'Flood', Icon: Droplets },
   { value: 'fire', label: 'Fire', Icon: Flame },
-  { value: 'road', label: 'Road', Icon: Construction },
-  { value: 'medical', label: 'Medical', Icon: Ambulance },
-  { value: 'power', label: 'Power', Icon: Zap },
+  { value: 'earthquake', label: 'Earthquake', Icon: AlertTriangle },
+  { value: 'typhoon', label: 'Typhoon', Icon: Wind },
   { value: 'landslide', label: 'Landslide', Icon: Mountain },
-  { value: 'other', label: 'Other', Icon: Zap },
-]
+  { value: 'storm_surge', label: 'Storm Surge', Icon: Waves },
+] as const
 
 export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
   const [reportType, setReportType] = useState('flood')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current)
+        blobUrlRef.current = null
+      }
+    }
+  }, [])
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null
     setPhotoFile(file)
     if (file) {
-      setPreviewUrl(URL.createObjectURL(file))
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current)
+      }
+      blobUrlRef.current = URL.createObjectURL(file)
+      setPreviewUrl(blobUrlRef.current)
     }
   }
 
@@ -85,10 +98,12 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
 
       <button
         type="button"
-        onClick={() => document.getElementById('photo-input')?.click()}
+        onClick={() => {
+          setPreviewUrl(null)
+        }}
         className="no-photo-link"
       >
-        No photo available
+        No photo — continue without
       </button>
       <input
         id="photo-input"

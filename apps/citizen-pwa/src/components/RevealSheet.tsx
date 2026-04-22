@@ -1,5 +1,4 @@
 import { Check, Clock, AlertTriangle } from 'lucide-react'
-import { useUIStore } from '../lib/store'
 import { StatusBanner } from './ui/StatusBanner'
 import { Button } from './ui/Button'
 import { FallbackCards } from './ui/FallbackCards'
@@ -14,8 +13,6 @@ interface RevealSheetProps {
 }
 
 export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps) {
-  const closeSheet = useUIStore((s) => s.closeSheet)
-
   const variants = {
     success: {
       icon: <Check size={16} />,
@@ -64,7 +61,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
     if (state === 'success') {
       handleTrackReport()
     } else {
-      closeSheet()
+      onClose?.()
     }
   }
 

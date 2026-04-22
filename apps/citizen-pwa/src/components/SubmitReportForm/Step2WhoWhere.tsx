@@ -318,7 +318,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   const [gpsLoading, setGpsLoading] = useState(false)
   const [selectedMunicipalityId, setSelectedMunicipalityId] = useState('')
   const [selectedBarangayId, setSelectedBarangayId] = useState<string | undefined>(undefined)
-  const [nearestLandmark, setNearestLandmark] = useState<string | undefined>(undefined)
+  const [nearestLandmark, setNearestLandmark] = useState<string>('')
   const [reporterName, setReporterName] = useState('')
   const [reporterMsisdn, setReporterMsisdn] = useState('')
   const [anyoneHurt, setAnyoneHurt] = useState(false)
@@ -339,7 +339,8 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       })
       setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
       setLocationMethod('gps')
-    } catch {
+    } catch (err: unknown) {
+      console.error('[Step2WhoWhere] attemptGps failed:', err)
       setLocationError('Could not get location.')
       setLocationMethod('manual')
     } finally {
