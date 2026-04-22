@@ -4,7 +4,7 @@
 
 ### Phase 4b SMS Inbound Pipeline (2026-04-22)
 
-- Status: Core + Integration tests complete (Tasks 1-8 done; Task 9 pending)
+- Status: Complete — All tasks done (Tasks 1-10)
 - Branches:
   - `feature/phase-4b-sms-inbound` — worktree at `dae2848`
   - `main` — all commits merged here
@@ -17,6 +17,7 @@
   - `7479d28` feat(sms-inbound): add smsInboundProcessor trigger with auto-reply
   - `10d9b5b` fix(sms-inbound): add async wrapper to db.runTransaction
   - `082b8c4` feat(sms-inbound): add integration tests for Phase 4b SMS inbound pipeline
+  - `6007e05` feat(phase-4b): add acceptance harness for SMS inbound pipeline
 - Files created/modified:
   - `packages/shared-sms-parser/src/inbound.ts` — BANTAYOG parser with fuzzy barangay matching
   - `packages/shared-sms-parser/src/index.ts` — re-exports parser
@@ -30,11 +31,11 @@
   - `functions/src/triggers/process-inbox-item.ts` — added `publicRef` to ProcessInboxItemCoreResult
   - `functions/src/index.ts` — exports new webhook and trigger
   - `functions/src/__tests__/sms-inbound.test.ts` — 13 integration tests (all passing)
+  - `functions/src/__tests__/acceptance/phase-4b-acceptance.test.ts` — 3 acceptance tests (all passing)
+  - `scripts/phase-4b/acceptance.ts` — standalone acceptance harness reference
   - `functions/package.json` — added `@bantayog/shared-sms-parser` dependency
   - `docs/superpowers/plans/2026-04-22-phase-4b-sms-inbound.md` — implementation plan
   - `docs/superpowers/specs/2026-04-22-phase-4b-sms-inbound-design.md` — design spec
-- Pending:
-  - Task 9: Acceptance harness for end-to-end SMS flow (requires `firebase emulators:exec`)
 - Notes:
   - MSISDN encryption: AES-256-GCM with `SMS_MSISDN_ENCRYPTION_KEY` env var
   - Pre-commits resolved via `// eslint-disable-next-line @typescript-eslint/require-await` on the one fire-and-forget transaction call
