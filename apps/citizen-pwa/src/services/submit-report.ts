@@ -1,4 +1,6 @@
 import { normalizeMsisdn } from '@bantayog/shared-validators'
+import type { Draft } from './draft-store'
+import { draftStore } from './draft-store'
 
 export interface SubmitReportInput {
   reportType: string
@@ -29,6 +31,50 @@ export interface SubmitReportResult {
   publicRef: string
   secret: string
   correlationId: string
+}
+
+export interface CreateDraftInput {
+  reportType: Draft['reportType']
+  barangay: string
+  barangayId?: string
+  description: string
+  severity: Draft['severity']
+  location?: { lat: number; lng: number }
+  nearestLandmark?: string
+  reporterName?: string
+  reporterMsisdnHash?: string
+  clientDraftRef: string
+  photo?: Blob
+}
+
+export async function createDraft(input: CreateDraftInput): Promise<Draft> {
+  const now = Date.now()
+  const draft: Draft = {
+    id: `BA-DA-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    reportType: input.reportType,
+    barangay: input.barangay,
+    description: input.description,
+    severity: input.severity,
+    clientDraftRef: input.clientDraftRef,
+    syncState: 'local_only',
+    retryCount: 0,
+    clientCreatedAt: now,
+    createdAt: now,
+    updatedAt: now,
+    ...(input.barangayId ? { barangayId: input.barangayId } : {}),
+    ...(input.location ? { location: input.location } : {}),
+    ...(input.nearestLandmark ? { nearestLandmark: input.nearestLandmark } : {}),
+    ...(input.reporterName ? { reporterName: input.reporterName } : {}),
+    ...(input.reporterMsisdnHash ? { reporterMsisdnHash: input.reporterMsisdnHash } : {}),
+  }
+
+  if (input.photo) {
+    await draftStore.saveWithPhoto(draft, input.photo)
+  } else {
+    await draftStore.save(draft)
+  }
+
+  return draft
 }
 
 export async function submitReport(
