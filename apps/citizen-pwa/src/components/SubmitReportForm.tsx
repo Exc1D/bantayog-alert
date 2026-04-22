@@ -2,7 +2,13 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addDoc, collection } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, fns, ensureSignedIn } from '../services/firebase.js'
+import {
+  db,
+  fns,
+  ensureSignedIn,
+  hasFirebaseConfig,
+  FIREBASE_ENV_ERROR_MESSAGE,
+} from '../services/firebase.js'
 import { saveReport } from '../services/localForageReports.js'
 import { submitReport, type SubmitReportDeps } from '../services/submit-report.js'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
@@ -88,6 +94,9 @@ export function SubmitReportForm() {
     setBusy(true)
     setError(null)
     try {
+      if (!hasFirebaseConfig()) {
+        throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
+      }
       const deps: SubmitReportDeps = {
         ensureSignedIn,
         requestUploadUrl: async (args) =>

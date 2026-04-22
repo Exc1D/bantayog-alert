@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
-import { db } from '../services/firebase.js'
+import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { PublicIncident, Filters } from '../components/MapTab/types.js'
 
 function windowMs(w: Filters['window']): number {
@@ -14,11 +14,16 @@ export function usePublicIncidents(filters: Filters): {
   loading: boolean
   error: unknown
 } {
+  const firebaseConfigured = hasFirebaseConfig()
   const [incidents, setIncidents] = useState<PublicIncident[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(firebaseConfigured)
   const [error, setError] = useState<unknown>(null)
 
   useEffect(() => {
+    if (!firebaseConfigured) {
+      return
+    }
+
     const cutoff = Date.now() - windowMs(filters.window)
     const q = query(
       collection(db(), 'reports'),
@@ -45,7 +50,7 @@ export function usePublicIncidents(filters: Filters): {
       },
     )
     return unsub
-  }, [filters.severity, filters.window])
+  }, [firebaseConfigured, filters.severity, filters.window])
 
   return { incidents, loading, error }
 }

@@ -26,6 +26,10 @@ const { mockRequestLookup, mockFns } = vi.hoisted(() => ({
   mockFns: vi.fn().mockReturnValue({}),
 }))
 
+const { mockHasFirebaseConfig } = vi.hoisted(() => ({
+  mockHasFirebaseConfig: vi.fn().mockReturnValue(true),
+}))
+
 vi.mock('firebase/functions', () => ({
   httpsCallable: vi.fn(() => mockRequestLookup),
 }))
@@ -33,12 +37,14 @@ vi.mock('firebase/functions', () => ({
 vi.mock('../services/firebase.js', () => ({
   db: vi.fn().mockReturnValue({}),
   fns: mockFns,
+  hasFirebaseConfig: mockHasFirebaseConfig,
 }))
 
 import { useMyActiveReports } from './useMyActiveReports.js'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockHasFirebaseConfig.mockReturnValue(true)
   mockUpdateReportId.mockResolvedValue(undefined)
 })
 
@@ -127,5 +133,33 @@ describe('useMyActiveReports', () => {
       expect(result.current.loading).toBe(false)
     })
     expect(mockUpdateReportId).toHaveBeenCalledWith('abcd1234', 'firestore-id-1')
+  })
+
+  it('returns queued local reports when firebase is not configured', async () => {
+    mockHasFirebaseConfig.mockReturnValue(false)
+    mockLoadReports.mockResolvedValue([
+      {
+        publicRef: 'local-1',
+        secret: 'sec',
+        reportType: 'accident',
+        severity: 'low',
+        lat: 14.2,
+        lng: 122.7,
+        submittedAt: 2500,
+      },
+    ])
+
+    const { result } = renderHook(() => useMyActiveReports())
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    expect(result.current.reports).toEqual([
+      expect.objectContaining({
+        publicRef: 'local-1',
+        status: 'queued',
+      }),
+    ])
+    expect(mockGetDoc).not.toHaveBeenCalled()
+    expect(mockRequestLookup).not.toHaveBeenCalled()
   })
 })

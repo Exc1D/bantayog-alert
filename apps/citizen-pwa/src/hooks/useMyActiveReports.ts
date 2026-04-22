@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getDoc, doc } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, fns } from '../services/firebase.js'
+import { db, fns, hasFirebaseConfig } from '../services/firebase.js'
 import { loadReports, updateReportId } from '../services/localForageReports.js'
 import type { MyReport } from '../components/MapTab/types.js'
 
@@ -23,6 +23,24 @@ export function useMyActiveReports(): {
 
     async function fetchAll(): Promise<void> {
       const stored = await loadReports()
+      if (!hasFirebaseConfig()) {
+        const localOnly = stored.map((entry) => ({
+          publicRef: entry.publicRef,
+          reportType: entry.reportType,
+          severity: entry.severity,
+          lat: entry.lat,
+          lng: entry.lng,
+          submittedAt: entry.submittedAt,
+          status: 'queued' as const,
+          ...(entry.reportId ? { id: entry.reportId } : {}),
+        }))
+        if (!cancelled) {
+          setReports(localOnly)
+          setLoading(false)
+        }
+        return
+      }
+
       if (stored.length === 0) {
         if (!cancelled) setLoading(false)
         return

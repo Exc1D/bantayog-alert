@@ -13,15 +13,41 @@ import {
   parseFirebaseWebEnv,
 } from '@bantayog/shared-firebase'
 
+export const FIREBASE_ENV_ERROR_MESSAGE =
+  'Firebase is not configured for this environment. Set the VITE_FIREBASE_* env vars to use live data.'
+
 let _app: ReturnType<typeof createFirebaseWebApp> | null = null
 let _auth: Auth | null = null
 let _db: Firestore | null = null
 let _fns: Functions | null = null
 let _storage: FirebaseStorage | null = null
+let _firebaseEnv: ReturnType<typeof parseFirebaseWebEnv> | null | undefined = undefined
+
+function getFirebaseEnv(): ReturnType<typeof parseFirebaseWebEnv> | null {
+  if (_firebaseEnv !== undefined) return _firebaseEnv
+  try {
+    _firebaseEnv = parseFirebaseWebEnv(import.meta.env)
+  } catch {
+    _firebaseEnv = null
+  }
+  return _firebaseEnv
+}
+
+export function hasFirebaseConfig(): boolean {
+  return getFirebaseEnv() !== null
+}
+
+function requireFirebaseEnv(): ReturnType<typeof parseFirebaseWebEnv> {
+  const env = getFirebaseEnv()
+  if (!env) {
+    throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
+  }
+  return env
+}
 
 export function getFirebaseApp() {
   if (_app) return _app
-  const env = parseFirebaseWebEnv(import.meta.env)
+  const env = requireFirebaseEnv()
   _app = createFirebaseWebApp(env)
   createAppCheck(_app, env)
   return _app

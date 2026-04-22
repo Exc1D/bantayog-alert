@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
+
+const { mockHasFirebaseConfig } = vi.hoisted(() => ({
+  mockHasFirebaseConfig: vi.fn().mockReturnValue(true),
+}))
 
 vi.mock('../services/firebase.js', () => ({
   db: vi.fn().mockReturnValue({}),
+  hasFirebaseConfig: mockHasFirebaseConfig,
 }))
 
 const { mockOnSnapshot } = vi.hoisted(() => ({
@@ -34,6 +39,7 @@ const defaultFilters: Filters = { severity: 'all', window: '24h' }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockHasFirebaseConfig.mockReturnValue(true)
   mockOnSnapshot.mockReturnValue(() => {
     return void 0
   })
@@ -118,5 +124,15 @@ describe('usePublicIncidents', () => {
     const { result } = renderHook(() => usePublicIncidents(defaultFilters))
     expect(result.current.error).toBe(fakeErr)
     expect(result.current.loading).toBe(false)
+  })
+
+  it('falls back to empty data when firebase is not configured', async () => {
+    mockHasFirebaseConfig.mockReturnValue(false)
+    const { result } = renderHook(() => usePublicIncidents(defaultFilters))
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    expect(result.current.incidents).toEqual([])
+    expect(mockOnSnapshot).not.toHaveBeenCalled()
   })
 })
