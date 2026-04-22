@@ -1,4 +1,5 @@
 import type { SubmissionState } from '../../hooks/useSubmissionMachine.js'
+import { MAX_RETRIES } from '../../hooks/useSubmissionMachine.js'
 
 const BANNER_CONFIG: Partial<Record<SubmissionState, { message: string; bg: string; fg: string }>> =
   {
@@ -56,7 +57,7 @@ export function OfflineBanner({ state, retryCount }: OfflineBannerProps) {
       {config.message}
       {state === 'failed_retryable' && retryCount > 0 && (
         <span style={{ marginLeft: 'var(--spacing-sm)', opacity: 0.8 }}>
-          (attempt {String(retryCount)}/3)
+          (attempt {String(retryCount)}/{String(MAX_RETRIES)})
         </span>
       )}
       {state === 'submitting' && (

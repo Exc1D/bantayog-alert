@@ -34,7 +34,9 @@ export function SmsFallbackButton({ draft, reporterMsisdn, onSent }: SmsFallback
     onSent()
     const body = buildSmsBody(draft, reporterMsisdn)
     const encoded = encodeURIComponent(body)
-    window.location.href = `sms:?body=${encoded}`
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const separator = isIOS ? '&' : '?'
+    window.location.href = `sms:${separator}body=${encoded}`
   }
 
   return (

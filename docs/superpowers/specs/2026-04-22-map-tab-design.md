@@ -19,7 +19,7 @@ The Map Tab is the default home screen (`/`) of the Citizen PWA. It is a full-bl
 
 ## 2. Screen Anatomy
 
-```
+```text
 ┌──────────────────────────────────────┐
 │  [☰]   VIGILANT            [🔔]     │  ← TopBar: #001e40, 64px, fixed, z-50
 ├──────────────────────────────────────┤
@@ -62,7 +62,7 @@ PeekSheet at z-55 renders above BottomNav (z-45), allowing the peek strip to vis
 
 ### 3.2 File Structure
 
-```
+```text
 apps/citizen-pwa/src/
 ├── components/
 │   ├── CitizenShell.tsx          NEW: layout wrapper + BottomNav
@@ -84,11 +84,11 @@ apps/citizen-pwa/src/
 
 ### 3.3 Local State in `MapTab/index.tsx`
 
-```ts
+````ts
 const [selectedPin, setSelectedPin] // { id: string; type: 'incident' | 'myReport' } | null
 const [sheetPhase, setSheetPhase] // 'hidden' | 'peek' | 'expanded'
 const [filters, setFilters] // { severity: 'all'|'high'|'med'|'low'; window: '24h'|'7d'|'30d' }
-```
+```text
 
 `selectedPin` persists through map pan and zoom — the user does not lose the selected pin when they move the map. It resets to `null` on: swipe-dismiss gesture, tapping empty map area, or tapping a different pin.
 
@@ -98,7 +98,7 @@ const [filters, setFilters] // { severity: 'all'|'high'|'med'|'low'; window: '24
 type DetailSheetProps =
   | { mode: 'public'; incident: PublicIncident }
   | { mode: 'myReport'; report: MyReport }
-```
+````
 
 TypeScript enforces at compile time that Edit/Cancel never appear on a public incident.
 
@@ -125,10 +125,10 @@ TypeScript enforces at compile time that Edit/Cancel never appear on a public in
 
 `MyReportLayer` renders on top of `IncidentLayer` (higher z-index). When a verified own report appears in both datasets, `IncidentLayer` must suppress its filled-dot pin for any report ID present in `myActiveReports` — preventing a filled dot and an ownership ring from stacking on the same coordinate.
 
-```ts
+````ts
 const suppressed = new Set(myActiveReports.map((r) => r.id))
 const visibleIncidents = incidents.filter((i) => !suppressed.has(i.id))
-```
+```text
 
 Pending own reports (`new`, `awaiting_verify`) are also in `suppressed` but have no effect — they never appear in `incidents` since `usePublicIncidents` queries `status == 'verified'` only.
 
@@ -159,12 +159,14 @@ All pins: minimum touch target 44×44px (arch spec §9.8).
 
 **PeekSheet content:**
 
-```
-  ▬▬▬▬▬▬  ← drag handle: 32×4px rounded pill, on-surface-variant at 40% opacity,
-              centered, 8px below sheet top
-  🌊 Flood · High · Brgy San Jose, Daet
-  ↑ Pull up for full detail
-```
+````
+
+▬▬▬▬▬▬ ← drag handle: 32×4px rounded pill, on-surface-variant at 40% opacity,
+centered, 8px below sheet top
+🌊 Flood · High · Brgy San Jose, Daet
+↑ Pull up for full detail
+
+```text
 
 **Expanding to DetailSheet:** Pull the PeekSheet upward (or tap it) → DetailSheet expands to full height, 250ms spring. DetailSheet renders at z-60, sliding over BottomNav and TopBar.
 
@@ -191,48 +193,52 @@ All pins: minimum touch target 44×44px (arch spec §9.8).
 ### 7.1 Mode: `'public'` — verified public incident
 
 ```
-▬▬▬▬▬▬  (drag handle — same spec as PeekSheet)
 
-🌊 Flood                     [HIGH]    ← type + severity chip (full border-radius)
+▬▬▬▬▬▬ (drag handle — same spec as PeekSheet)
+
+🌊 Flood [HIGH] ← type + severity chip (full border-radius)
 📍 Barangay San Jose, Daet
-   Reported 12 minutes ago
+Reported 12 minutes ago
 
-▌ Status              Dispatched       ← tonal banner, left primary accent bar (3px wide)
+▌ Status Dispatched ← tonal banner, left primary accent bar (3px wide)
 
-Verified by Daet MDRRMO                ← institutional attribution, no admin name
+Verified by Daet MDRRMO ← institutional attribution, no admin name
 
-[Close]                                → sheetPhase: 'hidden'
-```
+[Close] → sheetPhase: 'hidden'
+
+```text
 
 No edit actions. Exact reporter identity never shown.
 
 ### 7.2 Mode: `'myReport'` — own report (Stage 3 afterglow)
 
 ```
-▬▬▬▬▬▬  (drag handle)
+
+▬▬▬▬▬▬ (drag handle)
 
 ★ Your Report
-🌊 Flood · Awaiting Review             ← severity shown only if admin has classified
+🌊 Flood · Awaiting Review ← severity shown only if admin has classified
 
 ┌─────────────────────────────────┐
-│  TRACKING CODE                  │    ← container has `user-select: all` on the code
-│  DAET-2026-0471    [Copy]       │    ← [Copy] triggers clipboard write
-└─────────────────────────────────┘        → button label changes to "Copied ✓"
-                                            → resets after 2 seconds (no toast)
+│ TRACKING CODE │ ← container has `user-select: all` on the code
+│ DAET-2026-0471 [Copy] │ ← [Copy] triggers clipboard write
+└─────────────────────────────────┘ → button label changes to "Copied ✓"
+→ resets after 2 seconds (no toast)
 
 ○──●──○──○──○
-Received  Under Review  Verified  Dispatched  Resolved
-          ↑ current step highlighted
+Received Under Review Verified Dispatched Resolved
+↑ current step highlighted
 
 ── if dispatched: ─────────────────────────────────────
-  ● En Route                           ← pulsing dot, tertiary-fixed background
-    Response Team Dispatched
+● En Route ← pulsing dot, tertiary-fixed background
+Response Team Dispatched
 ───────────────────────────────────────────────────────
 
-[Edit]  [Cancel]                       ← status ∈ ['new', 'awaiting_verify']
+[Edit] [Cancel] ← status ∈ ['new', 'awaiting_verify']
 ── OR ──
-[Request Correction]                   ← status ∈ ['verified', 'dispatched', 'resolved']
-```
+[Request Correction] ← status ∈ ['verified', 'dispatched', 'resolved']
+
+```text
 
 `actionsFor(status)` is a pure function — derived at render time, never stored.
 
@@ -256,20 +262,24 @@ Floating glassmorphic pills, 8px below TopBar, z-40:
 **Empty state** (no incidents match current filter):
 
 ```
+
         (Leaflet map still renders beneath)
 
-   ┌──────────────────────────────────┐
-   │  No reported incidents in this   │   ← centered card, surface-container-low
-   │  area in the last 24 hours.      │
-   │  [Clear filters]                 │
-   └──────────────────────────────────┘
-```
+┌──────────────────────────────────┐
+│ No reported incidents in this │ ← centered card, surface-container-low
+│ area in the last 24 hours. │
+│ [Clear filters] │
+└──────────────────────────────────┘
+
+```text
 
 **Offline banner** — persistent strip rendered between map and BottomNav when connectivity is lost:
 
 ```
+
 📶 Offline — map data may be outdated
-```
+
+```text
 
 - Firestore SDK offline cache is used for any previously loaded incident data. There is **no service worker tile cache** in this implementation (see §12). Leaflet may fail to load new tiles while offline — this is acceptable for the pilot.
 - Filter pills are disabled while offline.
@@ -380,3 +390,4 @@ Layer deduplication (`suppressed` set):
 - Report submission flow — existing `SubmitReportForm` wired to Report tab CTA
 - Deep-linking to a specific incident via URL — deferred (no Zustand / URL state in this iteration)
 - Confirmation dialog for "Cancel report" action — that detail belongs in the Report Tab spec
+```

@@ -31,13 +31,10 @@ const mockPhotoStorage = {
   }),
 }
 
-let storageIndex = 0
 vi.mock('localforage', () => ({
   default: {
-    createInstance: vi.fn(() => {
-      const storage = storageIndex % 2 === 0 ? mockDraftStorage : mockPhotoStorage
-      storageIndex++
-      return storage
+    createInstance: vi.fn((config: { name: string }) => {
+      return config.name === 'bantayog-drafts' ? mockDraftStorage : mockPhotoStorage
     }),
   },
 }))
@@ -67,7 +64,6 @@ describe('draftStore', () => {
     mockDraftData.clear()
     mockPhotoData.clear()
     vi.clearAllMocks()
-    storageIndex = 0
     _resetStorageCache()
   })
 

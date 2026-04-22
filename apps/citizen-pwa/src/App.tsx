@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { collection, query, where, getDocs, limit } from 'firebase/firestore'
 import { AppRoutes } from './routes.js'
 import { draftStore } from './services/draft-store.js'
 import { db } from './services/firebase.js'
 
 export function App() {
-  const [recoveredDraft, setRecoveredDraft] = useState<unknown>(null)
-
   useEffect(() => {
     const recover = async () => {
       try {
@@ -15,21 +13,18 @@ export function App() {
           const exists = await checkInboxExists(draft.clientDraftRef)
           if (!exists) {
             await draftStore.save({ ...draft, syncState: 'syncing', updatedAt: Date.now() })
-            setRecoveredDraft(draft)
           } else {
-            await draftStore.clear(draft.id).catch((_e: unknown) => {
-              void _e
+            await draftStore.clear(draft.id).catch((e: unknown) => {
+              console.warn('[App] Failed to clear draft after inbox found:', draft.id, e)
             })
           }
         }
-      } catch (_e: unknown) {
-        void _e
+      } catch (e: unknown) {
+        console.warn('[App] Draft recovery failed:', e)
       }
     }
     void recover()
   }, [])
-
-  void recoveredDraft
 
   return <AppRoutes />
 }

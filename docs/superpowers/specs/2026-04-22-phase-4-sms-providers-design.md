@@ -181,7 +181,8 @@ async function getValidAccessToken(db: Firestore): Promise<string> {
     }
   }
 
-  // Mutex: if another instance is already refreshing, wait for it
+  // Mutex: if another call in this process is already refreshing, wait for it
+  // Note: this only deduplicates within a single process — not cross-instance
   if (refreshMutex) return refreshMutex
 
   refreshMutex = fetchAndCacheToken(db)
@@ -221,7 +222,7 @@ async function fetchAndCacheToken(db: Firestore): Promise<string> {
 }
 ```
 
-**Mutex pattern:** `refreshMutex` is a module-level `Promise | null`. Only one caller enters the refresh path; others `await` the same promise.
+**Mutex pattern:** `refreshMutex` is a module-level `Promise | null`. Only one caller within the same process enters the refresh path; others `await` the same promise. This does **not** provide cross-instance protection — each Cloud Function instance has its own mutex.
 
 ### 5.3 Send Implementation
 
@@ -322,10 +323,10 @@ Thread `priority` from the call site through to `provider.send()`.
 
 ## 7. Env Vars
 
-### `.env` (committed, no secrets)
+### `.env.example` (committed, no secrets)
 
 ```
-SEMAPHORE_API_KEY="bb8e0b5daa7308dc7e581fec9196e3cb"
+SEMAPHORE_API_KEY="your_semaphore_api_key_here"
 SMS_SENDER_NAME="BANTAYOG"
 SMS_PROVIDER_MODE="real"
 ```

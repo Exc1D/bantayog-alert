@@ -43,18 +43,20 @@ async function fetchAndCacheToken(db: Firestore): Promise<string> {
   return token.accessToken
 }
 
-async function getValidAccessToken(db: Firestore): Promise<string> {
-  const ref = db.collection('sms_provider_tokens').doc('globelabs')
-  const snap = await ref.get()
+async function getValidAccessToken(db: Firestore, forceRefresh = false): Promise<string> {
+  if (!forceRefresh) {
+    const ref = db.collection('sms_provider_tokens').doc('globelabs')
+    const snap = await ref.get()
 
-  if (snap.exists) {
-    const cached = snap.data() as CachedToken
-    if (Date.now() < cached.expiresAt - 60_000) {
-      return cached.accessToken
+    if (snap.exists) {
+      const cached = snap.data() as CachedToken
+      if (Date.now() < cached.expiresAt - 60_000) {
+        return cached.accessToken
+      }
     }
   }
 
-  // Mutex: if another instance is already refreshing, wait for it
+  // Mutex: if another call in this process is already refreshing, wait for it
   if (refreshMutex) return refreshMutex
 
   refreshMutex = fetchAndCacheToken(db)
@@ -89,21 +91,24 @@ export function createGlobelabsSmsProvider(deps: GlobelabsProviderDeps = {}): Sm
       }
 
       const baseUrl = `https://devapi.globelabs.com.ph/smsmessaging/v1/outbound/${shortCode}/requests`
+      const startMs = Date.now()
       let res = await fetch(`${baseUrl}?access_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
-      // Token expired — refresh and retry once
+      // Token expired — force refresh and retry once
       if (res.status === 401) {
-        const freshToken = await getValidAccessToken(db)
+        const freshToken = await getValidAccessToken(db, true)
         res = await fetch(`${baseUrl}?access_token=${freshToken}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
       }
+
+      const latencyMs = Date.now() - startMs
 
       if (!res.ok) {
         throw new SmsProviderRetryableError(
@@ -118,7 +123,7 @@ export function createGlobelabsSmsProvider(deps: GlobelabsProviderDeps = {}): Sm
         accepted: true,
         // eslint-disable-next-line @typescript-eslint/no-base-to-string
         providerMessageId: String(req?.resourceURL ?? 'unknown'),
-        latencyMs: 0,
+        latencyMs,
         segmentCount: input.segmentCount ?? 1,
         encoding: input.encoding,
       }

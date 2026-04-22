@@ -67,9 +67,9 @@ export interface Draft {
 ### 3.3 Implementation
 
 ```typescript
-import { createLocalForage } from 'localforage'
+import localforage from 'localforage'
 
-const draftStorage = createLocalForage<Draft & { photoBlob?: Blob }>({
+const draftStorage = localforage.createInstance({
   name: 'bantayog-drafts',
   storeName: 'drafts',
 })
@@ -84,7 +84,7 @@ export const draftStore = {
 
   async saveWithPhoto(draft: Draft, photoBlob: Blob): Promise<void> {
     await draftStorage.setItem(draft.id, { ...draft, updatedAt: Date.now() })
-    const photoRef = createLocalForage<Blob>({ name: 'bantayog-photos', storeName: 'photos' })
+    const photoRef = localforage.createInstance({ name: 'bantayog-photos', storeName: 'photos' })
     await photoRef.setItem(draft.id, photoBlob)
   },
 
@@ -100,7 +100,10 @@ export const draftStore = {
     }
 
     // Check photo blob still readable
-    const photoRef = createLocalForage<Blob>({ name: 'bantayog-photos', storeName: 'photos' })
+    const photoRef = localforage.createInstance<Blob>({
+      name: 'bantayog-photos',
+      storeName: 'photos',
+    })
     const photoBlob = await photoRef.getItem(id).catch(() => null)
     if (photoBlob && draft.syncState === 'local_only') {
       // Verify blob is still accessible (not evicted)
@@ -120,7 +123,10 @@ export const draftStore = {
 
   async clear(id: string): Promise<void> {
     await draftStorage.removeItem(id)
-    const photoRef = createLocalForage<Blob>({ name: 'bantayog-photos', storeName: 'photos' })
+    const photoRef = localforage.createInstance<Blob>({
+      name: 'bantayog-photos',
+      storeName: 'photos',
+    })
     await photoRef.removeItem(id).catch(() => {})
   },
 

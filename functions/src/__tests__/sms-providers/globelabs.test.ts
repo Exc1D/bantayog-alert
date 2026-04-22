@@ -180,7 +180,7 @@ describe('createGlobelabsSmsProvider', () => {
       expect(r1.accepted).toBe(true)
       expect(r2.accepted).toBe(true)
       expect(r3.accepted).toBe(true)
-      expect(oauthCallCount).toBeLessThanOrEqual(3)
+      expect(oauthCallCount).toBe(1)
     })
   })
 })

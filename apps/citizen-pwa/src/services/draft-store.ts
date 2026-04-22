@@ -140,17 +140,21 @@ export const draftStore = {
   },
 
   async list(): Promise<Draft[]> {
-    const drafts: Draft[] = []
+    const fresh: Draft[] = []
     const keys = await getDraftStorage().keys()
     for (const key of keys) {
       const draft = await getDraftStorage().getItem(key)
-      if (draft) drafts.push(draft)
+      if (!draft) continue
+      const ttl = draft.syncState === 'syncing' ? TTL_SYNCING_MS : TTL_NORMAL_MS
+      if (Date.now() - draft.updatedAt <= ttl) {
+        fresh.push(draft)
+      } else {
+        await this.clear(draft.id).catch((_e: unknown) => {
+          void _e
+        })
+      }
     }
-
-    return drafts.filter((d) => {
-      const ttl = d.syncState === 'syncing' ? TTL_SYNCING_MS : TTL_NORMAL_MS
-      return Date.now() - d.updatedAt <= ttl
-    })
+    return fresh
   },
 
   async recoverOrphaned(): Promise<Draft[]> {

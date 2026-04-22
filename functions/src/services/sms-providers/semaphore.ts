@@ -41,7 +41,12 @@ export function createSemaphoreSmsProvider(): SmsProvider {
       try {
         data = (await res.json()) as SemaphoreResponse
       } catch {
-        // malformed JSON — proceed with empty data
+        if (!res.ok) {
+          throw new SmsProviderRetryableError(
+            `semaphore ${res.status.toString()}: unparseable response`,
+            res.status >= 500 ? 'provider_error' : 'network',
+          )
+        }
       }
 
       const status = data.status ?? ''
@@ -73,7 +78,7 @@ export function createSemaphoreSmsProvider(): SmsProvider {
         const rejected: SmsProviderSendRejected = {
           accepted: false,
           latencyMs: 0,
-          reason: (nonRetryable ? 'provider_limit' : 'other') as SmsProviderSendRejected['reason'],
+          reason: nonRetryable ? 'provider_limit' : 'other',
         }
         if (messageId) rejected.providerMessageId = messageId
         return rejected

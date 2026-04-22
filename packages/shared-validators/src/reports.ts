@@ -191,7 +191,7 @@ export const inboxPayloadSchema = z
     description: z.string().min(1).max(5000),
     severity: z.enum(['low', 'medium', 'high']),
     source: z.enum(['web', 'sms', 'responder_witness']),
-    clientDraftRef: z.string().optional(),
+    clientDraftRef: z.string().trim().min(1).max(256).optional(),
     publicLocation: z
       .object({
         lat: z.number().min(-90).max(90),

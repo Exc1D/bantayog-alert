@@ -12,7 +12,7 @@ export interface SmsProviderSendRejected {
   accepted: false
   providerMessageId?: string
   latencyMs: number
-  reason: 'invalid_number' | 'ban' | 'bad_format' | 'other'
+  reason: 'invalid_number' | 'ban' | 'bad_format' | 'provider_limit' | 'other'
   segmentCount?: number
   encoding?: SmsEncoding
 }

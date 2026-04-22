@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { addDoc, collection } from 'firebase/firestore'
+import { doc, setDoc } from 'firebase/firestore'
 import type { Draft } from '../services/draft-store'
 import { draftStore } from '../services/draft-store'
 import { db } from '../services/firebase'
@@ -28,10 +28,10 @@ export interface UseSubmissionMachineReturn {
 }
 
 const SUBMIT_TIMEOUT_MS = 10_000
-const MAX_RETRIES = 3
+export const MAX_RETRIES = 3
 
-const swallow = (_err: unknown) => {
-  void _err
+const logDraftError = (context: string, err: unknown) => {
+  console.warn(`[draft-store] ${context}:`, err)
 }
 
 function isNetworkError(err: unknown): boolean {
@@ -67,25 +67,32 @@ export function useSubmissionMachine({
     setRetryCount(count)
     await draftStore
       .save({ ...draftRef.current, retryCount: count, updatedAt: Date.now() })
-      .catch(swallow)
+      .catch((e: unknown) => {
+        logDraftError('persist retryCount', e)
+      })
   }, [])
 
   const doSubmit = useCallback(
     async (currentRetryCount: number): Promise<string | null> => {
       const d = draftRef.current
+      const attemptCount = currentRetryCount + 1
       await draftStore.save({
         ...d,
         syncState: 'syncing',
-        retryCount: currentRetryCount,
+        retryCount: attemptCount,
         updatedAt: Date.now(),
       })
 
       try {
         const ref = await writeWithTimeout(d, SUBMIT_TIMEOUT_MS)
         await draftStore
-          .save({ ...d, syncState: 'synced', retryCount: currentRetryCount })
-          .catch(swallow)
-        await draftStore.clear(d.id).catch(swallow)
+          .save({ ...d, syncState: 'synced', retryCount: attemptCount })
+          .catch((e: unknown) => {
+            logDraftError('save synced', e)
+          })
+        await draftStore.clear(d.id).catch((e: unknown) => {
+          logDraftError('clear draft', e)
+        })
         return ref
       } catch (err: unknown) {
         if (isNetworkError(err)) {
@@ -93,27 +100,24 @@ export function useSubmissionMachine({
             .save({
               ...d,
               syncState: 'syncing',
-              retryCount: currentRetryCount,
+              retryCount: attemptCount,
               updatedAt: Date.now(),
             })
-            .catch(swallow)
+            .catch((e: unknown) => {
+              logDraftError('save queued', e)
+            })
           setState('queued')
           return null
         }
 
-        const nextRetryCount = currentRetryCount + 1
-        await draftStore
-          .save({ ...d, syncState: 'syncing', retryCount: nextRetryCount, updatedAt: Date.now() })
-          .catch(swallow)
+        await persistRetryCount(attemptCount)
 
-        if (nextRetryCount >= MAX_RETRIES) {
-          await persistRetryCount(nextRetryCount)
+        if (attemptCount >= MAX_RETRIES) {
           setState('failed_terminal')
           onTerminal()
           return null
         }
 
-        await persistRetryCount(nextRetryCount)
         setState('failed_retryable')
         return null
       }
@@ -128,21 +132,27 @@ export function useSubmissionMachine({
 
     setState('submitting')
 
-    const newRetryCount = retryCountRef.current + 1
-    await persistRetryCount(newRetryCount)
-
-    const publicRef = await doSubmit(newRetryCount)
+    const publicRef = await doSubmit(retryCountRef.current)
     if (publicRef) {
       setState('server_confirmed')
       onSuccess(publicRef)
     }
-  }, [state, doSubmit, onSuccess, persistRetryCount])
+  }, [state, doSubmit, onSuccess])
 
   const sendSmsFallback = useCallback(() => {
     const d = draftRef.current
     draftStore
-      .save({ ...d, smsFallbackSentAt: Date.now(), syncState: 'local_only', updatedAt: Date.now() })
-      .catch(swallow)
+      .save({
+        ...d,
+        smsFallbackSentAt: Date.now(),
+        syncState: 'local_only',
+        retryCount: 0,
+        updatedAt: Date.now(),
+      })
+      .catch((e: unknown) => {
+        logDraftError('sms fallback save', e)
+      })
+    draftRef.current = { ...d, retryCount: 0 }
     setState('idle')
     retryCountRef.current = 0
     setRetryCount(0)
@@ -177,14 +187,15 @@ export function useSubmissionMachine({
 }
 
 async function writeWithTimeout(draft: Draft, ms: number): Promise<string> {
+  const docId = draft.clientDraftRef
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('timeout'))
     }, ms)
-    addDoc(collection(db(), 'report_inbox'), draft)
-      .then((ref: { id: string }) => {
+    setDoc(doc(db(), 'report_inbox', docId), draft)
+      .then(() => {
         clearTimeout(timer)
-        resolve(ref.id)
+        resolve(docId)
       })
       .catch((err: unknown) => {
         clearTimeout(timer)

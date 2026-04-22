@@ -17,7 +17,7 @@ describe('useOnlineStatus', () => {
     })
 
     it('returns isOnline: true and navigatorOnline: true when probe succeeds', () => {
-      mockFetch.mockResolvedValueOnce(Promise.resolve(new Response('ok')))
+      mockFetch.mockResolvedValueOnce(new Response('ok'))
       const { result } = renderHook(() => useOnlineStatus())
 
       expect(result.current.navigatorOnline).toBe(true)
@@ -54,7 +54,7 @@ describe('useOnlineStatus', () => {
     })
 
     it('updates navigatorOnline when offline event fires', () => {
-      mockFetch.mockResolvedValue(Promise.resolve(new Response('ok')))
+      mockFetch.mockResolvedValue(new Response('ok'))
       const { result } = renderHook(() => useOnlineStatus())
 
       expect(result.current.navigatorOnline).toBe(true)

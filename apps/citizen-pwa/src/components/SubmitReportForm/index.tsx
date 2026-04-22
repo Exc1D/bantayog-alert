@@ -190,7 +190,7 @@ function SubmissionPanel({
     draft,
     onSuccess,
     onTerminal: () => {
-      return
+      console.warn('[SubmissionPanel] Submission failed after max retries')
     },
   })
 
