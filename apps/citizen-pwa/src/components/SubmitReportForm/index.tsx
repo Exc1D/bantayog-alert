@@ -18,6 +18,11 @@ interface FormData {
   reporterName: string
   reporterMsisdn: string
   patientCount: number
+  locationMethod: 'gps' | 'manual'
+  municipalityId?: string
+  municipalityLabel?: string
+  barangayId?: string
+  nearestLandmark?: string
 }
 
 function randomPublicRef(): string {
@@ -62,6 +67,7 @@ export function SubmitReportForm() {
     reporterName: '',
     reporterMsisdn: '',
     patientCount: 0,
+    locationMethod: 'gps',
   })
 
   const isSubmitting = machineState === 'submitting'
@@ -113,7 +119,9 @@ export function SubmitReportForm() {
         : undefined
 
       const description =
-        formData.patientCount > 0 ? String(formData.patientCount) + ' patient(s) reported' : ''
+        formData.patientCount > 0
+          ? String(formData.patientCount) + ' patient(s) reported'
+          : 'No description provided'
 
       const publicRefValue = deps.randomPublicRef()
 
@@ -132,6 +140,13 @@ export function SubmitReportForm() {
           publicLocation: formData.location,
           pendingMediaIds,
           ...(contact ? { contact } : {}),
+          ...(formData.locationMethod === 'manual' && formData.municipalityId
+            ? {
+                municipalityId: formData.municipalityId,
+                barangayId: formData.barangayId,
+                nearestLandmark: formData.nearestLandmark,
+              }
+            : {}),
         },
       })
 
