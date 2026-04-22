@@ -50,8 +50,15 @@ export {
   smsSessionDocSchema,
   smsProviderHealthDocSchema,
   smsProviderIdSchema,
+  smsReportInboxFieldsSchema,
 } from './sms.js'
-export type { SmsInboxDoc, SmsOutboxDoc, SmsSessionDoc, SmsProviderHealthDoc } from './sms.js'
+export type {
+  SmsInboxDoc,
+  SmsOutboxDoc,
+  SmsSessionDoc,
+  SmsProviderHealthDoc,
+  SmsReportInboxFields,
+} from './sms.js'
 export { detectEncoding } from './sms-encoding.js'
 export type { SmsEncoding, EncodingResult } from './sms-encoding.js'
 export {

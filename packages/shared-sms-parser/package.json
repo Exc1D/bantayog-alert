@@ -11,9 +11,11 @@
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --emitDeclarationOnly --outDir lib"
+    "build": "tsc --emitDeclarationOnly --outDir lib",
+    "test": "vitest --run"
   },
   "dependencies": {
-    "@bantayog/shared-types": "workspace:*"
+    "@bantayog/shared-types": "workspace:*",
+    "zod": "^4.3.6"
   }
 }

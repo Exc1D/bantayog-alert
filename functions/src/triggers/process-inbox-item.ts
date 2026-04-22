@@ -23,6 +23,7 @@ export interface ProcessInboxItemCoreResult {
   materialized: boolean
   replayed: boolean
   reportId: string
+  publicRef: string
 }
 
 export async function processInboxItemCore(
@@ -77,15 +78,26 @@ export async function processInboxItemCore(
   }
   const payload = payloadResult.data
 
-  const geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
+  let geo: Awaited<ReturnType<typeof reverseGeocodeToMunicipality>> | null = null
+  if (payload.publicLocation) {
+    geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
+  }
+
   if (!geo) {
+    const reason = payload.publicLocation ? 'out_of_jurisdiction' : 'location_missing'
     await db.collection('moderation_incidents').doc(inboxId).set({
       inboxId,
-      reason: 'out_of_jurisdiction',
+      reason,
+      reportType: payload.reportType,
+      description: payload.description,
+      publicRef: inbox.publicRef,
       createdAt: now(),
       schemaVersion: 1,
     })
-    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'out of jurisdiction')
+    throw new BantayogError(
+      BantayogErrorCode.INVALID_ARGUMENT,
+      reason === 'location_missing' ? 'location missing from payload' : 'out of jurisdiction',
+    )
   }
 
   const createdAt = now()
@@ -251,10 +263,16 @@ export async function processInboxItemCore(
         data: { reportId, inboxId, municipalityId: geo.municipalityId },
       })
 
-      return { materialized: true, reportId }
+      return { materialized: true, reportId, publicRef: inbox.publicRef }
     },
   )
 
   const { result, fromCache } = idempotencyResult
-  return { materialized: result.materialized, replayed: fromCache, reportId: result.reportId }
+  const r = result as { materialized: boolean; reportId: string; publicRef: string }
+  return {
+    materialized: r.materialized,
+    replayed: fromCache,
+    reportId: r.reportId,
+    publicRef: r.publicRef,
+  }
 }

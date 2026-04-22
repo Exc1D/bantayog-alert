@@ -10,8 +10,9 @@ export const smsInboxDocSchema = z
       .string()
       .length(64)
       .regex(/^[a-f0-9]{64}$/),
+    senderMsisdnEnc: z.string().optional(),
     body: z.string().max(1600),
-    parseStatus: z.enum(['pending', 'parsed', 'low_confidence', 'unparseable']),
+    parseStatus: z.enum(['pending', 'parsed', 'low_confidence', 'unparseable', 'pending_review']),
     parsedIntoInboxId: z.string().optional(),
     confidenceScore: z.number().min(0).max(1).optional(),
     schemaVersion: z.number().int().positive(),
@@ -28,6 +29,7 @@ export const smsOutboxDocSchema = z
       'status_update',
       'verification',
       'resolution',
+      'pending_review',
       'mass_alert',
       'emergency_declaration',
     ]),
@@ -102,3 +104,16 @@ export type SmsSessionDoc = z.infer<typeof smsSessionDocSchema>
 export type SmsProviderHealthDoc = z.infer<typeof smsProviderHealthDocSchema>
 export type SmsMinuteWindowDoc = z.infer<typeof smsMinuteWindowDocSchema>
 export type SmsPurpose = SmsOutboxDoc['purpose']
+
+export const smsReportInboxFieldsSchema = z
+  .object({
+    source: z.literal('sms'),
+    sourceMsgId: z.string(),
+    reporterMsisdnHash: z.string(),
+    confidence: z.enum(['high', 'medium', 'low']),
+    needsReview: z.boolean(),
+    requiresLocationFollowUp: z.literal(true),
+  })
+  .strict()
+
+export type SmsReportInboxFields = z.infer<typeof smsReportInboxFieldsSchema>

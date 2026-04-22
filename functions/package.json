@@ -28,6 +28,7 @@
     "node": "20"
   },
   "dependencies": {
+    "@bantayog/shared-sms-parser": "workspace:*",
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
     "exifr": "^7.1.3",
