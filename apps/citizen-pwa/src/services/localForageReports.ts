@@ -34,7 +34,8 @@ export async function updateReportId(publicRef: string, reportId: string): Promi
   const all = await loadReports()
   const idx = all.findIndex((r) => r.publicRef === publicRef)
   if (idx < 0) return
-  const existing = all[idx]
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const existing = all[idx]!
   all[idx] = { ...existing, reportId }
   await localforage.setItem(KEY, all)
 }

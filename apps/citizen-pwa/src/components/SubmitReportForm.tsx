@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { addDoc, collection } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, fns, ensureSignedIn } from '../services/firebase.js'
+import { saveReport } from '../services/localForageReports.js'
 import { submitReport, type SubmitReportDeps } from '../services/submit-report.js'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType, Severity } from '@bantayog/shared-types'
@@ -114,6 +115,15 @@ export function SubmitReportForm() {
         publicLocation: { lat, lng },
         ...(photo ? { photo } : {}),
         ...(phone && smsConsent ? { contact: { phone, smsConsent: true as const } } : {}),
+      })
+      await saveReport({
+        publicRef: result.publicRef,
+        secret: result.secret,
+        reportType,
+        severity,
+        lat,
+        lng,
+        submittedAt: Date.now(),
       })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       nav('/receipt', { state: result })
