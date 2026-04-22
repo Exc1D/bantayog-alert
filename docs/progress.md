@@ -2,6 +2,42 @@
 
 ## Current
 
+### PR #56 Review Fixes — feat(citizen-pwa): manual location fallback (2026-04-22)
+
+- Status: In progress — fixes applied to `feature/citizen-report-flow` worktree
+- PR: https://github.com/Exc1D/bantayog-alert/pull/56
+- Reviewers: CodeRabbit (Changes Requested), Sourcery (Commented)
+
+**Issues fixed:**
+
+1. `useReport.ts` — Guard empty `reportRef` to prevent invalid `doc(db(), 'reports/')` path (crash)
+2. `useReport.ts` — Wrap `mapReportFromFirestore` in try-catch inside `onSnapshot` callback
+3. `useReport.ts` — Async `queryFn` with `enabled: !!reportRef` + `placeholderData: keepPreviousData` to prevent "Report not found" flash
+4. `TrackingScreen.tsx` — Switch `isLoading` → `isPending` for correct loading state
+5. `RevealSheet.tsx` — `handlePrimaryAction` for `queued`/`failed_retryable` now calls `onClose?.()` instead of `closeSheet()` (fixes state desync)
+6. `inboxPayloadSchema` — Add `municipalityId`, `barangayId`, `nearestLandmark` optional fields for location picker
+7. `submit-report.ts` — Extend `SubmitReportInput` with location fields + forward to payload
+8. `SubmitReportForm/index.tsx` — Replace inline submission logic with `submitReport(deps, input)` call (fixes secret discard + DRY)
+9. `putBlob` error now includes HTTP response body
+10. `Step1Evidence.tsx` — Fix `INCIDENT_TYPES` to match `reportDocSchema` values (`flood`, `fire`, `earthquake`, `typhoon`, `landslide`, `storm_surge`)
+11. `Step1Evidence.tsx` — Add `useRef` + `useEffect` cleanup for blob URL `URL.revokeObjectURL`
+12. `Step1Evidence.tsx` — "No photo" button now properly skips photo instead of re-opening picker
+13. `Step3Review.tsx` — Fix `INCIDENT_TYPES` to match schema; third progress dot now active
+14. `Step2WhoWhere.tsx` — `nearestLandmark` state initialized as `''` (not `undefined`) — fixes uncontrolled input
+15. `Step2WhoWhere.tsx` — GPS `catch` block now logs error with `console.error` (not swallowed)
+16. `submit-flow.test.tsx` — Replace placeholder tests with `it.todo` stubs (TICKET-56, TICKET-57)
+17. `test-utils.tsx` — Add `MemoryRouter` + Firestore `RulesTestEnvironment` for emulator-backed tests
+
+**Verification:**
+
+- `pnpm --filter @bantayog/shared-validators typecheck` PASS
+- `pnpm --filter @bantayog/shared-validators lint` PASS
+- `pnpm --filter citizen-pwa typecheck` PASS
+- `pnpm --filter citizen-pwa lint` PASS
+- `pnpm --filter citizen-pwa test` PASS (5/5 tests)
+
+**Note:** The two `add/add` design-token conflicts (`design-tokens.ts`, `design-tokens.css`) are identical on both sides — trivial resolution needed at merge.
+
 ### Phase 4b SMS Inbound Pipeline (2026-04-22)
 
 - Status: Complete — All tasks done (Tasks 1-10)
@@ -42,6 +78,37 @@
   - The `autoReplyText` from the parser is currently unused (trigger sends `receipt_ack` purpose SMS via enqueueSms)
   - Integration tests use `env.unauthenticatedContext().firestore()` for seeding and `env.withSecurityRulesDisabled()` for test body
   - Parser test expectations corrected: CALASGAN→low (dist=2), LANIT→none (not in gazetteer), details case preserved lowercase
+  - **Bug fixed (2026-04-22):** `publicLocation: null` written to `report_inbox` caused `processInboxItemCore` to fail `inboxPayloadSchema` validation and throw `out_of_jurisdiction`, silently routing reports to `moderation_incidents` instead of materializing them. Fix: made `publicLocation` optional in `inboxPayloadSchema`, omitted it from SMS writes, added `location_missing` detection in `processInboxItemCore`.
+- **Typecheck error fixed (2026-04-22):** `phase-4b-acceptance.test.ts:182` had `tx` implicit `any` in `db.runTransaction(async (tx) => {...})`. Fixed with `tx: unknown` on callback + `tx as any` at enqueueSms call — bridges `rules-unit-testing` compat SDK to admin SDK `Transaction` type.
+
+### Phase 4b Bug Fixes — pending_review SMS auto-reply (2026-04-22)
+
+- Status: Complete — 4 commits, shippable after adversarial review
+- **Problem:** SMS reports missing `publicLocation` never got an auto-reply — `location_missing` and `out_of_jurisdiction` errors silently swallowed
+- **Fix:** Detect location errors in `smsInboundProcessor` catch block, send `pending_review` SMS, update `parseStatus` to `pending_review`
+
+**Files changed:**
+
+- `packages/shared-validators/src/sms.ts` — `pending_review` added to `smsInboxDocSchema.parseStatus` and `smsOutboxDocSchema.purpose` enums
+- `packages/shared-validators/src/sms-templates.ts` — `pending_review` added to `SmsPurpose` type and `TEMPLATES` record
+- `functions/src/services/send-sms.ts` — `pending_review` added to `VALID_PURPOSES` set
+- `functions/src/triggers/process-inbox-item.ts` — `moderation_incidents` doc enriched with `reportType`, `description`, `publicRef`
+- `functions/src/firestore/sms-inbound-processor.ts` — catch block detects location errors, sends `pending_review` SMS; `parseStatus` written BEFORE enqueue attempt
+
+**Design decisions:**
+
+- `parseStatus: 'pending_review'` written BEFORE enqueue — wrong status prevented if transaction fails
+- Inner try/catch around `decryptMsisdn` and `enqueueSms` — failures logged, not rethrown, do not affect parseStatus
+- MSISDN decryption failure logged as WARNING — does not affect parseStatus
+- Both `location_missing` and `out_of_jurisdiction` get `pending_review` reply — same moderator dependency
+
+**Known acceptable limitations:**
+
+- `schema_invalid`/`payload_schema_invalid` → no SMS reply (programmer error, not reporter-fixable)
+- `decryptMsisdn` catch logs no diagnostic — insufficient for production encryption key debugging
+- `correlationId: sms:${msgId}` violates `z.uuid()` schema — pre-existing, affects all SMS inboxes
+
+**Verification:** `pnpm run typecheck --filter=@bantayog/functions` + `pnpm run lint --filter=@bantayog/functions` pass.
 
 ### Phase 4a Git Recovery (2026-04-21)
 
