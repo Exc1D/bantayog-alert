@@ -77,9 +77,7 @@ function levenshtein(a: string, b: string): number {
   const n = b.length
   if (m === 0) return n
   if (n === 0) return m
-  // @ts-expect-error: noUncheckedIndexedAccess + exactOptionalPropertyTypes on 2D DP array
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    // @ts-expect-error: same strict mode reasons
     Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
   )
   for (let i = 1; i <= m; i++) {

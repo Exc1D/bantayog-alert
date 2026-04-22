@@ -94,3 +94,4 @@ export { reconcileSmsDeliveryStatus } from './triggers/reconcile-sms-delivery-st
 export { cleanupSmsMinuteWindows } from './triggers/cleanup-sms-minute-windows.js'
 export { smsDeliveryReport } from './http/sms-delivery-report.js'
 export { smsInboundWebhook } from './http/sms-inbound.js'
+export { smsInboundProcessor } from './firestore/sms-inbound-processor.js'
