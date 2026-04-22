@@ -102,3 +102,16 @@ export type SmsSessionDoc = z.infer<typeof smsSessionDocSchema>
 export type SmsProviderHealthDoc = z.infer<typeof smsProviderHealthDocSchema>
 export type SmsMinuteWindowDoc = z.infer<typeof smsMinuteWindowDocSchema>
 export type SmsPurpose = SmsOutboxDoc['purpose']
+
+export const smsReportInboxFieldsSchema = z
+  .object({
+    source: z.literal('sms'),
+    sourceMsgId: z.string(),
+    reporterMsisdnHash: z.string(),
+    confidence: z.enum(['high', 'medium', 'low']),
+    needsReview: z.boolean(),
+    requiresLocationFollowUp: z.literal(true),
+  })
+  .strict()
+
+export type SmsReportInboxFields = z.infer<typeof smsReportInboxFieldsSchema>
