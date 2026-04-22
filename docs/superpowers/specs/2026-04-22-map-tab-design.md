@@ -19,7 +19,7 @@ The Map Tab is the default home screen (`/`) of the Citizen PWA. It is a full-bl
 
 ## 2. Screen Anatomy
 
-```text
+```
 ┌──────────────────────────────────────┐
 │  [☰]   VIGILANT            [🔔]     │  ← TopBar: #001e40, 64px, fixed, z-50
 ├──────────────────────────────────────┤
@@ -62,7 +62,7 @@ PeekSheet at z-55 renders above BottomNav (z-45), allowing the peek strip to vis
 
 ### 3.2 File Structure
 
-```text
+```
 apps/citizen-pwa/src/
 ├── components/
 │   ├── CitizenShell.tsx          NEW: layout wrapper + BottomNav
