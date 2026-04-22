@@ -74,9 +74,9 @@ export function useReport(reportRef: string) {
 
   return useQuery<ReportData | null>({
     queryKey: ['reports', reportRef],
-    queryFn: async () => {
+    queryFn: async (): Promise<ReportData | null> => {
       const cached = queryClient.getQueryData(['reports', reportRef])
-      if (cached !== undefined) return cached
+      if (cached !== undefined) return cached as ReportData | null
       if (!hasReportRef) return null
       return new Promise<ReportData | null>((resolve) => {
         const unsub = onSnapshot(doc(db(), `reports/${reportRef}`), (snap) => {

@@ -46,7 +46,7 @@ export function Step3Review({
   const [consent, setConsent] = useState(false)
 
   const incident = INCIDENT_TYPES.find((t) => t.value === reportData.reportType)
-  const Icon = incident?.Icon ?? Zap
+  const Icon = incident?.Icon ?? AlertTriangle
 
   return (
     <div className="page-container">
