@@ -1,4 +1,4 @@
-import type { Draft } from '../services/draft-store'
+import type { Draft } from '../../services/draft-store.js'
 
 interface SmsFallbackButtonProps {
   draft: Draft

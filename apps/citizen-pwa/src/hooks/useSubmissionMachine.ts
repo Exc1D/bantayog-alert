@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { addDoc, collection } from 'firebase/firestore'
 import type { Draft } from '../services/draft-store'
 import { draftStore } from '../services/draft-store'
@@ -147,6 +147,25 @@ export function useSubmissionMachine({
     retryCountRef.current = 0
     setRetryCount(0)
   }, [])
+
+  useEffect(() => {
+    if (!isOnline) {
+      return
+    }
+    if (state !== 'queued' && state !== 'failed_retryable') {
+      return
+    }
+    const triggerRetry = () => {
+      setState('submitting')
+      void doSubmit(retryCountRef.current).then((publicRef) => {
+        if (publicRef) {
+          setState('server_confirmed')
+          onSuccess(publicRef)
+        }
+      })
+    }
+    triggerRetry()
+  }, [isOnline, state, doSubmit, onSuccess])
 
   return {
     state,

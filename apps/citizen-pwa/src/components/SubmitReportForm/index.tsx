@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType, Severity } from '@bantayog/shared-types'
-import { createDraft } from '../services/submit-report.js'
-import type { Draft } from '../services/draft-store.js'
-import { useSubmissionMachine } from '../hooks/useSubmissionMachine.js'
+import { createDraft } from '../../services/submit-report.js'
+import type { Draft } from '../../services/draft-store.js'
+import { useSubmissionMachine } from '../../hooks/useSubmissionMachine.js'
 import { OfflineBanner } from './OfflineBanner.js'
 import { SmsFallbackButton } from './SmsFallbackButton.js'
+import { StaleDraftBanner } from './StaleDraftBanner.js'
 
 export function SubmitReportForm() {
   return <FormCollector />
@@ -184,6 +185,7 @@ function SubmissionPanel({
   phone: string
   onSuccess: (publicRef: string) => void
 }) {
+  const [now] = useState(() => Date.now())
   const machine = useSubmissionMachine({
     draft,
     onSuccess,
@@ -196,6 +198,7 @@ function SubmissionPanel({
 
   return (
     <div aria-label="Submission status">
+      <StaleDraftBanner updatedAt={draft.updatedAt} now={now} />
       <OfflineBanner state={machine.state} retryCount={machine.retryCount} />
 
       {machine.state === 'idle' && (
