@@ -22,7 +22,7 @@
 - Verification:
   - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
   - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
-  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (51/51)
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (filtered package suite, 51/51)
 
 ### Map Tab — full implementation (2026-04-22)
 
@@ -35,7 +35,7 @@
 - Verification:
   - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
   - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
-  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (38/38)
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (filtered package suite, 38/38)
 
 ### Map Tab — Task 5: usePublicIncidents hook (TDD) (2026-04-22)
 
@@ -45,7 +45,7 @@
   - `apps/citizen-pwa/src/hooks/usePublicIncidents.ts` — Firestore `onSnapshot` hook with severity/window filters
   - `apps/citizen-pwa/src/hooks/usePublicIncidents.test.ts` — 4 tests (loading state, snapshot return, severity filter, error handling)
 - Verification:
-  - `pnpm --filter @bantayog/citizen-pwa test` — 22/22 PASS
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (targeted package suite, 22/22)
   - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
   - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
 

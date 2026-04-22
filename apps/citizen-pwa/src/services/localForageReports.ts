@@ -17,16 +17,19 @@ const KEY = 'bantayog:reports:v1'
 function isStoredReport(value: unknown): value is StoredReport {
   if (!value || typeof value !== 'object') return false
   const report = value as Record<string, unknown>
-  const lat = Number(report.lat)
-  const lng = Number(report.lng)
-  const submittedAt = Number(report.submittedAt)
+  const lat = report.lat
+  const lng = report.lng
+  const submittedAt = report.submittedAt
   return (
     typeof report.publicRef === 'string' &&
     typeof report.secret === 'string' &&
     typeof report.reportType === 'string' &&
     typeof report.severity === 'string' &&
+    typeof lat === 'number' &&
     Number.isFinite(lat) &&
+    typeof lng === 'number' &&
     Number.isFinite(lng) &&
+    typeof submittedAt === 'number' &&
     Number.isFinite(submittedAt) &&
     (report.reportId === undefined || typeof report.reportId === 'string')
   )

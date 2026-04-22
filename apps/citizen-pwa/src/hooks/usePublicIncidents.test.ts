@@ -38,9 +38,8 @@ function makeSnap(docs: object[]) {
 const defaultFilters: Filters = { severity: 'all', window: '24h' }
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  mockHasFirebaseConfig.mockReturnValue(true)
-  mockOnSnapshot.mockReturnValue(() => {
+  mockHasFirebaseConfig.mockReset().mockReturnValue(true)
+  mockOnSnapshot.mockReset().mockReturnValue(() => {
     return void 0
   })
 })

@@ -20,21 +20,14 @@ export function usePublicIncidents(filters: Filters): {
   const [error, setError] = useState<unknown>(null)
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setError(null)
-      setLoading(true)
-    }, 0)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(null)
+    setLoading(true)
 
     if (!firebaseConfigured) {
-      const resetTimeout = window.setTimeout(() => {
-        setError(null)
-        setIncidents([])
-        setLoading(false)
-      }, 0)
-      window.clearTimeout(timeout)
-      return () => {
-        window.clearTimeout(resetTimeout)
-      }
+      setIncidents([])
+      setLoading(false)
+      return undefined
     }
 
     const cutoff = Date.now() - windowMs(filters.window)
@@ -64,7 +57,6 @@ export function usePublicIncidents(filters: Filters): {
       },
     )
     return () => {
-      window.clearTimeout(timeout)
       unsub()
     }
   }, [firebaseConfigured, filters.severity, filters.window])

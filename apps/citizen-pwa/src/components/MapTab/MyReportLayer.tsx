@@ -49,8 +49,22 @@ export function MyReportLayer({ map, reports, onPinTap }: Props) {
   const layerRef = useRef<L.LayerGroup | null>(null)
 
   useEffect(() => {
+    return () => {
+      const layer = layerRef.current
+      if (layer && 'remove' in layer && typeof layer.remove === 'function') {
+        layer.remove()
+      }
+      layerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
     if (!map) return
-    layerRef.current ??= L.layerGroup().addTo(map)
+    if (!layerRef.current) {
+      layerRef.current = L.layerGroup().addTo(map)
+    } else if (!map.hasLayer(layerRef.current)) {
+      layerRef.current.addTo(map)
+    }
     const layer = layerRef.current
     layer.clearLayers()
 
