@@ -147,6 +147,14 @@
       ]
     },
     {
+      "collectionGroup": "report_inbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parseStatus", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "reports",
       "queryScope": "COLLECTION",
       "fields": [
