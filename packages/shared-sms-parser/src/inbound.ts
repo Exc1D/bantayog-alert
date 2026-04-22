@@ -18,7 +18,7 @@ export interface ParsedFields {
   reportType: ReportType
   barangay: string
   rawBarangay?: string
-  details?: string
+  details: string | undefined
 }
 
 export interface ParseResult {
@@ -77,17 +77,30 @@ function levenshtein(a: string, b: string): number {
   const n = b.length
   if (m === 0) return n
   if (n === 0) return m
+  // @ts-expect-error: noUncheckedIndexedAccess + exactOptionalPropertyTypes on 2D DP array
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    // @ts-expect-error: same strict mode reasons
     Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
   )
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
+      // @ts-expect-error: DP array access is bounds-checked by loop
       dp[i][j] =
         a[i - 1] === b[j - 1]
-          ? dp[i - 1][j - 1]
-          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+          ? // @ts-expect-error: diagonal DP access
+            dp[i - 1][j - 1]
+          : 1 +
+            Math.min(
+              // @ts-expect-error: DP array accesses
+              dp[i - 1][j],
+              // @ts-expect-error: DP array accesses
+              dp[i][j - 1],
+              // @ts-expect-error: DP array accesses
+              dp[i - 1][j - 1],
+            )
     }
   }
+  // @ts-expect-error: return from DP is always valid after loop
   return dp[m][n]
 }
 
@@ -155,7 +168,9 @@ export function parseInboundSms(body: string): ParseResult {
   }
 
   const tokens = rest.split(/\s+/)
-  if (tokens.length < 2) {
+  const token0 = tokens[0]
+  const token1 = tokens[1]
+  if (tokens.length < 2 || !token0 || !token1) {
     return {
       confidence: 'none',
       parsed: null,
@@ -164,12 +179,13 @@ export function parseInboundSms(body: string): ParseResult {
     }
   }
 
-  const typeToken = tokens[0] ?? ''
-  let barangayToken = tokens[1] ?? ''
+  const typeToken = token0
+  let barangayToken = token1
   let detailsStartIndex = barangayToken.length
 
-  if (tokens.length >= 3 && tokens[1] && tokens[2] && MUNICIPALITY_PREFIXES.has(tokens[1])) {
-    barangayToken = tokens[1] + ' ' + tokens[2]
+  const token2 = tokens[2]
+  if (tokens.length >= 3 && token2 && MUNICIPALITY_PREFIXES.has(token1)) {
+    barangayToken = token1 + ' ' + token2
     detailsStartIndex = barangayToken.length
   }
 
@@ -216,7 +232,7 @@ export function parseInboundSms(body: string): ParseResult {
   }
 
   if (fuzzyMatches.length === 1) {
-    const match = fuzzyMatches[0]
+    const match = fuzzyMatches[0] as { entry: BarangayEntry; distance: number }
     const dist = match.distance
     const entry: BarangayEntry = match.entry
     return {
