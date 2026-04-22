@@ -29,6 +29,7 @@ Durable rules worth keeping across sessions.
 - A passing test is not enough; confirm it actually exercises the changed path.
 - Firebase Admin SDK (`firebase-admin/firestore`) and Client SDK (`firebase/firestore`) are type-incompatible — never mix `setDoc(doc(adminDb, ...), data)` patterns. Use Admin SDK exclusively for admin contexts, or Client SDK exclusively for test contexts.
 - `waitFor(() => expect(...))` triggers `no-confusing-void-expression`; wrap the assertion body in braces.
+- Local dev should not hard-crash on missing Vite env vars if the screen can degrade gracefully; gate Firebase consumers and surface a clear inline message instead.
 
 ## React
 

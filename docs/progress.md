@@ -2,6 +2,18 @@
 
 ## Current
 
+### Citizen PWA — Firebase env fallback for `pnpm dev` (2026-04-22)
+
+- Status: DONE locally — citizen PWA no longer hard-crashes when `VITE_FIREBASE_*` vars are missing
+- Scope:
+  - `usePublicIncidents` now short-circuits to empty/offline state when Firebase is not configured
+  - `useMyActiveReports` now returns localForage-backed queued reports without live Firestore/Functions access
+  - `SubmitReportForm` and `LookupScreen` now show a clear Firebase-config error instead of throwing
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (51/51)
+
 ### Map Tab — full implementation (2026-04-22)
 
 - Status: DONE locally — full map tab slice implemented in `feature/map-tab`
