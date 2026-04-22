@@ -43,9 +43,15 @@ vi.mock('../services/firebase.js', () => ({
 import { useMyActiveReports } from './useMyActiveReports.js'
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  mockHasFirebaseConfig.mockReturnValue(true)
-  mockUpdateReportId.mockResolvedValue(undefined)
+  mockLoadReports.mockReset()
+  mockUpdateReportId.mockReset().mockResolvedValue(undefined)
+  mockGetDoc.mockReset()
+  mockDoc
+    .mockReset()
+    .mockImplementation((_, collection: string, id: string) => `${collection}/${id}`)
+  mockRequestLookup.mockReset()
+  mockFns.mockReset().mockReturnValue({})
+  mockHasFirebaseConfig.mockReset().mockReturnValue(true)
 })
 
 describe('useMyActiveReports', () => {

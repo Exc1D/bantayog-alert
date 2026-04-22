@@ -17,7 +17,7 @@ const SWIPE_THRESHOLD = 50
 
 export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
   const startY = useRef<number | null>(null)
-  if (sheetPhase === 'hidden' || !pin) return null
+  if (sheetPhase !== 'peek' || !pin) return null
 
   function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
     startY.current = event.touches[0]?.clientY ?? null
@@ -25,7 +25,12 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
 
   function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
     if (startY.current === null) return
-    const delta = (event.changedTouches[0]?.clientY ?? 0) - startY.current
+    const endY = event.changedTouches[0]?.clientY
+    if (typeof endY !== 'number') {
+      startY.current = null
+      return
+    }
+    const delta = endY - startY.current
     startY.current = null
     if (delta > SWIPE_THRESHOLD) onDismiss()
     if (delta < -SWIPE_THRESHOLD) onExpand()

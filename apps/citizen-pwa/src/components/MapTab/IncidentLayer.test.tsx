@@ -67,4 +67,33 @@ describe('IncidentLayer', () => {
     expect(mockLayer.clearLayers).toHaveBeenCalledOnce()
     expect(mockMarker).toHaveBeenCalledOnce()
   })
+
+  it('skips incidents with invalid coordinates', async () => {
+    const incidents: PublicIncident[] = [
+      {
+        id: 'r1',
+        reportType: 'flood',
+        severity: 'high',
+        status: 'verified',
+        barangayId: 'brgy-1',
+        municipalityLabel: 'Daet',
+        publicLocation: { lat: Number.POSITIVE_INFINITY, lng: 122.9 },
+        submittedAt: 1000,
+      },
+    ]
+
+    render(
+      <IncidentLayer
+        map={map}
+        incidents={incidents}
+        suppressedIds={new Set()}
+        onPinTap={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(mockLayer.clearLayers).toHaveBeenCalledOnce()
+    })
+    expect(mockMarker).not.toHaveBeenCalled()
+  })
 })

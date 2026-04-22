@@ -11,6 +11,17 @@ interface Props {
 
 const COLORS = { high: '#dc2626', medium: '#a73400', low: '#001e40' } as const
 
+function isValidCoordinate(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  )
+}
+
 function makeIcon(color: string, queued: boolean): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -44,7 +55,18 @@ export function MyReportLayer({ map, reports, onPinTap }: Props) {
     layer.clearLayers()
 
     for (const report of reports) {
-      const marker = L.marker([report.lat, report.lng], {
+      const lat = report.lat
+      const lng = report.lng
+      if (!isValidCoordinate(lat, lng)) {
+        console.warn(
+          'Skipping report with invalid coordinates',
+          report.publicRef,
+          report.lat,
+          report.lng,
+        )
+        continue
+      }
+      const marker = L.marker([lat, lng], {
         icon: makeIcon(COLORS[report.severity], report.status === 'queued'),
       })
       marker.on('click', () => {

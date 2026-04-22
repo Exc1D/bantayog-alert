@@ -66,13 +66,23 @@ export function DetailSheet(props: Props) {
 
   if (props.sheetPhase === 'hidden') return null
 
-  function handleCopy(text: string) {
-    void navigator.clipboard.writeText(text)
-    setCopied(true)
-    if (timer.current !== null) window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => {
+  async function handleCopy(text: string) {
+    try {
+      if (!('clipboard' in navigator)) {
+        throw new Error('Clipboard API is unavailable')
+      }
+
+      const clipboard = navigator.clipboard
+      await clipboard.writeText(text)
+      setCopied(true)
+      if (timer.current !== null) window.clearTimeout(timer.current)
+      timer.current = window.setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+    } catch (err: unknown) {
+      console.error('Failed to copy tracking code', err)
       setCopied(false)
-    }, 2000)
+    }
   }
 
   function handleTouchStart(event: TouchEvent<HTMLElement>) {
@@ -207,7 +217,7 @@ export function DetailSheet(props: Props) {
           type="button"
           aria-label={copied ? 'Copied' : 'Copy'}
           onClick={() => {
-            handleCopy(report.publicRef)
+            void handleCopy(report.publicRef)
           }}
         >
           {copied ? 'Copied ✓' : 'Copy'}

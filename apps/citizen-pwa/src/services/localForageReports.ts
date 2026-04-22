@@ -14,8 +14,37 @@ export interface StoredReport {
 
 const KEY = 'bantayog:reports:v1'
 
+function isStoredReport(value: unknown): value is StoredReport {
+  if (!value || typeof value !== 'object') return false
+  const report = value as Record<string, unknown>
+  const lat = Number(report.lat)
+  const lng = Number(report.lng)
+  const submittedAt = Number(report.submittedAt)
+  return (
+    typeof report.publicRef === 'string' &&
+    typeof report.secret === 'string' &&
+    typeof report.reportType === 'string' &&
+    typeof report.severity === 'string' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Number.isFinite(submittedAt) &&
+    (report.reportId === undefined || typeof report.reportId === 'string')
+  )
+}
+
 export async function loadReports(): Promise<StoredReport[]> {
-  return (await localforage.getItem<StoredReport[]>(KEY)) ?? []
+  try {
+    const raw = await localforage.getItem<unknown>(KEY)
+    if (raw === null) return []
+    if (!Array.isArray(raw) || !raw.every(isStoredReport)) {
+      console.error('Ignoring invalid stored report payload from localforage')
+      return []
+    }
+    return raw
+  } catch (err: unknown) {
+    console.error('Failed to load reports from localforage', err)
+    return []
+  }
 }
 
 export async function saveReport(report: Omit<StoredReport, 'reportId'>): Promise<void> {

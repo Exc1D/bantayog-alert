@@ -125,7 +125,7 @@ export function SubmitReportForm() {
         ...(photo ? { photo } : {}),
         ...(phone && smsConsent ? { contact: { phone, smsConsent: true as const } } : {}),
       })
-      await saveReport({
+      void saveReport({
         publicRef: result.publicRef,
         secret: result.secret,
         reportType,
@@ -133,6 +133,8 @@ export function SubmitReportForm() {
         lat,
         lng,
         submittedAt: Date.now(),
+      }).catch((persistError: unknown) => {
+        console.error('Failed to cache report locally', persistError)
       })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       nav('/receipt', { state: result })

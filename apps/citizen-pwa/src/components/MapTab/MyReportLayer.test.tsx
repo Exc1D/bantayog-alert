@@ -85,4 +85,29 @@ describe('MyReportLayer', () => {
     const iconInput = mockDivIcon.mock.calls[0]?.[0] as { html?: string } | undefined
     expect(String(iconInput?.html)).toContain('⏳')
   })
+
+  it('skips reports with invalid coordinates', async () => {
+    render(
+      <MyReportLayer
+        map={map}
+        reports={[
+          {
+            publicRef: 'q1',
+            reportType: 'fire',
+            severity: 'medium',
+            lat: Number.NaN,
+            lng: 122.8,
+            submittedAt: 1000,
+            status: 'queued',
+          },
+        ]}
+        onPinTap={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(mockLayer.clearLayers).toHaveBeenCalledOnce()
+    })
+    expect(mockMarker).not.toHaveBeenCalled()
+  })
 })

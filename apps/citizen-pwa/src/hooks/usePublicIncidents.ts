@@ -20,8 +20,21 @@ export function usePublicIncidents(filters: Filters): {
   const [error, setError] = useState<unknown>(null)
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setError(null)
+      setLoading(true)
+    }, 0)
+
     if (!firebaseConfigured) {
-      return
+      const resetTimeout = window.setTimeout(() => {
+        setError(null)
+        setIncidents([])
+        setLoading(false)
+      }, 0)
+      window.clearTimeout(timeout)
+      return () => {
+        window.clearTimeout(resetTimeout)
+      }
     }
 
     const cutoff = Date.now() - windowMs(filters.window)
@@ -41,6 +54,7 @@ export function usePublicIncidents(filters: Filters): {
         }))
         const filtered =
           filters.severity === 'all' ? all : all.filter((doc) => doc.severity === filters.severity)
+        setError(null)
         setIncidents(filtered)
         setLoading(false)
       },
@@ -49,7 +63,10 @@ export function usePublicIncidents(filters: Filters): {
         setLoading(false)
       },
     )
-    return unsub
+    return () => {
+      window.clearTimeout(timeout)
+      unsub()
+    }
   }, [firebaseConfigured, filters.severity, filters.window])
 
   return { incidents, loading, error }

@@ -126,6 +126,50 @@ describe('usePublicIncidents', () => {
     expect(result.current.loading).toBe(false)
   })
 
+  it('clears stale error after a successful resubscribe', async () => {
+    const fakeErr = new Error('permission denied')
+    mockOnSnapshot
+      .mockImplementationOnce((_q: unknown, _onNext: unknown, onErr: (err: Error) => void) => {
+        onErr(fakeErr)
+        return () => {
+          return void 0
+        }
+      })
+      .mockImplementationOnce((_q: unknown, onNext: (snap: object) => void) => {
+        onNext(
+          makeSnap([
+            {
+              reportType: 'flood',
+              severity: 'high',
+              status: 'verified',
+              barangayId: 'brgy-1',
+              municipalityLabel: 'Daet',
+              publicLocation: { lat: 14.1, lng: 122.9 },
+              submittedAt: 1000,
+            },
+          ]),
+        )
+        return () => {
+          return void 0
+        }
+      })
+
+    const { result, rerender } = renderHook(
+      ({ filters }: { filters: Filters }) => usePublicIncidents(filters),
+      { initialProps: { filters: defaultFilters } },
+    )
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(fakeErr)
+    })
+
+    rerender({ filters: { severity: 'high', window: '24h' } })
+
+    await waitFor(() => {
+      expect(result.current.error).toBeNull()
+    })
+  })
+
   it('falls back to empty data when firebase is not configured', async () => {
     mockHasFirebaseConfig.mockReturnValue(false)
     const { result } = renderHook(() => usePublicIncidents(defaultFilters))

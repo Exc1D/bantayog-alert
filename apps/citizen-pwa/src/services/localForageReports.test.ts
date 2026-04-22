@@ -26,6 +26,11 @@ describe('loadReports', () => {
   it('returns empty array when nothing stored', async () => {
     expect(await loadReports()).toEqual([])
   })
+
+  it('returns empty array when stored payload is invalid', async () => {
+    mockDb._store.set('bantayog:reports:v1', [{ publicRef: 123 }])
+    expect(await loadReports()).toEqual([])
+  })
 })
 
 describe('saveReport', () => {

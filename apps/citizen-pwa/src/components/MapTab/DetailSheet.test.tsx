@@ -112,10 +112,11 @@ describe('DetailSheet — myReport mode', () => {
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
   })
 
-  it('changes copy label to Copied and resets after 2s', () => {
+  it('changes copy label to Copied and resets after 2s', async () => {
     vi.useFakeTimers()
+    const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      value: { writeText },
       configurable: true,
     })
     render(
@@ -126,9 +127,12 @@ describe('DetailSheet — myReport mode', () => {
         {...myReportProps}
       />,
     )
-    act(() => {
+    await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /copy/i }))
+      await Promise.resolve()
     })
+    expect(writeText).toHaveBeenCalledOnce()
+    expect(writeText).toHaveBeenCalledWith(myReportProps.report.publicRef)
     expect(screen.getByRole('button', { name: /copied/i })).toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(2000)

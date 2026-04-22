@@ -2,6 +2,16 @@
 
 ## Current
 
+### PR #57 Review Fixes — feature/map-tab (2026-04-22)
+
+- Status: in progress — reviewer comments are being resolved on `feature/map-tab`
+- Scope:
+  - clipboard copy now waits for a successful write before showing success
+  - invalid Leaflet coordinates are skipped in incident and personal report layers
+  - stale map selections clear when filters or data refresh remove the selected pin
+  - local cache/report lookup failures are handled without blocking the primary submit flow
+  - `usePublicIncidents` clears stale error state on successful resubscribe
+
 ### Citizen PWA — Firebase env fallback for `pnpm dev` (2026-04-22)
 
 - Status: DONE locally — citizen PWA no longer hard-crashes when `VITE_FIREBASE_*` vars are missing

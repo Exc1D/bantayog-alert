@@ -130,6 +130,25 @@ export function MapTab() {
     [myReports, selectedPin],
   )
 
+  useEffect(() => {
+    if (!selectedPin) return undefined
+
+    const missingSelectedItem =
+      (selectedPin.type === 'incident' && !selectedIncident) ||
+      (selectedPin.type === 'myReport' && !selectedMyReport)
+
+    if (!missingSelectedItem) return undefined
+
+    const timeout = window.setTimeout(() => {
+      setSelectedPin(null)
+      setSheetPhase('hidden')
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [selectedIncident, selectedMyReport, selectedPin])
+
   const handleIncidentTap = useCallback((incident: PublicIncident) => {
     setSelectedPin({
       id: incident.id,

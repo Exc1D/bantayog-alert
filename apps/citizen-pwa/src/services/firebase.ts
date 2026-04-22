@@ -22,13 +22,16 @@ let _db: Firestore | null = null
 let _fns: Functions | null = null
 let _storage: FirebaseStorage | null = null
 let _firebaseEnv: ReturnType<typeof parseFirebaseWebEnv> | null | undefined = undefined
+let _firebaseEnvParseError: unknown = null
 
 function getFirebaseEnv(): ReturnType<typeof parseFirebaseWebEnv> | null {
   if (_firebaseEnv !== undefined) return _firebaseEnv
   try {
     _firebaseEnv = parseFirebaseWebEnv(import.meta.env)
-  } catch {
+    _firebaseEnvParseError = null
+  } catch (err: unknown) {
     _firebaseEnv = null
+    _firebaseEnvParseError = err
   }
   return _firebaseEnv
 }
@@ -40,7 +43,9 @@ export function hasFirebaseConfig(): boolean {
 function requireFirebaseEnv(): ReturnType<typeof parseFirebaseWebEnv> {
   const env = getFirebaseEnv()
   if (!env) {
-    throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
+    const error = new Error(FIREBASE_ENV_ERROR_MESSAGE)
+    ;(error as Error & { cause?: unknown }).cause = _firebaseEnvParseError
+    throw error
   }
   return env
 }

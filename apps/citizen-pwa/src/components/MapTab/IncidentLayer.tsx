@@ -12,6 +12,17 @@ interface Props {
 
 const COLORS = { high: '#dc2626', medium: '#a73400', low: '#001e40' } as const
 
+function isValidCoordinate(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  )
+}
+
 function makeIcon(color: string, pulse: boolean): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -46,7 +57,18 @@ export function IncidentLayer({ map, incidents, suppressedIds, onPinTap }: Props
 
     for (const incident of incidents) {
       if (suppressedIds.has(incident.id)) continue
-      const marker = L.marker([incident.publicLocation.lat, incident.publicLocation.lng], {
+      const location = incident.publicLocation as { lat: number; lng: number } | null | undefined
+      if (location == null) {
+        console.warn('Skipping incident without coordinates', incident.id)
+        continue
+      }
+      const lat = location.lat
+      const lng = location.lng
+      if (!isValidCoordinate(lat, lng)) {
+        console.warn('Skipping incident with invalid coordinates', incident.id, location)
+        continue
+      }
+      const marker = L.marker([lat, lng], {
         icon: makeIcon(COLORS[incident.severity], incident.severity === 'high'),
       })
       marker.on('click', () => {
