@@ -3,7 +3,7 @@ import type { ReportData } from '../hooks/useReport'
 
 export function mapReportFromFirestore(data: Record<string, unknown>): ReportData {
   if (!data.id || !data.status) {
-    throw new Error('Invalid report data: missing required fields')
+    throw new Error('Invalid report data: missing required fields');
   }
 
   const result: ReportData = {
