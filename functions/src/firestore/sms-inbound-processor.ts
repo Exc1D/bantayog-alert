@@ -134,6 +134,7 @@ export const smsInboundProcessor = onDocumentCreated(
         (err.message === 'location missing from payload' || err.message === 'out of jurisdiction')
 
       if (isLocationError) {
+        await event.data.ref.update({ parseStatus: 'pending_review' })
         const senderMsisdnEnc = data.senderMsisdnEnc as string | undefined
         const senderMsisdnHash = data.senderMsisdnHash as string
         if (senderMsisdnEnc && !senderMsisdnHash.startsWith('invalid:')) {
@@ -177,7 +178,6 @@ export const smsInboundProcessor = onDocumentCreated(
             }
           }
         }
-        await event.data.ref.update({ parseStatus: 'pending_review' })
       } else {
         await event.data.ref.update({ parseStatus: 'unparseable' })
         log({
