@@ -1,10 +1,29 @@
 import * as crypto from 'node:crypto'
+import { createCipheriv, randomBytes } from 'node:crypto'
 import { onRequest } from 'firebase-functions/v2/https'
 import { getFirestore } from 'firebase-admin/firestore'
 import { normalizeMsisdn, hashMsisdn, logDimension } from '@bantayog/shared-validators'
 import { smsInboxDocSchema } from '@bantayog/shared-validators'
 
 const log = logDimension('smsInbound')
+
+const ENCRYPTION_KEY = process.env.SMS_MSISDN_ENCRYPTION_KEY ?? ''
+
+function encryptMsisdn(msisdn: string): string {
+  if (!ENCRYPTION_KEY) return `unencrypted:${msisdn}`
+  const key = Buffer.from(ENCRYPTION_KEY, 'hex')
+  const iv = randomBytes(16)
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const encrypted = Buffer.concat([cipher.update(msisdn, 'utf8'), cipher.final()])
+  const authTag = cipher.getAuthTag()
+  return Buffer.from(
+    JSON.stringify({
+      iv: iv.toString('hex'),
+      ct: encrypted.toString('hex'),
+      tag: authTag.toString('hex'),
+    }),
+  ).toString('base64')
+}
 
 function buildMsgId(): string {
   return crypto.randomUUID()
@@ -76,6 +95,7 @@ export const smsInboundWebhook = onRequest(
       providerId: 'globelabs' as const,
       receivedAt: Date.now(),
       senderMsisdnHash: msisdnHash,
+      senderMsisdnEnc: encryptMsisdn(rawFrom),
       body: rawBody.slice(0, 1600),
       parseStatus: 'pending' as const,
       schemaVersion: 1,
