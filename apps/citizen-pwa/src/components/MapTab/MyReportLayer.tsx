@@ -36,12 +36,7 @@ function makeIcon(color: string, queued: boolean): L.DivIcon {
             : ''
         }
       </div>
-      <style>
-        @keyframes ringPulse {
-          0% { transform: scale(1); opacity: 0.55; }
-          100% { transform: scale(1.8); opacity: 0; }
-        }
-      </style>`,
+      `,
   })
 }
 

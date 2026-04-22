@@ -87,7 +87,7 @@ apps/citizen-pwa/src/
 ```ts
 const [selectedPin, setSelectedPin] // { id: string; type: 'incident' | 'myReport' } | null
 const [sheetPhase, setSheetPhase] // 'hidden' | 'peek' | 'expanded'
-const [filters, setFilters] // { severity: 'all'|'high'|'med'|'low'; window: '24h'|'7d'|'30d' }
+const [filters, setFilters] // { severity: 'all'|'high'|'medium'|'low'; window: '24h'|'7d'|'30d' }
 ```
 
 `selectedPin` persists through map pan and zoom — the user does not lose the selected pin when they move the map. It resets to `null` on: swipe-dismiss gesture, tapping empty map area, or tapping a different pin.
@@ -109,8 +109,9 @@ TypeScript enforces at compile time that Edit/Cancel never appear on a public in
 ### 4.1 `usePublicIncidents(filters)`
 
 - Firestore listener on `reports` collection
-- Query: `status == 'verified'`, filtered by `severity` and `createdAt` window
+- Query: `visibilityClass == 'public_alertable'` and `submittedAt >= cutoff`
 - Limit: 100 documents (arch spec §9.6 — clustering above cap)
+- Severity is filtered client-side after snapshot mapping
 - Returns: `{ incidents: PublicIncident[]; loading: boolean; error: unknown }`
 
 ### 4.2 `useMyActiveReports(uid)`
