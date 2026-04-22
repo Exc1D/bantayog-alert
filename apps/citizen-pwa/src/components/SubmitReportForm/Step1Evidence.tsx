@@ -1,4 +1,14 @@
 import { useState } from 'react'
+import {
+  ArrowLeft,
+  Camera,
+  Droplets,
+  Flame,
+  Zap,
+  Mountain,
+  Construction,
+  Ambulance,
+} from 'lucide-react'
 import { Button } from '../ui/Button'
 
 interface Step1EvidenceProps {
@@ -8,13 +18,13 @@ interface Step1EvidenceProps {
 }
 
 const INCIDENT_TYPES = [
-  { value: 'flood', label: 'Flood', emoji: '🌊' },
-  { value: 'fire', label: 'Fire', emoji: '🔥' },
-  { value: 'road', label: 'Road', emoji: '🚧' },
-  { value: 'medical', label: 'Medical', emoji: '🚑' },
-  { value: 'power', label: 'Power', emoji: '⚡' },
-  { value: 'landslide', label: 'Landslide', emoji: '⛰' },
-  { value: 'other', label: 'Other', emoji: '+ Other' },
+  { value: 'flood', label: 'Flood', Icon: Droplets },
+  { value: 'fire', label: 'Fire', Icon: Flame },
+  { value: 'road', label: 'Road', Icon: Construction },
+  { value: 'medical', label: 'Medical', Icon: Ambulance },
+  { value: 'power', label: 'Power', Icon: Zap },
+  { value: 'landslide', label: 'Landslide', Icon: Mountain },
+  { value: 'other', label: 'Other', Icon: Zap },
 ]
 
 export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
@@ -35,47 +45,40 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
   }
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Go back"
-          className="w-8 h-8 rounded-full bg-[#f2f4f6] flex items-center justify-center text-[#001e40]"
-        >
-          ←
+    <div className="page-container">
+      <div className="page-header">
+        <button type="button" onClick={onBack} aria-label="Go back" className="back-btn">
+          <ArrowLeft size={16} />
         </button>
-        <span className="text-xs font-semibold text-[#43474f]">1 of 3</span>
+        <span className="step-indicator">1 of 3</span>
       </div>
 
-      <div className="flex gap-1 mb-4">
-        <div className="flex-1 h-1 bg-[#001e40] rounded-full" />
-        <div className="flex-1 h-1 bg-[#e0e3e5] rounded-full" />
-        <div className="flex-1 h-1 bg-[#e0e3e5] rounded-full" />
+      <div className="progress-dots">
+        <div className="progress-dot progress-dot--active" />
+        <div className="progress-dot progress-dot--inactive" />
+        <div className="progress-dot progress-dot--inactive" />
       </div>
 
-      <h2 className="text-xl font-bold text-[#001e40] mb-1">What&apos;s happening?</h2>
-      <p className="text-xs text-[#43474f] mb-4">Add a photo and choose the type</p>
+      <h2 className="step-title">What&apos;s happening?</h2>
+      <p className="step-subtitle">Add a photo and choose the type</p>
 
-      <div className="bg-gradient-to-b from-[#032038] to-[#001e40] rounded-xl aspect-[4/5] relative overflow-hidden mb-3">
+      <div className="camera-viewfinder">
         {previewUrl ? (
-          <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+          <img src={previewUrl} alt="Preview" className="preview-img" />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white">
-              <p className="text-xs mb-2">Camera viewfinder</p>
-              <div className="w-12 h-12 bg-white/20 rounded-full mx-auto mb-2" />
-              <p className="text-[10px]">Tap to capture</p>
-            </div>
+          <div className="camera-placeholder">
+            <p className="camera-placeholder-text">Camera viewfinder</p>
+            <div className="camera-circle" />
+            <p className="camera-caption">Tap to capture</p>
           </div>
         )}
-        <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+        <div className="camera-btn">
           <button
             type="button"
             onClick={() => document.getElementById('photo-input')?.click()}
-            className="w-12 h-12 bg-white rounded-full flex items-center justify-center"
+            className="camera-capture-btn"
           >
-            📸
+            <Camera size={20} />
           </button>
         </div>
       </div>
@@ -83,7 +86,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
       <button
         type="button"
         onClick={() => document.getElementById('photo-input')?.click()}
-        className="w-full text-center text-sm text-[#001e40] underline mb-4"
+        className="no-photo-link"
       >
         No photo available
       </button>
@@ -93,28 +96,23 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
         accept="image/jpeg,image/png,image/webp"
         onChange={handlePhotoChange}
         aria-label="Upload photo"
-        className="hidden"
+        className="hidden-file-input"
       />
 
-      <div className="mb-4">
-        <p className="text-xs font-bold text-[#001e40] uppercase tracking-wider mb-2">
-          Type of incident
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {INCIDENT_TYPES.map((type) => (
+      <div className="field-group">
+        <p className="field-label">Type of incident</p>
+        <div className="type-grid">
+          {INCIDENT_TYPES.map(({ value, label, Icon }) => (
             <button
-              key={type.value}
+              key={value}
               type="button"
               onClick={() => {
-                setReportType(type.value)
+                setReportType(value)
               }}
-              className={`px-3 py-2 rounded-full text-xs font-semibold ${
-                reportType === type.value
-                  ? 'bg-[#001e40] text-white'
-                  : 'bg-[#f2f4f6] text-[#191c1e]'
-              }`}
+              className={`type-btn${reportType === value ? ' type-btn--selected' : ''}`}
             >
-              {type.emoji} {type.label}
+              <Icon size={14} />
+              {label}
             </button>
           ))}
         </div>

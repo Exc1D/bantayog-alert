@@ -1,3 +1,4 @@
+import { Check, Clock, AlertTriangle } from 'lucide-react'
 import { useUIStore } from '../lib/store'
 import { StatusBanner } from './ui/StatusBanner'
 import { Button } from './ui/Button'
@@ -13,11 +14,11 @@ interface RevealSheetProps {
 }
 
 export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps) {
-  const closeSheet = useUIStore((state) => state.closeSheet)
+  const closeSheet = useUIStore((s) => s.closeSheet)
 
   const variants = {
     success: {
-      icon: '✓',
+      icon: <Check size={16} />,
       headline: 'We heard you. We are here.',
       subline: 'Your report is with Daet MDRRMO. Keep your line open.',
       bannerVariant: 'success' as const,
@@ -28,7 +29,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       permissionText: "You can close this app. We'll text you.",
     },
     queued: {
-      icon: '⏳',
+      icon: <Clock size={16} />,
       headline: "We've saved your report.",
       subline:
         "You're offline right now. The moment your phone reconnects, we'll send this to Daet MDRRMO automatically. Walang mawawala. Safe ito sa phone mo.",
@@ -40,10 +41,10 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       permissionText: "We'll keep trying in the background.",
     },
     failed_retryable: {
-      icon: '⚠',
+      icon: <AlertTriangle size={16} />,
       headline: "We couldn't send it yet.",
       subline:
-        'Your report is safe on your phone. The network is having trouble reaching MDRRMO — this is not your fault. If this is life-threatening, please call now.',
+        'Your report is safe on your phone. The network is having trouble reaching the Admins — this is not your fault. If this is life-threatening, please call now.',
       bannerVariant: 'failed' as const,
       receiverText: undefined,
       primaryButton: 'Try again',
@@ -110,9 +111,9 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
   }
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <div className="reveal-overlay">
       <div
-        className="absolute inset-0 bg-black/40 pointer-events-auto"
+        className="reveal-backdrop"
         role="button"
         tabIndex={0}
         onClick={state === 'success' ? onClose : undefined}
@@ -120,29 +121,23 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
           if ((e.key === 'Enter' || e.key === ' ') && state === 'success') onClose?.()
         }}
       />
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5 pointer-events-auto shadow-2xl">
-        <div className="w-12 h-1 bg-[#d1d5db] rounded-full mx-auto mb-3.5" />
+      <div className="reveal-sheet">
+        <div className="reveal-handle" />
 
         <StatusBanner variant={variant.bannerVariant} icon={variant.icon}>
           {variant.headline}
         </StatusBanner>
 
-        <p className="text-center text-sm text-[#52606d] mb-4">{variant.subline}</p>
+        <p className="reveal-subheadline">{variant.subline}</p>
 
         <div
-          className={`bg-gradient-to-b from-[#fff5ef] to-[#ffeee6] border border-[#f5d4bb] rounded-xl p-3.5 text-center mb-4 ${
-            state === 'queued'
-              ? 'from-[#fef9e7] to-[#fef3c7] border-[#f3d57b]'
-              : state === 'failed_retryable'
-                ? 'from-[#fff5f5] to-[#fee2e2] border-[#f5a8a8]'
-                : ''
-          }`}
+          className={`reveal-ref-box${state === 'queued' ? ' reveal-ref-box--queued' : state === 'failed_retryable' ? ' reveal-ref-box--failed' : ''}`}
         >
-          <div className="text-[10px] font-bold text-[#7b8794] uppercase tracking-wider mb-1">
+          <div className="reveal-ref-label">
             {state === 'queued' ? 'Draft reference' : 'Reference'}
           </div>
-          <div className="font-mono text-lg font-bold text-[#001e40]">{referenceCode}</div>
-          <div className="text-[11px] text-[#52606d]">
+          <div className="reveal-ref-code">{referenceCode}</div>
+          <div className="reveal-ref-note">
             {state === 'success'
               ? `Submitted ${new Date().toLocaleTimeString()}`
               : state === 'queued'
@@ -151,29 +146,25 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
           </div>
         </div>
 
-        {variant.receiverText && (
-          <div className="flex items-center gap-2.5 p-3 bg-[#f5f7fa] rounded-lg mb-4">
+        {variant.receiverText ? (
+          <div className="reveal-receiver">
             <div
-              className={`w-2 h-2 rounded-full ${
-                state === 'queued' ? 'bg-[#f59e0b] animate-pulse' : 'bg-[#16a34a]'
-              }`}
+              className={`reveal-receiver-dot reveal-receiver-dot--${state === 'queued' ? 'queued' : 'success'}`}
             />
-            <span className="text-sm font-medium text-[#001e40]">{variant.receiverText}</span>
+            <span className="reveal-receiver-text">{variant.receiverText}</span>
           </div>
-        )}
+        ) : null}
 
         <Timeline events={timelineEvents[state]} />
 
-        {state !== 'success' && (
+        {state !== 'success' ? (
           <FallbackCards
             hotlineNumber={HOTLINE_NUMBER}
             emphasized={state === 'failed_retryable'}
             onCallClick={handleCallHotline}
             onSmsClick={handleSmsFallback}
           />
-        )}
-
-        {state === 'success' && (
+        ) : (
           <FallbackCards hotlineNumber={HOTLINE_NUMBER} onCallClick={handleCallHotline} />
         )}
 
@@ -181,13 +172,15 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
           {variant.primaryButton}
         </Button>
 
-        {variant.secondaryButton && (
-          <Button variant="secondary" fullWidth className="mt-2" onClick={onClose}>
-            {variant.secondaryButton}
-          </Button>
-        )}
+        {variant.secondaryButton ? (
+          <div className="reveal-secondary-btn">
+            <Button variant="secondary" fullWidth onClick={onClose}>
+              {variant.secondaryButton}
+            </Button>
+          </div>
+        ) : null}
 
-        <p className="text-center text-xs text-[#7b8794] mt-3">{variant.permissionText}</p>
+        <p className="reveal-footer">{variant.permissionText}</p>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import React from 'react'
+import { Phone, MessageSquare } from 'lucide-react'
 
 interface FallbackCardsProps {
   hotlineNumber: string
@@ -13,40 +13,31 @@ export function FallbackCards({
   onCallClick,
   onSmsClick,
 }: FallbackCardsProps) {
-  const baseCard = 'flex-1 border rounded-lg p-3 text-center'
-  const emphasizedCard = emphasized ? 'border-[#fca5a5] bg-[#fff5f5]' : 'border-[#e5e7eb] bg-white'
-
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="fallback-grid">
       <button
         type="button"
         onClick={onCallClick}
         aria-label="Call hotline"
-        className={`${baseCard} ${emphasizedCard}`}
+        className={`fallback-card${emphasized ? ' fallback-card--emphasized' : ''}`}
       >
-        <div
-          className="w-8 h-8 rounded-full bg-[#001e40] text-white flex items-center justify-center mx-auto mb-1"
-          aria-hidden="true"
-        >
-          &#9742;
+        <div className="fallback-icon" aria-hidden="true">
+          <Phone size={16} />
         </div>
-        <div className="font-semibold text-[#001e40] text-sm">Call</div>
-        <div className="text-[10px] text-[#52606d]">{hotlineNumber}</div>
+        <div className="fallback-action">Call</div>
+        <div className="fallback-detail">{hotlineNumber}</div>
       </button>
       <button
         type="button"
         onClick={onSmsClick}
         aria-label="Send SMS"
-        className={`${baseCard} ${emphasizedCard}`}
+        className={`fallback-card${emphasized ? ' fallback-card--emphasized' : ''}`}
       >
-        <div
-          className="w-8 h-8 rounded-full bg-[#001e40] text-white flex items-center justify-center mx-auto mb-1"
-          aria-hidden="true"
-        >
-          &#9993;
+        <div className="fallback-icon" aria-hidden="true">
+          <MessageSquare size={16} />
         </div>
-        <div className="font-semibold text-[#001e40] text-sm">SMS</div>
-        <div className="text-[10px] text-[#52606d]">No data needed</div>
+        <div className="fallback-action">SMS</div>
+        <div className="fallback-detail">No data needed</div>
       </button>
     </div>
   )
