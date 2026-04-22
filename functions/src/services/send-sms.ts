@@ -46,7 +46,13 @@ function buildIdempotencyKey(args: EnqueueSmsArgs): string {
   return createHash('sha256').update(raw).digest('hex')
 }
 
-const VALID_PURPOSES = new Set(['receipt_ack', 'verification', 'status_update', 'resolution'])
+const VALID_PURPOSES = new Set([
+  'receipt_ack',
+  'verification',
+  'status_update',
+  'resolution',
+  'pending_review',
+])
 
 export function buildEnqueueSmsPayload(args: EnqueueSmsArgs): OutboxPayload {
   if (!VALID_PURPOSES.has(args.purpose)) {

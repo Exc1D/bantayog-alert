@@ -29,6 +29,7 @@ export const smsOutboxDocSchema = z
       'status_update',
       'verification',
       'resolution',
+      'pending_review',
       'mass_alert',
       'emergency_declaration',
     ]),
