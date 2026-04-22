@@ -23,6 +23,7 @@ export interface ProcessInboxItemCoreResult {
   materialized: boolean
   replayed: boolean
   reportId: string
+  publicRef: string
 }
 
 export async function processInboxItemCore(
@@ -251,10 +252,16 @@ export async function processInboxItemCore(
         data: { reportId, inboxId, municipalityId: geo.municipalityId },
       })
 
-      return { materialized: true, reportId }
+      return { materialized: true, reportId, publicRef: inbox.publicRef }
     },
   )
 
   const { result, fromCache } = idempotencyResult
-  return { materialized: result.materialized, replayed: fromCache, reportId: result.reportId }
+  const r = result as { materialized: boolean; reportId: string; publicRef: string }
+  return {
+    materialized: r.materialized,
+    replayed: fromCache,
+    reportId: r.reportId,
+    publicRef: r.publicRef,
+  }
 }
