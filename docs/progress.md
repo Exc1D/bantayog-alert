@@ -27,6 +27,7 @@
 15. `Step2WhoWhere.tsx` — GPS `catch` block now logs error with `console.error` (not swallowed)
 16. `submit-flow.test.tsx` — Replace placeholder tests with `it.todo` stubs (TICKET-56, TICKET-57)
 17. `test-utils.tsx` — Add `MemoryRouter` + Firestore `RulesTestEnvironment` for emulator-backed tests
+18. `Step1Evidence.tsx` — Replace blob URL `<img src>` preview with `createImageBitmap` + `<canvas>` render path to address CodeQL `js/xss-through-dom`; add targeted upload-preview test
 
 **Verification:**
 
@@ -34,7 +35,8 @@
 - `pnpm --filter @bantayog/shared-validators lint` PASS
 - `pnpm --filter citizen-pwa typecheck` PASS
 - `pnpm --filter citizen-pwa lint` PASS
-- `pnpm --filter citizen-pwa test` PASS (5/5 tests)
+- `pnpm --filter @bantayog/citizen-pwa exec vitest run src/__tests__/submit-flow.test.tsx` PASS
+- `pnpm --filter citizen-pwa test` PASS (8 passed, 2 todo)
 
 **Note:** The two `add/add` design-token conflicts (`design-tokens.ts`, `design-tokens.css`) are identical on both sides — trivial resolution needed at merge.
 

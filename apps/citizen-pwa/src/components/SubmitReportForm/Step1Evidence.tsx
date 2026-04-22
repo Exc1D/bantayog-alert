@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Camera,
@@ -29,30 +29,51 @@ const INCIDENT_TYPES = [
 export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
   const [reportType, setReportType] = useState('flood')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const blobUrlRef = useRef<string | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const canRenderCanvasPreview = typeof createImageBitmap === 'function'
 
   useEffect(() => {
-    return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current)
-        blobUrlRef.current = null
-      }
+    if (!photoFile || !canvasRef.current || !canRenderCanvasPreview) {
+      return
     }
-  }, [])
+
+    let cancelled = false
+    let bitmap: ImageBitmap | null = null
+    const canvas = canvasRef.current
+    const context = canvas.getContext('2d')
+    if (!context) {
+      return
+    }
+
+    void createImageBitmap(photoFile)
+      .then((nextBitmap) => {
+        if (cancelled) {
+          nextBitmap.close()
+          return
+        }
+
+        bitmap = nextBitmap
+        const width = 320
+        const height = Math.max(1, Math.round((nextBitmap.height / nextBitmap.width) * width))
+        canvas.width = width
+        canvas.height = height
+        context.clearRect(0, 0, width, height)
+        context.drawImage(nextBitmap, 0, 0, width, height)
+      })
+      .catch(() => {
+        context.clearRect(0, 0, canvas.width, canvas.height)
+      })
+
+    return () => {
+      cancelled = true
+      bitmap?.close()
+      context.clearRect(0, 0, canvas.width, canvas.height)
+    }
+  }, [canRenderCanvasPreview, photoFile])
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null
     setPhotoFile(file)
-    if (file) {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current)
-      }
-      /* @extraction-note blob URL is a safe opaque reference, not DOM text */
-      const blobUrl: string = URL.createObjectURL(file)
-      blobUrlRef.current = blobUrl
-      setPreviewUrl(blobUrl)
-    }
   }
 
   const handleNext = () => {
@@ -78,9 +99,15 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
       <p className="step-subtitle">Add a photo and choose the type</p>
 
       <div className="camera-viewfinder">
-        {previewUrl ? (
-          /* @extraction-note blob URL from createObjectURL is a safe opaque reference, not DOM text */
-          <img src={previewUrl} alt="Preview" className="preview-img" />
+        {photoFile ? (
+          canRenderCanvasPreview ? (
+            <canvas ref={canvasRef} aria-label="Photo preview" className="preview-img" />
+          ) : (
+            <div className="camera-placeholder">
+              <p className="camera-placeholder-text">{photoFile.name}</p>
+              <p className="camera-caption">Photo selected</p>
+            </div>
+          )
         ) : (
           <div className="camera-placeholder">
             <p className="camera-placeholder-text">Camera viewfinder</p>
@@ -102,7 +129,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
       <button
         type="button"
         onClick={() => {
-          setPreviewUrl(null)
+          setPhotoFile(null)
         }}
         className="no-photo-link"
       >

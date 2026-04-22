@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TestWrapper } from './test-utils'
+import { Step1Evidence } from '../components/SubmitReportForm/Step1Evidence'
 
 vi.mock('../services/firebase', () => ({
   db: {},
@@ -19,10 +21,11 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('Submission flow integration', () => {
-  it('should render Step1Evidence with incident type selection', () => {
+  it('renders Step1Evidence with incident type selection', () => {
     render(
       <TestWrapper>
         <div>Submit report form test placeholder</div>
@@ -31,7 +34,31 @@ describe('Submission flow integration', () => {
     expect(screen.getByText('Submit report form test placeholder')).toBeInTheDocument()
   })
 
-  it('should show Step3Review with review content', () => {
+  it('renders a canvas photo preview from the uploaded file', async () => {
+    const createImageBitmapMock = vi.fn().mockResolvedValue({
+      width: 320,
+      height: 180,
+      close: vi.fn(),
+    })
+    vi.stubGlobal('createImageBitmap', createImageBitmapMock)
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      clearRect: vi.fn(),
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D)
+
+    const user = userEvent.setup()
+
+    render(<Step1Evidence onNext={vi.fn()} onBack={vi.fn()} />)
+
+    const input = screen.getByLabelText('Upload photo')
+    const file = new File(['binary'], 'flood.jpg', { type: 'image/jpeg' })
+    await user.upload(input, file)
+
+    expect(createImageBitmapMock).toHaveBeenCalledWith(file)
+    expect(screen.getByLabelText('Photo preview')).toBeInTheDocument()
+  })
+
+  it('renders Step3Review with review content', () => {
     render(
       <TestWrapper>
         <div>Review your report placeholder</div>
