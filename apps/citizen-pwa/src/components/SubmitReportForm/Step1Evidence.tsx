@@ -79,6 +79,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
 
       <div className="camera-viewfinder">
         {previewUrl ? (
+          /* @extraction-note blob URL from createObjectURL is a safe opaque reference, not DOM text */
           <img src={previewUrl} alt="Preview" className="preview-img" />
         ) : (
           <div className="camera-placeholder">
