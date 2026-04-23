@@ -16,11 +16,11 @@
 
 ## 🟠 P1 — High Risk / Hard to Maintain
 
-### 2. `Step2WhoWhere.tsx` is a 707-line god component
+### 2. `Step2WhoWhere.tsx` is a ≈707-line file with an oversized component
 
 - **File:** `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx`
 - **Issues:**
-  - 707 lines in a single React component
+  - ≈707 lines in one file; component body is much smaller, large constants/helpers inflate file size
   - ~~2 bare `catch {}` blocks~~ ✅ Fixed — now typed as `catch (err: unknown)` for private-mode storage failures
   - Mixes GPS logic, municipality selection, form validation, UI rendering
 - **Impact:** Impossible to test. Every change risks regressing the entire citizen reporting flow.
@@ -49,7 +49,7 @@
 
 ## 🟡 P2 — Structural / Consistency Debt
 
-### 5. Entire apps/packages have zero tests
+### 5. Multiple apps/packages still have minimal or zero tests
 
 | Package/App             | Source Files | Tests |
 | ----------------------- | ------------ | ----- |
@@ -151,6 +151,6 @@
 - **Total test files:** ~410 (but heavily concentrated in `functions`)
 - **Lines of code:** ~14,665
 - **Test coverage gaps:** 5 packages/apps at 0-1 tests
-- **Bare `catch {}` blocks:** 0 in production source (2 in scripts)
+- **Bare `catch {}` blocks:** 2 in production source (2 in scripts)
 - `console.log` in src: 1
 - `TODO` in src: 1

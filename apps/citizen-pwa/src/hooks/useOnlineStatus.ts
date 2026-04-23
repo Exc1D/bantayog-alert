@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 
 const PROBE_URL = '/__/firebase.json'
-const PROBE_TIMEOUT_MS = 3_000
-const PROBE_INTERVAL_MS = 10_000
+const PROBE_TIMEOUT_MS = 5_000
+const PROBE_INTERVAL_MS = 30_000
 
 /**
  * Active connectivity probe + passive navigator.onLine listeners.
@@ -41,7 +41,7 @@ export function useOnlineStatus() {
     }
   }, [])
 
-  // Probe immediately on mount, then every 10s via setInterval.
+  // Probe immediately on mount, then every 30s via setInterval.
   // setInterval avoids calling setState synchronously within the effect body (React lint rule)
   useEffect(() => {
     const scheduleProbe = () => {

@@ -52,6 +52,9 @@ describe('hashMsisdn', () => {
     it('throws for short salt', () => {
         expect(() => hashMsisdn('+639171234567', 'short')).toThrow('at least 16 characters');
     });
+    it('throws for non-string salt at runtime', () => {
+        expect(() => hashMsisdn('+639171234567', null)).toThrow('string salt');
+    });
     it('accepts valid salt of 16+ characters', () => {
         const result = hashMsisdn('+639171234567', 'a'.repeat(16));
         expect(result).toMatch(/^[a-f0-9]{64}$/);
