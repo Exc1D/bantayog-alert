@@ -76,7 +76,10 @@ export function parseInboundSms(body) {
         barangayToken = token1 + ' ' + token2;
         detailsStartIndex = barangayToken.length;
     }
-    const barangayIndex = originalRest.toUpperCase().indexOf(barangayToken.toUpperCase());
+    // Find the barangay token in originalRest using lastIndexOf to prefer the occurrence
+    // closest to where details would start (avoids matching an earlier instance of the token).
+    const barangayTokenUpper = barangayToken.toUpperCase();
+    const barangayIndex = originalRest.toUpperCase().lastIndexOf(barangayTokenUpper);
     const details = barangayIndex !== -1 && barangayIndex + detailsStartIndex < originalRest.length
         ? originalRest.slice(barangayIndex + detailsStartIndex).trim()
         : undefined;
@@ -113,16 +116,8 @@ export function parseInboundSms(body) {
         }
     }
     if (fuzzyMatches.length === 1) {
-        const match = fuzzyMatches[0];
-        if (match === undefined) {
-            return {
-                confidence: 'none',
-                parsed: null,
-                candidates: [],
-                autoReplyText: buildAutoReply('none'),
-            };
-        }
-        const { entry, distance: dist } = match;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const { entry, distance: dist } = fuzzyMatches[0];
         return {
             confidence: dist <= 1 ? 'medium' : 'low',
             parsed: {
