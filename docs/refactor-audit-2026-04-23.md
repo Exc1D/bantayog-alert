@@ -33,8 +33,8 @@
 - **Issues:**
   - Contains gazetteer loading, Levenshtein distance, auto-reply building, AND parsing logic
   - 6 `@ts-expect-error` comments (lines 360-376) indicating fragile array logic
-  - 1 bare `catch {}` (line 45)
-- **Impact:** The failing tests live here. High cyclomatic complexity makes bugs likely.
+  - ~~1 bare `catch {}` (line 45)~~ ✅ Fixed — now uses `catch (err: unknown)` with selective fallback/rethrow (only swallows `MODULE_NOT_FOUND` for `@bantayog/shared-data`)
+- **Impact:** High cyclomatic complexity makes bugs likely.
 - **Action:** Split into `levenshtein.ts`, `gazetteer.ts`, `auto-reply.ts`, `parser.ts`.
 - **Effort:** Medium (~4 files, ~80 lines of changes)
 
@@ -76,29 +76,30 @@
 - **Action:** Move auth provider + protected route to `shared-ui` or `shared-firebase`. Keep role-checking as props/config.
 - **Effort:** Medium (~2 new files in shared package, ~4 files deleted from apps)
 
-### 7. Inconsistent error handling (6+ catch patterns)
+### 7. Inconsistent error handling (5 catch patterns)
 
 - **Patterns found:**
-  - `catch (err: unknown)` — 33 occurrences
-  - `catch {}` — 13 occurrences (swallows errors)
-  - `catch (err)` — 10 occurrences (implicit any)
-  - `catch (error)` — 4 occurrences
-  - `catch ((_e: unknown) => {` — 3 occurrences
+  - `catch (err: unknown)` — ~51 occurrences
+  - `catch (err)` — 13 occurrences (implicit any)
+  - `catch (error)` — 5 occurrences
   - `catch (e: unknown)` — 2 occurrences
-- **Files with bare `catch {}`:**
-  - ~~`apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx` (2×)~~ ✅ Fixed
-  - ~~`apps/citizen-pwa/src/services/draft-store.ts` (1×)~~ ✅ Fixed
-  - ~~`apps/citizen-pwa/src/hooks/useOnlineStatus.ts` (1×)~~ ✅ Fixed
-  - `packages/shared-sms-parser/src/inbound.ts` (1×) — intentional MODULE_NOT_FOUND fallback
-  - ~~`packages/shared-validators/src/msisdn.ts` (1×)~~ ✅ Fixed
+  - `catch {}` — **0** in production source (2 in `scripts/`, not production)
+- **Files with bare `catch {}` (remaining):**
+  - `scripts/phase-3c/acceptance.ts` (2×) — scripts, not production source
   - `functions/src/services/fcm-send.ts` (1×) — outer catch intentional for retry logic (has server-side console.error)
-  - `functions/src/services/sms-providers/semaphore.ts` (1×)
   - `functions/src/triggers/inbox-reconciliation-sweep.ts` (1×) — transaction contention intentional skip (has comment)
-  - ~~`functions/src/triggers/on-media-finalize.ts` (1×)~~ ✅ Fixed
-  - ~~`functions/src/http/sms-inbound.ts` (1×)~~ ✅ Fixed
-  - ~~`functions/src/firestore/sms-inbound-processor.ts` (1×)~~ ✅ Fixed
+- **Recently fixed:**
+  - ~~`apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx`~~ ✅
+  - ~~`apps/citizen-pwa/src/services/draft-store.ts`~~ ✅
+  - ~~`apps/citizen-pwa/src/hooks/useOnlineStatus.ts`~~ ✅
+  - ~~`packages/shared-sms-parser/src/inbound.ts`~~ ✅
+  - ~~`packages/shared-validators/src/msisdn.ts`~~ ✅
+  - ~~`functions/src/services/sms-providers/semaphore.ts`~~ ✅
+  - ~~`functions/src/triggers/on-media-finalize.ts`~~ ✅
+  - ~~`functions/src/http/sms-inbound.ts`~~ ✅
+  - ~~`functions/src/firestore/sms-inbound-processor.ts`~~ ✅
 - **Impact:** Silent failures in production. Error monitoring tools see nothing.
-- **Action:** Enforce `catch (err: unknown) { logError(err) }` via lint rule or codemod. Start with citizen-pwa and functions.
+- **Action:** Enforce `catch (err: unknown) { logError(err) }` via lint rule or codemod. Convert remaining `catch (err)` and `catch (error)` implicit-any patterns.
 - **Effort:** Medium (~14 files, ~30 lines)
 
 ### 8. `console.log` in production code
@@ -135,13 +136,12 @@
 
 ## Recommended Execution Order
 
-1. **P0:** Fix `shared-sms-parser` tests (1 session)
-2. **P1:** Extract `Step2WhoWhere.tsx` into sub-components (2-3 sessions)
-3. **P1:** Split `inbound.ts` into modules + fix `catch {}` (1-2 sessions)
-4. **P2:** Add tests to `admin-desktop` critical paths (3-4 sessions)
-5. **P2:** Consolidate auth provider into `shared-firebase` (2 sessions)
-6. **P2:** Standardize error handling across `catch {}` sites (1 session)
-7. **P3:** Remove `any` types and `console.log` (1 session)
+1. **P1:** Extract `Step2WhoWhere.tsx` into sub-components (2-3 sessions)
+2. **P1:** Split `inbound.ts` into modules (gazetteer, Levenshtein, auto-reply, parser) (1-2 sessions)
+3. **P2:** Add tests to `admin-desktop` critical paths (3-4 sessions)
+4. **P2:** Consolidate auth provider into `shared-firebase` (2 sessions)
+5. **P2:** Standardize remaining `catch (err)` / `catch (error)` implicit-any patterns (1 session)
+6. **P3:** Remove `any` types and `console.log` (1 session)
 
 ---
 
@@ -151,6 +151,6 @@
 - **Total test files:** ~410 (but heavily concentrated in `functions`)
 - **Lines of code:** ~14,665
 - **Test coverage gaps:** 5 packages/apps at 0-1 tests
-- **Bare `catch {}` blocks:** 13
+- **Bare `catch {}` blocks:** 0 in production source (2 in scripts)
 - `console.log` in src: 1
 - `TODO` in src: 1
