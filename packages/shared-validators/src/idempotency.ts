@@ -31,10 +31,12 @@ export async function canonicalPayloadHash(payload: unknown): Promise<string> {
   let digest: ArrayBuffer
   try {
     digest = await subtle.digest('SHA-256', new TextEncoder().encode(json))
-  } catch {
+  } catch (err: unknown) {
+    const detail = err instanceof Error ? ` Cause: ${err.message}` : ''
     throw new Error(
       'Web Crypto API (globalThis.crypto.subtle.digest) failed. ' +
-        'This may indicate an unsupported environment or misconfigured crypto provider.',
+        'This may indicate an unsupported environment or misconfigured crypto provider.' +
+        detail,
     )
   }
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')

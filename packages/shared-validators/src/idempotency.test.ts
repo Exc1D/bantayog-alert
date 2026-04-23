@@ -96,4 +96,12 @@ describe('canonicalPayloadHash', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  it('rejects circular references in payloads', async () => {
+    const payload: Record<string, unknown> = {}
+    payload.self = payload
+    await expect(canonicalPayloadHash(payload)).rejects.toThrow(
+      'Circular reference detected in idempotency payload',
+    )
+  })
 })
