@@ -78,6 +78,12 @@ describe('ContactFields', () => {
     expect(onAnyoneHurtChange).toHaveBeenCalledExactlyOnceWith(false)
   })
 
+  it('does not show patient counter when anyoneHurt is false', () => {
+    renderContactFields({ anyoneHurt: false })
+
+    expect(screen.queryByText('How many patients?')).not.toBeInTheDocument()
+  })
+
   it('increments patient count', () => {
     const onPatientCountChange = vi.fn()
 
@@ -122,24 +128,24 @@ describe('ContactFields', () => {
   it('displays name error when provided', () => {
     renderContactFields({ nameError: 'Name is required' })
 
-    expect(screen.getByText('Name is required')).toBeInTheDocument()
+    expect(screen.getByTestId('name-error')).toHaveTextContent('Name is required')
   })
 
   it('displays phone error when provided', () => {
     renderContactFields({ phoneError: 'Invalid phone number' })
 
-    expect(screen.getByText('Invalid phone number')).toBeInTheDocument()
+    expect(screen.getByTestId('phone-error')).toHaveTextContent('Invalid phone number')
   })
 
   it('does not display name error when null', () => {
-    const { container } = renderContactFields({ nameError: null })
+    renderContactFields({ nameError: null })
 
-    expect(container.querySelector('.field-error')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('name-error')).not.toBeInTheDocument()
   })
 
   it('does not display phone error when null', () => {
-    const { container } = renderContactFields({ phoneError: null })
+    renderContactFields({ phoneError: null })
 
-    expect(container.querySelector('.field-error')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('phone-error')).not.toBeInTheDocument()
   })
 })

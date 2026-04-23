@@ -49,7 +49,11 @@ export function ContactFields({
           className="text-input"
           required
         />
-        {nameError && <p className="field-error">{nameError}</p>}
+        {nameError && (
+          <p className="field-error" data-testid="name-error">
+            {nameError}
+          </p>
+        )}
       </div>
 
       <div className="field-group">
@@ -65,7 +69,11 @@ export function ContactFields({
           className="text-input"
           required
         />
-        {phoneError && <p className="field-error">{phoneError}</p>}
+        {phoneError && (
+          <p className="field-error" data-testid="phone-error">
+            {phoneError}
+          </p>
+        )}
         <p className="phone-hint">
           <strong>Gives you faster help.</strong> Admins call this number if they need more details.{' '}
           <em>Mas mabilis kang matutulungan.</em>
