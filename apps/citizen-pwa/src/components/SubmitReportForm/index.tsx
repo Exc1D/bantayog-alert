@@ -1,197 +1,239 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { httpsCallable } from 'firebase/functions'
-import { db, fns, ensureSignedIn } from '../../services/firebase.js'
-import { submitReport, type SubmitReportDeps } from '../../services/submit-report.js'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
-import { useSubmissionMachine } from '../../hooks/useSubmissionMachine'
-import { RevealSheet } from '../RevealSheet'
-import { Step1Evidence } from './Step1Evidence'
-import { Step2WhoWhere } from './Step2WhoWhere'
-import { Step3Review } from './Step3Review'
-
-interface FormData {
-  reportType: string
-  photoFile: File | null
-  location: { lat: number; lng: number }
-  reporterName: string
-  reporterMsisdn: string
-  patientCount: number
-  locationMethod: 'gps' | 'manual'
-  municipalityId?: string
-  municipalityLabel?: string
-  barangayId?: string
-  nearestLandmark?: string
-}
-
-function randomPublicRef(): string {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  const bytes = crypto.getRandomValues(new Uint8Array(8))
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('')
-}
-
-function randomSecret(): string {
-  return crypto.randomUUID()
-}
-
-async function sha256Hex(input: string | Blob): Promise<string> {
-  const buf =
-    typeof input === 'string'
-      ? new TextEncoder().encode(input)
-      : new Uint8Array(await input.arrayBuffer())
-  const digest = await crypto.subtle.digest('SHA-256', buf)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-async function putBlob(url: string, blob: Blob): Promise<void> {
-  const res = await fetch(url, {
-    method: 'PUT',
-    body: blob,
-    headers: { 'content-type': blob.type },
-  })
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`upload failed: ${String(res.status)} ${body}`.trim())
-  }
-}
+import type { ReportType, Severity } from '@bantayog/shared-types'
+import { createDraft } from '../../services/submit-report.js'
+import type { Draft } from '../../services/draft-store.js'
+import { useSubmissionMachine } from '../../hooks/useSubmissionMachine.js'
+import { OfflineBanner } from './OfflineBanner.js'
+import { SmsFallbackButton } from './SmsFallbackButton.js'
+import { StaleDraftBanner } from './StaleDraftBanner.js'
 
 export function SubmitReportForm() {
-  const navigate = useNavigate()
-  const { transition, setError, state: machineState } = useSubmissionMachine()
-  const [step, setStep] = useState(1)
-  const [publicRef, setPublicRef] = useState('')
-  const [formData, setFormData] = useState<FormData>({
-    reportType: 'flood',
-    photoFile: null,
-    location: { lat: 0, lng: 0 },
-    reporterName: '',
-    reporterMsisdn: '',
-    patientCount: 0,
-    locationMethod: 'gps',
-  })
+  return <FormCollector />
+}
 
-  const isSubmitting = machineState === 'submitting'
-  const showRevealSheet =
-    machineState === 'success' || machineState === 'queued' || machineState === 'failed_retryable'
+function FormCollector() {
+  const nav = useNavigate()
+  const [reportType, setReportType] = useState<ReportType>('flood')
+  const [severity, setSeverity] = useState<Severity>('medium')
+  const [description, setDescription] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [lat, setLat] = useState<number | null>(null)
+  const [lng, setLng] = useState<number | null>(null)
+  const [phone, setPhone] = useState('')
+  const [smsConsent, setSmsConsent] = useState(false)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false)
 
-  const handleSubmit = async () => {
-    transition('submitting')
+  async function getLocation(): Promise<void> {
+    const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      })
+    })
+    setLat(pos.coords.latitude)
+    setLng(pos.coords.longitude)
+  }
+
+  async function onCaptureLocation(): Promise<void> {
     try {
-      const deps: SubmitReportDeps = {
-        ensureSignedIn,
-        requestUploadUrl: async (args) =>
-          (await httpsCallable(fns(), 'requestUploadUrl')(args)).data as {
-            uploadUrl: string
-            uploadId: string
-            storagePath: string
-            expiresAt: number
-          },
-        putBlob,
-        writeInbox: async (doc) => {
-          const { addDoc, collection } = await import('firebase/firestore')
-          const ref = await addDoc(collection(db(), 'report_inbox'), doc)
-          return ref.id
-        },
-        randomUUID: () => crypto.randomUUID(),
-        randomPublicRef,
-        randomSecret,
-        sha256Hex,
-        now: () => Date.now(),
-      }
-
-      const contact = formData.reporterMsisdn.trim()
-        ? {
-            phone: normalizeMsisdn(formData.reporterMsisdn),
-            smsConsent: true as const,
-          }
-        : undefined
-
-      const description =
-        formData.patientCount > 0
-          ? String(formData.patientCount) + ' patient(s) reported'
-          : 'No description provided'
-
-      const result = await submitReport(deps, {
-        reportType: formData.reportType,
-        severity: 'medium',
-        description,
-        publicLocation: formData.location,
-        ...(formData.photoFile ? { photo: formData.photoFile } : {}),
-        ...(contact ? { contact } : {}),
-        ...(formData.locationMethod === 'manual' && formData.municipalityId
-          ? {
-              municipalityId: formData.municipalityId,
-              barangayId: formData.barangayId,
-              nearestLandmark: formData.nearestLandmark,
-            }
-          : {}),
-      })
-
-      setPublicRef(result.publicRef)
-      void navigate('/receipt', { state: { publicRef: result.publicRef, secret: result.secret } })
-      transition('success')
-    } catch (err) {
-      setError({
-        code: 'SUBMIT_ERROR',
-        message: err instanceof Error ? err.message : 'Submission failed',
-      })
-      transition('failed_retryable')
+      await getLocation()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'location failed')
     }
   }
 
-  if (showRevealSheet) {
+  async function onSubmit(e: React.SyntheticEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault()
+    if (isCreatingDraft) return
+    if (lat === null || lng === null) {
+      setError('Please capture your location.')
+      return
+    }
+    if (phone) {
+      try {
+        normalizeMsisdn(phone)
+      } catch {
+        setPhoneError('Enter a valid PH mobile number (e.g. 09171234567 or +639171234567)')
+        return
+      }
+    }
+    setError(null)
+    setIsCreatingDraft(true)
+    try {
+      const created = await createDraft({
+        reportType,
+        barangay: '',
+        description,
+        severity,
+        location: { lat, lng },
+        ...(phone && smsConsent ? { reporterMsisdnHash: await hashPhone(phone) } : {}),
+        clientDraftRef: crypto.randomUUID(),
+        ...(photo ? { photo: new Blob([await photo.arrayBuffer()], { type: photo.type }) } : {}),
+      })
+      setDraft(created)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to create draft')
+    } finally {
+      setIsCreatingDraft(false)
+    }
+  }
+
+  if (draft) {
     return (
-      <RevealSheet
-        state={machineState}
-        referenceCode={publicRef}
-        onClose={() => {
-          transition('closed')
-          void navigate('/')
+      <SubmissionPanel
+        draft={draft}
+        phone={phone}
+        onSuccess={(publicRef) => {
+          void nav('/receipt', { state: { publicRef, secret: 'pending' } })
         }}
       />
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb]">
-      {step === 1 && (
-        <Step1Evidence
-          onNext={(data) => {
-            setFormData((prev) => ({ ...prev, ...data }))
-            setStep(2)
+    <form onSubmit={(e) => void onSubmit(e)} aria-label="Report submission form">
+      <label>
+        Type
+        <select
+          value={reportType}
+          onChange={(e) => {
+            setReportType(e.target.value as ReportType)
           }}
-          onBack={() => {
-            void navigate('/')
+        >
+          <option value="flood">Flood</option>
+          <option value="fire">Fire</option>
+          <option value="accident">Accident</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <label>
+        Severity
+        <select
+          value={severity}
+          onChange={(e) => {
+            setSeverity(e.target.value as Severity)
           }}
-          isSubmitting={isSubmitting}
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </label>
+      <label>
+        Description
+        <textarea
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value)
+          }}
+          maxLength={5000}
+          required
         />
-      )}
-      {step === 2 && (
-        <Step2WhoWhere
-          onNext={(data) => {
-            setFormData((prev) => ({ ...prev, ...data }))
-            setStep(3)
+      </label>
+      <label>
+        Photo (optional)
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => {
+            setPhoto(e.target.files?.[0] ?? null)
           }}
-          onBack={() => {
-            setStep(1)
-          }}
-          isSubmitting={isSubmitting}
         />
+      </label>
+      <label>
+        Mobile number (optional — for SMS alerts)
+        <input
+          type="tel"
+          value={phone}
+          placeholder="09171234567 or +639171234567"
+          onChange={(e) => {
+            setPhone(e.target.value)
+            setPhoneError(null)
+          }}
+        />
+      </label>
+      {phoneError && <p role="alert">{phoneError}</p>}
+      <label>
+        <input
+          type="checkbox"
+          checked={smsConsent}
+          onChange={(e) => {
+            setSmsConsent(e.target.checked)
+          }}
+          disabled={!phone}
+        />
+        Send me SMS updates about this report
+      </label>
+      <button type="button" onClick={() => void onCaptureLocation()}>
+        Capture location
+      </button>
+      {lat !== null && lng !== null && (
+        <p>
+          Location: {lat.toFixed(5)}, {lng.toFixed(5)}
+        </p>
       )}
-      {step === 3 && (
-        <Step3Review
-          onBack={() => {
-            setStep(2)
+      {error && <p role="alert">{error}</p>}
+      <button type="submit" disabled={isCreatingDraft}>
+        {isCreatingDraft ? 'Saving draft\u2026' : 'Submit report'}
+      </button>
+    </form>
+  )
+}
+
+function SubmissionPanel({
+  draft,
+  phone,
+  onSuccess,
+}: {
+  draft: Draft
+  phone: string
+  onSuccess: (publicRef: string) => void
+}) {
+  const [now] = useState(() => Date.now())
+  const machine = useSubmissionMachine({
+    draft,
+    onSuccess,
+    onTerminal: () => {
+      console.warn('[SubmissionPanel] Submission failed after max retries')
+    },
+  })
+
+  const showSmsFallback = machine.state === 'queued' || machine.state === 'failed_terminal'
+
+  return (
+    <div aria-label="Submission status">
+      <StaleDraftBanner updatedAt={draft.updatedAt} now={now} />
+      <OfflineBanner state={machine.state} retryCount={machine.retryCount} />
+
+      {machine.state === 'idle' && (
+        <button type="button" onClick={() => void machine.submit()}>
+          Submit report
+        </button>
+      )}
+
+      {showSmsFallback && (
+        <SmsFallbackButton
+          draft={draft}
+          {...(phone ? { reporterMsisdn: phone } : {})}
+          onSent={() => {
+            machine.sendSmsFallback()
           }}
-          onSubmit={() => {
-            void handleSubmit()
-          }}
-          reportData={formData}
-          isSubmitting={isSubmitting}
         />
       )}
     </div>
   )
+}
+
+async function hashPhone(phone: string): Promise<string> {
+  const normalized = normalizeMsisdn(phone)
+  const buf = new TextEncoder().encode(normalized)
+  const digest = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
