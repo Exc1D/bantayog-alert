@@ -83,8 +83,9 @@ export function logEvent(entry: {
   } else if (entry.severity === 'WARNING') {
     console.warn(json)
   } else if (entry.severity === 'INFO') {
+    // Cloud Functions ingests stdout as structured JSON logs.
     // eslint-disable-next-line no-console
-    console.log(json)
+    console.info(json)
   } else {
     // DEBUG and any other value
     // eslint-disable-next-line no-console

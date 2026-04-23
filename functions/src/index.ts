@@ -36,7 +36,7 @@ export const processInboxItem = onDocumentCreated(
   async (event) => {
     try {
       await processInboxItemCore({ db: getFirestore(), inboxId: event.params.inboxId })
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof BantayogError) {
         log({
           severity: 'ERROR',
@@ -70,7 +70,7 @@ export const onMediaFinalize = onObjectFinalized(
           await db.collection('pending_media').doc(payload.uploadId).set(payload)
         },
       })
-    } catch (err) {
+    } catch (err: unknown) {
       const code = (err as { code?: string }).code
       if (code === 'MEDIA_REJECTED_MIME' || code === 'MEDIA_REJECTED_CORRUPT') {
         return

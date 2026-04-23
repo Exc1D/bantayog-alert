@@ -57,7 +57,7 @@ export async function dispatchSmsOutboxCore(args: DispatchSmsOutboxCoreArgs): Pr
   let providerTarget: 'semaphore' | 'globelabs'
   try {
     providerTarget = await pickProvider(db)
-  } catch (err) {
+  } catch (err: unknown) {
     if (err instanceof NoProviderAvailableError) {
       await applyDeferralOrAbandon(db, outboxRef, claim.retryCount, 'provider_error', now())
       return
@@ -76,7 +76,7 @@ export async function dispatchSmsOutboxCore(args: DispatchSmsOutboxCoreArgs): Pr
       body: outboxData.bodyPreviewHash,
       encoding: outboxData.predictedEncoding ?? 'GSM-7',
     })
-  } catch (err) {
+  } catch (err: unknown) {
     latencyMs = now() - start
     const kind = err instanceof SmsProviderRetryableError ? err.kind : 'provider_error'
     const isRate = kind === 'rate_limited'

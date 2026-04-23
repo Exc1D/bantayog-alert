@@ -60,7 +60,7 @@ export function useCitizenShell(): ShellState {
       app = createFirebaseWebApp(env)
       db = getFirebaseDb(app)
       auth = getFirebaseAuth(app)
-    } catch (error) {
+    } catch (error: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!unmountedRef.current) {
         setState({
@@ -82,7 +82,7 @@ export function useCitizenShell(): ShellState {
       if (!unmounted.current) {
         setState((current) => ({ ...current, appCheckState: 'active' }))
       }
-    } catch (error) {
+    } catch (error: unknown) {
       if (!unmounted.current) {
         setState((current) => ({
           ...current,

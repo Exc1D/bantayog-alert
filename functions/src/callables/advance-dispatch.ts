@@ -118,7 +118,7 @@ export const advanceDispatch = onCall(
         },
         now: Timestamp.now(),
       })
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof BantayogError) {
         throw bantayogErrorToHttps(error)
       }

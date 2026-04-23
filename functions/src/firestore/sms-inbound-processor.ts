@@ -181,7 +181,7 @@ export const smsInboundProcessor = onDocumentCreated(
                 code: 'auto_reply.pending_review.queued',
                 message: `pending_review reply queued for ${msgId}`,
               })
-            } catch (replyErr) {
+            } catch (replyErr: unknown) {
               log({
                 severity: 'WARNING',
                 code: 'auto_reply.pending_review.failed',

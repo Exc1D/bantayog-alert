@@ -52,7 +52,7 @@ export function useReport(reportRef: string) {
           const data = snapshot.data()
           try {
             queryClient.setQueryData(['reports', reportRef], mapReportFromFirestore(data))
-          } catch (err) {
+          } catch (err: unknown) {
             console.error('Report mapping error:', err instanceof Error ? err.message : err)
             queryClient.setQueryData(['reports', reportRef], null)
           }
@@ -89,7 +89,7 @@ export function useReport(reportRef: string) {
             }
             try {
               resolve(mapReportFromFirestore(snap.data()))
-            } catch (err) {
+            } catch (err: unknown) {
               console.error('Report mapping error:', err instanceof Error ? err.message : err)
               resolve(null)
             }
