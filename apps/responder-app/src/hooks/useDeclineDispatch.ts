@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { functions } from '../app/firebase'
+import { auth, functions } from '../app/firebase'
+import { awaitFreshAuthToken } from '../app/await-auth-token'
 
 interface DeclineDispatchRequest {
   dispatchId: string
@@ -20,13 +21,15 @@ export function useDeclineDispatch(dispatchId: string) {
   async function decline(declineReason: string) {
     const trimmedReason = declineReason.trim()
     if (!trimmedReason) {
-      setError(new Error('declineReason_required'))
-      return
+      const error = new Error('declineReason_required')
+      setError(error)
+      throw error
     }
 
     setLoading(true)
     setError(undefined)
     try {
+      await awaitFreshAuthToken(auth)
       const fn = httpsCallable<DeclineDispatchRequest, { status: string }>(
         functions,
         'declineDispatch',
@@ -37,6 +40,7 @@ export function useDeclineDispatch(dispatchId: string) {
         idempotencyKey: keyRef.current,
       })
     } catch (err: unknown) {
+      console.error('[useDeclineDispatch] decline failed:', err)
       if (err instanceof Error) setError(err)
       else setError(new Error(String(err)))
     } finally {

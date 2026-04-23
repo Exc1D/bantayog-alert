@@ -20,10 +20,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
       if (u) {
-        void u.getIdTokenResult(true).then((token) => {
-          setClaims(token.claims as Record<string, unknown>)
-          setLoading(false)
-        })
+        void u
+          .getIdTokenResult(true)
+          .then((token) => {
+            setClaims(token.claims as Record<string, unknown>)
+          })
+          .catch((err: unknown) => {
+            console.error('[AuthProvider] token refresh failed:', err)
+            setClaims(null)
+          })
+          .finally(() => {
+            setLoading(false)
+          })
       } else {
         setClaims(null)
         setLoading(false)

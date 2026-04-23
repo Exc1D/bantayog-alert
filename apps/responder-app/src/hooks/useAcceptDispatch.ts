@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { functions } from '../app/firebase'
+import { auth, functions } from '../app/firebase'
+import { awaitFreshAuthToken } from '../app/await-auth-token'
 
 export function useAcceptDispatch(dispatchId: string) {
   const [loading, setLoading] = useState(false)
@@ -15,12 +16,14 @@ export function useAcceptDispatch(dispatchId: string) {
     setLoading(true)
     setError(undefined)
     try {
+      await awaitFreshAuthToken(auth)
       const fn = httpsCallable<{ dispatchId: string; idempotencyKey: string }, { status: string }>(
         functions,
         'acceptDispatch',
       )
       await fn({ dispatchId, idempotencyKey: keyRef.current })
     } catch (err: unknown) {
+      console.error('[useAcceptDispatch] accept failed:', err)
       if (err instanceof Error) setError(err)
       else setError(new Error(String(err)))
     } finally {
