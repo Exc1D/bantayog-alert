@@ -3,8 +3,6 @@ import { z } from 'zod'
 
 const require = createRequire(import.meta.url)
 
-const FALLBACK_BARANGAYS = [
-  { name: 'Alcoc', municipality: 'Alcoc' },
   { name: 'Alcoy', municipality: 'Alcoy' },
   { name: 'Bagasbas', municipality: 'Daet' },
   { name: 'Baay', municipality: 'Labo' },
