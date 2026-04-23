@@ -18,7 +18,9 @@ export async function canonicalPayloadHash(payload: unknown): Promise<string> {
   // Runtime check for Web Crypto API availability (may be missing in older Node.js or non-browser environments)
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- TypeScript types don't reflect runtime reality
   const subtle = globalThis.crypto?.subtle
-  if (typeof subtle !== 'object') {
+  // Check for null/undefined AND that digest method exists (typeof null === 'object' is a JS quirk)
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- subtle can be null at runtime despite types
+  if (!subtle || typeof subtle.digest !== 'function') {
     throw new Error(
       'Web Crypto API (globalThis.crypto.subtle) is not available in this environment. ' +
         'This function requires a modern browser or Node.js 19+ with --experimental-global-webcrypto.',

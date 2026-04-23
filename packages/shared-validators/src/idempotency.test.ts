@@ -70,4 +70,15 @@ describe('canonicalPayloadHash', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  it('throws Error if crypto.subtle is null (typeof null === "object" quirk)', async () => {
+    vi.stubGlobal('crypto', { subtle: null })
+    try {
+      await expect(canonicalPayloadHash({ a: 1 })).rejects.toThrow(
+        'Web Crypto API (globalThis.crypto.subtle) is not available',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })
