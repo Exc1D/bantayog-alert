@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 
 const PROBE_URL = '/__/firebase.json'
-const PROBE_TIMEOUT_MS = 5_000
-const PROBE_INTERVAL_MS = 30_000
+const PROBE_TIMEOUT_MS = 3_000
+const PROBE_INTERVAL_MS = 10_000
 
 /**
  * Active connectivity probe + passive navigator.onLine listeners.
@@ -23,11 +23,16 @@ export function useOnlineStatus() {
       return
     }
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+      }, PROBE_TIMEOUT_MS)
       await fetch(PROBE_URL, {
         mode: 'no-cors',
         cache: 'no-store',
-        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       setProbeOnline(true)
     } catch (_err: unknown) {
       void _err

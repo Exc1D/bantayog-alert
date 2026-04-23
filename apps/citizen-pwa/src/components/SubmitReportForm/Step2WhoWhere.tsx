@@ -377,8 +377,16 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         if (savedMsisdn) setReporterMsisdn(savedMsisdn)
         setHasMemory(true)
       }
-    } catch (_err: unknown) {
-      void _err // Restricted/private mode — skip pre-fill silently
+    } catch (err: unknown) {
+      // Distinguish quota exceeded from security errors
+      if (
+        err instanceof DOMException &&
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        (err.name === 'QuotaExceededError' || err.code === 22)
+      ) {
+        console.warn('[Step2WhoWhere] Storage quota exceeded, skipping pre-fill')
+      }
+      // SecurityError (private mode) is intentionally silent
     }
   }, [])
 
@@ -420,8 +428,15 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       localStorage.setItem('bantayog.reporter.name', reporterName)
       // Phone is session-only to limit long-lived PII exposure
       sessionStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
-    } catch (_err: unknown) {
-      void _err // Restricted/private mode — skip persist silently
+    } catch (err: unknown) {
+      if (
+        err instanceof DOMException &&
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        (err.name === 'QuotaExceededError' || err.code === 22)
+      ) {
+        console.warn('[Step2WhoWhere] Storage quota exceeded, skipping persist')
+      }
+      // SecurityError (private mode) is intentionally silent
     }
 
     onNext({
