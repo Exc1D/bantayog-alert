@@ -1,8 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './components/CitizenShell.js'
 import { MapTab } from './components/MapTab/index.js'
-import { SubmitReportForm as LegacySubmitReportForm } from './components/SubmitReportForm.js'
-import { SubmitReportForm as NewSubmitReportForm } from './components/SubmitReportForm/index.js'
+import { SubmitReportForm } from './components/SubmitReportForm/index.js'
 import { ReceiptScreen } from './components/ReceiptScreen.js'
 import { LookupScreen } from './components/LookupScreen.js'
 import { TrackingScreen } from './components/TrackingScreen.js'
@@ -26,15 +25,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/report',
-    element: (
-      <CitizenShell>
-        <LegacySubmitReportForm />
-      </CitizenShell>
-    ),
-  },
-  {
-    path: '/report/new',
-    element: <NewSubmitReportForm />,
+    element: <SubmitReportForm />,
     handle: { hideBottomNav: true },
   },
   {

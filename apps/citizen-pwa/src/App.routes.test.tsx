@@ -6,7 +6,7 @@ vi.mock('./components/MapTab/index.js', () => ({
   MapTab: () => <div>Map tab</div>,
 }))
 
-vi.mock('./components/SubmitReportForm.js', () => ({
+vi.mock('./components/SubmitReportForm/index.js', () => ({
   SubmitReportForm: () => <div>Report form</div>,
 }))
 
@@ -41,10 +41,11 @@ describe('App routes', () => {
     expect(screen.getByRole('button', { name: /map/i })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('shows the report shell at /report', async () => {
+  it('shows the report form at /report', async () => {
     await renderAppAt('/report')
     expect(screen.getByText('Report form')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /report/i })).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
   })
 
   it('navigates between shell tabs', async () => {
