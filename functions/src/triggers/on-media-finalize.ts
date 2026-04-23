@@ -63,12 +63,13 @@ export async function onMediaFinalizeCore(
     // No need for withMetadata(false) — that actually re-enables metadata
     // in some sharp/libvips version combinations, defeating the strip.
     cleaned = await sharp(buf).rotate().toBuffer()
-  } catch {
+  } catch (err: unknown) {
     await file.delete()
     log({
       severity: 'WARNING',
       code: 'MEDIA_REJECTED_CORRUPT',
       message: `Deleted corrupt image: ${input.objectName}`,
+      data: { error: String(err) },
     })
     return { status: 'rejected_mime' }
   }

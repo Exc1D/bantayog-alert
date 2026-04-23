@@ -141,11 +141,12 @@ export const smsInboundProcessor = onDocumentCreated(
           let recipientMsisdn: string | null = null
           try {
             recipientMsisdn = decryptMsisdn(senderMsisdnEnc)
-          } catch {
+          } catch (err: unknown) {
             log({
               severity: 'WARNING',
               code: 'decrypt.failed',
               message: `MSISDN decryption failed for ${msgId} — skipping pending_review reply`,
+              data: { error: String(err) },
             })
           }
           if (recipientMsisdn) {
