@@ -9,7 +9,10 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 
 describe('BANTAYOG_TO_HTTPS_CODE', () => {
   it('maps every BantayogErrorCode to a FunctionsErrorCode', () => {
-    const codes = Object.keys(BANTAYOG_TO_HTTPS_CODE) as BantayogErrorCode[]
+    // Iterate actual enum values, not map keys, to catch unmapped entries
+    const codes = Object.values(BantayogErrorCode).filter(
+      (value): value is BantayogErrorCode => typeof value === 'string',
+    )
     expect(codes.length).toBeGreaterThan(0)
     for (const code of codes) {
       expect(BANTAYOG_TO_HTTPS_CODE[code]).toBeDefined()

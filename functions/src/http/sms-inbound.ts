@@ -99,7 +99,10 @@ export async function smsInboundWebhookCore(
       severity: 'WARNING',
       code: 'msisdn.invalid',
       message: 'Invalid MSISDN received',
-      data: { rawFrom: rawFrom.slice(0, 6) + '****', error: String(err) },
+      data: {
+        rawFrom: rawFrom.slice(0, 6) + '****',
+        errorType: err instanceof Error ? err.name : 'UnknownError',
+      },
     })
   }
 

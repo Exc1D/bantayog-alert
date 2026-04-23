@@ -15,13 +15,16 @@
  * @throws Error for circular references
  */
 export async function canonicalPayloadHash(payload) {
-    if (typeof globalThis.crypto?.subtle !== 'object') {
+    // Runtime check for Web Crypto API availability (may be missing in older Node.js or non-browser environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- TypeScript types don't reflect runtime reality
+    const subtle = globalThis.crypto?.subtle;
+    if (typeof subtle !== 'object') {
         throw new Error('Web Crypto API (globalThis.crypto.subtle) is not available in this environment. ' +
             'This function requires a modern browser or Node.js 19+ with --experimental-global-webcrypto.');
     }
     const canonical = canonicalize(payload);
     const json = JSON.stringify(canonical);
-    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(json));
+    const digest = await subtle.digest('SHA-256', new TextEncoder().encode(json));
     return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 function canonicalize(value) {
