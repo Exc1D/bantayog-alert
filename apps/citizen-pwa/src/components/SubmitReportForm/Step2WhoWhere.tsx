@@ -326,11 +326,18 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   const [locationError, setLocationError] = useState<string | null>(null)
   const [nameError, setNameError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [hasMemory, setHasMemory] = useState(false)
 
   const attemptGps = async () => {
     setLocationError(null)
     setGpsLoading(true)
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!navigator.geolocation) {
+        setLocationError('GPS not supported on this device.')
+        setLocationMethod('manual')
+        return
+      }
       const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
@@ -341,7 +348,13 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       setLocationMethod('gps')
     } catch (err: unknown) {
       console.error('[Step2WhoWhere] attemptGps failed:', err)
-      setLocationError('Could not get location.')
+      let msg = 'Could not get location. Choose municipality manually.'
+      if (err && typeof err === 'object' && 'code' in err) {
+        const code = (err as GeolocationPositionError).code
+        if (code === 1) msg = 'Location access denied. Choose municipality manually.'
+        else if (code === 3) msg = 'Location timed out. Choose municipality manually.'
+      }
+      setLocationError(msg)
       setLocationMethod('manual')
     } finally {
       setGpsLoading(false)
@@ -351,6 +364,17 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void attemptGps()
+  }, [])
+
+  useEffect(() => {
+    const savedName = localStorage.getItem('bantayog.reporter.name')
+    const savedMsisdn = localStorage.getItem('bantayog.reporter.msisdn')
+    if (savedName || savedMsisdn) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (savedName) setReporterName(savedName)
+      if (savedMsisdn) setReporterMsisdn(savedMsisdn)
+      setHasMemory(true)
+    }
   }, [])
 
   const handleSelectMunicipality = (muniId: string) => {
@@ -386,6 +410,9 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         finalLocation ??= { lat: 0, lng: 0 }
       }
     }
+
+    localStorage.setItem('bantayog.reporter.name', reporterName)
+    localStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
 
     onNext({
       location: finalLocation ?? { lat: 0, lng: 0 },
@@ -562,6 +589,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
 
       {locationMethod !== null ? (
         <>
+          {hasMemory && <p className="memory-hint">Pre-filled from your last report</p>}
           <div className="field-group">
             <p className="field-label">Your name</p>
             <input

@@ -188,9 +188,9 @@ function SubmissionPanel({
   })
 
   // Auto-start: wizard already captured consent in Step3, no second confirm needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void machine.submit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (machine.state === 'server_confirmed') {
