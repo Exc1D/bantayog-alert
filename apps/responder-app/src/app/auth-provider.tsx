@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
       if (u) {
-        void u.getIdTokenResult().then((token) => {
+        void u.getIdTokenResult(true).then((token) => {
           setClaims(token.claims as Record<string, unknown>)
           setLoading(false)
         })

@@ -6,11 +6,12 @@ import { getDatabase } from 'firebase/database'
 
 const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true'
 const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'bantayog-alert-dev'
+const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyAK6DSYrFfqFAGelsn7ugAZP4ue1gWKudc'
 
 let _app: FirebaseApp | undefined
 
 export function getFirebaseApp(): FirebaseApp {
-  _app ??= initializeApp({ projectId: PROJECT_ID })
+  _app ??= initializeApp({ apiKey: API_KEY, projectId: PROJECT_ID })
   return _app
 }
 
@@ -21,8 +22,9 @@ export const functions = getFunctions(app)
 export const rtdb = getDatabase(app)
 
 if (USE_EMULATOR) {
+  const FIRESTORE_EMULATOR_PORT = import.meta.env.VITE_FIRESTORE_EMULATOR_PORT ?? '8081'
   void import('firebase/firestore').then(({ connectFirestoreEmulator }) => {
-    connectFirestoreEmulator(db, 'localhost', 8080)
+    connectFirestoreEmulator(db, 'localhost', Number(FIRESTORE_EMULATOR_PORT))
   })
   void import('firebase/auth').then(({ connectAuthEmulator }) => {
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })

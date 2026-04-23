@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { seedAuthUsers, seedResponderDispatch } from '../fixtures/responder-seed.js'
 
 /**
  * End-to-end tests for the responder PWA.
@@ -15,6 +16,11 @@ import { test, expect } from '@playwright/test'
 const RESPONDER_BASE = process.env.BASE_URL ?? 'http://localhost:5174'
 
 test.describe('responder PWA', () => {
+  test.beforeEach(async () => {
+    await seedAuthUsers()
+    await seedResponderDispatch('pending')
+  })
+
   test.describe('authentication', () => {
     test('renders the login page', async ({ page }) => {
       await page.goto(RESPONDER_BASE)
@@ -37,12 +43,14 @@ test.describe('responder PWA', () => {
   })
 
   test.describe('dispatch list', () => {
-    test.skip('shows empty state when no dispatches', async () => {
-      // Requires authenticated responder session
-    })
+    test('shows active dispatches when available', async ({ page }) => {
+      await page.goto(RESPONDER_BASE)
+      await page.getByLabel(/email/i).fill('bfp-responder-test-01@test.local')
+      await page.getByLabel(/password/i).fill('test123456')
+      await page.getByRole('button', { name: /sign in/i }).click()
 
-    test.skip('shows active dispatches when available', async () => {
-      // Requires seeded dispatch for responder
+      await expect(page.getByRole('heading', { name: /your dispatches/i })).toBeVisible()
+      await expect(page.getByRole('link', { name: /pending/i })).toBeVisible()
     })
   })
 
@@ -59,8 +67,18 @@ test.describe('responder PWA', () => {
     test('resolves a dispatch from on_scene', async () => {
       // Requires seeded on_scene dispatch
     })
-    test('cancelled dispatch shows cancelled screen', async () => {
-      // Requires seeded cancelled dispatch
+    test('cancelled dispatch shows cancelled screen', async ({ page }) => {
+      await seedResponderDispatch('cancelled')
+      await page.goto(RESPONDER_BASE)
+      await page.getByLabel(/email/i).fill('bfp-responder-test-01@test.local')
+      await page.getByLabel(/password/i).fill('test123456')
+      await page.getByRole('button', { name: /sign in/i }).click()
+      await expect(page.getByRole('heading', { name: /your dispatches/i })).toBeVisible()
+      await page.goto(`${RESPONDER_BASE}/dispatches/dispatch-cancelled`)
+
+      await expect(
+        page.getByRole('heading', { name: /this dispatch was cancelled/i }),
+      ).toBeVisible()
     })
   })
 })

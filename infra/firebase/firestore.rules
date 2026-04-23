@@ -85,7 +85,6 @@ service cloud.firestore {
       //   - system triggers: processInboxItem, dispatchMirrorToReport
       //   - callables only: verifyReport, dispatchResponder, cancelDispatch, closeReport
       // Responders NEVER write reports.status directly.
-      deny update: if isResponder();
       allow update: if adminOf(resource.data.municipalityId)
                    && request.resource.data.diff(resource.data)
                       .affectedKeys()

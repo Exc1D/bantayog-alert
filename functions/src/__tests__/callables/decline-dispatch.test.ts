@@ -1,222 +1,350 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { setDoc, doc } from 'firebase/firestore'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
 }))
 
-import { declineDispatchCore } from '../../callables/decline-dispatch.js'
+const { onCallMock } = vi.hoisted(() => ({
+  onCallMock: vi.fn((_config: unknown, handler: unknown) => handler),
+}))
 
-type DocData = Record<string, any>
-
-class MemorySnapshot {
-  constructor(
-    public readonly exists: boolean,
-    private readonly value: DocData | undefined,
-  ) {}
-
-  data(): DocData | undefined {
-    return this.value
+vi.mock('firebase-functions/v2/https', async () => {
+  const actual = await vi.importActual<typeof import('firebase-functions/v2/https')>(
+    'firebase-functions/v2/https',
+  )
+  return {
+    ...actual,
+    onCall: onCallMock,
   }
-}
+})
 
-class MemoryDocumentReference {
-  constructor(
-    private readonly db: MemoryFirestore,
-    private readonly path: string,
-  ) {}
+let adminDb: Firestore
+vi.mock('../../admin-init.js', () => ({
+  get adminDb() {
+    return adminDb
+  },
+}))
 
-  get(): Promise<MemorySnapshot> {
-    const value = this.db.store.get(this.path)
-    return Promise.resolve(new MemorySnapshot(value !== undefined, value))
-  }
+import { declineDispatch, declineDispatchCore } from '../../callables/decline-dispatch.js'
+import { seedActiveAccount } from '../helpers/seed-factories.js'
 
-  set(data: DocData): Promise<void> {
-    this.db.store.set(this.path, { ...data })
-    return Promise.resolve()
-  }
+const ts = 1713350400000
 
-  update(patch: DocData): Promise<void> {
-    const current = this.db.store.get(this.path)
-    if (current === undefined) {
-      throw new Error(`Missing document at ${this.path}`)
-    }
-    this.db.store.set(this.path, { ...current, ...patch })
-    return Promise.resolve()
-  }
-}
+let testEnv: RulesTestEnvironment
 
-class MemoryQuery {
-  constructor(
-    private readonly db: MemoryFirestore,
-    private readonly collectionName: string,
-    private readonly field: string,
-    private readonly op: string,
-    private readonly value: unknown,
-  ) {}
+beforeAll(async () => {
+  testEnv = await initializeTestEnvironment({
+    projectId: 'decline-dispatch-test',
+    firestore: {
+      host: 'localhost',
+      port: 8080,
+      rules:
+        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+    },
+  })
+  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+})
 
-  get(): Promise<{ docs: { data: () => DocData | undefined }[] }> {
-    if (this.op !== '==') {
-      throw new Error(`Unsupported operator ${this.op}`)
-    }
+beforeEach(async () => {
+  await testEnv.clearFirestore()
+})
 
-    const prefix = `${this.collectionName}/`
-    const docs = [...this.db.store.entries()]
-      .filter(([path, data]) => path.startsWith(prefix) && data[this.field] === this.value)
-      .map(([, data]) => ({ data: () => data }))
+afterAll(async () => {
+  await testEnv.cleanup()
+})
 
-    return Promise.resolve({ docs })
-  }
-}
-
-class MemoryCollectionReference {
-  constructor(
-    private readonly db: MemoryFirestore,
-    private readonly name: string,
-  ) {}
-
-  doc(id?: string): MemoryDocumentReference {
-    return new MemoryDocumentReference(this.db, `${this.name}/${id ?? crypto.randomUUID()}`)
-  }
-
-  where(field: string, op: string, value: unknown): MemoryQuery {
-    return new MemoryQuery(this.db, this.name, field, op, value)
-  }
-}
-
-class MemoryTransaction {
-  constructor(private readonly db: MemoryFirestore) {}
-
-  get(ref: MemoryDocumentReference): Promise<MemorySnapshot> {
-    return ref.get()
-  }
-
-  set(ref: MemoryDocumentReference, data: DocData): Promise<void> {
-    return ref.set(data)
-  }
-
-  update(ref: MemoryDocumentReference, patch: DocData): Promise<void> {
-    return ref.update(patch)
-  }
-}
-
-class MemoryFirestore {
-  readonly store = new Map<string, DocData>()
-
-  collection(name: string): MemoryCollectionReference {
-    return new MemoryCollectionReference(this, name)
-  }
-
-  async runTransaction<T>(op: (tx: MemoryTransaction) => Promise<T>): Promise<T> {
-    return await op(new MemoryTransaction(this))
-  }
-}
-
-function createDb(): Firestore {
-  return new MemoryFirestore() as unknown as Firestore
-}
-
-async function seedPendingDispatch(
-  db: Firestore,
-  dispatchId: string,
-  responderUid: string,
+async function seedReportAtStatusJS(
+  env: RulesTestEnvironment,
+  reportId: string,
+  status: string,
 ): Promise<void> {
-  await db
-    .collection('dispatches')
-    .doc(dispatchId)
-    .set({
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await setDoc(doc(db, 'reports', reportId), {
+      reportId,
+      status,
+      municipalityId: 'daet',
+      source: 'citizen_pwa',
+      severityDerived: 'medium',
+      createdAt: ts,
+      lastStatusAt: ts,
+      schemaVersion: 1,
+    })
+    await setDoc(doc(db, 'report_private', reportId), {
+      reportId,
+      reporterUid: 'reporter-1',
+      createdAt: ts,
+      schemaVersion: 1,
+    })
+    await setDoc(doc(db, 'report_ops', reportId), {
+      reportId,
+      verifyQueuePriority: 0,
+      assignedMunicipalityAdmins: [],
+      schemaVersion: 1,
+    })
+  })
+}
+
+async function seedDispatchJS(
+  env: RulesTestEnvironment,
+  dispatchId: string,
+  reportId: string,
+  responderUid: string,
+  status: string,
+): Promise<void> {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await setDoc(doc(db, 'dispatches', dispatchId), {
       dispatchId,
-      reportId: 'report-1',
-      status: 'pending',
+      reportId,
+      status,
       assignedTo: {
         uid: responderUid,
         agencyId: 'bfp-daet',
         municipalityId: 'daet',
       },
-      dispatchedAt: 1713350400000,
-      lastStatusAt: 1713350400000,
+      dispatchedAt: ts,
+      lastStatusAt: ts,
       schemaVersion: 1,
     })
+  })
 }
 
 describe('declineDispatchCore', () => {
   it('declines a pending dispatch with a required reason', async () => {
-    const db = createDb()
-    await seedPendingDispatch(db, 'dispatch-1', 'r1')
-
-    const result = await declineDispatchCore(db, {
-      dispatchId: 'dispatch-1',
-      declineReason: 'Already handling another incident',
-      idempotencyKey: crypto.randomUUID(),
-      actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
-      now: Timestamp.now(),
+    await seedReportAtStatusJS(testEnv, 'report-1', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-1', 'report-1', 'r1', 'pending')
+    await seedActiveAccount(testEnv, {
+      uid: 'r1',
+      role: 'responder',
+      municipalityId: 'daet',
     })
 
-    expect(result.status).toBe('declined')
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore
+      const result = await declineDispatchCore(db, {
+        dispatchId: 'dispatch-1',
+        declineReason: 'Already handling another incident',
+        idempotencyKey: crypto.randomUUID(),
+        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+        now: Timestamp.now(),
+      })
 
-    const dispatch = (await db.collection('dispatches').doc('dispatch-1').get()).data()
-    expect(dispatch).toMatchObject({
-      status: 'declined',
-      declineReason: 'Already handling another incident',
-    })
+      expect(result.status).toBe('declined')
 
-    const evts = await db
-      .collection('dispatch_events')
-      .where('dispatchId', '==', 'dispatch-1')
-      .get()
-    expect(evts.docs).toHaveLength(1)
-    const [firstEvt] = evts.docs
-    expect(firstEvt).toBeDefined()
-    expect(firstEvt!.data()).toMatchObject({
-      from: 'pending',
-      to: 'declined',
-      actorUid: 'r1',
+      const dispatch = (await db.collection('dispatches').doc('dispatch-1').get()).data()
+      expect(dispatch).toMatchObject({
+        status: 'declined',
+        declineReason: 'Already handling another incident',
+      })
+
+      const evts = await db
+        .collection('dispatch_events')
+        .where('dispatchId', '==', 'dispatch-1')
+        .get()
+      expect(evts.docs).toHaveLength(1)
+      const [firstEvt] = evts.docs
+      expect(firstEvt).toBeDefined()
+      expect(firstEvt!.data()).toMatchObject({
+        agencyId: 'bfp-daet',
+        municipalityId: 'daet',
+        dispatchId: 'dispatch-1',
+        reportId: 'report-1',
+        actor: 'r1',
+        actorRole: 'responder',
+        fromStatus: 'pending',
+        toStatus: 'declined',
+        reason: 'Already handling another incident',
+        schemaVersion: 1,
+      })
     })
   })
 
   it('rejects when declineReason is blank', async () => {
-    const db = createDb()
-    await seedPendingDispatch(db, 'dispatch-2', 'r1')
+    await seedReportAtStatusJS(testEnv, 'report-2', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-2', 'report-2', 'r1', 'pending')
+    await seedActiveAccount(testEnv, {
+      uid: 'r1',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore
+      await expect(
+        declineDispatchCore(db, {
+          dispatchId: 'dispatch-2',
+          declineReason: '   ',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+    })
+  })
+
+  it('rejects when declineReason exceeds 200 characters', async () => {
+    await seedReportAtStatusJS(testEnv, 'report-2b', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-2b', 'report-2b', 'r1', 'pending')
+    await seedActiveAccount(testEnv, {
+      uid: 'r1',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
+
+    const callDeclineDispatch = declineDispatch as unknown as (request: {
+      auth: { uid: string; token: { role: string; accountStatus: 'active' } }
+      data: { dispatchId: string; declineReason: string; idempotencyKey: string }
+    }) => Promise<{ status: 'declined' }>
 
     await expect(
-      declineDispatchCore(db, {
-        dispatchId: 'dispatch-2',
-        declineReason: '   ',
-        idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
-        now: Timestamp.now(),
+      callDeclineDispatch({
+        auth: {
+          uid: 'r1',
+          token: { role: 'responder', accountStatus: 'active' },
+        },
+        data: {
+          dispatchId: 'dispatch-2b',
+          declineReason: 'x'.repeat(201),
+          idempotencyKey: crypto.randomUUID(),
+        },
       }),
-    ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+    ).rejects.toMatchObject({ code: 'invalid-argument' })
   })
 
   it('rejects when dispatch is not pending', async () => {
-    const db = createDb()
-    await db
-      .collection('dispatches')
-      .doc('dispatch-3')
-      .set({
-        dispatchId: 'dispatch-3',
-        reportId: 'report-1',
-        status: 'accepted',
-        assignedTo: {
-          uid: 'r1',
-          agencyId: 'bfp-daet',
-          municipalityId: 'daet',
-        },
-        dispatchedAt: 1713350400000,
-        lastStatusAt: 1713350400000,
-        schemaVersion: 1,
-      })
+    await seedReportAtStatusJS(testEnv, 'report-3', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-3', 'report-3', 'r1', 'accepted')
+    await seedActiveAccount(testEnv, {
+      uid: 'r1',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
 
-    await expect(
-      declineDispatchCore(db, {
-        dispatchId: 'dispatch-3',
-        declineReason: 'Too far away',
-        idempotencyKey: crypto.randomUUID(),
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore
+      await expect(
+        declineDispatchCore(db, {
+          dispatchId: 'dispatch-3',
+          declineReason: 'Too far away',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+    })
+  })
+
+  it('rejects when the dispatch is assigned to another responder', async () => {
+    await seedReportAtStatusJS(testEnv, 'report-4', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-4', 'report-4', 'r1', 'pending')
+    await seedActiveAccount(testEnv, {
+      uid: 'r2',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore
+      await expect(
+        declineDispatchCore(db, {
+          dispatchId: 'dispatch-4',
+          declineReason: 'Not my incident',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'r2', claims: { role: 'responder', municipalityId: 'daet' } },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
+  })
+
+  it('returns the same result without duplicating events when replayed with the same idempotency key', async () => {
+    await seedReportAtStatusJS(testEnv, 'report-5b', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-5b', 'report-5b', 'r1', 'pending')
+    await seedActiveAccount(testEnv, {
+      uid: 'r1',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore
+      const key = crypto.randomUUID()
+      const first = await declineDispatchCore(db, {
+        dispatchId: 'dispatch-5b',
+        declineReason: 'Already handling another incident',
+        idempotencyKey: key,
         actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
         now: Timestamp.now(),
+      })
+      const second = await declineDispatchCore(db, {
+        dispatchId: 'dispatch-5b',
+        declineReason: 'Already handling another incident',
+        idempotencyKey: key,
+        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+        now: Timestamp.now(),
+      })
+
+      expect(second).toEqual(first)
+
+      const evts = await db
+        .collection('dispatch_events')
+        .where('dispatchId', '==', 'dispatch-5b')
+        .get()
+      expect(evts.docs).toHaveLength(1)
+    })
+  })
+})
+
+describe('declineDispatch callable', () => {
+  it('wires App Check config and accepts an authenticated responder request', async () => {
+    expect(onCallMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        region: 'asia-southeast1',
+        enforceAppCheck: true,
+        timeoutSeconds: 10,
+        minInstances: 1,
       }),
-    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+      expect.any(Function),
+    )
+
+    await seedReportAtStatusJS(testEnv, 'report-5', 'assigned')
+    await seedDispatchJS(testEnv, 'dispatch-5', 'report-5', 'r1', 'pending')
+    await seedActiveAccount(testEnv, {
+      uid: 'r1',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
+
+    const callDeclineDispatch = declineDispatch as unknown as (request: {
+      auth: { uid: string; token: { role: string; accountStatus: 'active' } }
+      data: { dispatchId: string; declineReason: string; idempotencyKey: string }
+    }) => Promise<{ status: 'declined' }>
+
+    const result = await callDeclineDispatch({
+      auth: {
+        uid: 'r1',
+        token: { role: 'responder', accountStatus: 'active' },
+      },
+      data: {
+        dispatchId: 'dispatch-5',
+        declineReason: 'Already assigned to another incident',
+        idempotencyKey: crypto.randomUUID(),
+      },
+    })
+
+    expect(result).toMatchObject({ status: 'declined' })
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore
+      const dispatch = (await db.collection('dispatches').doc('dispatch-5').get()).data()
+      expect(dispatch).toMatchObject({
+        status: 'declined',
+        declineReason: 'Already assigned to another incident',
+      })
+    })
   })
 })

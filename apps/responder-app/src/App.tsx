@@ -1,7 +1,7 @@
 import './App.module.css'
 import { useEffect } from 'react'
 import { AppRouter } from './routes'
-import { useAuth } from './app/auth-provider'
+import { AuthProvider, useAuth } from './app/auth-provider'
 import { useRegisterFcmToken } from './hooks/useRegisterFcmToken'
 
 function FcmSetup() {
@@ -26,9 +26,9 @@ function FcmSetup() {
 
 export default function App() {
   return (
-    <>
+    <AuthProvider>
       <FcmSetup />
       <AppRouter />
-    </>
+    </AuthProvider>
   )
 }

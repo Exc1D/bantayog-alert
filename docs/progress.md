@@ -2,6 +2,28 @@
 
 ## Current
 
+### Phase 5 Responder MVP — dispatch loop slice (2026-04-23)
+
+- Status: in progress — Tasks 1-5 implemented and verified; E2E smoke fully green (9/9); Task 6 still only has skipped deep dispatch scenarios
+- Scope:
+  - backend responder decline callable with required reason + idempotency
+  - responder presentation helpers for queue grouping, collapsed UI state, and terminal surface mapping
+  - responder decline hook plus normalized queue/detail hooks
+  - queue/detail page wiring for auto-entry, decline form, and terminal cancelled/race-loss screens
+- Verification:
+  - `firebase emulators:exec --only firestore "pnpm --filter @bantayog/functions exec vitest run src/__tests__/callables/decline-dispatch.test.ts"` — PASS (7 tests)
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+  - `pnpm --filter @bantayog/shared-sms-parser typecheck` — PASS
+  - `pnpm --filter @bantayog/shared-sms-parser test` — PASS (13/13)
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+  - `firebase emulators:exec --project bantayog-alert-dev --only auth,firestore,pubsub "pnpm --filter @bantayog/e2e-tests exec playwright test specs/responder.spec.ts"` — PASS (9/9)
+- Notes:
+  - The responder smoke run now boots cleanly after fixing the Firestore rules compile error, adding a JS entrypoint for `@bantayog/shared-sms-parser`, and moving `FcmSetup` inside the responder `AuthProvider`.
+  - E2E harness fixes (2026-04-23): Firestore emulator port 8080→8081; `VITE_USE_EMULATOR=true` + `VITE_FIREBASE_PROJECT_ID=bantayog-alert-dev` added to `apps/responder-app/.env.local` so the browser SDK connects to the emulator instead of staging; `getIdTokenResult(true)` (force refresh) in `auth-provider.tsx` and `LoginPage.tsx`; cancelled-dispatch test now waits for the dispatch list heading before navigating to the detail route.
+  - The deeper dispatch scenarios in `e2e-tests/specs/responder.spec.ts` remain intentionally skipped for now.
+
 ### 3-Step Wizard Wiring — feature/3-step-wizard-wiring (2026-04-23)
 
 - Status: DONE locally — 3 commits on branch, ready for PR

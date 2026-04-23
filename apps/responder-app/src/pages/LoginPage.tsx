@@ -16,7 +16,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
-      const tokenResult = await cred.user.getIdTokenResult()
+      const tokenResult = await cred.user.getIdTokenResult(true)
       const role = (tokenResult.claims as Record<string, unknown> | undefined)?.role
       if (role !== 'responder') {
         const { signOut } = await import('firebase/auth')

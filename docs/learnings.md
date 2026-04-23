@@ -8,6 +8,8 @@ Durable rules worth keeping across sessions.
 - For behavior changes, get a real red test before implementation.
 - Don’t bundle unrelated fixes in the same branch or conversation.
 - After a squash merge, preserve or recreate a remote branch/ref before deleting it if the original commit history still matters; the content may be in `main` while the branch ancestry is gone.
+- Firestore emulator seeded writes will fail fast if the current rules file cannot compile; Playwright fixtures that depend on Firestore writes need the rules harness fixed first, not just a better seed helper.
+- A workspace package exported as TypeScript source can still break Firebase Functions emulator analysis even if Vitest can import it; give the emulator a real JS entrypoint.
 
 ## Firestore
 
@@ -31,6 +33,8 @@ Durable rules worth keeping across sessions.
 - Callable error handling should use the runtime client code (`not-found`) rather than the internal enum name; normalize the error code the client actually receives.
 - `waitFor(() => expect(...))` triggers `no-confusing-void-expression`; wrap the assertion body in braces.
 - Local dev should not hard-crash on missing Vite env vars if the screen can degrade gracefully; gate Firebase consumers and surface a clear inline message instead.
+- Functions emulator source analysis still follows workspace package entrypoints; exporting TypeScript sources from a package without a runtime JS build can break emulator startup before any test runs.
+- In a React shell, auth-dependent setup must render inside the `AuthProvider`; otherwise startup effects can crash the entire app before the router mounts.
 
 ## React
 

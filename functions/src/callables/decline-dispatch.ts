@@ -14,7 +14,7 @@ import { bantayogErrorToHttps, requireAuth } from './https-error.js'
 export const declineDispatchRequestSchema = z
   .object({
     dispatchId: z.string().min(1).max(128),
-    declineReason: z.string().trim().min(1),
+    declineReason: z.string().trim().min(1).max(200),
     idempotencyKey: z.uuid(),
   })
   .strict()
@@ -36,6 +36,7 @@ export async function declineDispatchCore(
   if (!normalizedDeclineReason) {
     throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'declineReason required')
   }
+  const correlationId = crypto.randomUUID()
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = {
@@ -78,17 +79,22 @@ export async function declineDispatchCore(
           status: 'declined',
           declineReason: normalizedDeclineReason,
           statusUpdatedAt: now.toMillis(),
-          lastStatusAt: now,
+          lastStatusAt: now.toMillis(),
         })
 
         transaction.set(db.collection('dispatch_events').doc(), {
           dispatchId,
-          from: dispatch.status,
-          to: 'declined',
-          actorUid: actor.uid,
+          reportId: dispatch.reportId,
+          actor: actor.uid,
           actorRole: actor.claims.role,
+          fromStatus: dispatch.status,
+          toStatus: 'declined',
           reason: normalizedDeclineReason,
           createdAt: now.toMillis(),
+          correlationId,
+          schemaVersion: 1,
+          agencyId: dispatch.assignedTo.agencyId,
+          municipalityId: dispatch.assignedTo.municipalityId,
         })
 
         return { status: 'declined' as const }
@@ -98,6 +104,33 @@ export async function declineDispatchCore(
   return result
 }
 
+export async function declineDispatchHandler(request: CallableRequest<unknown>) {
+  const actor = requireAuth(request, ['responder'])
+  if (actor.claims.accountStatus !== 'active') {
+    throw new HttpsError('permission-denied', 'account is not active')
+  }
+  const parsed = declineDispatchRequestSchema.safeParse(request.data)
+  if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
+
+  try {
+    return await declineDispatchCore(adminDb, {
+      dispatchId: parsed.data.dispatchId,
+      declineReason: parsed.data.declineReason,
+      idempotencyKey: parsed.data.idempotencyKey,
+      actor: {
+        uid: actor.uid,
+        claims: actor.claims as { role: string; municipalityId?: string },
+      },
+      now: Timestamp.now(),
+    })
+  } catch (error) {
+    if (error instanceof BantayogError) {
+      throw bantayogErrorToHttps(error)
+    }
+    throw error
+  }
+}
+
 export const declineDispatch = onCall(
   {
     region: 'asia-southeast1',
@@ -105,27 +138,5 @@ export const declineDispatch = onCall(
     timeoutSeconds: 10,
     minInstances: 1,
   },
-  async (request: CallableRequest<unknown>) => {
-    const actor = requireAuth(request, ['responder'])
-    const parsed = declineDispatchRequestSchema.safeParse(request.data)
-    if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
-
-    try {
-      return await declineDispatchCore(adminDb, {
-        dispatchId: parsed.data.dispatchId,
-        declineReason: parsed.data.declineReason,
-        idempotencyKey: parsed.data.idempotencyKey,
-        actor: {
-          uid: actor.uid,
-          claims: actor.claims as { role: string; municipalityId?: string },
-        },
-        now: Timestamp.now(),
-      })
-    } catch (error) {
-      if (error instanceof BantayogError) {
-        throw bantayogErrorToHttps(error)
-      }
-      throw error
-    }
-  },
+  declineDispatchHandler,
 )
