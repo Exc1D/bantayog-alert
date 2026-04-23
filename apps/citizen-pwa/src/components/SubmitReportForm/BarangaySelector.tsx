@@ -3,7 +3,7 @@ import { FALLBACK_BARANGAYS, MUNICIPALITY_LABELS } from './location-constants.js
 
 interface BarangaySelectorProps {
   municipalityId: string
-  value: string | undefined
+  value: string
   onChange: (barangayId: string) => void
 }
 
@@ -27,7 +27,7 @@ export function BarangaySelector({ municipalityId, value, onChange }: BarangaySe
       </p>
       <select
         className="text-select"
-        value={value ?? ''}
+        value={value}
         onChange={(e) => {
           onChange(e.target.value)
         }}

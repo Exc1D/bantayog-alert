@@ -36,10 +36,13 @@ describe('BarangaySelector', () => {
   it('shows optional label', () => {
     render(<BarangaySelector municipalityId="daet" value="" onChange={vi.fn()} />)
 
-    expect(
-      screen.getByText((content, element) => {
-        return element?.tagName.toLowerCase() === 'span' && content.includes('optional')
-      }),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/— optional/)).toBeInTheDocument()
+  })
+
+  it('reflects the value prop on the select element', () => {
+    render(<BarangaySelector municipalityId="daet" value="Bagasbas" onChange={vi.fn()} />)
+
+    const select = screen.getByRole('combobox')
+    expect(select).toHaveValue('Bagasbas')
   })
 })

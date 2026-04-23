@@ -48,4 +48,11 @@ describe('MunicipalitySelector', () => {
 
     expect(container.querySelector('.field-error')).not.toBeInTheDocument()
   })
+
+  it('reflects the value prop on the select element', () => {
+    render(<MunicipalitySelector value="daet" onChange={vi.fn()} />)
+
+    const select = screen.getByRole('combobox')
+    expect(select).toHaveValue('daet')
+  })
 })
