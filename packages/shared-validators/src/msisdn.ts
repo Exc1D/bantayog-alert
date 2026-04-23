@@ -6,7 +6,8 @@ const _nodeCrypto: { createHash: typeof CreateHashFn } | null = (() => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('node:crypto') as { createHash: typeof CreateHashFn }
-  } catch {
+  } catch (_err: unknown) {
+    void _err
     return null
   }
 })()

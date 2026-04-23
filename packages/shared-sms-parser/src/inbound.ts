@@ -42,8 +42,8 @@ function getBarangayGazetteer(): BarangayEntry[] {
     if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
       return mod.BARANGAY_GAZETTEER as BarangayEntry[]
     }
-  } catch {
-    // shared-data not yet populated — use fallback
+  } catch (_err: unknown) {
+    void _err // shared-data not yet populated — use fallback
   }
   return FALLBACK_BARANGAYS
 }
