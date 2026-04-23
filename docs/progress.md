@@ -2,9 +2,31 @@
 
 ## Current
 
+### Phase 5 Responder MVP — PR #60 review fixes (2026-04-23)
+
+- Status: DONE — all CodeRabbit + CodeQL review comments addressed
+- Files changed:
+  - `apps/responder-app/src/app/await-auth-token.ts` — fix hanging promise: moved `getIdToken(true)` inside Promise constructor, rejects on error
+  - `apps/responder-app/src/app/auth-provider.tsx` — add `active` flag + uid guard to prevent stale promise overwriting state after auth change
+  - `apps/responder-app/src/hooks/useAcceptDispatch.ts` — null check on `awaitFreshAuthToken` return before callable
+  - `apps/responder-app/src/hooks/useDeclineDispatch.ts` — same null check
+  - `apps/responder-app/src/hooks/useAdvanceDispatch.ts` — same null check
+  - `apps/responder-app/src/hooks/useDispatch.ts` — derive `schemaKeys` from `dispatchDocSchema.shape` instead of hardcoded list
+  - `apps/responder-app/src/pages/DispatchDetailPage.tsx` — retry button now visible when `status=accepted && advanceState.error`; removed false `permission-denied`→"cancelled by admin" mapping
+  - `packages/shared-sms-parser/index.js` — remove unused `reportTypeSchema`+`z` import; add `typeof body !== 'string'` guard; narrow `getBarangayGazetteer` catch to `MODULE_NOT_FOUND` only
+  - `functions/src/__tests__/triggers/dispatch-mirror-to-report.test.ts` — use named app instance; replace `.resolves.not.toThrow()` with direct `await`
+  - `docs/reviews/2026-04-23-phase5-responder-mvp-review.md` — add `text` language specifier to code fence
+  - `pnpm-lock.yaml` — regenerated after `@bantayog/shared-validators` was added to e2e-tests (fixes CI `ERR_PNPM_OUTDATED_LOCKFILE`)
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+  - `pnpm --filter @bantayog/shared-sms-parser test` — PASS (13/13)
+
 ### Phase 5 Responder MVP — dispatch loop slice (2026-04-23)
 
-- Status: in progress — Tasks 1-5 implemented and verified; E2E smoke fully green (9/9); Task 6 still only has skipped deep dispatch scenarios
+- Status: DONE locally — responder callable, decline flow, and Playwright smoke are verified; deep dispatch scenarios remain intentionally skipped
 - Scope:
   - backend responder decline callable with required reason + idempotency
   - responder presentation helpers for queue grouping, collapsed UI state, and terminal surface mapping
@@ -18,11 +40,12 @@
   - `pnpm --filter @bantayog/shared-sms-parser test` — PASS (13/13)
   - `pnpm --filter @bantayog/responder-app typecheck` — PASS
   - `pnpm --filter @bantayog/responder-app lint` — PASS
-  - `firebase emulators:exec --project bantayog-alert-dev --only auth,firestore,pubsub "pnpm --filter @bantayog/e2e-tests exec playwright test specs/responder.spec.ts"` — PASS (9/9)
+  - `firebase emulators:exec --project bantayog-alert-dev --only auth,functions,firestore,pubsub "pnpm --filter @bantayog/e2e-tests exec playwright test specs/responder.spec.ts"` — PASS (6 passed, 4 skipped)
 - Notes:
-  - The responder smoke run now boots cleanly after fixing the Firestore rules compile error, adding a JS entrypoint for `@bantayog/shared-sms-parser`, and moving `FcmSetup` inside the responder `AuthProvider`.
+  - The responder smoke run now boots cleanly after fixing the Firestore rules compile error, adding a JS entrypoint for `@bantayog/shared-sms-parser`, moving `FcmSetup` inside the responder `AuthProvider`, and fixing the callable idempotency hash path to use async Web Crypto.
   - E2E harness fixes (2026-04-23): Firestore emulator port 8080→8081; `VITE_USE_EMULATOR=true` + `VITE_FIREBASE_PROJECT_ID=bantayog-alert-dev` added to `apps/responder-app/.env.local` so the browser SDK connects to the emulator instead of staging; `getIdTokenResult(true)` (force refresh) in `auth-provider.tsx` and `LoginPage.tsx`; cancelled-dispatch test now waits for the dispatch list heading before navigating to the detail route.
   - The deeper dispatch scenarios in `e2e-tests/specs/responder.spec.ts` remain intentionally skipped for now.
+  - Post-remediation fix (2026-04-23): E2E decline test was failing with `FirebaseError: internal` because `functions/lib/callables/decline-dispatch.js` had a stale `enforceAppCheck: true` — the source had been changed to `process.env.NODE_ENV === 'production'` but functions were never rebuilt. Fix: `pnpm --filter @bantayog/functions build`. All 6 E2E tests now pass again.
 
 ### 3-Step Wizard Wiring — feature/3-step-wizard-wiring (2026-04-23)
 

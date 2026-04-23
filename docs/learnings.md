@@ -10,6 +10,9 @@ Durable rules worth keeping across sessions.
 - After a squash merge, preserve or recreate a remote branch/ref before deleting it if the original commit history still matters; the content may be in `main` while the branch ancestry is gone.
 - Firestore emulator seeded writes will fail fast if the current rules file cannot compile; Playwright fixtures that depend on Firestore writes need the rules harness fixed first, not just a better seed helper.
 - A workspace package exported as TypeScript source can still break Firebase Functions emulator analysis even if Vitest can import it; give the emulator a real JS entrypoint.
+- Idempotency hashing that runs in callable code must be async and Web Crypto-safe; a `require('node:crypto')` fallback can fail under ESM/browser bundling even when the code works in unit tests.
+- When a callable looks like an auth or App Check problem, verify the initialized functions region before chasing browser state; a region mismatch can produce misleading unauthenticated failures.
+- **Stale compiled functions binary is the first thing to check when `FirebaseError: internal` appears in E2E but unit tests pass.** The emulator runs `functions/lib/`, not `functions/src/`. If source was changed (e.g. `enforceAppCheck`) but `pnpm --filter @bantayog/functions build` was not re-run, the emulator silently enforces the old setting. Fix: rebuild before running `firebase emulators:exec`.
 
 ## Firestore
 
@@ -49,6 +52,12 @@ Durable rules worth keeping across sessions.
 - Use `catch (err: unknown)` and narrow explicitly.
 - Avoid `any`; prefer real types or `unknown`.
 - With `exactOptionalPropertyTypes`, omit optional keys entirely instead of assigning `undefined`.
+
+## Auth / Async
+
+- In Firebase Auth `onAuthStateChanged`, the promise started by `getIdTokenResult(true)` can resolve after a later auth change. Guard all `.then`/`.catch`/`.finally` handlers with an `active` flag (closed over from `useEffect`) and a `uid` check (`auth.currentUser?.uid !== capturedUid`) before calling `setClaims`/`setLoading`.
+- `awaitFreshAuthToken` built on `onIdTokenChanged` must start `getIdToken(true)` **inside** the Promise constructor (not after it) so a rejection can call `unsubscribe()` and `reject()` rather than leaving the promise hanging forever.
+- Always check the `null` return of `awaitFreshAuthToken` before invoking an `httpsCallable`; a missing `currentUser` means no auth header and the callable will fail with an opaque error.
 
 ## Misc
 

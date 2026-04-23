@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { functions } from '../app/firebase'
+import { auth, functions } from '../app/firebase'
+import { awaitFreshAuthToken } from '../app/await-auth-token'
 import type { DispatchStatus } from '@bantayog/shared-types'
 import type { AdvanceDispatchRequest, AdvanceDispatchTarget } from '@bantayog/shared-validators'
 
@@ -16,6 +17,8 @@ export function useAdvanceDispatch(dispatchId: string) {
         if (to === 'resolved' && !extras?.resolutionSummary) {
           throw new Error('resolutionSummary_required')
         }
+        const user = await awaitFreshAuthToken(auth)
+        if (!user) throw new Error('auth_required')
         const advanceDispatch = httpsCallable<AdvanceDispatchRequest, { status: DispatchStatus }>(
           functions,
           'advanceDispatch',
@@ -27,6 +30,7 @@ export function useAdvanceDispatch(dispatchId: string) {
           idempotencyKey: crypto.randomUUID(),
         })
       } catch (err: unknown) {
+        console.error('[useAdvanceDispatch] advance failed:', err)
         if (err instanceof Error) setError(err)
         else setError(new Error(String(err)))
       } finally {

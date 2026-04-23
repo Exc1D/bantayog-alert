@@ -8,8 +8,9 @@ import {
   type DispatchDoc,
   invalidTransitionError,
 } from '@bantayog/shared-validators'
-import { withIdempotency } from '../idempotency/guard.js'
+import { IdempotencyMismatchError, withIdempotency } from '../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from './https-error.js'
+import { checkRateLimit } from '../services/rate-limit.js'
 
 export const declineDispatchRequestSchema = z
   .object({
@@ -25,6 +26,29 @@ export interface DeclineDispatchCoreDeps {
   idempotencyKey: string
   actor: { uid: string; claims: { role: string; municipalityId?: string } }
   now: Timestamp
+}
+
+function hasValidAssignedResponder(
+  assignedTo: unknown,
+): assignedTo is { uid: string; agencyId: string; municipalityId: string } {
+  if (!assignedTo || typeof assignedTo !== 'object') {
+    return false
+  }
+
+  const candidate = assignedTo as {
+    uid?: unknown
+    agencyId?: unknown
+    municipalityId?: unknown
+  }
+
+  return (
+    typeof candidate.uid === 'string' &&
+    candidate.uid.length > 0 &&
+    typeof candidate.agencyId === 'string' &&
+    candidate.agencyId.length > 0 &&
+    typeof candidate.municipalityId === 'string' &&
+    candidate.municipalityId.length > 0
+  )
 }
 
 export async function declineDispatchCore(
@@ -51,8 +75,21 @@ export async function declineDispatchCore(
       payload: idempotentPayload,
       now: () => now.toMillis(),
     },
-    async () =>
-      db.runTransaction(async (transaction) => {
+    async () => {
+      const rl = await checkRateLimit(db, {
+        key: `decline::${actor.uid}`,
+        limit: 30,
+        windowSeconds: 60,
+        now,
+        updatedAt: now.toMillis(),
+      })
+      if (!rl.allowed) {
+        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
+          retryAfterSeconds: rl.retryAfterSeconds,
+        })
+      }
+
+      return db.runTransaction(async (transaction) => {
         const dispatchRef = db.collection('dispatches').doc(dispatchId)
         const dispatchSnap = await transaction.get(dispatchRef)
 
@@ -61,8 +98,14 @@ export async function declineDispatchCore(
         }
 
         const dispatch = dispatchSnap.data() as DispatchDoc
+        const assignedTo = hasValidAssignedResponder(
+          (dispatch as { assignedTo?: unknown }).assignedTo,
+        )
+          ? (dispatch as { assignedTo: { uid: string; agencyId: string; municipalityId: string } })
+              .assignedTo
+          : null
 
-        if (actor.claims.role !== 'responder' || dispatch.assignedTo.uid !== actor.uid) {
+        if (actor.claims.role !== 'responder' || assignedTo?.uid !== actor.uid) {
           throw new BantayogError(
             BantayogErrorCode.FORBIDDEN,
             'Only assigned responder can decline',
@@ -93,12 +136,13 @@ export async function declineDispatchCore(
           createdAt: now.toMillis(),
           correlationId,
           schemaVersion: 1,
-          agencyId: dispatch.assignedTo.agencyId,
-          municipalityId: dispatch.assignedTo.municipalityId,
+          agencyId: assignedTo.agencyId,
+          municipalityId: assignedTo.municipalityId,
         })
 
         return { status: 'declined' as const }
-      }),
+      })
+    },
   )
 
   return result
@@ -127,6 +171,9 @@ export async function declineDispatchHandler(request: CallableRequest<unknown>) 
     if (error instanceof BantayogError) {
       throw bantayogErrorToHttps(error)
     }
+    if (error instanceof IdempotencyMismatchError) {
+      throw new HttpsError('already-exists', 'duplicate request with different payload')
+    }
     throw error
   }
 }
@@ -134,7 +181,7 @@ export async function declineDispatchHandler(request: CallableRequest<unknown>) 
 export const declineDispatch = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: process.env.NODE_ENV === 'production',
     timeoutSeconds: 10,
     minInstances: 1,
   },

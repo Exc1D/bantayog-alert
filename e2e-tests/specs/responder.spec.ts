@@ -55,18 +55,14 @@ test.describe('responder PWA', () => {
   })
 
   test.describe('dispatch detail and status progression', () => {
-    test('accepts a pending dispatch', async () => {
-      // Requires seeded pending dispatch
-    })
-    test('advances from acknowledged to en_route', async () => {
-      // Requires seeded acknowledged dispatch
-    })
-    test('advances from en_route to on_scene', async () => {
-      // Requires seeded en_route dispatch
-    })
-    test('resolves a dispatch from on_scene', async () => {
-      // Requires seeded on_scene dispatch
-    })
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    test.skip('accepts a pending dispatch', async () => {})
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    test.skip('advances from acknowledged to en_route', async () => {})
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    test.skip('advances from en_route to on_scene', async () => {})
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    test.skip('resolves a dispatch from on_scene', async () => {})
     test('cancelled dispatch shows cancelled screen', async ({ page }) => {
       await seedResponderDispatch('cancelled')
       await page.goto(RESPONDER_BASE)
@@ -79,6 +75,22 @@ test.describe('responder PWA', () => {
       await expect(
         page.getByRole('heading', { name: /this dispatch was cancelled/i }),
       ).toBeVisible()
+    })
+    test('declines a pending dispatch with a reason', async ({ page }) => {
+      await page.goto(RESPONDER_BASE)
+      await page.getByLabel(/email/i).fill('bfp-responder-test-01@test.local')
+      await page.getByLabel(/password/i).fill('test123456')
+      await page.getByRole('button', { name: /sign in/i }).click()
+      await expect(page.getByRole('heading', { name: /your dispatches/i })).toBeVisible()
+
+      await page.getByRole('link', { name: /pending/i }).click()
+      await expect(page.getByRole('heading', { name: /dispatch dispatch-1/i })).toBeVisible()
+
+      await page.getByPlaceholder(/decline reason/i).fill('Already handling another incident')
+      await page.getByRole('button', { name: /submit decline/i }).click()
+
+      await expect(page.getByText(/status: terminal/i)).toBeVisible()
+      await expect(page.getByRole('button', { name: /submit decline/i })).toBeHidden()
     })
   })
 })

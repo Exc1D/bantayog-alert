@@ -10,6 +10,14 @@ export function DispatchListPage() {
   const activeDispatchId =
     groups.active.length === 1 ? (groups.active[0]?.dispatchId ?? null) : null
 
+  async function handleSignOut() {
+    try {
+      await signOut()
+    } catch (err) {
+      console.error('[DispatchListPage] sign out failed:', err)
+    }
+  }
+
   useEffect(() => {
     if (activeDispatchId) {
       void navigate(`/dispatches/${activeDispatchId}`, { replace: true })
@@ -20,7 +28,7 @@ export function DispatchListPage() {
     <main>
       <header>
         <h1>Your dispatches</h1>
-        <button onClick={() => void signOut()}>Sign out</button>
+        <button onClick={() => void handleSignOut()}>Sign out</button>
       </header>
       {error && <p style={{ color: 'red' }}>Failed to load dispatches: {error}</p>}
       {rows.length === 0 ? (

@@ -25,7 +25,7 @@ export async function withIdempotency<TPayload, TResult>(
   op: () => Promise<TResult>,
 ): Promise<{ result: TResult; fromCache: boolean }> {
   const now = opts.now ?? (() => Date.now())
-  const hash = canonicalPayloadHash(opts.payload)
+  const hash = await canonicalPayloadHash(opts.payload)
   const keyRef = db.collection('idempotency_keys').doc(opts.key)
 
   const cached = await db.runTransaction(async (tx) => {

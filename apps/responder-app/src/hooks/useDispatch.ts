@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../app/firebase'
-import type { DispatchStatus } from '@bantayog/shared-types'
+import {
+  dispatchDocSchema,
+  type DispatchDoc as SharedDispatchDoc,
+} from '@bantayog/shared-validators'
 import {
   getResponderUiState,
   getTerminalSurface,
@@ -9,33 +12,53 @@ import {
   type TerminalSurface,
 } from '../lib/dispatch-presentation'
 
-export interface DispatchDoc {
+export type DispatchDoc = SharedDispatchDoc & {
   dispatchId: string
-  reportId: string
-  assignedTo: { uid: string; agencyId: string; municipalityId: string }
-  dispatchedBy: string
-  dispatchedByRole: string
-  dispatchedAt: number
-  status: DispatchStatus
-  lastStatusAt: number
-  acknowledgementDeadlineAt?: number
-  acknowledgedAt?: number
-  enRouteAt?: number
-  onSceneAt?: number
-  resolvedAt?: number
-  cancelledAt?: number
-  cancelledBy?: string
-  cancelReason?: string
-  declineReason?: string
-  resolutionSummary?: string
-  proofPhotoUrl?: string
-  requestedByMunicipalAdmin?: boolean
-  requestId?: string
-  idempotencyKey?: string
-  idempotencyPayloadHash?: string
-  schemaVersion?: number
   uiStatus: ResponderUiState
   terminalSurface: TerminalSurface
+}
+
+function toMillis(value: unknown): number | undefined {
+  if (typeof value === 'number') return value
+  if (value && typeof value === 'object' && 'toMillis' in value) {
+    const candidate = value as { toMillis: () => number }
+    if (typeof candidate.toMillis === 'function') {
+      return candidate.toMillis()
+    }
+  }
+  return undefined
+}
+
+function normalizeDispatchSnapshot(data: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {}
+  // Derived from dispatchDocSchema.shape so this list stays in sync with shared-validators
+  const schemaKeys = Object.keys(dispatchDocSchema.shape)
+
+  for (const key of schemaKeys) {
+    if (key in data) {
+      normalized[key] = data[key]
+    }
+  }
+
+  const millisFields = [
+    'dispatchedAt',
+    'statusUpdatedAt',
+    'acknowledgementDeadlineAt',
+    'acknowledgedAt',
+    'enRouteAt',
+    'onSceneAt',
+    'resolvedAt',
+    'cancelledAt',
+  ] as const
+
+  for (const field of millisFields) {
+    const value = toMillis(normalized[field])
+    if (typeof value === 'number') {
+      normalized[field] = value
+    }
+  }
+
+  return normalized
 }
 
 export function useDispatch(dispatchId: string | undefined) {
@@ -47,6 +70,7 @@ export function useDispatch(dispatchId: string | undefined) {
     if (!dispatchId) {
       queueMicrotask(() => {
         setDispatch(undefined)
+        setError(undefined)
         setLoading(false)
       })
       return
@@ -54,22 +78,34 @@ export function useDispatch(dispatchId: string | undefined) {
     const unsub = onSnapshot(
       doc(db, 'dispatches', dispatchId),
       (snap) => {
-        if (!snap.exists()) {
-          setDispatch(undefined)
-        } else {
-          const data = snap.data()
-          const status = data.status as DispatchStatus
+        try {
+          if (!snap.exists()) {
+            setDispatch(undefined)
+            setError(undefined)
+            return
+          }
+
+          const parsed = dispatchDocSchema.parse(
+            normalizeDispatchSnapshot(snap.data() as Record<string, unknown>),
+          )
           setDispatch({
-            ...(data as Omit<DispatchDoc, 'dispatchId' | 'uiStatus' | 'terminalSurface'>),
+            ...parsed,
             dispatchId: snap.id,
-            status,
-            uiStatus: getResponderUiState(status),
-            terminalSurface: getTerminalSurface(status),
+            uiStatus: getResponderUiState(parsed.status),
+            terminalSurface: getTerminalSurface(parsed.status),
           })
+          setError(undefined)
+        } catch (err: unknown) {
+          console.error('[useDispatch] snapshot mapping failed:', err)
+          setDispatch(undefined)
+          setError(err instanceof Error ? err : new Error(String(err)))
+        } finally {
+          setLoading(false)
         }
-        setLoading(false)
       },
       (err) => {
+        const error = err as { code?: string; message?: string }
+        console.error('[useDispatch] listener error:', error.code, error.message)
         setError(err as Error)
         setLoading(false)
       },
