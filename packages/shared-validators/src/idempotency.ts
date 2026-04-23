@@ -28,19 +28,33 @@ export async function canonicalPayloadHash(payload: unknown): Promise<string> {
   }
   const canonical = canonicalize(payload)
   const json = JSON.stringify(canonical)
-  const digest = await subtle.digest('SHA-256', new TextEncoder().encode(json))
+  let digest: ArrayBuffer
+  try {
+    digest = await subtle.digest('SHA-256', new TextEncoder().encode(json))
+  } catch {
+    throw new Error(
+      'Web Crypto API (globalThis.crypto.subtle.digest) failed. ' +
+        'This may indicate an unsupported environment or misconfigured crypto provider.',
+    )
+  }
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-function canonicalize(value: unknown): unknown {
+function canonicalize(value: unknown, seen = new WeakSet()): unknown {
   if (value === undefined) {
     throw new TypeError('undefined is not supported in idempotency payloads')
   }
   if (value === null || typeof value !== 'object') {
     return value
   }
+  if (seen.has(value)) {
+    throw new TypeError('Circular reference detected in idempotency payload')
+  }
+  seen.add(value)
   if (Array.isArray(value)) {
-    return value.map(canonicalize)
+    const result = value.map((item) => canonicalize(item, seen))
+    seen.delete(value)
+    return result
   }
   // Reject non-plain objects to prevent silent hash collisions.
   // Map, Set, and RegExp all return [] from Object.keys() and would
@@ -52,7 +66,8 @@ function canonicalize(value: unknown): unknown {
   const sortedKeys = Object.keys(record).sort()
   const result: Record<string, unknown> = {}
   for (const key of sortedKeys) {
-    result[key] = canonicalize(record[key])
+    result[key] = canonicalize(record[key], seen)
   }
+  seen.delete(value)
   return result
 }

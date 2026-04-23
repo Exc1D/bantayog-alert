@@ -44,6 +44,9 @@ export function hashMsisdn(normalizedMsisdn, salt) {
     if (!/^\+639\d{9}$/.test(normalizedMsisdn)) {
         throw new Error(`hashMsisdn requires normalized MSISDN, got: ${normalizedMsisdn}`);
     }
+    if (typeof salt !== 'string' || salt.length < 16) {
+        throw new Error(`hashMsisdn requires a salt of at least 16 characters, got length: ${String(salt.length)}`);
+    }
     return _nodeCrypto
         .createHash('sha256')
         .update(salt + normalizedMsisdn)
