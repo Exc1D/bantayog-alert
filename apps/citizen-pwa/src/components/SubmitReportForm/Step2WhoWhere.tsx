@@ -626,7 +626,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
             </p>
           </div>
 
-          <div className="field-group">
+          <div className="field-group field-group--urgent">
             <p className="field-label">
               Is anyone hurt?
               <em className="field-label-optional"> May injured ba?</em>
