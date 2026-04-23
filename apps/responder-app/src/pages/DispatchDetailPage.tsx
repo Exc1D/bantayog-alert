@@ -89,6 +89,13 @@ function getActionErrorMessage(error: Error | undefined): string | null {
   if (code === 'functions/failed-precondition') {
     return 'This action is no longer allowed from the current dispatch state.'
   }
+  // Client-side validation errors from hooks
+  if (error.message === 'auth_required') {
+    return 'You must be signed in to perform this action.'
+  }
+  if (error.message === 'resolutionSummary_required') {
+    return 'Please provide a resolution summary before completing this action.'
+  }
   return 'Something went wrong. Please retry.'
 }
 
