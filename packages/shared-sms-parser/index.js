@@ -3,8 +3,6 @@ import { z } from 'zod'
 
 const require = createRequire(import.meta.url)
 
-const reportTypeSchema = z.enum(['flood', 'fire', 'landslide', 'accident', 'medical', 'other'])
-
 const FALLBACK_BARANGAYS = [
   { name: 'Alcoc', municipality: 'Alcoc' },
   { name: 'Alcoy', municipality: 'Alcoy' },
