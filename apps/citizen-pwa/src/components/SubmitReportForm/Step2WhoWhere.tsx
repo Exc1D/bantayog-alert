@@ -627,7 +627,10 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
           </div>
 
           <div className="field-group">
-            <p className="field-label">Is anyone hurt?</p>
+            <p className="field-label">
+              Is anyone hurt?
+              <em className="field-label-optional"> May injured ba?</em>
+            </p>
             <div className="toggle-group">
               <button
                 type="button"
