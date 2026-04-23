@@ -28,7 +28,7 @@ describe('parseInboundSms', () => {
   })
 
   it('returns candidates on ambiguous barangay match', () => {
-    const result = parseInboundSms('BANTAYOG FLOOD DA')
+    const result = parseInboundSms('BANTAYOG FLOOD LANG')
     expect(result.confidence).toBe('low')
     expect(result.candidates.length).toBeGreaterThan(0)
     expect(result.parsed).toBeNull()
@@ -70,7 +70,7 @@ describe('parseInboundSms', () => {
   })
 
   it('parses accident synonym AKSIDENTE', () => {
-    const result = parseInboundSms('BANTAYOG AKSIDENTE NAMOC')
+    const result = parseInboundSms('BANTAYOG AKSIDENTE ANAHAW')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('accident')
   })
