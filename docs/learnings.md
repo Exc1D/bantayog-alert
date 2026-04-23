@@ -64,3 +64,11 @@ Durable rules worth keeping across sessions.
 
 - `navigator.clipboard` in happy-dom often needs to be defined as an own property before spying.
 - Risky backend changes need emulator verification first and should not go to prod in the same session.
+
+## Refactoring / Monorepo Hygiene
+
+- When extracting a module and renaming the original file (e.g., `inbound.ts` → `parser.ts`), stale build artifacts (`lib/inbound.js`, `.d.ts`, `.map`) must be manually removed or they will confuse future readers and tooling.
+- Consolidating duplicated React components across apps into a shared package requires adding the consuming app's runtime dependencies (e.g., `firebase`, `react-router-dom`) as `peerDependencies` in the shared package; otherwise typecheck passes locally but breaks in isolation.
+- A shared `AuthProvider` that uses `Record<string, unknown>` for claims pushes type-narrowing burden to every consumer. This is acceptable for a shared boundary, but consumers should validate with `typeof` checks rather than casting.
+- `useCallback` is required for functions exposed through context (like `refreshClaims` and `signOut`) to prevent infinite re-render loops in consumers that include them in `useEffect` dependency arrays.
+- When mocking Firebase Auth's `onAuthStateChanged` with `vi.mock('firebase/auth', ...)`, the mock must return an unsubscribe function; the real `onAuthStateChanged` is a module-level function, not a method on the `Auth` instance.

@@ -2,6 +2,57 @@
 
 ## Current
 
+### Refactor Audit 2026-04-23 — Implementation Continuation (2026-04-24)
+
+**Branch:** `refactor/audit-2026-04-23-continuation`
+
+**Completed Items:**
+
+- **P1 #3:** `inbound.ts` split into modules — `parser.ts` (192 lines), `gazetteer.ts`, `levenshtein.ts`, `auto-reply.ts`. All 6 `@ts-expect-error` comments eliminated. Stale `lib/inbound.js` build artifacts cleaned up.
+- **P1 #4:** `dispatch-responder.ts` extraction — validation (`dispatch-responder-validation.ts`), notification (`dispatch-responder-notify.ts`), Firestore writes (`dispatch-responder-writes.ts`). Added `municipalityId` runtime validation and fixed spread-order bug in validatedResponder.
+- **P2 #7:** Standardized all remaining implicit-any catch patterns — 14 occurrences across 10 production source files converted to `catch (err: unknown)` / `catch (error: unknown)`. One missed occurrence in `sms-inbound-processor.ts:184` also fixed.
+- **P2 #8:** Replaced `console.log` with `console.info` in `shared-validators/src/logging.ts` with clarifying comment about Cloud Functions stdout ingestion.
+- **P3 #9:** Confirmed `batchResponse: any` already removed from `fcm-send.ts`; no source `any` types remain in production code.
+- **P3 #10:** Converted TODO to `TICKET(BANTAYOG-PHASE6)` with deferral rationale.
+- **P2 #6:** Consolidated auth provider + protected route into `shared-ui` — new `AuthProvider` (with `active` guard, `refreshClaims`, `useCallback` memoization) and `ProtectedRoute` (configurable via `allowedRoles`, `requireActive`, `requireMunicipalityIdForRoles` props). Updated both `admin-desktop` and `responder-app` to consume from `@bantayog/shared-ui`. Deleted 4 duplicated files.
+- **P2 #5 (shared-ui):** Added test infrastructure (vitest, testing-library, happy-dom) and 11 characterization tests for `AuthProvider` and `ProtectedRoute`.
+
+**Files Created:**
+
+- `packages/shared-ui/src/auth-provider.tsx`
+- `packages/shared-ui/src/protected-route.tsx`
+- `packages/shared-ui/src/auth-provider.test.tsx`
+- `packages/shared-ui/src/protected-route.test.tsx`
+- `packages/shared-ui/vitest.config.ts`
+- `functions/src/callables/dispatch-responder-validation.ts`
+- `functions/src/callables/dispatch-responder-notify.ts`
+- `functions/src/callables/dispatch-responder-writes.ts`
+
+**Files Deleted:**
+
+- `apps/admin-desktop/src/app/auth-provider.tsx`
+- `apps/admin-desktop/src/app/protected-route.tsx`
+- `apps/responder-app/src/app/auth-provider.tsx`
+- `apps/responder-app/src/app/protected-route.tsx`
+- `packages/shared-sms-parser/src/inbound.ts` (renamed to `parser.ts`)
+- `packages/shared-sms-parser/lib/inbound.js` (stale build artifact)
+- `packages/shared-sms-parser/lib/inbound.d.ts` (stale build artifact)
+
+**Verification:**
+
+- `npx turbo run lint typecheck` — PASS (25/25)
+- `pnpm --filter @bantayog/shared-sms-parser test` — PASS (13/13)
+- `pnpm --filter @bantayog/shared-ui test` — PASS (11/11)
+
+**Remaining (deferred to future sprints):**
+
+- `apps/admin-desktop` — 0 tests (LoginPage, TriageQueuePage, DispatchModal)
+- `apps/responder-app` — 1 test (DispatchListPage, DispatchDetailPage, useAcceptDispatch)
+- `packages/shared-data` — 0 tests
+- `packages/shared-types` — 0 tests
+
+---
+
 ### Step2WhoWhere Refactoring — Phase 3 & 4: Components & Simplification (2026-04-23)
 
 - Status: Phases 3-4 COMPLETE — integrated extracted components and simplified main component
