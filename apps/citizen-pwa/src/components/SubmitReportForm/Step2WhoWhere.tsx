@@ -367,13 +367,18 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   }, [])
 
   useEffect(() => {
-    const savedName = localStorage.getItem('bantayog.reporter.name')
-    const savedMsisdn = localStorage.getItem('bantayog.reporter.msisdn')
-    if (savedName || savedMsisdn) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (savedName) setReporterName(savedName)
-      if (savedMsisdn) setReporterMsisdn(savedMsisdn)
-      setHasMemory(true)
+    try {
+      const savedName = localStorage.getItem('bantayog.reporter.name')
+      // Phone is session-only to limit long-lived PII exposure
+      const savedMsisdn = sessionStorage.getItem('bantayog.reporter.msisdn')
+      if (savedName || savedMsisdn) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (savedName) setReporterName(savedName)
+        if (savedMsisdn) setReporterMsisdn(savedMsisdn)
+        setHasMemory(true)
+      }
+    } catch {
+      // Restricted/private mode — skip pre-fill silently
     }
   }, [])
 
@@ -411,8 +416,13 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       }
     }
 
-    localStorage.setItem('bantayog.reporter.name', reporterName)
-    localStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
+    try {
+      localStorage.setItem('bantayog.reporter.name', reporterName)
+      // Phone is session-only to limit long-lived PII exposure
+      sessionStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
+    } catch {
+      // Restricted/private mode — skip persist silently
+    }
 
     onNext({
       location: finalLocation ?? { lat: 0, lng: 0 },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType } from '@bantayog/shared-types'
@@ -72,7 +72,9 @@ function WizardContainer() {
     setDraftError(null)
 
     try {
-      const msisdnHash = await hashPhone(formData.step2.reporterMsisdn)
+      const msisdnHash = formData.step2.reporterMsisdn
+        ? await hashPhone(formData.step2.reporterMsisdn)
+        : undefined
       const photo = formData.step1.photoFile
         ? new Blob([await formData.step1.photoFile.arrayBuffer()], {
             type: formData.step1.photoFile.type,
@@ -81,13 +83,14 @@ function WizardContainer() {
 
       const created = await createDraft({
         reportType: formData.step1.reportType as ReportType,
-        barangay: formData.step2.municipalityLabel ?? '',
+        // barangayId holds the barangay name when selected; fall back to municipality label
+        barangay: formData.step2.barangayId ?? formData.step2.municipalityLabel ?? '',
         description:
           formData.step2.patientCount > 0 ? `Patients: ${String(formData.step2.patientCount)}` : '',
         severity: 'medium',
         location: formData.step2.location,
         reporterName: formData.step2.reporterName,
-        reporterMsisdnHash: msisdnHash,
+        ...(msisdnHash ? { reporterMsisdnHash: msisdnHash } : {}),
         clientDraftRef: crypto.randomUUID(),
         ...(formData.step2.barangayId ? { barangayId: formData.step2.barangayId } : {}),
         ...(formData.step2.nearestLandmark
@@ -179,6 +182,7 @@ function SubmissionPanel({
 }) {
   const nav = useNavigate()
   const [now] = useState(() => Date.now())
+  const hasAutoSubmittedRef = useRef(false)
   const machine = useSubmissionMachine({
     draft,
     onSuccess,
@@ -187,8 +191,11 @@ function SubmissionPanel({
     },
   })
 
-  // Auto-start: wizard already captured consent in Step3, no second confirm needed
+  // Auto-start: wizard captured consent in Step3, no second confirm needed.
+  // Ref guard prevents double-invocation under React Strict Mode.
   useEffect(() => {
+    if (hasAutoSubmittedRef.current) return
+    hasAutoSubmittedRef.current = true
     void machine.submit()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -225,6 +232,8 @@ function SubmissionPanel({
     )
   }
 
+  // RevealSheet has no failed_terminal variant; reuse failed_retryable messaging
+  // ("We couldn't send it yet") which is accurate for both retryable and terminal failures.
   if (machine.state === 'failed_terminal') {
     return (
       <RevealSheet

@@ -44,6 +44,8 @@ describe('App routes', () => {
   it('shows the report form at /report', async () => {
     await renderAppAt('/report')
     expect(screen.getByText('Report form')).toBeInTheDocument()
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
   })
 
   it('navigates between shell tabs', async () => {
