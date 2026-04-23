@@ -385,6 +385,8 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         (err.name === 'QuotaExceededError' || err.code === 22)
       ) {
         console.warn('[Step2WhoWhere] Storage quota exceeded, skipping pre-fill')
+      } else if (!(err instanceof DOMException && err.name === 'SecurityError')) {
+        console.warn('[Step2WhoWhere] Unexpected storage read error, skipping pre-fill', err)
       }
       // SecurityError (private mode) is intentionally silent
     }
@@ -435,6 +437,8 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         (err.name === 'QuotaExceededError' || err.code === 22)
       ) {
         console.warn('[Step2WhoWhere] Storage quota exceeded, skipping persist')
+      } else if (!(err instanceof DOMException && err.name === 'SecurityError')) {
+        console.warn('[Step2WhoWhere] Unexpected storage write error, skipping persist', err)
       }
       // SecurityError (private mode) is intentionally silent
     }
