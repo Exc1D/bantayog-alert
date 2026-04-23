@@ -89,6 +89,21 @@ describe('useGpsLocation', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
+  it('handles position unavailable (code 2)', async () => {
+    mockGetCurrentPosition.mockImplementation(
+      (_success: PositionCallback, error: PositionErrorCallback) => {
+        error({ code: 2 } as GeolocationPositionError)
+      },
+    )
+    const { result } = renderHook(() => useGpsLocation())
+    await act(async () => {
+      await result.current.attemptGps()
+    })
+    expect(result.current.locationError).toBe('Location unavailable. Choose municipality manually.')
+    expect(result.current.locationMethod).toBe('manual')
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('resetGps clears location, method, and error', async () => {
     mockGetCurrentPosition.mockImplementation((success: PositionCallback) => {
       success({

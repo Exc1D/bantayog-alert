@@ -52,6 +52,7 @@ export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult
       if (err && typeof err === 'object' && 'code' in err) {
         const code = (err as GeolocationPositionError).code
         if (code === 1) msg = 'Location access denied. Choose municipality manually.'
+        else if (code === 2) msg = 'Location unavailable. Choose municipality manually.'
         else if (code === 3) msg = 'Location timed out. Choose municipality manually.'
       }
       setLocationError(msg)
