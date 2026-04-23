@@ -6,7 +6,10 @@
   "main": "./index.js",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./index.js"
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./index.js"
+    }
   },
   "scripts": {
     "lint": "eslint src",
