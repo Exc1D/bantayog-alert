@@ -113,6 +113,7 @@ describe('useSubmissionMachine — state machine logic', () => {
       let state = 'failed_terminal'
       let retryCount = 3
       expect(state).toBe('failed_terminal')
+      expect(retryCount).toBe(3)
       // Simulating sendSmsFallback
       state = 'idle'
       retryCount = 0
