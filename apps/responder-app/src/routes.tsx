@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
-import { ProtectedRoute } from './app/protected-route'
+import { ProtectedRoute } from '@bantayog/shared-ui'
 import { LoginPage } from './pages/LoginPage'
 import { DispatchListPage } from './pages/DispatchListPage'
 import { DispatchDetailPage } from './pages/DispatchDetailPage'
@@ -9,7 +9,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={['responder']}>
         <DispatchListPage />
       </ProtectedRoute>
     ),
@@ -17,7 +17,7 @@ const router = createBrowserRouter([
   {
     path: '/dispatches/:dispatchId',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={['responder']}>
         <DispatchDetailPage />
       </ProtectedRoute>
     ),

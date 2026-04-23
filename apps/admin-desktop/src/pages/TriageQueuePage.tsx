@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../app/auth-provider'
+import { useAuth } from '@bantayog/shared-ui'
 import { useMuniReports } from '../hooks/useMuniReports'
 import { ReportDetailPanel } from './ReportDetailPanel'
 import { DispatchModal } from './DispatchModal'
@@ -8,7 +8,9 @@ import { callables } from '../services/callables'
 
 export function TriageQueuePage() {
   const { claims, signOut } = useAuth()
-  const { rows, loading, error } = useMuniReports(claims?.municipalityId)
+  const municipalityId =
+    typeof claims?.municipalityId === 'string' ? claims.municipalityId : undefined
+  const { rows, loading, error } = useMuniReports(municipalityId)
   const [selected, setSelected] = useState<string | null>(null)
   const [dispatchForReportId, setDispatchForReportId] = useState<string | null>(null)
   const [closeForReportId, setCloseForReportId] = useState<string | null>(null)
@@ -50,7 +52,7 @@ export function TriageQueuePage() {
   return (
     <main>
       <header>
-        <h1>Triage · {claims?.municipalityId ?? 'N/A'}</h1>
+        <h1>Triage · {municipalityId ?? 'N/A'}</h1>
         <button onClick={() => void signOut()}>Sign out</button>
       </header>
       {banner && <div role="alert">{banner}</div>}

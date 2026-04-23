@@ -22,8 +22,6 @@ export default tseslint.config(
       'scripts/**',
       // Plain-JS service worker — excluded from TypeScript project service.
       'apps/responder-app/public/firebase-messaging-sw.js',
-      // Plain-JS emulator shim — not in tsconfig rootDir, linted separately.
-      'packages/shared-sms-parser/index.js',
     ],
   },
 
