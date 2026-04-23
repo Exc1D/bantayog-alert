@@ -43,13 +43,15 @@ function getBarangayGazetteer(): BarangayEntry[] {
       return mod.BARANGAY_GAZETTEER as BarangayEntry[]
     }
   } catch (err: unknown) {
-    // Only suppress MODULE_NOT_FOUND errors; rethrow real failures
+    // Only suppress MODULE_NOT_FOUND for @bantayog/shared-data; rethrow all other failures
     const isModuleNotFound =
       typeof err === 'object' &&
       err !== null &&
       'code' in err &&
       (err as { code?: string }).code === 'MODULE_NOT_FOUND'
-    if (isModuleNotFound) {
+    const message = err instanceof Error ? err.message : ''
+    const isSharedDataLoadFailure = message.includes('@bantayog/shared-data')
+    if (isModuleNotFound && isSharedDataLoadFailure) {
       return FALLBACK_BARANGAYS
     }
     throw err
