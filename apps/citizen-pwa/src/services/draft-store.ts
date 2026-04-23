@@ -76,7 +76,8 @@ async function isBlobReadable(blob: Blob): Promise<boolean> {
   try {
     await blob.slice(0, 1).arrayBuffer()
     return true
-  } catch {
+  } catch (_err: unknown) {
+    void _err
     return false
   }
 }

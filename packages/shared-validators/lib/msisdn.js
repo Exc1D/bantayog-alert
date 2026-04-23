@@ -5,7 +5,8 @@ const _nodeCrypto = (() => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         return require('node:crypto');
     }
-    catch {
+    catch (_err) {
+        void _err;
         return null;
     }
 })();
@@ -42,6 +43,12 @@ export function hashMsisdn(normalizedMsisdn, salt) {
     }
     if (!/^\+639\d{9}$/.test(normalizedMsisdn)) {
         throw new Error(`hashMsisdn requires normalized MSISDN, got: ${normalizedMsisdn}`);
+    }
+    if (typeof salt !== 'string') {
+        throw new Error(`hashMsisdn requires a string salt, got type: ${typeof salt}`);
+    }
+    if (salt.length < 16) {
+        throw new Error(`hashMsisdn requires a salt of at least 16 characters, got length: ${String(salt.length)}`);
     }
     return _nodeCrypto
         .createHash('sha256')

@@ -15,24 +15,44 @@
  * @throws Error for circular references
  */
 export async function canonicalPayloadHash(payload) {
+    // Runtime check for Web Crypto API availability (may be missing in older Node.js or non-browser environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- TypeScript types don't reflect runtime reality
     const subtle = globalThis.crypto?.subtle;
-    if (!subtle) {
-        throw new Error('canonicalPayloadHash requires Web Crypto');
+    // Check for null/undefined AND that digest method exists (typeof null === 'object' is a JS quirk)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- subtle can be null at runtime despite types
+    if (!subtle || typeof subtle.digest !== 'function') {
+        throw new Error('Web Crypto API (globalThis.crypto.subtle) is not available in this environment. ' +
+            'This function requires a modern browser or Node.js 19+ with --experimental-global-webcrypto.');
     }
     const canonical = canonicalize(payload);
     const json = JSON.stringify(canonical);
-    const digest = await subtle.digest('SHA-256', new TextEncoder().encode(json));
+    let digest;
+    try {
+        digest = await subtle.digest('SHA-256', new TextEncoder().encode(json));
+    }
+    catch (err) {
+        const detail = err instanceof Error ? ` Cause: ${err.message}` : '';
+        throw new Error('Web Crypto API (globalThis.crypto.subtle.digest) failed. ' +
+            'This may indicate an unsupported environment or misconfigured crypto provider.' +
+            detail);
+    }
     return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
-function canonicalize(value) {
+function canonicalize(value, seen = new WeakSet()) {
     if (value === undefined) {
         throw new TypeError('undefined is not supported in idempotency payloads');
     }
     if (value === null || typeof value !== 'object') {
         return value;
     }
+    if (seen.has(value)) {
+        throw new TypeError('Circular reference detected in idempotency payload');
+    }
+    seen.add(value);
     if (Array.isArray(value)) {
-        return value.map(canonicalize);
+        const result = value.map((item) => canonicalize(item, seen));
+        seen.delete(value);
+        return result;
     }
     // Reject non-plain objects to prevent silent hash collisions.
     // Map, Set, and RegExp all return [] from Object.keys() and would
@@ -44,8 +64,9 @@ function canonicalize(value) {
     const sortedKeys = Object.keys(record).sort();
     const result = {};
     for (const key of sortedKeys) {
-        result[key] = canonicalize(record[key]);
+        result[key] = canonicalize(record[key], seen);
     }
+    seen.delete(value);
     return result;
 }
 //# sourceMappingURL=idempotency.js.map

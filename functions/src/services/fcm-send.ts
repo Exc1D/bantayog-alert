@@ -66,7 +66,9 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
       }
       if (data) msg.data = data
       result = await messaging.sendEachForMulticast(msg)
-    } catch {
+    } catch (err: unknown) {
+      // Log full error server-side for debugging; keep warnings as stable codes
+      console.error('FCM send failed after retry:', err)
       warnings.push('fcm_network_error')
       return { warnings }
     }

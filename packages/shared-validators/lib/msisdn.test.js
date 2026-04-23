@@ -37,14 +37,27 @@ describe('msisdnPhSchema', () => {
 });
 describe('hashMsisdn', () => {
     it('returns 64-char lowercase hex', () => {
-        const h = hashMsisdn('+639171234567', 'salt-fixture');
+        const h = hashMsisdn('+639171234567', 'salt-fixture-long');
         expect(h).toMatch(/^[a-f0-9]{64}$/);
     });
     it('is deterministic across calls', () => {
-        expect(hashMsisdn('+639171234567', 'salt-a')).toBe(hashMsisdn('+639171234567', 'salt-a'));
+        expect(hashMsisdn('+639171234567', 'salt-a-very-long')).toBe(hashMsisdn('+639171234567', 'salt-a-very-long'));
     });
     it('salt changes the output', () => {
-        expect(hashMsisdn('+639171234567', 'salt-a')).not.toBe(hashMsisdn('+639171234567', 'salt-b'));
+        expect(hashMsisdn('+639171234567', 'salt-a-very-long')).not.toBe(hashMsisdn('+639171234567', 'salt-b-very-long'));
+    });
+    it('throws for empty salt', () => {
+        expect(() => hashMsisdn('+639171234567', '')).toThrow('at least 16 characters');
+    });
+    it('throws for short salt', () => {
+        expect(() => hashMsisdn('+639171234567', 'short')).toThrow('at least 16 characters');
+    });
+    it('throws for non-string salt at runtime', () => {
+        expect(() => hashMsisdn('+639171234567', null)).toThrow('string salt');
+    });
+    it('accepts valid salt of 16+ characters', () => {
+        const result = hashMsisdn('+639171234567', 'a'.repeat(16));
+        expect(result).toMatch(/^[a-f0-9]{64}$/);
     });
 });
 //# sourceMappingURL=msisdn.test.js.map

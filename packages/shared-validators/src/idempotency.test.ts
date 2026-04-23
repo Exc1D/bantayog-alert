@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { canonicalPayloadHash } from './idempotency.js'
 
 describe('canonicalPayloadHash', () => {
@@ -58,5 +58,50 @@ describe('canonicalPayloadHash', () => {
     for (const exotic of [new Map(), new Set(), /pattern/] as const) {
       await expect(canonicalPayloadHash({ data: exotic })).rejects.toThrow(TypeError)
     }
+  })
+
+  it('throws Error if Web Crypto API is not available', async () => {
+    vi.stubGlobal('crypto', undefined)
+    try {
+      await expect(canonicalPayloadHash({ a: 1 })).rejects.toThrow(
+        'Web Crypto API (globalThis.crypto.subtle) is not available',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('throws Error if crypto.subtle is null (typeof null === "object" quirk)', async () => {
+    vi.stubGlobal('crypto', { subtle: null })
+    try {
+      await expect(canonicalPayloadHash({ a: 1 })).rejects.toThrow(
+        'Web Crypto API (globalThis.crypto.subtle) is not available',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('throws Error if subtle.digest exists but throws when called', async () => {
+    vi.stubGlobal('crypto', {
+      subtle: {
+        digest: () => {
+          throw new Error('broken')
+        },
+      },
+    })
+    try {
+      await expect(canonicalPayloadHash({ a: 1 })).rejects.toThrow(/Web Crypto/)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('rejects circular references in payloads', async () => {
+    const payload: Record<string, unknown> = {}
+    payload.self = payload
+    await expect(canonicalPayloadHash(payload)).rejects.toThrow(
+      'Circular reference detected in idempotency payload',
+    )
   })
 })

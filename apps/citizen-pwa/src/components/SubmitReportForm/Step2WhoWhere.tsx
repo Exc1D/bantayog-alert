@@ -296,6 +296,18 @@ const MUNI_LABELS_SORTED = [...CAMARINES_NORTE_MUNICIPALITIES]
   .sort((a, b) => a.label.localeCompare(b.label))
   .map((m) => ({ id: m.id, label: m.label }))
 
+function isQuotaExceededError(err: unknown): boolean {
+  return (
+    err instanceof DOMException &&
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    (err.name === 'QuotaExceededError' || err.code === 22)
+  )
+}
+
+function isSecurityError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'SecurityError'
+}
+
 interface Step2WhoWhereProps {
   onNext: (data: {
     location: { lat: number; lng: number }
@@ -377,8 +389,13 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         if (savedMsisdn) setReporterMsisdn(savedMsisdn)
         setHasMemory(true)
       }
-    } catch {
-      // Restricted/private mode — skip pre-fill silently
+    } catch (err: unknown) {
+      if (isQuotaExceededError(err)) {
+        console.warn('[Step2WhoWhere] Storage quota exceeded, skipping pre-fill')
+      } else if (!isSecurityError(err)) {
+        console.warn('[Step2WhoWhere] Unexpected storage read error, skipping pre-fill', err)
+      }
+      // SecurityError (private mode) is intentionally silent
     }
   }, [])
 
@@ -420,8 +437,13 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       localStorage.setItem('bantayog.reporter.name', reporterName)
       // Phone is session-only to limit long-lived PII exposure
       sessionStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
-    } catch {
-      // Restricted/private mode — skip persist silently
+    } catch (err: unknown) {
+      if (isQuotaExceededError(err)) {
+        console.warn('[Step2WhoWhere] Storage quota exceeded, skipping persist')
+      } else if (!isSecurityError(err)) {
+        console.warn('[Step2WhoWhere] Unexpected storage write error, skipping persist', err)
+      }
+      // SecurityError (private mode) is intentionally silent
     }
 
     onNext({

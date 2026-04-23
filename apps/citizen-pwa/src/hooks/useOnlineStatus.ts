@@ -22,20 +22,27 @@ export function useOnlineStatus() {
       setProbeOnline(false)
       return
     }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => {
+      controller.abort()
+    }, PROBE_TIMEOUT_MS)
     try {
       await fetch(PROBE_URL, {
         mode: 'no-cors',
         cache: 'no-store',
-        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        signal: controller.signal,
       })
       setProbeOnline(true)
-    } catch {
+    } catch (_err: unknown) {
+      void _err
       setProbeOnline(false)
+    } finally {
+      clearTimeout(timeoutId)
     }
   }, [])
 
-  // Probe on mount and every 30s — schedule immediately via setTimeout to avoid
-  // calling setState synchronously within the effect body (React lint rule)
+  // Probe immediately on mount, then every 30s via setInterval.
+  // setInterval avoids calling setState synchronously within the effect body (React lint rule)
   useEffect(() => {
     const scheduleProbe = () => {
       void probe()
