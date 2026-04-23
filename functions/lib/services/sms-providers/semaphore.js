@@ -42,8 +42,13 @@ export function createSemaphoreSmsProvider() {
             try {
                 data = (await res.json());
             }
-            catch {
-                throw new SmsProviderRetryableError(`semaphore ${res.status.toString()}: unparseable response`, res.ok || res.status >= 500 ? 'provider_error' : 'network');
+            catch (err) {
+                // 4xx errors are non-retryable (client request issues)
+                if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+                    return { accepted: false, reason: 'other', latencyMs: 0 };
+                }
+                // 5xx and network errors are retryable
+                throw new SmsProviderRetryableError(`semaphore ${res.status.toString()}: unparseable response (${String(err)})`, res.status === 429 ? 'rate_limited' : 'provider_error');
             }
             const status = data.status ?? '';
             const errorsArr = data.errors ?? [];

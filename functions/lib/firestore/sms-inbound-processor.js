@@ -13,7 +13,14 @@ function generatePublicRef() {
 }
 function decryptMsisdn(encrypted) {
     if (!encrypted.startsWith('unencrypted:')) {
+        // Validate encryption key format BEFORE using it
+        if (!/^[0-9a-fA-F]{64}$/.test(ENCRYPTION_KEY)) {
+            throw new Error('SMS_MSISDN_ENCRYPTION_KEY must be 64 hex characters (32 bytes for AES-256-GCM)');
+        }
         const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+        if (key.length !== 32) {
+            throw new Error(`SMS_MSISDN_ENCRYPTION_KEY decoded to ${String(key.length)} bytes, expected 32`);
+        }
         const parsed = JSON.parse(encrypted);
         const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(parsed.iv, 'hex'));
         decipher.setAuthTag(Buffer.from(parsed.tag, 'hex'));
@@ -126,11 +133,12 @@ export const smsInboundProcessor = onDocumentCreated({
                 try {
                     recipientMsisdn = decryptMsisdn(senderMsisdnEnc);
                 }
-                catch {
+                catch (err) {
                     log({
                         severity: 'WARNING',
                         code: 'decrypt.failed',
                         message: `MSISDN decryption failed for ${msgId} — skipping pending_review reply`,
+                        data: { error: String(err) },
                     });
                 }
                 if (recipientMsisdn) {

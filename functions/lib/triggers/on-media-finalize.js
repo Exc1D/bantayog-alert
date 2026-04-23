@@ -42,12 +42,13 @@ export async function onMediaFinalizeCore(input) {
         // in some sharp/libvips version combinations, defeating the strip.
         cleaned = await sharp(buf).rotate().toBuffer();
     }
-    catch {
+    catch (err) {
         await file.delete();
         log({
             severity: 'WARNING',
             code: 'MEDIA_REJECTED_CORRUPT',
             message: `Deleted corrupt image: ${input.objectName}`,
+            data: { error: String(err) },
         });
         return { status: 'rejected_mime' };
     }
