@@ -377,8 +377,8 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         if (savedMsisdn) setReporterMsisdn(savedMsisdn)
         setHasMemory(true)
       }
-    } catch {
-      // Restricted/private mode — skip pre-fill silently
+    } catch (_err: unknown) {
+      void _err // Restricted/private mode — skip pre-fill silently
     }
   }, [])
 
@@ -420,8 +420,8 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       localStorage.setItem('bantayog.reporter.name', reporterName)
       // Phone is session-only to limit long-lived PII exposure
       sessionStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
-    } catch {
-      // Restricted/private mode — skip persist silently
+    } catch (_err: unknown) {
+      void _err // Restricted/private mode — skip persist silently
     }
 
     onNext({

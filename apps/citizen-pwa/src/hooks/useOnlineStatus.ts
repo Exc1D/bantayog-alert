@@ -29,7 +29,8 @@ export function useOnlineStatus() {
         signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
       })
       setProbeOnline(true)
-    } catch {
+    } catch (_err: unknown) {
+      void _err
       setProbeOnline(false)
     }
   }, [])
