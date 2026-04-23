@@ -31,32 +31,8 @@ function toMillis(value: unknown): number | undefined {
 
 function normalizeDispatchSnapshot(data: Record<string, unknown>): Record<string, unknown> {
   const normalized: Record<string, unknown> = {}
-  const schemaKeys = [
-    'reportId',
-    'assignedTo',
-    'dispatchedBy',
-    'dispatchedByRole',
-    'dispatchedAt',
-    'status',
-    'statusUpdatedAt',
-    'acknowledgementDeadlineAt',
-    'acknowledgedAt',
-    'enRouteAt',
-    'onSceneAt',
-    'resolvedAt',
-    'cancelledAt',
-    'cancelledBy',
-    'cancelReason',
-    'timeoutReason',
-    'declineReason',
-    'resolutionSummary',
-    'proofPhotoUrl',
-    'requestedByMunicipalAdmin',
-    'requestId',
-    'idempotencyKey',
-    'idempotencyPayloadHash',
-    'schemaVersion',
-  ] as const
+  // Derived from dispatchDocSchema.shape so this list stays in sync with shared-validators
+  const schemaKeys = Object.keys(dispatchDocSchema.shape)
 
   for (const key of schemaKeys) {
     if (key in data) {

@@ -2,6 +2,28 @@
 
 ## Current
 
+### Phase 5 Responder MVP — PR #60 review fixes (2026-04-23)
+
+- Status: DONE — all CodeRabbit + CodeQL review comments addressed
+- Files changed:
+  - `apps/responder-app/src/app/await-auth-token.ts` — fix hanging promise: moved `getIdToken(true)` inside Promise constructor, rejects on error
+  - `apps/responder-app/src/app/auth-provider.tsx` — add `active` flag + uid guard to prevent stale promise overwriting state after auth change
+  - `apps/responder-app/src/hooks/useAcceptDispatch.ts` — null check on `awaitFreshAuthToken` return before callable
+  - `apps/responder-app/src/hooks/useDeclineDispatch.ts` — same null check
+  - `apps/responder-app/src/hooks/useAdvanceDispatch.ts` — same null check
+  - `apps/responder-app/src/hooks/useDispatch.ts` — derive `schemaKeys` from `dispatchDocSchema.shape` instead of hardcoded list
+  - `apps/responder-app/src/pages/DispatchDetailPage.tsx` — retry button now visible when `status=accepted && advanceState.error`; removed false `permission-denied`→"cancelled by admin" mapping
+  - `packages/shared-sms-parser/index.js` — remove unused `reportTypeSchema`+`z` import; add `typeof body !== 'string'` guard; narrow `getBarangayGazetteer` catch to `MODULE_NOT_FOUND` only
+  - `functions/src/__tests__/triggers/dispatch-mirror-to-report.test.ts` — use named app instance; replace `.resolves.not.toThrow()` with direct `await`
+  - `docs/reviews/2026-04-23-phase5-responder-mvp-review.md` — add `text` language specifier to code fence
+  - `pnpm-lock.yaml` — regenerated after `@bantayog/shared-validators` was added to e2e-tests (fixes CI `ERR_PNPM_OUTDATED_LOCKFILE`)
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+  - `pnpm --filter @bantayog/shared-sms-parser test` — PASS (13/13)
+
 ### Phase 5 Responder MVP — dispatch loop slice (2026-04-23)
 
 - Status: DONE locally — responder callable, decline flow, and Playwright smoke are verified; deep dispatch scenarios remain intentionally skipped

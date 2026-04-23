@@ -17,19 +17,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let active = true
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
       if (u) {
+        const uid = u.uid
         void u
           .getIdTokenResult(true)
           .then((token) => {
+            if (!active || auth.currentUser?.uid !== uid) return
             setClaims(token.claims as Record<string, unknown>)
           })
           .catch((err: unknown) => {
+            if (!active || auth.currentUser?.uid !== uid) return
             console.error('[AuthProvider] token refresh failed:', err)
             setClaims(null)
           })
           .finally(() => {
+            if (!active || auth.currentUser?.uid !== uid) return
             setLoading(false)
           })
       } else {
@@ -37,7 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false)
       }
     })
-    return unsub
+    return () => {
+      active = false
+      unsub()
+    }
   }, [])
 
   async function signOut() {

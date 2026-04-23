@@ -157,25 +157,23 @@ export function DispatchDetailPage() {
       )}
       {acceptError && <div style={{ color: 'red' }}>{getActionErrorMessage(acceptError)}</div>}
       {declineError && <p style={{ color: 'red' }}>{getActionErrorMessage(declineError)}</p>}
+      {dispatch.status === 'accepted' && advanceState.error && !advanceState.loading && (
+        <button
+          onClick={() => {
+            void advance('acknowledged')
+          }}
+        >
+          Retry acknowledgement
+        </button>
+      )}
       {dispatch.status === 'acknowledged' && !advanceState.loading && (
-        <>
-          <button
-            onClick={() => {
-              void advanceState.advance('en_route')
-            }}
-          >
-            Heading there
-          </button>
-          {advanceState.error && (
-            <button
-              onClick={() => {
-                void advanceState.advance('acknowledged')
-              }}
-            >
-              Retry acknowledgement
-            </button>
-          )}
-        </>
+        <button
+          onClick={() => {
+            void advanceState.advance('en_route')
+          }}
+        >
+          Heading there
+        </button>
       )}
       {dispatch.status === 'en_route' && !advanceState.loading && (
         <button
@@ -195,13 +193,7 @@ export function DispatchDetailPage() {
       )}
       {advanceState.loading && <p>Updating...</p>}
       {advanceState.error && (
-        <p style={{ color: 'red' }}>
-          {getFirebaseErrorCode(advanceState.error) === 'functions/permission-denied' ? (
-            <em>Dispatch was cancelled by an administrator.</em>
-          ) : (
-            getActionErrorMessage(advanceState.error)
-          )}
-        </p>
+        <p style={{ color: 'red' }}>{getActionErrorMessage(advanceState.error)}</p>
       )}
     </main>
   )

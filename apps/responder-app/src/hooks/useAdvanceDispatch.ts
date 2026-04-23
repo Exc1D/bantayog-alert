@@ -17,7 +17,8 @@ export function useAdvanceDispatch(dispatchId: string) {
         if (to === 'resolved' && !extras?.resolutionSummary) {
           throw new Error('resolutionSummary_required')
         }
-        await awaitFreshAuthToken(auth)
+        const user = await awaitFreshAuthToken(auth)
+        if (!user) throw new Error('auth_required')
         const advanceDispatch = httpsCallable<AdvanceDispatchRequest, { status: DispatchStatus }>(
           functions,
           'advanceDispatch',

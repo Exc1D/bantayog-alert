@@ -8,7 +8,7 @@
 
 ## Recommended Action Order
 
-```
+```text
 STOP-SHIP (before any user-facing deploy):
   #1  auth-provider: getIdTokenResult rejection swallowed → app stuck in loading
   #2  decline callable: IdempotencyMismatchError → opaque functions/internal to client

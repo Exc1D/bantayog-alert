@@ -1,8 +1,9 @@
 import { createRequire } from 'node:module'
-import { z } from 'zod'
 
 const require = createRequire(import.meta.url)
 
+const FALLBACK_BARANGAYS = [
+  { name: 'Alcoc', municipality: 'Alcoc' },
   { name: 'Alcoy', municipality: 'Alcoy' },
   { name: 'Bagasbas', municipality: 'Daet' },
   { name: 'Baay', municipality: 'Labo' },
@@ -46,8 +47,12 @@ function getBarangayGazetteer() {
     if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
       return mod.BARANGAY_GAZETTEER
     }
-  } catch {
-    // shared-data not yet populated - use fallback
+  } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'MODULE_NOT_FOUND') {
+      // shared-data not yet populated - use fallback
+      return FALLBACK_BARANGAYS
+    }
+    throw err
   }
   return FALLBACK_BARANGAYS
 }
@@ -87,6 +92,14 @@ function buildAutoReply(confidence, publicRef = '') {
 }
 
 export function parseInboundSms(body) {
+  if (typeof body !== 'string') {
+    return {
+      confidence: 'none',
+      parsed: null,
+      candidates: [],
+      autoReplyText: buildAutoReply('none'),
+    }
+  }
   const normalized = body.trim().replace(/\s+/g, ' ').toUpperCase()
   const originalRest = body.trim().replace(/\s+/g, ' ')
 

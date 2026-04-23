@@ -7,7 +7,10 @@ import { dispatchMirrorToReportCore } from '../../triggers/dispatch-mirror-to-re
 
 const ts = 1713350400000
 process.env.FIRESTORE_EMULATOR_HOST ??= 'localhost:8081'
-const app = getApps()[0] ?? initializeApp({ projectId: 'dispatch-mirror-test' })
+const appName = 'dispatch-mirror-test'
+const app =
+  getApps().find((a) => a.name === appName) ??
+  initializeApp({ projectId: 'dispatch-mirror-test' }, appName)
 const adminDb = getFirestore(app)
 
 // ---------------------------------------------------------------------------
@@ -160,19 +163,17 @@ describe('dispatchMirrorToReport', () => {
     await seedDispatchJS(dispatchId, 'nonexistent-report', 'pending')
 
     await withAdminDb(async (db) => {
-      // Should not throw — trigger skips gracefully
-      await expect(
-        dispatchMirrorToReportCore({
-          db,
-          dispatchId,
-          beforeData: { status: 'pending' },
-          afterData: {
-            status: 'accepted',
-            reportId: 'nonexistent-report',
-            correlationId: crypto.randomUUID(),
-          },
-        }),
-      ).resolves.not.toThrow()
+      // Should not throw — trigger skips gracefully when report is missing
+      await dispatchMirrorToReportCore({
+        db,
+        dispatchId,
+        beforeData: { status: 'pending' },
+        afterData: {
+          status: 'accepted',
+          reportId: 'nonexistent-report',
+          correlationId: crypto.randomUUID(),
+        },
+      })
     })
   })
 

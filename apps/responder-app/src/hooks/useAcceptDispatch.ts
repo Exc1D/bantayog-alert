@@ -16,7 +16,8 @@ export function useAcceptDispatch(dispatchId: string) {
     setLoading(true)
     setError(undefined)
     try {
-      await awaitFreshAuthToken(auth)
+      const user = await awaitFreshAuthToken(auth)
+      if (!user) throw new Error('auth_required')
       const fn = httpsCallable<{ dispatchId: string; idempotencyKey: string }, { status: string }>(
         functions,
         'acceptDispatch',

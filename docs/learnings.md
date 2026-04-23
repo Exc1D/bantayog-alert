@@ -53,6 +53,12 @@ Durable rules worth keeping across sessions.
 - Avoid `any`; prefer real types or `unknown`.
 - With `exactOptionalPropertyTypes`, omit optional keys entirely instead of assigning `undefined`.
 
+## Auth / Async
+
+- In Firebase Auth `onAuthStateChanged`, the promise started by `getIdTokenResult(true)` can resolve after a later auth change. Guard all `.then`/`.catch`/`.finally` handlers with an `active` flag (closed over from `useEffect`) and a `uid` check (`auth.currentUser?.uid !== capturedUid`) before calling `setClaims`/`setLoading`.
+- `awaitFreshAuthToken` built on `onIdTokenChanged` must start `getIdToken(true)` **inside** the Promise constructor (not after it) so a rejection can call `unsubscribe()` and `reject()` rather than leaving the promise hanging forever.
+- Always check the `null` return of `awaitFreshAuthToken` before invoking an `httpsCallable`; a missing `currentUser` means no auth header and the callable will fail with an opaque error.
+
 ## Misc
 
 - `navigator.clipboard` in happy-dom often needs to be defined as an own property before spying.

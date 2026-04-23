@@ -4,7 +4,7 @@ export async function awaitFreshAuthToken(auth: Auth): Promise<User | null> {
   const user = auth.currentUser
   if (!user) return null
 
-  const refreshed = new Promise<User | null>((resolve) => {
+  const refreshed = new Promise<User | null>((resolve, reject) => {
     const unsubscribe = onIdTokenChanged(auth, (nextUser) => {
       if (nextUser?.uid !== user.uid) {
         return
@@ -12,8 +12,12 @@ export async function awaitFreshAuthToken(auth: Auth): Promise<User | null> {
       unsubscribe()
       resolve(nextUser)
     })
+
+    user.getIdToken(true).catch((err: unknown) => {
+      unsubscribe()
+      reject(err instanceof Error ? err : new Error(String(err)))
+    })
   })
 
-  await user.getIdToken(true)
   return refreshed
 }
