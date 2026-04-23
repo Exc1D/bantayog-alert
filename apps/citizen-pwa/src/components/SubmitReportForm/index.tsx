@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType } from '@bantayog/shared-types'
@@ -10,7 +10,6 @@ import { Step2WhoWhere } from './Step2WhoWhere.js'
 import { Step3Review } from './Step3Review.js'
 import { RevealSheet } from '../RevealSheet.js'
 import { OfflineBanner } from './OfflineBanner.js'
-import { SmsFallbackButton } from './SmsFallbackButton.js'
 import { StaleDraftBanner } from './StaleDraftBanner.js'
 
 interface Step1Data {
@@ -113,7 +112,6 @@ function WizardContainer() {
     return (
       <SubmissionPanel
         draft={draft}
-        reporterMsisdn={formData.step2?.reporterMsisdn ?? ''}
         onSuccess={(publicRef) => {
           void nav(`/reports/${publicRef}`)
         }}
@@ -174,11 +172,9 @@ function WizardContainer() {
 
 function SubmissionPanel({
   draft,
-  reporterMsisdn,
   onSuccess,
 }: {
   draft: Draft
-  reporterMsisdn: string
   onSuccess: (publicRef: string) => void
 }) {
   const nav = useNavigate()
@@ -190,6 +186,12 @@ function SubmissionPanel({
       console.warn('[SubmissionPanel] Submission failed after max retries')
     },
   })
+
+  // Auto-start: wizard already captured consent in Step3, no second confirm needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    void machine.submit()
+  }, [])
 
   if (machine.state === 'server_confirmed') {
     return <RevealSheet state="success" referenceCode={draft.id} />
@@ -225,16 +227,13 @@ function SubmissionPanel({
 
   if (machine.state === 'failed_terminal') {
     return (
-      <div aria-label="Submission status">
-        <OfflineBanner state={machine.state} retryCount={machine.retryCount} />
-        <SmsFallbackButton
-          draft={draft}
-          {...(reporterMsisdn ? { reporterMsisdn } : {})}
-          onSent={() => {
-            machine.sendSmsFallback()
-          }}
-        />
-      </div>
+      <RevealSheet
+        state="failed_retryable"
+        referenceCode={draft.id}
+        onClose={() => {
+          void nav('/')
+        }}
+      />
     )
   }
 
