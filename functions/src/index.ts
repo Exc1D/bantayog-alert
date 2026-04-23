@@ -71,14 +71,18 @@ export const onMediaFinalize = onObjectFinalized(
         },
       })
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? (err as { code?: string }).code
+          : undefined
       if (code === 'MEDIA_REJECTED_MIME' || code === 'MEDIA_REJECTED_CORRUPT') {
         return
       }
+      const message = err instanceof Error ? err.message : String(err)
       log({
         severity: 'ERROR',
         code: 'MEDIA_FINALIZE_FAILED',
-        message: `onMediaFinalize failed: ${(err as Error).message}`,
+        message: `onMediaFinalize failed: ${message}`,
       })
       throw err
     }

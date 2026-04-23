@@ -50,16 +50,9 @@ export async function validateDispatchTransaction({
 }> {
   const [reportSnap, responderSnap] = await Promise.all([tx.get(reportRef), tx.get(responderRef)])
 
-  // Re-check shift status inside transaction scope to mitigate TOCTOU race
   if (!deps.actor.claims.municipalityId) {
     throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'municipalityId is required')
   }
-  await assertResponderOnShift(
-    rtdb,
-    deps.actor.claims.municipalityId,
-    deps.responderUid,
-    'Responder went off-shift before dispatch could be created',
-  )
 
   if (!reportSnap.exists) {
     throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found')
@@ -88,6 +81,14 @@ export async function validateDispatchTransaction({
   if (typeof responder.agencyId !== 'string' || !responder.agencyId) {
     throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'Responder missing agencyId')
   }
+
+  // Re-check shift status after identity + municipality checks to preserve correct error classes.
+  await assertResponderOnShift(
+    rtdb,
+    deps.actor.claims.municipalityId,
+    deps.responderUid,
+    'Responder went off-shift before dispatch could be created',
+  )
 
   const rawStatus = report.status
   if (typeof rawStatus !== 'string') {

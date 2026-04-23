@@ -36,7 +36,7 @@ export function ProtectedRoute({
 
   if (
     requireMunicipalityIdForRoles.includes(role) &&
-    (typeof claims?.municipalityId !== 'string' || !claims.municipalityId)
+    (typeof claims?.municipalityId !== 'string' || !claims.municipalityId.trim())
   ) {
     return unauthorizedFallback
   }

@@ -24,9 +24,9 @@ export async function buildSmsPayload(args: BuildSmsPayloadArgs): Promise<SmsPay
   if (!consentSnap.exists) return null
 
   const consentData = consentSnap.data()
-  if (!consentData?.phone || typeof consentData.phone !== 'string') return null
-
-  const recipientMsisdn = consentData.phone
+  if (typeof consentData?.phone !== 'string') return null
+  const recipientMsisdn = consentData.phone.trim()
+  if (!recipientMsisdn) return null
   const locale = consentData.locale === 'en' ? 'en' : 'tl'
 
   const lookupQ = db.collection('report_lookup').where('reportId', '==', reportId).limit(1)

@@ -166,9 +166,6 @@ export const dispatchResponder = onCall(
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
     if (claims.active !== true) throw new HttpsError('permission-denied', 'account is not active')
-    if (typeof claims.role !== 'string') {
-      throw new HttpsError('permission-denied', 'role is required')
-    }
     const parsed = InputSchema.safeParse(req.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
     const rl = await checkRateLimit(adminDb, {
