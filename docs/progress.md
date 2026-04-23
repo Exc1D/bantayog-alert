@@ -2,6 +2,22 @@
 
 ## Current
 
+### 3-Step Wizard Wiring — feature/3-step-wizard-wiring (2026-04-23)
+
+- Status: DONE locally — 3 commits on branch, ready for PR
+- Branch: `feature/3-step-wizard-wiring`
+- Scope:
+  - `SubmitReportForm/index.tsx` rewritten as `WizardContainer` (Step1→2→3 with data accumulation) + `SubmissionPanel` (drives RevealSheet via `useSubmissionMachine`)
+  - Dead `showSmsFallback` variable removed by code-quality review
+  - `/report` consolidated to new wizard; `/report/new` removed; old `SubmitReportForm.tsx` deleted
+  - `App.routes.test.tsx` mock path updated to new wizard module
+  - `SubmissionPanel` auto-starts `machine.submit()` on mount — no double-confirm after wizard Step3
+  - `failed_terminal` renders `RevealSheet state="failed_retryable"` instead of raw `OfflineBanner + SmsFallbackButton`
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa exec vitest run` — PASS (101 passed, 2 todo)
+
 ### PR #57 Review Fixes — feature/map-tab (2026-04-22)
 
 - Status: in progress — reviewer comments are being resolved on `feature/map-tab`
