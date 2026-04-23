@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseInboundSms } from '../inbound.js'
+import { parseInboundSms } from '../parser.js'
 
 describe('parseInboundSms', () => {
   it('parses high-confidence flood report', () => {

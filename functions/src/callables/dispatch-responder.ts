@@ -1,19 +1,20 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
-import { Firestore, Timestamp } from 'firebase-admin/firestore'
-import type { Database } from 'firebase-admin/database'
+import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import {
-  BantayogError,
-  BantayogErrorCode,
-  isValidReportTransition,
-  logEvent,
-} from '@bantayog/shared-validators'
+import { BantayogError, BantayogErrorCode, logEvent } from '@bantayog/shared-validators'
 import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
 import { sendFcmToResponder, FCM_VAPID_PRIVATE_KEY } from '../services/fcm-send.js'
-import { enqueueSms } from '../services/send-sms.js'
+import {
+  assertResponderOnShift,
+  validateDispatchTransaction,
+  type DispatchResponderCoreDeps,
+} from './dispatch-responder-validation.js'
+import type { Database } from 'firebase-admin/database'
+import { enqueueDispatchSms } from './dispatch-responder-notify.js'
+import { buildSmsPayload, writeDispatchDocs } from './dispatch-responder-writes.js'
 
 const InputSchema = z
   .object({
@@ -30,16 +31,14 @@ const DEADLINE_BY_SEVERITY: Record<'critical' | 'high' | 'low' | 'medium', numbe
   low: 30 * 60 * 1000,
 }
 
-export interface DispatchResponderCoreDeps {
-  reportId: string
-  responderUid: string
-  idempotencyKey: string
-  actor: { uid: string; claims: { role?: string; municipalityId?: string } }
-  now: Timestamp
+function isValidSeverity(s: unknown): s is keyof typeof DEADLINE_BY_SEVERITY {
+  return typeof s === 'string' && s in DEADLINE_BY_SEVERITY
 }
 
+export type { DispatchResponderCoreDeps } from './dispatch-responder-validation.js'
+
 export async function dispatchResponderCore(
-  db: Firestore,
+  db: FirebaseFirestore.Firestore,
   rtdb: Database,
   deps: DispatchResponderCoreDeps,
 ) {
@@ -58,168 +57,76 @@ export async function dispatchResponderCore(
       if (!deps.actor.claims.municipalityId) {
         throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'municipalityId is required')
       }
-      const shiftSnap = await rtdb
-        .ref(`/responder_index/${deps.actor.claims.municipalityId}/${deps.responderUid}`)
-        .get()
-      const shiftData = shiftSnap.val() as { isOnShift?: boolean } | null
-      const isOnShift = shiftData?.isOnShift === true
-      if (!isOnShift) {
-        throw new BantayogError(
-          BantayogErrorCode.INVALID_STATUS_TRANSITION,
-          'Responder is not on shift',
-          { responderUid: deps.responderUid },
-        )
-      }
+
+      await assertResponderOnShift(rtdb, deps.actor.claims.municipalityId, deps.responderUid)
 
       return db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)
         const responderRef = db.collection('responders').doc(deps.responderUid)
 
-        const [reportSnap, responderSnap] = await Promise.all([
-          tx.get(reportRef),
-          tx.get(responderRef),
-        ])
+        const { report, responder, from } = await validateDispatchTransaction({
+          tx,
+          rtdb,
+          deps,
+          reportRef,
+          responderRef,
+        })
 
-        // Re-check shift status inside transaction scope to mitigate TOCTOU race
-        const shiftSnap = await rtdb
-          .ref(`/responder_index/${deps.actor.claims.municipalityId ?? ''}/${deps.responderUid}`)
-          .get()
-        const shiftData = shiftSnap.val() as { isOnShift?: boolean } | null
-        if (shiftData?.isOnShift !== true) {
-          throw new BantayogError(
-            BantayogErrorCode.INVALID_STATUS_TRANSITION,
-            'Responder went off-shift before dispatch could be created',
-          )
-        }
+        const severity = isValidSeverity(report.severityDerived) ? report.severityDerived : 'medium'
+        const deadlineMs =
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
 
-        if (!reportSnap.exists) {
-          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found')
-        }
-        if (!responderSnap.exists) {
-          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Responder not found')
-        }
-        const report = reportSnap.data() as Record<string, unknown>
-        const responder = responderSnap.data() as Record<string, unknown>
-
-        if (report.municipalityId !== deps.actor.claims.municipalityId) {
-          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
-        }
-        if (responder.municipalityId !== deps.actor.claims.municipalityId) {
-          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Responder not in your municipality')
-        }
-        if (responder.isActive !== true) {
-          throw new BantayogError(
-            BantayogErrorCode.INVALID_STATUS_TRANSITION,
-            'Responder is not active',
-          )
-        }
-
-        const from = report.status as 'verified'
-        const to = 'assigned' as const
-        if (!isValidReportTransition(from, to)) {
-          throw new BantayogError(
-            BantayogErrorCode.INVALID_STATUS_TRANSITION,
-            `Cannot dispatch from status ${from}`,
-          )
-        }
-
-        const severity = ((report.severityDerived as string | null | undefined) ??
-          'medium') as keyof typeof DEADLINE_BY_SEVERITY
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const deadlineMs = DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
-
-        let smsRecipientPhone: string | undefined
-        let smsLocale: 'tl' | 'en' = 'tl'
         let smsPublicRef = deps.reportId
           .toLowerCase()
           .replace(/[^a-z0-9]/g, '')
           .slice(0, 8)
 
         const salt = process.env.SMS_MSISDN_HASH_SALT
-        if (salt) {
-          const consentSnap = await tx.get(db.collection('report_sms_consent').doc(deps.reportId))
-          if (consentSnap.exists) {
-            const consentData = consentSnap.data()
-            if (consentData?.phone) {
-              smsRecipientPhone = consentData.phone as string
-              smsLocale = (consentData.locale as 'tl' | 'en' | undefined) ?? 'tl'
-
-              const lookupQ = db
-                .collection('report_lookup')
-                .where('reportId', '==', deps.reportId)
-                .limit(1)
-              const lookupSnap = await tx.get(lookupQ)
-              const lookupDoc = lookupSnap.docs[0]
-              smsPublicRef = lookupDoc?.id ?? smsPublicRef
-            }
-          }
+        const smsPayload = salt
+          ? await buildSmsPayload({
+              db,
+              tx,
+              reportId: deps.reportId,
+              salt,
+              defaultPublicRef: smsPublicRef,
+            })
+          : null
+        if (smsPayload) {
+          smsPublicRef = smsPayload.publicRef
         }
 
         const dispatchRef = db.collection('dispatches').doc()
         const dispatchId = dispatchRef.id
 
-        tx.set(dispatchRef, {
-          dispatchId,
-          reportId: deps.reportId,
-          status: 'pending',
-          assignedTo: {
-            uid: deps.responderUid,
-            agencyId: responder.agencyId,
-            municipalityId: responder.municipalityId,
-          },
-          dispatchedAt: deps.now,
-          dispatchedBy: deps.actor.uid,
-          lastStatusAt: deps.now,
-          acknowledgementDeadlineAt: Timestamp.fromMillis(deps.now.toMillis() + deadlineMs),
-          correlationId,
-          schemaVersion: 1,
-        })
-
-        tx.update(reportRef, {
-          status: to,
-          lastStatusAt: deps.now,
-          lastStatusBy: deps.actor.uid,
-          currentDispatchId: dispatchId,
-        })
-
         const reportEvRef = db.collection('report_events').doc()
-        tx.set(reportEvRef, {
-          eventId: reportEvRef.id,
-          reportId: deps.reportId,
-          from,
-          to,
-          actor: deps.actor.uid,
-          actorRole: deps.actor.claims.role ?? 'municipal_admin',
-          at: deps.now,
-          correlationId,
-          schemaVersion: 1,
-        })
-
         const dispatchEvRef = db.collection('dispatch_events').doc()
-        tx.set(dispatchEvRef, {
-          eventId: dispatchEvRef.id,
-          dispatchId,
-          reportId: deps.reportId,
-          from: null,
-          to: 'pending',
-          actor: deps.actor.uid,
-          actorRole: deps.actor.claims.role ?? 'municipal_admin',
-          at: deps.now,
+
+        writeDispatchDocs({
+          tx,
+          deps,
+          dispatchRef,
+          reportRef,
+          reportEvRef,
+          dispatchEvRef,
+          responder,
+          deadlineMs,
           correlationId,
-          schemaVersion: 1,
+          from,
+          to: 'assigned',
         })
 
-        if (salt && smsRecipientPhone) {
-          enqueueSms(db, tx, {
+        if (salt && smsPayload) {
+          enqueueDispatchSms({
+            db,
+            tx,
             reportId: deps.reportId,
             dispatchId,
-            purpose: 'status_update',
-            recipientMsisdn: smsRecipientPhone,
-            locale: smsLocale,
+            recipientMsisdn: smsPayload.recipientMsisdn,
+            locale: smsPayload.locale,
             publicRef: smsPublicRef,
             salt,
             nowMs: deps.now.toMillis(),
-            providerId: 'semaphore',
           })
         }
 
@@ -259,6 +166,9 @@ export const dispatchResponder = onCall(
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
     if (claims.active !== true) throw new HttpsError('permission-denied', 'account is not active')
+    if (typeof claims.role !== 'string') {
+      throw new HttpsError('permission-denied', 'role is required')
+    }
     const parsed = InputSchema.safeParse(req.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
     const rl = await checkRateLimit(adminDb, {
@@ -279,7 +189,12 @@ export const dispatchResponder = onCall(
         idempotencyKey: parsed.data.idempotencyKey,
         actor: {
           uid: req.auth.uid,
-          claims: claims as { role?: string; municipalityId?: string },
+          claims: {
+            role: claims.role,
+            ...(typeof claims.municipalityId === 'string'
+              ? { municipalityId: claims.municipalityId }
+              : {}),
+          },
         },
         now: Timestamp.now(),
       })

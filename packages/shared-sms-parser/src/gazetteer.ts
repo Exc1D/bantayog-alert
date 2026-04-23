@@ -1,62 +1,12 @@
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { createRequire } from 'node:module'
 
-import { z } from 'zod'
-
-export type Confidence = 'high' | 'medium' | 'low' | 'none'
-
-export const reportTypeSchema = z.enum([
-  'flood',
-  'fire',
-  'landslide',
-  'accident',
-  'medical',
-  'other',
-])
-export type ReportType = z.infer<typeof reportTypeSchema>
-
-export interface ParsedFields {
-  reportType: ReportType
-  barangay: string
-  rawBarangay?: string
-  details: string | undefined
-}
-
-export interface ParseResult {
-  confidence: Confidence
-  parsed: ParsedFields | null
-  candidates: string[]
-  autoReplyText: string
-}
+const require = createRequire(import.meta.url)
 
 // ─── Barangay Gazetteer ───────────────────────────────────────────────────────
 
-interface BarangayEntry {
+export interface BarangayEntry {
   name: string
   municipality: string
-}
-
-function getBarangayGazetteer(): BarangayEntry[] {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('@bantayog/shared-data') as { BARANGAY_GAZETTEER?: unknown }
-    if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
-      return mod.BARANGAY_GAZETTEER as BarangayEntry[]
-    }
-  } catch (err: unknown) {
-    // Only suppress MODULE_NOT_FOUND for @bantayog/shared-data; rethrow all other failures
-    const isModuleNotFound =
-      typeof err === 'object' &&
-      err !== null &&
-      'code' in err &&
-      (err as { code?: string }).code === 'MODULE_NOT_FOUND'
-    const message = err instanceof Error ? err.message : ''
-    const isSharedDataLoadFailure = message.includes('@bantayog/shared-data')
-    if (isModuleNotFound && isSharedDataLoadFailure) {
-      return FALLBACK_BARANGAYS
-    }
-    throw err
-  }
-  return FALLBACK_BARANGAYS
 }
 
 const FALLBACK_BARANGAYS: BarangayEntry[] = [
@@ -356,197 +306,25 @@ const FALLBACK_BARANGAYS: BarangayEntry[] = [
   { name: 'Sula', municipality: 'Vinzons' },
 ]
 
-// ─── Levenshtein distance ─────────────────────────────────────────────────────
-
-function levenshtein(a: string, b: string): number {
-  const m = a.length
-  const n = b.length
-  if (m === 0) return n
-  if (n === 0) return m
-  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
-  )
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      // @ts-expect-error: DP array access is bounds-checked by loop
-      dp[i][j] =
-        a[i - 1] === b[j - 1]
-          ? // @ts-expect-error: diagonal DP access
-            dp[i - 1][j - 1]
-          : 1 +
-            Math.min(
-              // @ts-expect-error: DP array accesses
-              dp[i - 1][j],
-              // @ts-expect-error: DP array accesses
-              dp[i][j - 1],
-              // @ts-expect-error: DP array accesses
-              dp[i - 1][j - 1],
-            )
+export function getBarangayGazetteer(): BarangayEntry[] {
+  try {
+    const mod = require('@bantayog/shared-data') as { BARANGAY_GAZETTEER?: unknown }
+    if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
+      return mod.BARANGAY_GAZETTEER as BarangayEntry[]
     }
-  }
-  // @ts-expect-error: return from DP is always valid after loop
-  return dp[m][n]
-}
-
-// ─── Type synonym map ─────────────────────────────────────────────────────────
-
-const TYPE_SYNONYMS: Record<string, ReportType> = {
-  FLOOD: 'flood',
-  BAHA: 'flood',
-  FIRE: 'fire',
-  SUNOG: 'fire',
-  LANDSLIDE: 'landslide',
-  GUHO: 'landslide',
-  ACCIDENT: 'accident',
-  AKSIDENTE: 'accident',
-  MEDICAL: 'medical',
-  MEDIKAL: 'medical',
-  OTHER: 'other',
-  IBA: 'other',
-}
-
-const MUNICIPALITY_PREFIXES = new Set(['SAN', 'STA', 'SANTA'])
-
-// ─── Auto-reply templates ─────────────────────────────────────────────────────
-
-function buildAutoReply(confidence: Confidence, publicRef?: string): string {
-  // publicRef intentionally unused — ref is appended by the trigger caller after this returns
-  const ref = publicRef ? ` Ref: ${publicRef}.` : ''
-  switch (confidence) {
-    case 'high':
-      return `Received.${ref} MDRRMO reviewing.`
-    case 'medium':
-      return `Received,${ref} Our team may contact you for details.`
-    case 'low':
-      return `Received.${ref} Our team reviewing your report.`
-    case 'none':
-    default:
-      return 'We received your message. To report an emergency, text: BANTAYOG <TYPE> <BARANGAY>. Types: FLOOD, FIRE, ACCIDENT, MEDICAL, LANDSLIDE, OTHER.'
-  }
-}
-
-// ─── Main parser ──────────────────────────────────────────────────────────────
-
-export function parseInboundSms(body: string): ParseResult {
-  const normalized = body.trim().replace(/\s+/g, ' ').toUpperCase()
-  const originalRest = body.trim().replace(/\s+/g, ' ')
-
-  const KEYWORD = 'BANTAYOG'
-  if (!normalized.startsWith(KEYWORD)) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
+  } catch (err: unknown) {
+    // Only suppress MODULE_NOT_FOUND for @bantayog/shared-data; rethrow all other failures
+    const isModuleNotFound =
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code?: string }).code === 'MODULE_NOT_FOUND'
+    const message = err instanceof Error ? err.message : ''
+    const isSharedDataLoadFailure = message.includes('@bantayog/shared-data')
+    if (isModuleNotFound && isSharedDataLoadFailure) {
+      return FALLBACK_BARANGAYS
     }
+    throw err
   }
-
-  const rest = normalized.slice(KEYWORD.length).trim()
-  if (!rest) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-
-  const tokens = rest.split(/\s+/)
-  const token0 = tokens[0]
-  const token1 = tokens[1]
-  if (tokens.length < 2 || !token0 || !token1) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-
-  const typeToken = token0
-  let barangayToken = token1
-  let detailsStartIndex = barangayToken.length
-
-  const token2 = tokens[2]
-  if (tokens.length >= 3 && token2 && MUNICIPALITY_PREFIXES.has(token1)) {
-    barangayToken = token1 + ' ' + token2
-    detailsStartIndex = barangayToken.length
-  }
-
-  const barangayIndex = originalRest.toUpperCase().indexOf(barangayToken.toUpperCase())
-  const details =
-    barangayIndex !== -1 && barangayIndex + detailsStartIndex < originalRest.length
-      ? originalRest.slice(barangayIndex + detailsStartIndex).trim()
-      : undefined
-
-  const rawType = typeToken.toUpperCase()
-  const reportType = TYPE_SYNONYMS[rawType]
-  if (!reportType) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-
-  const gazetteer = getBarangayGazetteer()
-  const barangayLower = barangayToken.toLowerCase()
-
-  const exact = gazetteer.find((b) => b.name.toLowerCase() === barangayLower)
-  if (exact) {
-    return {
-      confidence: 'high',
-      parsed: {
-        reportType,
-        barangay: exact.name,
-        details,
-      },
-      candidates: [],
-      autoReplyText: buildAutoReply('high'),
-    }
-  }
-
-  const fuzzyMatches: { entry: BarangayEntry; distance: number }[] = []
-  for (const entry of gazetteer) {
-    const dist = levenshtein(barangayLower, entry.name.toLowerCase())
-    if (dist <= 2) {
-      fuzzyMatches.push({ entry, distance: dist })
-    }
-  }
-
-  if (fuzzyMatches.length === 1) {
-    const match = fuzzyMatches[0] as { entry: BarangayEntry; distance: number }
-    const dist = match.distance
-    const entry: BarangayEntry = match.entry
-    return {
-      confidence: dist <= 1 ? 'medium' : 'low',
-      parsed: {
-        reportType,
-        barangay: entry.name,
-        rawBarangay: barangayToken,
-        details,
-      },
-      candidates: [],
-      autoReplyText: buildAutoReply(dist <= 1 ? 'medium' : 'low'),
-    }
-  }
-
-  if (fuzzyMatches.length > 1) {
-    fuzzyMatches.sort((a, b) => a.distance - b.distance)
-    const candidates = fuzzyMatches.slice(0, 3).map((m) => m.entry.name)
-    return {
-      confidence: 'low',
-      parsed: null,
-      candidates,
-      autoReplyText: buildAutoReply('low'),
-    }
-  }
-
-  return {
-    confidence: 'none',
-    parsed: null,
-    candidates: [],
-    autoReplyText: buildAutoReply('none'),
-  }
+  return FALLBACK_BARANGAYS
 }
