@@ -15,13 +15,9 @@
  * @throws Error for circular references
  */
 export async function canonicalPayloadHash(payload) {
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle) {
-        throw new Error('canonicalPayloadHash requires Web Crypto');
-    }
     const canonical = canonicalize(payload);
     const json = JSON.stringify(canonical);
-    const digest = await subtle.digest('SHA-256', new TextEncoder().encode(json));
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(json));
     return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 function canonicalize(value) {

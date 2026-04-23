@@ -5,7 +5,8 @@ const _nodeCrypto = (() => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         return require('node:crypto');
     }
-    catch {
+    catch (_err) {
+        void _err;
         return null;
     }
 })();
