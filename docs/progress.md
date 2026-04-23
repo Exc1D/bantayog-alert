@@ -2,6 +2,52 @@
 
 ## Current
 
+### Step2WhoWhere Refactoring — Phase 3 & 4: Components & Simplification (2026-04-23)
+
+- Status: Phases 3-4 COMPLETE — integrated extracted components and simplified main component
+- Files modified:
+  - `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx` — integrated MunicipalitySelector, BarangaySelector, ContactFields components; reduced from 707 to 289 lines (-418 lines, -59%)
+- Impact:
+  - Main component now orchestrates sub-components instead of rendering inline
+  - Each concern is separated: GPS (hook), location selection (components), contact fields (component)
+  - Component is now maintainable and testable
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (137 passed, 2 todo)
+
+### Step2WhoWhere Refactoring — Phase 2: Custom Hooks (2026-04-23)
+
+- Status: Phase 2 COMPLETE — extracted custom hooks and integrated existing useGpsLocation
+- Files created:
+  - `apps/citizen-pwa/src/hooks/useMunicipalityBarangays.ts` — new hook for municipality/barangay selection state with computed barangay options
+- Files modified:
+  - `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx` — integrated useGpsLocation and useMunicipalityBarangays hooks; removed local GPS state, municipality state, barangay filtering logic
+  - `apps/citizen-pwa/src/hooks/useGpsLocation.ts` — added `setLocationMethod` to return type for manual mode switching
+- Impact:
+  - GPS logic now fully reusable via existing useGpsLocation hook (with comprehensive tests)
+  - Municipality/barangay selection is encapsulated and testable
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (137 passed, 2 todo)
+
+### Step2WhoWhere Refactoring — Phase 1: Data & Utilities (2026-04-23)
+
+- Status: Phase 1 COMPLETE — extracted data constants and utility functions
+- Files created:
+  - `apps/citizen-pwa/src/data/fallback-barangays.ts` — extracted FALLBACK_BARANGAYS constant (282 lines) with TypeScript interface
+  - `apps/citizen-pwa/src/utils/storage-errors.ts` — extracted isQuotaExceededError and isSecurityError functions with JSDoc
+- Files modified:
+  - `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx` — reduced from 707 to 424 lines (-283 lines); added imports for extracted modules
+- Impact:
+  - Reusable barangay data now available across the app
+  - Storage error utilities can be used by other components
+- Verification:
+  - `pnpm --filter @bantayog/citizen-pwa typecheck` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa lint` — PASS
+  - `pnpm --filter @bantayog/citizen-pwa test` — PASS (137 passed, 2 todo)
+
 ### Code quality & security refactor (2026-04-23)
 
 - Status: DONE — audit-driven fixes across monorepo

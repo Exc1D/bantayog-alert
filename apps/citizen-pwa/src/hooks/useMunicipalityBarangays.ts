@@ -1,0 +1,53 @@
+import { useState, useMemo, useCallback } from 'react'
+import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
+import { FALLBACK_BARANGAYS } from '../data/fallback-barangays'
+
+const MUNICIPALITY_LABELS = Object.fromEntries(
+  CAMARINES_NORTE_MUNICIPALITIES.map((m) => [m.id, m.label]),
+)
+
+const MUNI_LABELS_SORTED = [...CAMARINES_NORTE_MUNICIPALITIES]
+  .sort((a, b) => a.label.localeCompare(b.label))
+  .map((m) => ({ id: m.id, label: m.label }))
+
+export interface UseMunicipalityBarangaysResult {
+  selectedMunicipalityId: string
+  selectedBarangayId: string | undefined
+  barangayOptions: { name: string; municipality: string }[]
+  municipalityOptions: { id: string; label: string }[]
+  handleSelectMunicipality: (muniId: string) => void
+  setSelectedBarangayId: (id: string | undefined) => void
+  reset: () => void
+}
+
+export function useMunicipalityBarangays(): UseMunicipalityBarangaysResult {
+  const [selectedMunicipalityId, setSelectedMunicipalityId] = useState('')
+  const [selectedBarangayId, setSelectedBarangayId] = useState<string | undefined>(undefined)
+
+  const handleSelectMunicipality = useCallback((muniId: string) => {
+    setSelectedMunicipalityId(muniId)
+    setSelectedBarangayId(undefined)
+  }, [])
+
+  const barangayOptions = useMemo(() => {
+    if (!selectedMunicipalityId) return []
+    return FALLBACK_BARANGAYS.filter(
+      (b) => MUNICIPALITY_LABELS[selectedMunicipalityId] === b.municipality,
+    ).sort((a, b) => a.name.localeCompare(b.name))
+  }, [selectedMunicipalityId])
+
+  const reset = useCallback(() => {
+    setSelectedMunicipalityId('')
+    setSelectedBarangayId(undefined)
+  }, [])
+
+  return {
+    selectedMunicipalityId,
+    selectedBarangayId,
+    barangayOptions,
+    municipalityOptions: MUNI_LABELS_SORTED,
+    handleSelectMunicipality,
+    setSelectedBarangayId,
+    reset,
+  }
+}

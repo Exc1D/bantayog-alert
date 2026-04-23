@@ -9,6 +9,7 @@ export interface UseGpsLocationResult {
   locationError: string | null
   attemptGps: () => Promise<void>
   resetGps: () => void
+  setLocationMethod: (method: 'gps' | 'manual' | null) => void
 }
 
 /**
@@ -80,5 +81,6 @@ export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult
     locationError,
     attemptGps,
     resetGps,
+    setLocationMethod,
   }
 }

@@ -20,12 +20,18 @@
 
 - **File:** `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx`
 - **Issues:**
-  - ≈707 lines in one file; component body is much smaller, large constants/helpers inflate file size
+  - ~~≈707 lines in one file~~ ✅ **NOW: 289 lines** (-418 lines, -59%)
   - ~~2 bare `catch {}` blocks~~ ✅ Fixed — now typed as `catch (err: unknown)` for private-mode storage failures
-  - Mixes GPS logic, municipality selection, form validation, UI rendering
-- **Impact:** Impossible to test. Every change risks regressing the entire citizen reporting flow.
-- **Action:** Extract sub-components: `GpsButton`, `MunicipalitySelector`, `BarangaySelector`, `ContactFields`. Extract hooks: `useGpsLocation`, `useMunicipalityBarangays`.
-- **Effort:** Medium (~3-5 files, ~150 lines)
+  - ~~Large constants/helpers inflate file size~~ ✅ Extracted FALLBACK_BARANGAYS (282 lines) to `data/fallback-barangays.ts`
+  - ~~Helper functions embedded~~ ✅ Extracted storage error utilities to `utils/storage-errors.ts`
+  - ~~Mixes GPS logic, municipality selection, form validation, UI rendering~~ ✅ Extracted to hooks and components
+- **Impact:** Reduced risk of regressions. Each concern now isolated and testable.
+- **Action:** ✅ **COMPLETE** — All phases done:
+  - Phase 1: Extracted data (fallback-barangays.ts) and utilities (storage-errors.ts)
+  - Phase 2: Extracted hooks (useGpsLocation, useMunicipalityBarangays)
+  - Phase 3: Integrated extracted components (MunicipalitySelector, BarangaySelector, ContactFields)
+  - Phase 4: Simplified main component to orchestrate sub-components
+- **Effort:** ✅ Complete (5 files created/modified, ~418 lines moved, 289 lines remaining)
 
 ### 3. `inbound.ts` is a 541-line parser with multiple responsibilities
 
