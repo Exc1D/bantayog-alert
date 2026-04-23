@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useDispatch } from '../hooks/useDispatch'
 import { useAcceptDispatch } from '../hooks/useAcceptDispatch'
@@ -69,6 +69,29 @@ function DeclineForm({
   )
 }
 
+function getFirebaseErrorCode(error: Error | undefined): string {
+  if (!error || typeof error !== 'object' || !('code' in error)) {
+    return ''
+  }
+  const code = (error as { code?: unknown }).code
+  return typeof code === 'string' ? code : ''
+}
+
+function getActionErrorMessage(error: Error | undefined): string | null {
+  if (!error) return null
+  const code = getFirebaseErrorCode(error)
+  if (code === 'functions/permission-denied') {
+    return 'This dispatch is no longer available.'
+  }
+  if (code === 'functions/already-exists') {
+    return 'Another responder already claimed this dispatch.'
+  }
+  if (code === 'functions/failed-precondition') {
+    return 'This action is no longer allowed from the current dispatch state.'
+  }
+  return 'Something went wrong. Please retry.'
+}
+
 export function DispatchDetailPage() {
   const { dispatchId } = useParams<{ dispatchId: string }>()
   const { dispatch, loading, error } = useDispatch(dispatchId)
@@ -83,8 +106,6 @@ export function DispatchDetailPage() {
     loading: declining,
     error: declineError,
   } = useDeclineDispatch(dispatch?.dispatchId ?? '')
-
-  const advanceAttemptedRef = useRef(false)
   const {
     advance,
     loading: advanceLoading,
@@ -93,8 +114,7 @@ export function DispatchDetailPage() {
   const advanceState = { advance, loading: advanceLoading, error: advanceError }
 
   useEffect(() => {
-    if (dispatch?.status === 'accepted' && !advanceAttemptedRef.current) {
-      advanceAttemptedRef.current = true
+    if (dispatch?.status === 'accepted') {
       void advance('acknowledged')
     }
   }, [dispatch?.status, advance])
@@ -103,7 +123,10 @@ export function DispatchDetailPage() {
   if (error) return <p>Error: {error.message}</p>
   if (!dispatch) return <NotFound />
   if (dispatch.terminalSurface === 'cancelled') return <CancelledScreen dispatch={dispatch} />
-  if (dispatch.terminalSurface === 'race_loss' || acceptError?.message.includes('already-exists')) {
+  if (
+    dispatch.terminalSurface === 'race_loss' ||
+    getFirebaseErrorCode(acceptError) === 'functions/already-exists'
+  ) {
     return <RaceLossScreen />
   }
 
@@ -125,21 +148,34 @@ export function DispatchDetailPage() {
           <DeclineForm
             loading={declining}
             onSubmit={(reason) => {
-              void decline(reason)
+              void decline(reason).catch((err: unknown) => {
+                console.error('[DispatchDetailPage] decline submit failed:', err)
+              })
             }}
           />
         </>
       )}
-      {acceptError && <div style={{ color: 'red' }}>Error: {acceptError.message}</div>}
-      {declineError && <p style={{ color: 'red' }}>Error: {declineError.message}</p>}
+      {acceptError && <div style={{ color: 'red' }}>{getActionErrorMessage(acceptError)}</div>}
+      {declineError && <p style={{ color: 'red' }}>{getActionErrorMessage(declineError)}</p>}
       {dispatch.status === 'acknowledged' && !advanceState.loading && (
-        <button
-          onClick={() => {
-            void advanceState.advance('en_route')
-          }}
-        >
-          Heading there
-        </button>
+        <>
+          <button
+            onClick={() => {
+              void advanceState.advance('en_route')
+            }}
+          >
+            Heading there
+          </button>
+          {advanceState.error && (
+            <button
+              onClick={() => {
+                void advanceState.advance('acknowledged')
+              }}
+            >
+              Retry acknowledgement
+            </button>
+          )}
+        </>
       )}
       {dispatch.status === 'en_route' && !advanceState.loading && (
         <button
@@ -160,10 +196,10 @@ export function DispatchDetailPage() {
       {advanceState.loading && <p>Updating...</p>}
       {advanceState.error && (
         <p style={{ color: 'red' }}>
-          {advanceState.error.message.includes('permission-denied') ? (
+          {getFirebaseErrorCode(advanceState.error) === 'functions/permission-denied' ? (
             <em>Dispatch was cancelled by an administrator.</em>
           ) : (
-            `Error: ${advanceState.error.message}`
+            getActionErrorMessage(advanceState.error)
           )}
         </p>
       )}
