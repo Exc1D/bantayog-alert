@@ -22,15 +22,15 @@ describe('useGpsLocation', () => {
     vi.restoreAllMocks()
   })
 
-  it('starts with gpsLoading false and null state', () => {
+  it('starts with isLoading false and null state', () => {
     const { result } = renderHook(() => useGpsLocation())
-    expect(result.current.gpsLoading).toBe(false)
+    expect(result.current.isLoading).toBe(false)
     expect(result.current.location).toBeNull()
     expect(result.current.locationMethod).toBeNull()
     expect(result.current.locationError).toBeNull()
   })
 
-  it('sets gpsLoading true during attempt', () => {
+  it('sets isLoading true during attempt', () => {
     mockGetCurrentPosition.mockImplementation(() => {
       // intentionally never resolve so loading stays true
     })
@@ -38,7 +38,7 @@ describe('useGpsLocation', () => {
     act(() => {
       void result.current.attemptGps()
     })
-    expect(result.current.gpsLoading).toBe(true)
+    expect(result.current.isLoading).toBe(true)
   })
 
   it('resolves with location on successful GPS', async () => {
@@ -53,7 +53,7 @@ describe('useGpsLocation', () => {
     })
     expect(result.current.location).toEqual({ lat: 14.1, lng: 122.9 })
     expect(result.current.locationMethod).toBe('gps')
-    expect(result.current.gpsLoading).toBe(false)
+    expect(result.current.isLoading).toBe(false)
     expect(result.current.locationError).toBeNull()
   })
 
@@ -71,7 +71,7 @@ describe('useGpsLocation', () => {
       'Location access denied. Choose municipality manually.',
     )
     expect(result.current.locationMethod).toBe('manual')
-    expect(result.current.gpsLoading).toBe(false)
+    expect(result.current.isLoading).toBe(false)
   })
 
   it('handles timeout (code 3)', async () => {
@@ -86,7 +86,7 @@ describe('useGpsLocation', () => {
     })
     expect(result.current.locationError).toBe('Location timed out. Choose municipality manually.')
     expect(result.current.locationMethod).toBe('manual')
-    expect(result.current.gpsLoading).toBe(false)
+    expect(result.current.isLoading).toBe(false)
   })
 
   it('resetGps clears location, method, and error', async () => {
@@ -121,7 +121,7 @@ describe('useGpsLocation', () => {
     })
     expect(result.current.location).toEqual({ lat: 14.1, lng: 122.9 })
     expect(result.current.locationMethod).toBe('gps')
-    expect(result.current.gpsLoading).toBe(false)
+    expect(result.current.isLoading).toBe(false)
   })
 
   it('does not auto-attempt on mount when disabled', () => {
@@ -132,7 +132,7 @@ describe('useGpsLocation', () => {
     })
     const { result } = renderHook(() => useGpsLocation(false))
     expect(result.current.location).toBeNull()
-    expect(result.current.gpsLoading).toBe(false)
+    expect(result.current.isLoading).toBe(false)
     expect(mockGetCurrentPosition).not.toHaveBeenCalled()
   })
 
@@ -148,7 +148,7 @@ describe('useGpsLocation', () => {
     })
     expect(result.current.locationError).toBe('GPS not supported on this device.')
     expect(result.current.locationMethod).toBe('manual')
-    expect(result.current.gpsLoading).toBe(false)
+    expect(result.current.isLoading).toBe(false)
   })
 
   it('logs error to console on failure', async () => {

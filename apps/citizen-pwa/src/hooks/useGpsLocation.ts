@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 
+const GPS_TIMEOUT_MS = 10_000
+
 export interface UseGpsLocationResult {
   location: { lat: number; lng: number } | null
   locationMethod: 'gps' | 'manual' | null
-  gpsLoading: boolean
+  isLoading: boolean
   locationError: string | null
   attemptGps: () => Promise<void>
   resetGps: () => void
@@ -13,7 +15,7 @@ export interface UseGpsLocationResult {
  * GPS location acquisition with fallback to manual entry.
  *
  * - `location` / `locationMethod` — set when GPS resolves successfully
- * - `gpsLoading` — true while waiting for navigator.geolocation
+ * - `isLoading` — true while waiting for navigator.geolocation
  * - `locationError` — human-readable message on failure; triggers manual mode
  * - `attemptGps()` — retry GPS on demand
  * - `resetGps()` — clear location state (e.g. when user switches input method)
@@ -21,13 +23,14 @@ export interface UseGpsLocationResult {
 export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationMethod, setLocationMethod] = useState<'gps' | 'manual' | null>(null)
-  const [gpsLoading, setGpsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
 
   const attemptGps = useCallback(async () => {
     setLocationError(null)
-    setGpsLoading(true)
+    setIsLoading(true)
     try {
+      // Some WebViews and older browsers lack the geolocation API
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!navigator.geolocation) {
         setLocationError('GPS not supported on this device.')
@@ -37,7 +40,7 @@ export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult
       const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: GPS_TIMEOUT_MS,
         })
       })
       setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
@@ -53,7 +56,7 @@ export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult
       setLocationError(msg)
       setLocationMethod('manual')
     } finally {
-      setGpsLoading(false)
+      setIsLoading(false)
     }
   }, [])
 
@@ -73,7 +76,7 @@ export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult
   return {
     location,
     locationMethod,
-    gpsLoading,
+    isLoading,
     locationError,
     attemptGps,
     resetGps,
