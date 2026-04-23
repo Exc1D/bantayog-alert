@@ -686,6 +686,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
             fullWidth
             onClick={handleNext}
             disabled={!canProceed || isSubmitting}
+            style={{ marginTop: '1.5rem' }}
           >
             {isSubmitting ? 'Please wait...' : 'Continue'}
           </Button>
