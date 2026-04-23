@@ -16,7 +16,7 @@ export interface UseMunicipalityBarangaysResult {
   barangayOptions: { name: string; municipality: string }[]
   municipalityOptions: { id: string; label: string }[]
   handleSelectMunicipality: (muniId: string) => void
-  setSelectedBarangayId: (id: string | undefined) => void
+  handleSelectBarangay: (id: string | undefined) => void
   reset: () => void
 }
 
@@ -24,17 +24,30 @@ export function useMunicipalityBarangays(): UseMunicipalityBarangaysResult {
   const [selectedMunicipalityId, setSelectedMunicipalityId] = useState('')
   const [selectedBarangayId, setSelectedBarangayId] = useState<string | undefined>(undefined)
 
-  const handleSelectMunicipality = useCallback((muniId: string) => {
-    setSelectedMunicipalityId(muniId)
-    setSelectedBarangayId(undefined)
-  }, [])
-
   const barangayOptions = useMemo(() => {
     if (!selectedMunicipalityId) return []
     return FALLBACK_BARANGAYS.filter(
       (b) => MUNICIPALITY_LABELS[selectedMunicipalityId] === b.municipality,
     ).sort((a, b) => a.name.localeCompare(b.name))
   }, [selectedMunicipalityId])
+
+  const handleSelectMunicipality = useCallback((muniId: string) => {
+    setSelectedMunicipalityId(muniId)
+    setSelectedBarangayId(undefined)
+  }, [])
+
+  const handleSelectBarangay = useCallback(
+    (id: string | undefined) => {
+      if (id === undefined) {
+        setSelectedBarangayId(undefined)
+        return
+      }
+      if (barangayOptions.some((b) => b.name === id)) {
+        setSelectedBarangayId(id)
+      }
+    },
+    [barangayOptions],
+  )
 
   const reset = useCallback(() => {
     setSelectedMunicipalityId('')
@@ -47,7 +60,7 @@ export function useMunicipalityBarangays(): UseMunicipalityBarangaysResult {
     barangayOptions,
     municipalityOptions: MUNI_LABELS_SORTED,
     handleSelectMunicipality,
-    setSelectedBarangayId,
+    handleSelectBarangay,
     reset,
   }
 }

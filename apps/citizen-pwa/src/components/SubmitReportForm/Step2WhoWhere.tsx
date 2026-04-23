@@ -40,7 +40,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
     selectedMunicipalityId,
     selectedBarangayId,
     handleSelectMunicipality,
-    setSelectedBarangayId,
+    handleSelectBarangay,
   } = useMunicipalityBarangays()
 
   const [nearestLandmark, setNearestLandmark] = useState<string>('')
@@ -51,6 +51,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   const [nameError, setNameError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [hasMemory, setHasMemory] = useState(false)
+  const [municipalityError, setMunicipalityError] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -76,9 +77,10 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   const handleNext = () => {
     setNameError(null)
     setPhoneError(null)
+    setMunicipalityError(null)
 
     if (locationMethod === 'manual' && !selectedMunicipalityId) {
-      // Note: locationError is managed by useGpsLocation hook
+      setMunicipalityError('Please select a municipality.')
       return
     }
     if (!reporterName.trim()) {
@@ -219,8 +221,11 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       {locationMethod === 'manual' ? (
         <MunicipalitySelector
           value={selectedMunicipalityId}
-          onChange={handleSelectMunicipality}
-          error={locationError}
+          onChange={(muniId) => {
+            setMunicipalityError(null)
+            handleSelectMunicipality(muniId)
+          }}
+          error={municipalityError}
         />
       ) : null}
 
@@ -228,7 +233,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         <BarangaySelector
           municipalityId={selectedMunicipalityId}
           value={selectedBarangayId ?? ''}
-          onChange={setSelectedBarangayId}
+          onChange={handleSelectBarangay}
         />
       )}
 
