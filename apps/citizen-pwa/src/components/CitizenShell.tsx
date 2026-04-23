@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { Map, Rss, AlertTriangle, Bell, User } from 'lucide-react'
 import '../styles/design-tokens.css'
 
 const TABS = [
-  { label: 'Map', path: '/' },
-  { label: 'Feed', path: '/feed' },
-  { label: 'Report', path: '/report' },
-  { label: 'Alerts', path: '/alerts' },
-  { label: 'Profile', path: '/profile' },
+  { label: 'Map', path: '/', Icon: Map },
+  { label: 'Feed', path: '/feed', Icon: Rss },
+  { label: 'Report', path: '/report', Icon: AlertTriangle },
+  { label: 'Alerts', path: '/alerts', Icon: Bell },
+  { label: 'Profile', path: '/profile', Icon: User },
 ] as const
 
 export function CitizenShell({ children }: { children: ReactNode }) {
@@ -80,17 +81,13 @@ export function CitizenShell({ children }: { children: ReactNode }) {
               cursor: 'pointer',
             }}
           >
-            <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>
-              {tab.label === 'Report'
-                ? '🚨'
-                : tab.label === 'Alerts'
-                  ? '⚠️'
-                  : tab.label === 'Profile'
-                    ? '👤'
-                    : tab.label === 'Feed'
-                      ? '📋'
-                      : '🗺'}
-            </span>
+            <tab.Icon
+              size={20}
+              strokeWidth={pathname === tab.path ? 2.5 : 2}
+              color={
+                pathname === tab.path ? 'var(--color-primary)' : 'var(--color-on-surface-variant)'
+              }
+            />
             {tab.label}
           </button>
         ))}
