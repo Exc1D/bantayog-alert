@@ -9,6 +9,7 @@ export { cancelDispatch } from './callables/cancel-dispatch.js'
 export { rejectReport } from './callables/reject-report.js'
 export { acceptDispatch } from './callables/accept-dispatch.js'
 export { advanceDispatch } from './callables/advance-dispatch.js'
+export { declineDispatch } from './callables/decline-dispatch.js'
 export { closeReport } from './callables/close-report.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
