@@ -25,6 +25,9 @@ export interface SmsProviderSendInput {
   to: string
   body: string
   encoding: SmsEncoding
+  priority?: 'normal' | 'urgent'
+  idempotencyKey?: string
+  segmentCount?: number
 }
 
 export interface SmsProvider {
