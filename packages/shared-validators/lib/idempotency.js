@@ -15,6 +15,10 @@
  * @throws Error for circular references
  */
 export async function canonicalPayloadHash(payload) {
+    if (typeof globalThis.crypto?.subtle !== 'object') {
+        throw new Error('Web Crypto API (globalThis.crypto.subtle) is not available in this environment. ' +
+            'This function requires a modern browser or Node.js 19+ with --experimental-global-webcrypto.');
+    }
     const canonical = canonicalize(payload);
     const json = JSON.stringify(canonical);
     const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(json));

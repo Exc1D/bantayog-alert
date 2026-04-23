@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { canonicalPayloadHash } from './idempotency.js';
 describe('canonicalPayloadHash', () => {
     it('produces a 64-char hex SHA-256 digest', async () => {
@@ -48,6 +48,15 @@ describe('canonicalPayloadHash', () => {
     it('throws TypeError for Map, Set, and RegExp', async () => {
         for (const exotic of [new Map(), new Set(), /pattern/]) {
             await expect(canonicalPayloadHash({ data: exotic })).rejects.toThrow(TypeError);
+        }
+    });
+    it('throws Error if Web Crypto API is not available', async () => {
+        vi.stubGlobal('crypto', undefined);
+        try {
+            await expect(canonicalPayloadHash({ a: 1 })).rejects.toThrow('Web Crypto API (globalThis.crypto.subtle) is not available');
+        }
+        finally {
+            vi.unstubAllGlobals();
         }
     });
 });
