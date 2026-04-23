@@ -1,15 +1,3 @@
-import type { createHash as CreateHashFn } from 'node:crypto'
-
-// node:crypto is server-only. Static import crashes in browser via Vite.
-const _nodeCrypto: { createHash: typeof CreateHashFn } | null = (() => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('node:crypto') as { createHash: typeof CreateHashFn }
-  } catch {
-    return null
-  }
-})()
-
 /**
  * Canonical payload hash per spec §6.2.
  * Used as the key half of idempotency guards for all write callables.
@@ -26,13 +14,11 @@ const _nodeCrypto: { createHash: typeof CreateHashFn } | null = (() => {
  * @throws TypeError for unsupported types (Map, Set, RegExp)
  * @throws Error for circular references
  */
-export function canonicalPayloadHash(payload: unknown): string {
-  if (!_nodeCrypto) {
-    throw new Error('canonicalPayloadHash requires Node.js crypto — not available in browser')
-  }
+export async function canonicalPayloadHash(payload: unknown): Promise<string> {
   const canonical = canonicalize(payload)
   const json = JSON.stringify(canonical)
-  return _nodeCrypto.createHash('sha256').update(json).digest('hex')
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(json))
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 function canonicalize(value: unknown): unknown {
