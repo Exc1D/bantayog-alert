@@ -37,8 +37,11 @@ export function ContactFields({
     <>
       {hasMemory && <p className="memory-hint">Pre-filled from your last report</p>}
       <div className="field-group">
-        <p className="field-label">Your name</p>
+        <label htmlFor="reporter-name" className="field-label">
+          Your name
+        </label>
         <input
+          id="reporter-name"
           type="text"
           value={reporterName}
           onChange={(e) => {
@@ -57,8 +60,11 @@ export function ContactFields({
       </div>
 
       <div className="field-group">
-        <p className="field-label">Phone number</p>
+        <label htmlFor="reporter-msisdn" className="field-label">
+          Phone number
+        </label>
         <input
+          id="reporter-msisdn"
           type="tel"
           value={reporterMsisdn}
           onChange={(e) => {
@@ -88,6 +94,7 @@ export function ContactFields({
         <div className="toggle-group">
           <button
             type="button"
+            aria-pressed={anyoneHurt}
             onClick={() => {
               onAnyoneHurtChange(true)
             }}
@@ -97,6 +104,7 @@ export function ContactFields({
           </button>
           <button
             type="button"
+            aria-pressed={!anyoneHurt}
             onClick={() => {
               onAnyoneHurtChange(false)
             }}
