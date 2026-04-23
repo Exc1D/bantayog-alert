@@ -21,7 +21,7 @@
 - **File:** `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx`
 - **Issues:**
   - 707 lines in a single React component
-  - ~~2 bare `catch {}` blocks~~ ✅ Fixed — now typed as `catch (_err: unknown)` for private-mode storage failures
+  - ~~2 bare `catch {}` blocks~~ ✅ Fixed — now typed as `catch (err: unknown)` for private-mode storage failures
   - Mixes GPS logic, municipality selection, form validation, UI rendering
 - **Impact:** Impossible to test. Every change risks regressing the entire citizen reporting flow.
 - **Action:** Extract sub-components: `GpsButton`, `MunicipalitySelector`, `BarangaySelector`, `ContactFields`. Extract hooks: `useGpsLocation`, `useMunicipalityBarangays`.
@@ -83,11 +83,11 @@
   - `catch (err)` — 13 occurrences (implicit any)
   - `catch (error)` — 5 occurrences
   - `catch (e: unknown)` — 2 occurrences
-  - `catch {}` — **0** in production source (2 in `scripts/`, not production)
+  - `catch {}` — **2** in production source (intentional exceptions documented below)
 - **Files with bare `catch {}` (remaining):**
-  - `scripts/phase-3c/acceptance.ts` (2×) — scripts, not production source
   - `functions/src/services/fcm-send.ts` (1×) — outer catch intentional for retry logic (has server-side console.error)
   - `functions/src/triggers/inbox-reconciliation-sweep.ts` (1×) — transaction contention intentional skip (has comment)
+  - `scripts/phase-3c/acceptance.ts` (2×) — scripts, not production source
 - **Recently fixed:**
   - ~~`apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx`~~ ✅
   - ~~`apps/citizen-pwa/src/services/draft-store.ts`~~ ✅
