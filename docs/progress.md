@@ -2,6 +2,31 @@
 
 ## Current
 
+### Code quality & security refactor (2026-04-23)
+
+- Status: DONE — audit-driven fixes across monorepo
+- Files changed:
+  - `packages/shared-sms-parser/src/__tests__/inbound.test.ts` — fix 2 failing tests by using barangays present in fallback gazetteer (`LANG` for ambiguous match, `ANAHAW` for exact match)
+  - `packages/shared-validators/vitest.config.ts` — add `include: ['src/**/*.test.ts']` to prevent duplicate test execution (was running tests from both `src/` and `lib/`)
+  - `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx` — type 2 bare `catch {}` blocks (`_err: unknown`) for localStorage/sessionStorage private-mode failures
+  - `apps/citizen-pwa/src/services/draft-store.ts` — type bare `catch {}` in `isBlobReadable`
+  - `apps/citizen-pwa/src/hooks/useOnlineStatus.ts` — type bare `catch {}` in network probe
+  - `packages/shared-sms-parser/src/inbound.ts` — type bare `catch {}` in gazetteer require fallback
+  - `packages/shared-validators/src/msisdn.ts` — type bare `catch {}` in `node:crypto` require fallback
+  - `functions/src/services/fcm-send.ts` — capture and append FCM retry error to warnings; keep outer catch bare (intentional retry)
+  - `functions/src/services/sms-providers/semaphore.ts` — include original parse error in thrown `SmsProviderRetryableError`
+  - `functions/src/http/sms-inbound.ts` — capture and log MSISDN normalization error
+  - `functions/src/triggers/on-media-finalize.ts` — capture and log corrupt-image processing error
+  - `functions/src/firestore/sms-inbound-processor.ts` — capture and log MSISDN decryption error
+  - `functions/src/triggers/inbox-reconciliation-sweep.ts` — restore bare catch with explicit comment (transaction contention is intentional skip)
+  - `functions/src/__tests__/callables/https-error.test.ts` — NEW: 8 tests for critical auth boundary (`requireAuth`, `bantayogErrorToHttps`, code mapping)
+- Verification:
+  - `npx turbo run lint` — PASS (25/25)
+  - `npx turbo run typecheck` — PASS (25/25)
+  - `pnpm --filter @bantayog/shared-sms-parser test` — PASS (13/13)
+  - `pnpm --filter @bantayog/shared-validators test` — PASS (190/190, no duplicates)
+  - `pnpm --filter @bantayog/functions test src/__tests__/callables/https-error.test.ts` — PASS (8/8)
+
 ### Phase 5 Responder MVP — PR #60 review fixes (2026-04-23)
 
 - Status: DONE — all CodeRabbit + CodeQL review comments addressed

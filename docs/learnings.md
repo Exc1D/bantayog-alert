@@ -52,6 +52,7 @@ Durable rules worth keeping across sessions.
 - Use `catch (err: unknown)` and narrow explicitly.
 - Avoid `any`; prefer real types or `unknown`.
 - With `exactOptionalPropertyTypes`, omit optional keys entirely instead of assigning `undefined`.
+- **`catch (_err: unknown) { void _err }` does not satisfy `@typescript-eslint/no-unused-vars` in all configs.** If the linter rejects `_`-prefixed catch variables, prefer `catch { /* reason */ }` with an explicit comment over a disabled lint rule. Only capture the error when you actually log or transform it.
 
 ## Auth / Async
 
