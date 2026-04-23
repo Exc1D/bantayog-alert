@@ -28,17 +28,23 @@ Durable rules worth keeping across sessions.
 - Firebase integration tests often need module-level mocks for Firestore/Auth setup.
 - A passing test is not enough; confirm it actually exercises the changed path.
 - Firebase Admin SDK (`firebase-admin/firestore`) and Client SDK (`firebase/firestore`) are type-incompatible — never mix `setDoc(doc(adminDb, ...), data)` patterns. Use Admin SDK exclusively for admin contexts, or Client SDK exclusively for test contexts.
+- Callable error handling should use the runtime client code (`not-found`) rather than the internal enum name; normalize the error code the client actually receives.
+- `waitFor(() => expect(...))` triggers `no-confusing-void-expression`; wrap the assertion body in braces.
+- Local dev should not hard-crash on missing Vite env vars if the screen can degrade gracefully; gate Firebase consumers and surface a clear inline message instead.
 
 ## React
 
 - Render-body ref assignment can trigger loops; move ref syncing into `useEffect` when needed.
 - `useRef(initial)` does not track later state changes; sync refs explicitly if they must stay current.
 - Critical external data should be fetched internally or required as a prop, not left optional.
+- `react-hooks/refs` will flag `ref.current` reads during render; pass render-time values through state instead of reading mutable refs in JSX.
+- If CodeQL flags a React blob-preview path as `js/xss-through-dom`, annotation-only suppressions are brittle; render the file into a `canvas` via `createImageBitmap` instead of piping a blob URL string into JSX.
 
 ## TypeScript
 
 - Use `catch (err: unknown)` and narrow explicitly.
 - Avoid `any`; prefer real types or `unknown`.
+- With `exactOptionalPropertyTypes`, omit optional keys entirely instead of assigning `undefined`.
 
 ## Misc
 

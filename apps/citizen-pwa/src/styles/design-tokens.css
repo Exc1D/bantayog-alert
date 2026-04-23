@@ -1,6 +1,7 @@
 :root {
   /* Colors */
   --color-primary: #001e40;
+  --color-assurance-bg: linear-gradient(#fff5ef, #ffeee6);
   --color-success-bg: #dcfce7;
   --color-success-fg: #16a34a;
   --color-queued-bg: #fef3c7;
@@ -9,6 +10,15 @@
   --color-failed-fg: #dc2626;
   --color-surface: #f5f7fa;
   --color-card: #ffffff;
+  --color-secondary: #a73400;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-surface-variant: #43474f;
+  --color-tertiary-fixed: #d1e4ff;
+
+  /* Typography */
+  --font-primary: 'Inter', -apple-system, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
 
   /* Spacing */
   --spacing-xs: 4px;

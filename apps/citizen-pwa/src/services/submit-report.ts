@@ -9,6 +9,9 @@ export interface SubmitReportInput {
   publicLocation: { lat: number; lng: number }
   photo?: Blob
   contact?: { phone: string; smsConsent: true }
+  municipalityId?: string
+  barangayId?: string
+  nearestLandmark?: string
 }
 
 export interface SubmitReportDeps {
@@ -114,6 +117,13 @@ export async function submitReport(
       source: 'web',
       publicLocation: input.publicLocation,
       pendingMediaIds,
+      ...(input.municipalityId
+        ? {
+            municipalityId: input.municipalityId,
+            barangayId: input.barangayId,
+            nearestLandmark: input.nearestLandmark,
+          }
+        : {}),
       ...(input.contact
         ? {
             contact: {

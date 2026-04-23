@@ -39,8 +39,8 @@ export const borderRadius = {
 
 // Motion durations
 export const motion = {
-  fast: 100,
-  normal: 300,
-  slow: 400,
-  slower: 600,
+  fast: '100ms',
+  normal: '300ms',
+  slow: '400ms',
+  slower: '600ms',
 } as const

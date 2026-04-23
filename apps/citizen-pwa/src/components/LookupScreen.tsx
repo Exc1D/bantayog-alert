@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { fns } from '../services/firebase.js'
+import { fns, hasFirebaseConfig, FIREBASE_ENV_ERROR_MESSAGE } from '../services/firebase.js'
 
 interface LookupResult {
   status: string
@@ -19,6 +19,9 @@ export function LookupScreen() {
     setError(null)
     setResult(null)
     try {
+      if (!hasFirebaseConfig()) {
+        throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
+      }
       const res = await httpsCallable(fns(), 'requestLookup')({ publicRef, secret })
       setResult(res.data as LookupResult)
     } catch (e: unknown) {
