@@ -12,9 +12,10 @@ describe('parseInboundSms', () => {
   })
 
   it('parses with type synonym BAHA', () => {
-    const result = parseInboundSms('BANTAYOG BAHA LABO')
+    const result = parseInboundSms('BANTAYOG BAHA ANAHAW')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('flood')
+    expect(result.parsed?.barangay).toBe('Anahaw')
   })
 
   it('fuzzy-matches barangay with typo (Levenshtein ≤ 2)', () => {
@@ -51,25 +52,25 @@ describe('parseInboundSms', () => {
   })
 
   it('parses fire synonym SUNOG', () => {
-    const result = parseInboundSms('BANTAYOG SUNOG SAN JOSE')
+    const result = parseInboundSms('BANTAYOG SUNOG BASIAD')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('fire')
   })
 
   it('parses landslide synonym GUHO', () => {
-    const result = parseInboundSms('BANTAYOG GUHO MANGCAMAMUND')
+    const result = parseInboundSms('BANTAYOG GUHO MANGCAMAGONG')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('landslide')
   })
 
   it('parses medical synonym MEDIKAL', () => {
-    const result = parseInboundSms('BANTAYOG MEDIKAL ALCOY')
+    const result = parseInboundSms('BANTAYOG MEDIKAL BAGUMBAYAN')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('medical')
   })
 
   it('parses accident synonym AKSIDENTE', () => {
-    const result = parseInboundSms('BANTAYOG AKSIDENTE BABANG')
+    const result = parseInboundSms('BANTAYOG AKSIDENTE NAMOC')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('accident')
   })
@@ -81,7 +82,7 @@ describe('parseInboundSms', () => {
   })
 
   it('returns high confidence for OTHER type', () => {
-    const result = parseInboundSms('BANTAYOG OTHER NAMNAMA')
+    const result = parseInboundSms('BANTAYOG OTHER TUACA')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('other')
   })

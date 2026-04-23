@@ -1,0 +1,51 @@
+/**
+ * Canonical payload hash per spec §6.2.
+ * Used as the key half of idempotency guards for all write callables.
+ *
+ * Algorithm:
+ *   1. Recursively sort object keys at every nesting level.
+ *   2. JSON.stringify with no whitespace.
+ *   3. SHA-256 the result; return hex.
+ *
+ * Arrays are NOT reordered — element order is semantic.
+ * `undefined` values are rejected with TypeError (JSON.stringify would silently
+ * drop them, causing hash collisions between `{ a: 1 }` and `{ a: 1, b: undefined }`).
+ *
+ * @throws TypeError for unsupported types (Map, Set, RegExp)
+ * @throws Error for circular references
+ */
+export async function canonicalPayloadHash(payload) {
+    const subtle = globalThis.crypto?.subtle;
+    if (!subtle) {
+        throw new Error('canonicalPayloadHash requires Web Crypto');
+    }
+    const canonical = canonicalize(payload);
+    const json = JSON.stringify(canonical);
+    const digest = await subtle.digest('SHA-256', new TextEncoder().encode(json));
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+function canonicalize(value) {
+    if (value === undefined) {
+        throw new TypeError('undefined is not supported in idempotency payloads');
+    }
+    if (value === null || typeof value !== 'object') {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map(canonicalize);
+    }
+    // Reject non-plain objects to prevent silent hash collisions.
+    // Map, Set, and RegExp all return [] from Object.keys() and would
+    // produce the same hash as {}, making them undetectable failures.
+    if (value instanceof Map || value instanceof Set || value instanceof RegExp) {
+        throw new TypeError(`canonicalPayloadHash does not support ${value.constructor.name}`);
+    }
+    const record = value;
+    const sortedKeys = Object.keys(record).sort();
+    const result = {};
+    for (const key of sortedKeys) {
+        result[key] = canonicalize(record[key]);
+    }
+    return result;
+}
+//# sourceMappingURL=idempotency.js.map

@@ -4,10 +4,16 @@ node_modules/
 
 # Build outputs
 dist/
-lib/
 build/
 .turbo/
 *.tsbuildinfo
+
+# lib/ only as a direct child (excludes packages/*/lib/, apps/*/lib/)
+/lib/
+
+# Allow source lib/ directories (e.g., src/lib/)
+!src/lib/
+!*/src/lib/
 
 # Test + coverage
 coverage/

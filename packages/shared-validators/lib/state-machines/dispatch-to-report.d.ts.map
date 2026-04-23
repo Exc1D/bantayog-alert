@@ -1,0 +1,1 @@
+{"version":3,"file":"dispatch-to-report.d.ts","sourceRoot":"","sources":["../../src/state-machines/dispatch-to-report.ts"],"names":[],"mappings":"AAAA;;;;;;;;;GASG;AAEH,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,kBAAkB,CAAA;AACtD,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,oBAAoB,CAAA;AAEtD,wBAAgB,qBAAqB,CAAC,cAAc,EAAE,cAAc,GAAG,YAAY,GAAG,IAAI,CAczF"}

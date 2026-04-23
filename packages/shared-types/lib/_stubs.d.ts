@@ -1,0 +1,9 @@
+export type _ReportStub = never;
+export type _DispatchStub = never;
+export type _UserStub = never;
+export type _AlertStub = never;
+export type _AuditStub = never;
+export type _CoordinationStub = never;
+export type _SmsStub = never;
+export type _SystemStub = never;
+//# sourceMappingURL=_stubs.d.ts.map
