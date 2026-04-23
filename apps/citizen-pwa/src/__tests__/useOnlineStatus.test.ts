@@ -16,12 +16,15 @@ describe('useOnlineStatus', () => {
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
     })
 
-    it('returns isOnline: true and navigatorOnline: true when probe succeeds', () => {
+    it('returns isOnline: true and navigatorOnline: true when probe succeeds', async () => {
       mockFetch.mockResolvedValueOnce(new Response('ok'))
       const { result } = renderHook(() => useOnlineStatus())
 
-      expect(result.current.navigatorOnline).toBe(true)
-      expect(result.current.isOnline).toBe(true)
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledTimes(1)
+        expect(result.current.navigatorOnline).toBe(true)
+        expect(result.current.isOnline).toBe(true)
+      })
     })
 
     it('returns isOnline: false when probe fails', async () => {

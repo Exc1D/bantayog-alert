@@ -32,7 +32,7 @@ export function App() {
 async function checkInboxExists(clientDraftRef: string): Promise<boolean> {
   const q = query(
     collection(db(), 'report_inbox'),
-    where('clientDraftRef', '==', clientDraftRef),
+    where('payload.clientDraftRef', '==', clientDraftRef),
     limit(1),
   )
   const snap = await getDocs(q)

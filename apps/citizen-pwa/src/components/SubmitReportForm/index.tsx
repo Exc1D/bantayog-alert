@@ -26,6 +26,7 @@ function FormCollector() {
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false)
 
   async function getLocation(): Promise<void> {
     const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -48,6 +49,7 @@ function FormCollector() {
 
   async function onSubmit(e: React.SyntheticEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault()
+    if (isCreatingDraft) return
     if (lat === null || lng === null) {
       setError('Please capture your location.')
       return
@@ -61,19 +63,24 @@ function FormCollector() {
       }
     }
     setError(null)
-
-    const created = await createDraft({
-      reportType,
-      barangay: '',
-      description,
-      severity,
-      location: { lat, lng },
-      ...(phone && smsConsent ? { reporterMsisdnHash: await hashPhone(phone) } : {}),
-      clientDraftRef: crypto.randomUUID(),
-      ...(photo ? { photo: new Blob([await photo.arrayBuffer()], { type: photo.type }) } : {}),
-    })
-
-    setDraft(created)
+    setIsCreatingDraft(true)
+    try {
+      const created = await createDraft({
+        reportType,
+        barangay: '',
+        description,
+        severity,
+        location: { lat, lng },
+        ...(phone && smsConsent ? { reporterMsisdnHash: await hashPhone(phone) } : {}),
+        clientDraftRef: crypto.randomUUID(),
+        ...(photo ? { photo: new Blob([await photo.arrayBuffer()], { type: photo.type }) } : {}),
+      })
+      setDraft(created)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to create draft')
+    } finally {
+      setIsCreatingDraft(false)
+    }
   }
 
   if (draft) {
@@ -171,7 +178,9 @@ function FormCollector() {
         </p>
       )}
       {error && <p role="alert">{error}</p>}
-      <button type="submit">Submit report</button>
+      <button type="submit" disabled={isCreatingDraft}>
+        {isCreatingDraft ? 'Saving draft\u2026' : 'Submit report'}
+      </button>
     </form>
   )
 }

@@ -179,7 +179,7 @@ describe('draftStore', () => {
       mockDraftData.set(draft.id, draft)
       mockPhotoStorage.removeItem.mockRejectedValueOnce(new Error('QuotaExceededError'))
 
-      await expect(draftStore.clear(draft.id)).resolves.not.toThrow()
+      await expect(draftStore.clear(draft.id)).resolves.toBeUndefined()
     })
   })
 

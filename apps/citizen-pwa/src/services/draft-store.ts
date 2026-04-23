@@ -121,7 +121,11 @@ export const draftStore = {
     if (photoBlob) {
       const readable = await isBlobReadable(photoBlob)
       if (!readable) {
-        await getPhotoStorage().removeItem(id)
+        await getPhotoStorage()
+          .removeItem(id)
+          .catch((_e: unknown) => {
+            void _e
+          })
         return { draft }
       }
       return { draft, photoBlob }

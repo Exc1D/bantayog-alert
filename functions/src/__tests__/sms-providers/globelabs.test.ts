@@ -5,6 +5,10 @@ const ORIGINAL_ENV = { ...process.env }
 
 afterEach(() => {
   vi.restoreAllMocks()
+  const keysToRemove = Object.keys(process.env).filter((k) => !(k in ORIGINAL_ENV))
+  for (const key of keysToRemove) {
+    Reflect.deleteProperty(process.env, key)
+  }
   Object.assign(process.env, ORIGINAL_ENV)
 })
 

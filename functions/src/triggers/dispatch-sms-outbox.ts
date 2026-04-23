@@ -125,7 +125,9 @@ export async function dispatchSmsOutboxCore(args: DispatchSmsOutboxCoreArgs): Pr
       terminalReason:
         result.reason === 'invalid_number' || result.reason === 'bad_format'
           ? 'rejected'
-          : 'client_err',
+          : result.reason === 'provider_limit'
+            ? 'provider_limit'
+            : 'client_err',
       providerId: providerTarget,
       recipientMsisdn: FieldValue.delete(),
       ...(result.encoding ? { encoding: result.encoding } : {}),

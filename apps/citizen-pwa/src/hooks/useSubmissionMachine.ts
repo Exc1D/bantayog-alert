@@ -76,14 +76,15 @@ export function useSubmissionMachine({
     async (currentRetryCount: number): Promise<string | null> => {
       const d = draftRef.current
       const attemptCount = currentRetryCount + 1
-      await draftStore.save({
-        ...d,
-        syncState: 'syncing',
-        retryCount: attemptCount,
-        updatedAt: Date.now(),
-      })
 
       try {
+        await draftStore.save({
+          ...d,
+          syncState: 'syncing',
+          retryCount: attemptCount,
+          updatedAt: Date.now(),
+        })
+
         const ref = await writeWithTimeout(d, SUBMIT_TIMEOUT_MS)
         await draftStore
           .save({ ...d, syncState: 'synced', retryCount: attemptCount })
@@ -96,6 +97,8 @@ export function useSubmissionMachine({
         return ref
       } catch (err: unknown) {
         if (isNetworkError(err)) {
+          retryCountRef.current = attemptCount
+          setRetryCount(attemptCount)
           await draftStore
             .save({
               ...d,
@@ -141,18 +144,18 @@ export function useSubmissionMachine({
 
   const sendSmsFallback = useCallback(() => {
     const d = draftRef.current
-    draftStore
-      .save({
-        ...d,
-        smsFallbackSentAt: Date.now(),
-        syncState: 'local_only',
-        retryCount: 0,
-        updatedAt: Date.now(),
-      })
-      .catch((e: unknown) => {
-        logDraftError('sms fallback save', e)
-      })
-    draftRef.current = { ...d, retryCount: 0 }
+    const now = Date.now()
+    const nextDraft = {
+      ...d,
+      smsFallbackSentAt: now,
+      syncState: 'local_only' as const,
+      retryCount: 0,
+      updatedAt: now,
+    }
+    draftStore.save(nextDraft).catch((e: unknown) => {
+      logDraftError('sms fallback save', e)
+    })
+    draftRef.current = nextDraft
     setState('idle')
     retryCountRef.current = 0
     setRetryCount(0)

@@ -14,6 +14,8 @@ interface SemaphoreResponse {
   message?: string
 }
 
+const PROVIDER_TIMEOUT_MS = 5_000
+
 export function createSemaphoreSmsProvider(): SmsProvider {
   return {
     providerId: 'semaphore',
@@ -35,18 +37,33 @@ export function createSemaphoreSmsProvider(): SmsProvider {
         sendername: process.env.SMS_SENDER_NAME ?? 'SEMAPHORE',
       })
 
-      const res = await fetch(`${endpoint}?${params.toString()}`, { method: 'POST' })
+      const controller = new AbortController()
+      const timer = setTimeout(() => {
+        controller.abort()
+      }, PROVIDER_TIMEOUT_MS)
+      let res: Response
+      try {
+        res = await fetch(`${endpoint}?${params.toString()}`, {
+          method: 'POST',
+          signal: controller.signal,
+        })
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw new SmsProviderRetryableError('semaphore request timed out', 'provider_error')
+        }
+        throw err
+      } finally {
+        clearTimeout(timer)
+      }
 
       let data: SemaphoreResponse = {}
       try {
         data = (await res.json()) as SemaphoreResponse
       } catch {
-        if (!res.ok) {
-          throw new SmsProviderRetryableError(
-            `semaphore ${res.status.toString()}: unparseable response`,
-            res.status >= 500 ? 'provider_error' : 'network',
-          )
-        }
+        throw new SmsProviderRetryableError(
+          `semaphore ${res.status.toString()}: unparseable response`,
+          res.ok || res.status >= 500 ? 'provider_error' : 'network',
+        )
       }
 
       const status = data.status ?? ''

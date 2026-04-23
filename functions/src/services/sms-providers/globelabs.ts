@@ -15,12 +15,31 @@ interface CachedToken {
 
 let refreshMutex: Promise<string> | null = null
 
+const PROVIDER_TIMEOUT_MS = 5_000
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => {
+    controller.abort()
+  }, PROVIDER_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new SmsProviderRetryableError('globelabs request timed out', 'provider_error')
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function fetchAndCacheToken(db: Firestore): Promise<string> {
   const appId = process.env.GLOBE_LABS_APP_ID
   const appSecret = process.env.GLOBE_LABS_APP_SECRET
   if (!appId || !appSecret) throw new Error('Globe Labs OAuth credentials not configured')
 
-  const res = await fetch('https://developer.globelabs.com.ph/oauth/token', {
+  const res = await fetchWithTimeout('https://developer.globelabs.com.ph/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -31,11 +50,21 @@ async function fetchAndCacheToken(db: Firestore): Promise<string> {
   })
 
   if (!res.ok) throw new Error(`Globe Labs OAuth failed: ${res.status.toString()}`)
-  const data = (await res.json()) as { access_token: string; expires_in: number }
+  const raw = (await res.json()) as Record<string, unknown>
+  if (
+    typeof raw.access_token !== 'string' ||
+    typeof raw.expires_in !== 'number' ||
+    !Number.isFinite(raw.expires_in)
+  ) {
+    throw new SmsProviderRetryableError(
+      'Globe Labs OAuth returned malformed response',
+      'provider_error',
+    )
+  }
 
   const token: CachedToken = {
-    accessToken: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
+    accessToken: raw.access_token,
+    expiresAt: Date.now() + raw.expires_in * 1000,
     refreshedAt: Date.now(),
   }
 
@@ -92,7 +121,7 @@ export function createGlobelabsSmsProvider(deps: GlobelabsProviderDeps = {}): Sm
 
       const baseUrl = `https://devapi.globelabs.com.ph/smsmessaging/v1/outbound/${shortCode}/requests`
       const startMs = Date.now()
-      let res = await fetch(`${baseUrl}?access_token=${token}`, {
+      let res = await fetchWithTimeout(`${baseUrl}?access_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -101,7 +130,7 @@ export function createGlobelabsSmsProvider(deps: GlobelabsProviderDeps = {}): Sm
       // Token expired — force refresh and retry once
       if (res.status === 401) {
         const freshToken = await getValidAccessToken(db, true)
-        res = await fetch(`${baseUrl}?access_token=${freshToken}`, {
+        res = await fetchWithTimeout(`${baseUrl}?access_token=${freshToken}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
