@@ -11,6 +11,11 @@ export { acceptDispatch } from './callables/accept-dispatch.js'
 export { advanceDispatch } from './callables/advance-dispatch.js'
 export { declineDispatch } from './callables/decline-dispatch.js'
 export { closeReport } from './callables/close-report.js'
+export {
+  requestAgencyAssistance,
+  acceptAgencyAssistance,
+  declineAgencyAssistance,
+} from './callables/request-agency-assistance.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
