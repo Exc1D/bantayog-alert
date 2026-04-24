@@ -33,7 +33,8 @@ beforeEach(async () => {
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  await testEnv.cleanup()
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  await testEnv?.cleanup()
 })
 
 async function seedThread(id: string, participants: string[]) {
@@ -69,7 +70,7 @@ describe('addCommandChannelMessage', () => {
         idempotencyKey: crypto.randomUUID(),
         now: Timestamp.fromMillis(ts),
       }),
-    ).rejects.toMatchObject({ code: 'permission-denied' })
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 
   it('rejects an empty body', async () => {
@@ -82,7 +83,7 @@ describe('addCommandChannelMessage', () => {
         idempotencyKey: crypto.randomUUID(),
         now: Timestamp.fromMillis(ts),
       }),
-    ).rejects.toMatchObject({ code: 'invalid-argument' })
+    ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
   })
 
   it('rejects body over 2000 chars', async () => {
@@ -95,7 +96,7 @@ describe('addCommandChannelMessage', () => {
         idempotencyKey: crypto.randomUUID(),
         now: Timestamp.fromMillis(ts),
       }),
-    ).rejects.toMatchObject({ code: 'invalid-argument' })
+    ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
   })
 
   it('writes message and updates thread.lastMessageAt', async () => {

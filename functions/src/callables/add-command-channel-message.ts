@@ -1,6 +1,7 @@
-import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
+import { onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
+import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from './https-error.js'
@@ -29,16 +30,18 @@ export async function addCommandChannelMessageCore(
   const nowMs = now.toMillis()
   const trimmedBody = body.trim()
 
-  if (!trimmedBody) throw new HttpsError('invalid-argument', 'body cannot be empty')
-  if (trimmedBody.length > 2000) throw new HttpsError('invalid-argument', 'body exceeds 2000 chars')
+  if (!trimmedBody)
+    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'body cannot be empty')
+  if (trimmedBody.length > 2000)
+    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'body exceeds 2000 chars')
 
   const threadSnap = await db.collection('command_channel_threads').doc(threadId).get()
-  if (!threadSnap.exists) throw new HttpsError('not-found', 'thread not found')
+  if (!threadSnap.exists) throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'thread not found')
   const thread = threadSnap.data() as Record<string, unknown>
 
   const participantUids = thread.participantUids as Record<string, boolean>
   if (!participantUids[actor.uid]) {
-    throw new HttpsError('permission-denied', 'caller is not a thread participant')
+    throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'caller is not a thread participant')
   }
 
   await withIdempotency(
@@ -86,7 +89,8 @@ export const addCommandChannelMessage = onCall(
         now: Timestamp.now(),
       })
     } catch (err: unknown) {
-      throw bantayogErrorToHttps(err as Parameters<typeof bantayogErrorToHttps>[0])
+      if (err instanceof BantayogError) throw bantayogErrorToHttps(err)
+      throw err
     }
   },
 )
