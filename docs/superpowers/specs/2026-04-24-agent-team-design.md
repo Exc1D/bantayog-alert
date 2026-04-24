@@ -68,12 +68,7 @@ One worktree per task, at `../bantayog-wt-[slug]`, on branch `agent/[slug]`. Wor
 
 ## 3. Models
 
-| Task type                                       | Model                              |
-| ----------------------------------------------- | ---------------------------------- |
-| Standard implementation (callables, UI, hooks)  | `kimi-for-coding/k2p6`             |
-| Schema design, Firestore rules, algorithm-heavy | `kimi-for-coding/kimi-k2-thinking` |
-
-Model is specified in the companion JSON and passed to `opencode run --model`.
+All tasks use `kimi-for-coding/k2p6`. Model is specified in the companion JSON and passed to `opencode run --model`.
 
 ---
 
@@ -200,7 +195,7 @@ Before spawning any agent, Claude Code:
 
 1. Verifies `opencode` is reachable: `opencode --version`
 2. Confirms the worktree path is inside the project root — not above `$HOME` or in any path containing `.ssh`, `.gnupg`, `.config`, or system directories
-3. Confirms no existing worktree at `../bantayog-wt-[slug]` (stale from a previous crash — see Section 14 on restart)
+3. Confirms no existing worktree at `../bantayog-wt-[slug]` matching the active name pattern. Worktrees matching `../bantayog-wt-[slug]-TERMINAL-*` are forensic archives from prior terminal failures and are not a blocking condition — they are skipped.
 4. Records the base commit: `BASE_SHA=$(git rev-parse main)` and writes it to `base_commit` in the companion JSON
 
 ### Spawn command
@@ -301,7 +296,7 @@ scripts/check-lockfile-integrity.sh
 git checkout "$1"
 npx turbo run lint typecheck test --affected &&
 firebase emulators:exec --only firestore,database,storage \
-  "pnpm --filter @bantayog/functions exec vitest run src/__tests__/rules" &&
+  "pnpm --filter @bantayog/functions run test:rules" &&
 scripts/check-secrets.sh all &&
 scripts/check-lockfile-integrity.sh
 ```
@@ -375,7 +370,7 @@ A terminal failure is **task-scoped**, not phase-scoped:
 - Running background agents are killed.
 - The phase staging branch is deleted — tasks already merged to staging are discarded.
 - **Other phases are unaffected** (they have their own staging branches).
-- All worktrees for this phase (original + retries) are preserved, not deleted, until the human resolves the escalation.
+- All worktrees for this phase (original + retries) are **renamed** before preservation: `../bantayog-wt-[slug]-TERMINAL-$(date +%s)` and `../bantayog-wt-[slug]-retry-1-TERMINAL-$(date +%s)`. The `*-TERMINAL-*` suffix prevents future pre-spawn checks from blocking on them while keeping the state intact for forensic inspection.
 - The telemetry log records total tokens and duration spent on the failed phase.
 
 ### Escalation artifacts
@@ -388,15 +383,21 @@ Claude Code writes `.claude/escalations/YYYY-MM-DD-[slug]-terminal.md` containin
 - All correction briefs written during retry
 - A one-paragraph diagnosis: what the agent failed to do, and why Claude Code's direct fix also failed
 
-Claude Code opens a GitHub issue:
+Claude Code attempts to open a GitHub issue:
 
 - Title: `[terminal-failure] Phase N — [slug]`
 - Label: `terminal-failure`
 - Body: link to escalation file + one-paragraph summary
 
+If `gh issue create` exits non-zero (network failure, auth expired, rate limit):
+
+1. Appends `{"actor":"claude-code","action":"escalation_failed","task":"[slug]","reason":"gh_issue_create_failed"}` to `telemetry.jsonl`
+2. Writes the full issue body to `.claude/escalations/YYYY-MM-DD-[slug]-issue-fallback.md`
+3. Prints to the session: `TERMINAL FAILURE — gh issue create failed — manual intervention required: .claude/escalations/YYYY-MM-DD-[slug]-terminal.md`
+
 Claude Code then **stops** — no retry, no workaround, no partial merge.
 
-The human receives: escalation file path, GitHub issue link, worktree paths for forensic inspection.
+The human receives: escalation file path, GitHub issue link (or fallback file path), worktree paths for forensic inspection.
 
 ---
 
@@ -404,20 +405,30 @@ The human receives: escalation file path, GitHub issue link, worktree paths for 
 
 Computed by Claude Code before merging staging → `main`:
 
-| Signal                                               | Score                |
-| ---------------------------------------------------- | -------------------- |
-| Total files changed > 5                              | +2                   |
-| Total lines changed > 100                            | +1                   |
-| Any file outside `allowed_files` detected at Stage 1 | +5 (immediate block) |
-| Firestore rules or `firestore.indexes.json` touched  | +5 (immediate block) |
-| Any task passed on attempt 2+                        | +2                   |
-| Any `discovered_required_files` entries accepted     | +1                   |
+| Signal                                                     | Score                |
+| ---------------------------------------------------------- | -------------------- |
+| Total files changed > 5                                    | +2                   |
+| Total lines changed > 100                                  | +1                   |
+| Any file outside `allowed_files` detected at Stage 1       | +5 (immediate block) |
+| Firestore rules or `firestore.indexes.json` touched        | +5 (immediate block) |
+| Any task passed on attempt 2+ (Stage 2 failure, not flaky) | +2                   |
+| Any `discovered_required_files` entries accepted           | +1                   |
 
 **Score ≥ 3:** Claude Code posts a summary (files changed, gate results, suspicion score, diff stat) and waits for explicit `proceed` before merging.
 
 **Score < 3:** Claude Code merges automatically.
 
 Firestore rules changes always score ≥ 5, always block for human approval.
+
+### Flake Detection
+
+Before scoring a retry as +2, Claude Code runs `scripts/detect-flakes.sh <verification_command> <worktree>`, which re-executes the verification command 3 times. If it passes ≥ 2 of 3 runs, the failure is classified as a flaky test, not a real quality regression:
+
+- Telemetry records `"flaky": true` on that task's entry
+- The +2 suspicion score is **not** applied
+- A `"actor": "claude-code", "action": "flake_detected"` event is written to telemetry
+
+If the failure is genuine (passes 0 or 1 of 3 runs), the +2 score is applied and the retry proceeds normally.
 
 ---
 
@@ -475,13 +486,21 @@ Claude Code writes `docs/agent-tasks/phase-state.json` atomically after every st
 }
 ```
 
-`status` values: `pending`, `in_progress`, `stage1_pass`, `stage2_pass`, `merged`, `failed`, `cancelled`, `terminal`.
+`status` values (per-task): `pending`, `in_progress`, `stage1_pass`, `stage2_pass`, `merged`, `failed`, `cancelled`, `terminal`.
+
+Phase-level status (top-level field in `phase-state.json`): `active`, `staging_complete`, `run_b_pass`, `pr_opened`, `done`, `terminal`.
+
+- `staging_complete`: all tasks merged to the staging branch; Run B has not yet run. This status is written **before** Run B starts. On restart, if phase status is `staging_complete`, Claude Code re-runs Run B — it does not assume Run B passed.
+- `run_b_pass`: Run B completed successfully; PR not yet opened.
+- `pr_opened`: PR to `main` has been opened; awaiting merge or human `proceed`.
 
 On Claude Code restart, it reads `phase-state.json` before taking any action:
 
-- Tasks with `in_progress` status: check if the PID is still running. If yes, continue monitoring. If no, treat as a Stage 1 fail and begin retry.
-- Tasks with `merged` status: do not respawn.
-- Tasks with `pending` status: evaluate whether their `blocked_by` set is satisfied before spawning.
+- Phase status `staging_complete` → re-run Stage 2 Run B before proceeding.
+- Phase status `run_b_pass` or `pr_opened` → resume from that point (do not re-run gates).
+- Per-task `in_progress`: check if the PID is still running. If yes, continue monitoring. If no, treat as a Stage 1 fail and begin retry.
+- Per-task `merged`: do not respawn.
+- Per-task `pending`: evaluate whether `blocked_by` set is satisfied before spawning.
 
 `phase-state.json` is committed alongside each `telemetry.jsonl` update.
 
@@ -511,12 +530,14 @@ On Claude Code restart, it reads `phase-state.json` before taking any action:
       g. Stage 1 or 2 fail → circuit breaker (Section 10)
       h. Terminal failure → Section 11 escalation, cancel all pending tasks, delete staging branch
  7. All tasks merged to staging branch
- 8. Stage 2 Run B (combined) runs on staging branch
- 9. Suspicion score computed (Section 12)
-10. Score < 3 → Claude Code merges staging → main (single squash PR)
-    Score ≥ 3 → post summary, wait for explicit "proceed"
-11. Worktrees deleted (except any preserved for terminal failure forensics)
-12. telemetry.jsonl committed, phase-state.json archived, progress.md updated
+ 8. Write phase status → `staging_complete` in phase-state.json (crash-safe checkpoint)
+ 9. Stage 2 Run B (combined) runs on staging branch
+10. Write phase status → `run_b_pass` in phase-state.json
+11. Suspicion score computed (Section 12)
+12. Score < 3 → Claude Code merges staging → main (single squash PR); write phase status → `pr_opened`
+    Score ≥ 3 → post summary, wait for explicit "proceed"; then merge and write `pr_opened`
+13. Worktrees deleted (except `*-TERMINAL-*` forensic archives)
+14. telemetry.jsonl committed, phase-state.json archived, progress.md updated; write phase status → `done`
 ```
 
 ---
