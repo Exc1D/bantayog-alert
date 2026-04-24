@@ -78,6 +78,16 @@ export async function requestAgencyAssistanceCore(
         })
       }
 
+      // Query active agency admins for the target agency (outside transaction;
+      // Firestore transactions don't support reads within them)
+      const agencyAdminsSnap = await db
+        .collection('users')
+        .where('role', '==', 'agency_admin')
+        .where('agencyId', '==', agencyId)
+        .where('accountStatus', '==', 'active')
+        .get()
+      const agencyAdminUids = agencyAdminsSnap.docs.map((d) => d.id)
+
       return db.runTransaction(async (tx) => {
         // Read report_ops first
         const reportOpsRef = db.collection('report_ops').doc(reportId)
@@ -134,7 +144,11 @@ export async function requestAgencyAssistanceCore(
         tx.set(requestRef, {
           reportId,
           requestedByMunicipalId: actor.claims.municipalityId,
-          requestedByMunicipality: 'Daet', // TODO: resolve municipality label
+          // Label placeholder — municipality names lookup is out of scope for Phase 5.
+          // actor.claims.municipalityId is the stable identifier; the label is
+          // for display only and will be resolved when a municipal names collection
+          // is added in a later phase.
+          requestedByMunicipality: actor.claims.municipalityId ?? 'unknown',
           targetAgencyId: agencyId,
           requestType: agencyLabel as AgencyAssistanceRequestDoc['requestType'],
           message,
@@ -155,7 +169,12 @@ export async function requestAgencyAssistanceCore(
           threadType: 'agency_assistance' as const,
           assistanceRequestId: requestId,
           subject: `Agency Assistance Request — ${agencyLabel}`,
-          participantUids: { [actor.uid]: true },
+          // participantUids includes the municipal admin who requested + all active
+          // agency admins for the target agency (queried before the transaction).
+          participantUids: {
+            [actor.uid]: true,
+            ...Object.fromEntries(agencyAdminUids.map((uid) => [uid, true])),
+          },
           createdBy: actor.uid,
           createdAt: nowMs,
           updatedAt: nowMs,
