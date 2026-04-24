@@ -2,6 +2,19 @@
 
 ## Current
 
+### PR #63 CodeRabbit follow-up fixes (2026-04-24)
+
+- Status: DONE locally - resolved the remaining review comments on schema validation, inbox materialization, and Firestore rules
+- Scope:
+  - shared validators: derived responder FCM flag, widened persisted report type enum, runtime lookup expiry check
+  - inbox trigger: removed redundant exact-location guard, added `report_sms_consent.municipalityId`, strengthened geohash regression coverage
+  - Firestore rules: report messages, report sharing events, field mode sessions, and report notes authorization/data-consistency fixes
+- Verification:
+  - `pnpm --filter @bantayog/shared-validators test` - PASS
+  - `firebase emulators:exec --only firestore,database,storage "pnpm --filter @bantayog/functions exec vitest run src/__tests__/triggers/process-inbox-item.test.ts src/__tests__/rules/report-sharing.rules.test.ts src/__tests__/rules/report-notes.rules.test.ts src/__tests__/rules/report-messages.rules.test.ts src/__tests__/rules/field-mode-sessions.rules.test.ts"` - PASS
+  - `pnpm --filter @bantayog/shared-validators typecheck` - PASS
+  - `pnpm --filter @bantayog/functions lint` - PASS
+
 ### Phase 5 PRE-B - Schema + Rules Foundation (2026-04-24)
 
 - Status: DONE locally - schema amendments, rules additions, and inbox materialization updates landed

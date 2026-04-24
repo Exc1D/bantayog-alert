@@ -17,6 +17,7 @@ Durable rules worth keeping across sessions.
 - When a payload schema is `strict()` and a field is truly transitional, strip that field before validation instead of widening the schema and accidentally allowing unrelated junk.
 - If a transitional field is part of the contract, model it explicitly in the schema instead of stripping it in the trigger. Stripping is only the fallback when the field is truly out-of-band.
 - Ops-facing document schemas should use ops-specific enums, not the broader public report enum, or the rules/tests will drift silently.
+- Do not assume `tsc --outDir lib` will refresh every checked-in declaration the way you expect; verify the emitted `.d.ts` against source and patch the artifact if the generator still leaves stale enum ordering behind.
 - `z.string().uuid()` trips `@typescript-eslint/no-deprecated` under the current lint config. Use `z.uuid()` in shared validators.
 - Collection query tests can fail on a rule that is really written for per-document access. If the rule uses `resource.data` in a way that doesn’t support `list`, switch the test to `getDoc` or rewrite the rule intentionally.
 
