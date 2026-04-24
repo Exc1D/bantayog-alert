@@ -14,17 +14,6 @@ import { enqueueSms } from '../services/send-sms.js'
 
 const log = logDimension('processInboxItem')
 
-interface ExactLocation {
-  lat: number
-  lng: number
-}
-
-function isExactLocation(value: unknown): value is ExactLocation {
-  if (typeof value !== 'object' || value === null) return false
-  const record = value as Record<string, unknown>
-  return typeof record.lat === 'number' && typeof record.lng === 'number'
-}
-
 export interface ProcessInboxItemCoreInput {
   db: Firestore
   inboxId: string
@@ -89,7 +78,7 @@ export async function processInboxItemCore(
     )
   }
   const payload = payloadResult.data
-  const exactLocation = isExactLocation(payload.exactLocation) ? payload.exactLocation : undefined
+  const exactLocation = payload.exactLocation
 
   let geo: Awaited<ReturnType<typeof reverseGeocodeToMunicipality>> | null = null
   if (payload.publicLocation) {
@@ -136,11 +125,18 @@ export async function processInboxItemCore(
             uploadId,
             pendingSnap.data() as { storagePath: string; mimeType: string; strippedAt: number },
           )
+        } else {
+          log({
+            severity: 'WARNING',
+            code: 'INBOX_PENDING_MEDIA_MISSING',
+            message: `pending_media doc not found: ${uploadId} (inbox ${inboxId})`,
+            data: { inboxId, uploadId },
+          })
         }
       }
 
-      // pending_media docs are write-once by onMediaFinalize and only deleted here,
-      // so reads outside the transaction are safe by design.
+      // Reads outside the transaction are a known race; we accept it because
+      // pending_media is append-only and deletion is best-effort.
 
       await db.runTransaction(async (tx) => {
         const lookupRef = db.collection('report_lookup').doc(inbox.publicRef)
@@ -213,8 +209,9 @@ export async function processInboxItemCore(
           schemaVersion: 1,
         })
 
-        // smsConsent check is intentional — presence of contact.phone implies smsConsent=true
-        // (schema enforces contact.smsConsent as z.literal(true))
+        // The inboxPayloadSchema enforces contact.smsConsent as z.literal(true), so
+        // presence of contact.phone here means the payload schema already validated consent.
+        // This code path does not re-validate — it relies on upstream schema enforcement.
         if (payload.contact?.phone) {
           const salt = process.env.SMS_MSISDN_HASH_SALT
           if (!salt) {
@@ -240,6 +237,7 @@ export async function processInboxItemCore(
               phone: payload.contact.phone,
               locale: muniLocale,
               smsConsent: true,
+              municipalityId: geo.municipalityId,
               createdAt,
               schemaVersion: 1,
             })
