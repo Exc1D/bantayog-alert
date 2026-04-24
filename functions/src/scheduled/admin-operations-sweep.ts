@@ -26,7 +26,7 @@ export async function adminOperationsSweepCore(
 
   const toEscalate = pendingAssistance.docs.filter((d) => !d.data().escalatedAt)
   for (const d of toEscalate) {
-    await d.ref.update({ escalatedAt: nowMs })
+    await d.ref.update({ escalatedAt: deps.now.toMillis() })
     log({
       severity: 'INFO',
       code: 'sweep.agency.escalated',
