@@ -1,7 +1,7 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
-import { authed, createTestEnv } from '../helpers/rules-harness.js'
+import { authed, createTestEnv, unauthed } from '../helpers/rules-harness.js'
 import { seedActiveAccount, seedReport, staffClaims, ts } from '../helpers/seed-factories.js'
 
 let env: Awaited<ReturnType<typeof createTestEnv>>
@@ -103,5 +103,10 @@ describe('reports/messages rules', () => {
         schemaVersion: 1,
       }),
     )
+  })
+
+  it('denies unauthenticated reads', async () => {
+    const db = unauthed(env)
+    await assertFails(getDoc(doc(db, 'reports', 'report-1', 'messages', 'msg-1')))
   })
 })

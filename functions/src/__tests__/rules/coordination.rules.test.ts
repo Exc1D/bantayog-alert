@@ -277,8 +277,8 @@ describe('coordination collections rules', () => {
 describe('command_channel_threads/messages — participant map key lookup', () => {
   beforeAll(async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'command_channel_threads', 'thread-1'), {
-        threadId: 'thread-1',
+      await setDoc(doc(ctx.firestore(), 'command_channel_threads', 'thread-2'), {
+        threadId: 'thread-2',
         reportId: 'report-1',
         threadType: 'agency_assistance',
         subject: 'Need help',
@@ -289,8 +289,8 @@ describe('command_channel_threads/messages — participant map key lookup', () =
         schemaVersion: 1,
       })
 
-      await setDoc(doc(ctx.firestore(), 'command_channel_messages', 'msg-1'), {
-        threadId: 'thread-1',
+      await setDoc(doc(ctx.firestore(), 'command_channel_messages', 'msg-2'), {
+        threadId: 'thread-2',
         message: 'hello',
         sentBy: 'daet-admin',
         sentAt: ts,
@@ -305,7 +305,7 @@ describe('command_channel_threads/messages — participant map key lookup', () =
       'daet-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
-    await assertSucceeds(getDoc(doc(db, 'command_channel_threads', 'thread-1')))
+    await assertSucceeds(getDoc(doc(db, 'command_channel_threads', 'thread-2')))
   })
 
   it('denies non-participant from reading thread', async () => {
@@ -314,7 +314,7 @@ describe('command_channel_threads/messages — participant map key lookup', () =
       'other-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
     )
-    await assertFails(getDoc(doc(db, 'command_channel_threads', 'thread-1')))
+    await assertFails(getDoc(doc(db, 'command_channel_threads', 'thread-2')))
   })
 
   it('allows participant to read a message when parent thread participantUids contains uid', async () => {
@@ -323,7 +323,7 @@ describe('command_channel_threads/messages — participant map key lookup', () =
       'daet-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
-    await assertSucceeds(getDoc(doc(db, 'command_channel_messages', 'msg-1')))
+    await assertSucceeds(getDoc(doc(db, 'command_channel_messages', 'msg-2')))
   })
 
   it('denies non-participant from reading a message', async () => {
@@ -332,6 +332,6 @@ describe('command_channel_threads/messages — participant map key lookup', () =
       'other-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
     )
-    await assertFails(getDoc(doc(db, 'command_channel_messages', 'msg-1')))
+    await assertFails(getDoc(doc(db, 'command_channel_messages', 'msg-2')))
   })
 })
