@@ -39,8 +39,15 @@ export async function addCommandChannelMessageCore(
   if (!threadSnap.exists) throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'thread not found')
   const thread = threadSnap.data() as Record<string, unknown>
 
-  const participantUids = thread.participantUids as Record<string, boolean>
-  if (!participantUids[actor.uid]) {
+  if (actor.claims.accountStatus !== 'active') {
+    throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'account is not active')
+  }
+
+  const participantUids = thread.participantUids
+  if (!participantUids || typeof participantUids !== 'object') {
+    throw new BantayogError(BantayogErrorCode.INTERNAL_ERROR, 'invalid thread data')
+  }
+  if (!(participantUids as Record<string, boolean>)[actor.uid]) {
     throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'caller is not a thread participant')
   }
 
