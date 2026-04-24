@@ -101,8 +101,14 @@ export function parseInboundSms(body: string): ParseResult {
   let detailsStartIndex = barangayToken.length
 
   const token2 = tokens[2]
+  const token3 = tokens[3]
   if (tokens.length >= 3 && token2 && MUNICIPALITY_PREFIXES.has(token1)) {
-    barangayToken = token1 + ' ' + token2
+    // Prefer the longest match to avoid leaving part of the barangay in details.
+    if (token3) {
+      barangayToken = token1 + ' ' + token2 + ' ' + token3
+    } else {
+      barangayToken = token1 + ' ' + token2
+    }
     detailsStartIndex = barangayToken.length
   }
 
