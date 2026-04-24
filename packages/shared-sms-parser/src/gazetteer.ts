@@ -306,11 +306,22 @@ const FALLBACK_BARANGAYS: BarangayEntry[] = [
   { name: 'Sula', municipality: 'Vinzons' },
 ]
 
+function isBarangayEntry(value: unknown): value is BarangayEntry {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    typeof (value as { name?: unknown }).name === 'string' &&
+    'municipality' in value &&
+    typeof (value as { municipality?: unknown }).municipality === 'string'
+  )
+}
+
 export function getBarangayGazetteer(): BarangayEntry[] {
   try {
     const mod = require('@bantayog/shared-data') as { BARANGAY_GAZETTEER?: unknown }
-    if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
-      return mod.BARANGAY_GAZETTEER as BarangayEntry[]
+    if (Array.isArray(mod.BARANGAY_GAZETTEER) && mod.BARANGAY_GAZETTEER.every(isBarangayEntry)) {
+      return mod.BARANGAY_GAZETTEER
     }
   } catch (err: unknown) {
     // Only suppress MODULE_NOT_FOUND for @bantayog/shared-data; rethrow all other failures
