@@ -107,7 +107,6 @@ describe('report_sharing rules', () => {
       'daet-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
-    const { setDoc } = await import('firebase/firestore')
     await assertFails(
       setDoc(doc(db, 'report_sharing/new'), {
         ownerMunicipalityId: 'daet',
@@ -143,6 +142,21 @@ describe('report_sharing/events rules', () => {
     )
   })
 
+  it('denies a different municipality admin from writing the share event', async () => {
+    const db = authed(
+      env,
+      'mercedes-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
+    )
+    await assertFails(
+      addDoc(collection(db, 'report_sharing', 'r-share-1', 'events'), {
+        ...validEvent,
+        sharedBy: 'mercedes-admin',
+        targetMunicipalityId: 'daet',
+      }),
+    )
+  })
+
   it('a second share appends a second event without overwriting first', async () => {
     const db = authed(
       env,
@@ -167,5 +181,58 @@ describe('report_sharing/events rules', () => {
   it('denies citizen writes to events subcollection', async () => {
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertFails(addDoc(collection(db, 'report_sharing', 'r-share-1', 'events'), validEvent))
+  })
+})
+
+describe('report_sharing/events rules — reads', () => {
+  const seededEventId = 'seeded-evt-1'
+
+  beforeAll(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'report_sharing', 'r-share-1', 'events', seededEventId),
+        validEvent,
+      )
+    })
+  })
+
+  it('allows muni admin to read events subcollection (positive)', async () => {
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(getDoc(doc(db, 'report_sharing', 'r-share-1', 'events', seededEventId)))
+  })
+
+  it('allows agency admin to read events subcollection (positive)', async () => {
+    const db = authed(
+      env,
+      'mercedes-agency',
+      staffClaims({ role: 'agency_admin', municipalityId: 'mercedes', agencyId: 'bfp-mercedes' }),
+    )
+    await assertSucceeds(getDoc(doc(db, 'report_sharing', 'r-share-1', 'events', seededEventId)))
+  })
+
+  it('allows superadmin to read events subcollection (positive)', async () => {
+    const db = authed(
+      env,
+      'super-1',
+      staffClaims({
+        role: 'provincial_superadmin',
+        permittedMunicipalityIds: ['daet', 'mercedes'],
+      }),
+    )
+    await assertSucceeds(getDoc(doc(db, 'report_sharing', 'r-share-1', 'events', seededEventId)))
+  })
+
+  it('denies citizen reads on events subcollection (negative)', async () => {
+    const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+    await assertFails(getDoc(doc(db, 'report_sharing', 'r-share-1', 'events', seededEventId)))
+  })
+
+  it('denies unauthenticated reads on events subcollection (negative)', async () => {
+    const db = unauthed(env)
+    await assertFails(getDoc(doc(db, 'report_sharing', 'r-share-1', 'events', seededEventId)))
   })
 })

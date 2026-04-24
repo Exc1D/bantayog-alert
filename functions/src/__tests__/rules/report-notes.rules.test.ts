@@ -94,7 +94,7 @@ describe('report_notes rules', () => {
     await assertFails(getDocs(collection(db, 'report_notes')))
   })
 
-  it('allows muni admin to read notes for their municipality', async () => {
+  it('allows muni admin to read notes', async () => {
     const db = authed(
       env,
       'daet-admin',

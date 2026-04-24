@@ -18,6 +18,22 @@ beforeAll(async () => {
     role: 'municipal_admin',
     municipalityId: 'mercedes',
   })
+  await seedActiveAccount(env, {
+    uid: 'bfp-daet-agency',
+    role: 'agency_admin',
+    municipalityId: 'daet',
+    agencyId: 'bfp-daet',
+  })
+  await seedActiveAccount(env, {
+    uid: 'pnp-daet-agency',
+    role: 'agency_admin',
+    municipalityId: 'daet',
+    agencyId: 'pnp-daet',
+  })
+  await seedActiveAccount(env, {
+    uid: 'super-admin',
+    role: 'provincial_superadmin',
+  })
 })
 
 afterAll(async () => {
@@ -154,6 +170,43 @@ describe('coordination collections rules', () => {
         staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
       )
       await assertSucceeds(getDoc(doc(db, 'agency_assistance_requests', 'req-1')))
+    })
+
+    it('agency admin reads request matching their agencyId (positive)', async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'agency_assistance_requests', 'req-agency-match'), {
+          requestedByMunicipality: 'daet',
+          targetAgencyId: 'bfp-daet',
+          requestType: 'BFP',
+          requestedAt: ts,
+        })
+      })
+      const db = authed(
+        env,
+        'bfp-daet-agency',
+        staffClaims({ role: 'agency_admin', municipalityId: 'daet', agencyId: 'bfp-daet' }),
+      )
+      await assertSucceeds(getDoc(doc(db, 'agency_assistance_requests', 'req-agency-match')))
+    })
+
+    it('agency admin denied when agencyId does not match targetAgencyId (negative)', async () => {
+      const db = authed(
+        env,
+        'pnp-daet-agency',
+        staffClaims({ role: 'agency_admin', municipalityId: 'daet', agencyId: 'pnp-daet' }),
+      )
+      // req-agency-match has targetAgencyId: 'bfp-daet', pnp-daet should be denied
+      await assertFails(getDoc(doc(db, 'agency_assistance_requests', 'req-agency-match')))
+    })
+
+    it('superadmin reads any agency assistance request (positive)', async () => {
+      const db = authed(env, 'super-admin', staffClaims({ role: 'provincial_superadmin' }))
+      await assertSucceeds(getDoc(doc(db, 'agency_assistance_requests', 'req-agency-match')))
+    })
+
+    it('citizen read denied (negative)', async () => {
+      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+      await assertFails(getDoc(doc(db, 'agency_assistance_requests', 'req-agency-match')))
     })
   })
 

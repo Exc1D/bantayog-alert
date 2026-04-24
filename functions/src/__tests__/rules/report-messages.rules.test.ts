@@ -72,6 +72,27 @@ describe('reports/messages rules', () => {
     )
   })
 
+  it('denies muni admin from writing to another report municipality', async () => {
+    await seedReport(env, 'report-2', {
+      municipalityId: 'mercedes',
+      opsOverrides: { municipalityId: 'mercedes' },
+    })
+
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertFails(
+      addDoc(collection(db, 'reports', 'report-2', 'messages'), {
+        authorUid: 'daet-admin',
+        body: 'Out of scope.',
+        createdAt: ts,
+        schemaVersion: 1,
+      }),
+    )
+  })
+
   it('denies citizen writes to messages', async () => {
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertFails(

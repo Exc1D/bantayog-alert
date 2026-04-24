@@ -57,6 +57,20 @@ describe('field_mode_sessions rules', () => {
     await assertSucceeds(setDoc(doc(db, 'field_mode_sessions', 'daet-admin'), sessionData))
   })
 
+  it('denies writes when embedded uid does not match the path', async () => {
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertFails(
+      setDoc(doc(db, 'field_mode_sessions', 'daet-admin'), {
+        ...sessionData,
+        uid: 'other-admin',
+      }),
+    )
+  })
+
   it('denies other user reading another user session', async () => {
     const db = authed(
       env,
