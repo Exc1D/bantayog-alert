@@ -24,7 +24,8 @@ export async function buildSmsPayload(args: BuildSmsPayloadArgs): Promise<SmsPay
   if (!consentSnap.exists) return null
 
   const consentData = consentSnap.data()
-  if (typeof consentData?.phone !== 'string') return null
+  if (consentData?.smsConsent !== true) return null
+  if (typeof consentData.phone !== 'string') return null
   const recipientMsisdn = consentData.phone.trim()
   if (!recipientMsisdn) return null
   const locale = consentData.locale === 'en' ? 'en' : 'tl'
