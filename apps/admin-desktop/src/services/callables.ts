@@ -47,4 +47,18 @@ export const callables = {
       functions,
       'closeReport',
     )(payload).then((r) => r.data),
+  acceptAgencyAssistance: (payload: { requestId: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { status: 'accepted' }>(
+      functions,
+      'acceptAgencyAssistance',
+    )(payload).then((r) => r.data),
+  declineAgencyAssistance: (payload: {
+    requestId: string
+    reason: string
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { status: 'declined' }>(
+      functions,
+      'declineAgencyAssistance',
+    )(payload).then((r) => r.data),
 }
