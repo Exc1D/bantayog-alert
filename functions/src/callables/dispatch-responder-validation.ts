@@ -5,6 +5,7 @@ import {
   BantayogErrorCode,
   isValidReportTransition,
 } from '@bantayog/shared-validators'
+import type { ReportStatus } from '@bantayog/shared-validators'
 
 export interface DispatchResponderCoreDeps {
   reportId: string
@@ -97,14 +98,15 @@ export async function validateDispatchTransaction({
       'Report status is not a string',
     )
   }
-  const from = rawStatus as 'verified'
   const to = 'assigned' as const
-  if (!isValidReportTransition(from, to)) {
+  if (!isValidReportTransition(rawStatus as ReportStatus, to)) {
     throw new BantayogError(
       BantayogErrorCode.INVALID_STATUS_TRANSITION,
-      `Cannot dispatch from status ${from}`,
+      `Cannot dispatch from status ${rawStatus}`,
     )
   }
+  // After validation, we know rawStatus === 'verified'.
+  const from = 'verified' as const
 
   // After validation, we know these fields exist and have correct types.
   // Spread first so validated fields always win if keys overlap.
