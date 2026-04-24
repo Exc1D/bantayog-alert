@@ -1,4 +1,5 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
+import { defineSecret } from 'firebase-functions/params'
 import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logEvent } from '@bantayog/shared-validators'
@@ -14,6 +15,8 @@ import {
 import type { Database } from 'firebase-admin/database'
 import { enqueueDispatchSms } from './dispatch-responder-notify.js'
 import { buildSmsPayload, writeDispatchDocs } from './dispatch-responder-writes.js'
+
+const SMS_MSISDN_HASH_SALT = defineSecret('SMS_MSISDN_HASH_SALT')
 
 const InputSchema = z
   .object({
@@ -153,7 +156,7 @@ export const dispatchResponder = onCall(
     region: 'asia-southeast1',
     enforceAppCheck: true,
     maxInstances: 100,
-    secrets: [FCM_VAPID_PRIVATE_KEY],
+    secrets: [FCM_VAPID_PRIVATE_KEY, SMS_MSISDN_HASH_SALT],
   },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
@@ -187,6 +190,14 @@ export const dispatchResponder = onCall(
             role: claims.role,
             ...(typeof claims.municipalityId === 'string'
               ? { municipalityId: claims.municipalityId }
+              : {}),
+            ...(Array.isArray(claims.permittedMunicipalityIds) &&
+            claims.permittedMunicipalityIds.length > 0
+              ? {
+                  permittedMunicipalityIds: claims.permittedMunicipalityIds.filter(
+                    (id): id is string => typeof id === 'string',
+                  ),
+                }
               : {}),
           },
         },

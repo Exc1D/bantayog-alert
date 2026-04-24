@@ -68,6 +68,12 @@ describe('parseInboundSms', () => {
         expect(result.confidence).toBe('high');
         expect(result.parsed?.details).toBe('Mabait naman');
     });
+    it('preserves full details when barangay name repeats inside details', () => {
+        const result = parseInboundSms('BANTAYOG FLOOD ANGAS flooding in Angas area');
+        expect(result.confidence).toBe('high');
+        expect(result.parsed?.barangay).toBe('Angas');
+        expect(result.parsed?.details).toBe('flooding in Angas area');
+    });
     it('returns high confidence for OTHER type', () => {
         const result = parseInboundSms('BANTAYOG OTHER TUACA');
         expect(result.confidence).toBe('high');

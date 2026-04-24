@@ -111,13 +111,16 @@ export function parseInboundSms(body: string): ParseResult {
     detailsStartIndex = barangayToken.length
   }
 
-  // Find the barangay token in originalRest using lastIndexOf to prefer the occurrence
-  // closest to where details would start (avoids matching an earlier instance of the token).
+  // Find the barangay token in originalRest using a word-boundary regex to match
+  // the first occurrence (the header token), avoiding false matches when the
+  // barangay name is repeated inside the details.
   const barangayTokenUpper = barangayToken.toUpperCase()
-  const barangayIndex = originalRest.toUpperCase().lastIndexOf(barangayTokenUpper)
+  const escapedToken = barangayTokenUpper.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const barangayRegex = new RegExp(`\\b${escapedToken}\\b`)
+  const barangayMatch = barangayRegex.exec(originalRest.toUpperCase())
   const details =
-    barangayIndex !== -1 && barangayIndex + detailsStartIndex < originalRest.length
-      ? originalRest.slice(barangayIndex + detailsStartIndex).trim()
+    barangayMatch && barangayMatch.index + detailsStartIndex < originalRest.length
+      ? originalRest.slice(barangayMatch.index + detailsStartIndex).trim()
       : undefined
 
   const rawType = typeToken.toUpperCase()

@@ -11,8 +11,21 @@ export interface DispatchResponderCoreDeps {
   reportId: string
   responderUid: string
   idempotencyKey: string
-  actor: { uid: string; claims: { role?: string; municipalityId?: string } }
+  actor: {
+    uid: string
+    claims: { role?: string; municipalityId?: string; permittedMunicipalityIds?: string[] }
+  }
   now: Timestamp
+}
+
+function getActorMunicipalityIds(deps: DispatchResponderCoreDeps): string[] {
+  if (deps.actor.claims.municipalityId) {
+    return [deps.actor.claims.municipalityId]
+  }
+  if (deps.actor.claims.permittedMunicipalityIds?.length) {
+    return deps.actor.claims.permittedMunicipalityIds
+  }
+  return []
 }
 
 interface AssertResponderOnShiftOptions {
@@ -58,7 +71,8 @@ export async function validateDispatchTransaction({
 }> {
   const [reportSnap, responderSnap] = await Promise.all([tx.get(reportRef), tx.get(responderRef)])
 
-  if (!deps.actor.claims.municipalityId) {
+  const actorMuniIds = getActorMunicipalityIds(deps)
+  if (actorMuniIds.length === 0) {
     throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'municipalityId is required')
   }
 
@@ -77,10 +91,10 @@ export async function validateDispatchTransaction({
   if (typeof responder.municipalityId !== 'string' || !responder.municipalityId) {
     throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'Responder missing municipalityId')
   }
-  if (report.municipalityId !== deps.actor.claims.municipalityId) {
+  if (!actorMuniIds.includes(report.municipalityId)) {
     throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
   }
-  if (responder.municipalityId !== deps.actor.claims.municipalityId) {
+  if (!actorMuniIds.includes(responder.municipalityId)) {
     throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Responder not in your municipality')
   }
   if (responder.isActive !== true) {
@@ -93,7 +107,7 @@ export async function validateDispatchTransaction({
   // Re-check shift status after identity + municipality checks to preserve correct error classes.
   await assertResponderOnShift({
     rtdb,
-    municipalityId: deps.actor.claims.municipalityId,
+    municipalityId: responder.municipalityId,
     responderUid: deps.responderUid,
     message: 'Responder went off-shift before dispatch could be created',
   })
