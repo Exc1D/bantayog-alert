@@ -167,7 +167,7 @@ export async function declineDispatchHandler(request: CallableRequest<unknown>) 
       },
       now: Timestamp.now(),
     })
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof BantayogError) {
       throw bantayogErrorToHttps(error)
     }

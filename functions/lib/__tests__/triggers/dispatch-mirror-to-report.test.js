@@ -6,7 +6,9 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { dispatchMirrorToReportCore } from '../../triggers/dispatch-mirror-to-report.js';
 const ts = 1713350400000;
 process.env.FIRESTORE_EMULATOR_HOST ??= 'localhost:8081';
-const app = getApps()[0] ?? initializeApp({ projectId: 'dispatch-mirror-test' });
+const appName = 'dispatch-mirror-test';
+const app = getApps().find((a) => a.name === appName) ??
+    initializeApp({ projectId: 'dispatch-mirror-test' }, appName);
 const adminDb = getFirestore(app);
 // ---------------------------------------------------------------------------
 // Test environment
@@ -55,7 +57,10 @@ async function seedReportAtStatusJS(reportId, status) {
 }
 /** Seeds a dispatch using JS SDK via withSecurityRulesDisabled. */
 async function seedDispatchJS(dispatchId, reportId, status, correlationId) {
-    await adminDb.collection('dispatches').doc(dispatchId).set({
+    await adminDb
+        .collection('dispatches')
+        .doc(dispatchId)
+        .set({
         dispatchId,
         reportId,
         status,
@@ -130,8 +135,8 @@ describe('dispatchMirrorToReport', () => {
         const dispatchId = `dispatch-${crypto.randomUUID()}`;
         await seedDispatchJS(dispatchId, 'nonexistent-report', 'pending');
         await withAdminDb(async (db) => {
-            // Should not throw — trigger skips gracefully
-            await expect(dispatchMirrorToReportCore({
+            // Should not throw — trigger skips gracefully when report is missing
+            await dispatchMirrorToReportCore({
                 db,
                 dispatchId,
                 beforeData: { status: 'pending' },
@@ -140,7 +145,7 @@ describe('dispatchMirrorToReport', () => {
                     reportId: 'nonexistent-report',
                     correlationId: crypto.randomUUID(),
                 },
-            })).resolves.not.toThrow();
+            });
         });
     });
     it('reverts declined dispatches back to verified and clears currentDispatchId', async () => {

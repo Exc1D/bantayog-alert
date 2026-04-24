@@ -12,10 +12,21 @@
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --emitDeclarationOnly --outDir lib"
+    "build": "tsc --emitDeclarationOnly --outDir lib",
+    "test": "vitest --run"
   },
   "peerDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "firebase": "^12.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.0.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "happy-dom": "^15.11.0",
+    "vitest": "^4.1.4"
   }
 }

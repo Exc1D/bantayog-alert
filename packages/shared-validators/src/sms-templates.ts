@@ -1,4 +1,5 @@
-// TODO(phase-5): move template bodies to Firestore for CMS-driven editing.
+// TICKET(BANTAYOG-PHASE6): move TEMPLATES to Firestore for CMS-driven editing.
+// This requires an admin UI, caching strategy, and fallback chain — defer until post-MVP.
 
 export type SmsPurpose =
   | 'receipt_ack'

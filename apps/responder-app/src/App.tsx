@@ -1,7 +1,8 @@
 import './App.module.css'
 import { useEffect } from 'react'
 import { AppRouter } from './routes'
-import { AuthProvider, useAuth } from './app/auth-provider'
+import { AuthProvider, useAuth } from '@bantayog/shared-ui'
+import { auth } from './app/firebase'
 import { useRegisterFcmToken } from './hooks/useRegisterFcmToken'
 
 function FcmSetup() {
@@ -26,7 +27,7 @@ function FcmSetup() {
 
 export default function App() {
   return (
-    <AuthProvider>
+    <AuthProvider auth={auth}>
       <FcmSetup />
       <AppRouter />
     </AuthProvider>

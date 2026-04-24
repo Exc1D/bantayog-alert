@@ -58,13 +58,16 @@ export async function smsInboundWebhookCore(deps) {
         const salt = process.env.SMS_MSISDN_HASH_SALT ?? '';
         msisdnHash = hashMsisdn(normalized, salt);
     }
-    catch {
+    catch (err) {
         msisdnHash = crypto.createHash('sha256').update(rawFrom).digest('hex');
         log({
             severity: 'WARNING',
             code: 'msisdn.invalid',
             message: 'Invalid MSISDN received',
-            data: { rawFrom: rawFrom.slice(0, 6) + '****' },
+            data: {
+                rawFrom: rawFrom.slice(0, 6) + '****',
+                errorType: err instanceof Error ? err.name : 'UnknownError',
+            },
         });
     }
     const msgId = globeMsgId ?? buildMsgId();

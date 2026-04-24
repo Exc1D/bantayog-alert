@@ -1,9 +1,14 @@
-import { createRequire } from 'node:module'
+/**
+ * Fallback barangay data for Camarines Norte municipalities.
+ * Used when GPS is unavailable and user selects municipality manually.
+ */
 
-const require = createRequire(import.meta.url)
+export interface FallbackBarangay {
+  name: string
+  municipality: string
+}
 
-const FALLBACK_BARANGAYS = [
-  // Basud (29 barangays)
+export const FALLBACK_BARANGAYS: FallbackBarangay[] = [
   { name: 'Angas', municipality: 'Basud' },
   { name: 'Bactas', municipality: 'Basud' },
   { name: 'Binatagan', municipality: 'Basud' },
@@ -33,7 +38,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Tacad', municipality: 'Basud' },
   { name: 'Taisan', municipality: 'Basud' },
   { name: 'Tuaca', municipality: 'Basud' },
-  // Capalonga (22 barangays)
   { name: 'Alayao', municipality: 'Capalonga' },
   { name: 'Binawangan', municipality: 'Capalonga' },
   { name: 'Calabaca', municipality: 'Capalonga' },
@@ -56,7 +60,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Ubang', municipality: 'Capalonga' },
   { name: 'Villa Aurora', municipality: 'Capalonga' },
   { name: 'Villa Belen', municipality: 'Capalonga' },
-  // Daet (25 barangays)
   { name: 'Alawihao', municipality: 'Daet' },
   { name: 'Awitan', municipality: 'Daet' },
   { name: 'Bagasbas', municipality: 'Daet' },
@@ -82,7 +85,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Mancruz', municipality: 'Daet' },
   { name: 'Pamorangon', municipality: 'Daet' },
   { name: 'San Isidro', municipality: 'Daet' },
-  // Jose Panganiban (27 barangays)
   { name: 'Bagong Bayan', municipality: 'Jose Panganiban' },
   { name: 'Calero', municipality: 'Jose Panganiban' },
   { name: 'Dahican', municipality: 'Jose Panganiban' },
@@ -110,7 +112,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Santa Rosa Sur', municipality: 'Jose Panganiban' },
   { name: 'South Poblacion', municipality: 'Jose Panganiban' },
   { name: 'Tamisan', municipality: 'Jose Panganiban' },
-  // Labo (52 barangays)
   { name: 'Anahaw', municipality: 'Labo' },
   { name: 'Anameam', municipality: 'Labo' },
   { name: 'Awitan', municipality: 'Labo' },
@@ -163,7 +164,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Talobatib', municipality: 'Labo' },
   { name: 'Tigbinan', municipality: 'Labo' },
   { name: 'Tulay na Lupa', municipality: 'Labo' },
-  // Mercedes (27 barangays)
   { name: 'Apuao', municipality: 'Mercedes' },
   { name: 'Barangay I', municipality: 'Mercedes' },
   { name: 'Barangay II', municipality: 'Mercedes' },
@@ -190,7 +190,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Quinapaguian', municipality: 'Mercedes' },
   { name: 'San Roque', municipality: 'Mercedes' },
   { name: 'Tarum', municipality: 'Mercedes' },
-  // Paracale (31 barangays)
   { name: 'Awitan', municipality: 'Paracale' },
   { name: 'Bagumbayan', municipality: 'Paracale' },
   { name: 'Bakal', municipality: 'Paracale' },
@@ -218,7 +217,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Talusan', municipality: 'Paracale' },
   { name: 'Tawig', municipality: 'Paracale' },
   { name: 'Tugos', municipality: 'Paracale' },
-  // San Lorenzo Ruiz (12 barangays)
   { name: 'Daculang Bolo', municipality: 'San Lorenzo Ruiz' },
   { name: 'Dagotdotan', municipality: 'San Lorenzo Ruiz' },
   { name: 'Langga', municipality: 'San Lorenzo Ruiz' },
@@ -231,7 +229,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'San Antonio', municipality: 'San Lorenzo Ruiz' },
   { name: 'San Isidro', municipality: 'San Lorenzo Ruiz' },
   { name: 'San Ramon', municipality: 'San Lorenzo Ruiz' },
-  // San Vicente (9 barangays)
   { name: 'Asdum', municipality: 'San Vicente' },
   { name: 'Cabanbanan', municipality: 'San Vicente' },
   { name: 'Calabagas', municipality: 'San Vicente' },
@@ -241,7 +238,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Poblacion District I', municipality: 'San Vicente' },
   { name: 'Poblacion District II', municipality: 'San Vicente' },
   { name: 'San Jose', municipality: 'San Vicente' },
-  // Santa Elena (20 barangays)
   { name: 'Basiad', municipality: 'Santa Elena' },
   { name: 'Bulala', municipality: 'Santa Elena' },
   { name: 'Don Tomas', municipality: 'Santa Elena' },
@@ -261,7 +257,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Santa Elena', municipality: 'Santa Elena' },
   { name: 'Tabugon', municipality: 'Santa Elena' },
   { name: 'Villa San Isidro', municipality: 'Santa Elena' },
-  // Talisay (15 barangays)
   { name: 'Binanuaan', municipality: 'Talisay' },
   { name: 'Caawigan', municipality: 'Talisay' },
   { name: 'Cahabaan', municipality: 'Talisay' },
@@ -277,7 +272,6 @@ const FALLBACK_BARANGAYS = [
   { name: 'Santa Cruz', municipality: 'Talisay' },
   { name: 'Santa Elena', municipality: 'Talisay' },
   { name: 'Santo Niño', municipality: 'Talisay' },
-  // Vinzons (19 barangays)
   { name: 'Aguit-it', municipality: 'Vinzons' },
   { name: 'Banocboc', municipality: 'Vinzons' },
   { name: 'Barangay I', municipality: 'Vinzons' },
@@ -298,187 +292,3 @@ const FALLBACK_BARANGAYS = [
   { name: 'Singi', municipality: 'Vinzons' },
   { name: 'Sula', municipality: 'Vinzons' },
 ]
-
-const TYPE_SYNONYMS = {
-  FLOOD: 'flood',
-  BAHA: 'flood',
-  FIRE: 'fire',
-  SUNOG: 'fire',
-  LANDSLIDE: 'landslide',
-  GUHO: 'landslide',
-  ACCIDENT: 'accident',
-  AKSIDENTE: 'accident',
-  MEDICAL: 'medical',
-  MEDIKAL: 'medical',
-  OTHER: 'other',
-  IBA: 'other',
-}
-
-const MUNICIPALITY_PREFIXES = new Set(['SAN', 'STA', 'SANTA'])
-
-function getBarangayGazetteer() {
-  try {
-    const mod = require('@bantayog/shared-data')
-    if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
-      return mod.BARANGAY_GAZETTEER
-    }
-  } catch (err) {
-    if (err && typeof err === 'object' && 'code' in err && err.code === 'MODULE_NOT_FOUND') {
-      // shared-data not yet populated - use fallback
-      return FALLBACK_BARANGAYS
-    }
-    throw err
-  }
-  return FALLBACK_BARANGAYS
-}
-
-function levenshtein(a, b) {
-  const m = a.length
-  const n = b.length
-  if (m === 0) return n
-  if (n === 0) return m
-  const dp = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
-  )
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] =
-        a[i - 1] === b[j - 1]
-          ? dp[i - 1][j - 1]
-          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
-    }
-  }
-  return dp[m][n]
-}
-
-function buildAutoReply(confidence, publicRef = '') {
-  const ref = publicRef ? ` Ref: ${publicRef}.` : ''
-  switch (confidence) {
-    case 'high':
-      return `Received.${ref} MDRRMO reviewing.`
-    case 'medium':
-      return `Received,${ref} Our team may contact you for details.`
-    case 'low':
-      return `Received.${ref} Our team reviewing your report.`
-    case 'none':
-    default:
-      return 'We received your message. To report an emergency, text: BANTAYOG <TYPE> <BARANGAY>. Types: FLOOD, FIRE, ACCIDENT, MEDICAL, LANDSLIDE, OTHER.'
-  }
-}
-
-export function parseInboundSms(body) {
-  if (typeof body !== 'string') {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-  const normalized = body.trim().replace(/\s+/g, ' ').toUpperCase()
-  const originalRest = body.trim().replace(/\s+/g, ' ')
-
-  if (!normalized.startsWith('BANTAYOG')) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-
-  const rest = normalized.slice('BANTAYOG'.length).trim()
-  if (!rest) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-
-  const tokens = rest.split(/\s+/)
-  const token0 = tokens[0]
-  const token1 = tokens[1]
-  if (tokens.length < 2 || !token0 || !token1) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-
-  const typeToken = token0
-  let barangayToken = token1
-  let detailsStartIndex = barangayToken.length
-
-  const token2 = tokens[2]
-  if (tokens.length >= 3 && token2 && MUNICIPALITY_PREFIXES.has(token1)) {
-    barangayToken = `${token1} ${token2}`
-    detailsStartIndex = barangayToken.length
-  }
-
-  const barangayIndex = originalRest.toUpperCase().indexOf(barangayToken.toUpperCase())
-  const details =
-    barangayIndex !== -1 && barangayIndex + detailsStartIndex < originalRest.length
-      ? originalRest.slice(barangayIndex + detailsStartIndex).trim()
-      : undefined
-
-  const reportType = TYPE_SYNONYMS[typeToken.toUpperCase()]
-  if (!reportType) {
-    return {
-      confidence: 'none',
-      parsed: null,
-      candidates: [],
-      autoReplyText: buildAutoReply('none'),
-    }
-  }
-
-  const gazetteer = getBarangayGazetteer()
-  const barangayLower = barangayToken.toLowerCase()
-  const exact = gazetteer.find((b) => b.name.toLowerCase() === barangayLower)
-  if (exact) {
-    return {
-      confidence: 'high',
-      parsed: { reportType, barangay: exact.name, details },
-      candidates: [],
-      autoReplyText: buildAutoReply('high'),
-    }
-  }
-
-  const fuzzyMatches = []
-  for (const entry of gazetteer) {
-    const distance = levenshtein(barangayLower, entry.name.toLowerCase())
-    if (distance <= 2) {
-      fuzzyMatches.push({ entry, distance })
-    }
-  }
-
-  if (fuzzyMatches.length === 1) {
-    const match = fuzzyMatches[0]
-    return {
-      confidence: match.distance <= 1 ? 'medium' : 'low',
-      parsed: {
-        reportType,
-        barangay: match.entry.name,
-        rawBarangay: barangayToken,
-        details,
-      },
-      candidates: [],
-      autoReplyText: buildAutoReply(match.distance <= 1 ? 'medium' : 'low'),
-    }
-  }
-
-  if (fuzzyMatches.length > 1) {
-    fuzzyMatches.sort((a, b) => a.distance - b.distance)
-    return {
-      confidence: 'low',
-      parsed: null,
-      candidates: fuzzyMatches.slice(0, 3).map((match) => match.entry.name),
-      autoReplyText: buildAutoReply('low'),
-    }
-  }
-
-  return { confidence: 'none', parsed: null, candidates: [], autoReplyText: buildAutoReply('none') }
-}

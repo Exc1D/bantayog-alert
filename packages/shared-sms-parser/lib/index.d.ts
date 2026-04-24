@@ -1,3 +1,3 @@
-export { parseInboundSms } from './inbound.js';
-export type { ParseResult, Confidence, ReportType, ParsedFields } from './inbound.js';
+export { parseInboundSms } from './parser.js';
+export type { ParseResult, Confidence, ReportType, ParsedFields } from './parser.js';
 //# sourceMappingURL=index.d.ts.map

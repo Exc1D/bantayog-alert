@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../app/auth-provider'
+import { useAuth } from '@bantayog/shared-ui'
 import { useEligibleResponders } from '../hooks/useEligibleResponders'
 import { callables } from '../services/callables'
 
@@ -13,7 +13,9 @@ export function DispatchModal({
   onError: (msg: string) => void
 }) {
   const { claims } = useAuth()
-  const eligible = useEligibleResponders(claims?.municipalityId)
+  const municipalityId =
+    typeof claims?.municipalityId === 'string' ? claims.municipalityId : undefined
+  const eligible = useEligibleResponders(municipalityId)
   const [picked, setPicked] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 

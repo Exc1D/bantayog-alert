@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
-import { useAuth } from '../app/auth-provider'
+import { useAuth } from '@bantayog/shared-ui'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 
 export function DispatchListPage() {
@@ -13,7 +13,7 @@ export function DispatchListPage() {
   async function handleSignOut() {
     try {
       await signOut()
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[DispatchListPage] sign out failed:', err)
     }
   }

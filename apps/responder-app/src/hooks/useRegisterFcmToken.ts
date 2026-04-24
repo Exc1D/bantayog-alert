@@ -46,7 +46,7 @@ export function useRegisterFcmToken({
         },
         { merge: true },
       )
-    } catch (err) {
+    } catch (err: unknown) {
       return { token: null, error: err instanceof Error ? err.message : 'firestore_error' }
     }
 

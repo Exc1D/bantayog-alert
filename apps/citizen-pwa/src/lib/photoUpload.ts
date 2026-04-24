@@ -66,7 +66,7 @@ export function createPhotoUploadManager(): PhotoUploadManager {
         await uploadBytes(storageRef, file)
         photoUrl = await getDownloadURL(storageRef)
         state = 'done'
-      } catch (err) {
+      } catch (err: unknown) {
         error = err instanceof Error ? err.message : 'Upload failed'
         state = 'error'
         throw err

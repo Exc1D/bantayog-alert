@@ -12,7 +12,6 @@ export type ReportType = z.infer<typeof reportTypeSchema>;
 export interface ParsedFields {
     reportType: ReportType;
     barangay: string;
-    rawBarangay?: string;
     details: string | undefined;
 }
 export interface ParseResult {
@@ -22,4 +21,4 @@ export interface ParseResult {
     autoReplyText: string;
 }
 export declare function parseInboundSms(body: string): ParseResult;
-//# sourceMappingURL=inbound.d.ts.map
+//# sourceMappingURL=parser.d.ts.map

@@ -40,7 +40,7 @@ export async function acquireFcmToken(
       serviceWorkerRegistration,
     })
     return { token }
-  } catch (err) {
+  } catch (err: unknown) {
     return { token: null, error: err instanceof Error ? err.message : 'unknown' }
   }
 }

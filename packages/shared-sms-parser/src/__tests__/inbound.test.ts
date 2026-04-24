@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseInboundSms } from '../inbound.js'
+import { parseInboundSms } from '../parser.js'
 
 describe('parseInboundSms', () => {
   it('parses high-confidence flood report', () => {
@@ -7,7 +7,7 @@ describe('parseInboundSms', () => {
     expect(result.confidence).toBe('high')
     expect(result.parsed?.reportType).toBe('flood')
     expect(result.parsed?.barangay).toBe('Calasgasan')
-    expect(result.parsed?.rawBarangay).toBeUndefined()
+    expect(result.parsed?.details).toBeUndefined()
     expect(result.candidates).toHaveLength(0)
   })
 
@@ -23,7 +23,7 @@ describe('parseInboundSms', () => {
     expect(result.confidence).toBe('low')
     expect(result.parsed?.reportType).toBe('fire')
     expect(result.parsed?.barangay).toBe('Calasgasan')
-    expect(result.parsed?.rawBarangay).toBe('CALASGAN')
+    expect(result.parsed?.details).toBeUndefined()
     expect(result.candidates).toHaveLength(0)
   })
 
@@ -79,6 +79,13 @@ describe('parseInboundSms', () => {
     const result = parseInboundSms('BANTAYOG FLOOD CALASGASAN Mabait naman')
     expect(result.confidence).toBe('high')
     expect(result.parsed?.details).toBe('Mabait naman')
+  })
+
+  it('preserves full details when barangay name repeats inside details', () => {
+    const result = parseInboundSms('BANTAYOG FLOOD ANGAS flooding in Angas area')
+    expect(result.confidence).toBe('high')
+    expect(result.parsed?.barangay).toBe('Angas')
+    expect(result.parsed?.details).toBe('flooding in Angas area')
   })
 
   it('returns high confidence for OTHER type', () => {
