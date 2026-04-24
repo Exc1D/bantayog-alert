@@ -18,6 +18,8 @@ export const agencyAssistanceRequestDocSchema = z
     expiresAt: z.number().int(),
 })
     .strict()
+    // Assistance windows must have a positive duration — expiresAt is set by the
+    // requesting municipality and must exceed the request creation timestamp.
     .refine((d) => d.expiresAt > d.createdAt, {
     message: 'expiresAt must be after createdAt',
 });
@@ -41,6 +43,8 @@ export const commandChannelMessageDocSchema = z
     .object({
     threadId: z.string().min(1),
     authorUid: z.string().min(1),
+    // Responders appear in participantUids but cannot author messages;
+    // command channel posts are admin/agency/superadmin only.
     authorRole: z.enum(['municipal_admin', 'agency_admin', 'provincial_superadmin']),
     body: z.string().max(2000),
     idempotencyKey: z.uuid().optional(),

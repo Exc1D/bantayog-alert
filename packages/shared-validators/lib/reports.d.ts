@@ -124,6 +124,11 @@ export declare const reportOpsDocSchema: z.ZodObject<{
         fire: "fire";
         earthquake: "earthquake";
         typhoon: "typhoon";
+        medical: "medical";
+        accident: "accident";
+        structural: "structural";
+        security: "security";
+        other: "other";
     }>>;
     locationGeohash: z.ZodOptional<z.ZodString>;
     duplicateClusterId: z.ZodOptional<z.ZodString>;

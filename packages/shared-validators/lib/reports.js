@@ -7,8 +7,12 @@ const reportOpsReportTypeSchema = z.enum([
     'typhoon',
     'landslide',
     'storm_surge',
+    'medical',
+    'accident',
+    'structural',
+    'security',
+    'other',
 ]);
-// hazard tag schema
 export const hazardTagSchema = z
     .object({
     hazardZoneId: z.string().min(1),
@@ -16,7 +20,6 @@ export const hazardTagSchema = z
     hazardType: z.enum(['flood', 'landslide', 'storm_surge']),
 })
     .strict();
-// reportDocSchema — public report document
 export const reportDocSchema = z
     .object({
     municipalityId: z.string().min(1),
@@ -78,7 +81,6 @@ export const reportDocSchema = z
     correlationId: z.uuid(),
 })
     .strict();
-// reportPrivateDocSchema — private report document
 export const reportPrivateDocSchema = z
     .object({
     municipalityId: z.string().min(1),
@@ -89,7 +91,6 @@ export const reportPrivateDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
-// reportOpsDocSchema — operations document
 export const reportOpsDocSchema = z
     .object({
     municipalityId: z.string().min(1),
@@ -115,6 +116,8 @@ export const reportOpsDocSchema = z
     agencyIds: z.array(z.string()).default([]),
     activeResponderCount: z.number().int().nonnegative().default(0),
     requiresLocationFollowUp: z.boolean().default(false),
+    // processInboxItemCore always writes reportType; .optional() preserves
+    // backward-compat for report_ops docs written before Phase 5 PRE-B.
     reportType: reportOpsReportTypeSchema.optional(),
     locationGeohash: z.string().length(6).optional(),
     duplicateClusterId: z.string().optional(),
@@ -129,7 +132,6 @@ export const reportOpsDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
-// reportSharingDocSchema — sharing document
 export const reportSharingDocSchema = z
     .object({
     ownerMunicipalityId: z.string().min(1),
@@ -140,7 +142,6 @@ export const reportSharingDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
-// reportNoteDocSchema — report note document
 export const reportNoteDocSchema = z
     .object({
     reportId: z.string().min(1),
@@ -150,7 +151,6 @@ export const reportNoteDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
-// reportSharingEventDocSchema — append-only sharing audit event
 export const reportSharingEventDocSchema = z
     .object({
     targetMunicipalityId: z.string().min(1),
@@ -161,7 +161,6 @@ export const reportSharingEventDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
-// reportContactsDocSchema — contacts document
 export const reportContactsDocSchema = z
     .object({
     reportId: z.string().min(1),
@@ -172,21 +171,20 @@ export const reportContactsDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
-// reportLookupDocSchema — lookup document
 export const reportLookupDocSchema = z
     .object({
     publicTrackingRef: z.string().regex(/^[a-z0-9]{8}$/),
     reportId: z.string().min(1),
     tokenHash: z.string().regex(/^[a-f0-9]{64}$/),
-    expiresAt: z
-        .number()
-        .int()
-        .max(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    expiresAt: z.number().int(),
     createdAt: z.number().int(),
     schemaVersion: z.number().int().positive(),
 })
-    .strict();
-// reportInboxDocSchema — inbox document
+    .strict()
+    .refine((d) => d.expiresAt <= Date.now() + 365 * 24 * 60 * 60 * 1000, {
+    path: ['expiresAt'],
+    message: 'expiresAt must be within 365 days of validation',
+});
 export const reportInboxDocSchema = z
     .object({
     reporterUid: z.string().min(1),
@@ -199,7 +197,6 @@ export const reportInboxDocSchema = z
     processedAt: z.number().int().optional(),
 })
     .strict();
-// inboxPayloadSchema — validated payload inside report_inbox docs
 export const inboxPayloadSchema = z
     .object({
     reportType: z.string().min(1).max(32),

@@ -9,11 +9,12 @@ export const responderDocSchema = z
     availabilityStatus: z.enum(['on_duty', 'off_duty', 'on_break', 'unavailable']),
     isActive: z.boolean(),
     fcmTokens: z.array(z.string()).default([]),
-    hasFcmToken: z.boolean().default(false),
+    hasFcmToken: z.boolean().optional(),
     lastTelemetryAt: z.number().int().optional(),
     schemaVersion: z.number().int().positive(),
     createdAt: z.number().int(),
     updatedAt: z.number().int(),
 })
-    .strict();
+    .strict()
+    .transform((d) => ({ ...d, hasFcmToken: d.fcmTokens.length > 0 }));
 //# sourceMappingURL=responders.js.map

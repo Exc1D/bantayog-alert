@@ -52,8 +52,8 @@ export declare const smsOutboxDocSchema: z.ZodObject<{
     bodyPreviewHash: z.ZodString;
     status: z.ZodEnum<{
         queued: "queued";
-        sent: "sent";
         sending: "sending";
+        sent: "sent";
         delivered: "delivered";
         failed: "failed";
         deferred: "deferred";

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   reportDocSchema,
   reportPrivateDocSchema,
@@ -144,7 +144,7 @@ describe('reportOpsDocSchema', () => {
       reportOpsDocSchema.parse({
         municipalityId: 'daet',
         status: 'verified',
-        reportType: 'medical',
+        reportType: 'volcanic',
         severity: 'high',
         createdAt: ts,
         agencyIds: [],
@@ -155,6 +155,24 @@ describe('reportOpsDocSchema', () => {
         schemaVersion: 1,
       }),
     ).toThrow()
+  })
+
+  it('accepts persisted ops report types like medical', () => {
+    expect(
+      reportOpsDocSchema.parse({
+        municipalityId: 'daet',
+        status: 'verified',
+        reportType: 'medical',
+        severity: 'high',
+        createdAt: ts,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        updatedAt: ts,
+        schemaVersion: 1,
+      }),
+    ).toMatchObject({ reportType: 'medical' })
   })
 })
 
@@ -213,6 +231,24 @@ describe('reportLookupDocSchema', () => {
         schemaVersion: 1,
       }),
     ).toMatchObject({ publicTrackingRef: 'a1b2c3d4' })
+  })
+
+  it('rejects expiresAt beyond a year at validation time', () => {
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(ts)
+    try {
+      expect(() =>
+        reportLookupDocSchema.parse({
+          publicTrackingRef: 'a1b2c3d4',
+          reportId: 'r-1',
+          tokenHash: 'f'.repeat(64),
+          expiresAt: ts + 366 * 24 * 60 * 60 * 1000,
+          createdAt: ts,
+          schemaVersion: 1,
+        }),
+      ).toThrow(/expiresAt/)
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 
