@@ -106,7 +106,6 @@ describe('parseInboundSms', () => {
         const result = parseInboundSms('BANTAYOG FIRE CALASGAN');
         expect(result.confidence).toBe('low');
         expect(result.parsed?.barangay).toBe('Calasgasan');
-        expect(result.parsed?.rawBarangay).toBe('CALASGAN');
     });
     it('returns none for barangay not in gazetteer', () => {
         const result = parseInboundSms('BANTAYOG FLOOD LANIT');

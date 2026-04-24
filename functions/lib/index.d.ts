@@ -10,6 +10,7 @@ export { acceptDispatch } from './callables/accept-dispatch.js';
 export { advanceDispatch } from './callables/advance-dispatch.js';
 export { declineDispatch } from './callables/decline-dispatch.js';
 export { closeReport } from './callables/close-report.js';
+export { requestAgencyAssistance, acceptAgencyAssistance, declineAgencyAssistance, } from './callables/request-agency-assistance.js';
 export declare const processInboxItem: import("firebase-functions").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").QueryDocumentSnapshot | undefined, {
     inboxId: string;
 }>>;
@@ -22,6 +23,7 @@ export { dispatchSmsOutbox } from './triggers/dispatch-sms-outbox.js';
 export { evaluateSmsProviderHealth } from './triggers/evaluate-sms-provider-health.js';
 export { reconcileSmsDeliveryStatus } from './triggers/reconcile-sms-delivery-status.js';
 export { cleanupSmsMinuteWindows } from './triggers/cleanup-sms-minute-windows.js';
+export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js';
 export { smsDeliveryReport } from './http/sms-delivery-report.js';
 export { smsInboundWebhook } from './http/sms-inbound.js';
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js';

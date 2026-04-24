@@ -1,19 +1,7 @@
-import { Firestore, Timestamp } from 'firebase-admin/firestore';
+import { type DispatchResponderCoreDeps } from './dispatch-responder-validation.js';
 import type { Database } from 'firebase-admin/database';
-export interface DispatchResponderCoreDeps {
-    reportId: string;
-    responderUid: string;
-    idempotencyKey: string;
-    actor: {
-        uid: string;
-        claims: {
-            role?: string;
-            municipalityId?: string;
-        };
-    };
-    now: Timestamp;
-}
-export declare function dispatchResponderCore(db: Firestore, rtdb: Database, deps: DispatchResponderCoreDeps): Promise<{
+export type { DispatchResponderCoreDeps } from './dispatch-responder-validation.js';
+export declare function dispatchResponderCore(db: FirebaseFirestore.Firestore, rtdb: Database, deps: DispatchResponderCoreDeps): Promise<{
     dispatchId: string;
     status: "pending";
     reportId: string;
