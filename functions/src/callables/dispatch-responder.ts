@@ -8,7 +8,6 @@ import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
 import { sendFcmToResponder, FCM_VAPID_PRIVATE_KEY } from '../services/fcm-send.js'
 import {
-  assertResponderOnShift,
   validateDispatchTransaction,
   type DispatchResponderCoreDeps,
 } from './dispatch-responder-validation.js'
@@ -32,7 +31,7 @@ const DEADLINE_BY_SEVERITY: Record<'critical' | 'high' | 'low' | 'medium', numbe
 }
 
 function isValidSeverity(s: unknown): s is keyof typeof DEADLINE_BY_SEVERITY {
-  return typeof s === 'string' && s in DEADLINE_BY_SEVERITY
+  return typeof s === 'string' && Object.hasOwn(DEADLINE_BY_SEVERITY, s)
 }
 
 export type { DispatchResponderCoreDeps } from './dispatch-responder-validation.js'
@@ -57,12 +56,6 @@ export async function dispatchResponderCore(
       if (!deps.actor.claims.municipalityId) {
         throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'municipalityId is required')
       }
-
-      await assertResponderOnShift({
-        rtdb,
-        municipalityId: deps.actor.claims.municipalityId,
-        responderUid: deps.responderUid,
-      })
 
       return db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)

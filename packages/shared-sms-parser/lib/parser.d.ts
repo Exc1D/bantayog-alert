@@ -12,7 +12,6 @@ export type ReportType = z.infer<typeof reportTypeSchema>;
 export interface ParsedFields {
     reportType: ReportType;
     barangay: string;
-    rawBarangay?: string;
     details: string | undefined;
 }
 export interface ParseResult {

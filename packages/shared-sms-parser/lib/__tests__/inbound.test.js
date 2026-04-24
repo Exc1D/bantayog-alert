@@ -6,7 +6,7 @@ describe('parseInboundSms', () => {
         expect(result.confidence).toBe('high');
         expect(result.parsed?.reportType).toBe('flood');
         expect(result.parsed?.barangay).toBe('Calasgasan');
-        expect(result.parsed?.rawBarangay).toBeUndefined();
+        expect(result.parsed?.details).toBeUndefined();
         expect(result.candidates).toHaveLength(0);
     });
     it('parses with type synonym BAHA', () => {
@@ -20,7 +20,7 @@ describe('parseInboundSms', () => {
         expect(result.confidence).toBe('low');
         expect(result.parsed?.reportType).toBe('fire');
         expect(result.parsed?.barangay).toBe('Calasgasan');
-        expect(result.parsed?.rawBarangay).toBe('CALASGAN');
+        expect(result.parsed?.details).toBeUndefined();
         expect(result.candidates).toHaveLength(0);
     });
     it('returns candidates on ambiguous barangay match', () => {

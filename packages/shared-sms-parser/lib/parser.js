@@ -127,7 +127,6 @@ export function parseInboundSms(body) {
             parsed: {
                 reportType,
                 barangay: entry.name,
-                rawBarangay: barangayToken,
                 details,
             },
             candidates: [],

@@ -20,7 +20,6 @@ export type ReportType = z.infer<typeof reportTypeSchema>
 export interface ParsedFields {
   reportType: ReportType
   barangay: string
-  rawBarangay?: string
   details: string | undefined
 }
 
@@ -164,7 +163,6 @@ export function parseInboundSms(body: string): ParseResult {
       parsed: {
         reportType,
         barangay: entry.name,
-        rawBarangay: barangayToken,
         details,
       },
       candidates: [],
