@@ -20,6 +20,15 @@ const TERMINAL_STATUSES = new Set([
   'merged_as_duplicate',
 ] as const)
 
+const VALID_AGENCY_ASSISTANCE_TYPES = new Set([
+  'BFP',
+  'PNP',
+  'PCG',
+  'RED_CROSS',
+  'DPWH',
+  'OTHER',
+] as const)
+
 const RequestAgencyAssistanceInputSchema = z
   .object({
     reportId: z.string().min(1).max(128),
@@ -53,6 +62,21 @@ export async function requestAgencyAssistanceCore(
   const { reportId, agencyId, idempotencyKey, actor, now } = deps
   const message = deps.message ?? ''
   const priority = deps.priority ?? 'normal'
+
+  // Validate agencyId against allowed requestType values before entering transaction.
+  // agencyId is uppercased and cast directly to requestType — crash or bad data
+  // results if an arbitrary string like "mdrr" or "mmda" is passed.
+  const agencyLabel = agencyId.toUpperCase()
+  if (
+    !VALID_AGENCY_ASSISTANCE_TYPES.has(
+      agencyLabel as typeof VALID_AGENCY_ASSISTANCE_TYPES extends Set<infer T> ? T : never,
+    )
+  ) {
+    throw new BantayogError(
+      BantayogErrorCode.INVALID_ARGUMENT,
+      `Invalid agencyId: "${agencyId}" must be one of ${[...VALID_AGENCY_ASSISTANCE_TYPES].join(', ')}`,
+    )
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
@@ -137,7 +161,6 @@ export async function requestAgencyAssistanceCore(
         const threadRef = db.collection('command_channel_threads').doc()
         const threadId = threadRef.id
 
-        const agencyLabel = agencyId.toUpperCase()
         const nowMs = now.toMillis()
         const expiresAt = nowMs + 24 * 60 * 60 * 1000 // 24 hours
 
