@@ -9,7 +9,7 @@ export const responderDocSchema = z
     specialisations: z.array(z.string()).default([]),
     availabilityStatus: z.enum(['on_duty', 'off_duty', 'on_break', 'unavailable']),
     isActive: z.boolean(),
-    fcmTokens: z.array(z.string()).default([]),
+    fcmTokens: z.array(z.string().trim().min(1)).default([]),
     hasFcmToken: z.boolean().optional(),
     lastTelemetryAt: z.number().int().optional(),
     schemaVersion: z.number().int().positive(),
