@@ -13,6 +13,8 @@ export {
   reportPrivateDocSchema,
   reportOpsDocSchema,
   reportSharingDocSchema,
+  reportNoteDocSchema,
+  reportSharingEventDocSchema,
   reportContactsDocSchema,
   reportLookupDocSchema,
   reportInboxDocSchema,
@@ -24,6 +26,8 @@ export type {
   ReportPrivateDoc,
   ReportOpsDoc,
   ReportSharingDoc,
+  ReportNoteDoc,
+  ReportSharingEventDoc,
   ReportContactsDoc,
   ReportLookupDoc,
   ReportInboxDoc,
@@ -43,7 +47,8 @@ export type { AgencyDoc } from './agencies.js'
 export { responderDocSchema } from './responders.js'
 export type { ResponderDoc } from './responders.js'
 export { userDocSchema } from './users.js'
-export type { UserDoc } from './users.js'
+export { reportSmsConsentDocSchema } from './users.js'
+export type { UserDoc, ReportSmsConsentDoc } from './users.js'
 export {
   smsInboxDocSchema,
   smsOutboxDocSchema,
@@ -68,6 +73,7 @@ export {
   massAlertRequestDocSchema,
   shiftHandoffDocSchema,
   breakglassEventDocSchema,
+  fieldModeSessionDocSchema,
 } from './coordination.js'
 export type {
   AgencyAssistanceRequestDoc,
@@ -76,6 +82,7 @@ export type {
   MassAlertRequestDoc,
   ShiftHandoffDoc,
   BreakglassEventDoc,
+  FieldModeSessionDoc,
 } from './coordination.js'
 export { hazardZoneDocSchema, hazardZoneHistoryDocSchema, hazardSignalDocSchema } from './hazard.js'
 export type { HazardZoneDoc, HazardZoneHistoryDoc, HazardSignalDoc } from './hazard.js'

@@ -21,4 +21,16 @@ export const userDocSchema = z
     updatedAt: z.number().int(),
 })
     .strict();
+export const reportSmsConsentDocSchema = z
+    .object({
+    reportId: z.string().min(1),
+    phone: z.string().min(1),
+    locale: z.string().min(1),
+    smsConsent: z.literal(true),
+    municipalityId: z.string().min(1),
+    followUpConsent: z.boolean().default(false),
+    createdAt: z.number().int(),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict();
 //# sourceMappingURL=users.js.map

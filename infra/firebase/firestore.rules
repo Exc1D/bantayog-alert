@@ -85,7 +85,6 @@ service cloud.firestore {
       //   - system triggers: processInboxItem, dispatchMirrorToReport
       //   - callables only: verifyReport, dispatchResponder, cancelDispatch, closeReport
       // Responders NEVER write reports.status directly.
-      deny update: if isResponder();
       allow update: if adminOf(resource.data.municipalityId)
                    && request.resource.data.diff(resource.data)
                       .affectedKeys()
@@ -102,9 +101,21 @@ service cloud.firestore {
       }
       match /messages/{m} {
         allow read: if isActivePrivileged()
-                    && (isMuniAdmin() || isSuperadmin()
-                        || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))));
-        allow write: if false;
+                    && (adminOf(get(/databases/$(database)/documents/reports/$(reportId)).data.municipalityId)
+                        || (isAgencyAdmin()
+                            && exists(/databases/$(database)/documents/report_ops/$(reportId))
+                            && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds));
+        allow create: if isActivePrivileged()
+                      && request.auth.uid == request.resource.data.authorUid
+                      && (
+                        adminOf(get(/databases/$(database)/documents/reports/$(reportId)).data.municipalityId)
+                        || (
+                          isAgencyAdmin()
+                          && exists(/databases/$(database)/documents/report_ops/$(reportId))
+                          && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds
+                        )
+                      );
+        allow update, delete: if false;
       }
       match /field_notes/{n} {
         allow read: if isActivePrivileged()
@@ -127,13 +138,52 @@ service cloud.firestore {
 
     match /report_sharing/{r} {
       allow read: if adminOf(resource.data.ownerMunicipalityId)
-                  || (isSuperadmin() && resource.data.sharedWith.hasAny([myMunicipality()]));
+                  || (isActivePrivileged() && resource.data.sharedWith.hasAny([myMunicipality()]));
       allow write: if false;
+
+      match /events/{eventId} {
+        allow read: if isActivePrivileged()
+                    && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin());
+        allow create: if isActivePrivileged()
+                      && request.auth.uid == request.resource.data.sharedBy
+                      && exists(/databases/$(database)/documents/report_sharing/$(r))
+                      && adminOf(get(/databases/$(database)/documents/report_sharing/$(r)).data.ownerMunicipalityId);
+        allow update, delete: if false;
+      }
     }
 
     match /report_contacts/{r} {
       allow read: if adminOf(resource.data.municipalityId);
       allow write: if false;
+    }
+
+    match /field_mode_sessions/{sessionUid} {
+      allow read: if isAuthed() && (request.auth.uid == sessionUid || isSuperadmin());
+      allow write: if isAuthed()
+                   && request.auth.uid == sessionUid
+                   && request.resource.data.uid == sessionUid
+                   && isActivePrivileged()
+                   && !isSuperadmin();
+    }
+
+    match /report_notes/{n} {
+      allow read: if isActivePrivileged()
+                  && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin());
+      allow create: if isActivePrivileged()
+                    && request.auth.uid == request.resource.data.authorUid
+                    && exists(/databases/$(database)/documents/report_ops/$(request.resource.data.reportId))
+                    && (
+                      adminOf(
+                        get(/databases/$(database)/documents/report_ops/$(request.resource.data.reportId))
+                          .data.municipalityId
+                      )
+                      || (
+                        isAgencyAdmin()
+                        && myAgency() in get(/databases/$(database)/documents/report_ops/$(request.resource.data.reportId))
+                          .data.agencyIds
+                      )
+                    );
+      allow update, delete: if false;
     }
 
     match /report_lookup/{publicRef} {
@@ -329,14 +379,15 @@ service cloud.firestore {
     match /command_channel_threads/{threadId} {
       allow read: if isActivePrivileged()
                   && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
-                  && request.auth.uid in resource.data.participantUids;
+                  && resource.data.participantUids[request.auth.uid] == true;
       allow write: if false;
     }
 
     match /command_channel_messages/{messageId} {
       allow read: if isActivePrivileged()
                   && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin())
-                  && request.auth.uid in get(/databases/$(database)/documents/command_channel_threads/$(resource.data.threadId)).data.participantUids;
+                  && get(/databases/$(database)/documents/command_channel_threads/$(resource.data.threadId))
+                       .data.participantUids[request.auth.uid] == true;
       allow write: if false;
     }
 

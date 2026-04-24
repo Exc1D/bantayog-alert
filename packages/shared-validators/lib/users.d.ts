@@ -19,5 +19,16 @@ export declare const userDocSchema: z.ZodObject<{
     createdAt: z.ZodNumber;
     updatedAt: z.ZodNumber;
 }, z.core.$strict>;
+export declare const reportSmsConsentDocSchema: z.ZodObject<{
+    reportId: z.ZodString;
+    phone: z.ZodString;
+    locale: z.ZodString;
+    smsConsent: z.ZodLiteral<true>;
+    municipalityId: z.ZodString;
+    followUpConsent: z.ZodDefault<z.ZodBoolean>;
+    createdAt: z.ZodNumber;
+    schemaVersion: z.ZodNumber;
+}, z.core.$strict>;
 export type UserDoc = z.infer<typeof userDocSchema>;
+export type ReportSmsConsentDoc = z.infer<typeof reportSmsConsentDocSchema>;
 //# sourceMappingURL=users.d.ts.map

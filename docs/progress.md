@@ -2,6 +2,32 @@
 
 ## Current
 
+### PR #63 CodeRabbit follow-up fixes (2026-04-24)
+
+- Status: DONE locally - resolved the remaining review comments on schema validation, inbox materialization, and Firestore rules
+- Scope:
+  - shared validators: derived responder FCM flag, widened persisted report type enum, runtime lookup expiry check
+  - inbox trigger: removed redundant exact-location guard, added `report_sms_consent.municipalityId`, strengthened geohash regression coverage
+  - Firestore rules: report messages, report sharing events, field mode sessions, and report notes authorization/data-consistency fixes
+- Verification:
+  - `pnpm --filter @bantayog/shared-validators test` - PASS
+  - `firebase emulators:exec --only firestore,database,storage "pnpm --filter @bantayog/functions exec vitest run src/__tests__/triggers/process-inbox-item.test.ts src/__tests__/rules/report-sharing.rules.test.ts src/__tests__/rules/report-notes.rules.test.ts src/__tests__/rules/report-messages.rules.test.ts src/__tests__/rules/field-mode-sessions.rules.test.ts"` - PASS
+  - `pnpm --filter @bantayog/shared-validators typecheck` - PASS
+  - `pnpm --filter @bantayog/functions lint` - PASS
+
+### Phase 5 PRE-B - Schema + Rules Foundation (2026-04-24)
+
+- Status: DONE locally - schema amendments, rules additions, and inbox materialization updates landed
+- Scope:
+  - shared validators: coordination, responders, users, reports, and export updates
+  - Firestore rules: field mode sessions, report notes, report messages, command channel map-key lookup, report sharing events, and shared report reads
+  - inbox trigger: `report_ops.reportType`, optional `locationGeohash`, and explicit `exactLocation` payload support derived from the inbox item
+- Verification:
+  - `pnpm --filter @bantayog/shared-validators exec vitest run src/coordination.test.ts src/responders.test.ts src/users.test.ts src/reports.test.ts` - PASS
+  - `firebase emulators:exec --only firestore,database,storage "pnpm --filter @bantayog/functions exec vitest run src/__tests__/rules/field-mode-sessions.rules.test.ts src/__tests__/rules/report-notes.rules.test.ts src/__tests__/rules/report-messages.rules.test.ts src/__tests__/rules/coordination.rules.test.ts src/__tests__/rules/report-sharing.rules.test.ts"` - PASS
+  - `firebase emulators:exec --only firestore "pnpm --filter @bantayog/functions exec vitest run src/__tests__/triggers/process-inbox-item.test.ts"` - PASS
+  - `npx turbo run lint typecheck` - PASS
+
 ### Refactor Audit 2026-04-23 — Implementation Continuation
 
 **Branch:** `refactor/audit-2026-04-23-continuation`

@@ -72,8 +72,8 @@ export declare const reportDocSchema: z.ZodObject<{
         sharedWith: z.ZodDefault<z.ZodArray<z.ZodString>>;
     }, z.core.$strict>;
     source: z.ZodEnum<{
-        web: "web";
         sms: "sms";
+        web: "web";
         responder_witness: "responder_witness";
     }>;
     hasPhotoAndGPS: z.ZodDefault<z.ZodBoolean>;
@@ -117,6 +117,22 @@ export declare const reportOpsDocSchema: z.ZodObject<{
     agencyIds: z.ZodDefault<z.ZodArray<z.ZodString>>;
     activeResponderCount: z.ZodDefault<z.ZodNumber>;
     requiresLocationFollowUp: z.ZodDefault<z.ZodBoolean>;
+    reportType: z.ZodOptional<z.ZodEnum<{
+        flood: "flood";
+        landslide: "landslide";
+        storm_surge: "storm_surge";
+        fire: "fire";
+        earthquake: "earthquake";
+        typhoon: "typhoon";
+        medical: "medical";
+        accident: "accident";
+        structural: "structural";
+        security: "security";
+        other: "other";
+    }>>;
+    locationGeohash: z.ZodOptional<z.ZodString>;
+    duplicateClusterId: z.ZodOptional<z.ZodString>;
+    hazardZoneIdList: z.ZodOptional<z.ZodArray<z.ZodString>>;
     visibility: z.ZodObject<{
         scope: z.ZodEnum<{
             provincial: "provincial";
@@ -134,6 +150,24 @@ export declare const reportSharingDocSchema: z.ZodObject<{
     sharedWith: z.ZodArray<z.ZodString>;
     createdAt: z.ZodNumber;
     updatedAt: z.ZodNumber;
+    schemaVersion: z.ZodNumber;
+}, z.core.$strict>;
+export declare const reportNoteDocSchema: z.ZodObject<{
+    reportId: z.ZodString;
+    authorUid: z.ZodString;
+    body: z.ZodString;
+    createdAt: z.ZodNumber;
+    schemaVersion: z.ZodNumber;
+}, z.core.$strict>;
+export declare const reportSharingEventDocSchema: z.ZodObject<{
+    targetMunicipalityId: z.ZodString;
+    sharedBy: z.ZodString;
+    sharedAt: z.ZodNumber;
+    sharedReason: z.ZodOptional<z.ZodString>;
+    source: z.ZodEnum<{
+        manual: "manual";
+        auto: "auto";
+    }>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export declare const reportContactsDocSchema: z.ZodObject<{
@@ -167,6 +201,8 @@ export type ReportDoc = z.infer<typeof reportDocSchema>;
 export type ReportPrivateDoc = z.infer<typeof reportPrivateDocSchema>;
 export type ReportOpsDoc = z.infer<typeof reportOpsDocSchema>;
 export type ReportSharingDoc = z.infer<typeof reportSharingDocSchema>;
+export type ReportNoteDoc = z.infer<typeof reportNoteDocSchema>;
+export type ReportSharingEventDoc = z.infer<typeof reportSharingEventDocSchema>;
 export type ReportContactsDoc = z.infer<typeof reportContactsDocSchema>;
 export type ReportLookupDoc = z.infer<typeof reportLookupDocSchema>;
 export type ReportInboxDoc = z.infer<typeof reportInboxDocSchema>;
@@ -179,12 +215,16 @@ export declare const inboxPayloadSchema: z.ZodObject<{
         high: "high";
     }>;
     source: z.ZodEnum<{
-        web: "web";
         sms: "sms";
+        web: "web";
         responder_witness: "responder_witness";
     }>;
     clientDraftRef: z.ZodOptional<z.ZodString>;
     publicLocation: z.ZodOptional<z.ZodObject<{
+        lat: z.ZodNumber;
+        lng: z.ZodNumber;
+    }, z.core.$strict>>;
+    exactLocation: z.ZodOptional<z.ZodObject<{
         lat: z.ZodNumber;
         lng: z.ZodNumber;
     }, z.core.$strict>>;

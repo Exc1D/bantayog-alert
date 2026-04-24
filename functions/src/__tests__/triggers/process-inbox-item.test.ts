@@ -96,6 +96,7 @@ describe('processInboxItemCore', () => {
 
       const opsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', result.reportId))
       expect(opsSnap.exists()).toBe(true)
+      expect(opsSnap.data()?.reportType).toBe('flood')
 
       const lookupSnap = await getDoc(doc(ctx.firestore(), 'report_lookup', 'a1b2c3d4'))
       expect(lookupSnap.exists()).toBe(true)
@@ -139,6 +140,99 @@ describe('processInboxItemCore', () => {
       expect(second.materialized).toBe(true)
       expect(second.replayed).toBe(true)
       expect(second.reportId).toBe(first.reportId)
+    })
+  })
+
+  it('writes 6-char locationGeohash onto report_ops when exactLocation present', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-geohash'), {
+        reporterUid: 'citizen-geo',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-geo',
+        publicRef: 'geo00123',
+        secretHash: 'a'.repeat(64),
+        correlationId: '99999999-9999-4999-8999-999999999999',
+        payload: {
+          reportType: 'fire',
+          description: 'structure fire',
+          severity: 'high',
+          source: 'web',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+          exactLocation: { lat: 14.11, lng: 122.95 },
+        },
+      })
+
+      const result = await processInboxItemCore({
+        db,
+        inboxId: 'ibx-geohash',
+        now: () => 1713350401000,
+      })
+
+      const opsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', result.reportId))
+      expect(opsSnap.exists()).toBe(true)
+      const firstGeohash = opsSnap.data()?.locationGeohash
+      expect(firstGeohash).toMatch(/^[a-z0-9]{6}$/)
+
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-geohash-2'), {
+        reporterUid: 'citizen-geo',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-geo-2',
+        publicRef: 'geo00124',
+        secretHash: 'c'.repeat(64),
+        correlationId: '88888888-8888-4888-8888-888888888888',
+        payload: {
+          reportType: 'fire',
+          description: 'structure fire',
+          severity: 'high',
+          source: 'web',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+          exactLocation: { lat: 14.12, lng: 122.96 },
+        },
+      })
+
+      const secondResult = await processInboxItemCore({
+        db,
+        inboxId: 'ibx-geohash-2',
+        now: () => 1713350402000,
+      })
+      const secondOpsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', secondResult.reportId))
+      const secondGeohash = secondOpsSnap.data()?.locationGeohash
+      expect(secondGeohash).toMatch(/^[a-z0-9]{6}$/)
+      expect(secondGeohash).not.toBe(firstGeohash)
+    })
+  })
+
+  it('omits locationGeohash from report_ops when exactLocation is absent', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-noloc'), {
+        reporterUid: 'citizen-noloc',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-noloc',
+        publicRef: 'noloc123',
+        secretHash: 'b'.repeat(64),
+        correlationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        payload: {
+          reportType: 'flood',
+          description: 'sms flood report',
+          severity: 'medium',
+          source: 'sms',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+        },
+      })
+
+      const result = await processInboxItemCore({
+        db,
+        inboxId: 'ibx-noloc',
+        now: () => 1713350401000,
+      })
+
+      const opsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', result.reportId))
+      expect(opsSnap.exists()).toBe(true)
+      expect(opsSnap.data()?.locationGeohash).toBeUndefined()
     })
   })
 
@@ -241,6 +335,113 @@ describe('processInboxItemCore', () => {
       const incidentSnap = await getDoc(doc(ctx.firestore(), 'moderation_incidents', 'ibx-oog'))
       expect(incidentSnap.exists()).toBe(true)
       expect(incidentSnap.data()?.reason).toBe('out_of_jurisdiction')
+    })
+  })
+
+  it('writes moderation_incident with reason location_missing when publicLocation is absent', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-nopublic'), {
+        reporterUid: 'citizen-1',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-nopublic',
+        publicRef: 'nopub123',
+        secretHash: 'f'.repeat(64),
+        correlationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        payload: {
+          reportType: 'flood',
+          description: 'no location provided',
+          severity: 'high',
+          source: 'sms',
+          // publicLocation intentionally absent
+        },
+      })
+
+      await expect(
+        processInboxItemCore({ db, inboxId: 'ibx-nopublic', now: () => 1713350401000 }),
+      ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+
+      const incidentSnap = await getDoc(
+        doc(ctx.firestore(), 'moderation_incidents', 'ibx-nopublic'),
+      )
+      expect(incidentSnap.exists()).toBe(true)
+      expect(incidentSnap.data()?.reason).toBe('location_missing')
+    })
+  })
+
+  it('skips SMS enqueue without throwing when SMS_MSISDN_HASH_SALT is unset', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      const savedSalt = process.env.SMS_MSISDN_HASH_SALT
+      try {
+        delete process.env.SMS_MSISDN_HASH_SALT
+        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-nosalt'), {
+          reporterUid: 'citizen-salt',
+          clientCreatedAt: 1713350400000,
+          idempotencyKey: 'idem-nosalt',
+          publicRef: 'nosalt01',
+          secretHash: 'f'.repeat(64),
+          correlationId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          payload: {
+            reportType: 'flood',
+            description: 'salt missing test',
+            severity: 'low',
+            source: 'web',
+            publicLocation: { lat: 14.11, lng: 122.95 },
+            contact: { phone: '+639171234567', smsConsent: true },
+          },
+        })
+
+        const result = await processInboxItemCore({
+          db,
+          inboxId: 'ibx-nosalt',
+          now: () => 1713350401000,
+        })
+        expect(result.materialized).toBe(true)
+
+        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
+        expect(outboxQ.size).toBe(0)
+      } finally {
+        process.env.SMS_MSISDN_HASH_SALT = savedSalt
+      }
+    })
+  })
+
+  it('materializes report without media when pendingMediaIds references a missing doc', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      // Do NOT seed a pending_media doc for 'ghost-upload-id'
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-ghostmedia'), {
+        reporterUid: 'citizen-ghost',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-ghostmedia',
+        publicRef: 'ghost123',
+        secretHash: 'f'.repeat(64),
+        correlationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        payload: {
+          reportType: 'fire',
+          description: 'ghost media test',
+          severity: 'medium',
+          source: 'web',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+          pendingMediaIds: ['ghost-upload-id'],
+        },
+      })
+
+      const result = await processInboxItemCore({
+        db,
+        inboxId: 'ibx-ghostmedia',
+        now: () => 1713350401000,
+      })
+      expect(result.materialized).toBe(true)
+
+      const mediaDocs = await getDocs(
+        collection(ctx.firestore(), 'reports', result.reportId, 'media'),
+      )
+      expect(mediaDocs.size).toBe(0)
     })
   })
 

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportSharingDocSchema, reportContactsDocSchema, reportLookupDocSchema, reportInboxDocSchema, hazardTagSchema, inboxPayloadSchema, } from './reports.js';
+import { describe, expect, it, vi } from 'vitest';
+import { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportSharingDocSchema, reportContactsDocSchema, reportLookupDocSchema, reportInboxDocSchema, reportNoteDocSchema, reportSharingEventDocSchema, hazardTagSchema, inboxPayloadSchema, } from './reports.js';
 const ts = 1713350400000;
 describe('reportDocSchema', () => {
     it('accepts a canonical verified report', () => {
@@ -95,7 +95,9 @@ describe('reportOpsDocSchema', () => {
         expect(reportOpsDocSchema.parse({
             municipalityId: 'daet',
             status: 'verified',
+            reportType: 'flood',
             severity: 'high',
+            locationGeohash: 'w7hfm2',
             createdAt: ts,
             agencyIds: [],
             activeResponderCount: 0,
@@ -104,6 +106,36 @@ describe('reportOpsDocSchema', () => {
             updatedAt: ts,
             schemaVersion: 1,
         })).toMatchObject({ status: 'verified' });
+    });
+    it('rejects report types outside the ops report enum', () => {
+        expect(() => reportOpsDocSchema.parse({
+            municipalityId: 'daet',
+            status: 'verified',
+            reportType: 'volcanic',
+            severity: 'high',
+            createdAt: ts,
+            agencyIds: [],
+            activeResponderCount: 0,
+            requiresLocationFollowUp: false,
+            visibility: { scope: 'municipality', sharedWith: [] },
+            updatedAt: ts,
+            schemaVersion: 1,
+        })).toThrow();
+    });
+    it('accepts persisted ops report types like medical', () => {
+        expect(reportOpsDocSchema.parse({
+            municipalityId: 'daet',
+            status: 'verified',
+            reportType: 'medical',
+            severity: 'high',
+            createdAt: ts,
+            agencyIds: [],
+            activeResponderCount: 0,
+            requiresLocationFollowUp: false,
+            visibility: { scope: 'municipality', sharedWith: [] },
+            updatedAt: ts,
+            schemaVersion: 1,
+        })).toMatchObject({ reportType: 'medical' });
     });
 });
 describe('reportSharingDocSchema', () => {
@@ -150,6 +182,22 @@ describe('reportLookupDocSchema', () => {
             createdAt: ts,
             schemaVersion: 1,
         })).toMatchObject({ publicTrackingRef: 'a1b2c3d4' });
+    });
+    it('rejects expiresAt beyond a year at validation time', () => {
+        const spy = vi.spyOn(Date, 'now').mockReturnValue(ts);
+        try {
+            expect(() => reportLookupDocSchema.parse({
+                publicTrackingRef: 'a1b2c3d4',
+                reportId: 'r-1',
+                tokenHash: 'f'.repeat(64),
+                expiresAt: ts + 366 * 24 * 60 * 60 * 1000,
+                createdAt: ts,
+                schemaVersion: 1,
+            })).toThrow(/expiresAt/);
+        }
+        finally {
+            spy.mockRestore();
+        }
     });
 });
 describe('reportInboxDocSchema', () => {
@@ -286,6 +334,12 @@ describe('inboxPayloadSchema contact extension', () => {
             contact: { phone: '+639171234567', smsConsent: true },
         })).not.toThrow();
     });
+    it('accepts exactLocation for geohash materialization', () => {
+        expect(() => inboxPayloadSchema.parse({
+            ...basePayload,
+            exactLocation: { lat: 14.6, lng: 121.0 },
+        })).not.toThrow();
+    });
     it('rejects contact with smsConsent=false (consent must be literal true)', () => {
         expect(() => inboxPayloadSchema.parse({
             ...basePayload,
@@ -303,6 +357,73 @@ describe('inboxPayloadSchema contact extension', () => {
             ...basePayload,
             contact: { phone: '+639171234567', smsConsent: true, extra: 'field' },
         })).toThrow();
+    });
+});
+describe('reportOpsDocSchema PRE-B deltas', () => {
+    const base = {
+        municipalityId: 'daet',
+        status: 'verified',
+        severity: 'high',
+        createdAt: 1713350400000,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        updatedAt: 1713350400000,
+        schemaVersion: 1,
+    };
+    it('accepts reportType, locationGeohash, duplicateClusterId, and hazardZoneIdList', () => {
+        expect(reportOpsDocSchema.parse({
+            ...base,
+            reportType: 'flood',
+            locationGeohash: 'w7hfm2',
+            duplicateClusterId: 'cluster-uuid-1',
+            hazardZoneIdList: ['hz-1', 'hz-2'],
+        })).toMatchObject({ reportType: 'flood', locationGeohash: 'w7hfm2' });
+    });
+    it('still accepts the old shape when the new fields are absent', () => {
+        expect(() => reportOpsDocSchema.parse(base)).not.toThrow();
+    });
+});
+describe('reportNoteDocSchema', () => {
+    it('parses a valid report note', () => {
+        expect(reportNoteDocSchema.parse({
+            reportId: 'r1',
+            authorUid: 'uid-1',
+            body: 'Situation is stable now.',
+            createdAt: 1713350400000,
+            schemaVersion: 1,
+        })).toMatchObject({ reportId: 'r1' });
+    });
+    it('rejects body over 2000 chars', () => {
+        expect(() => reportNoteDocSchema.parse({
+            reportId: 'r1',
+            authorUid: 'uid-1',
+            body: 'x'.repeat(2001),
+            createdAt: 1713350400000,
+            schemaVersion: 1,
+        })).toThrow();
+    });
+});
+describe('reportSharingEventDocSchema', () => {
+    it('parses a manual share event', () => {
+        expect(reportSharingEventDocSchema.parse({
+            targetMunicipalityId: 'mercedes',
+            sharedBy: 'uid-1',
+            sharedAt: 1713350400000,
+            sharedReason: 'Border incident',
+            source: 'manual',
+            schemaVersion: 1,
+        })).toMatchObject({ source: 'manual' });
+    });
+    it('parses an auto share event without reason', () => {
+        expect(reportSharingEventDocSchema.parse({
+            targetMunicipalityId: 'mercedes',
+            sharedBy: 'system',
+            sharedAt: 1713350400000,
+            source: 'auto',
+            schemaVersion: 1,
+        })).toMatchObject({ targetMunicipalityId: 'mercedes' });
     });
 });
 //# sourceMappingURL=reports.test.js.map
