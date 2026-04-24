@@ -24,6 +24,7 @@ This PR lands Phase 5 PRE-B schema amendments, Firestore rules additions, inbox 
 - **Agent:** silent-failure-hunter (Severity: HIGH)
 - **Issue:** The `isExactLocation` type guard silently drops invalid `exactLocation` values without logging. If `payload.exactLocation` is malformed (e.g., `lat` is a string, NaN, or has extra fields), the code falls back to `undefined` and proceeds. This masks data quality issues upstream.
 - **Fix:** Log a warning when `payload.exactLocation` is present but fails the type guard:
+
   ```typescript
   const exactLocation = isExactLocation(payload.exactLocation) ? payload.exactLocation : undefined
   if (payload.exactLocation && !exactLocation) {
