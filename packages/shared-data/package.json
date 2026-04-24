@@ -14,6 +14,11 @@
     "build": "tsc --emitDeclarationOnly --outDir lib"
   },
   "dependencies": {
-    "@bantayog/shared-types": "workspace:*"
+    "@bantayog/shared-types": "workspace:*",
+    "@turf/turf": "^7.3.5",
+    "ngeohash": "^0.6.3"
+  },
+  "devDependencies": {
+    "@types/ngeohash": "^0.6.8"
   }
 }
