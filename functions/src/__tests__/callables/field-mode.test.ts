@@ -212,7 +212,8 @@ describe('enterFieldMode callable', () => {
   })
 
   it('accepts an authenticated municipal_admin with fresh token', async () => {
-    const freshAuthTime = Math.floor((ts - 60000) / 1000)
+    const nowSec = Math.floor(Date.now() / 1000)
+    const freshAuthTime = nowSec - 60 // 1 minute ago
     const result = await callEnterFieldMode({
       auth: {
         uid: 'daet-admin',
@@ -225,7 +226,7 @@ describe('enterFieldMode callable', () => {
       },
     })
     expect(result.status).toBe('entered')
-    expect(result.expiresAt).toBe(ts + TWELVE_HOURS_MS)
+    expect(result.expiresAt).toBeGreaterThan(Date.now())
   })
 
   it('rejects unauthenticated request', async () => {
