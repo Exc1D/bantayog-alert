@@ -10,6 +10,8 @@ const MUNI_LABELS_SORTED = [...CAMARINES_NORTE_MUNICIPALITIES]
   .sort((a, b) => a.label.localeCompare(b.label))
   .map((m) => ({ id: m.id, label: m.label }))
 
+const VALID_MUNICIPALITY_IDS = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
+
 export interface UseMunicipalityBarangaysResult {
   selectedMunicipalityId: string
   selectedBarangayId: string | undefined
@@ -32,6 +34,14 @@ export function useMunicipalityBarangays(): UseMunicipalityBarangaysResult {
   }, [selectedMunicipalityId])
 
   const handleSelectMunicipality = useCallback((muniId: string) => {
+    if (!muniId) {
+      setSelectedMunicipalityId('')
+      setSelectedBarangayId(undefined)
+      return
+    }
+    if (!VALID_MUNICIPALITY_IDS.has(muniId)) {
+      return
+    }
     setSelectedMunicipalityId(muniId)
     setSelectedBarangayId(undefined)
   }, [])
