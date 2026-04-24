@@ -89,4 +89,20 @@ describe('AgencyAssistanceQueuePage', () => {
     fireEvent.change(screen.getByPlaceholderText(/reason/i), { target: { value: 'Too far' } })
     expect(submitBtn).not.toBeDisabled()
   })
+
+  it('calls declineAgencyAssistance callable with requestId and reason', async () => {
+    render(<AgencyAssistanceQueuePage />)
+    fireEvent.click(screen.getByRole('button', { name: /^Decline$/ }))
+    const submitBtn = await screen.findByRole('button', { name: /submit decline/i })
+    fireEvent.change(screen.getByPlaceholderText(/reason/i), { target: { value: 'Too far' } })
+    fireEvent.click(submitBtn)
+    await waitFor(() => {
+      expect(mockCallable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: 'ar1',
+          reason: 'Too far',
+        }),
+      )
+    })
+  })
 })
