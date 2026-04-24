@@ -16,6 +16,7 @@ export {
   acceptAgencyAssistance,
   declineAgencyAssistance,
 } from './callables/request-agency-assistance.js'
+export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.

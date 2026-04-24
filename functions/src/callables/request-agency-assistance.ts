@@ -180,10 +180,9 @@ export async function requestAgencyAssistanceCore(
           fulfilledByDispatchIds: [],
           createdAt: nowMs,
           expiresAt,
-          schemaVersion: 1,
         } satisfies Omit<
           AgencyAssistanceRequestDoc,
-          'declinedReason' | 'respondedAt' | 'respondedBy' | 'escalatedAt'
+          'declinedReason' | 'respondedAt' | 'respondedBy' | 'escalatedAt' | 'schemaVersion'
         >)
 
         tx.set(threadRef, {
@@ -510,11 +509,13 @@ export async function declineAgencyAssistanceCore(
           .get()
 
         if (!threadSnap.empty) {
-          const threadRef = threadSnap.docs[0].ref
-          tx.update(threadRef, {
-            closedAt: nowMs,
-            updatedAt: nowMs,
-          })
+          const threadDoc = threadSnap.docs[0]
+          if (threadDoc) {
+            tx.update(threadDoc.ref, {
+              closedAt: nowMs,
+              updatedAt: nowMs,
+            })
+          }
         }
 
         return { status: 'declined' as const }
