@@ -1,1 +1,1 @@
-{"version":3,"file":"gazetteer.d.ts","sourceRoot":"","sources":["../src/gazetteer.ts"],"names":[],"mappings":"AAMA,MAAM,WAAW,aAAa;IAC5B,IAAI,EAAE,MAAM,CAAA;IACZ,YAAY,EAAE,MAAM,CAAA;CACrB;AA2SD,wBAAgB,oBAAoB,IAAI,aAAa,EAAE,CAqBtD"}
+{"version":3,"file":"gazetteer.d.ts","sourceRoot":"","sources":["../src/gazetteer.ts"],"names":[],"mappings":"AAMA,MAAM,WAAW,aAAa;IAC5B,IAAI,EAAE,MAAM,CAAA;IACZ,YAAY,EAAE,MAAM,CAAA;CACrB;AAsTD,wBAAgB,oBAAoB,IAAI,aAAa,EAAE,CAuBtD"}

@@ -296,10 +296,18 @@ const FALLBACK_BARANGAYS = [
     { name: 'Singi', municipality: 'Vinzons' },
     { name: 'Sula', municipality: 'Vinzons' },
 ];
+function isBarangayEntry(value) {
+    return (typeof value === 'object' &&
+        value !== null &&
+        'name' in value &&
+        typeof value.name === 'string' &&
+        'municipality' in value &&
+        typeof value.municipality === 'string');
+}
 export function getBarangayGazetteer() {
     try {
         const mod = require('@bantayog/shared-data');
-        if (mod.BARANGAY_GAZETTEER && Array.isArray(mod.BARANGAY_GAZETTEER)) {
+        if (Array.isArray(mod.BARANGAY_GAZETTEER) && mod.BARANGAY_GAZETTEER.every(isBarangayEntry)) {
             return mod.BARANGAY_GAZETTEER;
         }
     }

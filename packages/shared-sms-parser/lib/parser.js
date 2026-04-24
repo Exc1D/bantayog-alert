@@ -68,19 +68,17 @@ export function parseInboundSms(body) {
             autoReplyText: buildAutoReply('none'),
         };
     }
+    const gazetteer = getBarangayGazetteer();
+    const gazetteerNamesUpper = new Set(gazetteer.map((b) => b.name.toUpperCase()));
     const typeToken = token0;
     let barangayToken = token1;
     let detailsStartIndex = barangayToken.length;
     const token2 = tokens[2];
     const token3 = tokens[3];
     if (tokens.length >= 3 && token2 && MUNICIPALITY_PREFIXES.has(token1)) {
-        // Prefer the longest match to avoid leaving part of the barangay in details.
-        if (token3) {
-            barangayToken = token1 + ' ' + token2 + ' ' + token3;
-        }
-        else {
-            barangayToken = token1 + ' ' + token2;
-        }
+        const twoWord = `${token1} ${token2}`;
+        const threeWord = token3 ? `${twoWord} ${token3}` : undefined;
+        barangayToken = threeWord && gazetteerNamesUpper.has(threeWord) ? threeWord : twoWord;
         detailsStartIndex = barangayToken.length;
     }
     // Find the barangay token in originalRest using lastIndexOf to prefer the occurrence
@@ -100,7 +98,6 @@ export function parseInboundSms(body) {
             autoReplyText: buildAutoReply('none'),
         };
     }
-    const gazetteer = getBarangayGazetteer();
     const barangayLower = barangayToken.toLowerCase();
     const exact = gazetteer.find((b) => b.name.toLowerCase() === barangayLower);
     if (exact) {
