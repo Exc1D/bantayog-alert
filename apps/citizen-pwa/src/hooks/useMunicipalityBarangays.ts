@@ -48,7 +48,7 @@ export function useMunicipalityBarangays(): UseMunicipalityBarangaysResult {
 
   const handleSelectBarangay = useCallback(
     (id: string | undefined) => {
-      if (id === undefined) {
+      if (!id) {
         setSelectedBarangayId(undefined)
         return
       }
