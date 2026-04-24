@@ -5,6 +5,7 @@ import {
   commandChannelThreadDocSchema,
   commandChannelMessageDocSchema,
   agencyAssistanceRequestDocSchema,
+  fieldModeSessionDocSchema,
 } from './coordination'
 
 describe('Coordination Schemas', () => {
@@ -19,6 +20,21 @@ describe('Coordination Schemas', () => {
         status: 'pending' as const,
         createdAt: 1713350400000,
         acceptedAt: 1713350401000,
+        expiresAt: 1713436800000,
+        schemaVersion: 1,
+      }
+      expect(() => shiftHandoffDocSchema.parse(validDoc)).not.toThrow()
+    })
+
+    it('accepts a handoff without toUid', () => {
+      const validDoc = {
+        fromUid: 'responder-1',
+        municipalityId: 'daet',
+        activeIncidentSnapshot: ['incident-1', 'incident-2'],
+        notes: 'Shift change normal',
+        status: 'pending' as const,
+        createdAt: 1713350400000,
+        escalatedAt: 1713350405000,
         expiresAt: 1713436800000,
         schemaVersion: 1,
       }
@@ -69,6 +85,9 @@ describe('Coordination Schemas', () => {
         status: 'queued' as const,
         createdAt: 1713350400000,
         forwardedAt: 1713350401000,
+        forwardMethod: 'sms',
+        ndrrrcRecipient: 'NDRRMC-ops',
+        sentAt: 1713350402000,
         schemaVersion: 1,
       }
       expect(() => massAlertRequestDocSchema.parse(validDoc)).not.toThrow()
@@ -104,12 +123,32 @@ describe('Coordination Schemas', () => {
       }
       expect(() => massAlertRequestDocSchema.parse(docWithExtraKey)).toThrow()
     })
+
+    it('accepts the expanded review statuses', () => {
+      for (const status of ['sent', 'pending_ndrrmc_review', 'declined'] as const) {
+        const validDoc = {
+          requestedByMunicipality: 'Daet',
+          requestedByUid: 'admin-1',
+          severity: 'high' as const,
+          body: 'Evacuation alert for Barangay X',
+          targetType: 'municipality' as const,
+          estimatedReach: 5000,
+          status,
+          createdAt: 1713350400000,
+          schemaVersion: 1,
+        }
+        expect(() => massAlertRequestDocSchema.parse(validDoc)).not.toThrow()
+      }
+    })
   })
 
   describe('commandChannelThreadDocSchema', () => {
     it('accepts valid command channel thread document', () => {
       const validDoc = {
         threadId: 'thread-123',
+        reportId: 'report-123',
+        threadType: 'agency_assistance' as const,
+        assistanceRequestId: 'request-123',
         subject: 'Emergency response coordination',
         participantUids: { 'admin-1': true, 'responder-1': true },
         createdBy: 'admin-1',
@@ -124,6 +163,20 @@ describe('Coordination Schemas', () => {
       const incompleteDoc = {
         threadId: 'thread-123',
         // missing subject, participantUids, createdBy
+        createdAt: 1713350400000,
+        updatedAt: 1713350401000,
+        schemaVersion: 1,
+      }
+      expect(() => commandChannelThreadDocSchema.parse(incompleteDoc)).toThrow()
+    })
+
+    it('rejects a thread without reportId', () => {
+      const incompleteDoc = {
+        threadId: 'thread-123',
+        threadType: 'agency_assistance' as const,
+        subject: 'Emergency response coordination',
+        participantUids: { 'admin-1': true },
+        createdBy: 'admin-1',
         createdAt: 1713350400000,
         updatedAt: 1713350401000,
         schemaVersion: 1,
@@ -153,6 +206,7 @@ describe('Coordination Schemas', () => {
         authorUid: 'admin-1',
         authorRole: 'municipal_admin' as const,
         body: 'Proceed to location immediately',
+        idempotencyKey: '11111111-1111-4111-8111-111111111111',
         createdAt: 1713350400000,
         schemaVersion: 1,
       }
@@ -248,6 +302,53 @@ describe('Coordination Schemas', () => {
         unknownField: 'should not be allowed',
       }
       expect(() => agencyAssistanceRequestDocSchema.parse(docWithExtraKey)).toThrow()
+    })
+
+    it('accepts respondedBy and escalatedAt fields', () => {
+      const validDoc = {
+        reportId: 'report-123',
+        requestedByMunicipalId: 'daet',
+        requestedByMunicipality: 'Daet',
+        targetAgencyId: 'bfp',
+        requestType: 'BFP' as const,
+        message: 'Requesting assistance for flood response',
+        priority: 'urgent' as const,
+        status: 'accepted' as const,
+        declinedReason: undefined,
+        fulfilledByDispatchIds: [],
+        createdAt: 1713350400000,
+        respondedAt: 1713350401000,
+        respondedBy: 'admin-1',
+        escalatedAt: 1713350402000,
+        expiresAt: 1713436800000,
+      }
+      expect(() => agencyAssistanceRequestDocSchema.parse(validDoc)).not.toThrow()
+    })
+  })
+
+  describe('fieldModeSessionDocSchema', () => {
+    it('accepts valid field mode session document', () => {
+      const validDoc = {
+        uid: 'admin-1',
+        municipalityId: 'daet',
+        enteredAt: 1713350400000,
+        expiresAt: 1713393600000,
+        isActive: true,
+        schemaVersion: 1,
+      }
+      expect(() => fieldModeSessionDocSchema.parse(validDoc)).not.toThrow()
+    })
+
+    it('rejects when expiresAt is not after enteredAt', () => {
+      const invalidDoc = {
+        uid: 'admin-1',
+        municipalityId: 'daet',
+        enteredAt: 1713350400000,
+        expiresAt: 1713350399999,
+        isActive: true,
+        schemaVersion: 1,
+      }
+      expect(() => fieldModeSessionDocSchema.parse(invalidDoc)).toThrow()
     })
   })
 })

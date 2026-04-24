@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
-import { collection, doc, getDocs, setDoc, addDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc, addDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv } from '../helpers/rules-harness.js'
 import { seedActiveAccount, staffClaims, ts } from '../helpers/seed-factories.js'
@@ -12,6 +12,11 @@ beforeAll(async () => {
     uid: 'daet-admin',
     role: 'municipal_admin',
     municipalityId: 'daet',
+  })
+  await seedActiveAccount(env, {
+    uid: 'other-admin',
+    role: 'municipal_admin',
+    municipalityId: 'mercedes',
   })
 })
 
@@ -134,20 +139,146 @@ describe('coordination collections rules', () => {
     })
 
     it('muni admin can read own municipality requests', async () => {
-      const unauthed = env.unauthenticatedContext().firestore()
-      await setDoc(doc(unauthed, 'agency_assistance_requests/req-1'), {
-        requestedByMunicipality: 'daet',
-        targetAgencyId: 'bfp-daet',
-        dispatchId: 'd-1',
-        requestType: 'BFP',
-        requestedAt: ts,
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'agency_assistance_requests', 'req-1'), {
+          requestedByMunicipality: 'daet',
+          targetAgencyId: 'bfp-daet',
+          dispatchId: 'd-1',
+          requestType: 'BFP',
+          requestedAt: ts,
+        })
       })
       const db = authed(
         env,
         'daet-admin',
         staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
       )
-      await assertSucceeds(getDocs(collection(db, 'agency_assistance_requests')))
+      await assertSucceeds(getDoc(doc(db, 'agency_assistance_requests', 'req-1')))
     })
+  })
+
+  describe('command_channel_threads/messages participant lookup', () => {
+    beforeAll(async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'command_channel_threads', 'thread-1'), {
+          threadId: 'thread-1',
+          reportId: 'report-1',
+          threadType: 'agency_assistance',
+          subject: 'Need help',
+          participantUids: { 'daet-admin': true },
+          createdBy: 'daet-admin',
+          createdAt: ts,
+          updatedAt: ts,
+          schemaVersion: 1,
+        })
+
+        await setDoc(doc(ctx.firestore(), 'command_channel_messages', 'msg-1'), {
+          threadId: 'thread-1',
+          authorUid: 'daet-admin',
+          authorRole: 'municipal_admin',
+          body: 'hello',
+          createdAt: ts,
+          schemaVersion: 1,
+        })
+      })
+    })
+
+    it('allows participant to read thread', async () => {
+      const db = authed(
+        env,
+        'daet-admin',
+        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      )
+      await assertSucceeds(getDoc(doc(db, 'command_channel_threads', 'thread-1')))
+    })
+
+    it('denies non-participant from reading thread', async () => {
+      const db = authed(
+        env,
+        'other-admin',
+        staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
+      )
+      await assertFails(getDoc(doc(db, 'command_channel_threads', 'thread-1')))
+    })
+
+    it('allows participant to read message through parent thread lookup', async () => {
+      const db = authed(
+        env,
+        'daet-admin',
+        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      )
+      await assertSucceeds(getDoc(doc(db, 'command_channel_messages', 'msg-1')))
+    })
+
+    it('denies non-participant from reading message', async () => {
+      const db = authed(
+        env,
+        'other-admin',
+        staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
+      )
+      await assertFails(getDoc(doc(db, 'command_channel_messages', 'msg-1')))
+    })
+  })
+})
+
+describe('command_channel_threads/messages — participant map key lookup', () => {
+  beforeAll(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'command_channel_threads', 'thread-1'), {
+        threadId: 'thread-1',
+        reportId: 'report-1',
+        threadType: 'agency_assistance',
+        subject: 'Need help',
+        participantUids: { 'daet-admin': true },
+        createdBy: 'daet-admin',
+        createdAt: ts,
+        updatedAt: ts,
+        schemaVersion: 1,
+      })
+
+      await setDoc(doc(ctx.firestore(), 'command_channel_messages', 'msg-1'), {
+        threadId: 'thread-1',
+        message: 'hello',
+        sentBy: 'daet-admin',
+        sentAt: ts,
+        schemaVersion: 1,
+      })
+    })
+  })
+
+  it('allows participant to read thread', async () => {
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(getDoc(doc(db, 'command_channel_threads', 'thread-1')))
+  })
+
+  it('denies non-participant from reading thread', async () => {
+    const db = authed(
+      env,
+      'other-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
+    )
+    await assertFails(getDoc(doc(db, 'command_channel_threads', 'thread-1')))
+  })
+
+  it('allows participant to read a message when parent thread participantUids contains uid', async () => {
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(getDoc(doc(db, 'command_channel_messages', 'msg-1')))
+  })
+
+  it('denies non-participant from reading a message', async () => {
+    const db = authed(
+      env,
+      'other-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
+    )
+    await assertFails(getDoc(doc(db, 'command_channel_messages', 'msg-1')))
   })
 })

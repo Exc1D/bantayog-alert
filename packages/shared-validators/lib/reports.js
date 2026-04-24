@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import { msisdnPhSchema } from './msisdn.js';
+const reportOpsReportTypeSchema = z.enum([
+    'flood',
+    'fire',
+    'earthquake',
+    'typhoon',
+    'landslide',
+    'storm_surge',
+]);
 // hazard tag schema
 export const hazardTagSchema = z
     .object({
@@ -107,6 +115,10 @@ export const reportOpsDocSchema = z
     agencyIds: z.array(z.string()).default([]),
     activeResponderCount: z.number().int().nonnegative().default(0),
     requiresLocationFollowUp: z.boolean().default(false),
+    reportType: reportOpsReportTypeSchema.optional(),
+    locationGeohash: z.string().length(6).optional(),
+    duplicateClusterId: z.string().optional(),
+    hazardZoneIdList: z.array(z.string()).optional(),
     visibility: z
         .object({
         scope: z.enum(['municipality', 'shared', 'provincial']),
@@ -125,6 +137,27 @@ export const reportSharingDocSchema = z
     sharedWith: z.array(z.string()),
     createdAt: z.number().int(),
     updatedAt: z.number().int(),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict();
+// reportNoteDocSchema — report note document
+export const reportNoteDocSchema = z
+    .object({
+    reportId: z.string().min(1),
+    authorUid: z.string().min(1),
+    body: z.string().max(2000),
+    createdAt: z.number().int(),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict();
+// reportSharingEventDocSchema — append-only sharing audit event
+export const reportSharingEventDocSchema = z
+    .object({
+    targetMunicipalityId: z.string().min(1),
+    sharedBy: z.string().min(1),
+    sharedAt: z.number().int(),
+    sharedReason: z.string().max(500).optional(),
+    source: z.enum(['manual', 'auto']),
     schemaVersion: z.number().int().positive(),
 })
     .strict();
@@ -175,6 +208,13 @@ export const inboxPayloadSchema = z
     source: z.enum(['web', 'sms', 'responder_witness']),
     clientDraftRef: z.string().trim().min(1).max(256).optional(),
     publicLocation: z
+        .object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+    })
+        .strict()
+        .optional(),
+    exactLocation: z
         .object({
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),

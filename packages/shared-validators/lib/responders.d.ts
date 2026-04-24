@@ -12,6 +12,8 @@ export declare const responderDocSchema: z.ZodObject<{
         unavailable: "unavailable";
     }>;
     isActive: z.ZodBoolean;
+    fcmTokens: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    hasFcmToken: z.ZodDefault<z.ZodBoolean>;
     lastTelemetryAt: z.ZodOptional<z.ZodNumber>;
     schemaVersion: z.ZodNumber;
     createdAt: z.ZodNumber;

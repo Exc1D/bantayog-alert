@@ -96,6 +96,7 @@ describe('processInboxItemCore', () => {
 
       const opsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', result.reportId))
       expect(opsSnap.exists()).toBe(true)
+      expect(opsSnap.data()?.reportType).toBe('flood')
 
       const lookupSnap = await getDoc(doc(ctx.firestore(), 'report_lookup', 'a1b2c3d4'))
       expect(lookupSnap.exists()).toBe(true)
@@ -139,6 +140,71 @@ describe('processInboxItemCore', () => {
       expect(second.materialized).toBe(true)
       expect(second.replayed).toBe(true)
       expect(second.reportId).toBe(first.reportId)
+    })
+  })
+
+  it('writes 6-char locationGeohash onto report_ops when exactLocation present', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-geohash'), {
+        reporterUid: 'citizen-geo',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-geo',
+        publicRef: 'geo00123',
+        secretHash: 'a'.repeat(64),
+        correlationId: '99999999-9999-4999-8999-999999999999',
+        payload: {
+          reportType: 'fire',
+          description: 'structure fire',
+          severity: 'high',
+          source: 'web',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+          exactLocation: { lat: 14.11, lng: 122.95 },
+        },
+      })
+
+      const result = await processInboxItemCore({
+        db,
+        inboxId: 'ibx-geohash',
+        now: () => 1713350401000,
+      })
+
+      const opsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', result.reportId))
+      expect(opsSnap.exists()).toBe(true)
+      expect(opsSnap.data()?.locationGeohash).toMatch(/^[a-z0-9]{6}$/)
+    })
+  })
+
+  it('omits locationGeohash from report_ops when exactLocation is absent', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.firestore() as any
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-noloc'), {
+        reporterUid: 'citizen-noloc',
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-noloc',
+        publicRef: 'noloc123',
+        secretHash: 'b'.repeat(64),
+        correlationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        payload: {
+          reportType: 'flood',
+          description: 'sms flood report',
+          severity: 'medium',
+          source: 'sms',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+        },
+      })
+
+      const result = await processInboxItemCore({
+        db,
+        inboxId: 'ibx-noloc',
+        now: () => 1713350401000,
+      })
+
+      const opsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', result.reportId))
+      expect(opsSnap.exists()).toBe(true)
+      expect(opsSnap.data()?.locationGeohash).toBeUndefined()
     })
   })
 

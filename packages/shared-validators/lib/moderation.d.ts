@@ -10,8 +10,8 @@ export declare const moderationIncidentDocSchema: z.ZodObject<{
         app_check_failed: "app_check_failed";
     }>;
     source: z.ZodEnum<{
-        web: "web";
         sms: "sms";
+        web: "web";
         responder_witness: "responder_witness";
     }>;
     flaggedBy: z.ZodEnum<{

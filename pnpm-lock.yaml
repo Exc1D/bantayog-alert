@@ -257,6 +257,9 @@ importers:
       firebase-functions:
         specifier: ^7.2.5
         version: 7.2.5(firebase-admin@13.8.0)(graphql@16.13.2)
+      ngeohash:
+        specifier: ^0.6.3
+        version: 0.6.3
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -267,6 +270,9 @@ importers:
       '@firebase/rules-unit-testing':
         specifier: ^5.0.0
         version: 5.0.0(firebase@12.12.0)
+      '@types/ngeohash':
+        specifier: ^0.6.8
+        version: 0.6.8
       '@types/node':
         specifier: ^20.12.0
         version: 20.19.39
@@ -1700,6 +1706,9 @@ packages:
 
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
+
+  '@types/ngeohash@0.6.8':
+    resolution: {integrity: sha512-A90x3HMwE1yXbWCnd0ztHzv8rAQPjwTzX2diYI/6OrWm/3oairDaehw5WPWJFgZ+8+J/OuF99IbipmMa2le6tQ==}
 
   '@types/node@20.19.39':
     resolution: {integrity: sha512-orrrD74MBUyK8jOAD/r0+lfa1I2MO6I+vAkmAWzMYbCcgrN4lCrmK52gRFQq/JRxfYPfonkr4b0jcY7Olqdqbw==}
@@ -3758,6 +3767,10 @@ packages:
   negotiator@0.6.3:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
+
+  ngeohash@0.6.3:
+    resolution: {integrity: sha512-kltF0cOxgx1AbmVzKxYZaoB0aj7mOxZeHaerEtQV0YaqnkXNq26WWqMmJ6lTqShYxVRWZ/mwvvTrNeOwdslWiw==}
+    engines: {node: '>=v0.2.0'}
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -6427,6 +6440,8 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
+  '@types/ngeohash@0.6.8': {}
+
   '@types/node@20.19.39':
     dependencies:
       undici-types: 6.21.0
@@ -8999,6 +9014,8 @@ snapshots:
   natural-compare@1.4.0: {}
 
   negotiator@0.6.3: {}
+
+  ngeohash@0.6.3: {}
 
   node-domexception@1.0.0: {}
 

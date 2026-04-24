@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Firestore } from 'firebase-admin/firestore'
+import ngeohash from 'ngeohash'
 import {
   BantayogError,
   BantayogErrorCode,
@@ -12,6 +13,17 @@ import { withIdempotency } from '../idempotency/guard.js'
 import { enqueueSms } from '../services/send-sms.js'
 
 const log = logDimension('processInboxItem')
+
+interface ExactLocation {
+  lat: number
+  lng: number
+}
+
+function isExactLocation(value: unknown): value is ExactLocation {
+  if (typeof value !== 'object' || value === null) return false
+  const record = value as Record<string, unknown>
+  return typeof record.lat === 'number' && typeof record.lng === 'number'
+}
 
 export interface ProcessInboxItemCoreInput {
   db: Firestore
@@ -77,6 +89,7 @@ export async function processInboxItemCore(
     )
   }
   const payload = payloadResult.data
+  const exactLocation = isExactLocation(payload.exactLocation) ? payload.exactLocation : undefined
 
   let geo: Awaited<ReturnType<typeof reverseGeocodeToMunicipality>> | null = null
   if (payload.publicLocation) {
@@ -174,6 +187,10 @@ export async function processInboxItemCore(
           agencyIds: [],
           activeResponderCount: 0,
           requiresLocationFollowUp: false,
+          reportType: payload.reportType,
+          ...(exactLocation
+            ? { locationGeohash: ngeohash.encode(exactLocation.lat, exactLocation.lng, 6) }
+            : {}),
           visibility: { scope: 'municipality', sharedWith: [] },
           updatedAt: createdAt,
           schemaVersion: 1,
