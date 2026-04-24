@@ -15,12 +15,19 @@ export interface DispatchResponderCoreDeps {
   now: Timestamp
 }
 
-export async function assertResponderOnShift(
-  rtdb: Database,
-  municipalityId: string,
-  responderUid: string,
+interface AssertResponderOnShiftOptions {
+  rtdb: Database
+  municipalityId: string
+  responderUid: string
+  message?: string
+}
+
+export async function assertResponderOnShift({
+  rtdb,
+  municipalityId,
+  responderUid,
   message = 'Responder is not on shift',
-): Promise<void> {
+}: AssertResponderOnShiftOptions): Promise<void> {
   const shiftSnap = await rtdb.ref(`/responder_index/${municipalityId}/${responderUid}`).get()
   const shiftData = shiftSnap.val() as { isOnShift?: boolean } | null
   if (shiftData?.isOnShift !== true) {
@@ -84,12 +91,12 @@ export async function validateDispatchTransaction({
   }
 
   // Re-check shift status after identity + municipality checks to preserve correct error classes.
-  await assertResponderOnShift(
+  await assertResponderOnShift({
     rtdb,
-    deps.actor.claims.municipalityId,
-    deps.responderUid,
-    'Responder went off-shift before dispatch could be created',
-  )
+    municipalityId: deps.actor.claims.municipalityId,
+    responderUid: deps.responderUid,
+    message: 'Responder went off-shift before dispatch could be created',
+  })
 
   const rawStatus = report.status
   if (typeof rawStatus !== 'string') {
@@ -99,13 +106,12 @@ export async function validateDispatchTransaction({
     )
   }
   const to = 'assigned' as const
-  if (!isValidReportTransition(rawStatus as ReportStatus, to)) {
+  if (rawStatus !== 'verified' || !isValidReportTransition(rawStatus as ReportStatus, to)) {
     throw new BantayogError(
       BantayogErrorCode.INVALID_STATUS_TRANSITION,
       `Cannot dispatch from status ${rawStatus}`,
     )
   }
-  // After validation, we know rawStatus === 'verified'.
   const from = 'verified' as const
 
   // After validation, we know these fields exist and have correct types.

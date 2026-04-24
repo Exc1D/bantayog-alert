@@ -58,7 +58,11 @@ export async function dispatchResponderCore(
         throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'municipalityId is required')
       }
 
-      await assertResponderOnShift(rtdb, deps.actor.claims.municipalityId, deps.responderUid)
+      await assertResponderOnShift({
+        rtdb,
+        municipalityId: deps.actor.claims.municipalityId,
+        responderUid: deps.responderUid,
+      })
 
       return db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)
