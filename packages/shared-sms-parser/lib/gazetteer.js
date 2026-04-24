@@ -310,7 +310,7 @@ export function getBarangayGazetteer() {
             'code' in err &&
             err.code === 'MODULE_NOT_FOUND';
         const message = err instanceof Error ? err.message : '';
-        const isSharedDataLoadFailure = /Cannot find module .@bantayog\/shared-data./.test(message);
+        const isSharedDataLoadFailure = /Cannot find module ['"]@bantayog\/shared-data['"]/.test(message);
         if (isModuleNotFound && isSharedDataLoadFailure) {
             return FALLBACK_BARANGAYS;
         }
