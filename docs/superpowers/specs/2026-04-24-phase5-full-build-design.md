@@ -1,7 +1,7 @@
 # Phase 5 Full Build — Design Specification
 
 **Date:** 2026-04-24
-**Status:** Approved — ready for implementation planning
+**Status:** Amended 2026-04-24 — 26 issues fixed (12 critical, 14 high) — ready for implementation planning
 **Scope:** All 9 remaining Phase 5 deliverables (Clusters B, A, C)
 **TDD mandate:** Every callable, trigger, and UI component has failing tests written before implementation code. No exceptions.
 
@@ -16,6 +16,31 @@ Each feature section follows this order:
 3. **Exit criteria** — what "done" looks like
 
 The tests section is not optional documentation. It is the specification. If you cannot write a failing test for a behavior, the behavior is not well-defined enough to implement.
+
+---
+
+## Amendment Log — Schema Changes Required Before Any Implementation
+
+Before writing any callable or trigger code, these schema changes must land in `packages/shared-validators/src/coordination.ts` (and `users.ts`). All are backward-compatible additions.
+
+| Schema                                 | Change                                                                                     | Reason                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `agencyAssistanceRequestDocSchema`     | Add `respondedBy: z.string().optional()`                                                   | `acceptAgencyAssistance` writes this field                            |
+| `agencyAssistanceRequestDocSchema`     | Add `escalatedAt: z.number().int().optional()`                                             | Sweep uses timestamp, not `status → 'escalated'` (not in enum)        |
+| `commandChannelThreadDocSchema`        | `reportId`: change to `z.string().min(1)` (was optional)                                   | B.5 queries by this field; optional = invisible                       |
+| `commandChannelThreadDocSchema`        | Add `threadType: z.enum(['agency_assistance', 'border_share'])`                            | Already in PRE-B.5                                                    |
+| `commandChannelThreadDocSchema`        | Add `assistanceRequestId: z.string().min(1).optional()`                                    | `declineAgencyAssistance` must close the right thread                 |
+| `shiftHandoffDocSchema`                | Add `escalatedAt: z.number().int().optional()`                                             | Sweep uses timestamp, not `status → 'escalated'` (not in enum)        |
+| `reportSharingDocSchema`               | Replace `sharedBy/sharedAt/source` top-level fields with `sharedWith: z.array(z.string())` | Second share overwrites audit trail; use subcollection events instead |
+| `massAlertRequestDocSchema`            | Expand `status` enum with `'sent', 'pending_ndrrmc_review', 'declined'`                    | Already in PRE-C.3                                                    |
+| `responderDocSchema` (users.ts)        | Add `hasFcmToken: z.boolean().default(false)`                                              | Mass alert FCM query; existing `fcmTokens` is an array, not a scalar  |
+| `reportSmsConsentDocSchema` (users.ts) | Add `municipalityId: z.string().min(1)` and `followUpConsent: z.boolean().default(false)`  | Mass alert SMS targeting                                              |
+
+**Field name corrections used throughout this spec:**
+
+- `declinedReason` (not `declineReason`) — matches `agencyAssistanceRequestDocSchema`
+- `createdAt` (not `requestedAt`, not `initiatedAt`) — the only timestamp at creation in both `agency_assistance_requests` and `shift_handoffs`
+- `closedAt` (not `resolvedAt`, not `status`) — thread closure field in `commandChannelThreadDocSchema`
 
 ---
 
@@ -130,15 +155,17 @@ export const reportNoteDocSchema = z
 
 **Firestore rules:**
 
-- `match /report_notes/{n}`: allow read to `isActivePrivileged()` + admin roles; allow write to same + `request.auth.uid === request.resource.data.authorUid`
+- `match /report_notes/{n}`: allow read to `isActivePrivileged()` + admin roles; allow write to same + `request.auth.uid === request.resource.data.authorUid` + **municipality match** (look up `report_ops/{request.resource.data.reportId}` and verify the caller's municipality claim matches the report's `municipalityId`)
+  - ⚠️ Without the municipality check, a Daet admin can write notes on Mercedes reports. The author-match guard alone does not prevent cross-municipality injection.
 - `match /reports/{id}/messages/{m}`: change `allow write: if false` → allow write to active admin roles (same author-match guard)
 
 **Tests to write first:**
 
 ```
 src/__tests__/rules/report-notes.test.ts
-  it('allows muni admin to write a note with matching authorUid')
+  it('allows muni admin to write a note with matching authorUid and matching municipality')
   it('denies muni admin writing a note with mismatched authorUid')
+  it('denies muni admin writing a note for a report in a different municipality')
   it('denies citizen writing report notes')
   it('denies unauthenticated reads')
 
@@ -147,12 +174,28 @@ src/__tests__/rules/report-messages.test.ts (extend existing)
   it('still denies citizen writes to messages subcollection')
 ```
 
-### PRE-B.5 — `commandChannelThreadDocSchema` — add `threadType`
+### PRE-B.5 — `commandChannelThreadDocSchema` — add `threadType`, `assistanceRequestId`; make `reportId` required
 
-**Add field:**
+**Add/change fields:**
 
 ```typescript
 threadType: z.enum(['agency_assistance', 'border_share']),
+reportId: z.string().min(1),                          // was optional — now required
+assistanceRequestId: z.string().min(1).optional(),    // set when threadType === 'agency_assistance'
+```
+
+**Why `reportId` required:** `CommandChannelPanel` queries `command_channel_threads where reportId == currentReportId`. Optional and unset means the feature is invisible in the UI.
+
+**Why `assistanceRequestId`:** `declineAgencyAssistance` closes the assistance thread. A report can have both an agency-assistance thread and a border-share thread. Without this link, the wrong thread gets closed.
+
+**Firestore rules — `participantUids` is a map, not an array.** The Firestore Rules `in` operator only works on arrays. Use:
+
+```
+// ✅ CORRECT — map key lookup
+resource.data.participantUids[request.auth.uid] == true
+
+// ❌ WRONG — `in` on a map always evaluates to false
+request.auth.uid in resource.data.participantUids
 ```
 
 **Tests to write first:**
@@ -161,27 +204,50 @@ threadType: z.enum(['agency_assistance', 'border_share']),
 src/__tests__/rules/command-channel.test.ts (extend)
   it('rejects thread creation without threadType')
   it('rejects thread creation with unknown threadType')
+  it('rejects thread creation without reportId')
+  it('allows participant to read thread (map key lookup)')
+  it('denies non-participant from reading thread')
 ```
 
-### PRE-B.6 — `reportSharingDocSchema` — audit fields
+### PRE-B.6 — `reportSharingDocSchema` — audit fields + subcollection event log
 
-**Add fields:**
+**`report_sharing/{reportId}` doc schema — add fields:**
 
 ```typescript
-sharedBy: z.string().min(1),
-sharedAt: z.number().int(),
-sharedReason: z.string().max(500).optional(),
-source: z.enum(['manual', 'auto']),
+sharedWith: z.array(z.string()),  // array of targetMunicipalityIds
+updatedAt: z.number().int(),
 ```
+
+**Do NOT add `sharedBy`, `sharedAt`, `source` as top-level fields on the parent doc.** A report can be shared with multiple municipalities (manual + auto). A single doc with `sharedBy`/`sharedAt` overwrites the audit trail on every second share.
+
+**Use a subcollection for the event log instead:**
+
+`report_sharing/{reportId}/events/{eventId}`:
+
+```typescript
+export const reportSharingEventDocSchema = z
+  .object({
+    targetMunicipalityId: z.string().min(1),
+    sharedBy: z.string().min(1),
+    sharedAt: z.number().int(),
+    sharedReason: z.string().max(500).optional(),
+    source: z.enum(['manual', 'auto']),
+    schemaVersion: z.number().int().positive(),
+  })
+  .strict()
+```
+
+Each share (manual or auto) appends one event doc. Both `shareReport` and `borderAutoShareTrigger` write one event doc per share.
 
 **Tests to write first:**
 
 ```
 src/__tests__/rules/report-sharing.test.ts (extend)
-  it('rejects report_sharing write without sharedBy')
-  it('rejects report_sharing write without source')
-  it('accepts manual share with reason')
-  it('accepts auto share without reason')
+  it('rejects report_sharing parent write without sharedWith array')
+  it('rejects event write without source')
+  it('accepts manual share event with reason')
+  it('accepts auto share event without reason')
+  it('a second share appends a second event — first event is not overwritten')
 ```
 
 ---
@@ -217,8 +283,8 @@ declineAgencyAssistance
 
 adminOperationsSweep (agency escalation path)
   it ignores requests pending for less than 30 minutes
-  it updates status to escalated for requests pending over 30 minutes
-  it does not re-escalate already-escalated requests
+  it sets escalatedAt on requests pending over 30 minutes
+  it does not re-escalate already-escalated requests (escalatedAt already set)
 ```
 
 Run: `firebase emulators:exec --only firestore,auth "pnpm --filter @bantayog/functions exec vitest run src/__tests__/callables/agency-assistance.test.ts"`
@@ -232,26 +298,30 @@ Each test must fail with a meaningful error before the callable is written. "exp
 - Auth: `role === 'municipal_admin'`, `accountStatus === 'active'`
 - Reads `report_ops/{reportId}` — validates `municipalityId` matches caller's claim, `status` not in terminal set
 - Queries `active_accounts` for UIDs where `agencyId === input.agencyId` AND `accountStatus === 'active'` — these become `participantUids` alongside the caller UID
-- Transaction: writes `agency_assistance_requests/{id}` + `command_channel_threads/{id}`
+- Transaction: writes `agency_assistance_requests/{id}` + `command_channel_threads/{id}` (with `reportId` and `assistanceRequestId` set explicitly)
 - Side effects: FCM to agency admin UIDs; SMS fallback via `send-sms.ts`
 - Idempotency: SHA-256 of `(reportId + agencyId)` as `idempotencyKey`
 
 **`acceptAgencyAssistance({ requestId })`**
 
 - Auth: `role === 'agency_admin'`, `agencyId` matches `request.targetAgencyId`
-- Updates: `status → 'accepted'`, `respondedAt`, `respondedBy`
+- Updates: `status → 'accepted'`, `respondedAt`, `respondedBy` (add `respondedBy: z.string().optional()` to `agencyAssistanceRequestDocSchema`)
 - Idempotent on already-accepted
 
 **`declineAgencyAssistance({ requestId, reason })`**
 
 - Auth: same as accept
-- Updates: `status → 'declined'`, `declineReason`, `respondedAt`, `respondedBy`
-- Closes associated `command_channel_threads` doc (`status → 'resolved'`, `resolvedAt`)
+- Updates: `status → 'declined'`, `declinedReason` (schema field name — not `declineReason`), `respondedAt`, `respondedBy`
+- Closes associated `command_channel_threads` doc: set `closedAt: now` (the schema has `closedAt`, not `status`/`resolvedAt` — do NOT write a `status` field on threads)
+- Lookup: find thread by `assistanceRequestId === requestId` (not by `reportId` alone — a report may have multiple threads)
 
 **`adminOperationsSweep`** (scheduled, every 10 min)
 
-- Queries `agency_assistance_requests` where `status === 'pending'` AND `requestedAt < now - 30min` → `status → 'escalated'`, FCM + priority SMS to superadmins
-- Queries `shift_handoffs` where `status === 'pending'` AND `initiatedAt < now - 30min` → FCM + priority SMS to superadmins (A.3 will add this path; B.1 only implements the agency escalation path)
+- Queries `agency_assistance_requests` where `status === 'pending'` AND `createdAt < now - 30min` AND `escalatedAt` absent → sets `escalatedAt: now`, FCM + priority SMS to superadmins
+  - ⚠️ Query field is `createdAt` — schema has no `requestedAt` field
+  - ⚠️ Do NOT set `status → 'escalated'` — `'escalated'` is not in the schema enum; use `escalatedAt` timestamp instead (add `escalatedAt: z.number().int().optional()` to `agencyAssistanceRequestDocSchema`)
+- Queries `shift_handoffs` where `status === 'pending'` AND `createdAt < now - 30min` → FCM + priority SMS to superadmins (A.3 will add this path; B.1 only implements the agency escalation path)
+  - ⚠️ Query field is `createdAt` — schema has no `initiatedAt` field
 
 #### Agency Admin UI
 
@@ -309,7 +379,8 @@ exitFieldMode
 **`enterFieldMode()`**
 
 - Auth: `role` in `['municipal_admin', 'agency_admin', 'provincial_superadmin']`
-- Validates: `auth.token.auth_time > Date.now() - (4 * 60 * 60 * 1000)` — if stale, return `unauthenticated` with message "Re-authentication required for field mode"
+- Validates: `auth.token.auth_time * 1000 > Date.now() - (4 * 60 * 60 * 1000)` — if stale, return `unauthenticated` with message "Re-authentication required for field mode"
+  - ⚠️ `auth.token.auth_time` is seconds (Unix epoch, ~1.7B). `Date.now()` is milliseconds (~1.7T). Must multiply by 1000 before comparing. Omitting `* 1000` makes this check always false — no admin can ever enter field mode.
 - Writes `field_mode_sessions/{uid}`: `enteredAt`, `expiresAt: enteredAt + 12h`, `isActive: true`, `municipalityId` from claims
 - Streaming audit event
 
@@ -325,6 +396,16 @@ exitFieldMode
 - `enter()` / `exit()` call the corresponding callables
 - Checks `expiresAt` on a 60-second interval; calls `exit()` when expired
 - Exposes `isActive` to mutation UI components
+- ⚠️ **`clearInterval` in `useEffect` cleanup.** Failure to clear leaves the interval running after the component unmounts, causing `exit()` to fire at the wrong time and a memory leak. Pattern:
+  ```typescript
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (Date.now() > expiresAt) void exit()
+    }, 60_000)
+    return () => clearInterval(id)
+  }, [expiresAt, exit])
+  ```
+- ⚠️ Client clock skew: expiry check is best-effort. The callable must also validate that the session is active server-side before accepting offline writes.
 
 **`ReconnectBanner`** component:
 
@@ -360,18 +441,19 @@ exitFieldMode
 
 **GeoJSON lazy-loading in CFs:**
 
+Use `fs.readFileSync + JSON.parse` — **not** `import(..., { assert: { type: 'json' } })`. The `assert` form has uncertain compatibility with the `tsx` bundler and may fail at runtime even if TypeScript compiles it cleanly.
+
 ```typescript
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+
 // Load once per function instance, not per invocation
 let municipalityBoundaries: FeatureCollection | null = null
-async function getMunicipalityBoundaries() {
+function getMunicipalityBoundaries(): FeatureCollection {
   if (!municipalityBoundaries) {
-    const { default: data } = await import(
-      '@bantayog/shared-data/municipality-boundaries.geojson',
-      {
-        assert: { type: 'json' },
-      }
-    )
-    municipalityBoundaries = data
+    const require = createRequire(import.meta.url)
+    const filePath = require.resolve('@bantayog/shared-data/municipality-boundaries.geojson')
+    municipalityBoundaries = JSON.parse(readFileSync(filePath, 'utf8')) as FeatureCollection
   }
   return municipalityBoundaries
 }
@@ -421,9 +503,11 @@ For the trigger test: seed a `report_ops` doc with a `locationGeohash` known to 
 **`shareReport({ reportId, targetMunicipalityId, reason? })`**
 
 - Auth: `role === 'municipal_admin'` (own muni) or `provincial_superadmin`
-- Creates/updates `report_sharing/{reportId}`: adds `targetMunicipalityId` to `sharedWith[]`, sets `sharedBy`, `sharedAt`, `sharedReason`, `source: 'manual'`
-- Creates `command_channel_threads/{id}` with both municipality admin UIDs as `participantUids`
+- Transaction: `report_sharing/{reportId}` — use `FieldValue.arrayUnion(targetMunicipalityId)` to add to `sharedWith[]`; do NOT overwrite the whole doc (race condition: concurrent shares overwrite each other)
+- Append one event to `report_sharing/{reportId}/events/{id}`: `{ targetMunicipalityId, sharedBy, sharedAt, sharedReason, source: 'manual' }`
+- Creates `command_channel_threads/{id}` with `reportId` set, both municipality admin UIDs as `participantUids`
 - Updates `report_ops.visibility`
+- Idempotency guard: check `targetMunicipalityId in doc.sharedWith` (array membership), not doc existence — a report can be shared with multiple municipalities
 
 **`borderAutoShareTrigger`** (Firestore `onCreate` on `report_ops`):
 
@@ -431,8 +515,8 @@ For the trigger test: seed a `report_ops` doc with a `locationGeohash` known to 
 2. Check `locationGeohash` against `BOUNDARY_GEOHASH_SET` (module-scope cache) — if not in set, return early
 3. Load `report_private.exactLocation` (this is the only path that reads `report_private` in this trigger)
 4. For each adjacent municipality pair: run `turf.booleanPointInPolygon` against 500m-buffered boundary polygon
-5. If within buffer: create `report_sharing/{reportId}` with `source: 'auto'`, create `command_channel_threads/{id}`
-6. Guard: check `report_sharing/{reportId}` does not already exist before writing (idempotent)
+5. If within buffer: transaction to `arrayUnion(targetMunicipalityId)` on `report_sharing/{reportId}`; append event doc; create `command_channel_threads/{id}`
+6. ⚠️ Idempotency guard: check `targetMunicipalityId in sharedWith[]` — **not** whether the parent doc exists. A manual share to Muni A creates the doc; if the report is also near the Muni B boundary, the trigger must still auto-share to Muni B. Checking doc existence incorrectly skips that second share.
 
 **Thread auto-close (owned by B.4):** When `report_sharing` is resolved (report reaches terminal status), a `report_ops` `onUpdate` trigger closes the associated `command_channel_threads` doc. This is a small addition to the existing `dispatch-mirror-to-report` trigger pattern.
 
@@ -478,7 +562,9 @@ addCommandChannelMessage
 **`CommandChannelPanel`** component (added to `ReportDetailPanel.tsx`):
 
 - Subscribes to `onSnapshot` on `command_channel_threads` where `reportId === currentReportId`
-- If thread exists: renders type badge, participant list, messages (via `onSnapshot` on `command_channel_messages` where `threadId`), message input
+- If thread exists: renders type badge, participant list, messages (via `onSnapshot` on `command_channel_messages` where `threadId`, **`orderBy('createdAt', 'desc'), limit(50)`**), message input
+- ⚠️ Always use `limit(50)` on the messages query. An unbounded `onSnapshot` grows without cap — long threads cause unbounded memory growth and browser crashes.
+- Pagination: show "Load earlier messages" button when `messages.length === 50`, which queries the next page backwards.
 - Message input: `<textarea>` with character count, send button calls `addCommandChannelMessage`
 - Real-time, no polling
 
@@ -520,11 +606,12 @@ No new callables. No new collections. Pure UI enhancement on `TriageQueuePage.ts
 ```typescript
 // Replace fixed query with growing limit
 const [limitCount, setLimitCount] = useState(100)
-// onSnapshot query uses limit(limitCount)
+// onSnapshot query uses limit(limitCount + 1)
+// If results.length > limitCount: hasMore = true, display only first limitCount
 // hook returns: { reports, hasMore, loadMore: () => setLimitCount(n => n + 100) }
 ```
 
-`hasMore` is true when `reports.length === limitCount`.
+⚠️ Query `limit(limitCount + 1)`, not `limit(limitCount)`. Strip the extra result before returning. Set `hasMore = results.length > limitCount`. The naive `reports.length === limitCount` check shows a false "Load More" when the DB has exactly N reports — clicking it returns the same N results again.
 
 **Client-side filter state** (local `useState` or lightweight Zustand slice — no Firestore re-query):
 
@@ -577,9 +664,11 @@ mergeDuplicates
 
 1. If `locationGeohash` absent: return early
 2. Query `report_ops` where `municipalityId` matches + `reportType` matches + `status` not terminal + `createdAt > now - 2h`
-3. Pre-filter by 5-char geohash prefix (~5km); then for each candidate compute Turf.js `distance` from new doc's decoded geohash — keep only those within 200m
+   - ⚠️ This query requires a composite index: `(municipalityId ASC, reportType ASC, status ASC, createdAt ASC)`. Add to `firestore.indexes.json` before deploying.
+3. Pre-filter by **6-char** geohash prefix (~1.2km); then for each candidate compute Turf.js `distance` from new doc's decoded geohash — keep only those within 200m
+   - ⚠️ 5-char prefix = ~5km radius → 200+ candidates in dense post-typhoon conditions → 200+ extra `report_private.exactLocation` reads per trigger. Use 6-char for ~1.2km, cap at 50 nearest candidates.
 4. If matches found: assign all to a `duplicateClusterId` (new UUID if none exists, otherwise extend existing cluster)
-5. Transaction: update all matched `report_ops` docs
+5. ⚠️ **Transaction doc limit.** Firestore transactions are capped at 500 documents. During a surge event, 500+ reports in 2 hours within 1.2km is realistic. Cap the transaction batch at **250 docs**. For any remainder, write the `duplicateClusterId` in a second pass using `writeBatch` (not the same transaction).
 
 **`mergeDuplicates({ primaryReportId, duplicateReportIds[] })`**
 
@@ -590,7 +679,7 @@ mergeDuplicates
   - Update non-primary `reports`: `status → 'merged_as_duplicate'`, `mergedInto → primaryReportId`
   - Update non-primary `report_ops`: status mirror
   - Merge unique `mediaRefs` onto primary `reports` doc
-- After transaction: SMS to `report_contacts` where `reportId` in `duplicateReportIds` AND `followUpConsent: true`
+- After transaction: SMS to reporters — query `report_sms_consent` (not `report_contacts` — the latter is a ghost collection with no write paths) where `reportId` in `duplicateReportIds` AND `followUpConsent: true`
 - Idempotency via `idempotencyKey`
 
 ---
@@ -627,7 +716,8 @@ shiftHandoffExpirationSweep
 
 - Auth: `role` in `['municipal_admin', 'agency_admin']`
 - Snapshot query (server-side): `report_ops` where `municipalityId` matches + `status` in `['assigned', 'acknowledged', 'en_route']`; `dispatches` where `municipalityId` matches + `status === 'accepted'`; `agency_assistance_requests` where `requestingMunicipalityId` matches + `status === 'pending'`
-- Creates `shift_handoffs/{id}`: `status: 'pending'`, `fromUid`, `initiatedAt`, `notes`, `activeIncidentSnapshot[]`
+- Creates `shift_handoffs/{id}`: `status: 'pending'`, `fromUid`, `createdAt`, `notes`, `activeIncidentSnapshot[]`
+  - ⚠️ Schema field is `createdAt`, not `initiatedAt` — write `createdAt` here
 - FCM to all other active admins in same muni/agency
 - Idempotency via `idempotencyKey`
 
@@ -640,9 +730,11 @@ shiftHandoffExpirationSweep
 
 **Extend `adminOperationsSweep`** (already built in B.1 — A.3 adds the shift handoff path):
 
-- Add: query `shift_handoffs` where `status === 'pending'` AND `initiatedAt < now - 30min`
+- Add: query `shift_handoffs` where `status === 'pending'` AND `createdAt < now - 30min` AND `escalatedAt` absent
+  - ⚠️ Query field is `createdAt` — schema has no `initiatedAt` field
 - FCM + priority SMS to provincial superadmins
-- Sets `status → 'escalated'` on processed docs
+- Sets `escalatedAt: now` on processed docs (add `escalatedAt: z.number().int().optional()` to `shiftHandoffDocSchema`)
+  - ⚠️ Do NOT set `status → 'escalated'` — `'escalated'` is not in the `shiftHandoffDocSchema` enum; use `escalatedAt` timestamp instead
 - No new scheduled CF needed — `adminOperationsSweep` already runs every 10 min
 
 **UI:**
@@ -657,35 +749,47 @@ shiftHandoffExpirationSweep
 
 All 3 items must land before C.1 starts.
 
-### PRE-C.1 — `responderDocSchema` — `fcmToken` field
+### PRE-C.1 — `responderDocSchema` — `hasFcmToken` boolean field
+
+⚠️ The real codebase uses `fcmTokens: string[]` (plural, array) — see `fcm-send.ts:44`. Do NOT add a `fcmToken: string` singular field that contradicts the existing array. Instead, add a denormalized boolean:
 
 ```typescript
-fcmToken: z.string().optional(),
-// Phase 6: migrate to push_subscriptions/{uid}/{deviceId} subcollection for multi-device
+hasFcmToken: z.boolean().default(false),
 ```
+
+Update the FCM token registration path to maintain this flag: when `fcmTokens` array becomes non-empty, set `hasFcmToken: true`; when it becomes empty (all tokens removed), set `hasFcmToken: false`.
+
+`massAlertReachPlanPreview` queries: `where('hasFcmToken', '==', true)`.
+
+For mass alert sends, the callable queries `responders` where `hasFcmToken == true` in scope, then reads `fcmTokens` from each doc to build the token list.
 
 **Tests to write first:**
 
 ```
 src/__tests__/rules/responders.test.ts (extend)
-  it allows responder to write their own fcmToken
-  it denies other responders reading another responder fcmToken
+  it allows responder to write their own hasFcmToken
+  it denies other responders reading another responder's tokens
 ```
 
-### PRE-C.2 — `reportContactsDocSchema` — consent + municipality
+### PRE-C.2 — `reportSmsConsentDocSchema` — add `municipalityId` + `followUpConsent`
+
+⚠️ The codebase writes to `report_sms_consent` (not `report_contacts`). `report_contacts` has zero production write paths — it exists only in rules tests. Do NOT query a ghost collection. Extend the existing `reportSmsConsentDocSchema` in `packages/shared-validators/src/users.ts`.
 
 ```typescript
+// Add to existing reportSmsConsentDocSchema:
 municipalityId: z.string().min(1),
 followUpConsent: z.boolean().default(false),
 ```
 
-Update `processInboxItem.ts` (and citizen PWA `submitReport`) to write both fields.
+Update `processInboxItem.ts` (and citizen PWA `submitReport`) to write both fields when creating the `report_sms_consent` doc.
+
+All C.1 SMS reach count queries and `mergeDuplicates` SMS notifications target `report_sms_consent`, not `report_contacts`.
 
 **Tests to write first:**
 
 ```
 src/__tests__/triggers/process-inbox-item.test.ts (extend)
-  it writes municipalityId onto report_contacts when materializing
+  it writes municipalityId onto report_sms_consent when materializing
   it writes followUpConsent true when reporter gave consent
   it writes followUpConsent false when reporter gave no consent
 ```
@@ -729,8 +833,8 @@ src/__tests__/rules/mass-alert-requests.test.ts (new)
 massAlertReachPlanPreview
   it rejects citizens and responders
   it rejects a muni admin scoping to a different municipality
-  it returns fcmCount as count of responders with fcmToken in scope municipality
-  it returns smsCount as count of report_contacts with followUpConsent true in scope municipality
+  it returns fcmCount as count of responders with hasFcmToken true in scope municipality
+  it returns smsCount as count of report_sms_consent with followUpConsent true in scope municipality
   it returns route direct when totalEstimate <= 5000 and scope is single muni
   it returns route ndrrmc_escalation when totalEstimate > 5000
   it returns route ndrrmc_escalation when scope spans multiple municipalities
@@ -775,17 +879,23 @@ forwardMassAlertToNDRRMC
 **`massAlertReachPlanPreview({ targetScope, message })`**
 
 - Auth: `role` in `['municipal_admin', 'agency_admin']` (own muni) or `provincial_superadmin`
-- FCM count: `count()` on `responders` where `municipalityId` in `targetScope.municipalityIds` AND `fcmToken` is set (use `where('fcmToken', '!=', null)`)
-- SMS count: `count()` on `report_contacts` where `municipalityId` in `targetScope.municipalityIds` AND `followUpConsent === true`
+- FCM count: `count()` on `responders` where `municipalityId` in `targetScope.municipalityIds` AND `where('hasFcmToken', '==', true)`
+  - ⚠️ Do NOT use `where('fcmToken', '!=', null)`. The real schema uses `fcmTokens: string[]` (plural array). There is no `fcmToken` singular field — that query matches nothing. Use the `hasFcmToken` boolean added in PRE-C.1.
+- SMS count: `count()` on `report_sms_consent` where `municipalityId` in `targetScope.municipalityIds` AND `followUpConsent === true`
+  - ⚠️ Do NOT query `report_contacts` — that collection has no production write paths and is always empty. Use `report_sms_consent`.
 - Routing: `total <= 5000 AND targetScope.municipalityIds.length === 1` → `'direct'`; else → `'ndrrmc_escalation'`
-- GSM-7 check: test message against `/[^ - £¥§¿À-ÖØ-öø-ÿ€]/` — if match, UCS-2; segment size 70 chars; else 160 chars
+- GSM-7 check: call `detectEncoding(message)` from `@bantayog/shared-sms-parser` — do NOT implement a bespoke regex. The existing function handles all GSM-7 extension characters correctly.
 
 **`sendMassAlert({ reachPlan, message, targetScope })`**
 
-- Validates `reachPlan.route === 'direct'` — hard `permission-denied` if escalation
+- Validates `reachPlan.route === 'direct'` — hard `permission-denied` if escalation route
+- ⚠️ **Re-validate recipient counts server-side.** Do not trust the client-supplied `reachPlan`. A malicious client can forge `reachPlan` with `route: 'direct'` and fabricated low counts. Re-run the same `count()` queries from `massAlertReachPlanPreview` inside this callable. If the server-side total exceeds 5000, return `permission-denied`.
 - Creates `mass_alert_requests/{id}` status `'sent'`
-- FCM batch: `fcm-send.ts` `sendEachForMulticast` (500 tokens/batch); query responder tokens from `responders` collection
-- SMS: `send-sms.ts` priority queue — query `report_contacts` with consent, enqueue each to `sms_outbox`
+- **FCM batch send:** Do NOT call `sendFcmToResponder` in a loop. That function fetches tokens per responder — calling it 5000 times makes 5000 Firestore reads and 5000 individual FCM calls, guaranteed timeout. Write a dedicated `sendMassAlertFcm` function:
+  - Query `responders` where `hasFcmToken == true` in scope; read `fcmTokens` array from each doc
+  - Batch all tokens into groups of 500; call `messaging.sendEachForMulticast` per batch (Firebase limit: 500 tokens/batch; cap at 10 batches = 5000 total)
+- **SMS queue:** query `report_sms_consent` with `followUpConsent: true` in scope; enqueue each to `sms_outbox`
+  - ⚠️ Add a `mass_alert` template to `sms-templates.ts`. The `renderTemplate` call requires a `publicRef` that is undefined for broadcasts. The `mass_alert` template must not require `publicRef` — it receives `{ municipalityName, body }` only.
 - Streaming audit with `targetScope` geometry
 
 **`requestMassAlertEscalation({ message, targetScope, evidencePack })`**
