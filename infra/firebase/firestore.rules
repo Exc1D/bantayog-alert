@@ -157,11 +157,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /field_mode_sessions/{uid} {
-      allow read: if isAuthed() && (request.auth.uid == uid || isSuperadmin());
+    match /field_mode_sessions/{sessionUid} {
+      allow read: if isAuthed() && (request.auth.uid == sessionUid || isSuperadmin());
       allow write: if isAuthed()
-                   && request.auth.uid == uid
-                   && request.resource.data.uid == uid
+                   && request.auth.uid == sessionUid
+                   && request.resource.data.uid == sessionUid
                    && isActivePrivileged()
                    && !isSuperadmin();
     }
