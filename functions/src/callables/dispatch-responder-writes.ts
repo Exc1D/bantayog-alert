@@ -1,5 +1,5 @@
 import { Timestamp } from 'firebase-admin/firestore'
-import type { Transaction, Firestore } from 'firebase-admin/firestore'
+import type { Transaction, Firestore, DocumentReference } from 'firebase-admin/firestore'
 import type { DispatchResponderCoreDeps } from './dispatch-responder-validation.js'
 
 interface SmsPayload {
@@ -39,10 +39,10 @@ export async function buildSmsPayload(args: BuildSmsPayloadArgs): Promise<SmsPay
 interface WriteDispatchDocsArgs {
   tx: Transaction
   deps: DispatchResponderCoreDeps
-  dispatchRef: FirebaseFirestore.DocumentReference
-  reportRef: FirebaseFirestore.DocumentReference
-  reportEvRef: FirebaseFirestore.DocumentReference
-  dispatchEvRef: FirebaseFirestore.DocumentReference
+  dispatchRef: DocumentReference
+  reportRef: DocumentReference
+  reportEvRef: DocumentReference
+  dispatchEvRef: DocumentReference
   responder: { agencyId: string; municipalityId: string } & Record<string, unknown>
   deadlineMs: number
   correlationId: string
