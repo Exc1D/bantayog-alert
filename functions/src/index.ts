@@ -20,6 +20,7 @@ export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js'
 export { shareReport } from './callables/share-report.js'
 export { addCommandChannelMessage } from './callables/add-command-channel-message.js'
 export { borderAutoShareTrigger } from './triggers/border-auto-share.js'
+export { duplicateClusterTrigger } from './triggers/duplicate-cluster-trigger.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
