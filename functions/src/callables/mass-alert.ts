@@ -1,6 +1,12 @@
+import { createHash } from 'node:crypto'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { z } from 'zod'
-import { detectEncoding, logDimension } from '@bantayog/shared-validators'
+import {
+  detectEncoding,
+  hashMsisdn,
+  logDimension,
+  renderBroadcastTemplate,
+} from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
 import { requireAuth } from './https-error.js'
 import { withIdempotency } from '../idempotency/guard.js'
@@ -12,7 +18,7 @@ const ADMIN_ROLES = ['municipal_admin', 'agency_admin', 'provincial_superadmin']
 const MAX_DIRECT_ROUTE = 5000
 
 const targetScopeSchema = z.object({
-  municipalityIds: z.array(z.string().min(1)).min(1).max(12),
+  municipalityIds: z.array(z.string().min(1)).min(1).max(10),
 })
 
 const reachPlanSchema = z.object({
@@ -53,7 +59,6 @@ export async function massAlertReachPlanPreviewCore(
       .collection('responders')
       .where('hasFcmToken', '==', true)
       .where('municipalityId', 'in', municipalityIds)
-      .count()
       .get(),
     db
       .collection('report_sms_consent')
@@ -63,7 +68,12 @@ export async function massAlertReachPlanPreviewCore(
       .get(),
   ])
 
-  const fcmCount = fcmSnap.data().count
+  // Count individual tokens, not responder documents (a responder may have multiple devices).
+  let fcmCount = 0
+  for (const doc of fcmSnap.docs) {
+    const tokens = doc.data().fcmTokens as string[] | undefined
+    if (tokens) fcmCount += tokens.length
+  }
   const smsCount = smsSnap.data().count
   const total = fcmCount + smsCount
 
@@ -133,7 +143,7 @@ export async function sendMassAlertCore(
           targetType: 'municipality',
           targetGeometryRef: JSON.stringify({ municipalityIds: input.targetScope.municipalityIds }),
           severity: 'high',
-          estimatedReach: input.reachPlan.fcmCount + input.reachPlan.smsCount,
+          estimatedReach: serverPreview.reachPlan.fcmCount + serverPreview.reachPlan.smsCount,
           status: 'sent',
           createdAt: now,
           schemaVersion: 1,
@@ -151,6 +161,59 @@ export async function sendMassAlertCore(
           message: err instanceof Error ? err.message : 'FCM send error',
         })
       })
+
+      if (serverPreview.reachPlan.smsCount > 0) {
+        const consentSnaps = await db
+          .collection('report_sms_consent')
+          .where('followUpConsent', '==', true)
+          .where('municipalityId', 'in', input.targetScope.municipalityIds)
+          .get()
+        const salt = process.env.SMS_MSISDN_HASH_SALT ?? ''
+        const BATCH_SIZE = 500
+        for (let i = 0; i < consentSnaps.docs.length; i += BATCH_SIZE) {
+          const batch = db.batch()
+          const chunk = consentSnaps.docs.slice(i, i + BATCH_SIZE)
+          for (const consentDoc of chunk) {
+            const data = consentDoc.data()
+            const phone = typeof data.phone === 'string' ? data.phone : ''
+            if (!phone) continue
+            const locale = data.locale === 'tl' || data.locale === 'en' ? data.locale : 'tl'
+            const municipalityName =
+              typeof data.municipalityId === 'string' ? data.municipalityId : 'Municipality'
+            const smsBody = renderBroadcastTemplate({
+              locale,
+              vars: { municipalityName, body: input.message },
+            })
+            const { encoding, segmentCount } = detectEncoding(smsBody)
+            const recipientMsisdnHash = hashMsisdn(phone, salt)
+            const raw = `mass_alert:${requestId}:${phone}`
+            const idempotencyKey = createHash('sha256').update(raw).digest('hex')
+            const outboxRef = db.collection('sms_outbox').doc(idempotencyKey)
+            batch.set(
+              outboxRef,
+              {
+                providerId: 'semaphore',
+                recipientMsisdnHash,
+                recipientMsisdn: phone,
+                purpose: 'mass_alert',
+                predictedEncoding: encoding,
+                predictedSegmentCount: segmentCount,
+                bodyPreviewHash: createHash('sha256').update(smsBody).digest('hex'),
+                status: 'queued',
+                idempotencyKey,
+                retryCount: 0,
+                locale,
+                massAlertRequestId: requestId,
+                createdAt: now,
+                queuedAt: now,
+                schemaVersion: 2,
+              },
+              { merge: true },
+            )
+          }
+          await batch.commit()
+        }
+      }
 
       log({
         severity: 'INFO',
@@ -207,19 +270,10 @@ export async function requestMassAlertEscalationCore(
           schemaVersion: 1,
         })
 
-      sendMassAlertFcm(db, {
-        municipalityIds: input.targetScope.municipalityIds,
-        title: 'NDRRMC Escalation Request',
-        body: `Mass alert escalation from ${actor.claims.municipalityId ?? 'municipality'} — review required`,
-        data: { massAlertRequestId: requestId, type: 'escalation_review' },
-      }).catch((err: unknown) => {
-        log({
-          severity: 'WARNING',
-          code: 'mass.escalate.fcm.failed',
-          message: err instanceof Error ? err.message : 'FCM failed',
-        })
-      })
-
+      // TODO: Notify provincial/NDRRMC reviewers via a reviewer-specific channel.
+      // sendMassAlertFcm targets responders by municipality; escalation should reach
+      // superadmins, not field responders. Implement a separate notification path
+      // (e.g. query users where role == 'provincial_superadmin' and send targeted FCM).
       log({
         severity: 'INFO',
         code: 'mass.escalated',
@@ -241,26 +295,42 @@ export async function forwardMassAlertToNDRRMCCore(
     return { success: false as const, errorCode: 'permission-denied' as const }
   }
 
-  const snap = await db.collection('mass_alert_requests').doc(input.requestId).get()
-  if (!snap.exists) return { success: false as const, errorCode: 'not-found' as const }
-  if (snap.data()?.status !== 'pending_ndrrmc_review') {
-    return { success: false as const, errorCode: 'failed-precondition' as const }
+  try {
+    await db.runTransaction(async (tx) => {
+      const ref = db.collection('mass_alert_requests').doc(input.requestId)
+      const snap = await tx.get(ref)
+      if (!snap.exists) {
+        throw new Error('not-found')
+      }
+      if (snap.data()?.status !== 'pending_ndrrmc_review') {
+        throw new Error('failed-precondition')
+      }
+      tx.update(ref, {
+        status: 'forwarded_to_ndrrmc',
+        forwardedAt: Date.now(),
+        forwardedBy: actor.uid,
+        forwardMethod: input.forwardMethod,
+        ndrrrcRecipient: input.ndrrrcRecipient,
+      })
+    })
+
+    log({
+      severity: 'INFO',
+      code: 'mass.forwarded',
+      message: `Request ${input.requestId} forwarded to NDRRMC by ${actor.uid}`,
+    })
+    return { success: true as const }
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      if (err.message === 'not-found') {
+        return { success: false as const, errorCode: 'not-found' as const }
+      }
+      if (err.message === 'failed-precondition') {
+        return { success: false as const, errorCode: 'failed-precondition' as const }
+      }
+    }
+    throw err
   }
-
-  await snap.ref.update({
-    status: 'forwarded_to_ndrrmc',
-    forwardedAt: Date.now(),
-    forwardedBy: actor.uid,
-    forwardMethod: input.forwardMethod,
-    ndrrrcRecipient: input.ndrrrcRecipient,
-  })
-
-  log({
-    severity: 'INFO',
-    code: 'mass.forwarded',
-    message: `Request ${input.requestId} forwarded to NDRRMC by ${actor.uid}`,
-  })
-  return { success: true as const }
 }
 
 export const massAlertReachPlanPreview = onCall(

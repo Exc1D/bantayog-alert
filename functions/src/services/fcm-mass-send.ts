@@ -29,28 +29,48 @@ export async function sendMassAlertFcm(
     data?: Record<string, string>
   },
 ): Promise<MassSendResult> {
-  // Query all responders with FCM tokens in scope
-  const snaps = await db
-    .collection('responders')
-    .where('hasFcmToken', '==', true)
-    .where('municipalityId', 'in', opts.municipalityIds)
-    .get()
-
-  // Flatten all tokens across responders
-  const allTokens: string[] = []
-  for (const doc of snaps.docs) {
-    const tokens = doc.data().fcmTokens as string[] | undefined
-    if (tokens) allTokens.push(...tokens)
+  if (opts.municipalityIds.length === 0) {
+    return { successCount: 0, failureCount: 0, batchCount: 0 }
   }
 
+  // Firestore 'in' query supports max 10 values; chunk and merge.
+  const IN_QUERY_LIMIT = 10
+  const tokenSet = new Set<string>()
+  for (let i = 0; i < opts.municipalityIds.length; i += IN_QUERY_LIMIT) {
+    const chunk = opts.municipalityIds.slice(i, i + IN_QUERY_LIMIT)
+    const snaps = await db
+      .collection('responders')
+      .where('hasFcmToken', '==', true)
+      .where('municipalityId', 'in', chunk)
+      .get()
+    for (const doc of snaps.docs) {
+      const tokens = doc.data().fcmTokens as string[] | undefined
+      if (!tokens) continue
+      for (const token of tokens) {
+        if (token) tokenSet.add(token)
+      }
+    }
+  }
+
+  const allTokens = [...tokenSet]
   if (allTokens.length === 0) return { successCount: 0, failureCount: 0, batchCount: 0 }
+
+  const hardCap = TOKEN_BATCH_SIZE * MAX_BATCHES
+  if (allTokens.length > hardCap) {
+    log({
+      severity: 'ERROR',
+      code: 'fcm.mass.too_many_tokens',
+      message: `Refusing partial mass send: ${String(allTokens.length)} tokens exceeds hard cap ${String(hardCap)}`,
+    })
+    return { successCount: 0, failureCount: allTokens.length, batchCount: 0 }
+  }
 
   const messaging = getMessaging()
   let successCount = 0
   let failureCount = 0
   let batchCount = 0
 
-  for (let i = 0; i < allTokens.length && batchCount < MAX_BATCHES; i += TOKEN_BATCH_SIZE) {
+  for (let i = 0; i < allTokens.length; i += TOKEN_BATCH_SIZE) {
     const batch = allTokens.slice(i, i + TOKEN_BATCH_SIZE)
     batchCount++
     try {

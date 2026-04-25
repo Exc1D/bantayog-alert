@@ -105,7 +105,7 @@ export interface EnqueueBroadcastSmsArgs {
   salt: string
   locale: SmsLocale
   vars: { municipalityName: string; body: string }
-  providerId: string
+  providerId: 'semaphore' | 'globelabs'
   massAlertRequestId: string
   nowMs: number
 }
