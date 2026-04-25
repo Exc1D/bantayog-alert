@@ -19,7 +19,10 @@ export function TriageQueuePage() {
   const [handoffModalOpen, setHandoffModalOpen] = useState(false)
   const [handoffNotes, setHandoffNotes] = useState('')
   const [handoffLoading, setHandoffLoading] = useState(false)
-  const pendingHandoffs = usePendingHandoffs(municipalityId)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectingReportId, setRejectingReportId] = useState<string | null>(null)
+  const [acceptingHandoffId, setAcceptingHandoffId] = useState<string | null>(null)
+  const { handoffs: pendingHandoffs, error: handoffsError } = usePendingHandoffs(municipalityId)
 
   const handleVerify = (reportId: string) => {
     void (async () => {
@@ -32,26 +35,35 @@ export function TriageQueuePage() {
     })()
   }
 
+  const VALID_REJECT_REASONS = [
+    'obviously_false',
+    'duplicate',
+    'test_submission',
+    'insufficient_detail',
+  ] as const
+
   const handleReject = (reportId: string) => {
-    const reason = prompt(
-      'Reject reason (obviously_false, duplicate, test_submission, insufficient_detail)?',
-    )
-    if (!reason) return
-    void (async () => {
-      try {
-        await callables.rejectReport({
-          reportId,
-          reason: reason as
-            | 'obviously_false'
-            | 'duplicate'
-            | 'test_submission'
-            | 'insufficient_detail',
-          idempotencyKey: crypto.randomUUID(),
-        })
-      } catch (err: unknown) {
-        setBanner(err instanceof Error ? err.message : 'Reject failed')
-      }
-    })()
+    setRejectingReportId(reportId)
+    setRejectReason('')
+  }
+
+  const confirmReject = async () => {
+    if (!rejectingReportId) return
+    if (!VALID_REJECT_REASONS.includes(rejectReason as (typeof VALID_REJECT_REASONS)[number])) {
+      setBanner('Invalid reject reason')
+      return
+    }
+    try {
+      await callables.rejectReport({
+        reportId: rejectingReportId,
+        reason: rejectReason as (typeof VALID_REJECT_REASONS)[number],
+        idempotencyKey: crypto.randomUUID(),
+      })
+      setRejectingReportId(null)
+      setRejectReason('')
+    } catch (err: unknown) {
+      setBanner(err instanceof Error ? err.message : 'Reject failed')
+    }
   }
 
   const indexRef = useRef<number>(-1)
@@ -89,7 +101,13 @@ export function TriageQueuePage() {
         <h1>Triage · {municipalityId ?? 'N/A'}</h1>
         <button
           onClick={() => {
-            void signOut()
+            void (async () => {
+              try {
+                await signOut()
+              } catch (err: unknown) {
+                setBanner(err instanceof Error ? err.message : 'Sign out failed')
+              }
+            })()
           }}
         >
           Sign out
@@ -103,14 +121,17 @@ export function TriageQueuePage() {
         </button>
       </header>
       {banner && <div role="alert">{banner}</div>}
+      {handoffsError && <div role="alert">Handoffs error: {handoffsError}</div>}
       {pendingHandoffs.length > 0 && (
-        <div role="banner" aria-label="incoming handoff">
+        <div role="alert" aria-label="incoming handoff">
           {pendingHandoffs.length} pending handoff(s) awaiting acceptance.
           {pendingHandoffs.map((h) => (
             <button
               key={h.id}
+              disabled={acceptingHandoffId === h.id}
               onClick={() => {
                 void (async () => {
+                  setAcceptingHandoffId(h.id)
                   try {
                     await callables.acceptShiftHandoff({
                       handoffId: h.id,
@@ -118,6 +139,8 @@ export function TriageQueuePage() {
                     })
                   } catch (err: unknown) {
                     setBanner(err instanceof Error ? err.message : 'Accept failed')
+                  } finally {
+                    setAcceptingHandoffId(null)
                   }
                 })()
               }}
@@ -160,7 +183,40 @@ export function TriageQueuePage() {
             </>
           )}
         </div>
-        {selected && (
+        {rejectingReportId ? (
+          <div>
+            <h3>Reject Report</h3>
+            <label htmlFor="reject-reason">Reason</label>
+            <select
+              id="reject-reason"
+              value={rejectReason}
+              onChange={(e) => {
+                setRejectReason(e.target.value)
+              }}
+            >
+              <option value="">Select a reason...</option>
+              <option value="obviously_false">Obviously False</option>
+              <option value="duplicate">Duplicate</option>
+              <option value="test_submission">Test Submission</option>
+              <option value="insufficient_detail">Insufficient Detail</option>
+            </select>
+            <button
+              onClick={() => {
+                void confirmReject()
+              }}
+            >
+              Confirm Reject
+            </button>
+            <button
+              onClick={() => {
+                setRejectingReportId(null)
+                setRejectReason('')
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : selected ? (
           <ReportDetailPanel
             reportId={selected}
             onVerify={handleVerify}
@@ -168,7 +224,7 @@ export function TriageQueuePage() {
             onDispatch={setDispatchForReportId}
             onClose={setCloseForReportId}
           />
-        )}
+        ) : null}
       </section>
       {dispatchForReportId && (
         <DispatchModal

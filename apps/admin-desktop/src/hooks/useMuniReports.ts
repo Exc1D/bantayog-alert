@@ -9,11 +9,12 @@ import {
   type Timestamp,
 } from 'firebase/firestore'
 import { db } from '../app/firebase'
+import type { ReportStatus, Severity } from '@bantayog/shared-types'
 
 export interface MuniReportRow {
   reportId: string
-  status: string
-  severity: string
+  status: ReportStatus
+  severity: Severity
   reportType?: string
   duplicateClusterId?: string
   barangayId?: string
@@ -21,7 +22,7 @@ export interface MuniReportRow {
   municipalityLabel: string
 }
 
-const ACTIVE_STATUSES = ['new', 'awaiting_verify', 'verified', 'assigned'] as const
+const ACTIVE_STATUSES: ReportStatus[] = ['new', 'awaiting_verify', 'verified', 'assigned']
 
 export function useMuniReports(municipalityId: string | undefined) {
   const [limitCount, setLimitCount] = useState(100)
@@ -55,8 +56,8 @@ export function useMuniReports(municipalityId: string | undefined) {
           const data = d.data()
           const row: MuniReportRow = {
             reportId: d.id,
-            status: String(data.status),
-            severity: String(data.severity ?? 'medium'),
+            status: String(data.status) as ReportStatus,
+            severity: String(data.severity ?? 'medium') as Severity,
             createdAt: data.createdAt as Timestamp,
             municipalityLabel: String(data.municipalityLabel ?? ''),
           }
