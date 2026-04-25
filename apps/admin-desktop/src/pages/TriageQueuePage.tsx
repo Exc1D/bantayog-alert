@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
-import { useMuniReports } from '../hooks/useMuniReports'
+import { useMuniReports, type MuniReportRow } from '../hooks/useMuniReports'
 import { ReportDetailPanel } from './ReportDetailPanel'
 import { DispatchModal } from './DispatchModal'
 import { CloseReportModal } from './CloseReportModal'
@@ -10,7 +10,7 @@ export function TriageQueuePage() {
   const { claims, signOut } = useAuth()
   const municipalityId =
     typeof claims?.municipalityId === 'string' ? claims.municipalityId : undefined
-  const { rows, loading, error } = useMuniReports(municipalityId)
+  const { reports, hasMore, loadMore, loading, error } = useMuniReports(municipalityId)
   const [selected, setSelected] = useState<string | null>(null)
   const [dispatchForReportId, setDispatchForReportId] = useState<string | null>(null)
   const [closeForReportId, setCloseForReportId] = useState<string | null>(null)
@@ -63,22 +63,30 @@ export function TriageQueuePage() {
             <p>Loading…</p>
           ) : error ? (
             <p role="alert">Error: {error}</p>
-          ) : rows.length === 0 ? (
+          ) : reports.length === 0 ? (
             <p>No active reports.</p>
           ) : (
-            <ul>
-              {rows.map((r) => (
-                <li key={r.reportId}>
-                  <button
-                    onClick={() => {
-                      setSelected(r.reportId)
-                    }}
-                  >
-                    [{r.status}] {r.severityDerived} — {r.reportId.slice(0, 8)}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p>
+                Showing {reports.length}
+                {hasMore ? '+' : ''} reports
+              </p>
+              <ul>
+                {reports.map((r: MuniReportRow) => (
+                  <li key={r.reportId}>
+                    <button
+                      onClick={() => {
+                        setSelected(r.reportId)
+                      }}
+                    >
+                      [{r.status}] {r.severity}
+                      {r.duplicateClusterId ? ' [dup]' : ''} — {r.reportId.slice(0, 8)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {hasMore && <button onClick={loadMore}>Load More</button>}
+            </>
           )}
         </div>
         {selected && (
