@@ -79,9 +79,14 @@ export async function duplicateClusterTriggerCore(
 
   if (nearby.length === 0) return
 
-  const existingClusterFromNearby = nearby.find((d) => d.data().duplicateClusterId)?.data()
-    .duplicateClusterId as string | undefined
-  const clusterId = existingCluster ?? existingClusterFromNearby ?? crypto.randomUUID()
+  const normalizedExistingCluster =
+    typeof existingCluster === 'string' && existingCluster.length > 0 ? existingCluster : undefined
+
+  const existingClusterFromNearby = nearby
+    .map((d): unknown => d.data().duplicateClusterId)
+    .find((value): value is string => typeof value === 'string' && value.length > 0)
+
+  const clusterId = normalizedExistingCluster ?? existingClusterFromNearby ?? crypto.randomUUID()
 
   const needsUpdate = nearby.filter((d) => d.data().duplicateClusterId !== clusterId)
   const maxNearbyUpdates = existingCluster !== clusterId ? BATCH_CAP - 1 : BATCH_CAP
@@ -110,7 +115,7 @@ export async function duplicateClusterTriggerCore(
   log({
     severity: 'INFO',
     code: 'dup.cluster.assigned',
-    message: `Assigned ${String(toUpdate.length + 1)} docs to cluster ${String(clusterId)}`,
+    message: `Assigned ${String(toUpdate.length + 1)} docs to cluster ${clusterId}`,
   })
 }
 

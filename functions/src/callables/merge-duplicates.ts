@@ -95,16 +95,25 @@ export async function mergeDuplicatesCore(
           }
         })
 
+        // Validate all reports have municipalityId
+        const missingMunicipality = opsData.some((d) => !d.municipalityId)
+        if (missingMunicipality) {
+          return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
+        }
+
         // Municipality check
         const municipalities = new Set(opsData.map((d) => d.municipalityId))
         if (municipalities.size > 1) {
           return { success: false, errorCode: 'invalid-argument' } as MergeDuplicatesResult
         }
 
-        // Cluster check
-        const clusterIds = new Set(
-          opsData.filter((d) => d.duplicateClusterId).map((d) => d.duplicateClusterId),
-        )
+        // Cluster check — allow undefined (not yet clustered), but reject mixed presence
+        const hasClusterId = opsData.filter((d) => d.duplicateClusterId)
+        const missingClusterId = opsData.filter((d) => !d.duplicateClusterId)
+        if (hasClusterId.length > 0 && missingClusterId.length > 0) {
+          return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
+        }
+        const clusterIds = new Set(hasClusterId.map((d) => d.duplicateClusterId))
         if (clusterIds.size > 1) {
           return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
         }

@@ -199,6 +199,8 @@ describe('initiateShiftHandoff', () => {
       adminActor,
       'corr-4',
     )
+    expect(result1.success).toBe(true)
+
     const result2 = await initiateShiftHandoffCore(
       adminDb,
       {
@@ -208,6 +210,8 @@ describe('initiateShiftHandoff', () => {
       adminActor,
       'corr-5',
     )
+    expect(result2.success).toBe(true)
+
     if (result1.success && result2.success) {
       expect(result1.handoffId).toBe(result2.handoffId)
     }
@@ -373,12 +377,14 @@ describe('acceptShiftHandoff', () => {
         auth_time: Math.floor(ts / 1000),
       },
     }
-    await acceptShiftHandoffCore(
+    const result1 = await acceptShiftHandoffCore(
       adminDb,
       { handoffId: 'h3', idempotencyKey: uuid(7) },
       actor,
       'corr-8',
     )
+    expect(result1.success).toBe(true)
+
     const result2 = await acceptShiftHandoffCore(
       adminDb,
       { handoffId: 'h3', idempotencyKey: uuid(7) },

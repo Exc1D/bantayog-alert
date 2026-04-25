@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
+import { Timestamp, collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../app/firebase'
 
 export interface PendingHandoff {
   id: string
   fromUid: string
-  createdAt: number
+  createdAt: Timestamp
   notes: string
   activeIncidentIds: string[]
 }
@@ -41,7 +41,7 @@ export function usePendingHandoffs(municipalityId: string | undefined) {
           snap.docs.map((d) => ({
             id: d.id,
             fromUid: String(d.data().fromUid),
-            createdAt: (d.data().createdAt as number | undefined) ?? Date.now(),
+            createdAt: (d.data().createdAt as Timestamp | undefined) ?? Timestamp.now(),
             notes: String(d.data().notes ?? ''),
             activeIncidentIds: (d.data().activeIncidentIds ?? []) as string[],
           })),

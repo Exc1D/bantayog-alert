@@ -221,7 +221,7 @@ describe('mergeDuplicates', () => {
   it('is idempotent', async () => {
     await seedReport('r-primary')
     await seedReport('r-dup1')
-    await mergeDuplicatesCore(
+    const result1 = await mergeDuplicatesCore(
       adminDb,
       {
         primaryReportId: 'r-primary',
@@ -230,7 +230,7 @@ describe('mergeDuplicates', () => {
       },
       muniAdminActor,
     )
-    await mergeDuplicatesCore(
+    const result2 = await mergeDuplicatesCore(
       adminDb,
       {
         primaryReportId: 'r-primary',
@@ -239,6 +239,19 @@ describe('mergeDuplicates', () => {
       },
       muniAdminActor,
     )
+
+    // Assert first call succeeded
+    expect(result1.success).toBe(true)
+    if (result1.success) {
+      expect(result1.mergedCount).toBe(1)
+    }
+
+    // Assert replay returns same result
+    expect(result2.success).toBe(true)
+    if (result2.success) {
+      expect(result2.mergedCount).toBe(1)
+    }
+
     const dup1 = await adminDb.collection('reports').doc('r-dup1').get()
     expect(dup1.data()?.status).toBe('merged_as_duplicate')
   })
