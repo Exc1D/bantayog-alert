@@ -241,6 +241,7 @@ describe('Coordination Schemas', () => {
                 fulfilledByDispatchIds: [],
                 createdAt: 1713350400000,
                 expiresAt: 1713436800000,
+                schemaVersion: 1,
             };
             expect(() => agencyAssistanceRequestDocSchema.parse(validDoc)).not.toThrow();
         });
@@ -294,6 +295,7 @@ describe('Coordination Schemas', () => {
                 respondedBy: 'admin-1',
                 escalatedAt: 1713350402000,
                 expiresAt: 1713436800000,
+                schemaVersion: 1,
             };
             expect(() => agencyAssistanceRequestDocSchema.parse(validDoc)).not.toThrow();
         });

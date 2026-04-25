@@ -227,6 +227,47 @@ export async function acceptAgencyAssistanceCore(db, deps) {
     });
     return result;
 }
+export async function acceptAgencyAssistanceHandler(request) {
+    const actor = requireAuth(request, ['agency_admin']);
+    if (actor.claims.accountStatus !== 'active') {
+        throw new HttpsError('permission-denied', 'account is not active');
+    }
+    const parsed = z
+        .object({
+        requestId: z.string().min(1).max(128),
+        idempotencyKey: z.uuid(),
+    })
+        .strict()
+        .safeParse(request.data);
+    if (!parsed.success)
+        throw new HttpsError('invalid-argument', 'malformed payload');
+    try {
+        return await acceptAgencyAssistanceCore(adminDb, {
+            requestId: parsed.data.requestId,
+            idempotencyKey: parsed.data.idempotencyKey,
+            actor: {
+                uid: actor.uid,
+                claims: actor.claims,
+            },
+            now: Timestamp.now(),
+        });
+    }
+    catch (error) {
+        if (error instanceof BantayogError) {
+            throw bantayogErrorToHttps(error);
+        }
+        if (error instanceof IdempotencyMismatchError) {
+            throw new HttpsError('already-exists', 'duplicate request with different payload');
+        }
+        throw error;
+    }
+}
+export const acceptAgencyAssistance = onCall({
+    region: 'asia-southeast1',
+    enforceAppCheck: process.env.NODE_ENV === 'production',
+    timeoutSeconds: 10,
+    minInstances: 1,
+}, acceptAgencyAssistanceHandler);
 export async function declineAgencyAssistanceCore(db, deps) {
     const { requestId, reason, idempotencyKey, actor, now } = deps;
     const trimmedReason = reason.trim();

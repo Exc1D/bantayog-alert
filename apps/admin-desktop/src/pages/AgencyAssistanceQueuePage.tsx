@@ -33,17 +33,23 @@ export function AgencyAssistanceQueuePage() {
   const [banner, setBanner] = useState<string | null>(null)
 
   useEffect(() => {
-    setRequests([])
-    setError(null)
-    setDeclineState(null)
-    setBanner(null)
+    queueMicrotask(() => {
+      setRequests([])
+      setError(null)
+      setDeclineState(null)
+      setBanner(null)
+    })
 
     if (!agencyId) {
-      setLoading(false)
+      queueMicrotask(() => {
+        setLoading(false)
+      })
       return
     }
 
-    setLoading(true)
+    queueMicrotask(() => {
+      setLoading(true)
+    })
 
     const q = query(
       collection(db, 'agency_assistance_requests'),

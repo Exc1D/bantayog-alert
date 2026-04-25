@@ -46,8 +46,10 @@ export function CommandChannelPanel({ reportId, currentUserUid }: Props) {
   useEffect(() => {
     // Reset selection state when reportId changes
     initialSelectionDoneRef.current = false
-    setActiveThreadId(null)
-    setMessages([])
+    queueMicrotask(() => {
+      setActiveThreadId(null)
+      setMessages([])
+    })
     const q = query(collection(db, 'command_channel_threads'), where('reportId', '==', reportId))
     return onSnapshot(q, (snap) => {
       const found = snap.docs.map((d: QueryDocumentSnapshot) => ({

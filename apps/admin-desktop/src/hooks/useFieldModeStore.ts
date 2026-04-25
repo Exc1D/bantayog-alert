@@ -17,8 +17,10 @@ export function useFieldModeStore(uid: string): FieldModeState {
 
   useEffect(() => {
     if (!uid) {
-      setIsActive(false)
-      setExpiresAt(null)
+      queueMicrotask(() => {
+        setIsActive(false)
+        setExpiresAt(null)
+      })
       return
     }
     const ref = doc(getFirestore(), 'field_mode_sessions', uid)

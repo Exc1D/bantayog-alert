@@ -43,6 +43,12 @@ export interface AcceptAgencyAssistanceCoreDeps {
 export declare function acceptAgencyAssistanceCore(db: FirebaseFirestore.Firestore, deps: AcceptAgencyAssistanceCoreDeps): Promise<{
     status: 'accepted';
 }>;
+export declare function acceptAgencyAssistanceHandler(request: CallableRequest<unknown>): Promise<{
+    status: 'accepted';
+}>;
+export declare const acceptAgencyAssistance: import("firebase-functions/https").CallableFunction<unknown, Promise<{
+    status: "accepted";
+}>, unknown>;
 export interface DeclineAgencyAssistanceCoreDeps {
     requestId: string;
     reason: string;
