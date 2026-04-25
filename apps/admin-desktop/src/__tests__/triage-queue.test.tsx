@@ -28,7 +28,7 @@ vi.mock('../services/callables', () => ({
 }))
 
 vi.mock('../hooks/usePendingHandoffs', () => ({
-  usePendingHandoffs: () => [],
+  usePendingHandoffs: () => ({ handoffs: [], error: null }),
 }))
 
 vi.mock('../pages/ReportDetailPanel', () => ({

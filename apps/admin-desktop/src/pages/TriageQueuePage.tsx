@@ -6,6 +6,7 @@ import { DispatchModal } from './DispatchModal'
 import { CloseReportModal } from './CloseReportModal'
 import { callables } from '../services/callables'
 import { usePendingHandoffs } from '../hooks/usePendingHandoffs'
+import { MassAlertModal } from './MassAlertModal'
 
 export function TriageQueuePage() {
   const { claims, signOut } = useAuth()
@@ -22,6 +23,7 @@ export function TriageQueuePage() {
   const [rejectReason, setRejectReason] = useState('')
   const [rejectingReportId, setRejectingReportId] = useState<string | null>(null)
   const [acceptingHandoffId, setAcceptingHandoffId] = useState<string | null>(null)
+  const [massAlertOpen, setMassAlertOpen] = useState(false)
   const { handoffs: pendingHandoffs, error: handoffsError } = usePendingHandoffs(municipalityId)
   const dialogRef = useRef<HTMLDialogElement | null>(null)
 
@@ -76,7 +78,7 @@ export function TriageQueuePage() {
   }
 
   const indexRef = useRef<number>(-1)
-  const modalOpen = !!dispatchForReportId || !!closeForReportId || handoffModalOpen
+  const modalOpen = !!dispatchForReportId || !!closeForReportId || handoffModalOpen || massAlertOpen
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -84,6 +86,7 @@ export function TriageQueuePage() {
         setDispatchForReportId(null)
         setCloseForReportId(null)
         setHandoffModalOpen(false)
+        setMassAlertOpen(false)
         return
       }
       if (modalOpen) return
@@ -130,6 +133,13 @@ export function TriageQueuePage() {
           }}
         >
           Start Handoff
+        </button>
+        <button
+          onClick={() => {
+            setMassAlertOpen(true)
+          }}
+        >
+          Mass Alert
         </button>
       </header>
       {banner && <div role="alert">{banner}</div>}
@@ -309,6 +319,14 @@ export function TriageQueuePage() {
             Cancel
           </button>
         </dialog>
+      )}
+      {massAlertOpen && municipalityId && (
+        <MassAlertModal
+          municipalityId={municipalityId}
+          onClose={() => {
+            setMassAlertOpen(false)
+          }}
+        />
       )}
     </main>
   )

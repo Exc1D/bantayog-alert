@@ -14,6 +14,7 @@
   "dependencies": {
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-ui": "workspace:*",
+    "@bantayog/shared-validators": "workspace:*",
     "firebase": "^12.12.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

@@ -1,0 +1,136 @@
+import { useState } from 'react'
+import { detectEncoding } from '@bantayog/shared-validators'
+import { callables } from '../services/callables'
+
+interface ReachPlan {
+  route: 'direct' | 'ndrrmc_escalation'
+  fcmCount: number
+  smsCount: number
+  segmentCount: number
+  unicodeWarning: boolean
+}
+
+interface Props {
+  municipalityId: string
+  onClose: () => void
+}
+
+export function MassAlertModal({ municipalityId, onClose }: Props) {
+  const [message, setMessage] = useState('')
+  const [reachPlan, setReachPlan] = useState<ReachPlan | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const encoding = message ? detectEncoding(message).encoding : 'GSM-7'
+
+  const handlePreview = () => {
+    setLoading(true)
+    setError(null)
+    void (async () => {
+      try {
+        const plan = (await callables.massAlertReachPlanPreview({
+          targetScope: { municipalityIds: [municipalityId] },
+          message,
+        })) as ReachPlan
+        setReachPlan(plan)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Preview failed')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }
+
+  const handleSend = () => {
+    if (!reachPlan?.route || reachPlan.route !== 'direct') return
+    setLoading(true)
+    void (async () => {
+      try {
+        await callables.sendMassAlert({
+          reachPlan,
+          message,
+          targetScope: { municipalityIds: [municipalityId] },
+          idempotencyKey: crypto.randomUUID(),
+        })
+        onClose()
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Send failed')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }
+
+  const handleEscalate = () => {
+    setLoading(true)
+    void (async () => {
+      try {
+        await callables.requestMassAlertEscalation({
+          message,
+          targetScope: { municipalityIds: [municipalityId] },
+          evidencePack: { linkedReportIds: [] },
+          idempotencyKey: crypto.randomUUID(),
+        })
+        onClose()
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Escalation failed')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }
+
+  return (
+    <dialog open aria-label="Mass Alert" aria-modal="true">
+      <h3>Issue Mass Alert</h3>
+      <p style={{ fontSize: 12, color: '#c00' }}>
+        Every surface that references this flow must say &quot;Escalation submitted to NDRRMC&quot;
+        — never &quot;Alert sent via ECBS.&quot;
+      </p>
+      {error && <p role="alert">{error}</p>}
+      <label htmlFor="mass-alert-message">Message</label>
+      <textarea
+        id="mass-alert-message"
+        value={message}
+        onChange={(e) => {
+          setMessage(e.target.value)
+          setReachPlan(null)
+        }}
+        rows={4}
+      />
+      <p>
+        Encoding: <strong>{encoding}</strong>
+        {reachPlan?.unicodeWarning && <span> ⚠ UCS-2 (multi-byte)</span>}
+        {reachPlan && <> · Segments: {reachPlan.segmentCount}</>}
+      </p>
+      <button onClick={handlePreview} disabled={!message || loading}>
+        Preview Reach
+      </button>
+      {reachPlan && (
+        <div>
+          <p>
+            FCM recipients: {reachPlan.fcmCount} · SMS recipients: {reachPlan.smsCount}
+          </p>
+          {reachPlan.route === 'direct' ? (
+            <strong>Direct</strong>
+          ) : (
+            <strong>NDRRMC escalation required</strong>
+          )}
+        </div>
+      )}
+      <button
+        onClick={handleSend}
+        disabled={!reachPlan?.route || reachPlan.route !== 'direct' || loading}
+        aria-label="Send Alert"
+      >
+        Send Alert
+      </button>
+      {reachPlan?.route === 'ndrrmc_escalation' && (
+        <button onClick={handleEscalate} disabled={loading}>
+          Request NDRRMC Escalation
+        </button>
+      )}
+      <button onClick={onClose}>Cancel</button>
+    </dialog>
+  )
+}
