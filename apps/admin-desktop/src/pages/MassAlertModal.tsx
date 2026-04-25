@@ -28,10 +28,10 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
     setError(null)
     void (async () => {
       try {
-        const plan = (await callables.massAlertReachPlanPreview({
+        const plan = await callables.massAlertReachPlanPreview({
           targetScope: { municipalityIds: [municipalityId] },
           message,
-        })) as ReachPlan
+        })
         setReachPlan(plan)
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Preview failed')
@@ -42,7 +42,10 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
   }
 
   const handleSend = () => {
-    if (!reachPlan?.route || reachPlan.route !== 'direct') return
+    if (!reachPlan?.route || reachPlan.route !== 'direct') {
+      setError('Direct send is not available for this alert scope')
+      return
+    }
     setLoading(true)
     void (async () => {
       try {

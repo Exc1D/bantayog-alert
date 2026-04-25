@@ -78,7 +78,7 @@ export const callables = {
     httpsCallable<
       typeof payload,
       {
-        route: string
+        route: 'direct' | 'ndrrmc_escalation'
         fcmCount: number
         smsCount: number
         segmentCount: number
@@ -90,7 +90,7 @@ export const callables = {
     )(payload).then((r) => r.data),
   sendMassAlert: (payload: {
     reachPlan: {
-      route: string
+      route: 'direct' | 'ndrrmc_escalation'
       fcmCount: number
       smsCount: number
       segmentCount: number
