@@ -27,6 +27,7 @@ Before writing _any_ plan or code, run these tools in order to map the territory
 3. **Grep/Search** (`functionName`, `className`, or related patterns) to find duplicates or existing implementations.
 4. **Read** the 3-5 most relevant source files MAX (do not read the whole repo).
 5. **Glob** (`**/*test*`) + **Read** 1-2 relevant test files to learn existing contracts.
+6. Web search or context7
 
 _Output:_ "Recon complete: Found [X, Y, Z]. Missing: [A]."
 
@@ -52,7 +53,7 @@ _Note: Do not proceed if "Risks" includes "unsure about API" or "missing context
 
 ## 4. THE DEV LOOP (Do not skip steps)
 
-1. **EXPLORE:** Run the reconnaissance tools.
+1. **EXPLORE:** Run the reconnaissance tools. Search the web, read the docs (context7)
 2. **PLAN:** Output the planning block.
 3. **TEST:** If tests exist, write a failing test first. If no tests exist, write a characterization test OR skip with explicit justification in the plan.
 4. **IMPLEMENT:** Write the smallest diff that works.
