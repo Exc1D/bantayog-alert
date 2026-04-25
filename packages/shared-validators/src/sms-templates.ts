@@ -45,8 +45,8 @@ const TEMPLATES: Record<SmsPurpose, Record<SmsLocale, string>> = {
     en: 'Your report has been received. Our team will review and follow up with you. Please stay safe.',
   },
   mass_alert: {
-    tl: 'ALERTO: {municipalityName} — {body}',
-    en: 'ALERT: {municipalityName} — {body}',
+    tl: 'ALERTO: {municipalityName} - {body}',
+    en: 'ALERT: {municipalityName} - {body}',
   },
 }
 

@@ -384,7 +384,7 @@ service cloud.firestore {
       allow create: if isActivePrivileged()
                     && (isSuperadmin() || (isMuniAdmin() && request.resource.data.requestedByMunicipality == myMunicipality()))
                     && allowedCreateStatus();
-      allow update: if isSuperadmin();
+      allow update: if isSuperadmin() && isActivePrivileged();
       allow delete: if false;
     }
 
