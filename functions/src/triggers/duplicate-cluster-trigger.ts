@@ -74,6 +74,15 @@ export async function duplicateClusterTriggerCore(
     .filter((d) => d.data().duplicateClusterId !== clusterId)
     .slice(0, BATCH_CAP - 1)
 
+  if (nearby.length > BATCH_CAP) {
+    log({
+      severity: 'WARNING',
+      code: 'dup.cluster.truncated',
+      message: `Truncated duplicate cluster from ${String(nearby.length)} to ${String(BATCH_CAP)} docs`,
+      data: { reportId: snap.id, nearbyCount: nearby.length, batchCap: BATCH_CAP },
+    })
+  }
+
   if (toUpdate.length === 0 && existingCluster === clusterId) return
 
   const batch = db.batch()
@@ -97,6 +106,17 @@ export const duplicateClusterTrigger = onDocumentCreated(
   async (event) => {
     const snap = event.data
     if (!snap) return
-    await duplicateClusterTriggerCore(adminDb, snap)
+    try {
+      await duplicateClusterTriggerCore(adminDb, snap)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      log({
+        severity: 'ERROR',
+        code: 'dup.cluster.trigger_failed',
+        message: `Duplicate cluster trigger failed for ${event.params.reportId}: ${message}`,
+        data: { reportId: event.params.reportId, error: message },
+      })
+      throw err
+    }
   },
 )

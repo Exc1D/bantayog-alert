@@ -29,7 +29,7 @@ export async function adminOperationsSweepCore(
   const BATCH_SIZE = 50
   for (let i = 0; i < toEscalate.length; i += BATCH_SIZE) {
     const batch = toEscalate.slice(i, i + BATCH_SIZE)
-    await Promise.all(
+    const results = await Promise.allSettled(
       batch.map(async (d) => {
         await d.ref.update({ escalatedAt: deps.now.toMillis() })
         log({
@@ -39,6 +39,18 @@ export async function adminOperationsSweepCore(
         })
       }),
     )
+    results.forEach((result, idx) => {
+      if (result.status === 'rejected') {
+        const doc = batch[idx]
+        if (!doc) return
+        log({
+          severity: 'ERROR',
+          code: 'sweep.agency.escalate_failed',
+          message: `Failed to escalate agency request ${doc.id}: ${String(result.reason)}`,
+          data: { docId: doc.id, error: String(result.reason) },
+        })
+      }
+    })
   }
 
   // Shift handoff escalation: pending > 30min with no escalatedAt
@@ -52,7 +64,7 @@ export async function adminOperationsSweepCore(
   const toEscalateHandoffs = pendingHandoffs.docs
   for (let i = 0; i < toEscalateHandoffs.length; i += BATCH_SIZE) {
     const batch = toEscalateHandoffs.slice(i, i + BATCH_SIZE)
-    await Promise.all(
+    const results = await Promise.allSettled(
       batch.map(async (d) => {
         await d.ref.update({ escalatedAt: deps.now.toMillis() })
         log({
@@ -62,12 +74,35 @@ export async function adminOperationsSweepCore(
         })
       }),
     )
+    results.forEach((result, idx) => {
+      if (result.status === 'rejected') {
+        const doc = batch[idx]
+        if (!doc) return
+        log({
+          severity: 'ERROR',
+          code: 'sweep.handoff.escalate_failed',
+          message: `Failed to escalate handoff ${doc.id}: ${String(result.reason)}`,
+          data: { docId: doc.id, error: String(result.reason) },
+        })
+      }
+    })
   }
 }
 
 export const adminOperationsSweep = onSchedule(
   { schedule: 'every 10 minutes', region: 'asia-southeast1', timeoutSeconds: 120 },
   async () => {
-    await adminOperationsSweepCore(adminDb, { now: Timestamp.now() })
+    try {
+      await adminOperationsSweepCore(adminDb, { now: Timestamp.now() })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      log({
+        severity: 'ERROR',
+        code: 'sweep.failed',
+        message: `Admin operations sweep failed: ${message}`,
+        data: { error: message },
+      })
+      throw err
+    }
   },
 )
