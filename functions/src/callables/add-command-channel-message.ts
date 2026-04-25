@@ -84,7 +84,7 @@ export async function addCommandChannelMessageCore(
 export const addCommandChannelMessage = onCall(
   { region: 'asia-southeast1', enforceAppCheck: process.env.NODE_ENV === 'production' },
   async (req: CallableRequest) => {
-    const actor = requireAuth(req)
+    const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin'])
     const input = requestSchema.parse(req.data)
     try {
       return await addCommandChannelMessageCore(adminDb, {

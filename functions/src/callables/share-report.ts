@@ -54,13 +54,11 @@ export async function shareReportCore(
   if (!opsSnap.exists) throw new HttpsError('not-found', 'report not found')
   const ops = opsSnap.data() as OpsDoc
 
-  if (isMuniAdmin && municipalityId !== undefined && ops.municipalityId !== municipalityId) {
+  if (isMuniAdmin && (municipalityId === undefined || ops.municipalityId !== municipalityId)) {
     throw new HttpsError('permission-denied', 'report belongs to a different municipality')
   }
 
   const sharingRef = db.collection('report_sharing').doc(reportId)
-  const threadRef = db.collection('command_channel_threads').doc()
-  const eventRef = sharingRef.collection('events').doc()
   const opsRef = db.collection('report_ops').doc(reportId)
 
   const { result } = await withIdempotency(
@@ -71,25 +69,27 @@ export async function shareReportCore(
       now: () => nowMs,
     },
     async () => {
-      const existingSnap = await db.collection('report_sharing').doc(reportId).get()
-      const existingData = existingSnap.data()
-      const existing = existingData?.sharedWith as string[] | undefined
-      if (existing?.includes(targetMunicipalityId)) {
-        return { alreadyShared: true }
-      }
+      return db.runTransaction(async (tx) => {
+        const existingSnap = await tx.get(sharingRef)
+        const existingData = existingSnap.data()
+        const existing = existingData?.sharedWith as string[] | undefined
+        if (existing?.includes(targetMunicipalityId)) {
+          return { alreadyShared: true }
+        }
 
-      const mergedSharedWith = existing
-        ? [...new Set([...existing, targetMunicipalityId])]
-        : [targetMunicipalityId]
+        const mergedSharedWith = existing
+          ? [...new Set([...existing, targetMunicipalityId])]
+          : [targetMunicipalityId]
 
-      const opsReadSnap = await opsRef.get()
-      const opsData = opsReadSnap.data() as OpsDoc | undefined
-      const currentScope = opsData?.visibility?.scope ?? 'municipality'
-      const currentShared = opsData?.visibility?.sharedWith ?? []
-      void currentScope
+        const opsReadSnap = await tx.get(opsRef)
+        const opsData = opsReadSnap.data() as OpsDoc | undefined
+        const currentScope = opsData?.visibility?.scope ?? 'municipality'
+        const currentShared = opsData?.visibility?.sharedWith ?? []
+        void currentScope
 
-      // eslint-disable-next-line @typescript-eslint/require-await
-      await db.runTransaction(async (tx) => {
+        const threadRef = db.collection('command_channel_threads').doc()
+        const eventRef = sharingRef.collection('events').doc()
+
         tx.set(
           sharingRef,
           {
@@ -125,8 +125,8 @@ export async function shareReportCore(
           'visibility.sharedWith': [...new Set([...currentShared, targetMunicipalityId])],
           updatedAt: nowMs,
         })
+        return { alreadyShared: false }
       })
-      return { alreadyShared: false }
     },
   )
   void result
@@ -147,7 +147,18 @@ export const shareReport = onCall(
         now: Timestamp.now(),
       })
     } catch (err: unknown) {
-      throw bantayogErrorToHttps(err as Parameters<typeof bantayogErrorToHttps>[0])
+      if (err instanceof HttpsError) {
+        throw err
+      }
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        typeof (err as Record<string, unknown>).code === 'string'
+      ) {
+        // BantayogError — map to HttpsError
+        throw bantayogErrorToHttps(err as Parameters<typeof bantayogErrorToHttps>[0])
+      }
+      throw err
     }
   },
 )

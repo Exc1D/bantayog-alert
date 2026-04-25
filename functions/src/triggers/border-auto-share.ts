@@ -46,16 +46,10 @@ export async function borderAutoShareCore(
   const boundaries = getMunicipalityBoundaries()
   const ownerMuniId = opsData.municipalityId as string
 
-  // Get current sharing state to avoid re-sharing
-  const existingSnap = await db.collection('report_sharing').doc(reportId).get()
-  const existingData = existingSnap.data()
-  const alreadySharedWith = (existingData?.sharedWith as string[] | undefined) ?? []
-
   const nowMs = Date.now()
   for (const feature of boundaries.features) {
     const targetMuniId = feature.properties?.municipalityId as string
     if (targetMuniId === ownerMuniId) continue
-    if (alreadySharedWith.includes(targetMuniId)) continue
 
     const buffered = turf.buffer(feature as Feature<Polygon>, 0.5, {
       units: 'kilometers',
@@ -68,14 +62,19 @@ export async function borderAutoShareCore(
     const threadRef = db.collection('command_channel_threads').doc()
     const opsRef = db.collection('report_ops').doc(reportId)
 
-    // eslint-disable-next-line @typescript-eslint/require-await
     await db.runTransaction(async (tx) => {
+      // Re-read sharing doc inside transaction to avoid race conditions
+      const existingSnap = await tx.get(sharingRef)
+      const existingData = existingSnap.data()
+      const currentShared = (existingData?.sharedWith as string[] | undefined) ?? []
+      if (currentShared.includes(targetMuniId)) return // already shared
+
       tx.set(
         sharingRef,
         {
           ownerMunicipalityId: ownerMuniId,
           reportId,
-          sharedWith: [...new Set([...alreadySharedWith, targetMuniId])],
+          sharedWith: [...new Set([...currentShared, targetMuniId])],
           updatedAt: nowMs,
           schemaVersion: 1,
         },
@@ -93,7 +92,10 @@ export async function borderAutoShareCore(
         reportId,
         threadType: 'border_share',
         subject: `Auto-shared with ${targetMuniId} (boundary proximity)`,
-        participantUids: {},
+        participantUids: {
+          [ownerMuniId]: true,
+          [targetMuniId]: true,
+        },
         createdBy: 'system',
         createdAt: nowMs,
         updatedAt: nowMs,
@@ -101,7 +103,7 @@ export async function borderAutoShareCore(
       })
       tx.update(opsRef, {
         'visibility.scope': 'shared',
-        'visibility.sharedWith': [...new Set([...alreadySharedWith, targetMuniId])],
+        'visibility.sharedWith': [...new Set([...currentShared, targetMuniId])],
         updatedAt: nowMs,
       })
     })
@@ -123,8 +125,12 @@ export const borderAutoShareTrigger = onDocumentCreated(
         BOUNDARY_GEOHASH_SET?: ReadonlySet<string>
       }
       boundaryGeohashSet = mod.BOUNDARY_GEOHASH_SET ?? new Set()
-    } catch {
-      // shared-data not configured yet — skip auto-sharing
+    } catch (err) {
+      log({
+        severity: 'WARNING',
+        code: 'border.shared-data-missing',
+        message: `Failed to import @bantayog/shared-data: ${err instanceof Error ? err.message : String(err)}`,
+      })
     }
     await borderAutoShareCore(adminDb, {
       reportId: event.params.reportId,

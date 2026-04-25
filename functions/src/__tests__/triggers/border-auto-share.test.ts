@@ -6,12 +6,13 @@ import ngeohash from 'ngeohash'
 import type { FeatureCollection } from 'geojson'
 
 const ts = 1713350400000
-// Use a coordinate known to be near the Daet-Mercedes boundary
-// Daet: roughly 14.12-14.22°N, 122.90-123.00°E
-// Mercedes: roughly 14.10-14.17°N, 122.85-122.95°E
-// A point near the border: ~14.175°N, 122.935°E
-const NEAR_BOUNDARY_LAT = 14.175
-const NEAR_BOUNDARY_LNG = 122.935
+// Use a coordinate guaranteed to be within 500m of the Daet-Mercedes boundary
+// Daet polygon: [122.9, 14.12] to [122.95, 14.22]
+// Mercedes polygon: [122.85, 14.1] to [122.9, 14.17]
+// Boundary is at ~122.9°E; 0.002° ≈ 214m at this latitude
+// A point ~214m inside Mercedes: 14.15°N, 122.898°E
+const NEAR_BOUNDARY_LAT = 14.15
+const NEAR_BOUNDARY_LNG = 122.898
 const NEAR_BOUNDARY_GEOHASH = ngeohash.encode(NEAR_BOUNDARY_LAT, NEAR_BOUNDARY_LNG, 6)
 
 const FAR_FROM_BOUNDARY_LAT = 14.2
@@ -181,12 +182,9 @@ describe('borderAutoShareTrigger', () => {
       boundaryGeohashSet: new Set<string>([NEAR_BOUNDARY_GEOHASH]),
     })
     const snap = await adminDb.collection('report_sharing').doc('r1').get()
-    if (snap.exists) {
-      // If the test coordinate is actually near the boundary, sharing should have occurred
-      const events = await adminDb.collection('report_sharing').doc('r1').collection('events').get()
-      expect(events.docs.some((d) => d.data().source === 'auto')).toBe(true)
-    }
-    // If snap doesn't exist, the coordinate wasn't actually within 500m — acceptable for unit test
+    expect(snap.exists).toBe(true)
+    const events = await adminDb.collection('report_sharing').doc('r1').collection('events').get()
+    expect(events.docs.some((d) => d.data().source === 'auto')).toBe(true)
   })
 
   it('does not re-trigger if report already shared with that municipality', async () => {

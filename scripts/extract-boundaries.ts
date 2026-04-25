@@ -56,6 +56,8 @@ interface OverpassElement {
   tags?: Record<string, string>
   geometry?: Array<{ lat: number; lng: number }>
   members?: Array<{ type: string; ref: number; role: string }>
+  lat?: number
+  lon?: number
 }
 
 interface OverpassResponse {
@@ -131,7 +133,7 @@ async function main() {
     relation(area.cn)["admin_level"="6"]["boundary"="administrative"];
     out body;
     >;
-    out skel qt;
+    out geom qt;
   `
   const muniRelationData = await overpassQuery(muniRelationQuery)
   const muniRelationMap = new Map<string, OverpassElement>()
@@ -154,7 +156,7 @@ async function main() {
   const muniNodeData = await overpassQuery(muniNodeQuery)
   const muniNodeMap = new Map<string, OverpassElement>()
   for (const el of muniNodeData.elements) {
-    if (el.type === 'node' && el.geometry) {
+    if (el.type === 'node' && typeof el.lat === 'number' && typeof el.lon === 'number') {
       const name = el.tags?.['name']
       if (name) muniNodeMap.set(name, el)
     }
@@ -178,15 +180,15 @@ async function main() {
       } else {
         console.warn(`SKIP: Could not build polygon for "${name}", falling back to centroid`)
         const node = muniNodeMap.get(name)
-        if (node?.geometry) {
-          muniCentroids.push({ id, name, coord: [node.geometry[0]!.lng, node.geometry[0]!.lat] })
+        if (node && typeof node.lon === 'number' && typeof node.lat === 'number') {
+          muniCentroids.push({ id, name, coord: [node.lon, node.lat] })
         }
       }
     } else {
       // No boundary polygon — use centroid node
       const node = muniNodeMap.get(name)
-      if (node?.geometry) {
-        muniCentroids.push({ id, name, coord: [node.geometry[0]!.lng, node.geometry[0]!.lat] })
+      if (node && typeof node.lon === 'number' && typeof node.lat === 'number') {
+        muniCentroids.push({ id, name, coord: [node.lon, node.lat] })
       } else {
         console.warn(`SKIP: No boundary or centroid for "${name}"`)
       }
@@ -205,6 +207,13 @@ async function main() {
     }
   }
 
+  if (muniFeatures.length !== 12) {
+    console.error(
+      `ERROR: Expected 12 municipalities, got ${muniFeatures.length}. Check MUNICIPALITY_NAME_MAP and Overpass data.`,
+    )
+    process.exit(1)
+  }
+
   const muniCollection: FeatureCollection = {
     type: 'FeatureCollection',
     features: muniFeatures,
@@ -215,13 +224,6 @@ async function main() {
   )
   console.log(`✓ Wrote ${muniFeatures.length} municipality features`)
 
-  if (muniFeatures.length !== 12) {
-    console.error(
-      `ERROR: Expected 12 municipalities, got ${muniFeatures.length}. Check MUNICIPALITY_NAME_MAP and Overpass data.`,
-    )
-    process.exit(1)
-  }
-
   // Phase 4: Query barangay boundaries (admin_level=10 in PH)
   const barangayQuery = `
     [out:json][timeout:180];
@@ -229,7 +231,7 @@ async function main() {
     relation(area.cn)["admin_level"="10"]["boundary"="administrative"];
     out body;
     >;
-    out skel qt;
+    out geom qt;
   `
   const barangayData = await overpassQuery(barangayQuery)
 

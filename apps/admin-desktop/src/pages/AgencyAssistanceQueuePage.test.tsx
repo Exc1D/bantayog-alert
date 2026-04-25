@@ -3,10 +3,11 @@ import '@testing-library/jest-dom'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AgencyAssistanceQueuePage } from './AgencyAssistanceQueuePage.js'
 
-const { mockOnSnapshot, mockCallable } = vi.hoisted(() => {
+const { mockOnSnapshot, mockCallable, mockHttpsCallable } = vi.hoisted(() => {
   return {
     mockOnSnapshot: vi.fn(),
     mockCallable: vi.fn(),
+    mockHttpsCallable: vi.fn(() => mockCallable),
   }
 })
 
@@ -19,7 +20,7 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 vi.mock('firebase/functions', () => ({
-  httpsCallable: vi.fn(() => mockCallable),
+  httpsCallable: mockHttpsCallable,
   getFunctions: vi.fn(),
 }))
 
@@ -77,7 +78,12 @@ describe('AgencyAssistanceQueuePage', () => {
     const acceptButton = screen.getByRole('button', { name: /^Accept$/ })
     fireEvent.click(acceptButton)
     await waitFor(() => {
-      expect(mockCallable).toHaveBeenCalled()
+      expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'acceptAgencyAssistance')
+      expect(mockCallable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: 'ar1',
+        }),
+      )
     })
   })
 
@@ -97,6 +103,7 @@ describe('AgencyAssistanceQueuePage', () => {
     fireEvent.change(screen.getByPlaceholderText(/reason/i), { target: { value: 'Too far' } })
     fireEvent.click(submitBtn)
     await waitFor(() => {
+      expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'declineAgencyAssistance')
       expect(mockCallable).toHaveBeenCalledWith(
         expect.objectContaining({
           requestId: 'ar1',

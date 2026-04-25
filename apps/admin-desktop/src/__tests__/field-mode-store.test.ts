@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useFieldModeStore } from '../hooks/useFieldModeStore.js'
 
-const { mockOnSnapshot, mockHttpsCallable } = vi.hoisted(() => ({
-  mockOnSnapshot: vi.fn(),
-  mockHttpsCallable: vi.fn(),
-}))
+const { mockOnSnapshot, mockHttpsCallable, mockHttpsCallableFn } = vi.hoisted(() => {
+  const httpsCallableFn = vi.fn()
+  return {
+    mockOnSnapshot: vi.fn(),
+    mockHttpsCallable: vi.fn(() => httpsCallableFn),
+    mockHttpsCallableFn: httpsCallableFn,
+  }
+})
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
@@ -14,7 +18,7 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 vi.mock('firebase/functions', () => ({
-  httpsCallable: vi.fn(() => mockHttpsCallable),
+  httpsCallable: mockHttpsCallable,
   getFunctions: vi.fn(() => ({})),
 }))
 
@@ -22,8 +26,9 @@ const ts = Date.now()
 
 beforeEach(() => {
   mockOnSnapshot.mockReset()
-  mockHttpsCallable.mockReset()
-  mockHttpsCallable.mockResolvedValue({ data: { status: 'exited' } })
+  mockHttpsCallable.mockClear()
+  mockHttpsCallableFn.mockReset()
+  mockHttpsCallableFn.mockResolvedValue({ data: { status: 'exited' } })
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -65,6 +70,6 @@ describe('useFieldModeStore', () => {
     act(() => {
       vi.advanceTimersByTime(65000)
     })
-    expect(mockHttpsCallable).toHaveBeenCalled()
+    expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'exitFieldMode')
   })
 })

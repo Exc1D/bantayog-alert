@@ -73,9 +73,19 @@ export const exitFieldMode = onCall({
     enforceAppCheck: process.env.NODE_ENV === 'production',
 }, async (req) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin']);
+    // Reconstruct actor with same shape as enterFieldMode for consistency
+    const shapedActor = {
+        uid: actor.uid,
+        claims: {
+            role: actor.claims.role,
+            accountStatus: actor.claims.accountStatus,
+            municipalityId: actor.claims.municipalityId,
+            auth_time: 0, // exitFieldModeCore doesn't use auth_time
+        },
+    };
     try {
         return await exitFieldModeCore(adminDb, {
-            actor,
+            actor: shapedActor,
             now: Timestamp.now(),
         });
     }

@@ -64,12 +64,11 @@ export async function requestAgencyAssistanceCore(
   const priority = deps.priority ?? 'normal'
 
   // Validate agencyId against allowed requestType values before entering transaction.
-  // agencyId is uppercased and cast directly to requestType — crash or bad data
-  // results if an arbitrary string like "mdrr" or "mmda" is passed.
-  const agencyLabel = agencyId.toUpperCase()
+  // Normalize once and use canonical value everywhere to avoid case mismatch bugs.
+  const canonicalAgencyId = agencyId.trim().toUpperCase()
   if (
     !VALID_AGENCY_ASSISTANCE_TYPES.has(
-      agencyLabel as typeof VALID_AGENCY_ASSISTANCE_TYPES extends Set<infer T> ? T : never,
+      canonicalAgencyId as typeof VALID_AGENCY_ASSISTANCE_TYPES extends Set<infer T> ? T : never,
     )
   ) {
     throw new BantayogError(
@@ -107,7 +106,7 @@ export async function requestAgencyAssistanceCore(
       const agencyAdminsSnap = await db
         .collection('users')
         .where('role', '==', 'agency_admin')
-        .where('agencyId', '==', agencyId)
+        .where('agencyId', '==', canonicalAgencyId)
         .where('accountStatus', '==', 'active')
         .get()
       const agencyAdminUids = agencyAdminsSnap.docs.map((d) => d.id)
@@ -172,25 +171,23 @@ export async function requestAgencyAssistanceCore(
           // for display only and will be resolved when a municipal names collection
           // is added in a later phase.
           requestedByMunicipality: actor.claims.municipalityId ?? 'unknown',
-          targetAgencyId: agencyId,
-          requestType: agencyLabel as AgencyAssistanceRequestDoc['requestType'],
+          targetAgencyId: canonicalAgencyId,
+          requestType: canonicalAgencyId as AgencyAssistanceRequestDoc['requestType'],
           message,
           priority,
           status: 'pending',
           fulfilledByDispatchIds: [],
           createdAt: nowMs,
           expiresAt,
-        } satisfies Omit<
-          AgencyAssistanceRequestDoc,
-          'declinedReason' | 'respondedAt' | 'respondedBy' | 'escalatedAt' | 'schemaVersion'
-        >)
+          schemaVersion: 1,
+        } satisfies AgencyAssistanceRequestDoc)
 
         tx.set(threadRef, {
           threadId,
           reportId,
           threadType: 'agency_assistance' as const,
           assistanceRequestId: requestId,
-          subject: `Agency Assistance Request — ${agencyLabel}`,
+          subject: `Agency Assistance Request — ${canonicalAgencyId}`,
           // participantUids includes the municipal admin who requested + all active
           // agency admins for the target agency (queried before the transaction).
           participantUids: {

@@ -37,7 +37,9 @@ export async function dispatchResponderCore(db, rtdb, deps) {
         payload: idempotentPayload,
         now: () => deps.now.toMillis(),
     }, async () => {
-        if (!deps.actor.claims.municipalityId) {
+        if (!deps.actor.claims.municipalityId &&
+            !(Array.isArray(deps.actor.claims.permittedMunicipalityIds) &&
+                deps.actor.claims.permittedMunicipalityIds.length > 0)) {
             throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'municipalityId is required');
         }
         return db.runTransaction(async (tx) => {
@@ -58,7 +60,7 @@ export async function dispatchResponderCore(db, rtdb, deps) {
                 .toLowerCase()
                 .replace(/[^a-z0-9]/g, '')
                 .slice(0, 8);
-            const salt = process.env.SMS_MSISDN_HASH_SALT;
+            const salt = SMS_MSISDN_HASH_SALT.value();
             const smsPayload = salt
                 ? await buildSmsPayload({
                     db,

@@ -76,6 +76,11 @@ const daetAdmin = {
   claims: { role: 'municipal_admin', accountStatus: 'active', municipalityId: 'daet' },
 }
 
+const daetAdminMissingMuniId = {
+  uid: 'daet-admin-missing',
+  claims: { role: 'municipal_admin', accountStatus: 'active' },
+}
+
 describe('shareReport', () => {
   it('rejects caller from a different municipality than the report', async () => {
     await seedReportOps('r1', 'mercedes')
@@ -84,6 +89,19 @@ describe('shareReport', () => {
         reportId: 'r1',
         targetMunicipalityId: 'labo',
         actor: daetAdmin,
+        idempotencyKey: crypto.randomUUID(),
+        now: Timestamp.fromMillis(ts),
+      }),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
+  })
+
+  it('rejects municipal_admin missing municipalityId claim', async () => {
+    await seedReportOps('r1', 'mercedes')
+    await expect(
+      shareReportCore(adminDb, {
+        reportId: 'r1',
+        targetMunicipalityId: 'labo',
+        actor: daetAdminMissingMuniId,
         idempotencyKey: crypto.randomUUID(),
         now: Timestamp.fromMillis(ts),
       }),

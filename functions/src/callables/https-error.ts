@@ -36,12 +36,12 @@ export function bantayogErrorToHttps(err: BantayogError): HttpsError {
 
 export function requireAuth(
   request: { auth?: { uid: string; token: Record<string, unknown> } | null },
-  allowedRoles?: string[],
+  allowedRoles: string[],
 ): { uid: string; claims: Record<string, unknown> } {
   if (!request.auth) throw new HttpsError('unauthenticated', 'sign-in required')
   const claims = request.auth.token
   const role = claims.role
-  if (allowedRoles && (typeof role !== 'string' || !allowedRoles.includes(role))) {
+  if (typeof role !== 'string' || !allowedRoles.includes(role)) {
     throw new HttpsError('permission-denied', `role ${String(role)} is not allowed`)
   }
   return { uid: request.auth.uid, claims }

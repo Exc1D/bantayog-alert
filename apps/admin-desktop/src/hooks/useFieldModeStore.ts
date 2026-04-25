@@ -15,7 +15,16 @@ export function useFieldModeStore(uid: string): FieldModeState {
   const exitFnRef = useRef<(() => Promise<void>) | null>(null)
 
   useEffect(() => {
-    if (!uid) return
+    if (!uid) {
+      // Defer state reset to avoid react-hooks/set-state-in-effect
+      const id = setTimeout(() => {
+        setIsActive(false)
+        setExpiresAt(null)
+      }, 0)
+      return () => {
+        clearTimeout(id)
+      }
+    }
     const ref = doc(getFirestore(), 'field_mode_sessions', uid)
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
@@ -44,8 +53,11 @@ export function useFieldModeStore(uid: string): FieldModeState {
   // Check expiry every 60 seconds; exit if expired
   useEffect(() => {
     if (!isActive || expiresAt === null) return
+    let exitTriggered = false
     const id = setInterval(() => {
-      if (Date.now() > expiresAt) {
+      if (!exitTriggered && Date.now() >= expiresAt) {
+        exitTriggered = true
+        clearInterval(id)
         void exitFnRef.current?.()
       }
     }, 60_000)

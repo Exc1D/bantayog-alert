@@ -34,8 +34,15 @@ export function AgencyAssistanceQueuePage() {
 
   useEffect(() => {
     if (!agencyId) {
-      // No agencyId means user is not an agency admin - nothing to load
-      return
+      // Defer state reset to avoid react-hooks/set-state-in-effect
+      const id = setTimeout(() => {
+        setRequests([])
+        setError(null)
+        setLoading(false)
+      }, 0)
+      return () => {
+        clearTimeout(id)
+      }
     }
 
     const q = query(

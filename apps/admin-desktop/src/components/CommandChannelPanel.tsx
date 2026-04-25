@@ -1,5 +1,5 @@
 // apps/admin-desktop/src/components/CommandChannelPanel.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   collection,
   query,
@@ -11,6 +11,9 @@ import {
   getFirestore,
 } from 'firebase/firestore'
 import { httpsCallable, getFunctions } from 'firebase/functions'
+
+const db = getFirestore()
+const functions = getFunctions()
 
 interface Thread {
   id: string
@@ -35,10 +38,10 @@ interface Props {
 export function CommandChannelPanel({ reportId, currentUserUid }: Props) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
+  const initialSelectionDoneRef = useRef(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const db = getFirestore()
 
   useEffect(() => {
     const q = query(collection(db, 'command_channel_threads'), where('reportId', '==', reportId))
@@ -48,14 +51,15 @@ export function CommandChannelPanel({ reportId, currentUserUid }: Props) {
         ...(d.data() as Omit<Thread, 'id'>),
       }))
       setThreads(found)
-      if (found.length > 0 && !activeThreadId) {
+      if (found.length > 0 && !initialSelectionDoneRef.current) {
         const first = found[0]
         if (first) {
           setActiveThreadId(first.id)
+          initialSelectionDoneRef.current = true
         }
       }
     })
-  }, [reportId, db, activeThreadId])
+  }, [reportId])
 
   useEffect(() => {
     if (!activeThreadId) return
@@ -72,13 +76,13 @@ export function CommandChannelPanel({ reportId, currentUserUid }: Props) {
           .reverse(),
       )
     })
-  }, [activeThreadId, db])
+  }, [activeThreadId])
 
   async function handleSend() {
     if (!activeThreadId || !input.trim()) return
     setError(null)
     try {
-      const fn = httpsCallable(getFunctions(), 'addCommandChannelMessage')
+      const fn = httpsCallable(functions, 'addCommandChannelMessage')
       await fn({
         threadId: activeThreadId,
         body: input.trim(),

@@ -22,16 +22,23 @@ export async function adminOperationsSweepCore(
     .collection('agency_assistance_requests')
     .where('status', '==', 'pending')
     .where('createdAt', '<', cutoff)
+    .where('escalatedAt', '==', null)
     .get()
 
-  const toEscalate = pendingAssistance.docs.filter((d) => !d.data().escalatedAt)
-  for (const d of toEscalate) {
-    await d.ref.update({ escalatedAt: deps.now.toMillis() })
-    log({
-      severity: 'INFO',
-      code: 'sweep.agency.escalated',
-      message: `Escalated agency request ${d.id}`,
-    })
+  const toEscalate = pendingAssistance.docs
+  const BATCH_SIZE = 50
+  for (let i = 0; i < toEscalate.length; i += BATCH_SIZE) {
+    const batch = toEscalate.slice(i, i + BATCH_SIZE)
+    await Promise.all(
+      batch.map(async (d) => {
+        await d.ref.update({ escalatedAt: deps.now.toMillis() })
+        log({
+          severity: 'INFO',
+          code: 'sweep.agency.escalated',
+          message: `Escalated agency request ${d.id}`,
+        })
+      }),
+    )
   }
 }
 
