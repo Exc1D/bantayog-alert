@@ -35,6 +35,8 @@ export async function duplicateClusterTriggerCore(
   } = data
 
   if (!locationGeohash || typeof locationGeohash !== 'string') return
+  if (typeof municipalityId !== 'string' || municipalityId.length === 0) return
+  if (typeof reportType !== 'string' || reportType.length === 0) return
 
   const nowMs: number = typeof createdAt === 'number' ? createdAt : Date.now()
   const cutoff = nowMs - TWO_H_MS
@@ -45,6 +47,7 @@ export async function duplicateClusterTriggerCore(
     .where('reportType', '==', reportType)
     .where('status', 'in', NON_TERMINAL_STATUSES)
     .where('createdAt', '>', cutoff)
+    .orderBy('createdAt', 'desc')
     .limit(300)
     .get()
 
@@ -55,13 +58,18 @@ export async function duplicateClusterTriggerCore(
 
   const nearby = candidates.docs.filter((d) => {
     if (d.id === snap.id) return false
-    const gh = d.data().locationGeohash as string | undefined
-    if (!gh || !neighborPrefixes.has(gh.slice(0, 6))) return false
-    const pt = ngeohash.decode(gh)
-    const dist = turf.distance(turf.point([pt.longitude, pt.latitude]), triggerCoord, {
-      units: 'meters',
-    })
-    return dist <= PROXIMITY_METERS
+    const gh = d.data().locationGeohash
+    if (typeof gh !== 'string' || gh.length < 6) return false
+    if (!neighborPrefixes.has(gh.slice(0, 6))) return false
+    try {
+      const pt = ngeohash.decode(gh)
+      const dist = turf.distance(turf.point([pt.longitude, pt.latitude]), triggerCoord, {
+        units: 'meters',
+      })
+      return dist <= PROXIMITY_METERS
+    } catch {
+      return false
+    }
   })
 
   if (nearby.length === 0) return
