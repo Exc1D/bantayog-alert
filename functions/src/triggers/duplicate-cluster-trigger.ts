@@ -38,7 +38,8 @@ export async function duplicateClusterTriggerCore(
   if (typeof municipalityId !== 'string' || municipalityId.length === 0) return
   if (typeof reportType !== 'string' || reportType.length === 0) return
 
-  const nowMs: number = typeof createdAt === 'number' ? createdAt : Date.now()
+  if (typeof createdAt !== 'number' || !Number.isFinite(createdAt)) return
+  const nowMs = createdAt
   const cutoff = nowMs - TWO_H_MS
 
   const candidates = await db
@@ -79,12 +80,18 @@ export async function duplicateClusterTriggerCore(
 
   if (nearby.length === 0) return
 
-  const normalizedExistingCluster =
-    typeof existingCluster === 'string' && existingCluster.length > 0 ? existingCluster : undefined
+  const normalizeClusterId = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return undefined
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : undefined
+  }
+
+  const normalizedExistingCluster = normalizeClusterId(existingCluster)
 
   const existingClusterFromNearby = nearby
     .map((d): unknown => d.data().duplicateClusterId)
-    .find((value): value is string => typeof value === 'string' && value.length > 0)
+    .map(normalizeClusterId)
+    .find((value): value is string => value !== undefined)
 
   const clusterId = normalizedExistingCluster ?? existingClusterFromNearby ?? crypto.randomUUID()
 
@@ -112,10 +119,11 @@ export async function duplicateClusterTriggerCore(
   }
   await batch.commit()
 
+  const assignedCount = toUpdate.length + (existingCluster !== clusterId ? 1 : 0)
   log({
     severity: 'INFO',
     code: 'dup.cluster.assigned',
-    message: `Assigned ${String(toUpdate.length + 1)} docs to cluster ${clusterId}`,
+    message: `Assigned ${String(assignedCount)} docs to cluster ${clusterId}`,
   })
 }
 

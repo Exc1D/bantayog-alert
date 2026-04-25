@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { setDoc, doc } from 'firebase/firestore'
-import { type Firestore } from 'firebase-admin/firestore'
+import { setDoc, doc, Timestamp } from 'firebase/firestore'
+import { type Firestore, getFirestore } from 'firebase-admin/firestore'
+import { initializeApp, deleteApp, type App } from 'firebase-admin/app'
 import { type UserRole } from '@bantayog/shared-types'
 
 const onCallMock = vi.hoisted(() => vi.fn())
@@ -16,6 +17,7 @@ vi.mock('firebase-functions/v2/https', () => ({
   },
 }))
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
+let adminApp: App
 let adminDb: Firestore
 vi.mock('../../admin-init.js', () => ({
   get adminDb() {
@@ -30,6 +32,7 @@ const ts = 1713350400000
 let testEnv: RulesTestEnvironment
 
 beforeAll(async () => {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   testEnv = await initializeTestEnvironment({
     projectId: 'shift-handoff-test',
     firestore: {
@@ -39,7 +42,8 @@ beforeAll(async () => {
         'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
     },
   })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+  adminApp = initializeApp({ projectId: 'shift-handoff-test' }, 'shift-handoff-test')
+  adminDb = getFirestore(adminApp)
 })
 
 beforeEach(async () => {
@@ -47,6 +51,7 @@ beforeEach(async () => {
 })
 afterAll(async () => {
   await testEnv.cleanup()
+  await deleteApp(adminApp)
 })
 
 const adminActor = {
@@ -227,8 +232,8 @@ describe('acceptShiftHandoff', () => {
         notes: '',
         activeIncidentIds: [],
         status: 'pending',
-        createdAt: ts,
-        expiresAt: ts + 1800000,
+        createdAt: Timestamp.fromMillis(ts),
+        expiresAt: Timestamp.fromMillis(Date.now() + 1800000),
         schemaVersion: 1,
         ...overrides,
       })
@@ -279,7 +284,7 @@ describe('acceptShiftHandoff', () => {
   })
 
   it('rejects expired handoff', async () => {
-    await createHandoff('h-expired', { expiresAt: ts - 1 })
+    await createHandoff('h-expired', { expiresAt: Timestamp.fromMillis(ts - 1) })
     const result = await acceptShiftHandoffCore(
       adminDb,
       { handoffId: 'h-expired', idempotencyKey: uuid(14) },

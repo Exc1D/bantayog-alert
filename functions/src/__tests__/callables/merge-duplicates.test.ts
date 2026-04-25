@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
-import { type Firestore } from 'firebase-admin/firestore'
+import { type Firestore, Timestamp, getFirestore } from 'firebase-admin/firestore'
+import { initializeApp, deleteApp, type App } from 'firebase-admin/app'
 import type { UserRole } from '@bantayog/shared-types'
 
 const onCallMock = vi.hoisted(() => vi.fn())
 vi.mock('firebase-functions/v2/https', () => ({ onCall: onCallMock }))
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
+let adminApp: App
 let adminDb: Firestore
 vi.mock('../../admin-init.js', () => ({
   get adminDb() {
@@ -25,6 +27,7 @@ const CLUSTER_ID = 'cluster-uuid-1'
 let testEnv: RulesTestEnvironment
 
 beforeAll(async () => {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   testEnv = await initializeTestEnvironment({
     projectId: 'merge-dup-test',
     firestore: {
@@ -34,7 +37,8 @@ beforeAll(async () => {
         'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
     },
   })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+  adminApp = initializeApp({ projectId: 'merge-dup-test' }, 'merge-dup-test')
+  adminDb = getFirestore(adminApp)
 })
 
 beforeEach(async () => {
@@ -42,6 +46,7 @@ beforeEach(async () => {
 })
 afterAll(async () => {
   await testEnv.cleanup()
+  await deleteApp(adminApp)
 })
 
 async function seedReport(id: string, overrides: Record<string, unknown> = {}) {
@@ -254,6 +259,12 @@ describe('mergeDuplicates', () => {
 
     const dup1 = await adminDb.collection('reports').doc('r-dup1').get()
     expect(dup1.data()?.status).toBe('merged_as_duplicate')
+
+    const mergeEvents = await adminDb
+      .collection('report_events')
+      .where('reportId', '==', 'r-primary')
+      .get()
+    expect(mergeEvents.size).toBe(1)
   })
 
   it('rejects when primary report does not exist', async () => {
@@ -285,7 +296,7 @@ describe('mergeDuplicates', () => {
     const primaryOps = await adminDb.collection('report_ops').doc('r-primary').get()
     const dupOps = await adminDb.collection('report_ops').doc('r-dup1').get()
     expect(dupOps.data()?.status).toBe('merged_as_duplicate')
-    expect(primaryOps.data()?.updatedAt).toBeGreaterThan(ts)
-    expect(dupOps.data()?.updatedAt).toBeGreaterThan(ts)
+    expect((primaryOps.data()?.updatedAt as Timestamp).toMillis()).toBeGreaterThan(ts)
+    expect((dupOps.data()?.updatedAt as Timestamp).toMillis()).toBeGreaterThan(ts)
   })
 })

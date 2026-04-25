@@ -5,7 +5,7 @@ import { BantayogError, logDimension } from '@bantayog/shared-validators'
 import type { UserRole } from '@bantayog/shared-types'
 import { adminDb } from '../admin-init.js'
 import { bantayogErrorToHttps } from './https-error.js'
-import { withIdempotency } from '../idempotency/guard.js'
+import { withIdempotency, IdempotencyInProgressError } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 
 const log = logDimension('mergeDuplicates')
@@ -107,14 +107,14 @@ export async function mergeDuplicatesCore(
           return { success: false, errorCode: 'invalid-argument' } as MergeDuplicatesResult
         }
 
-        // Cluster check — allow undefined (not yet clustered), but reject mixed presence
-        const hasClusterId = opsData.filter((d) => d.duplicateClusterId)
-        const missingClusterId = opsData.filter((d) => !d.duplicateClusterId)
-        if (hasClusterId.length > 0 && missingClusterId.length > 0) {
+        // Cluster check — all reports must share exactly one cluster ID
+        const clusterIds = opsData
+          .map((d) => d.duplicateClusterId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        if (clusterIds.length !== opsData.length) {
           return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
         }
-        const clusterIds = new Set(hasClusterId.map((d) => d.duplicateClusterId))
-        if (clusterIds.size > 1) {
+        if (new Set(clusterIds).size > 1) {
           return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
         }
 
@@ -207,7 +207,12 @@ export async function mergeDuplicatesCore(
         return { success: true, mergedCount: duplicateReportIds.length } as MergeDuplicatesResult
       })
     },
-  )
+  ).catch((err: unknown): { result: MergeDuplicatesResult; fromCache: boolean } => {
+    if (err instanceof IdempotencyInProgressError) {
+      return { result: { success: false, errorCode: 'resource-exhausted' }, fromCache: false }
+    }
+    throw err
+  })
 
   return cached
 }

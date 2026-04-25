@@ -38,13 +38,19 @@ export function usePendingHandoffs(municipalityId: string | undefined) {
       q,
       (snap) => {
         setHandoffs(
-          snap.docs.map((d) => ({
-            id: d.id,
-            fromUid: String(d.data().fromUid),
-            createdAt: (d.data().createdAt as Timestamp | undefined) ?? Timestamp.now(),
-            notes: String(d.data().notes ?? ''),
-            activeIncidentIds: (d.data().activeIncidentIds ?? []) as string[],
-          })),
+          snap.docs.map((d) => {
+            const raw = d.data()
+            const activeIncidentIds = Array.isArray(raw.activeIncidentIds)
+              ? raw.activeIncidentIds.filter((id): id is string => typeof id === 'string')
+              : []
+            return {
+              id: d.id,
+              fromUid: typeof raw.fromUid === 'string' ? raw.fromUid : '',
+              createdAt: raw.createdAt instanceof Timestamp ? raw.createdAt : Timestamp.now(),
+              notes: typeof raw.notes === 'string' ? raw.notes : '',
+              activeIncidentIds,
+            }
+          }),
         )
         setError(null)
       },
