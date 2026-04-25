@@ -79,3 +79,12 @@ Durable rules worth keeping across sessions.
 - A shared `AuthProvider` that uses `Record<string, unknown>` for claims pushes type-narrowing burden to every consumer. This is acceptable for a shared boundary, but consumers should validate with `typeof` checks rather than casting.
 - `useCallback` is required for functions exposed through context (like `refreshClaims` and `signOut`) to prevent infinite re-render loops in consumers that include them in `useEffect` dependency arrays.
 - When mocking Firebase Auth's `onAuthStateChanged` with `vi.mock('firebase/auth', ...)`, the mock must return an unsubscribe function; the real `onAuthStateChanged` is a module-level function, not a method on the `Auth` instance.
+
+## Testing Patterns (2026-04-25 Cluster C)
+
+- `vi.mock` factory functions are hoisted above all other code. If a mock factory references a variable (e.g., `mockGetCountFromServer`), the variable must be declared with `vi.hoisted(() => ({ mockFn: vi.fn() }))` — not with a plain `const`. Otherwise: `ReferenceError: Cannot access before initialization`.
+- When mocking `firebase/firestore` for admin-desktop tests, include `getFirestore: vi.fn(() => ({}))` in the mock factory. The `../app/firebase` module calls `getFirestore` at module scope — if the mock doesn't provide it, you get `auth/invalid-api-key` from the real Firebase init.
+- Mock path from `apps/admin-desktop/src/__tests__/` to `apps/admin-desktop/src/app/firebase.ts` is `../app/firebase` (one level up), not `../../app/firebase` (two levels up). Two levels up resolves to the monorepo root.
+- SpyOn `mockImplementation` on `collRef.where` in Firestore admin SDK tests: the `.where` method signature changed in firebase-admin v12+. Use `vi.spyOn(collRef, 'where' as any)` to bypass the TypeScript overload resolution that causes `TS2345: Target signature provides too few arguments`.
+- Firebase emulators: rules tests using `createTestEnv` from `rules-harness.ts` require `--only firestore,database,storage` (all three emulators). The harness configures storage rules even for Firestore-only tests.
+- `pnpm --filter` from a worktree resolves to the main repo's `package.json`, not the worktree's. For emulator test commands that need `pnpm --filter`, run `npx vitest` directly inside the package directory instead.
