@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
+import type { UserRole } from '@bantayog/shared-types'
 
 const onCallMock = vi.hoisted(() => vi.fn())
 vi.mock('firebase-functions/v2/https', () => ({ onCall: onCallMock }))
@@ -13,7 +14,10 @@ vi.mock('../../admin-init.js', () => ({
   },
 }))
 
-import { mergeDuplicatesCore } from '../../callables/merge-duplicates.js'
+import {
+  mergeDuplicatesCore,
+  type MergeDuplicatesResult,
+} from '../../callables/merge-duplicates.js'
 
 const ts = 1713350400000
 const CLUSTER_ID = 'cluster-uuid-1'
@@ -71,10 +75,17 @@ async function seedReport(id: string, overrides: Record<string, unknown> = {}) {
   })
 }
 
+function expectError(result: MergeDuplicatesResult, code: string) {
+  expect(result.success).toBe(false)
+  if (!result.success) {
+    expect(result.errorCode).toBe(code)
+  }
+}
+
 const muniAdminActor = {
   uid: 'admin-1',
   claims: {
-    role: 'municipal_admin',
+    role: 'municipal_admin' as UserRole,
     municipalityId: 'daet',
     active: true,
     auth_time: Math.floor(ts / 1000),
@@ -92,11 +103,33 @@ describe('mergeDuplicates', () => {
       },
       {
         uid: 'citizen-1',
-        claims: { role: 'citizen', active: true, auth_time: Math.floor(ts / 1000) },
+        claims: { role: 'citizen' as UserRole, active: true, auth_time: Math.floor(ts / 1000) },
       },
     )
-    expect(result.success).toBe(false)
-    expect(result.errorCode).toBe('permission-denied')
+    expectError(result, 'permission-denied')
+  })
+
+  it('rejects inactive admin', async () => {
+    await seedReport('r1')
+    await seedReport('r2')
+    const result = await mergeDuplicatesCore(
+      adminDb,
+      {
+        primaryReportId: 'r1',
+        duplicateReportIds: ['r2'],
+        idempotencyKey: 'key-inactive',
+      },
+      {
+        uid: 'admin-1',
+        claims: {
+          role: 'municipal_admin' as UserRole,
+          municipalityId: 'daet',
+          active: false,
+          auth_time: Math.floor(ts / 1000),
+        },
+      },
+    )
+    expectError(result, 'permission-denied')
   })
 
   it('rejects report IDs from different municipalities', async () => {
@@ -111,8 +144,7 @@ describe('mergeDuplicates', () => {
       },
       muniAdminActor,
     )
-    expect(result.success).toBe(false)
-    expect(result.errorCode).toBe('invalid-argument')
+    expectError(result, 'invalid-argument')
   })
 
   it('rejects report IDs that do not share a duplicateClusterId', async () => {
@@ -127,8 +159,7 @@ describe('mergeDuplicates', () => {
       },
       muniAdminActor,
     )
-    expect(result.success).toBe(false)
-    expect(result.errorCode).toBe('failed-precondition')
+    expectError(result, 'failed-precondition')
   })
 
   it('sets status merged_as_duplicate on all non-primary reports', async () => {
@@ -209,5 +240,38 @@ describe('mergeDuplicates', () => {
     )
     const dup1 = await adminDb.collection('reports').doc('r-dup1').get()
     expect(dup1.data()?.status).toBe('merged_as_duplicate')
+  })
+
+  it('rejects when primary report does not exist', async () => {
+    await seedReport('r-dup1')
+    const result = await mergeDuplicatesCore(
+      adminDb,
+      {
+        primaryReportId: 'r-missing',
+        duplicateReportIds: ['r-dup1'],
+        idempotencyKey: 'key-8',
+      },
+      muniAdminActor,
+    )
+    expectError(result, 'not-found')
+  })
+
+  it('updates report_ops for primary and duplicates', async () => {
+    await seedReport('r-primary')
+    await seedReport('r-dup1')
+    await mergeDuplicatesCore(
+      adminDb,
+      {
+        primaryReportId: 'r-primary',
+        duplicateReportIds: ['r-dup1'],
+        idempotencyKey: 'key-9',
+      },
+      muniAdminActor,
+    )
+    const primaryOps = await adminDb.collection('report_ops').doc('r-primary').get()
+    const dupOps = await adminDb.collection('report_ops').doc('r-dup1').get()
+    expect(dupOps.data()?.status).toBe('merged_as_duplicate')
+    expect(primaryOps.data()?.updatedAt).toBeGreaterThan(ts)
+    expect(dupOps.data()?.updatedAt).toBeGreaterThan(ts)
   })
 })

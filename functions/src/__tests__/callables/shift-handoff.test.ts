@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
+import { type UserRole } from '@bantayog/shared-types'
 
 const onCallMock = vi.hoisted(() => vi.fn())
 vi.mock('firebase-functions/v2/https', () => ({
@@ -50,7 +51,7 @@ afterAll(async () => {
 const adminActor = {
   uid: 'admin-from',
   claims: {
-    role: 'municipal_admin',
+    role: 'municipal_admin' as UserRole,
     municipalityId: 'daet',
     active: true,
     auth_time: Math.floor(ts / 1000),
@@ -81,13 +82,65 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'Handover notes',
-        activeIncidentIds: [],
         idempotencyKey: 'key-1',
       },
-      { uid: 'u1', claims: { role: 'citizen', active: true, auth_time: Math.floor(ts / 1000) } },
+      {
+        uid: 'u1',
+        claims: { role: 'citizen' as UserRole, active: true, auth_time: Math.floor(ts / 1000) },
+      },
+      'corr-1',
     )
     expect(result.success).toBe(false)
-    expect(result.errorCode).toBe('permission-denied')
+    if (!result.success) {
+      expect(result.errorCode).toBe('permission-denied')
+    }
+  })
+
+  it('rejects inactive admin', async () => {
+    const result = await initiateShiftHandoffCore(
+      adminDb,
+      {
+        notes: 'Handover notes',
+        idempotencyKey: 'key-inactive',
+      },
+      {
+        uid: 'admin-inactive',
+        claims: {
+          role: 'municipal_admin' as UserRole,
+          municipalityId: 'daet',
+          active: false,
+          auth_time: Math.floor(ts / 1000),
+        },
+      },
+      'corr-inactive',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.errorCode).toBe('permission-denied')
+    }
+  })
+
+  it('rejects municipal_admin missing municipalityId', async () => {
+    const result = await initiateShiftHandoffCore(
+      adminDb,
+      {
+        notes: 'Handover notes',
+        idempotencyKey: 'key-no-muni',
+      },
+      {
+        uid: 'admin-no-muni',
+        claims: {
+          role: 'municipal_admin' as UserRole,
+          active: true,
+          auth_time: Math.floor(ts / 1000),
+        },
+      },
+      'corr-no-muni',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.errorCode).toBe('permission-denied')
+    }
   })
 
   it('creates shift_handoffs doc with status pending and no toUid', async () => {
@@ -95,14 +148,19 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'End of shift',
-        activeIncidentIds: [],
         idempotencyKey: 'key-2',
       },
       adminActor,
+      'corr-2',
     )
     expect(result.success).toBe(true)
-    expect(result.handoffId).toBeDefined()
-    const created = await adminDb.collection('shift_handoffs').doc(result.handoffId!).get()
+    if (result.success) {
+      expect(result.handoffId).toBeDefined()
+    }
+    const created = await adminDb
+      .collection('shift_handoffs')
+      .doc(result.success ? result.handoffId : '')
+      .get()
     expect(created.data()?.status).toBe('pending')
     expect(created.data()?.toUid).toBeUndefined()
     expect(created.data()?.fromUid).toBe('admin-from')
@@ -115,14 +173,17 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'Handover',
-        activeIncidentIds: [],
         idempotencyKey: 'key-3',
       },
       adminActor,
+      'corr-3',
     )
     expect(result.success).toBe(true)
-    const created = await adminDb.collection('shift_handoffs').doc(result.handoffId!).get()
-    const snapshot = created.data()?.activeIncidentSnapshot as string[]
+    const created = await adminDb
+      .collection('shift_handoffs')
+      .doc(result.success ? result.handoffId : '')
+      .get()
+    const snapshot = created.data()?.activeIncidentIds as string[]
     expect(snapshot).toContain('r-active-1')
     expect(snapshot).toContain('r-active-2')
   })
@@ -132,39 +193,129 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: '',
-        activeIncidentIds: [],
         idempotencyKey: 'key-4',
       },
       adminActor,
+      'corr-4',
     )
     const result2 = await initiateShiftHandoffCore(
       adminDb,
       {
         notes: '',
-        activeIncidentIds: [],
         idempotencyKey: 'key-4',
       },
       adminActor,
+      'corr-5',
     )
-    expect(result1.handoffId).toBe(result2.handoffId)
+    if (result1.success && result2.success) {
+      expect(result1.handoffId).toBe(result2.handoffId)
+    }
   })
 })
 
 describe('acceptShiftHandoff', () => {
-  async function createHandoff(id: string) {
+  async function createHandoff(id: string, overrides: Record<string, unknown> = {}) {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'shift_handoffs', id), {
         fromUid: 'admin-from',
         municipalityId: 'daet',
         notes: '',
-        activeIncidentSnapshot: [],
+        activeIncidentIds: [],
         status: 'pending',
         createdAt: ts,
         expiresAt: ts + 1800000,
         schemaVersion: 1,
+        ...overrides,
       })
     })
   }
+
+  it('rejects inactive admin', async () => {
+    await createHandoff('h-inactive')
+    const result = await acceptShiftHandoffCore(
+      adminDb,
+      { handoffId: 'h-inactive', idempotencyKey: 'key-inactive' },
+      {
+        uid: 'admin-to',
+        claims: {
+          role: 'municipal_admin' as UserRole,
+          municipalityId: 'daet',
+          active: false,
+          auth_time: Math.floor(ts / 1000),
+        },
+      },
+      'corr-inactive',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.errorCode).toBe('permission-denied')
+    }
+  })
+
+  it('rejects non-existent handoff', async () => {
+    const result = await acceptShiftHandoffCore(
+      adminDb,
+      { handoffId: 'h-missing', idempotencyKey: 'key-missing' },
+      {
+        uid: 'admin-to',
+        claims: {
+          role: 'municipal_admin' as UserRole,
+          municipalityId: 'daet',
+          active: true,
+          auth_time: Math.floor(ts / 1000),
+        },
+      },
+      'corr-missing',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.errorCode).toBe('not-found')
+    }
+  })
+
+  it('rejects expired handoff', async () => {
+    await createHandoff('h-expired', { expiresAt: ts - 1 })
+    const result = await acceptShiftHandoffCore(
+      adminDb,
+      { handoffId: 'h-expired', idempotencyKey: 'key-expired' },
+      {
+        uid: 'admin-to',
+        claims: {
+          role: 'municipal_admin' as UserRole,
+          municipalityId: 'daet',
+          active: true,
+          auth_time: Math.floor(ts / 1000),
+        },
+      },
+      'corr-expired',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.errorCode).toBe('failed-precondition')
+    }
+  })
+
+  it('rejects self-accept', async () => {
+    await createHandoff('h-self')
+    const result = await acceptShiftHandoffCore(
+      adminDb,
+      { handoffId: 'h-self', idempotencyKey: 'key-self' },
+      {
+        uid: 'admin-from',
+        claims: {
+          role: 'municipal_admin' as UserRole,
+          municipalityId: 'daet',
+          active: true,
+          auth_time: Math.floor(ts / 1000),
+        },
+      },
+      'corr-self',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.errorCode).toBe('failed-precondition')
+    }
+  })
 
   it('rejects a caller from a different municipality', async () => {
     await createHandoff('h1')
@@ -174,15 +325,18 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'other-admin',
         claims: {
-          role: 'municipal_admin',
+          role: 'municipal_admin' as UserRole,
           municipalityId: 'labo',
           active: true,
           auth_time: Math.floor(ts / 1000),
         },
       },
+      'corr-6',
     )
     expect(result.success).toBe(false)
-    expect(result.errorCode).toBe('permission-denied')
+    if (!result.success) {
+      expect(result.errorCode).toBe('permission-denied')
+    }
   })
 
   it('updates status to accepted and sets toUid', async () => {
@@ -193,12 +347,13 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'admin-to',
         claims: {
-          role: 'municipal_admin',
+          role: 'municipal_admin' as UserRole,
           municipalityId: 'daet',
           active: true,
           auth_time: Math.floor(ts / 1000),
         },
       },
+      'corr-7',
     )
     expect(result.success).toBe(true)
     const updated = await adminDb.collection('shift_handoffs').doc('h2').get()
@@ -211,17 +366,23 @@ describe('acceptShiftHandoff', () => {
     const actor = {
       uid: 'admin-to',
       claims: {
-        role: 'municipal_admin',
+        role: 'municipal_admin' as UserRole,
         municipalityId: 'daet',
         active: true,
         auth_time: Math.floor(ts / 1000),
       },
     }
-    await acceptShiftHandoffCore(adminDb, { handoffId: 'h3', idempotencyKey: 'key-7' }, actor)
+    await acceptShiftHandoffCore(
+      adminDb,
+      { handoffId: 'h3', idempotencyKey: 'key-7' },
+      actor,
+      'corr-8',
+    )
     const result2 = await acceptShiftHandoffCore(
       adminDb,
       { handoffId: 'h3', idempotencyKey: 'key-7' },
       actor,
+      'corr-9',
     )
     expect(result2.success).toBe(true)
   })
