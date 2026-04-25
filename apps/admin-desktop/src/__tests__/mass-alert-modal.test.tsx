@@ -117,6 +117,12 @@ describe('MassAlertModal', () => {
     await screen.findByText(/200/)
     await user.click(screen.getByRole('button', { name: /^send alert$/i }))
     expect(mockSend).toHaveBeenCalledTimes(1)
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Test alert',
+        targetScope: expect.objectContaining({ municipalityIds: ['daet'] }),
+      }),
+    )
   })
 
   it('calls requestMassAlertEscalation on escalation CTA click', async () => {
@@ -127,5 +133,11 @@ describe('MassAlertModal', () => {
     await user.click(screen.getByRole('button', { name: /preview reach/i }))
     await user.click(await screen.findByRole('button', { name: /request ndrrmc escalation/i }))
     expect(mockEscalate).toHaveBeenCalledTimes(1)
+    expect(mockEscalate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Test',
+        targetScope: expect.objectContaining({ municipalityIds: ['daet'] }),
+      }),
+    )
   })
 })

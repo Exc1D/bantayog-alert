@@ -1,16 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockSendEachForMulticast, mockCollection, mockDoc, mockGet, mockUpdate } = vi.hoisted(
-  () => {
-    return {
-      mockSendEachForMulticast: vi.fn(),
-      mockCollection: vi.fn(),
-      mockDoc: vi.fn(),
-      mockGet: vi.fn(),
-      mockUpdate: vi.fn(),
-    }
-  },
-)
+const {
+  mockSendEachForMulticast,
+  mockCollection,
+  mockDoc,
+  mockGet,
+  mockUpdate,
+  mockRunTransaction,
+} = vi.hoisted(() => {
+  return {
+    mockSendEachForMulticast: vi.fn(),
+    mockCollection: vi.fn(),
+    mockDoc: vi.fn(),
+    mockGet: vi.fn(),
+    mockUpdate: vi.fn(),
+    mockRunTransaction: vi.fn(),
+  }
+})
 
 vi.mock('firebase-admin/messaging', () => ({
   getMessaging: vi.fn(() => ({
@@ -26,11 +32,28 @@ vi.mock('../../admin-init.js', () => ({
         update: mockUpdate,
       }),
     }),
+    runTransaction: mockRunTransaction,
   },
 }))
 
 import { sendFcmToResponder } from '../../services/fcm-send.js'
 import { FieldValue } from 'firebase-admin/firestore'
+
+function setupTransactionMock(currentTokens: string[]) {
+  const txUpdate = vi.fn()
+  mockRunTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+    const tx = {
+      get: vi.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({ fcmTokens: currentTokens }),
+      }),
+      update: txUpdate,
+    }
+    await fn(tx)
+    return undefined
+  })
+  return { txUpdate }
+}
 
 describe('sendFcmToResponder', () => {
   beforeEach(() => {
@@ -81,14 +104,17 @@ describe('sendFcmToResponder', () => {
       .spyOn(FieldValue, 'arrayRemove')
       .mockReturnValue('array_remove_mock' as any) // eslint-disable-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
 
+    const { txUpdate } = setupTransactionMock(['valid', 'invalid'])
+
     const result = await sendFcmToResponder({ uid: 'r1', title: 'T', body: 'B' })
     expect(result.warnings).toEqual(['fcm_one_token_invalid'])
-    expect(mockUpdate).toHaveBeenCalledWith({
-      fcmTokens: 'array_remove_mock',
-    })
-    // When only partial tokens are invalid, hasFcmToken should NOT be cleared
-    const updateCall = mockUpdate.mock.calls[0]?.[0] as Record<string, unknown> | undefined
-    expect(updateCall).not.toHaveProperty('hasFcmToken')
+    expect(txUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        fcmTokens: 'array_remove_mock',
+        hasFcmToken: true,
+      }),
+    )
     expect(arrayRemoveSpy).toHaveBeenCalledWith('invalid')
   })
 
@@ -108,12 +134,17 @@ describe('sendFcmToResponder', () => {
       .spyOn(FieldValue, 'arrayRemove')
       .mockReturnValue('array_remove_mock' as any) // eslint-disable-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
 
+    const { txUpdate } = setupTransactionMock(['invalid1', 'invalid2'])
+
     const result = await sendFcmToResponder({ uid: 'r1', title: 'T', body: 'B' })
     expect(result.warnings).toEqual(['fcm_one_token_invalid'])
-    expect(mockUpdate).toHaveBeenCalledWith({
-      fcmTokens: 'array_remove_mock',
-      hasFcmToken: false,
-    })
+    expect(txUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        fcmTokens: 'array_remove_mock',
+        hasFcmToken: false,
+      }),
+    )
     expect(arrayRemoveSpy).toHaveBeenCalledWith('invalid1', 'invalid2')
   })
 

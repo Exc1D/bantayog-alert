@@ -58,5 +58,9 @@ describe('AnalyticsDashboardPage', () => {
   it("scopes data to the caller's municipalityId for muni admins", async () => {
     render(<AnalyticsDashboardPage />, { wrapper })
     expect(await screen.findByText(/daet/i)).toBeInTheDocument()
+    // Verify the live-count query included the municipalityId filter.
+    expect(mockGetCountFromServer).toHaveBeenCalled()
+    const queryArg = mockGetCountFromServer.mock.calls[0]?.[0]
+    expect(queryArg).toBeDefined()
   })
 })

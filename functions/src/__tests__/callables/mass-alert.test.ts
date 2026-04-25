@@ -272,14 +272,16 @@ describe('sendMassAlert', () => {
     expect(result.errorCode).toBe('permission-denied')
   })
 
-  it('creates mass_alert_requests doc with status sent', async () => {
+  it('creates mass_alert_requests doc with status sent and server-computed reach', async () => {
+    await seedResponder('r1', true)
+    await seedResponder('r2', true)
     const result = await sendMassAlertCore(
       adminDb,
       {
         reachPlan: {
           route: 'direct',
-          fcmCount: 5,
-          smsCount: 3,
+          fcmCount: 9999,
+          smsCount: 9999,
           segmentCount: 1,
           unicodeWarning: false,
         },
@@ -293,6 +295,8 @@ describe('sendMassAlert', () => {
     expect(result.requestId).toBeDefined()
     const created = await adminDb.collection('mass_alert_requests').doc(result.requestId!).get()
     expect(created.data()?.status).toBe('sent')
+    // estimatedReach must come from server preview, not the malicious client input.
+    expect(created.data()?.estimatedReach).toBe(2)
   })
 
   it('refuses to send to a different municipality than the caller claim', async () => {
@@ -352,6 +356,31 @@ describe('sendMassAlert', () => {
     )
     expect(r1.requestId).toBe(r2.requestId)
   })
+
+  it('queues SMS outbox entries when smsCount > 0', async () => {
+    process.env.SMS_MSISDN_HASH_SALT = 'test-salt'
+    await seedConsentRecord('sms-1', 'daet', true)
+    await seedConsentRecord('sms-2', 'daet', true)
+    const result = await sendMassAlertCore(
+      adminDb,
+      {
+        reachPlan: {
+          route: 'direct',
+          fcmCount: 0,
+          smsCount: 2,
+          segmentCount: 1,
+          unicodeWarning: false,
+        },
+        message: 'Typhoon alert',
+        targetScope: { municipalityIds: ['daet'] },
+        idempotencyKey: crypto.randomUUID(),
+      },
+      muniAdminActor,
+    )
+    expect(result.success).toBe(true)
+    const outboxSnaps = await adminDb.collection('sms_outbox').get()
+    expect(outboxSnaps.size).toBe(2)
+  })
 })
 
 describe('requestMassAlertEscalation', () => {
@@ -374,7 +403,7 @@ describe('requestMassAlertEscalation', () => {
     expect(created.data()?.status).toBe('pending_ndrrmc_review')
   })
 
-  it('FCMs provincial superadmins', async () => {
+  it('does not send responder FCM during escalation (reviewer channel TBD)', async () => {
     const { sendMassAlertFcm } = await import('../../services/fcm-mass-send.js')
     const mockFcm = vi.mocked(sendMassAlertFcm)
     mockFcm.mockClear()
@@ -388,7 +417,7 @@ describe('requestMassAlertEscalation', () => {
       },
       muniAdminActor,
     )
-    expect(mockFcm).toHaveBeenCalled()
+    expect(mockFcm).not.toHaveBeenCalled()
   })
 })
 
