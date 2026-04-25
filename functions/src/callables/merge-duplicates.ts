@@ -10,11 +10,16 @@ import { checkRateLimit } from '../services/rate-limit.js'
 
 const log = logDimension('mergeDuplicates')
 
-const inputSchema = z.object({
-  primaryReportId: z.string().min(1),
-  duplicateReportIds: z.array(z.string().min(1)).min(1).max(50),
-  idempotencyKey: z.uuid(),
-})
+const inputSchema = z
+  .object({
+    primaryReportId: z.string().min(1),
+    duplicateReportIds: z.array(z.string().min(1)).min(1).max(50),
+    idempotencyKey: z.uuid(),
+  })
+  .refine((data) => new Set(data.duplicateReportIds).size === data.duplicateReportIds.length, {
+    message: 'duplicateReportIds must be unique',
+    path: ['duplicateReportIds'],
+  })
 
 export interface MergeDuplicatesActor {
   uid: string
@@ -58,68 +63,57 @@ export async function mergeDuplicatesCore(
   }
 
   const { primaryReportId, duplicateReportIds, idempotencyKey } = input
-
-  if (duplicateReportIds.includes(primaryReportId)) {
-    log({
-      severity: 'ERROR',
-      code: 'merge.invalid_primary_in_duplicates',
-      message: 'primaryReportId cannot be in duplicateReportIds',
-      data: { correlationId },
-    })
-    return { success: false, errorCode: 'invalid-argument' }
-  }
   const allIds = [primaryReportId, ...duplicateReportIds]
-
-  const opsSnaps = await Promise.all(allIds.map((id) => db.collection('report_ops').doc(id).get()))
-  const opsData: OpsRow[] = opsSnaps.map((s) => {
-    const d = s.data()
-    return {
-      id: s.id,
-      municipalityId: d?.municipalityId,
-      duplicateClusterId: d?.duplicateClusterId,
-    }
-  })
-
-  const municipalities = new Set(opsData.map((d) => d.municipalityId))
-  if (municipalities.size > 1) {
-    log({
-      severity: 'ERROR',
-      code: 'merge.invalid_argument',
-      message: 'Reports belong to different municipalities',
-      data: { correlationId },
-    })
-    return { success: false, errorCode: 'invalid-argument' }
-  }
-
-  const clusterIds = new Set(
-    opsData.filter((d) => d.duplicateClusterId).map((d) => d.duplicateClusterId),
-  )
-  if (clusterIds.size > 1) {
-    log({
-      severity: 'ERROR',
-      code: 'merge.failed_precondition',
-      message: 'Reports do not share a duplicateClusterId',
-      data: { correlationId },
-    })
-    return { success: false, errorCode: 'failed-precondition' }
-  }
-
-  const municipalityId = opsData[0]?.municipalityId
-  if (actor.claims.role === 'municipal_admin' && actor.claims.municipalityId !== municipalityId) {
-    log({
-      severity: 'ERROR',
-      code: 'merge.permission_denied',
-      message: 'municipal_admin cannot merge reports from another municipality',
-      data: { correlationId },
-    })
-    return { success: false, errorCode: 'permission-denied' }
-  }
 
   const { result: cached } = await withIdempotency(
     db,
     { key: `mergeDuplicates:${actor.uid}:${idempotencyKey}`, payload: input },
     async () => {
       return db.runTransaction(async (tx) => {
+        // Read report_ops inside transaction
+        const opsSnaps = await Promise.all(
+          allIds.map((id) => tx.get(db.collection('report_ops').doc(id))),
+        )
+
+        // Fail fast if any missing
+        for (const snap of opsSnaps) {
+          if (!snap.exists) {
+            return { success: false, errorCode: 'not-found' } as MergeDuplicatesResult
+          }
+        }
+
+        const opsData: OpsRow[] = opsSnaps.map((s) => {
+          const d = s.data()
+          return {
+            id: s.id,
+            municipalityId: d?.municipalityId,
+            duplicateClusterId: d?.duplicateClusterId,
+          }
+        })
+
+        // Municipality check
+        const municipalities = new Set(opsData.map((d) => d.municipalityId))
+        if (municipalities.size > 1) {
+          return { success: false, errorCode: 'invalid-argument' } as MergeDuplicatesResult
+        }
+
+        // Cluster check
+        const clusterIds = new Set(
+          opsData.filter((d) => d.duplicateClusterId).map((d) => d.duplicateClusterId),
+        )
+        if (clusterIds.size > 1) {
+          return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
+        }
+
+        // Municipality authorization
+        const municipalityId = opsData[0]?.municipalityId
+        if (
+          actor.claims.role === 'municipal_admin' &&
+          actor.claims.municipalityId !== municipalityId
+        ) {
+          return { success: false, errorCode: 'permission-denied' } as MergeDuplicatesResult
+        }
+
         const reportSnaps = await Promise.all(
           allIds.map((id) => tx.get(db.collection('reports').doc(id))),
         )
