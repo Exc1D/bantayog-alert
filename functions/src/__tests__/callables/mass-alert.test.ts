@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
@@ -60,18 +60,18 @@ function mockCountOnDb(db: Firestore) {
   collectionSpy = vi.spyOn(db, 'collection').mockImplementation((collectionPath: string) => {
     const collRef = originalCollection(collectionPath)
     const originalWhere = collRef.where.bind(collRef)
-    const whereSpy = vi
-      .spyOn(collRef, 'where')
-      .mockImplementation((fieldPath: unknown, opStr: unknown, value: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(collRef, 'where' as any).mockImplementation(
+      (fieldPath: unknown, opStr: unknown, value: unknown) => {
         const query = originalWhere(
           fieldPath as string,
           opStr as FirebaseFirestore.WhereFilterOp,
           value,
         )
         const originalWhere2 = query.where.bind(query)
-        const queryWhereSpy = vi
-          .spyOn(query, 'where')
-          .mockImplementation((fieldPath2: unknown, opStr2: unknown, value2: unknown) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        vi.spyOn(query, 'where' as any).mockImplementation(
+          (fieldPath2: unknown, opStr2: unknown, value2: unknown) => {
             const query2 = originalWhere2(
               fieldPath2 as string,
               opStr2 as FirebaseFirestore.WhereFilterOp,
@@ -87,21 +87,16 @@ function mockCountOnDb(db: Firestore) {
                 }
               },
             })
-          })
-        // Clean up nested spy when the test finishes so we don't stack mocks
-        afterEach(() => {
-          queryWhereSpy.mockRestore()
-        })
+          },
+        )
         return query
-      })
-    afterEach(() => {
-      whereSpy.mockRestore()
-    })
+      },
+    )
     return collRef
   })
 }
 afterAll(async () => {
-  collectionSpy?.mockRestore()
+  if (collectionSpy) collectionSpy.mockRestore()
   await testEnv.cleanup()
 })
 
