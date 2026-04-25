@@ -80,6 +80,12 @@ export function TriageQueuePage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDispatchForReportId(null)
+        setCloseForReportId(null)
+        setHandoffModalOpen(false)
+        return
+      }
       if (modalOpen) return
       if (e.key === 'j') {
         const next = Math.min(indexRef.current + 1, reports.length - 1)
@@ -93,10 +99,6 @@ export function TriageQueuePage() {
           indexRef.current = prev
           setSelected(reports[prev]?.reportId ?? null)
         }
-      } else if (e.key === 'Escape') {
-        setDispatchForReportId(null)
-        setCloseForReportId(null)
-        setHandoffModalOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -176,11 +178,12 @@ export function TriageQueuePage() {
                 {hasMore ? '+' : ''} reports
               </p>
               <ul>
-                {reports.map((r: MuniReportRow) => (
+                {reports.map((r: MuniReportRow, i: number) => (
                   <li key={r.reportId}>
                     <button
                       onClick={() => {
                         setSelected(r.reportId)
+                        indexRef.current = i
                       }}
                     >
                       [{r.status}] {r.severity}
@@ -259,7 +262,13 @@ export function TriageQueuePage() {
         />
       )}
       {handoffModalOpen && (
-        <dialog ref={dialogRef} aria-label="Shift Handoff">
+        <dialog
+          ref={dialogRef}
+          aria-label="Shift Handoff"
+          onClose={() => {
+            setHandoffModalOpen(false)
+          }}
+        >
           <h3>Initiate Shift Handoff</h3>
           <label htmlFor="handoff-notes">Notes</label>
           <textarea

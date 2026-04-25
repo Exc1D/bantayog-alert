@@ -22,6 +22,13 @@ export function usePendingHandoffs(municipalityId: string | undefined) {
       })
       return
     }
+
+    // Clear before subscribing
+    queueMicrotask(() => {
+      setHandoffs([])
+      setError(null)
+    })
+
     const q = query(
       collection(db, 'shift_handoffs'),
       where('municipalityId', '==', municipalityId),
@@ -42,6 +49,7 @@ export function usePendingHandoffs(municipalityId: string | undefined) {
         setError(null)
       },
       (err) => {
+        setHandoffs([]) // Clear on error
         setError(err.message)
       },
     )

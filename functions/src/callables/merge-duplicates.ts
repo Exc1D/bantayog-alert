@@ -20,6 +20,10 @@ const inputSchema = z
     message: 'duplicateReportIds must be unique',
     path: ['duplicateReportIds'],
   })
+  .refine((data) => !data.duplicateReportIds.includes(data.primaryReportId), {
+    message: 'primaryReportId cannot be in duplicateReportIds',
+    path: ['duplicateReportIds'],
+  })
 
 export interface MergeDuplicatesActor {
   uid: string

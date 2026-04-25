@@ -31,22 +31,24 @@ export async function adminOperationsSweepCore(
     const batch = toEscalate.slice(i, i + BATCH_SIZE)
     const results = await Promise.allSettled(
       batch.map(async (d) => {
-        const latest = await d.ref.get()
-        const latestData = latest.data()
-        if (latestData?.status === 'pending' && latestData.escalatedAt == null) {
-          await d.ref.update({ escalatedAt: deps.now.toMillis() })
-          log({
-            severity: 'INFO',
-            code: 'sweep.agency.escalated',
-            message: `Escalated agency request ${d.id}`,
-          })
-        } else {
-          log({
-            severity: 'INFO',
-            code: 'sweep.agency.skipped',
-            message: `Skipped agency request ${d.id}: status=${String(latestData?.status)}, escalatedAt=${String(latestData?.escalatedAt)}`,
-          })
-        }
+        await db.runTransaction(async (tx) => {
+          const latest = await tx.get(d.ref)
+          const latestData = latest.data()
+          if (latestData?.status === 'pending' && latestData.escalatedAt == null) {
+            tx.update(d.ref, { escalatedAt: deps.now.toMillis() })
+            log({
+              severity: 'INFO',
+              code: 'sweep.agency.escalated',
+              message: `Escalated agency request ${d.id}`,
+            })
+          } else {
+            log({
+              severity: 'INFO',
+              code: 'sweep.agency.skipped',
+              message: `Skipped agency request ${d.id}: status=${String(latestData?.status)}, escalatedAt=${String(latestData?.escalatedAt)}`,
+            })
+          }
+        })
       }),
     )
     results.forEach((result, idx) => {
@@ -76,22 +78,24 @@ export async function adminOperationsSweepCore(
     const batch = toEscalateHandoffs.slice(i, i + BATCH_SIZE)
     const results = await Promise.allSettled(
       batch.map(async (d) => {
-        const latest = await d.ref.get()
-        const latestData = latest.data()
-        if (latestData?.status === 'pending' && latestData.escalatedAt == null) {
-          await d.ref.update({ escalatedAt: deps.now.toMillis() })
-          log({
-            severity: 'INFO',
-            code: 'sweep.handoff.escalated',
-            message: `Escalated handoff ${d.id}`,
-          })
-        } else {
-          log({
-            severity: 'INFO',
-            code: 'sweep.handoff.skipped',
-            message: `Skipped handoff ${d.id}: status=${String(latestData?.status)}, escalatedAt=${String(latestData?.escalatedAt)}`,
-          })
-        }
+        await db.runTransaction(async (tx) => {
+          const latest = await tx.get(d.ref)
+          const latestData = latest.data()
+          if (latestData?.status === 'pending' && latestData.escalatedAt == null) {
+            tx.update(d.ref, { escalatedAt: deps.now.toMillis() })
+            log({
+              severity: 'INFO',
+              code: 'sweep.handoff.escalated',
+              message: `Escalated handoff ${d.id}`,
+            })
+          } else {
+            log({
+              severity: 'INFO',
+              code: 'sweep.handoff.skipped',
+              message: `Skipped handoff ${d.id}: status=${String(latestData?.status)}, escalatedAt=${String(latestData?.escalatedAt)}`,
+            })
+          }
+        })
       }),
     )
     results.forEach((result, idx) => {

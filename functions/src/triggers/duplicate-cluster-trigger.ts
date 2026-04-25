@@ -34,7 +34,7 @@ export async function duplicateClusterTriggerCore(
     duplicateClusterId: existingCluster,
   } = data
 
-  if (!locationGeohash || typeof locationGeohash !== 'string') return
+  if (typeof locationGeohash !== 'string' || locationGeohash.length < 6) return
   if (typeof municipalityId !== 'string' || municipalityId.length === 0) return
   if (typeof reportType !== 'string' || reportType.length === 0) return
 
@@ -53,7 +53,12 @@ export async function duplicateClusterTriggerCore(
 
   const prefix = locationGeohash.slice(0, 6)
   const neighborPrefixes = new Set([prefix, ...ngeohash.neighbors(prefix)])
-  const triggerPoint = ngeohash.decode(locationGeohash)
+  let triggerPoint: { latitude: number; longitude: number }
+  try {
+    triggerPoint = ngeohash.decode(locationGeohash)
+  } catch {
+    return
+  }
   const triggerCoord = turf.point([triggerPoint.longitude, triggerPoint.latitude])
 
   const nearby = candidates.docs.filter((d) => {
@@ -78,16 +83,16 @@ export async function duplicateClusterTriggerCore(
     .duplicateClusterId as string | undefined
   const clusterId = existingCluster ?? existingClusterFromNearby ?? crypto.randomUUID()
 
-  const toUpdate = nearby
-    .filter((d) => d.data().duplicateClusterId !== clusterId)
-    .slice(0, BATCH_CAP - 1)
+  const needsUpdate = nearby.filter((d) => d.data().duplicateClusterId !== clusterId)
+  const maxNearbyUpdates = existingCluster !== clusterId ? BATCH_CAP - 1 : BATCH_CAP
+  const toUpdate = needsUpdate.slice(0, maxNearbyUpdates)
 
-  if (nearby.length > BATCH_CAP) {
+  if (needsUpdate.length > maxNearbyUpdates) {
     log({
       severity: 'WARNING',
       code: 'dup.cluster.truncated',
-      message: `Truncated duplicate cluster from ${String(nearby.length)} to ${String(BATCH_CAP)} docs`,
-      data: { reportId: snap.id, nearbyCount: nearby.length, batchCap: BATCH_CAP },
+      message: `Truncated duplicate cluster from ${String(needsUpdate.length)} to ${String(maxNearbyUpdates)} docs`,
+      data: { reportId: snap.id, nearbyCount: needsUpdate.length, batchCap: maxNearbyUpdates },
     })
   }
 

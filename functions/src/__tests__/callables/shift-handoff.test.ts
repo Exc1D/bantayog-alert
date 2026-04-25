@@ -102,7 +102,7 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'Handover notes',
-        idempotencyKey: 'key-inactive',
+        idempotencyKey: uuid(10),
       },
       {
         uid: 'admin-inactive',
@@ -126,7 +126,7 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'Handover notes',
-        idempotencyKey: 'key-no-muni',
+        idempotencyKey: uuid(11),
       },
       {
         uid: 'admin-no-muni',
@@ -235,7 +235,7 @@ describe('acceptShiftHandoff', () => {
     await createHandoff('h-inactive')
     const result = await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h-inactive', idempotencyKey: 'key-inactive' },
+      { handoffId: 'h-inactive', idempotencyKey: uuid(12) },
       {
         uid: 'admin-to',
         claims: {
@@ -256,7 +256,7 @@ describe('acceptShiftHandoff', () => {
   it('rejects non-existent handoff', async () => {
     const result = await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h-missing', idempotencyKey: 'key-missing' },
+      { handoffId: 'h-missing', idempotencyKey: uuid(13) },
       {
         uid: 'admin-to',
         claims: {
@@ -278,7 +278,7 @@ describe('acceptShiftHandoff', () => {
     await createHandoff('h-expired', { expiresAt: ts - 1 })
     const result = await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h-expired', idempotencyKey: 'key-expired' },
+      { handoffId: 'h-expired', idempotencyKey: uuid(14) },
       {
         uid: 'admin-to',
         claims: {
@@ -300,7 +300,7 @@ describe('acceptShiftHandoff', () => {
     await createHandoff('h-self')
     const result = await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h-self', idempotencyKey: 'key-self' },
+      { handoffId: 'h-self', idempotencyKey: uuid(15) },
       {
         uid: 'admin-from',
         claims: {

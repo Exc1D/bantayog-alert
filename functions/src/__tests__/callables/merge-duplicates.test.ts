@@ -118,7 +118,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r1',
         duplicateReportIds: ['r2'],
-        idempotencyKey: 'key-inactive',
+        idempotencyKey: uuid(99),
       },
       {
         uid: 'admin-1',
