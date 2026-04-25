@@ -86,7 +86,35 @@ describe('sendFcmToResponder', () => {
     expect(mockUpdate).toHaveBeenCalledWith({
       fcmTokens: 'array_remove_mock',
     })
+    // When only partial tokens are invalid, hasFcmToken should NOT be cleared
+    const updateCall = mockUpdate.mock.calls[0]?.[0] as Record<string, unknown> | undefined
+    expect(updateCall).not.toHaveProperty('hasFcmToken')
     expect(arrayRemoveSpy).toHaveBeenCalledWith('invalid')
+  })
+
+  it('clears hasFcmToken when all tokens are invalid', async () => {
+    mockGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({ fcmTokens: ['invalid1', 'invalid2'] }),
+    })
+    mockSendEachForMulticast.mockResolvedValueOnce({
+      responses: [
+        { success: false, error: { code: 'messaging/invalid-registration-token' } },
+        { success: false, error: { code: 'messaging/registration-token-not-registered' } },
+      ],
+    })
+
+    const arrayRemoveSpy = vi
+      .spyOn(FieldValue, 'arrayRemove')
+      .mockReturnValue('array_remove_mock' as any) // eslint-disable-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+
+    const result = await sendFcmToResponder({ uid: 'r1', title: 'T', body: 'B' })
+    expect(result.warnings).toEqual(['fcm_one_token_invalid'])
+    expect(mockUpdate).toHaveBeenCalledWith({
+      fcmTokens: 'array_remove_mock',
+      hasFcmToken: false,
+    })
+    expect(arrayRemoveSpy).toHaveBeenCalledWith('invalid1', 'invalid2')
   })
 
   it('retries once on transport failure', async () => {
