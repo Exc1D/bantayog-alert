@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+import { Timestamp } from 'firebase-admin/firestore'
 import {
   onCall,
   type CallableRequest,
@@ -6,15 +8,27 @@ import {
 } from 'firebase-functions/v2/https'
 import { z } from 'zod'
 import { adminDb } from '../admin-init.js'
-import { requireAuth, bantayogErrorToHttps } from './https-error.js'
+import { bantayogErrorToHttps } from './https-error.js'
 import { withIdempotency } from '../idempotency/guard.js'
+import { checkRateLimit } from '../services/rate-limit.js'
 import { BantayogError, logDimension } from '@bantayog/shared-validators'
+import { type UserRole } from '@bantayog/shared-types'
+
+interface ShiftHandoff {
+  fromUid: string
+  municipalityId: string
+  notes: string
+  activeIncidentIds: string[]
+  status: 'pending' | 'accepted'
+  createdAt: number
+  expiresAt: number
+  schemaVersion: number
+}
 
 const log = logDimension('shiftHandoff')
 
 const initiateSchema = z.object({
   notes: z.string().max(2000),
-  activeIncidentIds: z.array(z.string()),
   idempotencyKey: z.uuid(),
 })
 
@@ -23,40 +37,50 @@ const acceptSchema = z.object({
   idempotencyKey: z.uuid(),
 })
 
-const ADMIN_ROLES = ['municipal_admin', 'agency_admin', 'provincial_superadmin'] as const
+const ADMIN_ROLES: UserRole[] = ['municipal_admin', 'agency_admin', 'provincial_superadmin']
 const ACTIVE_DISPATCH_STATUSES = ['assigned', 'acknowledged', 'en_route']
 
 export interface HandoffActor {
   uid: string
-  claims: { role: string; municipalityId?: string; active: boolean; auth_time: number }
+  claims: { role: UserRole; municipalityId?: string; active: boolean; auth_time: number }
 }
 
-export interface InitiateResult {
-  success: boolean
-  handoffId?: string
-  errorCode?: string
-}
+export type InitiateResult =
+  | { success: true; handoffId: string }
+  | { success: false; errorCode: string }
 
-export interface AcceptResult {
-  success: boolean
-  errorCode?: string
-}
+export type AcceptResult = { success: true } | { success: false; errorCode: string }
 
 export async function initiateShiftHandoffCore(
   db: FirebaseFirestore.Firestore,
   input: z.infer<typeof initiateSchema>,
   actor: HandoffActor,
+  correlationId: string,
 ): Promise<InitiateResult> {
-  if (!ADMIN_ROLES.includes(actor.claims.role as (typeof ADMIN_ROLES)[number])) {
+  if (!actor.claims.active) {
+    log({
+      severity: 'ERROR',
+      code: 'handoff.initiate.inactive',
+      message: 'Caller account is not active',
+      data: { uid: actor.uid, correlationId },
+    })
     return { success: false, errorCode: 'permission-denied' }
   }
 
   const municipalityId = actor.claims.municipalityId
-  if (!municipalityId) return { success: false, errorCode: 'permission-denied' }
+  if (!municipalityId) {
+    log({
+      severity: 'ERROR',
+      code: 'handoff.initiate.missing_municipality',
+      message: 'municipalityId missing',
+      data: { uid: actor.uid, correlationId },
+    })
+    return { success: false, errorCode: 'permission-denied' }
+  }
 
-  const { result: cached } = await withIdempotency(
+  const { result: cached } = await withIdempotency<z.infer<typeof initiateSchema>, InitiateResult>(
     db,
-    { key: `initiate-handoff:${input.idempotencyKey}`, payload: input },
+    { key: `initiateShiftHandoff:${actor.uid}:${input.idempotencyKey}`, payload: input },
     async () => {
       const [opsSnap, dispatchSnap] = await Promise.all([
         db
@@ -71,13 +95,13 @@ export async function initiateShiftHandoffCore(
           .get(),
       ])
 
-      const activeIncidentSnapshot = [
+      const activeIncidentIds = [
         ...opsSnap.docs.map((d) => d.id),
         ...dispatchSnap.docs.map((d) => d.id),
       ]
 
-      const handoffId = crypto.randomUUID()
-      const now = Date.now()
+      const handoffId = randomUUID()
+      const now = Timestamp.now()
 
       await db
         .collection('shift_handoffs')
@@ -86,10 +110,10 @@ export async function initiateShiftHandoffCore(
           fromUid: actor.uid,
           municipalityId,
           notes: input.notes,
-          activeIncidentSnapshot,
+          activeIncidentIds,
           status: 'pending',
           createdAt: now,
-          expiresAt: now + 30 * 60 * 1000,
+          expiresAt: Timestamp.fromMillis(now.toMillis() + 30 * 60 * 1000),
           schemaVersion: 1,
         })
 
@@ -97,8 +121,9 @@ export async function initiateShiftHandoffCore(
         severity: 'INFO',
         code: 'handoff.initiated',
         message: `Shift handoff ${handoffId} created by ${actor.uid}`,
+        data: { handoffId, uid: actor.uid, correlationId },
       })
-      return { success: true, handoffId }
+      return { success: true as const, handoffId }
     },
   )
 
@@ -109,38 +134,66 @@ export async function acceptShiftHandoffCore(
   db: FirebaseFirestore.Firestore,
   input: z.infer<typeof acceptSchema>,
   actor: HandoffActor,
+  correlationId: string,
 ): Promise<AcceptResult> {
-  if (!ADMIN_ROLES.includes(actor.claims.role as (typeof ADMIN_ROLES)[number])) {
+  if (!actor.claims.active) {
+    log({
+      severity: 'ERROR',
+      code: 'handoff.accept.inactive',
+      message: 'Caller account is not active',
+      data: { uid: actor.uid, correlationId },
+    })
     return { success: false, errorCode: 'permission-denied' }
   }
 
-  const { result: cached } = await withIdempotency(
+  const { result: cached } = await withIdempotency<z.infer<typeof acceptSchema>, AcceptResult>(
     db,
-    { key: `accept-handoff:${input.idempotencyKey}`, payload: input },
+    { key: `acceptShiftHandoff:${actor.uid}:${input.idempotencyKey}`, payload: input },
     async () => {
-      const snap = await db.collection('shift_handoffs').doc(input.handoffId).get()
-      if (!snap.exists) return { success: false, errorCode: 'not-found' }
+      return db.runTransaction(async (tx) => {
+        const snap = await tx.get(db.collection('shift_handoffs').doc(input.handoffId))
+        if (!snap.exists) return { success: false, errorCode: 'not-found' }
 
-      const handoff = snap.data()
-      if (handoff === undefined) return { success: false, errorCode: 'not-found' }
-      if (handoff.municipalityId !== actor.claims.municipalityId) {
-        return { success: false, errorCode: 'permission-denied' }
-      }
+        const handoff = snap.data() as ShiftHandoff | undefined
+        if (handoff === undefined) return { success: false, errorCode: 'not-found' }
 
-      if (handoff.status === 'accepted') return { success: true }
+        if (
+          actor.claims.role === 'municipal_admin' &&
+          handoff.municipalityId !== actor.claims.municipalityId
+        ) {
+          log({
+            severity: 'ERROR',
+            code: 'handoff.accept.wrong_municipality',
+            message: `Municipality mismatch: ${handoff.municipalityId} vs ${actor.claims.municipalityId ?? 'undefined'}`,
+            data: { handoffId: input.handoffId, uid: actor.uid, correlationId },
+          })
+          return { success: false, errorCode: 'permission-denied' }
+        }
 
-      await snap.ref.update({
-        status: 'accepted',
-        toUid: actor.uid,
-        acceptedAt: Date.now(),
+        if (handoff.fromUid === actor.uid) {
+          return { success: false, errorCode: 'failed-precondition' }
+        }
+
+        if (handoff.expiresAt && handoff.expiresAt < Date.now()) {
+          return { success: false, errorCode: 'failed-precondition' }
+        }
+
+        if (handoff.status === 'accepted') return { success: true as const }
+
+        tx.update(snap.ref, {
+          status: 'accepted',
+          toUid: actor.uid,
+          acceptedAt: Timestamp.now(),
+        })
+
+        log({
+          severity: 'INFO',
+          code: 'handoff.accepted',
+          message: `Handoff ${input.handoffId} accepted by ${actor.uid}`,
+          data: { handoffId: input.handoffId, uid: actor.uid, correlationId },
+        })
+        return { success: true as const }
       })
-
-      log({
-        severity: 'INFO',
-        code: 'handoff.accepted',
-        message: `Handoff ${input.handoffId} accepted by ${actor.uid}`,
-      })
-      return { success: true }
     },
   )
 
@@ -148,24 +201,51 @@ export async function acceptShiftHandoffCore(
 }
 
 export const initiateShiftHandoff = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: process.env.NODE_ENV === 'production' },
+  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
   async (req: CallableRequest<unknown>) => {
-    const authed = requireAuth(req, [...ADMIN_ROLES])
-    const input = initiateSchema.safeParse(req.data)
-    if (!input.success) throw new HttpsError('invalid-argument', input.error.message)
-    const muni =
-      typeof authed.claims.municipalityId === 'string' ? authed.claims.municipalityId : undefined
+    if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
+    const claims = req.auth.token as Record<string, unknown> | null
+    if (!claims) throw new HttpsError('unauthenticated', 'token required')
+    if (!ADMIN_ROLES.includes(claims.role as UserRole)) {
+      throw new HttpsError('permission-denied', 'admin role required')
+    }
+    if (claims.active !== true) {
+      throw new HttpsError('permission-denied', 'account is not active')
+    }
+    if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {
+      throw new HttpsError('permission-denied', 'municipalityId missing from token claims')
+    }
+
+    const parsed = initiateSchema.safeParse(req.data)
+    if (!parsed.success) throw new HttpsError('invalid-argument', parsed.error.message)
+
+    const rl = await checkRateLimit(adminDb, {
+      key: `initiateShiftHandoff:${req.auth.uid}`,
+      limit: 60,
+      windowSeconds: 60,
+      now: Timestamp.now(),
+    })
+    if (!rl.allowed) {
+      throw new HttpsError('resource-exhausted', 'rate limit', {
+        retryAfterSeconds: rl.retryAfterSeconds,
+      })
+    }
+
+    const correlationId = randomUUID()
     const actor: HandoffActor = {
-      uid: authed.uid,
+      uid: req.auth.uid,
       claims: {
-        role: authed.claims.role as string,
-        ...(muni ? { municipalityId: muni } : {}),
-        active: authed.claims.active as boolean,
-        auth_time: authed.claims.auth_time as number,
+        role: claims.role as UserRole,
+        ...(claims.municipalityId !== undefined
+          ? { municipalityId: claims.municipalityId as string }
+          : {}),
+        active: claims.active as boolean,
+        auth_time: claims.auth_time as number,
       },
     }
+
     try {
-      const result = await initiateShiftHandoffCore(adminDb, input.data, actor)
+      const result = await initiateShiftHandoffCore(adminDb, parsed.data, actor, correlationId)
       if (!result.success)
         throw new HttpsError(result.errorCode as FunctionsErrorCode, 'initiate failed')
       return result
@@ -178,24 +258,51 @@ export const initiateShiftHandoff = onCall(
 )
 
 export const acceptShiftHandoff = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: process.env.NODE_ENV === 'production' },
+  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
   async (req: CallableRequest<unknown>) => {
-    const authed = requireAuth(req, [...ADMIN_ROLES])
-    const input = acceptSchema.safeParse(req.data)
-    if (!input.success) throw new HttpsError('invalid-argument', input.error.message)
-    const muni =
-      typeof authed.claims.municipalityId === 'string' ? authed.claims.municipalityId : undefined
+    if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
+    const claims = req.auth.token as Record<string, unknown> | null
+    if (!claims) throw new HttpsError('unauthenticated', 'token required')
+    if (!ADMIN_ROLES.includes(claims.role as UserRole)) {
+      throw new HttpsError('permission-denied', 'admin role required')
+    }
+    if (claims.active !== true) {
+      throw new HttpsError('permission-denied', 'account is not active')
+    }
+    if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {
+      throw new HttpsError('permission-denied', 'municipalityId missing from token claims')
+    }
+
+    const parsed = acceptSchema.safeParse(req.data)
+    if (!parsed.success) throw new HttpsError('invalid-argument', parsed.error.message)
+
+    const rl = await checkRateLimit(adminDb, {
+      key: `acceptShiftHandoff:${req.auth.uid}`,
+      limit: 60,
+      windowSeconds: 60,
+      now: Timestamp.now(),
+    })
+    if (!rl.allowed) {
+      throw new HttpsError('resource-exhausted', 'rate limit', {
+        retryAfterSeconds: rl.retryAfterSeconds,
+      })
+    }
+
+    const correlationId = randomUUID()
     const actor: HandoffActor = {
-      uid: authed.uid,
+      uid: req.auth.uid,
       claims: {
-        role: authed.claims.role as string,
-        ...(muni ? { municipalityId: muni } : {}),
-        active: authed.claims.active as boolean,
-        auth_time: authed.claims.auth_time as number,
+        role: claims.role as UserRole,
+        ...(claims.municipalityId !== undefined
+          ? { municipalityId: claims.municipalityId as string }
+          : {}),
+        active: claims.active as boolean,
+        auth_time: claims.auth_time as number,
       },
     }
+
     try {
-      const result = await acceptShiftHandoffCore(adminDb, input.data, actor)
+      const result = await acceptShiftHandoffCore(adminDb, parsed.data, actor, correlationId)
       if (!result.success)
         throw new HttpsError(result.errorCode as FunctionsErrorCode, 'accept failed')
       return result
