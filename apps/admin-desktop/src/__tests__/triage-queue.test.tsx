@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 const mockUseMuniReports = vi.fn()
 
@@ -117,5 +118,67 @@ describe('TriageQueuePage', () => {
     })
     render(<TriageQueuePage />)
     expect(screen.getByText(/high/i)).toBeInTheDocument()
+  })
+
+  it('pressing j selects the next report in the list', async () => {
+    const user = userEvent.setup()
+    mockUseMuniReports.mockReturnValue({
+      reports: [
+        { reportId: 'r1', status: 'new', severity: 'high', createdAt: null, municipalityLabel: '' },
+        {
+          reportId: 'r2',
+          status: 'new',
+          severity: 'medium',
+          createdAt: null,
+          municipalityLabel: '',
+        },
+      ],
+      hasMore: false,
+      loadMore: vi.fn(),
+      loading: false,
+      error: null,
+    })
+    render(<TriageQueuePage />)
+    await user.keyboard('j')
+    expect(screen.getByText('detail')).toBeInTheDocument()
+  })
+
+  it('pressing k moves selection backward', async () => {
+    const user = userEvent.setup()
+    mockUseMuniReports.mockReturnValue({
+      reports: [
+        { reportId: 'r1', status: 'new', severity: 'high', createdAt: null, municipalityLabel: '' },
+        {
+          reportId: 'r2',
+          status: 'new',
+          severity: 'medium',
+          createdAt: null,
+          municipalityLabel: '',
+        },
+      ],
+      hasMore: false,
+      loadMore: vi.fn(),
+      loading: false,
+      error: null,
+    })
+    render(<TriageQueuePage />)
+    await user.keyboard('jj')
+    await user.keyboard('k')
+    expect(screen.getByText('detail')).toBeInTheDocument()
+  })
+
+  it('keyboard shortcuts do not fire when a modal is open', async () => {
+    const user = userEvent.setup()
+    mockUseMuniReports.mockReturnValue({
+      reports: [],
+      hasMore: false,
+      loadMore: vi.fn(),
+      loading: false,
+      error: null,
+    })
+    render(<TriageQueuePage />)
+    await user.keyboard('j')
+    await user.keyboard('k')
+    expect(screen.queryByText('detail')).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useMuniReports, type MuniReportRow } from '../hooks/useMuniReports'
 import { ReportDetailPanel } from './ReportDetailPanel'
@@ -48,6 +48,35 @@ export function TriageQueuePage() {
       }
     })()
   }
+
+  const indexRef = useRef<number>(-1)
+  const modalOpen = !!dispatchForReportId || !!closeForReportId
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (modalOpen) return
+      if (e.key === 'j') {
+        const next = Math.min(indexRef.current + 1, reports.length - 1)
+        if (next >= 0) {
+          indexRef.current = next
+          setSelected(reports[next]?.reportId ?? null)
+        }
+      } else if (e.key === 'k') {
+        const prev = Math.max(indexRef.current - 1, 0)
+        if (prev >= 0 && reports.length > 0) {
+          indexRef.current = prev
+          setSelected(reports[prev]?.reportId ?? null)
+        }
+      } else if (e.key === 'Escape') {
+        setDispatchForReportId(null)
+        setCloseForReportId(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [modalOpen, reports])
 
   return (
     <main>
