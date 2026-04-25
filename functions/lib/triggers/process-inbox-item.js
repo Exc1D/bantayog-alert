@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import ngeohash from 'ngeohash';
 import { BantayogError, BantayogErrorCode, logDimension, reportInboxDocSchema, inboxPayloadSchema, } from '@bantayog/shared-validators';
 import { reverseGeocodeToMunicipality } from '../services/geocode.js';
 import { withIdempotency } from '../idempotency/guard.js';
@@ -44,6 +45,7 @@ export async function processInboxItemCore(input) {
         throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, `payload schema invalid: ${payloadResult.error.issues[0]?.message ?? 'unknown'}`);
     }
     const payload = payloadResult.data;
+    const exactLocation = payload.exactLocation;
     let geo = null;
     if (payload.publicLocation) {
         geo = await reverseGeocodeToMunicipality(db, payload.publicLocation);
@@ -71,9 +73,17 @@ export async function processInboxItemCore(input) {
             if (pendingSnap.exists) {
                 pendingMediaDocs.set(uploadId, pendingSnap.data());
             }
+            else {
+                log({
+                    severity: 'WARNING',
+                    code: 'INBOX_PENDING_MEDIA_MISSING',
+                    message: `pending_media doc not found: ${uploadId} (inbox ${inboxId})`,
+                    data: { inboxId, uploadId },
+                });
+            }
         }
-        // pending_media docs are write-once by onMediaFinalize and only deleted here,
-        // so reads outside the transaction are safe by design.
+        // Reads outside the transaction are a known race; we accept it because
+        // pending_media is append-only and deletion is best-effort.
         await db.runTransaction(async (tx) => {
             const lookupRef = db.collection('report_lookup').doc(inbox.publicRef);
             const lookupSnap = await tx.get(lookupRef);
@@ -116,6 +126,10 @@ export async function processInboxItemCore(input) {
                 agencyIds: [],
                 activeResponderCount: 0,
                 requiresLocationFollowUp: false,
+                reportType: payload.reportType,
+                ...(exactLocation
+                    ? { locationGeohash: ngeohash.encode(exactLocation.lat, exactLocation.lng, 6) }
+                    : {}),
                 visibility: { scope: 'municipality', sharedWith: [] },
                 updatedAt: createdAt,
                 schemaVersion: 1,
@@ -135,8 +149,9 @@ export async function processInboxItemCore(input) {
                 createdAt,
                 schemaVersion: 1,
             });
-            // smsConsent check is intentional — presence of contact.phone implies smsConsent=true
-            // (schema enforces contact.smsConsent as z.literal(true))
+            // The inboxPayloadSchema enforces contact.smsConsent as z.literal(true), so
+            // presence of contact.phone here means the payload schema already validated consent.
+            // This code path does not re-validate — it relies on upstream schema enforcement.
             if (payload.contact?.phone) {
                 const salt = process.env.SMS_MSISDN_HASH_SALT;
                 if (!salt) {
@@ -163,6 +178,7 @@ export async function processInboxItemCore(input) {
                         phone: payload.contact.phone,
                         locale: muniLocale,
                         smsConsent: true,
+                        municipalityId: geo.municipalityId,
                         createdAt,
                         schemaVersion: 1,
                     });

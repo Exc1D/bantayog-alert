@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { ProtectedRoute } from '@bantayog/shared-ui'
 import { LoginPage } from './pages/LoginPage'
 import { TriageQueuePage } from './pages/TriageQueuePage'
+import { AgencyAssistanceQueuePage } from './pages/AgencyAssistanceQueuePage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -19,6 +20,22 @@ export const router = createBrowserRouter([
         }
       >
         <TriageQueuePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/agency',
+    element: (
+      <ProtectedRoute
+        allowedRoles={['agency_admin']}
+        requireActive
+        unauthorizedFallback={
+          <div role="alert">
+            You do not have access to this page. Please contact your superadmin.
+          </div>
+        }
+      >
+        <AgencyAssistanceQueuePage />
       </ProtectedRoute>
     ),
   },

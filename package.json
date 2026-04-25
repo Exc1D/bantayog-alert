@@ -39,5 +39,11 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.8.0",
     "vitest": "^4.1.4"
+  },
+  "dependencies": {
+    "@turf/turf": "^7.3.5",
+    "@types/geojson": "^7946.0.16",
+    "geojson": "^0.5.0",
+    "ngeohash": "^0.6.3"
   }
 }

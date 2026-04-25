@@ -16,6 +16,7 @@ export const agencyAssistanceRequestDocSchema = z
     respondedBy: z.string().optional(),
     escalatedAt: z.number().int().optional(),
     expiresAt: z.number().int(),
+    schemaVersion: z.number().int().positive(),
 })
     .strict()
     // Assistance windows must have a positive duration — expiresAt is set by the

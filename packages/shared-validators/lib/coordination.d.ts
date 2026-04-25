@@ -31,6 +31,7 @@ export declare const agencyAssistanceRequestDocSchema: z.ZodObject<{
     respondedBy: z.ZodOptional<z.ZodString>;
     escalatedAt: z.ZodOptional<z.ZodNumber>;
     expiresAt: z.ZodNumber;
+    schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export declare const commandChannelThreadDocSchema: z.ZodObject<{
     threadId: z.ZodString;

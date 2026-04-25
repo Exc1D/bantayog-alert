@@ -11,6 +11,11 @@ export { acceptDispatch } from './callables/accept-dispatch.js';
 export { advanceDispatch } from './callables/advance-dispatch.js';
 export { declineDispatch } from './callables/decline-dispatch.js';
 export { closeReport } from './callables/close-report.js';
+export { requestAgencyAssistance, acceptAgencyAssistance, declineAgencyAssistance, } from './callables/request-agency-assistance.js';
+export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js';
+export { shareReport } from './callables/share-report.js';
+export { addCommandChannelMessage } from './callables/add-command-channel-message.js';
+export { borderAutoShareTrigger } from './triggers/border-auto-share.js';
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
@@ -64,14 +69,17 @@ export const onMediaFinalize = onObjectFinalized({
         });
     }
     catch (err) {
-        const code = err.code;
+        const code = typeof err === 'object' && err !== null && 'code' in err
+            ? err.code
+            : undefined;
         if (code === 'MEDIA_REJECTED_MIME' || code === 'MEDIA_REJECTED_CORRUPT') {
             return;
         }
+        const message = err instanceof Error ? err.message : String(err);
         log({
             severity: 'ERROR',
             code: 'MEDIA_FINALIZE_FAILED',
-            message: `onMediaFinalize failed: ${err.message}`,
+            message: `onMediaFinalize failed: ${message}`,
         });
         throw err;
     }
@@ -84,6 +92,7 @@ export { dispatchSmsOutbox } from './triggers/dispatch-sms-outbox.js';
 export { evaluateSmsProviderHealth } from './triggers/evaluate-sms-provider-health.js';
 export { reconcileSmsDeliveryStatus } from './triggers/reconcile-sms-delivery-status.js';
 export { cleanupSmsMinuteWindows } from './triggers/cleanup-sms-minute-windows.js';
+export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js';
 export { smsDeliveryReport } from './http/sms-delivery-report.js';
 export { smsInboundWebhook } from './http/sms-inbound.js';
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js';
