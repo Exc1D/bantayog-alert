@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { Timestamp } from 'firebase-admin/firestore'
 import {
   onCall,
@@ -11,7 +11,7 @@ import { adminDb } from '../admin-init.js'
 import { bantayogErrorToHttps } from './https-error.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
-import { BantayogError, logDimension } from '@bantayog/shared-validators'
+import { BantayogError, logDimension, type ReportStatus } from '@bantayog/shared-validators'
 import { type UserRole } from '@bantayog/shared-types'
 
 interface ShiftHandoff {
@@ -20,8 +20,8 @@ interface ShiftHandoff {
   notes: string
   activeIncidentIds: string[]
   status: 'pending' | 'accepted'
-  createdAt: number
-  expiresAt: number
+  createdAt: Timestamp
+  expiresAt: Timestamp
   schemaVersion: number
 }
 
@@ -38,7 +38,8 @@ const acceptSchema = z.object({
 })
 
 const ADMIN_ROLES: UserRole[] = ['municipal_admin', 'agency_admin', 'provincial_superadmin']
-const ACTIVE_DISPATCH_STATUSES = ['assigned', 'acknowledged', 'en_route']
+const ACTIVE_REPORT_STATUSES: ReportStatus[] = ['assigned', 'acknowledged', 'en_route', 'on_scene']
+const ACTIVE_DISPATCH_STATUSES = ['accepted', 'acknowledged', 'en_route', 'on_scene']
 
 export interface HandoffActor {
   uid: string
@@ -78,56 +79,59 @@ export async function initiateShiftHandoffCore(
     return { success: false, errorCode: 'permission-denied' }
   }
 
-  const { result: cached } = await withIdempotency<z.infer<typeof initiateSchema>, InitiateResult>(
-    db,
-    { key: `initiateShiftHandoff:${actor.uid}:${input.idempotencyKey}`, payload: input },
-    async () => {
-      const [opsSnap, dispatchSnap] = await Promise.all([
-        db
-          .collection('report_ops')
-          .where('municipalityId', '==', municipalityId)
-          .where('status', 'in', ACTIVE_DISPATCH_STATUSES)
-          .get(),
-        db
-          .collection('dispatches')
-          .where('municipalityId', '==', municipalityId)
-          .where('status', '==', 'accepted')
-          .get(),
-      ])
+  const handoffId = createHash('sha256')
+    .update(`${actor.uid}:${input.idempotencyKey}`)
+    .digest('hex')
+    .slice(0, 20)
 
-      const activeIncidentIds = [
-        ...opsSnap.docs.map((d) => d.id),
-        ...dispatchSnap.docs.map((d) => d.id),
-      ]
-
-      const handoffId = randomUUID()
-      const now = Timestamp.now()
-
-      await db
-        .collection('shift_handoffs')
-        .doc(handoffId)
-        .set({
-          fromUid: actor.uid,
-          municipalityId,
-          notes: input.notes,
-          activeIncidentIds,
-          status: 'pending',
-          createdAt: now,
-          expiresAt: Timestamp.fromMillis(now.toMillis() + 30 * 60 * 1000),
-          schemaVersion: 1,
-        })
-
-      log({
-        severity: 'INFO',
-        code: 'handoff.initiated',
-        message: `Shift handoff ${handoffId} created by ${actor.uid}`,
-        data: { handoffId, uid: actor.uid, correlationId },
-      })
+  const result = await db.runTransaction(async (tx) => {
+    const existingRef = db.collection('shift_handoffs').doc(handoffId)
+    const existing = await tx.get(existingRef)
+    if (existing.exists) {
       return { success: true as const, handoffId }
-    },
-  )
+    }
 
-  return cached
+    const [opsSnap, dispatchSnap] = await Promise.all([
+      db
+        .collection('report_ops')
+        .where('municipalityId', '==', municipalityId)
+        .where('status', 'in', ACTIVE_REPORT_STATUSES)
+        .get(),
+      db
+        .collection('dispatches')
+        .where('municipalityId', '==', municipalityId)
+        .where('status', 'in', ACTIVE_DISPATCH_STATUSES)
+        .get(),
+    ])
+
+    const activeIncidentIds = [
+      ...opsSnap.docs.map((d) => d.id),
+      ...dispatchSnap.docs.map((d) => d.id),
+    ]
+
+    const now = Timestamp.now()
+
+    tx.set(existingRef, {
+      fromUid: actor.uid,
+      municipalityId,
+      notes: input.notes,
+      activeIncidentIds,
+      status: 'pending',
+      createdAt: now,
+      expiresAt: Timestamp.fromMillis(now.toMillis() + 30 * 60 * 1000),
+      schemaVersion: 1,
+    })
+
+    log({
+      severity: 'INFO',
+      code: 'handoff.initiated',
+      message: `Shift handoff ${handoffId} created by ${actor.uid}`,
+      data: { handoffId, uid: actor.uid, correlationId },
+    })
+    return { success: true as const, handoffId }
+  })
+
+  return result
 }
 
 export async function acceptShiftHandoffCore(
@@ -174,7 +178,7 @@ export async function acceptShiftHandoffCore(
           return { success: false, errorCode: 'failed-precondition' }
         }
 
-        if (handoff.expiresAt && handoff.expiresAt < Date.now()) {
+        if (handoff.expiresAt.toMillis() < Date.now()) {
           return { success: false, errorCode: 'failed-precondition' }
         }
 
