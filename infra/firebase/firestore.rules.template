@@ -373,10 +373,19 @@ service cloud.firestore {
     }
 
     match /mass_alert_requests/{requestId} {
+      function isMassAlertMuniAdmin() {
+        return isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality;
+      }
+      function allowedCreateStatus() {
+        return request.resource.data.status in ['queued', 'pending_ndrrmc_review', 'sent'];
+      }
       allow read: if isActivePrivileged()
-                  && (isSuperadmin()
-                      || (isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality));
-      allow write: if false;
+                  && (isSuperadmin() || isMassAlertMuniAdmin());
+      allow create: if isActivePrivileged()
+                    && (isSuperadmin() || (isMuniAdmin() && request.resource.data.requestedByMunicipality == myMunicipality()))
+                    && allowedCreateStatus();
+      allow update: if isSuperadmin();
+      allow delete: if false;
     }
 
     match /shift_handoffs/{handoffId} {
