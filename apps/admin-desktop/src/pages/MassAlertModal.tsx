@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { detectEncoding } from '@bantayog/shared-validators'
 import { callables } from '../services/callables'
 
@@ -16,6 +16,8 @@ interface Props {
 }
 
 export function MassAlertModal({ municipalityId, onClose }: Props) {
+  const sendKeyRef = useRef<string>(crypto.randomUUID())
+  const escalateKeyRef = useRef<string>(crypto.randomUUID())
   const [message, setMessage] = useState('')
   const [reachPlan, setReachPlan] = useState<ReachPlan | null>(null)
   const [loading, setLoading] = useState(false)
@@ -53,7 +55,7 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
           reachPlan,
           message,
           targetScope: { municipalityIds: [municipalityId] },
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: sendKeyRef.current,
         })
         onClose()
       } catch (err: unknown) {
@@ -72,7 +74,7 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
           message,
           targetScope: { municipalityIds: [municipalityId] },
           evidencePack: { linkedReportIds: [] },
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: escalateKeyRef.current,
         })
         onClose()
       } catch (err: unknown) {
@@ -98,6 +100,8 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
         onChange={(e) => {
           setMessage(e.target.value)
           setReachPlan(null)
+          sendKeyRef.current = crypto.randomUUID()
+          escalateKeyRef.current = crypto.randomUUID()
         }}
         rows={4}
       />

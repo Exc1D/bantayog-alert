@@ -5,6 +5,8 @@ import {
   where,
   getCountFromServer,
   getDocs,
+  getDoc,
+  doc,
   orderBy,
   limit,
 } from 'firebase/firestore'
@@ -43,9 +45,19 @@ export function AnalyticsDashboardPage() {
   const { data: snapshots } = useQuery({
     queryKey: ['analytics', 'snapshots', municipalityId],
     queryFn: async () => {
-      const q = query(collection(db, `analytics_snapshots`), orderBy('__name__', 'desc'), limit(7))
-      const snap = await getDocs(q)
-      return snap.docs.map((d) => ({ date: d.id, ...d.data() }))
+      const q = query(collection(db, 'analytics_snapshots'), orderBy('__name__', 'desc'), limit(7))
+      const dateDocs = await getDocs(q)
+      const scopeId = municipalityId ?? 'province'
+      const rows = await Promise.all(
+        dateDocs.docs.map(async (d) => {
+          const summaryRef = doc(db, 'analytics_snapshots', d.id, scopeId, 'summary')
+          const summarySnap = await getDoc(summaryRef)
+          return summarySnap.exists() ? { date: d.id, ...summarySnap.data() } : null
+        }),
+      )
+      return rows.filter(
+        (r): r is { date: string; reportsByStatus?: Record<string, number> } => r !== null,
+      )
     },
     refetchInterval: 60_000,
   })

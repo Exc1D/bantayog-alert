@@ -78,7 +78,12 @@ export function TriageQueuePage() {
   }
 
   const indexRef = useRef<number>(-1)
-  const modalOpen = !!dispatchForReportId || !!closeForReportId || handoffModalOpen || massAlertOpen
+  const canOpenMassAlert = typeof municipalityId === 'string' && municipalityId.trim().length > 0
+  const modalOpen =
+    !!dispatchForReportId ||
+    !!closeForReportId ||
+    handoffModalOpen ||
+    (massAlertOpen && canOpenMassAlert)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -135,7 +140,12 @@ export function TriageQueuePage() {
           Start Handoff
         </button>
         <button
+          disabled={!canOpenMassAlert}
           onClick={() => {
+            if (!canOpenMassAlert) {
+              setBanner('Mass Alert is only available for municipality-scoped admins.')
+              return
+            }
             setMassAlertOpen(true)
           }}
         >
