@@ -53,16 +53,18 @@ export async function massAlertReachPlanPreviewCore(
       .collection('responders')
       .where('hasFcmToken', '==', true)
       .where('municipalityId', 'in', municipalityIds)
+      .count()
       .get(),
     db
       .collection('report_sms_consent')
       .where('followUpConsent', '==', true)
       .where('municipalityId', 'in', municipalityIds)
+      .count()
       .get(),
   ])
 
-  const fcmCount = fcmSnap.docs.length
-  const smsCount = smsSnap.docs.length
+  const fcmCount = fcmSnap.data().count
+  const smsCount = smsSnap.data().count
   const total = fcmCount + smsCount
 
   const route =

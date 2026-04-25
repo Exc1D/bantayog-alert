@@ -47,11 +47,58 @@ beforeAll(async () => {
     },
   })
   adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+  mockCountOnDb(adminDb)
 })
 
 beforeEach(async () => {
   await testEnv.clearFirestore()
 })
+
+function mockCountOnDb(db: Firestore) {
+  const originalCollection = db.collection.bind(db)
+  vi.spyOn(db, 'collection').mockImplementation((collectionPath: string) => {
+    const collRef = originalCollection(collectionPath)
+    const originalWhere = collRef.where.bind(collRef)
+    const whereSpy = vi
+      .spyOn(collRef, 'where')
+      .mockImplementation((fieldPath: unknown, opStr: unknown, value: unknown) => {
+        const query = originalWhere(
+          fieldPath as string,
+          opStr as FirebaseFirestore.WhereFilterOp,
+          value,
+        )
+        const originalWhere2 = query.where.bind(query)
+        const queryWhereSpy = vi
+          .spyOn(query, 'where')
+          .mockImplementation((fieldPath2: unknown, opStr2: unknown, value2: unknown) => {
+            const query2 = originalWhere2(
+              fieldPath2 as string,
+              opStr2 as FirebaseFirestore.WhereFilterOp,
+              value2,
+            )
+            return Object.assign(query2, {
+              count() {
+                return {
+                  async get() {
+                    const snap = await query2.get()
+                    return { data: () => ({ count: snap.docs.length }) }
+                  },
+                }
+              },
+            })
+          })
+        // Clean up nested spy when the test finishes so we don't stack mocks
+        afterEach(() => {
+          queryWhereSpy.mockRestore()
+        })
+        return query
+      })
+    afterEach(() => {
+      whereSpy.mockRestore()
+    })
+    return collRef
+  })
+}
 afterAll(async () => {
   await testEnv.cleanup()
 })
