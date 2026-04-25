@@ -10,13 +10,12 @@ export const responderDocSchema = z
     availabilityStatus: z.enum(['on_duty', 'off_duty', 'on_break', 'unavailable']),
     isActive: z.boolean(),
     fcmTokens: z.array(z.string().trim().min(1)).default([]),
-    hasFcmToken: z.boolean().optional(),
+    hasFcmToken: z.boolean().default(false),
     lastTelemetryAt: z.number().int().optional(),
     schemaVersion: z.number().int().positive(),
     createdAt: z.number().int(),
     updatedAt: z.number().int(),
   })
   .strict()
-  .transform((d) => ({ ...d, hasFcmToken: d.fcmTokens.length > 0 }))
 
 export type ResponderDoc = z.infer<typeof responderDocSchema>

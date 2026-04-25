@@ -43,6 +43,7 @@ export function useRegisterFcmToken({
         {
           fcmTokens: arrayUnion(result.token),
           fcmTokenRegisteredAt: serverTimestamp(),
+          hasFcmToken: true,
         },
         { merge: true },
       )
