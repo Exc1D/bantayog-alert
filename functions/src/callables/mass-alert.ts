@@ -181,6 +181,9 @@ export async function requestMassAlertEscalationCore(
   if (!ADMIN_ROLES.includes(actor.claims.role as (typeof ADMIN_ROLES)[number])) {
     return { success: false as const, errorCode: 'permission-denied' as const }
   }
+  if (!canActOnScope(actor, input.targetScope.municipalityIds)) {
+    return { success: false as const, errorCode: 'permission-denied' as const }
+  }
 
   const { result: cached } = await withIdempotency(
     db,

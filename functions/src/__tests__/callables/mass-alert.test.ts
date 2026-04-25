@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
@@ -35,6 +35,7 @@ import {
 
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment
+let collectionSpy: { mockRestore(): void } | undefined
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
@@ -56,7 +57,7 @@ beforeEach(async () => {
 
 function mockCountOnDb(db: Firestore) {
   const originalCollection = db.collection.bind(db)
-  vi.spyOn(db, 'collection').mockImplementation((collectionPath: string) => {
+  collectionSpy = vi.spyOn(db, 'collection').mockImplementation((collectionPath: string) => {
     const collRef = originalCollection(collectionPath)
     const originalWhere = collRef.where.bind(collRef)
     const whereSpy = vi
@@ -100,6 +101,7 @@ function mockCountOnDb(db: Firestore) {
   })
 }
 afterAll(async () => {
+  collectionSpy?.mockRestore()
   await testEnv.cleanup()
 })
 
@@ -391,7 +393,7 @@ describe('requestMassAlertEscalation', () => {
       },
       muniAdminActor,
     )
-    expect(mockFcm).toBeDefined()
+    expect(mockFcm).toHaveBeenCalled()
   })
 })
 
