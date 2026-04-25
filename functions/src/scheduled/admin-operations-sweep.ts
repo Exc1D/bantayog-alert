@@ -40,6 +40,29 @@ export async function adminOperationsSweepCore(
       }),
     )
   }
+
+  // Shift handoff escalation: pending > 30min with no escalatedAt
+  const pendingHandoffs = await db
+    .collection('shift_handoffs')
+    .where('status', '==', 'pending')
+    .where('createdAt', '<', cutoff)
+    .where('escalatedAt', '==', null)
+    .get()
+
+  const toEscalateHandoffs = pendingHandoffs.docs
+  for (let i = 0; i < toEscalateHandoffs.length; i += BATCH_SIZE) {
+    const batch = toEscalateHandoffs.slice(i, i + BATCH_SIZE)
+    await Promise.all(
+      batch.map(async (d) => {
+        await d.ref.update({ escalatedAt: deps.now.toMillis() })
+        log({
+          severity: 'INFO',
+          code: 'sweep.handoff.escalated',
+          message: `Escalated handoff ${d.id}`,
+        })
+      }),
+    )
+  }
 }
 
 export const adminOperationsSweep = onSchedule(
