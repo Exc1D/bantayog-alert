@@ -17,8 +17,11 @@ export class SmsTemplateError extends Error {
   }
 }
 
+// 'mass_alert' uses renderBroadcastTemplate; renderTemplate cannot substitute its placeholders.
+export type DirectSmsPurpose = Exclude<SmsPurpose, 'mass_alert'>
+
 interface RenderArgs {
-  purpose: SmsPurpose
+  purpose: DirectSmsPurpose
   locale: SmsLocale
   vars: { publicRef: string }
 }

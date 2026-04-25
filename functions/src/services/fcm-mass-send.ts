@@ -1,6 +1,7 @@
 import { getMessaging } from 'firebase-admin/messaging'
-import { logDimension } from '@bantayog/shared-validators'
+import { FieldValue } from 'firebase-admin/firestore'
 import type { Firestore } from 'firebase-admin/firestore'
+import { logDimension } from '@bantayog/shared-validators'
 
 const log = logDimension('fcmMassSend')
 
@@ -34,8 +35,9 @@ export async function sendMassAlertFcm(
   }
 
   // Firestore 'in' query supports max 10 values; chunk and merge.
+  // Map token → owning responder doc IDs so invalid tokens can be cleaned up after send.
   const IN_QUERY_LIMIT = 10
-  const tokenSet = new Set<string>()
+  const tokenOwners = new Map<string, string[]>()
   for (let i = 0; i < opts.municipalityIds.length; i += IN_QUERY_LIMIT) {
     const chunk = opts.municipalityIds.slice(i, i + IN_QUERY_LIMIT)
     const snaps = await db
@@ -43,16 +45,19 @@ export async function sendMassAlertFcm(
       .where('hasFcmToken', '==', true)
       .where('municipalityId', 'in', chunk)
       .get()
-    for (const doc of snaps.docs) {
-      const tokens = doc.data().fcmTokens as string[] | undefined
+    for (const respDoc of snaps.docs) {
+      const tokens = respDoc.data().fcmTokens as string[] | undefined
       if (!tokens) continue
       for (const token of tokens) {
-        if (token) tokenSet.add(token)
+        if (!token) continue
+        const owners = tokenOwners.get(token) ?? []
+        owners.push(respDoc.id)
+        tokenOwners.set(token, owners)
       }
     }
   }
 
-  const allTokens = [...tokenSet]
+  const allTokens = [...tokenOwners.keys()]
   if (allTokens.length === 0) return { successCount: 0, failureCount: 0, batchCount: 0 }
 
   const hardCap = TOKEN_BATCH_SIZE * MAX_BATCHES
@@ -69,6 +74,7 @@ export async function sendMassAlertFcm(
   let successCount = 0
   let failureCount = 0
   let batchCount = 0
+  const invalidTokens: string[] = []
 
   for (let i = 0; i < allTokens.length; i += TOKEN_BATCH_SIZE) {
     const batch = allTokens.slice(i, i + TOKEN_BATCH_SIZE)
@@ -82,6 +88,18 @@ export async function sendMassAlertFcm(
       const result = await messaging.sendEachForMulticast(msg)
       successCount += result.successCount
       failureCount += result.failureCount
+      result.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          const code = resp.error?.code
+          if (
+            code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/registration-token-not-registered'
+          ) {
+            const token = batch[idx]
+            if (token) invalidTokens.push(token)
+          }
+        }
+      })
     } catch (err: unknown) {
       log({
         severity: 'ERROR',
@@ -90,6 +108,39 @@ export async function sendMassAlertFcm(
       })
       failureCount += batch.length
     }
+  }
+
+  // Remove invalid tokens from their owning responder docs (mirrors fcm-send.ts cleanup).
+  if (invalidTokens.length > 0) {
+    const ownerToInvalidTokens = new Map<string, string[]>()
+    for (const token of invalidTokens) {
+      for (const ownerId of tokenOwners.get(token) ?? []) {
+        const list = ownerToInvalidTokens.get(ownerId) ?? []
+        list.push(token)
+        ownerToInvalidTokens.set(ownerId, list)
+      }
+    }
+    await Promise.all(
+      [...ownerToInvalidTokens.entries()].map(async ([ownerId, badTokens]) => {
+        const ref = db.collection('responders').doc(ownerId)
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref)
+          if (!snap.exists) return
+          const currentTokens = (snap.data()?.fcmTokens as string[] | undefined) ?? []
+          const invalidSet = new Set(badTokens)
+          const remainingTokens = currentTokens.filter((t) => !invalidSet.has(t))
+          tx.update(ref, {
+            fcmTokens: FieldValue.arrayRemove(...badTokens),
+            hasFcmToken: remainingTokens.length > 0,
+          })
+        })
+      }),
+    )
+    log({
+      severity: 'WARNING',
+      code: 'fcm.mass.invalid_tokens',
+      message: `Removed ${String(invalidTokens.length)} invalid token(s) from ${String(ownerToInvalidTokens.size)} responder(s)`,
+    })
   }
 
   log({

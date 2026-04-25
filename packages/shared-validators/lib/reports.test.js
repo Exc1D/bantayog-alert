@@ -358,6 +358,20 @@ describe('inboxPayloadSchema contact extension', () => {
             contact: { phone: '+639171234567', smsConsent: true, extra: 'field' },
         })).toThrow();
     });
+    it('accepts followUpConsent boolean', () => {
+        expect(() => inboxPayloadSchema.parse({
+            ...basePayload,
+            contact: { phone: '+639171234567', smsConsent: true },
+            followUpConsent: true,
+        })).not.toThrow();
+    });
+    it('rejects non-boolean followUpConsent', () => {
+        expect(() => inboxPayloadSchema.parse({
+            ...basePayload,
+            contact: { phone: '+639171234567', smsConsent: true },
+            followUpConsent: 'yes',
+        })).toThrow();
+    });
 });
 describe('reportOpsDocSchema PRE-B deltas', () => {
     const base = {

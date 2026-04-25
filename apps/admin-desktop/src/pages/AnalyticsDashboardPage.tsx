@@ -62,6 +62,16 @@ export function AnalyticsDashboardPage() {
     refetchInterval: 60_000,
   })
 
+  const maxSnapshotTotal =
+    snapshots && snapshots.length > 0
+      ? Math.max(
+          1,
+          ...snapshots.map((s) =>
+            Object.values(s.reportsByStatus ?? {}).reduce<number>((a, v) => a + v, 0),
+          ),
+        )
+      : 1
+
   if (isLoading) return <p>Loading analytics…</p>
 
   return (
@@ -79,7 +89,7 @@ export function AnalyticsDashboardPage() {
               (s: { date: string; reportsByStatus?: Record<string, number> }, i: number) => {
                 const statusMap = s.reportsByStatus ?? {}
                 const total = Object.values(statusMap).reduce<number>((acc, v) => acc + v, 0)
-                const barH = Math.min(total, 70)
+                const barH = Math.round((total / maxSnapshotTotal) * 70)
                 return (
                   <rect
                     key={i}

@@ -10,9 +10,10 @@ vi.mock('@bantayog/shared-ui', () => ({
   }),
 }))
 
-const { mockGetCountFromServer, mockGetDocs } = vi.hoisted(() => ({
+const { mockGetCountFromServer, mockGetDocs, mockWhere } = vi.hoisted(() => ({
   mockGetCountFromServer: vi.fn(),
   mockGetDocs: vi.fn(),
+  mockWhere: vi.fn(() => ({})),
 }))
 
 vi.mock('firebase/firestore', () => ({
@@ -20,7 +21,7 @@ vi.mock('firebase/firestore', () => ({
   getCountFromServer: mockGetCountFromServer,
   collection: vi.fn(() => ({})),
   query: vi.fn(() => ({})),
-  where: vi.fn(() => ({})),
+  where: mockWhere,
   orderBy: vi.fn(() => ({})),
   limit: vi.fn(() => ({})),
   getDocs: mockGetDocs,
@@ -37,6 +38,7 @@ describe('AnalyticsDashboardPage', () => {
   beforeEach(() => {
     mockGetCountFromServer.mockResolvedValue({ data: () => ({ count: 42 }) })
     mockGetDocs.mockResolvedValue({ docs: [] })
+    mockWhere.mockReturnValue({})
   })
 
   it('renders the live active-incidents count', async () => {
@@ -59,8 +61,9 @@ describe('AnalyticsDashboardPage', () => {
     render(<AnalyticsDashboardPage />, { wrapper })
     expect(await screen.findByText(/daet/i)).toBeInTheDocument()
     // Verify the live-count query included the municipalityId filter.
-    expect(mockGetCountFromServer).toHaveBeenCalled()
-    const queryArg = mockGetCountFromServer.mock.calls[0]?.[0]
-    expect(queryArg).toBeDefined()
+    const hasMuniFilter = (mockWhere.mock.calls as unknown[][]).some(
+      (args) => args[0] === 'municipalityId' && args[1] === '==' && args[2] === 'daet',
+    )
+    expect(hasMuniFilter).toBe(true)
   })
 })

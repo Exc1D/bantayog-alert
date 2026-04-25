@@ -395,14 +395,10 @@ service cloud.firestore {
       function isMassAlertMuniAdmin() {
         return isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality;
       }
-      function allowedCreateStatus() {
-        return request.resource.data.status in ['queued', 'pending_ndrrmc_review', 'sent'];
-      }
       allow read: if isActivePrivileged()
                   && (isSuperadmin() || isMassAlertMuniAdmin());
-      allow create: if isActivePrivileged()
-                    && (isSuperadmin() || (isMuniAdmin() && request.resource.data.requestedByMunicipality == myMunicipality()))
-                    && allowedCreateStatus();
+      // Callables use Admin SDK (bypasses rules); no client write path is intended.
+      allow create: if false;
       allow update: if isSuperadmin() && isActivePrivileged();
       allow delete: if false;
     }

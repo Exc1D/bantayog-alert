@@ -27,6 +27,10 @@ const TEMPLATES = {
         tl: 'Natanggap ang iyong report. Ang aming team ay magsasagawa ng verification. Manatiling ligtas.',
         en: 'Your report has been received. Our team will review and follow up with you. Please stay safe.',
     },
+    mass_alert: {
+        tl: 'ALERTO: {municipalityName} - {body}',
+        en: 'ALERT: {municipalityName} - {body}',
+    },
 };
 const PUBLIC_REF_RE = /^[a-z0-9]{8}$/;
 export function renderTemplate(args) {
@@ -45,5 +49,15 @@ export function renderTemplate(args) {
         throw new SmsTemplateError(`Missing or invalid publicRef`);
     }
     return template.replace('{publicRef}', args.vars.publicRef);
+}
+export function renderBroadcastTemplate(args) {
+    const purposeMap = TEMPLATES.mass_alert;
+    const template = purposeMap[args.locale];
+    if (!template) {
+        throw new SmsTemplateError(`Unknown locale: ${args.locale}`);
+    }
+    return template
+        .replace('{municipalityName}', args.vars.municipalityName)
+        .replace('{body}', args.vars.body);
 }
 //# sourceMappingURL=sms-templates.js.map

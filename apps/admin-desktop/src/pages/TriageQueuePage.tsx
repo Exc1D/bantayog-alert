@@ -140,7 +140,6 @@ export function TriageQueuePage() {
           Start Handoff
         </button>
         <button
-          disabled={!canOpenMassAlert}
           onClick={() => {
             if (!canOpenMassAlert) {
               setBanner('Mass Alert is only available for municipality-scoped admins.')

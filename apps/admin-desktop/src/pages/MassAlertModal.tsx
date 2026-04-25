@@ -22,6 +22,8 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
   const [reachPlan, setReachPlan] = useState<ReachPlan | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pagasaSignalRef, setPagasaSignalRef] = useState('')
+  const [notes, setNotes] = useState('')
 
   const encoding = message ? detectEncoding(message).encoding : 'GSM-7'
 
@@ -73,7 +75,11 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
         await callables.requestMassAlertEscalation({
           message,
           targetScope: { municipalityIds: [municipalityId] },
-          evidencePack: { linkedReportIds: [] },
+          evidencePack: {
+            linkedReportIds: [],
+            ...(pagasaSignalRef ? { pagasaSignalRef } : {}),
+            ...(notes ? { notes } : {}),
+          },
           idempotencyKey: escalateKeyRef.current,
         })
         onClose()
@@ -133,9 +139,29 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
         Send Alert
       </button>
       {reachPlan?.route === 'ndrrmc_escalation' && (
-        <button onClick={handleEscalate} disabled={loading}>
-          Request NDRRMC Escalation
-        </button>
+        <>
+          <label htmlFor="pagasa-signal-ref">PAGASA Signal Ref (optional)</label>
+          <input
+            id="pagasa-signal-ref"
+            type="text"
+            value={pagasaSignalRef}
+            onChange={(e) => {
+              setPagasaSignalRef(e.target.value)
+            }}
+          />
+          <label htmlFor="escalation-notes">Notes (optional)</label>
+          <textarea
+            id="escalation-notes"
+            value={notes}
+            onChange={(e) => {
+              setNotes(e.target.value)
+            }}
+            rows={2}
+          />
+          <button onClick={handleEscalate} disabled={loading}>
+            Request NDRRMC Escalation
+          </button>
+        </>
       )}
       <button onClick={onClose}>Cancel</button>
     </dialog>

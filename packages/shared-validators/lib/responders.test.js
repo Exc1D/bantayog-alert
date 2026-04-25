@@ -36,7 +36,7 @@ describe('responderDocSchema PRE-B deltas', () => {
         expect(result.hasFcmToken).toBe(false);
         expect(result.fcmTokens).toEqual([]);
     });
-    it('derives hasFcmToken from non-empty fcmTokens when omitted', () => {
+    it('preserves explicit hasFcmToken false even with fcmTokens present', () => {
         const result = responderDocSchema.parse({
             uid: 'resp-1',
             agencyId: 'bfp-daet',
@@ -49,8 +49,9 @@ describe('responderDocSchema PRE-B deltas', () => {
             createdAt: ts,
             updatedAt: ts,
             fcmTokens: ['token-abc'],
+            hasFcmToken: false,
         });
-        expect(result.hasFcmToken).toBe(true);
+        expect(result.hasFcmToken).toBe(false);
         expect(result.fcmTokens).toEqual(['token-abc']);
     });
 });

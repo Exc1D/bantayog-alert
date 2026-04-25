@@ -6,13 +6,14 @@ import {
   renderTemplate,
   renderBroadcastTemplate,
   type SmsPurpose,
+  type DirectSmsPurpose,
   type SmsLocale,
 } from '@bantayog/shared-validators'
 
 export interface EnqueueSmsArgs {
   reportId: string
   dispatchId?: string | undefined
-  purpose: SmsPurpose
+  purpose: DirectSmsPurpose
   recipientMsisdn: string
   locale: SmsLocale
   publicRef: string
@@ -47,13 +48,13 @@ function buildIdempotencyKey(args: EnqueueSmsArgs): string {
   return createHash('sha256').update(raw).digest('hex')
 }
 
-const VALID_PURPOSES = new Set([
+// 'mass_alert' is intentionally excluded — broadcast SMS uses enqueueBroadcastSms/renderBroadcastTemplate.
+const VALID_PURPOSES = new Set<DirectSmsPurpose>([
   'receipt_ack',
   'verification',
   'status_update',
   'resolution',
   'pending_review',
-  'mass_alert',
 ])
 
 export function buildEnqueueSmsPayload(args: EnqueueSmsArgs): OutboxPayload {
