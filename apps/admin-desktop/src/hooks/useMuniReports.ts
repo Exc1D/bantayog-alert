@@ -36,6 +36,9 @@ export function useMuniReports(municipalityId: string | undefined) {
       queueMicrotask(() => {
         setReports([])
         setLoading(false)
+        setLimitCount(100)
+        setHasMore(false)
+        setError(null)
       })
       return
     }

@@ -23,6 +23,15 @@ export function TriageQueuePage() {
   const [rejectingReportId, setRejectingReportId] = useState<string | null>(null)
   const [acceptingHandoffId, setAcceptingHandoffId] = useState<string | null>(null)
   const { handoffs: pendingHandoffs, error: handoffsError } = usePendingHandoffs(municipalityId)
+  const dialogRef = useRef<HTMLDialogElement | null>(null)
+
+  useEffect(() => {
+    if (handoffModalOpen) {
+      dialogRef.current?.showModal()
+    } else {
+      dialogRef.current?.close()
+    }
+  }, [handoffModalOpen])
 
   const handleVerify = (reportId: string) => {
     void (async () => {
@@ -67,7 +76,7 @@ export function TriageQueuePage() {
   }
 
   const indexRef = useRef<number>(-1)
-  const modalOpen = !!dispatchForReportId || !!closeForReportId
+  const modalOpen = !!dispatchForReportId || !!closeForReportId || handoffModalOpen
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -87,6 +96,7 @@ export function TriageQueuePage() {
       } else if (e.key === 'Escape') {
         setDispatchForReportId(null)
         setCloseForReportId(null)
+        setHandoffModalOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -249,7 +259,7 @@ export function TriageQueuePage() {
         />
       )}
       {handoffModalOpen && (
-        <dialog open aria-label="Shift Handoff" aria-modal="true">
+        <dialog ref={dialogRef} aria-label="Shift Handoff">
           <h3>Initiate Shift Handoff</h3>
           <label htmlFor="handoff-notes">Notes</label>
           <textarea
@@ -268,7 +278,6 @@ export function TriageQueuePage() {
                 try {
                   await callables.initiateShiftHandoff({
                     notes: handoffNotes,
-                    activeIncidentIds: [],
                     idempotencyKey: crypto.randomUUID(),
                   })
                   setHandoffModalOpen(false)
