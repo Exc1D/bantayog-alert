@@ -2,6 +2,23 @@
 
 ## Current
 
+### Task 8: A.3 — ShiftHandoffModal + incoming handoff banner UI (2026-04-25)
+
+- Status: DONE
+- Branch: `phase5-cluster-a-task2`
+- Scope:
+  - `callables.ts`: added `initiateShiftHandoff` and `acceptShiftHandoff` callable wrappers
+  - `usePendingHandoffs.ts`: new hook querying `shift_handoffs` collection for pending handoffs
+  - `TriageQueuePage.tsx`: added "Start Handoff" button, ShiftHandoffModal dialog, incoming handoff banner with accept buttons
+  - `shift-handoff-modal.test.tsx`: 4 tests (button renders, modal opens, initiate callable, no banner when empty)
+  - `triage-queue.test.tsx`: added `usePendingHandoffs` mock to fix existing tests
+- Verification:
+  - `pnpm --filter @bantayog/admin-desktop exec vitest run src/__tests__/shift-handoff-modal.test.tsx` — PASS (4/4)
+  - `pnpm --filter @bantayog/admin-desktop exec vitest run src/__tests__/triage-queue.test.tsx` — PASS (8/8)
+  - `pnpm --filter @bantayog/admin-desktop lint` — PASS
+  - `pnpm --filter @bantayog/admin-desktop typecheck` — PASS
+- Note: `functions/src/index.ts` was included in the commit (pre-staged from prior task — exports `initiateShiftHandoff` and `acceptShiftHandoff` callables)
+
 ### PR #63 CodeRabbit follow-up fixes (2026-04-24)
 
 - Status: DONE locally - resolved the remaining review comments on schema validation, inbox materialization, and Firestore rules

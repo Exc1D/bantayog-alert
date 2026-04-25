@@ -13,6 +13,13 @@ export class IdempotencyMismatchError extends Error {
   }
 }
 
+export class IdempotencyInProgressError extends Error {
+  constructor(public readonly key: string) {
+    super(`IN_PROGRESS: idempotency key "${key}" is currently being processed by a concurrent call`)
+    this.name = 'IdempotencyInProgressError'
+  }
+}
+
 interface WithIdempotencyOptions<TPayload> {
   key: string
   payload: TPayload
@@ -35,6 +42,7 @@ export async function withIdempotency<TPayload, TResult>(
         key: opts.key,
         payloadHash: hash,
         firstSeenAt: now(),
+        processing: true,
       })
       return null
     }
@@ -42,9 +50,13 @@ export async function withIdempotency<TPayload, TResult>(
       payloadHash: string
       firstSeenAt: number
       resultPayload?: TResult
+      processing?: boolean
     }
     if (data.payloadHash !== hash) {
       throw new IdempotencyMismatchError(opts.key, data.firstSeenAt)
+    }
+    if (data.processing && !('resultPayload' in data)) {
+      throw new IdempotencyInProgressError(opts.key)
     }
     return (data.resultPayload ?? null) as TResult | null
   })
@@ -54,6 +66,6 @@ export async function withIdempotency<TPayload, TResult>(
   }
 
   const result = await op()
-  await keyRef.update({ resultPayload: result, completedAt: now() })
+  await keyRef.update({ resultPayload: result, processing: false, completedAt: now() })
   return { result, fromCache: false }
 }
