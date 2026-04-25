@@ -7,6 +7,7 @@ export type SmsPurpose =
   | 'status_update'
   | 'resolution'
   | 'pending_review'
+  | 'mass_alert'
 export type SmsLocale = 'tl' | 'en'
 
 export class SmsTemplateError extends Error {
@@ -43,6 +44,10 @@ const TEMPLATES: Record<SmsPurpose, Record<SmsLocale, string>> = {
     tl: 'Natanggap ang iyong report. Ang aming team ay magsasagawa ng verification. Manatiling ligtas.',
     en: 'Your report has been received. Our team will review and follow up with you. Please stay safe.',
   },
+  mass_alert: {
+    tl: 'ALERTO: {municipalityName} — {body}',
+    en: 'ALERT: {municipalityName} — {body}',
+  },
 }
 
 const PUBLIC_REF_RE = /^[a-z0-9]{8}$/
@@ -64,4 +69,20 @@ export function renderTemplate(args: RenderArgs): string {
     throw new SmsTemplateError(`Missing or invalid publicRef`)
   }
   return template.replace('{publicRef}', args.vars.publicRef)
+}
+
+interface BroadcastRenderArgs {
+  locale: SmsLocale
+  vars: { municipalityName: string; body: string }
+}
+
+export function renderBroadcastTemplate(args: BroadcastRenderArgs): string {
+  const purposeMap = TEMPLATES.mass_alert
+  const template = purposeMap[args.locale]
+  if (!template) {
+    throw new SmsTemplateError(`Unknown locale: ${args.locale}`)
+  }
+  return template
+    .replace('{municipalityName}', args.vars.municipalityName)
+    .replace('{body}', args.vars.body)
 }

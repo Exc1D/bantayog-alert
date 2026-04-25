@@ -4,6 +4,7 @@ import {
   detectEncoding,
   hashMsisdn,
   renderTemplate,
+  renderBroadcastTemplate,
   type SmsPurpose,
   type SmsLocale,
 } from '@bantayog/shared-validators'
@@ -52,6 +53,7 @@ const VALID_PURPOSES = new Set([
   'status_update',
   'resolution',
   'pending_review',
+  'mass_alert',
 ])
 
 export function buildEnqueueSmsPayload(args: EnqueueSmsArgs): OutboxPayload {
@@ -96,4 +98,46 @@ export function enqueueSms(
   const outboxRef = db.collection('sms_outbox').doc(payload.idempotencyKey)
   tx.set(outboxRef, payload, { merge: true })
   return { outboxId: payload.idempotencyKey, outboxRef }
+}
+
+export interface EnqueueBroadcastSmsArgs {
+  recipientMsisdn: string
+  salt: string
+  locale: SmsLocale
+  vars: { municipalityName: string; body: string }
+  providerId: string
+  massAlertRequestId: string
+  nowMs: number
+}
+
+export function enqueueBroadcastSms(
+  db: Firestore,
+  tx: Transaction,
+  args: EnqueueBroadcastSmsArgs,
+): { outboxId: string } {
+  const body = renderBroadcastTemplate({ locale: args.locale, vars: args.vars })
+  const { encoding, segmentCount } = detectEncoding(body)
+  const recipientMsisdnHash = hashMsisdn(args.recipientMsisdn, args.salt)
+  const raw = `mass_alert:${args.massAlertRequestId}:${args.recipientMsisdn}`
+  const idempotencyKey = createHash('sha256').update(raw).digest('hex')
+  const payload = {
+    providerId: args.providerId,
+    recipientMsisdnHash,
+    recipientMsisdn: args.recipientMsisdn,
+    purpose: 'mass_alert' as const,
+    predictedEncoding: encoding,
+    predictedSegmentCount: segmentCount,
+    bodyPreviewHash: createHash('sha256').update(body).digest('hex'),
+    status: 'queued' as const,
+    idempotencyKey,
+    retryCount: 0,
+    locale: args.locale,
+    massAlertRequestId: args.massAlertRequestId,
+    createdAt: args.nowMs,
+    queuedAt: args.nowMs,
+    schemaVersion: 2,
+  }
+  const outboxRef = db.collection('sms_outbox').doc(idempotencyKey)
+  tx.set(outboxRef, payload, { merge: true })
+  return { outboxId: idempotencyKey }
 }
