@@ -252,6 +252,7 @@ export const inboxPayloadSchema = z
       })
       .strict()
       .optional(),
+    followUpConsent: z.boolean().optional(),
   })
   .strict()
 
