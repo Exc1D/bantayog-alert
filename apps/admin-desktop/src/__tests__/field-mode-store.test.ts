@@ -22,7 +22,7 @@ vi.mock('firebase/functions', () => ({
   getFunctions: vi.fn(() => ({})),
 }))
 
-const ts = Date.now()
+const ts = 1700000000000 // fixed timestamp for test determinism
 
 beforeEach(() => {
   mockOnSnapshot.mockReset()
