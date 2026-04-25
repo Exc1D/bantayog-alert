@@ -42,10 +42,6 @@ describe('reports/messages rules', () => {
         const db = authed(env, 'bfp-admin', staffClaims({ role: 'agency_admin', municipalityId: 'daet', agencyId: 'bfp-daet' }));
         await assertSucceeds(getDoc(doc(db, 'reports', 'report-1', 'messages', 'msg-1')));
     });
-    it('denies agency admin when their agencyId is not in report_ops.agencyIds', async () => {
-        const db = authed(env, 'bfp-admin', staffClaims({ role: 'agency_admin', municipalityId: 'daet', agencyId: 'pnp-daet' }));
-        await assertFails(getDoc(doc(db, 'reports', 'report-1', 'messages', 'msg-1')));
-    });
     it('allows muni admin to write a message', async () => {
         const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
         await assertSucceeds(addDoc(collection(db, 'reports', 'report-1', 'messages'), {

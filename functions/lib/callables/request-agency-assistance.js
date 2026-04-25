@@ -59,8 +59,8 @@ export async function requestAgencyAssistanceCore(db, deps) {
                 retryAfterSeconds: rl.retryAfterSeconds,
             });
         }
-        // Query active agency admins for the target agency (outside transaction;
-        // Firestore transactions don't support reads within them)
+        // Query active agency admins outside transaction for performance.
+        // Trade-off: participantUids may be slightly stale if admins change concurrently.
         const agencyAdminsSnap = await db
             .collection('users')
             .where('role', '==', 'agency_admin')
@@ -205,7 +205,8 @@ export async function acceptAgencyAssistanceCore(db, deps) {
             if (actor.claims.role !== 'agency_admin') {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only agency_admin can accept agency assistance');
             }
-            if (actor.claims.agencyId !== request.targetAgencyId) {
+            const actorAgencyId = actor.claims.agencyId?.trim().toUpperCase();
+            if (actorAgencyId !== request.targetAgencyId) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Agency ID does not match the request');
             }
             // Idempotent: already accepted is a no-op
@@ -226,47 +227,6 @@ export async function acceptAgencyAssistanceCore(db, deps) {
     });
     return result;
 }
-export async function acceptAgencyAssistanceHandler(request) {
-    const actor = requireAuth(request, ['agency_admin']);
-    if (actor.claims.accountStatus !== 'active') {
-        throw new HttpsError('permission-denied', 'account is not active');
-    }
-    const parsed = z
-        .object({
-        requestId: z.string().min(1).max(128),
-        idempotencyKey: z.uuid(),
-    })
-        .strict()
-        .safeParse(request.data);
-    if (!parsed.success)
-        throw new HttpsError('invalid-argument', 'malformed payload');
-    try {
-        return await acceptAgencyAssistanceCore(adminDb, {
-            requestId: parsed.data.requestId,
-            idempotencyKey: parsed.data.idempotencyKey,
-            actor: {
-                uid: actor.uid,
-                claims: actor.claims,
-            },
-            now: Timestamp.now(),
-        });
-    }
-    catch (error) {
-        if (error instanceof BantayogError) {
-            throw bantayogErrorToHttps(error);
-        }
-        if (error instanceof IdempotencyMismatchError) {
-            throw new HttpsError('already-exists', 'duplicate request with different payload');
-        }
-        throw error;
-    }
-}
-export const acceptAgencyAssistance = onCall({
-    region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
-    timeoutSeconds: 10,
-    minInstances: 1,
-}, acceptAgencyAssistanceHandler);
 export async function declineAgencyAssistanceCore(db, deps) {
     const { requestId, reason, idempotencyKey, actor, now } = deps;
     const trimmedReason = reason.trim();
@@ -303,7 +263,8 @@ export async function declineAgencyAssistanceCore(db, deps) {
             if (actor.claims.role !== 'agency_admin') {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only agency_admin can decline agency assistance');
             }
-            if (actor.claims.agencyId !== request.targetAgencyId) {
+            const actorAgencyId = actor.claims.agencyId?.trim().toUpperCase();
+            if (actorAgencyId !== request.targetAgencyId) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Agency ID does not match the request');
             }
             if (request.status !== 'pending') {
@@ -317,19 +278,20 @@ export async function declineAgencyAssistanceCore(db, deps) {
                 respondedAt: nowMs,
                 respondedBy: actor.uid,
             });
-            // Find and close associated thread (query outside transaction, then update inside)
-            const threadSnap = await db
+            // Find and close associated thread inside transaction for consistency
+            const threadSnap = await tx.get(db
                 .collection('command_channel_threads')
                 .where('assistanceRequestId', '==', requestId)
                 .where('threadType', '==', 'agency_assistance')
-                .limit(1)
-                .get();
+                .limit(1));
             if (!threadSnap.empty) {
-                const threadRef = threadSnap.docs[0].ref;
-                tx.update(threadRef, {
-                    closedAt: nowMs,
-                    updatedAt: nowMs,
-                });
+                const threadDoc = threadSnap.docs[0];
+                if (threadDoc) {
+                    tx.update(threadDoc.ref, {
+                        closedAt: nowMs,
+                        updatedAt: nowMs,
+                    });
+                }
             }
             return { status: 'declined' };
         });

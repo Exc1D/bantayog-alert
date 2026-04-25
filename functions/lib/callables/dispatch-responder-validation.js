@@ -1,16 +1,12 @@
 import { BantayogError, BantayogErrorCode, isValidReportTransition, } from '@bantayog/shared-validators';
 function getActorMunicipalityIds(deps) {
-    const ids = new Set();
-    if (typeof deps.actor.claims.municipalityId === 'string' && deps.actor.claims.municipalityId) {
-        ids.add(deps.actor.claims.municipalityId);
+    if (deps.actor.claims.municipalityId) {
+        return [deps.actor.claims.municipalityId];
     }
-    if (Array.isArray(deps.actor.claims.permittedMunicipalityIds)) {
-        for (const id of deps.actor.claims.permittedMunicipalityIds) {
-            if (typeof id === 'string' && id)
-                ids.add(id);
-        }
+    if (deps.actor.claims.permittedMunicipalityIds?.length) {
+        return deps.actor.claims.permittedMunicipalityIds;
     }
-    return [...ids];
+    return [];
 }
 export async function assertResponderOnShift({ rtdb, municipalityId, responderUid, message = 'Responder is not on shift', }) {
     const shiftSnap = await rtdb.ref(`/responder_index/${municipalityId}/${responderUid}`).get();

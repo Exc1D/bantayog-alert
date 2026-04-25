@@ -12,6 +12,10 @@ export { advanceDispatch } from './callables/advance-dispatch.js';
 export { declineDispatch } from './callables/decline-dispatch.js';
 export { closeReport } from './callables/close-report.js';
 export { requestAgencyAssistance, acceptAgencyAssistance, declineAgencyAssistance, } from './callables/request-agency-assistance.js';
+export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js';
+export { shareReport } from './callables/share-report.js';
+export { addCommandChannelMessage } from './callables/add-command-channel-message.js';
+export { borderAutoShareTrigger } from './triggers/border-auto-share.js';
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
 import { onObjectFinalized } from 'firebase-functions/v2/storage';

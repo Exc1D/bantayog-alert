@@ -11,6 +11,10 @@ export { advanceDispatch } from './callables/advance-dispatch.js';
 export { declineDispatch } from './callables/decline-dispatch.js';
 export { closeReport } from './callables/close-report.js';
 export { requestAgencyAssistance, acceptAgencyAssistance, declineAgencyAssistance, } from './callables/request-agency-assistance.js';
+export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js';
+export { shareReport } from './callables/share-report.js';
+export { addCommandChannelMessage } from './callables/add-command-channel-message.js';
+export { borderAutoShareTrigger } from './triggers/border-auto-share.js';
 export declare const processInboxItem: import("firebase-functions").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").QueryDocumentSnapshot | undefined, {
     inboxId: string;
 }>>;

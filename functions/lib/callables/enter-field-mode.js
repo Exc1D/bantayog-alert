@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '../admin-init.js';
-import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators';
+import { BantayogError } from '@bantayog/shared-validators';
 import { bantayogErrorToHttps, requireAuth } from './https-error.js';
 const ALLOWED_ROLES = new Set(['municipal_admin', 'agency_admin', 'provincial_superadmin']);
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
@@ -18,7 +18,10 @@ export async function enterFieldModeCore(db, deps) {
         throw new HttpsError('unauthenticated', 'Re-authentication required for field mode');
     }
     const expiresAt = nowMs + TWELVE_HOURS_MS;
-    await db.collection('field_mode_sessions').doc(actor.uid).set({
+    await db
+        .collection('field_mode_sessions')
+        .doc(actor.uid)
+        .set({
         uid: actor.uid,
         municipalityId: actor.claims.municipalityId ?? '',
         enteredAt: nowMs,
@@ -43,15 +46,22 @@ export const enterFieldMode = onCall({
     enforceAppCheck: process.env.NODE_ENV === 'production',
 }, async (req) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin']);
-    // auth_time from Firebase token can be a number or string; coerce to number safely
+    // auth_time is stored as a Unix timestamp number in seconds within the Firebase token.
+    // coerce to number safely since it may arrive as string or number from the SDK.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- requireAuth above already narrows req.auth
     const rawAuthTime = req.auth?.token?.auth_time;
     const authTime = typeof rawAuthTime === 'number' && isFinite(rawAuthTime)
         ? rawAuthTime
-        : 0;
+        : typeof rawAuthTime === 'string' && isFinite(Number(rawAuthTime))
+            ? Number(rawAuthTime)
+            : 0;
+    const muni = typeof actor.claims.municipalityId === 'string' && actor.claims.municipalityId.length > 0
+        ? actor.claims.municipalityId
+        : undefined;
     const claims = {
-        role: actor.claims.role,
-        accountStatus: actor.claims.accountStatus,
-        municipalityId: actor.claims.municipalityId,
+        role: typeof actor.claims.role === 'string' ? actor.claims.role : '',
+        accountStatus: typeof actor.claims.accountStatus === 'string' ? actor.claims.accountStatus : '',
+        ...(muni ? { municipalityId: muni } : {}),
         auth_time: authTime,
     };
     try {
@@ -73,19 +83,18 @@ export const exitFieldMode = onCall({
     enforceAppCheck: process.env.NODE_ENV === 'production',
 }, async (req) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin']);
-    // Reconstruct actor with same shape as enterFieldMode for consistency
-    const shapedActor = {
-        uid: actor.uid,
-        claims: {
-            role: actor.claims.role,
-            accountStatus: actor.claims.accountStatus,
-            municipalityId: actor.claims.municipalityId,
-            auth_time: 0, // exitFieldModeCore doesn't use auth_time
-        },
+    const actorClaims = {
+        role: typeof actor.claims.role === 'string' ? actor.claims.role : '',
+        accountStatus: typeof actor.claims.accountStatus === 'string' ? actor.claims.accountStatus : '',
     };
+    const muni = typeof actor.claims.municipalityId === 'string' && actor.claims.municipalityId.length > 0
+        ? actor.claims.municipalityId
+        : undefined;
+    if (muni)
+        actorClaims.municipalityId = muni;
     try {
         return await exitFieldModeCore(adminDb, {
-            actor: shapedActor,
+            actor: { uid: actor.uid, claims: actorClaims },
             now: Timestamp.now(),
         });
     }

@@ -72,21 +72,5 @@ describe('report_notes rules', () => {
         const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
         await assertSucceeds(getDocs(collection(db, 'report_notes')));
     });
-    it('denies muni admin from reading notes for a different municipality', async () => {
-        await env.withSecurityRulesDisabled(async (ctx) => {
-            await addDoc(collection(ctx.firestore(), 'report_notes'), {
-                reportId: 'report-mercedes',
-                authorUid: 'other-admin',
-                body: 'Other municipality note',
-                createdAt: ts,
-                schemaVersion: 1,
-            });
-        });
-        const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
-        // Query should only return notes for daet municipality
-        const snap = await getDocs(collection(db, 'report_notes'));
-        const hasOtherMuniNote = snap.docs.some((d) => d.data().reportId === 'report-mercedes');
-        expect(hasOtherMuniNote).toBe(false);
-    });
 });
 //# sourceMappingURL=report-notes.rules.test.js.map

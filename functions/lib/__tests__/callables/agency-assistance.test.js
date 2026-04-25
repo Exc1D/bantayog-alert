@@ -70,7 +70,7 @@ describe('requestAgencyAssistance', () => {
             agencyId: 'bfp',
             actor: {
                 uid: 'resp-1',
-                claims: { role: 'responder', accountStatus: 'active', municipalityId: 'daet' },
+                claims: { role: 'responder', municipalityId: 'daet' },
             },
             idempotencyKey: crypto.randomUUID(),
             now: Timestamp.fromMillis(ts),
