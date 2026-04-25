@@ -19,6 +19,7 @@ import {
   type MergeDuplicatesResult,
 } from '../../callables/merge-duplicates.js'
 
+const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const ts = 1713350400000
 const CLUSTER_ID = 'cluster-uuid-1'
 let testEnv: RulesTestEnvironment
@@ -99,7 +100,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r1',
         duplicateReportIds: ['r2'],
-        idempotencyKey: 'key-1',
+        idempotencyKey: uuid(1),
       },
       {
         uid: 'citizen-1',
@@ -140,7 +141,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r1',
         duplicateReportIds: ['r2'],
-        idempotencyKey: 'key-2',
+        idempotencyKey: uuid(2),
       },
       muniAdminActor,
     )
@@ -155,7 +156,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r1',
         duplicateReportIds: ['r2'],
-        idempotencyKey: 'key-3',
+        idempotencyKey: uuid(3),
       },
       muniAdminActor,
     )
@@ -171,7 +172,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r-primary',
         duplicateReportIds: ['r-dup1', 'r-dup2'],
-        idempotencyKey: 'key-4',
+        idempotencyKey: uuid(4),
       },
       muniAdminActor,
     )
@@ -189,7 +190,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r-primary',
         duplicateReportIds: ['r-dup1'],
-        idempotencyKey: 'key-5',
+        idempotencyKey: uuid(5),
       },
       muniAdminActor,
     )
@@ -205,7 +206,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r-primary',
         duplicateReportIds: ['r-dup1'],
-        idempotencyKey: 'key-6',
+        idempotencyKey: uuid(6),
       },
       muniAdminActor,
     )
@@ -225,7 +226,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r-primary',
         duplicateReportIds: ['r-dup1'],
-        idempotencyKey: 'key-7',
+        idempotencyKey: uuid(7),
       },
       muniAdminActor,
     )
@@ -234,7 +235,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r-primary',
         duplicateReportIds: ['r-dup1'],
-        idempotencyKey: 'key-7',
+        idempotencyKey: uuid(7),
       },
       muniAdminActor,
     )
@@ -249,7 +250,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r-missing',
         duplicateReportIds: ['r-dup1'],
-        idempotencyKey: 'key-8',
+        idempotencyKey: uuid(8),
       },
       muniAdminActor,
     )
@@ -264,7 +265,7 @@ describe('mergeDuplicates', () => {
       {
         primaryReportId: 'r-primary',
         duplicateReportIds: ['r-dup1'],
-        idempotencyKey: 'key-9',
+        idempotencyKey: uuid(9),
       },
       muniAdminActor,
     )

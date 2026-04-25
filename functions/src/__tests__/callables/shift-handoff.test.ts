@@ -25,6 +25,7 @@ vi.mock('../../admin-init.js', () => ({
 
 import { initiateShiftHandoffCore, acceptShiftHandoffCore } from '../../callables/shift-handoff.js'
 
+const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment
 
@@ -82,7 +83,7 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'Handover notes',
-        idempotencyKey: 'key-1',
+        idempotencyKey: uuid(1),
       },
       {
         uid: 'u1',
@@ -148,7 +149,7 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'End of shift',
-        idempotencyKey: 'key-2',
+        idempotencyKey: uuid(2),
       },
       adminActor,
       'corr-2',
@@ -173,7 +174,7 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: 'Handover',
-        idempotencyKey: 'key-3',
+        idempotencyKey: uuid(3),
       },
       adminActor,
       'corr-3',
@@ -193,7 +194,7 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: '',
-        idempotencyKey: 'key-4',
+        idempotencyKey: uuid(4),
       },
       adminActor,
       'corr-4',
@@ -202,7 +203,7 @@ describe('initiateShiftHandoff', () => {
       adminDb,
       {
         notes: '',
-        idempotencyKey: 'key-4',
+        idempotencyKey: uuid(4),
       },
       adminActor,
       'corr-5',
@@ -321,7 +322,7 @@ describe('acceptShiftHandoff', () => {
     await createHandoff('h1')
     const result = await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h1', idempotencyKey: 'key-5' },
+      { handoffId: 'h1', idempotencyKey: uuid(5) },
       {
         uid: 'other-admin',
         claims: {
@@ -343,7 +344,7 @@ describe('acceptShiftHandoff', () => {
     await createHandoff('h2')
     const result = await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h2', idempotencyKey: 'key-6' },
+      { handoffId: 'h2', idempotencyKey: uuid(6) },
       {
         uid: 'admin-to',
         claims: {
@@ -374,13 +375,13 @@ describe('acceptShiftHandoff', () => {
     }
     await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h3', idempotencyKey: 'key-7' },
+      { handoffId: 'h3', idempotencyKey: uuid(7) },
       actor,
       'corr-8',
     )
     const result2 = await acceptShiftHandoffCore(
       adminDb,
-      { handoffId: 'h3', idempotencyKey: 'key-7' },
+      { handoffId: 'h3', idempotencyKey: uuid(7) },
       actor,
       'corr-9',
     )
