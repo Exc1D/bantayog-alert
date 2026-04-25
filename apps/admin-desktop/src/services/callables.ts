@@ -61,4 +61,18 @@ export const callables = {
       functions,
       'declineAgencyAssistance',
     )(payload).then((r) => r.data),
+  initiateShiftHandoff: (payload: {
+    notes: string
+    activeIncidentIds: string[]
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { success: boolean; handoffId: string }>(
+      functions,
+      'initiateShiftHandoff',
+    )(payload).then((r) => r.data),
+  acceptShiftHandoff: (payload: { handoffId: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { success: boolean }>(
+      functions,
+      'acceptShiftHandoff',
+    )(payload).then((r) => r.data),
 }

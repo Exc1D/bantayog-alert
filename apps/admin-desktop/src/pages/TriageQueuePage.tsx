@@ -5,6 +5,7 @@ import { ReportDetailPanel } from './ReportDetailPanel'
 import { DispatchModal } from './DispatchModal'
 import { CloseReportModal } from './CloseReportModal'
 import { callables } from '../services/callables'
+import { usePendingHandoffs } from '../hooks/usePendingHandoffs'
 
 export function TriageQueuePage() {
   const { claims, signOut } = useAuth()
@@ -15,6 +16,10 @@ export function TriageQueuePage() {
   const [dispatchForReportId, setDispatchForReportId] = useState<string | null>(null)
   const [closeForReportId, setCloseForReportId] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
+  const [handoffModalOpen, setHandoffModalOpen] = useState(false)
+  const [handoffNotes, setHandoffNotes] = useState('')
+  const [handoffLoading, setHandoffLoading] = useState(false)
+  const pendingHandoffs = usePendingHandoffs(municipalityId)
 
   const handleVerify = (reportId: string) => {
     void (async () => {
@@ -82,9 +87,46 @@ export function TriageQueuePage() {
     <main>
       <header>
         <h1>Triage · {municipalityId ?? 'N/A'}</h1>
-        <button onClick={() => void signOut()}>Sign out</button>
+        <button
+          onClick={() => {
+            void signOut()
+          }}
+        >
+          Sign out
+        </button>
+        <button
+          onClick={() => {
+            setHandoffModalOpen(true)
+          }}
+        >
+          Start Handoff
+        </button>
       </header>
       {banner && <div role="alert">{banner}</div>}
+      {pendingHandoffs.length > 0 && (
+        <div role="banner" aria-label="incoming handoff">
+          {pendingHandoffs.length} pending handoff(s) awaiting acceptance.
+          {pendingHandoffs.map((h) => (
+            <button
+              key={h.id}
+              onClick={() => {
+                void (async () => {
+                  try {
+                    await callables.acceptShiftHandoff({
+                      handoffId: h.id,
+                      idempotencyKey: crypto.randomUUID(),
+                    })
+                  } catch (err: unknown) {
+                    setBanner(err instanceof Error ? err.message : 'Accept failed')
+                  }
+                })()
+              }}
+            >
+              Accept Handoff
+            </button>
+          ))}
+        </div>
+      )}
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div>
           <h2>Queue</h2>
@@ -149,6 +191,50 @@ export function TriageQueuePage() {
             setBanner(msg)
           }}
         />
+      )}
+      {handoffModalOpen && (
+        <dialog open aria-label="Shift Handoff" aria-modal="true">
+          <h3>Initiate Shift Handoff</h3>
+          <label htmlFor="handoff-notes">Notes</label>
+          <textarea
+            id="handoff-notes"
+            value={handoffNotes}
+            onChange={(e) => {
+              setHandoffNotes(e.target.value)
+            }}
+            rows={4}
+          />
+          <button
+            disabled={handoffLoading}
+            onClick={() => {
+              setHandoffLoading(true)
+              void (async () => {
+                try {
+                  await callables.initiateShiftHandoff({
+                    notes: handoffNotes,
+                    activeIncidentIds: [],
+                    idempotencyKey: crypto.randomUUID(),
+                  })
+                  setHandoffModalOpen(false)
+                  setHandoffNotes('')
+                } catch (err: unknown) {
+                  setBanner(err instanceof Error ? err.message : 'Handoff failed')
+                } finally {
+                  setHandoffLoading(false)
+                }
+              })()
+            }}
+          >
+            Initiate
+          </button>
+          <button
+            onClick={() => {
+              setHandoffModalOpen(false)
+            }}
+          >
+            Cancel
+          </button>
+        </dialog>
       )}
     </main>
   )
