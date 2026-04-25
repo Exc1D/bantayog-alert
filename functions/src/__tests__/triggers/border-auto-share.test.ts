@@ -210,6 +210,13 @@ describe('borderAutoShareTrigger', () => {
         updatedAt: ts,
         schemaVersion: 1,
       })
+      await setDoc(doc(ctx.firestore(), 'report_private', 'r1'), {
+        reportId: 'r1',
+        reporterUid: 'u1',
+        createdAt: ts,
+        schemaVersion: 1,
+        exactLocation: { lat: NEAR_BOUNDARY_LAT, lng: NEAR_BOUNDARY_LNG },
+      })
     })
     await borderAutoShareCore(adminDb, {
       reportId: 'r1',

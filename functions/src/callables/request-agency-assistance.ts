@@ -101,8 +101,8 @@ export async function requestAgencyAssistanceCore(
         })
       }
 
-      // Query active agency admins for the target agency (outside transaction;
-      // Firestore transactions don't support reads within them)
+      // Query active agency admins outside transaction for performance.
+      // Trade-off: participantUids may be slightly stale if admins change concurrently.
       const agencyAdminsSnap = await db
         .collection('users')
         .where('role', '==', 'agency_admin')
@@ -319,7 +319,8 @@ export async function acceptAgencyAssistanceCore(
           )
         }
 
-        if (actor.claims.agencyId !== request.targetAgencyId) {
+        const actorAgencyId = actor.claims.agencyId?.trim().toUpperCase()
+        if (actorAgencyId !== request.targetAgencyId) {
           throw new BantayogError(
             BantayogErrorCode.FORBIDDEN,
             'Agency ID does not match the request',
@@ -400,8 +401,6 @@ export const acceptAgencyAssistance = onCall(
   acceptAgencyAssistanceHandler,
 )
 
-// ─── Decline ─────────────────────────────────────────────────────────────────
-
 export interface DeclineAgencyAssistanceCoreDeps {
   requestId: string
   reason: string
@@ -473,7 +472,8 @@ export async function declineAgencyAssistanceCore(
           )
         }
 
-        if (actor.claims.agencyId !== request.targetAgencyId) {
+        const actorAgencyId = actor.claims.agencyId?.trim().toUpperCase()
+        if (actorAgencyId !== request.targetAgencyId) {
           throw new BantayogError(
             BantayogErrorCode.FORBIDDEN,
             'Agency ID does not match the request',
@@ -497,13 +497,14 @@ export async function declineAgencyAssistanceCore(
           respondedBy: actor.uid,
         })
 
-        // Find and close associated thread (query outside transaction, then update inside)
-        const threadSnap = await db
-          .collection('command_channel_threads')
-          .where('assistanceRequestId', '==', requestId)
-          .where('threadType', '==', 'agency_assistance')
-          .limit(1)
-          .get()
+        // Find and close associated thread inside transaction for consistency
+        const threadSnap = await tx.get(
+          db
+            .collection('command_channel_threads')
+            .where('assistanceRequestId', '==', requestId)
+            .where('threadType', '==', 'agency_assistance')
+            .limit(1),
+        )
 
         if (!threadSnap.empty) {
           const threadDoc = threadSnap.docs[0]

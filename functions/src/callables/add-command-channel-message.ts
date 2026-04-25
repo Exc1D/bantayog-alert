@@ -35,20 +35,8 @@ export async function addCommandChannelMessageCore(
   if (trimmedBody.length > 2000)
     throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'body exceeds 2000 chars')
 
-  const threadSnap = await db.collection('command_channel_threads').doc(threadId).get()
-  if (!threadSnap.exists) throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'thread not found')
-  const thread = threadSnap.data() as Record<string, unknown>
-
   if (actor.claims.accountStatus !== 'active') {
     throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'account is not active')
-  }
-
-  const participantUids = thread.participantUids
-  if (!participantUids || typeof participantUids !== 'object') {
-    throw new BantayogError(BantayogErrorCode.INTERNAL_ERROR, 'invalid thread data')
-  }
-  if (!(participantUids as Record<string, boolean>)[actor.uid]) {
-    throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'caller is not a thread participant')
   }
 
   await withIdempotency(
@@ -59,9 +47,22 @@ export async function addCommandChannelMessageCore(
       now: () => nowMs,
     },
     async () => {
+      const threadRef = db.collection('command_channel_threads').doc(threadId)
       const msgRef = db.collection('command_channel_messages').doc()
-      // eslint-disable-next-line @typescript-eslint/require-await
       await db.runTransaction(async (tx) => {
+        const threadSnap = await tx.get(threadRef)
+        if (!threadSnap.exists) {
+          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'thread not found')
+        }
+        const thread = threadSnap.data() as Record<string, unknown>
+        const participantUids = thread.participantUids
+        if (!participantUids || typeof participantUids !== 'object') {
+          throw new BantayogError(BantayogErrorCode.INTERNAL_ERROR, 'invalid thread data')
+        }
+        if (!(participantUids as Record<string, boolean>)[actor.uid]) {
+          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'caller is not a thread participant')
+        }
+
         tx.set(msgRef, {
           threadId,
           authorUid: actor.uid,
@@ -70,7 +71,7 @@ export async function addCommandChannelMessageCore(
           createdAt: nowMs,
           schemaVersion: 1,
         })
-        tx.update(db.collection('command_channel_threads').doc(threadId), {
+        tx.update(threadRef, {
           lastMessageAt: nowMs,
           updatedAt: nowMs,
         })
@@ -85,8 +86,8 @@ export const addCommandChannelMessage = onCall(
   { region: 'asia-southeast1', enforceAppCheck: process.env.NODE_ENV === 'production' },
   async (req: CallableRequest) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin'])
-    const input = requestSchema.parse(req.data)
     try {
+      const input = requestSchema.parse(req.data)
       return await addCommandChannelMessageCore(adminDb, {
         ...input,
         actor: {

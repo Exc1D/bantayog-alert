@@ -33,17 +33,17 @@ export function AgencyAssistanceQueuePage() {
   const [banner, setBanner] = useState<string | null>(null)
 
   useEffect(() => {
+    setRequests([])
+    setError(null)
+    setDeclineState(null)
+    setBanner(null)
+
     if (!agencyId) {
-      // Defer state reset to avoid react-hooks/set-state-in-effect
-      const id = setTimeout(() => {
-        setRequests([])
-        setError(null)
-        setLoading(false)
-      }, 0)
-      return () => {
-        clearTimeout(id)
-      }
+      setLoading(false)
+      return
     }
+
+    setLoading(true)
 
     const q = query(
       collection(db, 'agency_assistance_requests'),

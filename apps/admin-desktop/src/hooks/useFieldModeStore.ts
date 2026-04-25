@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { doc, onSnapshot, getFirestore } from 'firebase/firestore'
-import { httpsCallable, getFunctions } from 'firebase/functions'
+import { httpsCallable } from 'firebase/functions'
+import { functions } from '../app/firebase'
 
 interface FieldModeState {
   isActive: boolean
@@ -16,14 +17,9 @@ export function useFieldModeStore(uid: string): FieldModeState {
 
   useEffect(() => {
     if (!uid) {
-      // Defer state reset to avoid react-hooks/set-state-in-effect
-      const id = setTimeout(() => {
-        setIsActive(false)
-        setExpiresAt(null)
-      }, 0)
-      return () => {
-        clearTimeout(id)
-      }
+      setIsActive(false)
+      setExpiresAt(null)
+      return
     }
     const ref = doc(getFirestore(), 'field_mode_sessions', uid)
     const unsub = onSnapshot(ref, (snap) => {
@@ -42,7 +38,7 @@ export function useFieldModeStore(uid: string): FieldModeState {
   }, [uid])
 
   const exit = useCallback(async () => {
-    const fn = httpsCallable(getFunctions(), 'exitFieldMode')
+    const fn = httpsCallable(functions, 'exitFieldMode')
     await fn({})
   }, [])
 
@@ -67,7 +63,7 @@ export function useFieldModeStore(uid: string): FieldModeState {
   }, [isActive, expiresAt])
 
   const enter = useCallback(async () => {
-    const fn = httpsCallable(getFunctions(), 'enterFieldMode')
+    const fn = httpsCallable(functions, 'enterFieldMode')
     await fn({})
   }, [])
 
