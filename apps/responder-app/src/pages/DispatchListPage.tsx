@@ -43,9 +43,17 @@ export function DispatchListPage() {
 
   async function handleStatusChange() {
     setStatusError(null)
+    const trimmedReason = reason.trim()
+    if (selectedStatus !== 'available' && !trimmedReason) {
+      setStatusError('Reason is required when changing to unavailable or off-duty.')
+      return
+    }
     setStatusSaving(true)
     try {
-      await setAvailability(selectedStatus, selectedStatus === 'available' ? undefined : reason)
+      await setAvailability(
+        selectedStatus,
+        selectedStatus === 'available' ? undefined : trimmedReason || undefined,
+      )
       setReason('')
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)

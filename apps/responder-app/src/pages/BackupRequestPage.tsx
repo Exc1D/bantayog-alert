@@ -10,6 +10,10 @@ export function BackupRequestPage() {
   const [reason, setReason] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
+  if (!id) {
+    return <div role="alert">Invalid route: dispatch ID is missing.</div>
+  }
+
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     const trimmed = reason.trim()
@@ -17,8 +21,8 @@ export function BackupRequestPage() {
     try {
       await request(trimmed)
       setSubmitted(true)
-    } catch {
-      // error surfaced by hook
+    } catch (err: unknown) {
+      console.error('[BackupRequestPage] request failed', err)
     }
   }
 
@@ -29,7 +33,7 @@ export function BackupRequestPage() {
         <p>Your backup request has been submitted.</p>
         <button
           onClick={() => {
-            void navigate(`/dispatches/${id ?? ''}`)
+            void navigate(`/dispatches/${id}`)
           }}
         >
           Back to dispatch
@@ -62,7 +66,7 @@ export function BackupRequestPage() {
         <button
           type="button"
           onClick={() => {
-            void navigate(`/dispatches/${id ?? ''}`)
+            void navigate(`/dispatches/${id}`)
           }}
           disabled={loading}
         >

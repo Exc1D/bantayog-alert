@@ -1,20 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { reportDocSchema } from '@bantayog/shared-validators'
 import { useSubmitResponderWitnessedReport } from '../hooks/useSubmitResponderWitnessedReport'
 
-const REPORT_TYPES = [
-  'flood',
-  'fire',
-  'earthquake',
-  'typhoon',
-  'landslide',
-  'storm_surge',
-  'medical',
-  'accident',
-  'structural',
-  'security',
-  'other',
-] as const
+const REPORT_TYPES = reportDocSchema.shape.reportType.options
 
 export function ResponderWitnessReportPage() {
   const { id } = useParams<{ id: string }>()
@@ -25,10 +14,15 @@ export function ResponderWitnessReportPage() {
   const [description, setDescription] = useState('')
   const [severity, setSeverity] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!reportType || !description.trim() || !severity) return
+    if (!reportType || !description || !severity) {
+      setValidationError('Report type, description, and severity are required.')
+      return
+    }
+    setValidationError(null)
     try {
       await submit({
         reportType,
@@ -107,6 +101,11 @@ export function ResponderWitnessReportPage() {
             placeholder="https://..."
           />
         </div>
+        {validationError && (
+          <p role="alert" style={{ color: 'red' }}>
+            {validationError}
+          </p>
+        )}
         {error && <p style={{ color: 'red' }}>{error.message}</p>}
         <button type="submit" disabled={loading}>
           {loading ? 'Submitting…' : 'Submit report'}

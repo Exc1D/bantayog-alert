@@ -24,7 +24,10 @@ function NotificationRouter() {
     })
 
     const unsubscribeForeground = subscribeForegroundPush((payload) => {
-      console.warn('Foreground push received:', payload)
+      if (import.meta.env.DEV) {
+        const type = (payload as Record<string, unknown> | undefined)?.type
+        console.warn('[push] foreground notification received', type)
+      }
     })
 
     return () => {

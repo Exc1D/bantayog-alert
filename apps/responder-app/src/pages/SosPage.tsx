@@ -6,10 +6,15 @@ export function SosPage() {
   const navigate = useNavigate()
   const { trigger, loading, error } = useTriggerSOS(id ?? '')
 
+  if (!id) {
+    return <div role="alert">Invalid route: dispatch ID is missing.</div>
+  }
+  const dispatchId = id
+
   async function handleConfirm() {
     try {
       await trigger()
-      void navigate(`/dispatches/${id ?? ''}`)
+      void navigate(`/dispatches/${dispatchId}`)
     } catch {
       // error surfaced by hook
     }
@@ -33,7 +38,7 @@ export function SosPage() {
       </button>
       <button
         onClick={() => {
-          void navigate(`/dispatches/${id ?? ''}`)
+          void navigate(`/dispatches/${dispatchId}`)
         }}
         disabled={loading}
       >

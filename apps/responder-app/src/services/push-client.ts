@@ -26,7 +26,7 @@ export async function acquirePushToken(): Promise<FcmTokenResult> {
       return { token: null, error: 'permission_denied' }
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       let resolved = false
 
       const resolveOnce = (result: FcmTokenResult) => {
@@ -36,15 +36,33 @@ export async function acquirePushToken(): Promise<FcmTokenResult> {
         }
       }
 
+      let registrationHandle: Awaited<ReturnType<typeof PushNotifications.addListener>> | null =
+        null
+      let registrationErrorHandle: Awaited<
+        ReturnType<typeof PushNotifications.addListener>
+      > | null = null
+
       void PushNotifications.addListener('registration', (token) => {
+        void registrationHandle?.remove()
+        void registrationErrorHandle?.remove()
         resolveOnce({ token: token.value })
+      }).then((h) => {
+        registrationHandle = h
       })
 
       void PushNotifications.addListener('registrationError', (err) => {
+        void registrationHandle?.remove()
+        void registrationErrorHandle?.remove()
         resolveOnce({ token: null, error: err.error })
+      }).then((h) => {
+        registrationErrorHandle = h
       })
 
-      void PushNotifications.register()
+      void PushNotifications.register().catch((err: unknown) => {
+        void registrationHandle?.remove()
+        void registrationErrorHandle?.remove()
+        reject(err instanceof Error ? err : new Error(String(err)))
+      })
     })
   }
 
