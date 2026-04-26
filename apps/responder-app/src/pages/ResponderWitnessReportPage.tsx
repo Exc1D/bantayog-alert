@@ -31,8 +31,8 @@ export function ResponderWitnessReportPage() {
         ...(photoUrl.trim() ? { photoUrl: photoUrl.trim() } : {}),
       })
       void navigate(`/dispatches/${id ?? ''}`)
-    } catch {
-      // error surfaced by hook
+    } catch (err: unknown) {
+      console.error('[ResponderWitnessReportPage] submit failed:', err)
     }
   }
 

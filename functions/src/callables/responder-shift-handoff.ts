@@ -24,8 +24,8 @@ interface ResponderShiftHandoff {
   municipalityId: string
   reason: string
   status: 'pending' | 'accepted' | 'declined'
-  createdAt: Timestamp
-  expiresAt: Timestamp
+  createdAt: number
+  expiresAt: number
   schemaVersion: number
 }
 
@@ -86,7 +86,21 @@ export async function initiateResponderHandoffCore(
     const existingRef = db.collection('responder_shift_handoffs').doc(handoffId)
     const existing = await tx.get(existingRef)
     if (existing.exists) {
-      return { success: true as const, handoffId }
+      const existingData = existing.data() as
+        | {
+            fromUid?: string
+            toUid?: string
+            reason?: string
+          }
+        | undefined
+      if (
+        existingData?.fromUid === actor.uid &&
+        existingData.toUid === input.toUid &&
+        existingData.reason === input.reason
+      ) {
+        return { success: true as const, handoffId }
+      }
+      return { success: false as const, errorCode: 'already-exists' }
     }
 
     const [fromSnap, toSnap] = await Promise.all([
@@ -127,8 +141,8 @@ export async function initiateResponderHandoffCore(
       municipalityId: fromData.municipalityId,
       reason: input.reason,
       status: 'pending',
-      createdAt: now,
-      expiresAt: Timestamp.fromMillis(now.toMillis() + 30 * 60 * 1000),
+      createdAt: now.toMillis(),
+      expiresAt: now.toMillis() + 30 * 60 * 1000,
       schemaVersion: 1,
     })
 
@@ -181,7 +195,7 @@ export async function acceptResponderHandoffCore(
           return { success: false, errorCode: 'permission-denied' }
         }
 
-        if (handoff.expiresAt.toMillis() < Date.now()) {
+        if (handoff.expiresAt < Date.now()) {
           return { success: false, errorCode: 'failed-precondition' }
         }
 

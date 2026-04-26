@@ -40,10 +40,16 @@ export async function startTracking(
           backgroundMessage: 'Tracking active dispatch…',
           backgroundTitle: 'Bantayog Alert',
           distanceFilter: 10,
+          requestPermissions: true,
         },
         (location?: Location, error?: CallbackError) => {
           if (error) {
-            console.error('[telemetry-client] location error:', error.message)
+            if (error.code === 'NOT_AUTHORIZED') {
+              console.error('[telemetry-client] location permission denied:', error.message)
+              void BackgroundGeolocation.openSettings()
+            } else {
+              console.error('[telemetry-client] location error:', error.message)
+            }
             return
           }
           if (!location) return

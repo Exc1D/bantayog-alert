@@ -28,12 +28,33 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
     severity: string
     photoUrl?: string
   }) {
-    if (!dispatchId) {
+    const normalizedDispatchId = dispatchId.trim()
+    if (!normalizedDispatchId) {
       const err = new Error('dispatch_id_required')
       setError(err)
       throw err
     }
-    if (!payload.reportType || !payload.description || !payload.severity) {
+    const normalizedDescription = payload.description.trim()
+    const allowedSeverity = new Set(['low', 'medium', 'high'])
+    const allowedReportTypes = new Set([
+      'flood',
+      'fire',
+      'earthquake',
+      'typhoon',
+      'landslide',
+      'storm_surge',
+      'medical',
+      'accident',
+      'structural',
+      'security',
+      'other',
+    ])
+    if (
+      !payload.reportType ||
+      !allowedReportTypes.has(payload.reportType) ||
+      !normalizedDescription ||
+      !allowedSeverity.has(payload.severity)
+    ) {
       const err = new Error('required_fields_missing')
       setError(err)
       throw err

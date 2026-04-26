@@ -100,7 +100,6 @@ export function useDispatch(dispatchId: string | undefined) {
           console.error('[useDispatch] snapshot mapping failed:', err)
           setDispatch(undefined)
           setError(err instanceof Error ? err : new Error(String(err)))
-          setLoading(false)
         } finally {
           setLoading(false)
         }

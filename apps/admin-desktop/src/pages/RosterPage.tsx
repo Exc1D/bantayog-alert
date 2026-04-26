@@ -1,17 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useRosterManagement } from '../hooks/useRosterManagement'
-
-type Freshness = 'fresh' | 'degraded' | 'stale' | 'offline'
-
-function computeFreshness(lastTelemetryAt: number | null): Freshness {
-  if (lastTelemetryAt == null) return 'offline'
-  const ageMs = Date.now() - lastTelemetryAt
-  if (ageMs < 30_000) return 'fresh'
-  if (ageMs < 90_000) return 'degraded'
-  if (ageMs < 300_000) return 'stale'
-  return 'offline'
-}
+import { computeFreshness, type Freshness } from '../utils/freshness'
 
 const FRESHNESS_COLOR: Record<Freshness, string> = {
   fresh: 'green',
@@ -32,7 +22,9 @@ export function RosterPage() {
     bulkAvailabilityOverride,
   } = useRosterManagement(agencyId)
   const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set())
-  const [bulkStatus, setBulkStatus] = useState('available')
+  const [bulkStatus, setBulkStatus] = useState<'available' | 'unavailable' | 'off_duty'>(
+    'available',
+  )
   const [banner, setBanner] = useState<string | null>(null)
   const [actingUid, setActingUid] = useState<string | null>(null)
   const [bulkLoading, setBulkLoading] = useState(false)
@@ -82,10 +74,7 @@ export function RosterPage() {
     void (async () => {
       setBulkLoading(true)
       try {
-        await bulkAvailabilityOverride(
-          Array.from(selectedUids),
-          bulkStatus as 'available' | 'unavailable' | 'off_duty',
-        )
+        await bulkAvailabilityOverride(Array.from(selectedUids), bulkStatus)
         setSelectedUids(new Set())
         setBanner(null)
       } catch (err: unknown) {
@@ -109,7 +98,8 @@ export function RosterPage() {
           <select
             value={bulkStatus}
             onChange={(e) => {
-              setBulkStatus(e.target.value)
+              const value = e.target.value as 'available' | 'unavailable' | 'off_duty'
+              setBulkStatus(value)
             }}
           >
             <option value="available">Available</option>

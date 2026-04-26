@@ -19,11 +19,11 @@ export const responderDocSchema = z
     .strict();
 export const responderTelemetryPayloadSchema = z
     .object({
-    capturedAt: z.number(),
-    receivedAt: z.number().optional(),
-    lat: z.number(),
-    lng: z.number(),
-    accuracy: z.number(),
+    capturedAt: z.number().int().nonnegative(),
+    receivedAt: z.number().int().nonnegative().optional(),
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    accuracy: z.number().nonnegative(),
     batteryPct: z.number().min(0).max(100),
     motionState: z.enum(['moving', 'walking', 'still', 'unknown']),
     appVersion: z.string(),

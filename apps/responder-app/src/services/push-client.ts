@@ -36,33 +36,26 @@ export async function acquirePushToken(): Promise<FcmTokenResult> {
         }
       }
 
-      let registrationHandle: Awaited<ReturnType<typeof PushNotifications.addListener>> | null =
-        null
-      let registrationErrorHandle: Awaited<
-        ReturnType<typeof PushNotifications.addListener>
-      > | null = null
+      void (async () => {
+        const [registrationHandle, registrationErrorHandle] = await Promise.all([
+          PushNotifications.addListener('registration', (token) => {
+            void registrationHandle.remove()
+            void registrationErrorHandle.remove()
+            resolveOnce({ token: token.value })
+          }),
+          PushNotifications.addListener('registrationError', (err) => {
+            void registrationHandle.remove()
+            void registrationErrorHandle.remove()
+            resolveOnce({ token: null, error: err.error })
+          }),
+        ])
 
-      void PushNotifications.addListener('registration', (token) => {
-        void registrationHandle?.remove()
-        void registrationErrorHandle?.remove()
-        resolveOnce({ token: token.value })
-      }).then((h) => {
-        registrationHandle = h
-      })
-
-      void PushNotifications.addListener('registrationError', (err) => {
-        void registrationHandle?.remove()
-        void registrationErrorHandle?.remove()
-        resolveOnce({ token: null, error: err.error })
-      }).then((h) => {
-        registrationErrorHandle = h
-      })
-
-      void PushNotifications.register().catch((err: unknown) => {
-        void registrationHandle?.remove()
-        void registrationErrorHandle?.remove()
-        reject(err instanceof Error ? err : new Error(String(err)))
-      })
+        void PushNotifications.register().catch((err: unknown) => {
+          void registrationHandle.remove()
+          void registrationErrorHandle.remove()
+          reject(err instanceof Error ? err : new Error(String(err)))
+        })
+      })()
     })
   }
 

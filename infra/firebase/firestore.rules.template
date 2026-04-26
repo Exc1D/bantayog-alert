@@ -230,7 +230,7 @@ service cloud.firestore {
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['availabilityStatus', 'availabilityReason', 'updatedAt'])
                     && request.resource.data.availabilityStatus in ['available', 'on_duty', 'off_duty', 'on_break', 'unavailable']
-                    && request.resource.data.updatedAt is timestamp;
+                    && request.resource.data.updatedAt is int;
       allow create, delete: if false;
     }
 

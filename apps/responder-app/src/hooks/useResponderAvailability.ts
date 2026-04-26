@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 
-export type ResponderAvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
+export type ResponderAvailabilityStatus = 'available' | 'unavailable' | 'off_duty' | 'on_break'
 
 export interface UseResponderAvailabilityReturn {
   status: ResponderAvailabilityStatus | null
@@ -13,7 +13,8 @@ export interface UseResponderAvailabilityReturn {
 
 function mapFromFirestore(raw: string): ResponderAvailabilityStatus | null {
   if (raw === 'on_duty') return 'available'
-  if (raw === 'available' || raw === 'unavailable' || raw === 'off_duty') return raw
+  if (raw === 'available' || raw === 'unavailable' || raw === 'off_duty' || raw === 'on_break')
+    return raw
   return null
 }
 

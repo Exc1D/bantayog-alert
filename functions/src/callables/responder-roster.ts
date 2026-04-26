@@ -1,5 +1,5 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
-import { Firestore, Timestamp } from 'firebase-admin/firestore'
+import { Firestore, Timestamp, FieldPath } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
@@ -232,20 +232,25 @@ export async function bulkAvailabilityOverrideCore(
       const batch = db.batch()
       let updated = 0
 
-      for (const uid of uids) {
-        const responderRef = db.collection('responders').doc(uid)
-        const snap = await responderRef.get()
+      // Firestore 'in' queries support up to 10 values per chunk
+      const CHUNK_SIZE = 10
+      for (let i = 0; i < uids.length; i += CHUNK_SIZE) {
+        const chunk = uids.slice(i, i + CHUNK_SIZE)
+        const chunkSnap = await db
+          .collection('responders')
+          .where(FieldPath.documentId(), 'in', chunk)
+          .get()
 
-        if (!snap.exists) continue
+        for (const doc of chunkSnap.docs) {
+          const data = doc.data() as { agencyId?: string }
+          if (data.agencyId !== actor.claims.agencyId) continue
 
-        const data = snap.data() as { agencyId?: string }
-        if (data.agencyId !== actor.claims.agencyId) continue
-
-        batch.update(responderRef, {
-          availability: status,
-          updatedAt: now.toMillis(),
-        })
-        updated++
+          batch.update(doc.ref, {
+            availability: status,
+            updatedAt: now.toMillis(),
+          })
+          updated++
+        }
       }
 
       await batch.commit()

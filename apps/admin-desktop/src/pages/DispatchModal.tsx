@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
-import { useEligibleResponders, type Freshness } from '../hooks/useEligibleResponders'
+import { useEligibleResponders } from '../hooks/useEligibleResponders'
+import { type Freshness } from '../utils/freshness'
 import { callables } from '../services/callables'
 
 const FRESHNESS_COLOR: Record<Freshness, string> = {

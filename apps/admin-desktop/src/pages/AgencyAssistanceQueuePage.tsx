@@ -72,8 +72,18 @@ export function AgencyAssistanceQueuePage() {
   const renderRequestActions = (
     reqId: string,
     status: 'pending' | 'accepted' | 'declined' | 'fulfilled' | 'expired',
+    kind: 'agency' | 'backup',
   ) => {
     if (status !== 'pending') return null
+    if (kind === 'backup') {
+      return (
+        <div style={{ marginTop: 8 }}>
+          <span style={{ fontSize: '0.875rem', color: '#666' }}>
+            Backup request actions not yet available.
+          </span>
+        </div>
+      )
+    }
     return (
       <div style={{ marginTop: 8 }}>
         {declineState?.requestId === reqId ? (
@@ -166,7 +176,7 @@ export function AgencyAssistanceQueuePage() {
                   </p>
                   <p>{req.message}</p>
                   <p style={{ fontSize: '0.875rem', color: '#666' }}>Report: {req.reportId}</p>
-                  {renderRequestActions(req.id, req.status)}
+                  {renderRequestActions(req.id, req.status, 'agency')}
                 </li>
               ))}
             </ul>
@@ -189,7 +199,7 @@ export function AgencyAssistanceQueuePage() {
                   </p>
                   <p>{req.reason}</p>
                   <p style={{ fontSize: '0.875rem', color: '#666' }}>Report: {req.reportId}</p>
-                  {renderRequestActions(req.id, req.status)}
+                  {renderRequestActions(req.id, req.status, 'backup')}
                 </li>
               ))}
             </ul>

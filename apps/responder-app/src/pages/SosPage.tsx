@@ -15,8 +15,8 @@ export function SosPage() {
     try {
       await trigger()
       void navigate(`/dispatches/${dispatchId}`)
-    } catch {
-      // error surfaced by hook
+    } catch (err: unknown) {
+      console.error('[SosPage] triggerSOS failed:', err)
     }
   }
 

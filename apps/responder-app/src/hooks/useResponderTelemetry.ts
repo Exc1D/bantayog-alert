@@ -94,7 +94,14 @@ export function useResponderTelemetry(
         try {
           const validated = responderTelemetryPayloadSchema.parse(payload)
           await set(ref(rtdb, `responder_locations/${uid}`), validated)
-          await setDoc(doc(db, 'responders', uid), { lastTelemetryAt: now }, { merge: true })
+          try {
+            await setDoc(doc(db, 'responders', uid), { lastTelemetryAt: now }, { merge: true })
+          } catch (fsErr: unknown) {
+            console.error(
+              '[useResponderTelemetry] Firestore lastTelemetryAt write failed (RTDB updated):',
+              { uid, now, error: fsErr },
+            )
+          }
 
           // Fire-and-forget metadata write for projection job
           const municipalityId = claims?.municipalityId

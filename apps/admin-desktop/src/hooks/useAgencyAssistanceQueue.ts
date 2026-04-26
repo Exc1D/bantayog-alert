@@ -19,6 +19,14 @@ export interface BackupRequest {
   createdAt: number
 }
 
+const VALID_BACKUP_STATUSES: BackupRequest['status'][] = [
+  'pending',
+  'accepted',
+  'declined',
+  'fulfilled',
+  'expired',
+]
+
 function parseBackupRequest(id: string, raw: Record<string, unknown>): BackupRequest | null {
   if (
     typeof raw.reportId !== 'string' ||
@@ -39,7 +47,11 @@ function parseBackupRequest(id: string, raw: Record<string, unknown>): BackupReq
     reportId: raw.reportId,
     municipalityId: typeof raw.municipalityId === 'string' ? raw.municipalityId : '',
     reason: raw.reason,
-    status: typeof raw.status === 'string' ? (raw.status as BackupRequest['status']) : 'pending',
+    status:
+      typeof raw.status === 'string' &&
+      VALID_BACKUP_STATUSES.includes(raw.status as BackupRequest['status'])
+        ? (raw.status as BackupRequest['status'])
+        : 'pending',
     agencyId: raw.agencyId,
     createdAt: raw.createdAt,
   }
@@ -110,8 +122,13 @@ export function useAgencyAssistanceQueue(agencyId: string | undefined) {
         })
         setBackupRequests(parsed)
       },
-      () => {
-        // Backup request errors are non-fatal
+      (err) => {
+        log({
+          severity: 'WARNING',
+          code: 'backup_request.subscription_error',
+          message: `Non-fatal backup subscription error: ${err.message}`,
+          data: {},
+        })
       },
     )
 
