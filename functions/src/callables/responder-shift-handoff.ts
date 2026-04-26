@@ -15,25 +15,20 @@ import {
   IdempotencyMismatchError,
 } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
-import { BantayogError, logDimension } from '@bantayog/shared-validators'
-
-interface ResponderShiftHandoff {
-  fromUid: string
-  toUid: string
-  agencyId: string
-  municipalityId: string
-  reason: string
-  status: 'pending' | 'accepted' | 'declined'
-  createdAt: number
-  expiresAt: number
-  schemaVersion: number
-}
+import {
+  BantayogError,
+  logDimension,
+  responderShiftHandoffDocSchema,
+} from '@bantayog/shared-validators'
 
 const log = logDimension('responderShiftHandoff')
 
 const initiateSchema = z
   .object({
-    toUid: z.string().min(1),
+    toUid: z
+      .string()
+      .min(1)
+      .refine((v) => !v.includes('/'), { message: 'toUid must not contain slashes' }),
     reason: z.string().trim().min(1).max(1000),
     idempotencyKey: z.uuid(),
   })
@@ -41,7 +36,9 @@ const initiateSchema = z
 
 const acceptSchema = z
   .object({
-    handoffId: z.string().min(1),
+    handoffId: z.string().regex(/^[0-9a-fA-F]{20}$/, {
+      message: 'handoffId must be a 20-character hex string',
+    }),
     idempotencyKey: z.uuid(),
   })
   .strict()
@@ -134,7 +131,7 @@ export async function initiateResponderHandoffCore(
 
     const now = Timestamp.now()
 
-    tx.set(existingRef, {
+    const handoffDoc = responderShiftHandoffDocSchema.parse({
       fromUid: actor.uid,
       toUid: input.toUid,
       agencyId: fromData.agencyId,
@@ -145,6 +142,7 @@ export async function initiateResponderHandoffCore(
       expiresAt: now.toMillis() + 30 * 60 * 1000,
       schemaVersion: 1,
     })
+    tx.set(existingRef, handoffDoc)
 
     log({
       severity: 'INFO',
@@ -182,8 +180,11 @@ export async function acceptResponderHandoffCore(
         const snap = await tx.get(db.collection('responder_shift_handoffs').doc(input.handoffId))
         if (!snap.exists) return { success: false, errorCode: 'not-found' }
 
-        const handoff = snap.data() as ResponderShiftHandoff | undefined
-        if (handoff === undefined) return { success: false, errorCode: 'not-found' }
+        const parsedHandoff = responderShiftHandoffDocSchema.safeParse(snap.data())
+        if (!parsedHandoff.success) {
+          return { success: false, errorCode: 'failed-precondition' }
+        }
+        const handoff = parsedHandoff.data
 
         if (handoff.toUid !== actor.uid) {
           log({

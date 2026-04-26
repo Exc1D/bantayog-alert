@@ -96,7 +96,7 @@ async function suspendOrRevokeResponderCore(
 
         tx.update(responderRef, {
           accountStatus: targetStatus,
-          availability: 'off_duty',
+          availabilityStatus: 'off_duty',
           updatedAt: now.toMillis(),
         })
 
@@ -246,7 +246,7 @@ export async function bulkAvailabilityOverrideCore(
           if (data.agencyId !== actor.claims.agencyId) continue
 
           batch.update(doc.ref, {
-            availability: status,
+            availabilityStatus: status,
             updatedAt: now.toMillis(),
           })
           updated++
