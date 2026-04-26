@@ -56,6 +56,9 @@ service cloud.firestore {
       allow read: if false;
       allow create: if isCitizen()
           && request.resource.data.reporterUid == uid()
+          && request.resource.data.keys().hasOnly([
+            'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload'
+          ])
           && request.resource.data.keys().hasAll([
             'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload'
           ]);
@@ -406,7 +409,7 @@ service cloud.firestore {
       function isAllowedMassAlertUpdate() {
         let allowed = request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'status', 'updatedAt', 'forwardedAt', 'forwardedBy',
-          'forwardMethod', 'ndrrrcRecipient', 'evidencePack'
+          'forwardMethod', 'ndrrmcRecipient', 'evidencePack'
         ]);
         return isActivePrivileged() && isSuperadmin() && allowed;
       }
