@@ -20,6 +20,11 @@ export { triggerSOS } from './callables/trigger-sos.js'
 export { requestBackup } from './callables/request-backup.js'
 export { markDispatchUnableToComplete } from './callables/mark-dispatch-unable-to-complete.js'
 export {
+  suspendResponder,
+  revokeResponder,
+  bulkAvailabilityOverride,
+} from './callables/responder-roster.js'
+export {
   requestAgencyAssistance,
   acceptAgencyAssistance,
   declineAgencyAssistance,
