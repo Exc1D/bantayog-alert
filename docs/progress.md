@@ -23,6 +23,25 @@
   - `pnpm --filter @bantayog/responder-app typecheck` — PASS
   - `pnpm --filter @bantayog/responder-app lint` — PASS
 
+### Phase 6 Responder App — Task 7: Responder field UX (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/src/pages/ResponderWitnessReportPage.tsx` — new form page at `/dispatches/:id/witness-report`; fields: reportType dropdown, description textarea, severity radio, optional photo URL; submits via `useSubmitResponderWitnessedReport` which injects current GPS coordinates as `publicLocation`
+  - `apps/responder-app/src/pages/SosPage.tsx` — new confirmation page at `/dispatches/:id/sos`; calls `triggerSOS` on confirm and navigates back
+  - `apps/responder-app/src/pages/BackupRequestPage.tsx` — new form page at `/dispatches/:id/backup`; reason textarea required; calls `requestBackup`; shows success confirmation
+  - `apps/responder-app/src/pages/DispatchDetailPage.tsx` — added action buttons for the three new pages (only when dispatch is active); added inline "Unable to Complete" form calling `markDispatchUnableToComplete`; improved race-loss recovery by re-fetching server state on write rejection and showing `CancelledScreen` before generic error
+  - `apps/responder-app/src/hooks/useSubmitResponderWitnessedReport.ts` — new hook wrapping `submitResponderWitnessedReport` callable with GPS location capture
+  - `apps/responder-app/src/hooks/useTriggerSOS.ts` — new hook wrapping `triggerSOS` callable
+  - `apps/responder-app/src/hooks/useRequestBackup.ts` — new hook wrapping `requestBackup` callable with idempotency key
+  - `apps/responder-app/src/hooks/useMarkDispatchUnableToComplete.ts` — new hook wrapping `markDispatchUnableToComplete` callable with idempotency key
+  - `apps/responder-app/src/hooks/useDispatch.ts` — added `refresh` function for manual one-shot re-fetch from Firestore
+  - `apps/responder-app/src/routes.tsx` — wired 3 new protected routes
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
 ### Phase 6 Responder App — Task 5: Responder location projection (2026-04-26)
 
 - Status: DONE
