@@ -59,7 +59,8 @@ export function useResponderAvailability(uid: string | undefined): UseResponderA
   const setAvailability = useCallback(
     async (newStatus: ResponderAvailabilityStatus, reason?: string): Promise<void> => {
       if (!uid) throw new Error('auth_required')
-      if (newStatus !== 'available' && !reason) {
+      const trimmedReason = reason?.trim()
+      if (newStatus !== 'available' && !trimmedReason) {
         throw new Error('reason_required')
       }
 
@@ -68,7 +69,7 @@ export function useResponderAvailability(uid: string | undefined): UseResponderA
         ref,
         {
           availabilityStatus: newStatus,
-          ...(reason ? { availabilityReason: reason } : {}),
+          ...(trimmedReason ? { availabilityReason: trimmedReason } : {}),
           updatedAt: serverTimestamp(),
         },
         { merge: true },

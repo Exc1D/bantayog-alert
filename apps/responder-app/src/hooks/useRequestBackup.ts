@@ -25,6 +25,11 @@ export function useRequestBackup(dispatchId: string) {
       setError(err)
       throw err
     }
+    if (!dispatchId) {
+      const err = new Error('dispatch_id_required')
+      setError(err)
+      throw err
+    }
     setLoading(true)
     setError(undefined)
     try {
@@ -36,9 +41,9 @@ export function useRequestBackup(dispatchId: string) {
       >(functions, 'requestBackup')
       await fn({ dispatchId, reason: trimmedReason, idempotencyKey: keyRef.current })
     } catch (err: unknown) {
-      console.error('[useRequestBackup] request failed:', err)
-      if (err instanceof Error) setError(err)
-      else setError(new Error(String(err)))
+      const normalized = err instanceof Error ? err : new Error(String(err))
+      setError(normalized)
+      throw normalized
     } finally {
       setLoading(false)
     }

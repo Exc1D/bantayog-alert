@@ -7,7 +7,7 @@ import { startTracking, stopTracking, getBatteryPercentage } from '../services/t
 import { responderTelemetryPayloadSchema } from '@bantayog/shared-validators'
 import type { TelemetryLocation } from '../services/telemetry-client'
 
-const APP_VERSION = '0.0.0'
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'unknown'
 
 function deriveMotionState(speed: number | null): 'moving' | 'walking' | 'still' | 'unknown' {
   if (speed === null) return 'unknown'
@@ -35,7 +35,7 @@ function getIntervalMs(
       base = 30_000
       break
   }
-  return batteryLow ? Math.max(base / 2, 5_000) : base
+  return batteryLow ? Math.min(base * 2, 120_000) : base
 }
 
 export function useResponderTelemetry(

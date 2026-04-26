@@ -28,6 +28,16 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
     severity: string
     photoUrl?: string
   }) {
+    if (!dispatchId) {
+      const err = new Error('dispatch_id_required')
+      setError(err)
+      throw err
+    }
+    if (!payload.reportType || !payload.description || !payload.severity) {
+      const err = new Error('required_fields_missing')
+      setError(err)
+      throw err
+    }
     setLoading(true)
     setError(undefined)
     try {
@@ -54,9 +64,10 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
         idempotencyKey: keyRef.current,
       })
     } catch (err: unknown) {
-      console.error('[useSubmitResponderWitnessedReport] submit failed:', err)
-      if (err instanceof Error) setError(err)
-      else setError(new Error(String(err)))
+      const normalized = err instanceof Error ? err : new Error(String(err))
+      console.error('[useSubmitResponderWitnessedReport] submit failed:', normalized)
+      setError(normalized)
+      throw normalized
     } finally {
       setLoading(false)
     }

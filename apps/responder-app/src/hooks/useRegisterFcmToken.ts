@@ -23,6 +23,9 @@ export function useRegisterFcmToken({
   responderDocPath,
 }: RegisterFcmTokenOptions): UseRegisterFcmTokenReturn {
   const register = useCallback(async (): Promise<FcmTokenResult> => {
+    if (!responderDocPath) {
+      return { token: null, error: 'missing_responder_doc_path' }
+    }
     const result = await acquirePushToken()
 
     if (!result.token) {

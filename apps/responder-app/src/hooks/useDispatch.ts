@@ -80,6 +80,7 @@ export function useDispatch(dispatchId: string | undefined) {
       (snap) => {
         try {
           if (!snap.exists()) {
+            setLoading(false)
             setDispatch(undefined)
             setError(undefined)
             return
@@ -99,6 +100,7 @@ export function useDispatch(dispatchId: string | undefined) {
           console.error('[useDispatch] snapshot mapping failed:', err)
           setDispatch(undefined)
           setError(err instanceof Error ? err : new Error(String(err)))
+          setLoading(false)
         } finally {
           setLoading(false)
         }
@@ -126,6 +128,7 @@ export function useDispatch(dispatchId: string | undefined) {
     try {
       const snap = await getDoc(doc(db, 'dispatches', dispatchId))
       if (!snap.exists()) {
+        setLoading(false)
         setDispatch(undefined)
         setError(undefined)
         return
