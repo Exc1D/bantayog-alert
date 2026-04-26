@@ -2,6 +2,19 @@
 
 ## Current
 
+### Phase 6 Responder App — Task 5: Responder location projection (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `functions/src/scheduled/project-responder-locations.ts` — new scheduled Cloud Function running every 30s; reads `/responder_locations/`, groups by `municipalityId` via `/responder_index/{uid}`, rounds lat/lng to 3 decimal places (~100m grid), computes freshness bands (fresh/degraded/stale/offline) from telemetry age, writes to `/shared_projection/{municipalityId}/{uid}`, deletes offline responders, and applies 90s TTL cleanup on stale projection entries
+  - `functions/src/index.ts` — exports `projectResponderLocations`
+  - `functions/src/__tests__/scheduled/project-responder-locations.test.ts` — 9 tests covering grid rounding, freshness band boundaries, active responder projection, offline deletion, TTL cleanup, and municipality grouping
+- Verification:
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+  - `pnpm dlx firebase-tools emulators:exec --only database "pnpm --filter @bantayog/functions exec vitest run src/__tests__/scheduled/project-responder-locations.test.ts"` — PASS (9/9)
+
 ### Phase 6 Responder App — Task 6: Responder field callables (2026-04-26)
 
 - Status: DONE

@@ -124,6 +124,7 @@ export { evaluateSmsProviderHealth } from './triggers/evaluate-sms-provider-heal
 export { reconcileSmsDeliveryStatus } from './triggers/reconcile-sms-delivery-status.js'
 export { cleanupSmsMinuteWindows } from './triggers/cleanup-sms-minute-windows.js'
 export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js'
+export { projectResponderLocations } from './scheduled/project-responder-locations.js'
 export { smsDeliveryReport } from './http/sms-delivery-report.js'
 export { smsInboundWebhook } from './http/sms-inbound.js'
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js'
