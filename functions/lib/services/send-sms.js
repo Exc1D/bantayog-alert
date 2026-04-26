@@ -55,7 +55,7 @@ export function enqueueBroadcastSms(db, tx, args) {
     const body = renderBroadcastTemplate({ locale: args.locale, vars: args.vars });
     const { encoding, segmentCount } = detectEncoding(body);
     const recipientMsisdnHash = hashMsisdn(args.recipientMsisdn, args.salt);
-    const raw = `mass_alert:${args.massAlertRequestId}:${args.recipientMsisdn}`;
+    const raw = `mass_alert:${args.massAlertRequestId}:${recipientMsisdnHash}`;
     const idempotencyKey = createHash('sha256').update(raw).digest('hex');
     const payload = {
         providerId: args.providerId,
