@@ -8,8 +8,11 @@
       }
     },
     "responder_index": {
-      ".read": false,
-      "$uid": { ".write": false }
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".read": false,
+        ".validate": "newData.hasChildren(['municipalityId']) && newData.child('municipalityId').isString()"
+      }
     },
     "shared_projection": {
       "$municipalityId": {

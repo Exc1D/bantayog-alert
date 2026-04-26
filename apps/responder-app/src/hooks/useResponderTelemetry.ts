@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ref, set } from 'firebase/database'
 import { doc, setDoc } from 'firebase/firestore'
+import { useAuth } from '@bantayog/shared-ui'
 import { rtdb, db } from '../app/firebase'
 import { startTracking, stopTracking, getBatteryPercentage } from '../services/telemetry-client'
 import { responderTelemetryPayloadSchema } from '@bantayog/shared-validators'
@@ -42,6 +43,7 @@ export function useResponderTelemetry(
   dispatchId: string | undefined,
   dispatchStatus: string | undefined,
 ) {
+  const { claims } = useAuth()
   const lastWriteRef = useRef<number>(0)
 
   const isActive =
@@ -93,6 +95,17 @@ export function useResponderTelemetry(
           const validated = responderTelemetryPayloadSchema.parse(payload)
           await set(ref(rtdb, `responder_locations/${uid}`), validated)
           await setDoc(doc(db, 'responders', uid), { lastTelemetryAt: now }, { merge: true })
+
+          // Fire-and-forget metadata write for projection job
+          const municipalityId = claims?.municipalityId
+          const agencyId = claims?.agencyId
+          if (typeof municipalityId === 'string' && typeof agencyId === 'string') {
+            set(ref(rtdb, `responder_index/${uid}`), { municipalityId, agencyId }).catch(
+              (err: unknown) => {
+                console.error('[useResponderTelemetry] responder_index write failed:', err)
+              },
+            )
+          }
         } catch (err: unknown) {
           console.error('[useResponderTelemetry] write failed:', err)
         }
@@ -107,5 +120,5 @@ export function useResponderTelemetry(
       cancelled = true
       void stopTracking()
     }
-  }, [uid, dispatchId, isActive])
+  }, [uid, dispatchId, isActive, claims])
 }
