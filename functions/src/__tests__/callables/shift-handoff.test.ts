@@ -30,6 +30,7 @@ import { initiateShiftHandoffCore, acceptShiftHandoffCore } from '../../callable
 const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment
+const _origEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST
 
 beforeAll(async () => {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
@@ -52,6 +53,11 @@ beforeEach(async () => {
 afterAll(async () => {
   await testEnv.cleanup()
   await deleteApp(adminApp)
+  if (_origEmulatorHost === undefined) {
+    delete process.env.FIRESTORE_EMULATOR_HOST
+  } else {
+    process.env.FIRESTORE_EMULATOR_HOST = _origEmulatorHost
+  }
 })
 
 const adminActor = {
@@ -397,5 +403,46 @@ describe('acceptShiftHandoff', () => {
       'corr-9',
     )
     expect(result2.success).toBe(true)
+  })
+
+  it('rejects a different user accepting an already-accepted handoff', async () => {
+    await createHandoff('h-already')
+    const actorA = {
+      uid: 'admin-to',
+      claims: {
+        role: 'municipal_admin' as UserRole,
+        municipalityId: 'daet',
+        active: true,
+        auth_time: Math.floor(ts / 1000),
+      },
+    }
+    const actorB = {
+      uid: 'admin-other',
+      claims: {
+        role: 'municipal_admin' as UserRole,
+        municipalityId: 'daet',
+        active: true,
+        auth_time: Math.floor(ts / 1000),
+      },
+    }
+
+    const result1 = await acceptShiftHandoffCore(
+      adminDb,
+      { handoffId: 'h-already', idempotencyKey: uuid(20) },
+      actorA,
+      'corr-20',
+    )
+    expect(result1.success).toBe(true)
+
+    const result2 = await acceptShiftHandoffCore(
+      adminDb,
+      { handoffId: 'h-already', idempotencyKey: uuid(21) },
+      actorB,
+      'corr-21',
+    )
+    expect(result2.success).toBe(false)
+    if (!result2.success) {
+      expect(result2.errorCode).toBe('already-accepted')
+    }
   })
 })

@@ -2,6 +2,14 @@
 
 ## Current
 
+### Test fixture fix — command_channel_threads/messages seed data (2026-04-26)
+
+- Status: DONE
+- Branch: `fix/mass-alert-rules-security-tests`
+- Rollout gates: Deploy to dev emulator first, run full rules test suite including `public-collections.rules.test.ts`, request explicit approval before staging, overnight soak in staging before prod
+- Files changed: `functions/src/__tests__/rules/public-collections.rules.test.ts`, `functions/src/__tests__/helpers/seed-factories.ts` (beforeAll seed addition for command_channel_threads/messages, getDoc vs getDocs workaround)
+- Summary: Tests for superadmin reading `command_channel_threads` and `command_channel_messages` failed because rules check `participantUids[uid]` on each doc. Seed data added to the `beforeAll` block. `getDoc` used instead of `getDocs` due to emulator collection-list indexing quirk.
+
 ### Phase 5 Cluster C + PRE-C — Broadcast + Intelligence (2026-04-25)
 
 - Status: DONE

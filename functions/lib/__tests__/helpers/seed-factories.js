@@ -146,8 +146,14 @@ export async function seedResponder(env, responderId, overrides = {}) {
 export async function seedDispatchRT(env, dispatchId, overrides = {}) {
     await env.withSecurityRulesDisabled(async (ctx) => {
         const db = ctx.firestore();
+        // Extract assignedTo separately so we can merge with defaults instead of overwriting
+        const { assignedTo: assignedToOverride, ...restOverrides } = overrides;
+        const mergedAssignedTo = {
+            ...(assignedToOverride?.uid !== undefined ? { uid: assignedToOverride.uid } : {}),
+            agencyId: assignedToOverride?.agencyId ?? 'agency-1',
+            municipalityId: assignedToOverride?.municipalityId ?? 'daet',
+        };
         await setDoc(doc(db, 'dispatches', dispatchId), {
-            dispatchId,
             municipalityId: 'daet',
             reportId: 'report-1',
             agencyId: 'agency-1',
@@ -157,7 +163,10 @@ export async function seedDispatchRT(env, dispatchId, overrides = {}) {
             createdAt: ts,
             updatedAt: ts,
             schemaVersion: 1,
-            ...overrides,
+            ...restOverrides,
+            // dispatchId and assignedTo placed last so restOverrides cannot overwrite them
+            dispatchId,
+            assignedTo: mergedAssignedTo,
         });
     });
 }

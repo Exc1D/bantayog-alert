@@ -92,7 +92,7 @@ export declare const massAlertRequestDocSchema: z.ZodObject<{
     createdAt: z.ZodNumber;
     forwardedAt: z.ZodOptional<z.ZodNumber>;
     forwardMethod: z.ZodOptional<z.ZodString>;
-    ndrrrcRecipient: z.ZodOptional<z.ZodString>;
+    ndrrmcRecipient: z.ZodOptional<z.ZodString>;
     acknowledgedAt: z.ZodOptional<z.ZodNumber>;
     cancelledAt: z.ZodOptional<z.ZodNumber>;
     sentAt: z.ZodOptional<z.ZodNumber>;
@@ -100,7 +100,7 @@ export declare const massAlertRequestDocSchema: z.ZodObject<{
         linkedReportIds: z.ZodArray<z.ZodString>;
         pagasaSignalRef: z.ZodOptional<z.ZodString>;
         notes: z.ZodOptional<z.ZodString>;
-    }, z.core.$strip>>;
+    }, z.core.$strict>>;
     forwardedBy: z.ZodOptional<z.ZodString>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;

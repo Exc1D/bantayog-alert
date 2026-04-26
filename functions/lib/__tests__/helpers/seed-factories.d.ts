@@ -44,7 +44,13 @@ export declare function seedResponder(env: RulesTestEnvironment, responderId: st
  * Seeds a dispatches document using RulesTestEnvironment context.
  * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
  */
-export declare function seedDispatchRT(env: RulesTestEnvironment, dispatchId: string, overrides?: Partial<Record<string, unknown>>): Promise<void>;
+export declare function seedDispatchRT(env: RulesTestEnvironment, dispatchId: string, overrides?: Partial<Record<string, unknown> & {
+    assignedTo?: {
+        uid?: string;
+        agencyId?: string;
+        municipalityId?: string;
+    };
+}>): Promise<void>;
 import type { Firestore } from 'firebase-admin/firestore';
 import type { Database } from 'firebase-admin/database';
 interface SeedVerifiedReportOptions {

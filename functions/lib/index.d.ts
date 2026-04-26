@@ -1,5 +1,5 @@
 export { setStaffClaims, suspendStaffAccount } from './auth/account-lifecycle.js';
-export { withIdempotency, IdempotencyMismatchError } from './idempotency/guard.js';
+export { withIdempotency, IdempotencyMismatchError, IdempotencyInProgressError, } from './idempotency/guard.js';
 export { requestUploadUrl } from './callables/request-upload-url.js';
 export { verifyReport } from './callables/verify-report.js';
 export { requestLookup } from './callables/request-lookup.js';
@@ -15,6 +15,10 @@ export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js';
 export { shareReport } from './callables/share-report.js';
 export { addCommandChannelMessage } from './callables/add-command-channel-message.js';
 export { borderAutoShareTrigger } from './triggers/border-auto-share.js';
+export { duplicateClusterTrigger } from './triggers/duplicate-cluster-trigger.js';
+export { mergeDuplicates } from './callables/merge-duplicates.js';
+export { initiateShiftHandoff, acceptShiftHandoff } from './callables/shift-handoff.js';
+export { massAlertReachPlanPreview, sendMassAlert, requestMassAlertEscalation, forwardMassAlertToNDRRMC, } from './callables/mass-alert.js';
 export declare const processInboxItem: import("firebase-functions").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").QueryDocumentSnapshot | undefined, {
     inboxId: string;
 }>>;
@@ -31,4 +35,5 @@ export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js';
 export { smsDeliveryReport } from './http/sms-delivery-report.js';
 export { smsInboundWebhook } from './http/sms-inbound.js';
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js';
+export { analyticsSnapshotWriter } from './scheduled/analytics-snapshot-writer.js';
 //# sourceMappingURL=index.d.ts.map

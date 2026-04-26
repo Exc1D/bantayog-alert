@@ -19,7 +19,11 @@ beforeAll(async () => {
     municipalityId: 'daet',
     agencyId: 'bfp',
   })
-  await seedDispatchRT(env, 'dispatch-1', { municipalityId: 'daet' })
+  await seedDispatchRT(env, 'dispatch-1', {
+    municipalityId: 'daet',
+    status: 'accepted',
+    assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
+  })
 })
 
 afterAll(async () => {
@@ -72,7 +76,7 @@ describe('dispatches rules', () => {
       staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }),
     )
     await assertFails(
-      updateDoc(doc(db, 'dispatches/dispatch-1'), { status: 'cancelled', updatedAt: ts }),
+      updateDoc(doc(db, 'dispatches/dispatch-1'), { status: 'resolved', updatedAt: ts }),
     )
   })
 })

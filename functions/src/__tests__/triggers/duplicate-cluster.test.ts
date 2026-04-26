@@ -84,9 +84,11 @@ describe('duplicateClusterTrigger', () => {
       visibility: { scope: 'municipality', sharedWith: [] },
       schemaVersion: 1,
     }
+    await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH })
     const snap = makeSnap('r-new', newData)
     await duplicateClusterTriggerCore(adminDb, snap)
     const updated = await adminDb.collection('report_ops').doc('r-new').get()
+    expect(updated.exists).toBe(true)
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 
@@ -135,9 +137,11 @@ describe('duplicateClusterTrigger', () => {
       visibility: { scope: 'municipality', sharedWith: [] },
       schemaVersion: 1,
     }
+    await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH })
     const snap = makeSnap('r-new', newData)
     await duplicateClusterTriggerCore(adminDb, snap)
     const updated = await adminDb.collection('report_ops').doc('r-new').get()
+    expect(updated.exists).toBe(true)
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 
@@ -161,9 +165,11 @@ describe('duplicateClusterTrigger', () => {
       visibility: { scope: 'municipality', sharedWith: [] },
       schemaVersion: 1,
     }
+    await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH })
     const snap = makeSnap('r-new', newData)
     await duplicateClusterTriggerCore(adminDb, snap)
     const updated = await adminDb.collection('report_ops').doc('r-new').get()
+    expect(updated.exists).toBe(true)
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 
@@ -209,9 +215,11 @@ describe('duplicateClusterTrigger', () => {
       visibility: { scope: 'municipality', sharedWith: [] },
       schemaVersion: 1,
     }
+    await seedReportOps('r-noloc', {})
     const snap = makeSnap('r-noloc', newData)
     await duplicateClusterTriggerCore(adminDb, snap)
     const updated = await adminDb.collection('report_ops').doc('r-noloc').get()
+    expect(updated.exists).toBe(true)
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 

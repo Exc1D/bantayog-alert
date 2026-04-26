@@ -85,7 +85,17 @@ afterAll(async () => {
   await testEnv.cleanup()
 })
 
-async function seedReportOp(id: string, municipalityId: string, status: string, severity: string) {
+async function seedReportOp({
+  id,
+  municipalityId,
+  status,
+  severity,
+}: {
+  id: string
+  municipalityId: string
+  status: string
+  severity: string
+}) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'report_ops', id), {
       municipalityId,
@@ -118,9 +128,9 @@ describe('analyticsSnapshotWriter', () => {
   })
 
   it('counts reports by status correctly', async () => {
-    await seedReportOp('r1', 'daet', 'new', 'high')
-    await seedReportOp('r2', 'daet', 'new', 'medium')
-    await seedReportOp('r3', 'daet', 'verified', 'high')
+    await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' })
+    await seedReportOp({ id: 'r2', municipalityId: 'daet', status: 'new', severity: 'medium' })
+    await seedReportOp({ id: 'r3', municipalityId: 'daet', status: 'verified', severity: 'high' })
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
     const snap = await adminDb
       .collection('analytics_snapshots')
@@ -137,8 +147,14 @@ describe('analyticsSnapshotWriter', () => {
   })
 
   it('counts reports by severity correctly', async () => {
-    await seedReportOp('r1', 'daet', 'new', 'high')
-    await seedReportOp('r2', 'daet', 'new', 'medium')
+    await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' })
+    await seedReportOp({ id: 'r2', municipalityId: 'daet', status: 'new', severity: 'medium' })
+    await seedReportOp({
+      id: 'r3',
+      municipalityId: 'daet',
+      status: 'verified',
+      severity: 'critical',
+    })
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
     const snap = await adminDb
       .collection('analytics_snapshots')
@@ -152,6 +168,7 @@ describe('analyticsSnapshotWriter', () => {
     }
     expect(data.reportsBySeverity.high).toBe(1)
     expect(data.reportsBySeverity.medium).toBe(1)
+    expect(data.reportsBySeverity.critical).toBe(1)
   })
 
   it('writes a province-wide aggregate for superadmin scope', async () => {
@@ -166,7 +183,7 @@ describe('analyticsSnapshotWriter', () => {
   })
 
   it('is idempotent — re-running overwrites, not duplicates', async () => {
-    await seedReportOp('r1', 'daet', 'new', 'high')
+    await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' })
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
     const snap = await adminDb
@@ -183,7 +200,7 @@ describe('analyticsSnapshotWriter', () => {
 
   it('handles a municipality with zero reports without erroring', async () => {
     await expect(
-      analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: ts }),
+      analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) }),
     ).resolves.not.toThrow()
   })
 })

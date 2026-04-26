@@ -4,6 +4,10 @@ export declare class IdempotencyMismatchError extends Error {
     readonly firstSeenAt: number;
     constructor(key: string, firstSeenAt: number);
 }
+export declare class IdempotencyInProgressError extends Error {
+    readonly key: string;
+    constructor(key: string);
+}
 interface WithIdempotencyOptions<TPayload> {
     key: string;
     payload: TPayload;

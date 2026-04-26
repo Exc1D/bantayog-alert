@@ -73,7 +73,18 @@ service cloud.firestore {
 
     match /report_inbox/{inboxId} {
       allow read: if false;
-      allow create: if isCitizen() && request.resource.data.reporterUid == uid();
+      allow create: if isCitizen()
+          && request.resource.data.reporterUid == uid()
+          && request.resource.data.keys().hasOnly([
+            'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload'
+          ])
+          && request.resource.data.keys().hasAll([
+            'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload'
+          ])
+          && request.resource.data.reporterUid is string
+          && request.resource.data.clientCreatedAt is number
+          && request.resource.data.idempotencyKey is string
+          && request.resource.data.payload is map;
       allow update, delete: if false;
     }
 
@@ -393,13 +404,42 @@ service cloud.firestore {
 
     match /mass_alert_requests/{requestId} {
       function isMassAlertMuniAdmin() {
-        return isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality;
+        return isMuniAdmin() 
+            && resource.data.requestedByMunicipality != null
+            && myMunicipality() == resource.data.requestedByMunicipality;
+      }
+      function isMassAlertMuniAdminForCreate() {
+        return isMuniAdmin() 
+            && request.resource.data.requestedByMunicipality != null
+            && myMunicipality() == request.resource.data.requestedByMunicipality;
+      }
+      function allowedCreateStatus() {
+        let valid = isActivePrivileged()
+            && request.resource.data.requestedByUid == uid()
+            && request.resource.data.requestedByMunicipality != null
+            && (isSuperadmin() || isMassAlertMuniAdminForCreate())
+            && request.resource.data.status is string
+            && request.resource.data.status in ['queued', 'pending_ndrrmc_review'];
+        let allowed = request.resource.data.keys().hasOnly([
+          'requestedByMunicipality', 'requestedByUid', 'severity', 'body',
+          'targetType', 'estimatedReach', 'status', 'createdAt', 'schemaVersion'
+        ]);
+        let required = request.resource.data.keys().hasAll([
+          'requestedByMunicipality', 'requestedByUid', 'status', 'createdAt', 'schemaVersion'
+        ]);
+        return valid && allowed && required;
+      }
+      function isAllowedMassAlertUpdate() {
+        let allowed = request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'forwardedAt', 'forwardedBy',
+          'forwardMethod', 'ndrrmcRecipient', 'evidencePack'
+        ]);
+        return isActivePrivileged() && isSuperadmin() && allowed;
       }
       allow read: if isActivePrivileged()
                   && (isSuperadmin() || isMassAlertMuniAdmin());
-      // Callables use Admin SDK (bypasses rules); no client write path is intended.
-      allow create: if false;
-      allow update: if false;
+      allow create: if allowedCreateStatus();
+      allow update: if isAllowedMassAlertUpdate();
       allow delete: if false;
     }
 

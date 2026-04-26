@@ -75,16 +75,17 @@ export const massAlertRequestDocSchema = z
     createdAt: z.number().int(),
     forwardedAt: z.number().int().optional(),
     forwardMethod: z.string().optional(),
-    ndrrrcRecipient: z.string().optional(),
+    ndrrmcRecipient: z.string().optional(),
     acknowledgedAt: z.number().int().optional(),
     cancelledAt: z.number().int().optional(),
     sentAt: z.number().int().optional(),
     evidencePack: z
         .object({
-        linkedReportIds: z.array(z.string()),
+        linkedReportIds: z.array(z.string().min(1)),
         pagasaSignalRef: z.string().optional(),
         notes: z.string().max(2000).optional(),
     })
+        .strict()
         .optional(),
     forwardedBy: z.string().min(1).optional(),
     schemaVersion: z.number().int().positive(),

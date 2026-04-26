@@ -20,6 +20,8 @@ Durable rules worth keeping across sessions.
 - Do not assume `tsc --outDir lib` will refresh every checked-in declaration the way you expect; verify the emitted `.d.ts` against source and patch the artifact if the generator still leaves stale enum ordering behind.
 - `z.string().uuid()` trips `@typescript-eslint/no-deprecated` under the current lint config. Use `z.uuid()` in shared validators.
 - Collection query tests can fail on a rule that is really written for per-document access. If the rule uses `resource.data` in a way that doesn’t support `list`, switch the test to `getDoc` or rewrite the rule intentionally.
+- In Firestore rules tests, never seed documents via `env.unauthenticatedContext().firestore()` when the collection's `create` rule is `false`; the seeding throws before the test assertion runs. Always use `env.withSecurityRulesDisabled()` for seeding.
+- Rules transition tests must match the actual transition table in `firestore.rules`. A test that assumes a transition is invalid when the rules allow it will pass trivially (or fail confusingly) and hides real coverage gaps. Always verify the rule source before writing the test expectation.
 
 ## Firestore
 
@@ -88,3 +90,4 @@ Durable rules worth keeping across sessions.
 - Spy on `collRef.where` and mock its implementation in Firestore admin SDK tests: the `.where` method signature changed in firebase-admin v12+. Use `vi.spyOn(collRef, 'where' as any)` to bypass the TypeScript overload resolution that causes `TS2345: Target signature provides too few arguments`.
 - Firebase emulators: rules tests using `createTestEnv` from `rules-harness.ts` require `--only firestore,database,storage` (all three emulators). The harness configures storage rules even for Firestore-only tests.
 - `pnpm --filter` from a worktree resolves to the main repo's `package.json`, not the worktree's. For emulator test commands that need `pnpm --filter`, run `npx vitest` directly inside the package directory instead.
+- Firestore emulator rules evaluation: `getDoc` (document read) and `getDocs` (collection list) can behave differently in the emulator after seeding. `getDoc` finds documents immediately; `getDocs` may fail with "Property X is undefined on object" for collections whose rules check `resource.data` fields, even when the document is confirmed to exist via `getDoc` in the same test. Workaround: use `getDoc` for rules validation when `getDocs` is affected by this indexing issue.

@@ -24,7 +24,7 @@ const REPORT_STATUSES = [
   'merged_as_duplicate',
 ] as const
 
-const SEVERITIES = ['low', 'medium', 'high'] as const
+const SEVERITIES = ['low', 'medium', 'high', 'critical'] as const
 
 export interface AnalyticsSnapshotDeps {
   date: string

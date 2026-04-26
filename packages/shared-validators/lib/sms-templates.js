@@ -51,13 +51,29 @@ export function renderTemplate(args) {
     return template.replace('{publicRef}', args.vars.publicRef);
 }
 export function renderBroadcastTemplate(args) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!args?.vars || typeof args.vars !== 'object') {
+        throw new SmsTemplateError('Invalid or missing args.vars');
+    }
+    if (typeof args.vars.municipalityName !== 'string') {
+        throw new SmsTemplateError('Invalid or missing municipalityName');
+    }
+    if (typeof args.vars.body !== 'string') {
+        throw new SmsTemplateError('Invalid or missing body');
+    }
+    const municipalityName = args.vars.municipalityName.trim();
+    const body = args.vars.body.trim();
+    if (!municipalityName) {
+        throw new SmsTemplateError('Missing municipalityName');
+    }
+    if (!body) {
+        throw new SmsTemplateError('Missing body');
+    }
     const purposeMap = TEMPLATES.mass_alert;
     const template = purposeMap[args.locale];
     if (!template) {
         throw new SmsTemplateError(`Unknown locale: ${args.locale}`);
     }
-    return template
-        .replace('{municipalityName}', args.vars.municipalityName)
-        .replace('{body}', args.vars.body);
+    return template.replace('{municipalityName}', municipalityName).replace('{body}', body);
 }
 //# sourceMappingURL=sms-templates.js.map

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { z } from 'zod'
 import {
+  CAMARINES_NORTE_MUNICIPALITIES,
   detectEncoding,
   hashMsisdn,
   logDimension,
@@ -13,6 +14,8 @@ import { withIdempotency } from '../idempotency/guard.js'
 import { sendMassAlertFcm } from '../services/fcm-mass-send.js'
 
 const log = logDimension('massAlert')
+
+const MUNICIPALITY_LABEL_BY_ID = new Map(CAMARINES_NORTE_MUNICIPALITIES.map((m) => [m.id, m.label]))
 
 const ADMIN_ROLES = ['municipal_admin', 'agency_admin', 'provincial_superadmin'] as const
 const MAX_DIRECT_ROUTE = 5000
@@ -168,7 +171,18 @@ export async function sendMassAlertCore(
           .where('followUpConsent', '==', true)
           .where('municipalityId', 'in', input.targetScope.municipalityIds)
           .get()
-        const salt = process.env.SMS_MSISDN_HASH_SALT ?? ''
+        const salt = process.env.SMS_MSISDN_HASH_SALT
+        if (!salt) {
+          if (process.env.NODE_ENV === 'production') {
+            throw new Error('SMS_MSISDN_HASH_SALT required in production')
+          }
+          log({
+            severity: 'WARNING',
+            code: 'mass.sms.no_salt',
+            message: 'SMS_MSISDN_HASH_SALT not configured, hashes may be weak',
+          })
+        }
+        const saltValue = salt ?? ''
         const BATCH_SIZE = 500
         for (let i = 0; i < consentSnaps.docs.length; i += BATCH_SIZE) {
           const batch = db.batch()
@@ -179,14 +193,14 @@ export async function sendMassAlertCore(
             if (!phone) continue
             const locale = data.locale === 'tl' || data.locale === 'en' ? data.locale : 'tl'
             const municipalityName =
-              typeof data.municipalityId === 'string' ? data.municipalityId : 'Municipality'
+              MUNICIPALITY_LABEL_BY_ID.get(data.municipalityId as string) ?? 'Municipality'
             const smsBody = renderBroadcastTemplate({
               locale,
               vars: { municipalityName, body: input.message },
             })
             const { encoding, segmentCount } = detectEncoding(smsBody)
-            const recipientMsisdnHash = hashMsisdn(phone, salt)
-            const raw = `mass_alert:${requestId}:${phone}`
+            const recipientMsisdnHash = hashMsisdn(phone, saltValue)
+            const raw = `mass_alert:${requestId}:${recipientMsisdnHash}`
             const idempotencyKey = createHash('sha256').update(raw).digest('hex')
             const outboxRef = db.collection('sms_outbox').doc(idempotencyKey)
             batch.set(
@@ -270,7 +284,7 @@ export async function requestMassAlertEscalationCore(
           schemaVersion: 1,
         })
 
-      // TODO: Notify provincial/NDRRMC reviewers via a reviewer-specific channel.
+      // TODO(BANTAYOG-PHASE6): Notify provincial/NDRRMC reviewers via a reviewer-specific channel.
       // sendMassAlertFcm targets responders by municipality; escalation should reach
       // superadmins, not field responders. Implement a separate notification path
       // (e.g. query users where role == 'provincial_superadmin' and send targeted FCM).
@@ -288,7 +302,7 @@ export async function requestMassAlertEscalationCore(
 
 export async function forwardMassAlertToNDRRMCCore(
   db: FirebaseFirestore.Firestore,
-  input: { requestId: string; forwardMethod: string; ndrrrcRecipient: string },
+  input: { requestId: string; forwardMethod: string; ndrrmcRecipient: string },
   actor: MassAlertActor,
 ) {
   if (actor.claims.role !== 'provincial_superadmin') {
@@ -310,7 +324,7 @@ export async function forwardMassAlertToNDRRMCCore(
         forwardedAt: Date.now(),
         forwardedBy: actor.uid,
         forwardMethod: input.forwardMethod,
-        ndrrrcRecipient: input.ndrrrcRecipient,
+        ndrrmcRecipient: input.ndrrmcRecipient,
       })
     })
 
@@ -426,7 +440,7 @@ export const forwardMassAlertToNDRRMC = onCall(
       .object({
         requestId: z.string().min(1),
         forwardMethod: z.enum(['email', 'sms', 'portal']),
-        ndrrrcRecipient: z.string().min(1),
+        ndrrmcRecipient: z.string().min(1),
       })
       .safeParse(request.data)
     if (!input.success) throw new HttpsError('invalid-argument', input.error.message)

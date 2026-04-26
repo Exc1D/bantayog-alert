@@ -92,6 +92,66 @@ describe('withIdempotency', () => {
     expect(fromCache).toBe(true)
   })
 
+  it('clears processing flag and re-throws when op() fails', async () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const op = vi.fn(async () => {
+      throw new Error('boom')
+    })
+    await expect(
+      withIdempotency(
+        db,
+        {
+          key: 'cb:verifyReport:u1',
+          payload: { reportId: 'r1' },
+          now: () => 1000,
+        },
+        op,
+      ),
+    ).rejects.toThrow('boom')
+
+    // The key should still exist but processing must be false
+    const key = db._store.get('idempotency_keys/cb:verifyReport:u1')
+    expect(key).toBeDefined()
+    expect(key?.processing).toBe(false)
+  })
+
+  it('allows retry after a failed op() because processing is cleared', async () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const failingOp = vi.fn(async () => {
+      throw new Error('transient')
+    })
+
+    // First call fails
+    await expect(
+      withIdempotency(
+        db,
+        {
+          key: 'cb:verifyReport:u1',
+          payload: { reportId: 'r1' },
+          now: () => 1000,
+        },
+        failingOp,
+      ),
+    ).rejects.toThrow('transient')
+
+    // Second call with same key and payload should be allowed to retry
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const successOp = vi.fn(async () => {
+      return { resultId: 'x1' }
+    })
+    const { result, fromCache } = await withIdempotency(
+      db,
+      {
+        key: 'cb:verifyReport:u1',
+        payload: { reportId: 'r1' },
+        now: () => 2000,
+      },
+      successOp,
+    )
+    expect(result).toEqual({ resultId: 'x1' })
+    expect(fromCache).toBe(false)
+  })
+
   it('throws IdempotencyMismatchError on same key with different payload', async () => {
     // eslint-disable-next-line @typescript-eslint/require-await
     const op = vi.fn(async () => ({ resultId: 'x1' }))

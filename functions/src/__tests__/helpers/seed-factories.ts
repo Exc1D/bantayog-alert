@@ -184,15 +184,34 @@ export async function seedResponder(
  * Seeds a dispatches document using RulesTestEnvironment context.
  * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
  */
+export interface DispatchSeed {
+  municipalityId?: string
+  reportId?: string
+  agencyId?: string
+  priority?: string
+  status?: string
+  assignedResponderUids?: string[]
+  createdAt?: number
+  updatedAt?: number
+  schemaVersion?: number
+  assignedTo?: { uid?: string; agencyId?: string; municipalityId?: string }
+}
+
 export async function seedDispatchRT(
   env: RulesTestEnvironment,
   dispatchId: string,
-  overrides: Partial<Record<string, unknown>> = {},
+  overrides: Partial<DispatchSeed> = {},
 ): Promise<void> {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
+    // Extract assignedTo separately so we can merge with defaults instead of overwriting
+    const { assignedTo: assignedToOverride, ...restOverrides } = overrides
+    const mergedAssignedTo = {
+      ...(assignedToOverride?.uid !== undefined ? { uid: assignedToOverride.uid } : {}),
+      agencyId: assignedToOverride?.agencyId ?? 'agency-1',
+      municipalityId: assignedToOverride?.municipalityId ?? 'daet',
+    }
     await setDoc(doc(db, 'dispatches', dispatchId), {
-      dispatchId,
       municipalityId: 'daet',
       reportId: 'report-1',
       agencyId: 'agency-1',
@@ -202,7 +221,10 @@ export async function seedDispatchRT(
       createdAt: ts,
       updatedAt: ts,
       schemaVersion: 1,
-      ...overrides,
+      ...restOverrides,
+      // dispatchId and assignedTo placed last so restOverrides cannot overwrite them
+      dispatchId,
+      assignedTo: mergedAssignedTo,
     })
   })
 }

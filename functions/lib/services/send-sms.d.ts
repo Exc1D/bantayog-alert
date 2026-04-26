@@ -1,9 +1,9 @@
 import type { Transaction, Firestore } from 'firebase-admin/firestore';
-import { type SmsPurpose, type SmsLocale } from '@bantayog/shared-validators';
+import { type SmsPurpose, type DirectSmsPurpose, type SmsLocale } from '@bantayog/shared-validators';
 export interface EnqueueSmsArgs {
     reportId: string;
     dispatchId?: string | undefined;
-    purpose: SmsPurpose;
+    purpose: DirectSmsPurpose;
     recipientMsisdn: string;
     locale: SmsLocale;
     publicRef: string;
@@ -32,5 +32,20 @@ export declare function buildEnqueueSmsPayload(args: EnqueueSmsArgs): OutboxPayl
 export declare function enqueueSms(db: Firestore, tx: Transaction, args: EnqueueSmsArgs): {
     outboxId: string;
     outboxRef: FirebaseFirestore.DocumentReference;
+};
+export interface EnqueueBroadcastSmsArgs {
+    recipientMsisdn: string;
+    salt: string;
+    locale: SmsLocale;
+    vars: {
+        municipalityName: string;
+        body: string;
+    };
+    providerId: 'semaphore' | 'globelabs';
+    massAlertRequestId: string;
+    nowMs: number;
+}
+export declare function enqueueBroadcastSms(db: Firestore, tx: Transaction, args: EnqueueBroadcastSmsArgs): {
+    outboxId: string;
 };
 //# sourceMappingURL=send-sms.d.ts.map
