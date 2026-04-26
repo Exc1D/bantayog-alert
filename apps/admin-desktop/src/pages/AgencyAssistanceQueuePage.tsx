@@ -69,7 +69,10 @@ export function AgencyAssistanceQueuePage() {
     setDeclineState(null)
   }
 
-  const renderRequestActions = (reqId: string, status: string) => {
+  const renderRequestActions = (
+    reqId: string,
+    status: 'pending' | 'accepted' | 'declined' | 'fulfilled' | 'expired',
+  ) => {
     if (status !== 'pending') return null
     return (
       <div style={{ marginTop: 8 }}>

@@ -35,6 +35,7 @@ export function RosterPage() {
   const [bulkStatus, setBulkStatus] = useState('available')
   const [banner, setBanner] = useState<string | null>(null)
   const [actingUid, setActingUid] = useState<string | null>(null)
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const toggleSelection = (uid: string) => {
     setSelectedUids((prev) => {
@@ -79,12 +80,18 @@ export function RosterPage() {
   const handleBulkOverride = () => {
     if (selectedUids.size === 0) return
     void (async () => {
+      setBulkLoading(true)
       try {
-        await bulkAvailabilityOverride(Array.from(selectedUids), bulkStatus)
+        await bulkAvailabilityOverride(
+          Array.from(selectedUids),
+          bulkStatus as 'available' | 'unavailable' | 'off_duty',
+        )
         setSelectedUids(new Set())
         setBanner(null)
       } catch (err: unknown) {
         setBanner(err instanceof Error ? err.message : 'Bulk override failed')
+      } finally {
+        setBulkLoading(false)
       }
     })()
   }
@@ -109,7 +116,9 @@ export function RosterPage() {
             <option value="unavailable">Unavailable</option>
             <option value="off_duty">Off Duty</option>
           </select>
-          <button onClick={handleBulkOverride}>Apply</button>
+          <button onClick={handleBulkOverride} disabled={bulkLoading || selectedUids.size === 0}>
+            Apply
+          </button>
         </div>
       )}
 
@@ -156,7 +165,13 @@ export function RosterPage() {
                   <button
                     disabled={actingUid === r.uid}
                     onClick={() => {
-                      handleSuspend(r.uid)
+                      if (
+                        window.confirm(
+                          `Suspend responder ${r.displayName}? This will set them off-duty.`,
+                        )
+                      ) {
+                        handleSuspend(r.uid)
+                      }
                     }}
                   >
                     Suspend
@@ -164,7 +179,13 @@ export function RosterPage() {
                   <button
                     disabled={actingUid === r.uid}
                     onClick={() => {
-                      handleRevoke(r.uid)
+                      if (
+                        window.confirm(
+                          `Revoke responder ${r.displayName}? This action cannot be self-undone.`,
+                        )
+                      ) {
+                        handleRevoke(r.uid)
+                      }
                     }}
                   >
                     Revoke
