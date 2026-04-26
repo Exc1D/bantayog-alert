@@ -128,6 +128,7 @@ export async function mergeDuplicatesCore(db, input, actor, correlationId = cryp
             tx.set(eventRef, {
                 eventId: eventRef.id,
                 reportId: primaryReportId,
+                eventType: 'merge_duplicates',
                 actor: actor.uid,
                 actorRole: actor.claims.role,
                 at: Timestamp.now(),
