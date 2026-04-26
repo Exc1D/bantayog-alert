@@ -89,6 +89,7 @@ export const massAlertRequestDocSchema = z
         pagasaSignalRef: z.string().optional(),
         notes: z.string().max(2000).optional(),
       })
+      .strict()
       .optional(),
     forwardedBy: z.string().min(1).optional(),
     schemaVersion: z.number().int().positive(),

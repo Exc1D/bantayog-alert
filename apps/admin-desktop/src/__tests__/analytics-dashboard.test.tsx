@@ -36,6 +36,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 describe('AnalyticsDashboardPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     mockGetCountFromServer.mockResolvedValue({ data: () => ({ count: 42 }) })
     mockGetDocs.mockResolvedValue({ docs: [] })
     mockWhere.mockReturnValue({})
@@ -65,5 +66,21 @@ describe('AnalyticsDashboardPage', () => {
       (args) => args[0] === 'municipalityId' && args[1] === '==' && args[2] === 'daet',
     )
     expect(hasMuniFilter).toBe(true)
+  })
+
+  it('renders a trend chart when snapshots are present', async () => {
+    mockGetDocs.mockResolvedValueOnce({
+      docs: [
+        {
+          data: () => ({
+            date: '2026-04-20',
+            reportsByStatus: { verified: 5, closed: 2 },
+          }),
+        },
+      ],
+    })
+    render(<AnalyticsDashboardPage />, { wrapper })
+    expect(await screen.findByLabelText('7-day trend chart')).toBeInTheDocument()
+    expect(screen.getByLabelText(/2026-04-20: 7 reports/)).toBeInTheDocument()
   })
 })

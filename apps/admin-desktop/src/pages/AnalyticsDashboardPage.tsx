@@ -42,7 +42,7 @@ export function AnalyticsDashboardPage() {
     refetchInterval: 30_000,
   })
 
-  const { data: snapshots } = useQuery({
+  const { data: snapshots, isLoading: isSnapshotsLoading } = useQuery({
     queryKey: ['analytics', 'snapshots', municipalityId],
     queryFn: async () => {
       const q = query(collection(db, 'analytics_snapshots'), orderBy('__name__', 'desc'), limit(7))
@@ -83,7 +83,9 @@ export function AnalyticsDashboardPage() {
       </section>
       <section>
         <h2>7-Day Trend</h2>
-        {snapshots && snapshots.length > 0 ? (
+        {isSnapshotsLoading ? (
+          <p>Loading trend…</p>
+        ) : snapshots && snapshots.length > 0 ? (
           <svg width="400" height="80" aria-label="7-day trend chart">
             {snapshots.map(
               (s: { date: string; reportsByStatus?: Record<string, number> }, i: number) => {

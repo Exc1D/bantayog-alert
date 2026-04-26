@@ -80,12 +80,20 @@ interface BroadcastRenderArgs {
 }
 
 export function renderBroadcastTemplate(args: BroadcastRenderArgs): string {
+  const municipalityName = args.vars.municipalityName.trim()
+  const body = args.vars.body.trim()
+
+  if (!municipalityName) {
+    throw new SmsTemplateError('Missing municipalityName')
+  }
+  if (!body) {
+    throw new SmsTemplateError('Missing body')
+  }
+
   const purposeMap = TEMPLATES.mass_alert
   const template = purposeMap[args.locale]
   if (!template) {
     throw new SmsTemplateError(`Unknown locale: ${args.locale}`)
   }
-  return template
-    .replace('{municipalityName}', args.vars.municipalityName)
-    .replace('{body}', args.vars.body)
+  return template.replace('{municipalityName}', municipalityName).replace('{body}', body)
 }

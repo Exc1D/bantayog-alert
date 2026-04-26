@@ -42,6 +42,7 @@ export async function sendMassAlertFcm(
     const chunk = opts.municipalityIds.slice(i, i + IN_QUERY_LIMIT)
     const snaps = await db
       .collection('responders')
+      .where('isActive', '==', true)
       .where('hasFcmToken', '==', true)
       .where('municipalityId', 'in', chunk)
       .get()
@@ -120,7 +121,7 @@ export async function sendMassAlertFcm(
         ownerToInvalidTokens.set(ownerId, list)
       }
     }
-    await Promise.all(
+    const results = await Promise.allSettled(
       [...ownerToInvalidTokens.entries()].map(async ([ownerId, badTokens]) => {
         const ref = db.collection('responders').doc(ownerId)
         await db.runTransaction(async (tx) => {
@@ -136,6 +137,14 @@ export async function sendMassAlertFcm(
         })
       }),
     )
+    const failedCount = results.filter((r) => r.status === 'rejected').length
+    if (failedCount > 0) {
+      log({
+        severity: 'ERROR',
+        code: 'fcm.mass.cleanup.failed',
+        message: `${String(failedCount)} cleanup transaction(s) failed`,
+      })
+    }
     log({
       severity: 'WARNING',
       code: 'fcm.mass.invalid_tokens',

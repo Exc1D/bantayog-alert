@@ -147,6 +147,7 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
             value={pagasaSignalRef}
             onChange={(e) => {
               setPagasaSignalRef(e.target.value)
+              escalateKeyRef.current = crypto.randomUUID()
             }}
           />
           <label htmlFor="escalation-notes">Notes (optional)</label>
@@ -155,6 +156,7 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
             value={notes}
             onChange={(e) => {
               setNotes(e.target.value)
+              escalateKeyRef.current = crypto.randomUUID()
             }}
             rows={2}
           />
