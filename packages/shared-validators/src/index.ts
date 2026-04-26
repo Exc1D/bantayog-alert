@@ -44,8 +44,8 @@ export { reportEventSchema, dispatchEventSchema } from './events.js'
 export type { ReportEvent, DispatchEvent } from './events.js'
 export { agencyDocSchema } from './agencies.js'
 export type { AgencyDoc } from './agencies.js'
-export { responderDocSchema } from './responders.js'
-export type { ResponderDoc } from './responders.js'
+export { responderDocSchema, responderTelemetryPayloadSchema } from './responders.js'
+export type { ResponderDoc, ResponderTelemetryPayload } from './responders.js'
 export { userDocSchema } from './users.js'
 export { reportSmsConsentDocSchema } from './users.js'
 export type { UserDoc, ReportSmsConsentDoc } from './users.js'
@@ -72,6 +72,7 @@ export {
   commandChannelMessageDocSchema,
   massAlertRequestDocSchema,
   shiftHandoffDocSchema,
+  responderShiftHandoffDocSchema,
   breakglassEventDocSchema,
   fieldModeSessionDocSchema,
 } from './coordination.js'
@@ -81,6 +82,7 @@ export type {
   CommandChannelMessageDoc,
   MassAlertRequestDoc,
   ShiftHandoffDoc,
+  ResponderShiftHandoffDoc,
   BreakglassEventDoc,
   FieldModeSessionDoc,
 } from './coordination.js'

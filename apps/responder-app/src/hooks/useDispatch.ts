@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import {
   dispatchDocSchema,
@@ -65,6 +65,11 @@ export function useDispatch(dispatchId: string | undefined) {
   const [dispatch, setDispatch] = useState<DispatchDoc | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | undefined>(undefined)
+  const latestDispatchIdRef = useRef<string | undefined>(dispatchId)
+
+  useEffect(() => {
+    latestDispatchIdRef.current = dispatchId
+  }, [dispatchId])
 
   useEffect(() => {
     if (!dispatchId) {
@@ -80,6 +85,7 @@ export function useDispatch(dispatchId: string | undefined) {
       (snap) => {
         try {
           if (!snap.exists()) {
+            setLoading(false)
             setDispatch(undefined)
             setError(undefined)
             return
@@ -113,5 +119,46 @@ export function useDispatch(dispatchId: string | undefined) {
     return unsub
   }, [dispatchId])
 
-  return { dispatch, loading, error }
+  const refresh = useCallback(async () => {
+    const requestedDispatchId = dispatchId
+    if (!requestedDispatchId) {
+      queueMicrotask(() => {
+        setDispatch(undefined)
+        setError(undefined)
+        setLoading(false)
+      })
+      return
+    }
+    setLoading(true)
+    try {
+      const snap = await getDoc(doc(db, 'dispatches', requestedDispatchId))
+      if (latestDispatchIdRef.current !== requestedDispatchId) return
+      if (!snap.exists()) {
+        setDispatch(undefined)
+        setError(undefined)
+        return
+      }
+      const parsed = dispatchDocSchema.parse(
+        normalizeDispatchSnapshot(snap.data() as Record<string, unknown>),
+      )
+      setDispatch({
+        ...parsed,
+        dispatchId: snap.id,
+        uiStatus: getResponderUiState(parsed.status),
+        terminalSurface: getTerminalSurface(parsed.status),
+      })
+      setError(undefined)
+    } catch (err: unknown) {
+      if (latestDispatchIdRef.current !== requestedDispatchId) return
+      console.error('[useDispatch] refresh failed:', err)
+      setDispatch(undefined)
+      setError(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      if (latestDispatchIdRef.current === requestedDispatchId) {
+        setLoading(false)
+      }
+    }
+  }, [dispatchId])
+
+  return { dispatch, loading, error, refresh }
 }

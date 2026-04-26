@@ -55,6 +55,7 @@ Durable rules worth keeping across sessions.
 - Critical external data should be fetched internally or required as a prop, not left optional.
 - `react-hooks/refs` will flag `ref.current` reads during render; pass render-time values through state instead of reading mutable refs in JSX.
 - If CodeQL flags a React blob-preview path as `js/xss-through-dom`, annotation-only suppressions are brittle; render the file into a `canvas` via `createImageBitmap` instead of piping a blob URL string into JSX.
+- React Router v7 `useNavigate` returns `Promise<void>`; wrap invocations with `void` to satisfy `no-floating-promises`, or `await` them in async handlers.
 
 ## TypeScript
 
@@ -68,6 +69,13 @@ Durable rules worth keeping across sessions.
 - In Firebase Auth `onAuthStateChanged`, the promise started by `getIdTokenResult(true)` can resolve after a later auth change. Guard all `.then`/`.catch`/`.finally` handlers with an `active` flag (closed over from `useEffect`) and a `uid` check (`auth.currentUser?.uid !== capturedUid`) before calling `setClaims`/`setLoading`.
 - `awaitFreshAuthToken` built on `onIdTokenChanged` must start `getIdToken(true)` **inside** the Promise constructor (not after it) so a rejection can call `unsubscribe()` and `reject()` rather than leaving the promise hanging forever.
 - Always check the `null` return of `awaitFreshAuthToken` before invoking an `httpsCallable`; a missing `currentUser` means no auth header and the callable will fail with an opaque error.
+
+## Phase 6 Responder App (2026-04-26)
+
+- **Callable tests with `@firebase/rules-unit-testing` must use the project emulator port.** The project `firebase.json` configures Firestore on 8081. Test files that hardcode other ports (8080, 8082, 8083, 8084) will fail with `ECONNREFUSED` even when the emulator is running.
+- **`firebase-admin/firestore Timestamp` objects are rejected by the JS SDK Firestore used in `rules-unit-testing`.** When core functions accept a `db: Firestore` parameter and are tested with `testEnv.unauthenticatedContext().firestore()`, any `tx.set/update` that passes an admin `Timestamp` directly throws `invalid-argument`. Fix: write `.toMillis()` (number) instead of the `Timestamp` object. This is consistent with client-side consumption patterns (e.g. `request-lookup` already returns `lastStatusAt: number`).
+- **Firestore transactions strictly enforce reads-before-writes.** A transaction that does `tx.update(...)` followed by `tx.get(...)` on a different document throws `Firestore transactions require all reads to be executed before all writes.` This is enforced by the emulator/JS SDK and is a real correctness issue, not just a test quirk.
+- **Capacitor native plugins (`@capacitor-community/background-geolocation`, `@capacitor/push-notifications`) cannot be exercised in Playwright or Node.js unit tests.** Any feature that depends on native platform APIs requires physical device testing or mock-heavy integration tests. Document skips explicitly instead of leaving empty stubs.
 
 ## Misc
 
@@ -91,3 +99,18 @@ Durable rules worth keeping across sessions.
 - Firebase emulators: rules tests using `createTestEnv` from `rules-harness.ts` require `--only firestore,database,storage` (all three emulators). The harness configures storage rules even for Firestore-only tests.
 - `pnpm --filter` from a worktree resolves to the main repo's `package.json`, not the worktree's. For emulator test commands that need `pnpm --filter`, run `npx vitest` directly inside the package directory instead.
 - Firestore emulator rules evaluation: `getDoc` (document read) and `getDocs` (collection list) can behave differently in the emulator after seeding. `getDoc` finds documents immediately; `getDocs` may fail with "Property X is undefined on object" for collections whose rules check `resource.data` fields, even when the document is confirmed to exist via `getDoc` in the same test. Workaround: use `getDoc` for rules validation when `getDocs` is affected by this indexing issue.
+
+## CodeRabbit Round 2 Fixes (2026-04-26)
+
+- **`@typescript-eslint/no-unnecessary-condition` flags closure-mutated booleans.** A `let cancelled = false` reassigned in a cleanup closure will be flagged as "always falsy" at every read site. Intentional cancellation guards need `// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition`.
+- **`react-hooks/set-state-in-effect` rejects synchronous `setState` inside `useEffect` bodies.** For derived state that must be set synchronously (e.g. `setLoading(false)` when two independent listener readiness flags both become true), use `// eslint-disable-next-line react-hooks/set-state-in-effect`.
+- **Zod `.trim().min(1)` already rejects whitespace-only strings.** `.trim()` is a transform; `"   "` becomes `""` and then `.min(1)` rejects. An extra `.refine(v => v.trim().length > 0)` is redundant.
+- **Shared package schemas must be re-exported from `index.ts`.** Defining a schema in a module file is not enough — if it's not in `src/index.ts`, the built `lib/index.js` won't expose it and downstream packages will get `TS2724: has no exported member named 'X'`.
+- **Capacitor plugin void-return callbacks need braces.** `return () => clearInterval(id)` triggers `@typescript-eslint/no-confusing-void-expression` because `clearInterval` returns `void`. Use `return () => { clearInterval(id) }`.
+- **When refactoring from `refCount` to `Set<subscribers>`, remove ALL stale `refCount` references.** Leaving `refCount--` behind causes runtime `ReferenceError` because the variable no longer exists.
+
+## CodeRabbit Round 3 Review Fixes (2026-04-27)
+
+- **Firestore rules for optional fields need explicit null/omitted handling.** When a field is `.optional()` in Zod (e.g., `availabilityReason`), the Firestore rule must handle three cases: field not in `affectedKeys()` (not changed), field is `null` (explicitly cleared), or field is a valid string within length bounds. Using `affectedKeys()` to check whether the field was even part of the write avoids false-rejection on unrelated updates.
+- **CodeQL "Useless conditional" on closure-mutated booleans is a false positive.** `let cancelled = false` mutated in a cleanup closure will be flagged, but the checks are genuinely needed between `await` points. `eslint-disable` is the correct response — the static analyzer cannot model async closure mutation.
+- **PR review "out of sync" errors may be stale.** Always verify by running the codegen (`pnpm exec tsx scripts/build-rules.ts`) and checking `git diff` before making changes — the sync issue may have been resolved in a prior commit.

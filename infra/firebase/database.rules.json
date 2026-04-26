@@ -2,18 +2,22 @@
   "rules": {
     "responder_locations": {
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid && auth.token.role === 'responder' && auth.token.accountStatus === 'active' && newData.child('capturedAt').isNumber() && newData.child('capturedAt').val() <= now + 60000 && newData.child('capturedAt').val() >= now - 600000",
+        ".write": "auth != null && auth.uid === $uid && auth.token.role === 'responder' && auth.token.accountStatus === 'active' && newData.child('capturedAt').isNumber() && newData.child('capturedAt').val() <= now + 60000 && newData.child('capturedAt').val() >= now - 60000",
         ".read": "auth != null && auth.token.accountStatus === 'active' && (auth.uid === $uid || auth.token.role === 'provincial_superadmin' || (auth.token.role === 'municipal_admin' && root.child('responder_index').child($uid).child('municipalityId').val() === auth.token.municipalityId) || (auth.token.role === 'agency_admin' && root.child('responder_index').child($uid).child('agencyId').val() === auth.token.agencyId))",
-        ".validate": "newData.hasChildren(['capturedAt', 'lat', 'lng', 'accuracy', 'batteryPct', 'appVersion', 'telemetryStatus'])"
+        ".validate": "newData.hasChildren(['capturedAt','lat','lng','accuracy','batteryPct','motionState','appVersion','telemetryStatus']) && newData.child('capturedAt').isNumber() && newData.child('lat').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').isNumber() && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180 && newData.child('accuracy').isNumber() && newData.child('accuracy').val() >= 0 && newData.child('batteryPct').isNumber() && newData.child('batteryPct').val() >= 0 && newData.child('batteryPct').val() <= 100 && newData.child('motionState').isString() && (newData.child('motionState').val() === 'moving' || newData.child('motionState').val() === 'walking' || newData.child('motionState').val() === 'still' || newData.child('motionState').val() === 'unknown') && newData.child('appVersion').isString() && newData.child('telemetryStatus').isString() && (newData.child('telemetryStatus').val() === 'active' || newData.child('telemetryStatus').val() === 'degraded' || newData.child('telemetryStatus').val() === 'stale' || newData.child('telemetryStatus').val() === 'offline')"
       }
     },
     "responder_index": {
-      ".read": false,
-      "$uid": { ".write": false }
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && auth.token.role === 'responder' && auth.token.accountStatus === 'active' && root.child('responders').child(auth.uid).child('active').val() === true",
+        ".read": false,
+        ".validate": "newData.hasChildren(['municipalityId','agencyId']) && newData.child('municipalityId').isString() && newData.child('agencyId').isString()"
+      }
     },
     "shared_projection": {
       "$municipalityId": {
         ".read": "auth != null && auth.token.accountStatus === 'active' && (auth.token.role === 'provincial_superadmin' || (auth.token.role === 'municipal_admin' && auth.token.municipalityId === $municipalityId) || auth.token.role === 'agency_admin')",
+        ".write": false,
         "$uid": { ".write": false }
       }
     }

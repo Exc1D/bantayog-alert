@@ -142,6 +142,23 @@ export const fieldModeSessionDocSchema = z
     message: 'expiresAt must be after enteredAt',
   })
 
+export const responderShiftHandoffDocSchema = z
+  .object({
+    fromUid: z.string().min(1),
+    toUid: z.string().min(1),
+    agencyId: z.string().min(1),
+    municipalityId: z.string().min(1),
+    reason: z.string().trim().min(1).max(1000),
+    status: z.enum(['pending', 'accepted', 'declined']),
+    createdAt: z.number().int().nonnegative(),
+    expiresAt: z.number().int().nonnegative(),
+    schemaVersion: z.number().int().positive(),
+  })
+  .strict()
+  .refine((d) => d.expiresAt > d.createdAt, {
+    message: 'expiresAt must be after createdAt',
+  })
+
 export type AgencyAssistanceRequestDoc = z.infer<typeof agencyAssistanceRequestDocSchema>
 export type CommandChannelThreadDoc = z.infer<typeof commandChannelThreadDocSchema>
 export type CommandChannelMessageDoc = z.infer<typeof commandChannelMessageDocSchema>
@@ -149,3 +166,4 @@ export type MassAlertRequestDoc = z.infer<typeof massAlertRequestDocSchema>
 export type ShiftHandoffDoc = z.infer<typeof shiftHandoffDocSchema>
 export type BreakglassEventDoc = z.infer<typeof breakglassEventDocSchema>
 export type FieldModeSessionDoc = z.infer<typeof fieldModeSessionDocSchema>
+export type ResponderShiftHandoffDoc = z.infer<typeof responderShiftHandoffDocSchema>

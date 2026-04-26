@@ -51,7 +51,7 @@ describe('dispatchDocSchema', () => {
 })
 
 describe('dispatchStatusSchema', () => {
-  it('accepts all valid status values (Phase 3c: en_route + on_scene)', () => {
+  it('accepts all valid dispatch status values including unable_to_complete', () => {
     const statuses = [
       'pending',
       'accepted',
@@ -63,6 +63,7 @@ describe('dispatchStatusSchema', () => {
       'timed_out',
       'cancelled',
       'superseded',
+      'unable_to_complete',
     ] as const
     for (const status of statuses) {
       expect(dispatchStatusSchema.parse(status)).toBe(status)
@@ -91,5 +92,13 @@ describe('DISPATCH_TRANSITIONS — 3c additions', () => {
     for (const from of ['accepted', 'acknowledged', 'en_route', 'on_scene'] as const) {
       expect(isValidDispatchTransition(from, 'cancelled')).toBe(true)
     }
+  })
+  it('allows active states → unable_to_complete', () => {
+    for (const from of ['accepted', 'acknowledged', 'en_route', 'on_scene'] as const) {
+      expect(isValidDispatchTransition(from, 'unable_to_complete')).toBe(true)
+    }
+  })
+  it('denies unable_to_complete → resolved (terminal)', () => {
+    expect(isValidDispatchTransition('unable_to_complete', 'resolved')).toBe(false)
   })
 })

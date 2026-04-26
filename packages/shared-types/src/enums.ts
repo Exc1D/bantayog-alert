@@ -50,6 +50,7 @@ export type DispatchStatus =
   | 'timed_out'
   | 'cancelled'
   | 'superseded'
+  | 'unable_to_complete'
 
 export type Severity = 'low' | 'medium' | 'high'
 

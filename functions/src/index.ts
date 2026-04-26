@@ -15,6 +15,15 @@ export { acceptDispatch } from './callables/accept-dispatch.js'
 export { advanceDispatch } from './callables/advance-dispatch.js'
 export { declineDispatch } from './callables/decline-dispatch.js'
 export { closeReport } from './callables/close-report.js'
+export { submitResponderWitnessedReport } from './callables/submit-responder-witnessed-report.js'
+export { triggerSOS } from './callables/trigger-sos.js'
+export { requestBackup } from './callables/request-backup.js'
+export { markDispatchUnableToComplete } from './callables/mark-dispatch-unable-to-complete.js'
+export {
+  suspendResponder,
+  revokeResponder,
+  bulkAvailabilityOverride,
+} from './callables/responder-roster.js'
 export {
   requestAgencyAssistance,
   acceptAgencyAssistance,
@@ -27,6 +36,10 @@ export { borderAutoShareTrigger } from './triggers/border-auto-share.js'
 export { duplicateClusterTrigger } from './triggers/duplicate-cluster-trigger.js'
 export { mergeDuplicates } from './callables/merge-duplicates.js'
 export { initiateShiftHandoff, acceptShiftHandoff } from './callables/shift-handoff.js'
+export {
+  initiateResponderHandoff,
+  acceptResponderHandoff,
+} from './callables/responder-shift-handoff.js'
 export {
   massAlertReachPlanPreview,
   sendMassAlert,
@@ -120,6 +133,7 @@ export { evaluateSmsProviderHealth } from './triggers/evaluate-sms-provider-heal
 export { reconcileSmsDeliveryStatus } from './triggers/reconcile-sms-delivery-status.js'
 export { cleanupSmsMinuteWindows } from './triggers/cleanup-sms-minute-windows.js'
 export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js'
+export { projectResponderLocations } from './scheduled/project-responder-locations.js'
 export { smsDeliveryReport } from './http/sms-delivery-report.js'
 export { smsInboundWebhook } from './http/sms-inbound.js'
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js'

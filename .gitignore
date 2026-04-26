@@ -57,3 +57,5 @@ Thumbs.db
 # Worktrees
 .worktrees/
 worktrees/
+!apps/responder-app/ios/
+!apps/responder-app/android/

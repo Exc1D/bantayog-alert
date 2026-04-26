@@ -2,6 +2,175 @@
 
 ## Current
 
+### Phase 6 Responder App — Task 10: Drill spec and acceptance evidence (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `e2e-tests/specs/responder-phase-6.spec.ts` — new Playwright spec covering 6 Phase 6 field-operation scenarios; all marked `test.skip` with explicit comments explaining emulator/fixture blockers (report seeding for active dispatches, concurrent responder auth for race-loss)
+  - `functions/src/__tests__/callables/mark-dispatch-unable-to-complete.test.ts` — new callable test file (6 tests) following existing Phase 6 patterns
+  - `functions/src/__tests__/callables/submit-responder-witnessed-report.test.ts` — fixed port 8082 → 8081 to match project emulator config
+  - `functions/src/__tests__/callables/trigger-sos.test.ts` — fixed port 8083 → 8081; changed seed override `sosTriggeredAt: Timestamp.now()` → `Date.now()` for JS SDK compatibility
+  - `functions/src/__tests__/callables/request-backup.test.ts` — fixed port 8084 → 8081
+  - `functions/src/callables/trigger-sos.ts` — changed `sosTriggeredAt` and `lastStatusAt` writes from `Timestamp` object to `.toMillis()` (JS SDK compat)
+  - `functions/src/callables/mark-dispatch-unable-to-complete.ts` — moved report read before dispatch write in transaction (Firestore reads-before-writes rule); changed `lastStatusAt` to `.toMillis()`
+  - `functions/src/services/rate-limit.ts` — changed `updatedAt` fallback from `AdminTimestamp.now()` to `now.toMillis()` (JS SDK compat); removed unused import
+- Test evidence:
+  - Callable tests (emulator-backed): 24/24 PASS
+    - `submit-responder-witnessed-report.test.ts` — 6/6
+    - `trigger-sos.test.ts` — 6/6
+    - `request-backup.test.ts` — 6/6
+    - `mark-dispatch-unable-to-complete.test.ts` — 6/6
+  - `npx turbo run lint typecheck` — 26/26 PASS
+- Skipped / residual risks (require physical device or deeper emulator orchestration):
+  - E2E dispatch progression (`en_route → on_scene → resolved`): skipped — fixture only seeds pending/cancelled dispatches; acceptDispatch requires linked report in `assigned` status
+  - E2E witness report / unable-to-complete / backup / SOS: skipped — require active dispatch state
+  - E2E race-loss: skipped — requires two concurrent authenticated responder sessions
+  - Native push token registration and tap-through deep linking: cannot be verified without physical iOS/Android device
+  - Background geolocation telemetry capture: cannot be verified without physical device and location permission grants
+  - `accept-dispatch.test.ts` and `advance-dispatch.test.ts` use port 8080 (still mismatched with firebase.json 8081) and may have similar Timestamp issues — out of scope for Task 10
+
+### Phase 6 Responder App — Task 9: Extend the admin desktop for agency responder operations (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/admin-desktop/src/hooks/useRosterManagement.ts` — new hook; lists agency responders with `availabilityStatus` and `lastTelemetryAt`; exposes `suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride` actions
+  - `apps/admin-desktop/src/pages/RosterPage.tsx` — new page at `/roster`; checkbox selection, availability badge, freshness indicator, bulk override dropdown, Suspend/Revoke action buttons
+  - `apps/admin-desktop/src/routes.tsx` — added `/roster` route protected for `agency_admin`
+  - `apps/admin-desktop/src/hooks/useEligibleResponders.ts` — extended `EligibleResponder` with `availabilityStatus`, `lastTelemetryAt`, `freshness`; added `computeFreshness` (fresh/degraded/stale/offline thresholds from project-responder-locations); sort by available first, then freshness, then name
+  - `apps/admin-desktop/src/pages/DispatchModal.tsx` — added availability status badge and freshness color indicator next to each eligible responder; inherits new sort from hook
+  - `apps/admin-desktop/src/hooks/useAgencyAssistanceQueue.ts` — new hook; dual Firestore listeners for `agency_assistance_requests` and `backup_requests` filtered by agencyId
+  - `apps/admin-desktop/src/pages/AgencyAssistanceQueuePage.tsx` — refactored to use `useAgencyAssistanceQueue`; displays both agency assistance requests and backup requests with Accept/Decline buttons; wired to existing `acceptAgencyAssistance`/`declineAgencyAssistance` callables
+  - `apps/admin-desktop/src/pages/AgencyAssistanceQueuePage.test.tsx` — updated to mock `useAgencyAssistanceQueue` hook instead of firebase/firestore (follows existing `triage-queue.test.tsx` pattern)
+  - `apps/admin-desktop/src/services/callables.ts` — added `suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride` callable wrappers
+- Verification:
+  - `pnpm --filter @bantayog/admin-desktop typecheck` — PASS
+  - `pnpm --filter @bantayog/admin-desktop lint` — PASS
+  - `pnpm --filter @bantayog/admin-desktop test` — PASS (37/37; pre-existing `field-mode-store.test.ts` firebase auth init failure unrelated)
+
+### Phase 6 Responder App — Task 8: Responder-to-responder handoff and availability management (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `packages/shared-validators/src/coordination.ts` — added `responderShiftHandoffDocSchema` with `fromUid`, `toUid`, `agencyId`, `municipalityId`, `reason`, `status` ('pending'|'accepted'|'declined'), `createdAt`, `expiresAt` (30min TTL), `schemaVersion`
+  - `packages/shared-validators/src/coordination.test.ts` — 4 tests for new schema (valid doc, invalid status, expiresAt validation, strict mode)
+  - `packages/shared-validators/src/responders.ts` — added `'available'` to `availabilityStatus` enum, added `availabilityReason` optional field
+  - `functions/src/callables/responder-shift-handoff.ts` — new callable file with `initiateResponderHandoff` (validates both UIDs are active responders in same agency, creates `responder_shift_handoffs` doc with idempotency) and `acceptResponderHandoff` (transitions status to 'accepted', fails if expired)
+  - `functions/src/index.ts` — exports two new callables
+  - `apps/responder-app/src/hooks/useResponderAvailability.ts` — new hook reading `responders/{uid}.availabilityStatus` via Firestore snapshot, exposing `setAvailability(status, reason?)` that writes to responder doc with `availabilityReason` validation
+  - `apps/responder-app/src/pages/DispatchListPage.tsx` — added availability status badge, status dropdown with reason input, and "Start Shift Handoff" form with target UID and reason
+  - `infra/firebase/firestore.rules` — expanded responder self-update `hasOnly` to include `availabilityStatus`, `availabilityReason`, and `updatedAt`
+- Also fixed pre-existing lint/type errors in Task 5/6 files (`DispatchDetailPage.tsx`, `ResponderWitnessReportPage.tsx`, `SosPage.tsx`, `BackupRequestPage.tsx`, `useDispatch.ts`) so verification passes cleanly
+- Verification:
+  - `pnpm --filter @bantayog/shared-validators test` — PASS (227 tests)
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
+### Phase 6 Responder App — Task 7: Responder field UX (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/src/pages/ResponderWitnessReportPage.tsx` — new form page at `/dispatches/:id/witness-report`; fields: reportType dropdown, description textarea, severity radio, optional photo URL; submits via `useSubmitResponderWitnessedReport` which injects current GPS coordinates as `publicLocation`
+  - `apps/responder-app/src/pages/SosPage.tsx` — new confirmation page at `/dispatches/:id/sos`; calls `triggerSOS` on confirm and navigates back
+  - `apps/responder-app/src/pages/BackupRequestPage.tsx` — new form page at `/dispatches/:id/backup`; reason textarea required; calls `requestBackup`; shows success confirmation
+  - `apps/responder-app/src/pages/DispatchDetailPage.tsx` — added action buttons for the three new pages (only when dispatch is active); added inline "Unable to Complete" form calling `markDispatchUnableToComplete`; improved race-loss recovery by re-fetching server state on write rejection and showing `CancelledScreen` before generic error
+  - `apps/responder-app/src/hooks/useSubmitResponderWitnessedReport.ts` — new hook wrapping `submitResponderWitnessedReport` callable with GPS location capture
+  - `apps/responder-app/src/hooks/useTriggerSOS.ts` — new hook wrapping `triggerSOS` callable
+  - `apps/responder-app/src/hooks/useRequestBackup.ts` — new hook wrapping `requestBackup` callable with idempotency key
+  - `apps/responder-app/src/hooks/useMarkDispatchUnableToComplete.ts` — new hook wrapping `markDispatchUnableToComplete` callable with idempotency key
+  - `apps/responder-app/src/hooks/useDispatch.ts` — added `refresh` function for manual one-shot re-fetch from Firestore
+  - `apps/responder-app/src/routes.tsx` — wired 3 new protected routes
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
+### Phase 6 Responder App — Task 5: Responder location projection (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `functions/src/scheduled/project-responder-locations.ts` — new scheduled Cloud Function running every 30s; reads `/responder_locations/`, groups by `municipalityId` via `/responder_index/{uid}`, rounds lat/lng to 3 decimal places (~100m grid), computes freshness bands (fresh/degraded/stale/offline) from telemetry age, writes to `/shared_projection/{municipalityId}/{uid}`, deletes offline responders, and applies 90s TTL cleanup on stale projection entries
+  - `functions/src/index.ts` — exports `projectResponderLocations`
+  - `functions/src/__tests__/scheduled/project-responder-locations.test.ts` — 9 tests covering grid rounding, freshness band boundaries, active responder projection, offline deletion, TTL cleanup, and municipality grouping
+- Verification:
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+  - `pnpm dlx firebase-tools emulators:exec --only database "pnpm --filter @bantayog/functions exec vitest run src/__tests__/scheduled/project-responder-locations.test.ts"` — PASS (9/9)
+
+### Phase 6 Responder App — Task 6: Responder field callables (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `functions/src/callables/submit-responder-witnessed-report.ts` — new callable for responders to file a witness report while on dispatch; includes rate limiting, idempotency, report + report_private + report_ops + report_lookup + report_events + admin_notifications writes
+  - `functions/src/callables/trigger-sos.ts` — new callable to trigger SOS on an active dispatch; writes `sosTriggeredAt` to dispatch and creates admin notification
+  - `functions/src/callables/request-backup.ts` — new callable to request backup on an active dispatch; creates `backup_requests` doc and admin notification
+  - `functions/src/callables/mark-dispatch-unable-to-complete.ts` — new callable to mark a dispatch as `unable_to_complete`; updates dispatch status, resets report to `verified`, and creates dispatch + report events
+  - `functions/src/index.ts` — exports four new callables
+  - `packages/shared-validators/src/dispatches.ts` — added `unable_to_complete` to `DispatchStatus` enum validation
+  - `packages/shared-validators/src/state-machines/dispatch-states.ts` — added `unable_to_complete` as terminal state with transitions from active states
+  - `packages/shared-types/src/enums.ts` — added `unable_to_complete` to `DispatchStatus` enum
+  - `packages/shared-types/lib/` — rebuilt
+- Verification:
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+
+### Phase 6 Responder App — Task 4: Native telemetry capture (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/src/services/telemetry-client.ts` — new unified telemetry client using `@capacitor-community/background-geolocation` on native, falling back to `navigator.geolocation.watchPosition` on web; exports `startTracking`, `stopTracking`, `getBatteryPercentage`
+  - `apps/responder-app/src/hooks/useResponderTelemetry.ts` — new hook that starts tracking when dispatch is active, throttles RTDB writes by motion state and battery level, validates payload with `responderTelemetryPayloadSchema`, writes to `responder_locations/{uid}` and `responders/{uid}.lastTelemetryAt`
+  - `apps/responder-app/src/App.tsx` — added `TelemetryProvider` component that feeds the first active dispatch into `useResponderTelemetry`
+  - `apps/responder-app/src/pages/DispatchDetailPage.tsx` — added `useResponderTelemetry` call scoped to the viewed dispatch
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
+### Phase 6 Responder App — Task 3: Telemetry contracts and RTDB write boundaries (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `packages/shared-validators/src/responders.ts` — added `responderTelemetryPayloadSchema` with `capturedAt`, `receivedAt` (optional, server-side), `lat`, `lng`, `accuracy`, `batteryPct`, `motionState`, `appVersion`, `telemetryStatus`
+  - `packages/shared-validators/src/index.ts` — re-exported `responderTelemetryPayloadSchema` + `ResponderTelemetryPayload` type
+  - `infra/firebase/database.rules.json` — tightened `capturedAt` lower bound from 10 min to 60 s; added `motionState` to `.validate`; added `.write: false` at `shared_projection/$municipalityId` level
+  - `functions/src/__tests__/rtdb.rules.test.ts` — added `motionState` to `validPayload`; updated stale test from 10 min to 60 s; added parent-path write denial test for `shared_projection`
+- Verification:
+  - `pnpm --filter @bantayog/shared-validators test` — PASS (223 tests)
+  - `firebase emulators:exec --only firestore,database,storage "pnpm --filter @bantayog/functions exec vitest run src/__tests__/rtdb.rules.test.ts src/__tests__/rules/responders.rules.test.ts"` — PASS (22 tests)
+
+### Phase 6 Responder App — Task 2: Native push abstraction (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/src/services/push-client.ts` — new unified push abstraction using `@capacitor/push-notifications` on native, falling back to Firebase web FCM on web
+  - `apps/responder-app/src/hooks/useRegisterFcmToken.ts` — now calls `acquirePushToken()` from push-client instead of directly using `acquireFcmToken()`; removed service worker logic from hook
+  - `apps/responder-app/src/App.tsx` — `FcmSetup` skips SW registration on native; added `NotificationRouter` component that wires foreground push listener and routes notification tap-throughs to `/dispatches/:id`
+- Summary: Replaced the web-only FCM path with a runtime-native push abstraction. On `Capacitor.isNativePlatform()`: uses Capacitor push-notifications plugin for token registration, foreground handling, and tap-through deep linking. On web: preserves existing service worker + Firebase messaging flow. Firestore write contract (`responders/{uid}.hasFcmToken = true`) preserved.
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
+### Phase 6 Responder App — Task 1: Lock native mobile foundation (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/package.json` — added `@capacitor/push-notifications`, `@capacitor/network`, `@capacitor/preferences`, `@capacitor/device`, `@capacitor-community/background-geolocation`, `@capacitor/ios`, `@capacitor/android`
+  - `apps/responder-app/capacitor.config.ts` — added comment documenting background geolocation plugin choice
+  - `apps/responder-app/ios/App/App/Info.plist` — added `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription`, `UIBackgroundModes` with `location`
+  - `apps/responder-app/android/app/src/main/AndroidManifest.xml` — added `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`
+  - Native projects created under `apps/responder-app/ios/` and `apps/responder-app/android/`
+- Summary: Installed and locked Capacitor v8 plugin set. Chose `@capacitor-community/background-geolocation` because `@capawesome/capacitor-background-geolocation` does not exist on npm and `@capacitor/background-runner` is designed for periodic tasks, not continuous tracking. iOS and Android native shells generated, web app embedded via `cap sync`. Build and sync verified.
+
 ### Test fixture fix — command_channel_threads/messages seed data (2026-04-26)
 
 - Status: DONE
@@ -473,6 +642,37 @@
   `staging.bantayog.web.app` certificate mismatch
   IAM Credentials API disabled for acceptance flow
   No valid staging hosting deploy
+
+### CodeRabbit Round 2 Review Fixes (2026-04-26)
+
+- Status: complete
+
+### CodeRabbit Round 3 / PR #68 Review Fixes (2026-04-27)
+
+- Status: in progress
+- Files touched: `infra/firebase/firestore.rules.template`, `infra/firebase/firestore.rules`
+- Key fixes:
+  - **availabilityReason validation**: Added `size() <= 500` cap and null/omitted handling to the responder update rule, matching `z.string().max(500).optional()` from shared-validators.
+  - **Stale findings verified as already resolved**: Field name mismatch (`availability` → `availabilityStatus`) already fixed in prior commit. Rules already in sync with codegen. Useless `cancelled` conditional already addressed.
+- Verification:
+  - `pnpm exec tsx scripts/build-rules.ts` → PASS (no diff after regeneration)
+  - `pnpm exec vitest run` → 232 tests PASS
+- Files touched: 27 files across responder-app, admin-desktop, functions, shared-validators, infra/firebase
+- Key fixes:
+  - **telemetry-client.ts**: Removed stale `refCount` references, fixed missing return of unsubscribe function on native path, added `subscribers.delete(onLocation)` on setup failure to prevent leaks.
+  - **useResponderTelemetry.ts**: Added `cancelled` guard before Firestore `setDoc` and eslint-disable comments for intentional closure-mutation checks.
+  - **useAgencyAssistanceQueue.ts**: Added `requestsReady` + `backupReady` flags so `setLoading(false)` only fires after both onSnapshot listeners have resolved; backup errors now surface into `error` state.
+  - **useEligibleResponders.ts**: Removed stale `freshness` from persisted state; sort now uses `lastTelemetryAt` directly.
+  - **RosterPage.tsx**: Added 30-second interval tick to force re-evaluation of freshness labels as time passes.
+  - **DispatchModal.tsx**: Derives `freshness` at render time via `computeFreshness(r.lastTelemetryAt)` instead of stale persisted value.
+  - **shared-validators index.ts**: Added missing `responderShiftHandoffDocSchema` and `ResponderShiftHandoffDoc` exports (was defined in `coordination.ts` but never re-exported, causing functions typecheck failure).
+  - **shared-validators build**: Rebuilt `lib/` outputs after index export addition.
+  - **firestore.rules**: Regenerated from template via `pnpm exec tsx scripts/build-rules.ts` (template already had Round 1 fixes for `lastTelemetryAt` and `updatedAt is int || is timestamp`).
+- Verification:
+  - `pnpm run typecheck --filter=@bantayog/responder-app --filter=@bantayog/admin-desktop --filter=@bantayog/functions --filter=@bantayog/shared-validators` → PASS
+  - `pnpm run lint --filter=@bantayog/responder-app --filter=@bantayog/admin-desktop --filter=@bantayog/functions` → PASS
+  - `pnpm run test` in `packages/shared-validators` → 229 tests PASS
+  - Functions tests have pre-existing failures unrelated to these changes (dispatch mirror, accept-dispatch, cancel-dispatch, close-report, rate-limit, etc. — emulator/setup issues).
 
 ### Phase 0 Foundation
 

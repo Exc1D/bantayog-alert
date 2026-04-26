@@ -7,12 +7,12 @@ export { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportShar
 export { dispatchDocSchema, dispatchStatusSchema, advanceDispatchRequestSchema, } from './dispatches.js';
 export { reportEventSchema, dispatchEventSchema } from './events.js';
 export { agencyDocSchema } from './agencies.js';
-export { responderDocSchema } from './responders.js';
+export { responderDocSchema, responderTelemetryPayloadSchema } from './responders.js';
 export { userDocSchema } from './users.js';
 export { reportSmsConsentDocSchema } from './users.js';
 export { smsInboxDocSchema, smsOutboxDocSchema, smsSessionDocSchema, smsProviderHealthDocSchema, smsProviderIdSchema, smsReportInboxFieldsSchema, } from './sms.js';
 export { detectEncoding } from './sms-encoding.js';
-export { agencyAssistanceRequestDocSchema, commandChannelThreadDocSchema, commandChannelMessageDocSchema, massAlertRequestDocSchema, shiftHandoffDocSchema, breakglassEventDocSchema, fieldModeSessionDocSchema, } from './coordination.js';
+export { agencyAssistanceRequestDocSchema, commandChannelThreadDocSchema, commandChannelMessageDocSchema, massAlertRequestDocSchema, shiftHandoffDocSchema, responderShiftHandoffDocSchema, breakglassEventDocSchema, fieldModeSessionDocSchema, } from './coordination.js';
 export { hazardZoneDocSchema, hazardZoneHistoryDocSchema, hazardSignalDocSchema } from './hazard.js';
 export { incidentResponseEventSchema } from './incident-response.js';
 export { moderationIncidentDocSchema } from './moderation.js';

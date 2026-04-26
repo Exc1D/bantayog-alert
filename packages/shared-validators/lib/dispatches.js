@@ -22,6 +22,7 @@ export const dispatchStatusSchema = z.enum([
     'timed_out',
     'cancelled',
     'superseded',
+    'unable_to_complete',
 ]);
 export const dispatchDocSchema = z
     .object({

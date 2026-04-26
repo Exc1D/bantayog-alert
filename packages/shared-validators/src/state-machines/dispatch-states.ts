@@ -21,6 +21,7 @@ export const DISPATCH_STATES = [
   'timed_out',
   'cancelled',
   'superseded',
+  'unable_to_complete',
 ] as const
 
 /**
@@ -28,19 +29,20 @@ export const DISPATCH_STATES = [
  *
  * Responder progression: pending → accepted → acknowledged → en_route → on_scene → resolved
  * Admin actions: cancel from mid-lifecycle states, supersede by dispatching another responder
- * Terminal states: resolved, declined, timed_out, cancelled, superseded
+ * Terminal states: resolved, declined, timed_out, cancelled, superseded, unable_to_complete
  */
 export const DISPATCH_TRANSITIONS: Readonly<Record<DispatchStatus, readonly DispatchStatus[]>> = {
   pending: ['accepted', 'declined', 'cancelled', 'timed_out', 'superseded'],
-  accepted: ['acknowledged', 'cancelled', 'superseded'],
-  acknowledged: ['en_route', 'cancelled', 'superseded'],
-  en_route: ['on_scene', 'cancelled', 'superseded'],
-  on_scene: ['resolved', 'cancelled', 'superseded'],
+  accepted: ['acknowledged', 'cancelled', 'superseded', 'unable_to_complete'],
+  acknowledged: ['en_route', 'cancelled', 'superseded', 'unable_to_complete'],
+  en_route: ['on_scene', 'cancelled', 'superseded', 'unable_to_complete'],
+  on_scene: ['resolved', 'cancelled', 'superseded', 'unable_to_complete'],
   resolved: [],
   declined: [],
   timed_out: [],
   cancelled: [],
   superseded: [],
+  unable_to_complete: [],
 }
 
 export function isValidDispatchTransition(from: DispatchStatus, to: DispatchStatus): boolean {

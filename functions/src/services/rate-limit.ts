@@ -1,5 +1,4 @@
 import type { Firestore, Timestamp } from 'firebase-admin/firestore'
-import { Timestamp as AdminTimestamp } from 'firebase-admin/firestore'
 
 export interface RateLimitCheck {
   key: string
@@ -35,11 +34,7 @@ export async function checkRateLimit(
 
     fresh.push(now.toMillis())
     const pruned = fresh.slice(-limit)
-    tx.set(
-      ref,
-      { timestamps: pruned, updatedAt: updatedAt ?? AdminTimestamp.now() },
-      { merge: true },
-    )
+    tx.set(ref, { timestamps: pruned, updatedAt: updatedAt ?? now.toMillis() }, { merge: true })
     return { allowed: true, remaining: limit - pruned.length, retryAfterSeconds: 0 }
   })
 }

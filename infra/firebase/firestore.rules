@@ -55,15 +55,19 @@ service cloud.firestore {
           ||       (from == 'accepted' && to == 'acknowledged')
           ||       (from == 'accepted' && to == 'cancelled')
           ||       (from == 'accepted' && to == 'superseded')
+          ||       (from == 'accepted' && to == 'unable_to_complete')
           ||       (from == 'acknowledged' && to == 'en_route')
           ||       (from == 'acknowledged' && to == 'cancelled')
           ||       (from == 'acknowledged' && to == 'superseded')
+          ||       (from == 'acknowledged' && to == 'unable_to_complete')
           ||       (from == 'en_route' && to == 'on_scene')
           ||       (from == 'en_route' && to == 'cancelled')
           ||       (from == 'en_route' && to == 'superseded')
+          ||       (from == 'en_route' && to == 'unable_to_complete')
           ||       (from == 'on_scene' && to == 'resolved')
           ||       (from == 'on_scene' && to == 'cancelled')
           ||       (from == 'on_scene' && to == 'superseded')
+          ||       (from == 'on_scene' && to == 'unable_to_complete')
           || false;
     }
 
@@ -247,7 +251,13 @@ service cloud.firestore {
       );
       allow update: if uid() == rUid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['availabilityStatus']);
+                       .hasOnly(['availabilityStatus', 'availabilityReason', 'updatedAt', 'lastTelemetryAt'])
+                    && request.resource.data.availabilityStatus in ['available', 'on_duty', 'off_duty', 'on_break', 'unavailable']
+                    && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is timestamp)
+                    && (request.resource.data.availabilityStatus == 'available' || (request.resource.data.availabilityReason is string && request.resource.data.availabilityReason.size() >= 1))
+                    && (!('availabilityReason' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.availabilityReason == null
+                        || (request.resource.data.availabilityReason is string && request.resource.data.availabilityReason.size() <= 500));
       allow create, delete: if false;
     }
 

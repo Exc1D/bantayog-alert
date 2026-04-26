@@ -3,20 +3,17 @@ import '@testing-library/jest-dom'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AgencyAssistanceQueuePage } from './AgencyAssistanceQueuePage.js'
 
-const { mockOnSnapshot, mockCallable, mockHttpsCallable } = vi.hoisted(() => {
+const { mockUseAgencyAssistanceQueue, mockCallable, mockHttpsCallable } = vi.hoisted(() => {
   return {
-    mockOnSnapshot: vi.fn(),
+    mockUseAgencyAssistanceQueue: vi.fn(),
     mockCallable: vi.fn(),
     mockHttpsCallable: vi.fn(() => mockCallable),
   }
 })
 
-vi.mock('firebase/firestore', () => ({
-  collection: vi.fn(),
-  query: vi.fn(),
-  where: vi.fn(),
-  onSnapshot: mockOnSnapshot,
-  getFirestore: vi.fn(),
+vi.mock('../hooks/useAgencyAssistanceQueue', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  useAgencyAssistanceQueue: (...args: unknown[]) => mockUseAgencyAssistanceQueue(...args),
 }))
 
 vi.mock('firebase/functions', () => ({
@@ -39,21 +36,21 @@ vi.mock('../app/firebase', () => ({
 
 const pendingRequest = {
   id: 'ar1',
-  data: () => ({
-    reportId: 'r1',
-    requestedByMunicipality: 'Daet',
-    message: 'Need BFP assistance',
-    priority: 'urgent',
-    status: 'pending',
-    targetAgencyId: 'bfp',
-    createdAt: 1713350400000,
-  }),
+  reportId: 'r1',
+  requestedByMunicipality: 'Daet',
+  message: 'Need BFP assistance',
+  priority: 'urgent' as const,
+  status: 'pending' as const,
+  targetAgencyId: 'bfp',
+  createdAt: 1713350400000,
 }
 
 beforeEach(() => {
-  mockOnSnapshot.mockImplementation((_q, cb) => {
-    cb({ docs: [pendingRequest] })
-    return vi.fn() // unsubscribe
+  mockUseAgencyAssistanceQueue.mockReturnValue({
+    requests: [pendingRequest],
+    backupRequests: [],
+    loading: false,
+    error: null,
   })
   mockCallable.mockResolvedValue({ data: { status: 'accepted' } })
 })
@@ -66,7 +63,6 @@ describe('AgencyAssistanceQueuePage', () => {
 
   it('shows Accept and Decline buttons on pending requests', () => {
     render(<AgencyAssistanceQueuePage />)
-    // Use getAllByRole and pick the ones with exact text (action buttons)
     const acceptButtons = screen.getAllByRole('button', { name: /^Accept$/ })
     const declineButtons = screen.getAllByRole('button', { name: /^Decline$/ })
     expect(acceptButtons).toHaveLength(1)
