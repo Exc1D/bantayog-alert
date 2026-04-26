@@ -134,4 +134,20 @@ export const fieldModeSessionDocSchema = z
     .refine((d) => d.expiresAt > d.enteredAt, {
     message: 'expiresAt must be after enteredAt',
 });
+export const responderShiftHandoffDocSchema = z
+    .object({
+    fromUid: z.string().min(1),
+    toUid: z.string().min(1),
+    agencyId: z.string().min(1),
+    municipalityId: z.string().min(1),
+    reason: z.string().max(1000),
+    status: z.enum(['pending', 'accepted', 'declined']),
+    createdAt: z.number().int(),
+    expiresAt: z.number().int(),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict()
+    .refine((d) => d.expiresAt > d.createdAt, {
+    message: 'expiresAt must be after createdAt',
+});
 //# sourceMappingURL=coordination.js.map

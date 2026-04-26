@@ -6,11 +6,13 @@ export declare const responderDocSchema: z.ZodObject<{
     displayCode: z.ZodString;
     specialisations: z.ZodDefault<z.ZodArray<z.ZodString>>;
     availabilityStatus: z.ZodEnum<{
+        available: "available";
         on_duty: "on_duty";
         off_duty: "off_duty";
         on_break: "on_break";
         unavailable: "unavailable";
     }>;
+    availabilityReason: z.ZodOptional<z.ZodString>;
     isActive: z.ZodBoolean;
     fcmTokens: z.ZodDefault<z.ZodArray<z.ZodString>>;
     hasFcmToken: z.ZodDefault<z.ZodBoolean>;
