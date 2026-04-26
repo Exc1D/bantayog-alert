@@ -50,6 +50,9 @@ export async function initiateShiftHandoffCore(db, input, actor, correlationId) 
         if (existing.exists) {
             return { success: true, handoffId };
         }
+        // Note: activeIncidentIds is a best-effort, non-transactional snapshot.
+        // Firestore transactions only isolate document reads via tx.get(), not collection queries.
+        // This is acceptable for handoff context — perfect point-in-time consistency is not required.
         const [opsSnap, dispatchSnap] = await Promise.all([
             db
                 .collection('report_ops')
@@ -121,8 +124,12 @@ export async function acceptShiftHandoffCore(db, input, actor, correlationId) {
             if (handoff.expiresAt.toMillis() < Date.now()) {
                 return { success: false, errorCode: 'failed-precondition' };
             }
-            if (handoff.status === 'accepted')
-                return { success: true };
+            if (handoff.status === 'accepted') {
+                if (handoff.toUid === actor.uid) {
+                    return { success: true };
+                }
+                return { success: false, errorCode: 'already-accepted' };
+            }
             tx.update(snap.ref, {
                 status: 'accepted',
                 toUid: actor.uid,

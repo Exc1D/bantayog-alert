@@ -16,6 +16,7 @@ import { type UserRole } from '@bantayog/shared-types'
 
 interface ShiftHandoff {
   fromUid: string
+  toUid?: string
   municipalityId: string
   notes: string
   activeIncidentIds: string[]
@@ -91,6 +92,9 @@ export async function initiateShiftHandoffCore(
       return { success: true as const, handoffId }
     }
 
+    // Note: activeIncidentIds is a best-effort, non-transactional snapshot.
+    // Firestore transactions only isolate document reads via tx.get(), not collection queries.
+    // This is acceptable for handoff context — perfect point-in-time consistency is not required.
     const [opsSnap, dispatchSnap] = await Promise.all([
       db
         .collection('report_ops')
@@ -182,7 +186,12 @@ export async function acceptShiftHandoffCore(
           return { success: false, errorCode: 'failed-precondition' }
         }
 
-        if (handoff.status === 'accepted') return { success: true as const }
+        if (handoff.status === 'accepted') {
+          if (handoff.toUid === actor.uid) {
+            return { success: true as const }
+          }
+          return { success: false, errorCode: 'already-accepted' }
+        }
 
         tx.update(snap.ref, {
           status: 'accepted',

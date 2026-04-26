@@ -298,5 +298,33 @@ describe('acceptShiftHandoff', () => {
         const result2 = await acceptShiftHandoffCore(adminDb, { handoffId: 'h3', idempotencyKey: uuid(7) }, actor, 'corr-9');
         expect(result2.success).toBe(true);
     });
+    it('rejects a different user accepting an already-accepted handoff', async () => {
+        await createHandoff('h-already');
+        const actorA = {
+            uid: 'admin-to',
+            claims: {
+                role: 'municipal_admin',
+                municipalityId: 'daet',
+                active: true,
+                auth_time: Math.floor(ts / 1000),
+            },
+        };
+        const actorB = {
+            uid: 'admin-other',
+            claims: {
+                role: 'municipal_admin',
+                municipalityId: 'daet',
+                active: true,
+                auth_time: Math.floor(ts / 1000),
+            },
+        };
+        const result1 = await acceptShiftHandoffCore(adminDb, { handoffId: 'h-already', idempotencyKey: uuid(20) }, actorA, 'corr-20');
+        expect(result1.success).toBe(true);
+        const result2 = await acceptShiftHandoffCore(adminDb, { handoffId: 'h-already', idempotencyKey: uuid(21) }, actorB, 'corr-21');
+        expect(result2.success).toBe(false);
+        if (!result2.success) {
+            expect(result2.errorCode).toBe('already-accepted');
+        }
+    });
 });
 //# sourceMappingURL=shift-handoff.test.js.map
