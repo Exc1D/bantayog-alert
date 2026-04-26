@@ -21,7 +21,7 @@ const REPORT_STATUSES = [
     'cancelled_false_report',
     'merged_as_duplicate',
 ];
-const SEVERITIES = ['low', 'medium', 'high'];
+const SEVERITIES = ['low', 'medium', 'high', 'critical'];
 export async function analyticsSnapshotWriterCore(db, deps) {
     const { date, now } = deps;
     const nowMillis = typeof now === 'number' ? now : now.toMillis();

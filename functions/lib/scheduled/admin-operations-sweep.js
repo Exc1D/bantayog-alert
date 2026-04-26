@@ -19,25 +19,29 @@ export async function adminOperationsSweepCore(db, deps) {
     for (let i = 0; i < toEscalate.length; i += BATCH_SIZE) {
         const batch = toEscalate.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(batch.map(async (d) => {
-            await db.runTransaction(async (tx) => {
+            const outcome = await db.runTransaction(async (tx) => {
                 const latest = await tx.get(d.ref);
                 const latestData = latest.data();
                 if (latestData?.status === 'pending' && latestData.escalatedAt == null) {
                     tx.update(d.ref, { escalatedAt: deps.now.toMillis() });
-                    log({
-                        severity: 'INFO',
-                        code: 'sweep.agency.escalated',
-                        message: `Escalated agency request ${d.id}`,
-                    });
+                    return { id: d.id, action: 'escalated' };
                 }
-                else {
-                    log({
-                        severity: 'INFO',
-                        code: 'sweep.agency.skipped',
-                        message: `Skipped agency request ${d.id}: status=${String(latestData?.status)}, escalatedAt=${String(latestData?.escalatedAt)}`,
-                    });
-                }
+                return { id: d.id, action: 'skipped' };
             });
+            if (outcome.action === 'escalated') {
+                log({
+                    severity: 'INFO',
+                    code: 'sweep.agency.escalated',
+                    message: `Escalated agency request ${outcome.id}`,
+                });
+            }
+            else {
+                log({
+                    severity: 'INFO',
+                    code: 'sweep.agency.skipped',
+                    message: `Skipped agency request ${outcome.id}`,
+                });
+            }
         }));
         results.forEach((result, idx) => {
             if (result.status === 'rejected') {
@@ -64,25 +68,29 @@ export async function adminOperationsSweepCore(db, deps) {
     for (let i = 0; i < toEscalateHandoffs.length; i += BATCH_SIZE) {
         const batch = toEscalateHandoffs.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(batch.map(async (d) => {
-            await db.runTransaction(async (tx) => {
+            const outcome = await db.runTransaction(async (tx) => {
                 const latest = await tx.get(d.ref);
                 const latestData = latest.data();
                 if (latestData?.status === 'pending' && latestData.escalatedAt == null) {
                     tx.update(d.ref, { escalatedAt: deps.now.toMillis() });
-                    log({
-                        severity: 'INFO',
-                        code: 'sweep.handoff.escalated',
-                        message: `Escalated handoff ${d.id}`,
-                    });
+                    return { id: d.id, action: 'escalated' };
                 }
-                else {
-                    log({
-                        severity: 'INFO',
-                        code: 'sweep.handoff.skipped',
-                        message: `Skipped handoff ${d.id}: status=${String(latestData?.status)}, escalatedAt=${String(latestData?.escalatedAt)}`,
-                    });
-                }
+                return { id: d.id, action: 'skipped' };
             });
+            if (outcome.action === 'escalated') {
+                log({
+                    severity: 'INFO',
+                    code: 'sweep.handoff.escalated',
+                    message: `Escalated handoff ${outcome.id}`,
+                });
+            }
+            else {
+                log({
+                    severity: 'INFO',
+                    code: 'sweep.handoff.skipped',
+                    message: `Skipped handoff ${outcome.id}`,
+                });
+            }
         }));
         results.forEach((result, idx) => {
             if (result.status === 'rejected') {
