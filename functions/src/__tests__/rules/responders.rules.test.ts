@@ -19,7 +19,7 @@ beforeAll(async () => {
     municipalityId: 'daet',
     agencyId: 'bfp',
   })
-  await seedResponder(env, 'responder-1', { municipalityId: 'daet' })
+  await seedResponder(env, 'resp-1', { municipalityId: 'daet' })
 })
 
 afterAll(async () => {
@@ -33,7 +33,7 @@ describe('responders rules', () => {
       'resp-1',
       staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }),
     )
-    await assertSucceeds(getDoc(doc(db, 'responders/responder-1')))
+    await assertSucceeds(getDoc(doc(db, 'responders/resp-1')))
   })
 
   it('responder cannot read other responder document', async () => {
@@ -51,7 +51,7 @@ describe('responders rules', () => {
       'daet-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
-    await assertSucceeds(getDoc(doc(db, 'responders/responder-1')))
+    await assertSucceeds(getDoc(doc(db, 'responders/resp-1')))
   })
 
   it('responder writes are callable-only', async () => {

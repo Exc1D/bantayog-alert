@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import { doc, setDoc } from 'firebase/firestore'
-import { FieldValue } from 'firebase-admin/firestore'
+import { serverTimestamp } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv } from '../helpers/rules-harness.js'
 import { seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
@@ -54,7 +54,7 @@ describe('responder direct-write on dispatches/{id}', () => {
     await assertSucceeds(
       db.collection('dispatches').doc('dispatch-1').update({
         status: 'acknowledged',
-        lastStatusAt: FieldValue.serverTimestamp(),
+        lastStatusAt: serverTimestamp(),
       }),
     )
   })
@@ -121,7 +121,7 @@ describe('responder direct-write on dispatches/{id}', () => {
     await assertFails(
       db.collection('dispatches').doc('dispatch-3').update({
         status: 'resolved',
-        lastStatusAt: FieldValue.serverTimestamp(),
+        lastStatusAt: serverTimestamp(),
       }),
     )
   })
@@ -152,7 +152,7 @@ describe('responder direct-write on dispatches/{id}', () => {
     await assertSucceeds(
       db.collection('dispatches').doc('dispatch-4').update({
         status: 'resolved',
-        lastStatusAt: FieldValue.serverTimestamp(),
+        lastStatusAt: serverTimestamp(),
         resolutionSummary: 'Secured the area, no injuries reported.',
       }),
     )
@@ -192,7 +192,7 @@ describe('responder direct-write on dispatches/{id}', () => {
       db
         .collection('dispatches')
         .doc('dispatch-5')
-        .update({ status: 'acknowledged', lastStatusAt: FieldValue.serverTimestamp() }),
+        .update({ status: 'acknowledged', lastStatusAt: serverTimestamp() }),
     )
   })
 
@@ -225,7 +225,7 @@ describe('responder direct-write on dispatches/{id}', () => {
         .doc('dispatch-6')
         .update({
           status: 'acknowledged',
-          lastStatusAt: FieldValue.serverTimestamp(),
+          lastStatusAt: serverTimestamp(),
           assignedTo: { uid: 'someone-else', agencyId: 'bfp', municipalityId: 'daet' },
         }),
     )

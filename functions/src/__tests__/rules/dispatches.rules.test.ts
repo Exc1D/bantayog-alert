@@ -19,7 +19,10 @@ beforeAll(async () => {
     municipalityId: 'daet',
     agencyId: 'bfp',
   })
-  await seedDispatchRT(env, 'dispatch-1', { municipalityId: 'daet' })
+  await seedDispatchRT(env, 'dispatch-1', {
+    municipalityId: 'daet',
+    assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
+  })
 })
 
 afterAll(async () => {

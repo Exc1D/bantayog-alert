@@ -54,7 +54,11 @@ service cloud.firestore {
 
     match /report_inbox/{inboxId} {
       allow read: if false;
-      allow create: if isCitizen() && request.resource.data.reporterUid == uid();
+      allow create: if isCitizen()
+          && request.resource.data.reporterUid == uid()
+          && request.resource.data.keys().hasAll([
+            'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload'
+          ]);
       allow update, delete: if false;
     }
 

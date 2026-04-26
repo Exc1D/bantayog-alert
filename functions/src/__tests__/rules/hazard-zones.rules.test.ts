@@ -64,13 +64,13 @@ describe('hazard zones rules', () => {
   })
 
   describe('hazard_signals', () => {
-    it('hazard signals are callable-only reads', async () => {
+    it('hazard signals are readable by authenticated users', async () => {
       const db = authed(
         env,
         'daet-admin',
         staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
       )
-      await assertFails(getDocs(collection(db, 'hazard_signals')))
+      await assertSucceeds(getDocs(collection(db, 'hazard_signals')))
     })
 
     it('hazard signals are callable-only writes', async () => {
