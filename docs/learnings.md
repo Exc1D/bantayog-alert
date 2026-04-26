@@ -20,6 +20,8 @@ Durable rules worth keeping across sessions.
 - Do not assume `tsc --outDir lib` will refresh every checked-in declaration the way you expect; verify the emitted `.d.ts` against source and patch the artifact if the generator still leaves stale enum ordering behind.
 - `z.string().uuid()` trips `@typescript-eslint/no-deprecated` under the current lint config. Use `z.uuid()` in shared validators.
 - Collection query tests can fail on a rule that is really written for per-document access. If the rule uses `resource.data` in a way that doesn’t support `list`, switch the test to `getDoc` or rewrite the rule intentionally.
+- In Firestore rules tests, never seed documents via `env.unauthenticatedContext().firestore()` when the collection's `create` rule is `false`; the seeding throws before the test assertion runs. Always use `env.withSecurityRulesDisabled()` for seeding.
+- Rules transition tests must match the actual transition table in `firestore.rules`. A test that assumes a transition is invalid when the rules allow it will pass trivially (or fail confusingly) and hides real coverage gaps. Always verify the rule source before writing the test expectation.
 
 ## Firestore
 

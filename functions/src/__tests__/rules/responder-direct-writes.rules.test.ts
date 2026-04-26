@@ -60,11 +60,14 @@ describe('responder direct-write on dispatches/{id}', () => {
   })
 
   it('denies acknowledged → resolved (skipping en_route/on_scene)', async () => {
-    const db = env.unauthenticatedContext().firestore()
-    await setDoc(doc(db, 'dispatches/d-2'), {
-      status: 'acknowledged',
-      responderUid: 'resp-1',
-      municipalityId: 'daet',
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await setDoc(doc(db, 'dispatches/d-2'), {
+        status: 'acknowledged',
+        assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
+        municipalityId: 'daet',
+        lastStatusAt: Date.now(),
+      })
     })
 
     const authedDb = authed(env, 'resp-1', {
@@ -77,12 +80,15 @@ describe('responder direct-write on dispatches/{id}', () => {
     )
   })
 
-  it('denies acknowledged → cancelled (responder cannot cancel)', async () => {
-    const db = env.unauthenticatedContext().firestore()
-    await setDoc(doc(db, 'dispatches/d-3'), {
-      status: 'acknowledged',
-      assignedTo: { uid: 'resp-1' },
-      municipalityId: 'daet',
+  it('denies acknowledged → pending (invalid reverse transition)', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await setDoc(doc(db, 'dispatches/d-3'), {
+        status: 'acknowledged',
+        assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
+        municipalityId: 'daet',
+        lastStatusAt: Date.now(),
+      })
     })
 
     const authedDb = authed(env, 'resp-1', {
@@ -91,7 +97,7 @@ describe('responder direct-write on dispatches/{id}', () => {
       agencyId: 'bfp',
     })
     await assertFails(
-      setDoc(doc(authedDb, 'dispatches/d-3'), { status: 'cancelled' }, { merge: true }),
+      setDoc(doc(authedDb, 'dispatches/d-3'), { status: 'pending' }, { merge: true }),
     )
   })
 

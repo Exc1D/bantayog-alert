@@ -184,14 +184,23 @@ export async function seedResponder(
  * Seeds a dispatches document using RulesTestEnvironment context.
  * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
  */
+export interface DispatchSeed {
+  municipalityId?: string
+  reportId?: string
+  agencyId?: string
+  priority?: string
+  status?: string
+  assignedResponderUids?: string[]
+  createdAt?: number
+  updatedAt?: number
+  schemaVersion?: number
+  assignedTo?: { uid?: string; agencyId?: string; municipalityId?: string }
+}
+
 export async function seedDispatchRT(
   env: RulesTestEnvironment,
   dispatchId: string,
-  overrides: Partial<
-    Record<string, unknown> & {
-      assignedTo?: { uid?: string; agencyId?: string; municipalityId?: string }
-    }
-  > = {},
+  overrides: Partial<DispatchSeed> = {},
 ): Promise<void> {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
