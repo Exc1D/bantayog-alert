@@ -29,7 +29,7 @@ export const DISPATCH_STATES = [
  *
  * Responder progression: pending → accepted → acknowledged → en_route → on_scene → resolved
  * Admin actions: cancel from mid-lifecycle states, supersede by dispatching another responder
- * Terminal states: resolved, declined, timed_out, cancelled, superseded
+ * Terminal states: resolved, declined, timed_out, cancelled, superseded, unable_to_complete
  */
 export const DISPATCH_TRANSITIONS: Readonly<Record<DispatchStatus, readonly DispatchStatus[]>> = {
   pending: ['accepted', 'declined', 'cancelled', 'timed_out', 'superseded'],

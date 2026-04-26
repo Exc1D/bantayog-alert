@@ -51,7 +51,7 @@ describe('dispatchDocSchema', () => {
 })
 
 describe('dispatchStatusSchema', () => {
-  it('accepts all valid status values (Phase 3c: en_route + on_scene)', () => {
+  it('accepts all valid dispatch status values including unable_to_complete', () => {
     const statuses = [
       'pending',
       'accepted',
