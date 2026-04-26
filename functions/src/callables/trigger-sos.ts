@@ -57,8 +57,8 @@ export async function triggerSosCore(
     }
 
     tx.update(dispatchRef, {
-      sosTriggeredAt: now,
-      lastStatusAt: now,
+      sosTriggeredAt: now.toMillis(),
+      lastStatusAt: now.toMillis(),
     })
 
     const nowMs = now.toMillis()

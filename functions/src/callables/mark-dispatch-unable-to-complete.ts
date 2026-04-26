@@ -78,23 +78,23 @@ export async function markDispatchUnableToCompleteCore(
           )
         }
 
-        tx.update(dispatchRef, {
-          status: 'unable_to_complete',
-          unableToCompleteReason: reason,
-          statusUpdatedAt: now.toMillis(),
-          lastStatusAt: now,
-        })
-
         const reportRef = db.collection('reports').doc(dispatch.reportId)
         const reportSnap = await tx.get(reportRef)
         const currentReportStatus = reportSnap.exists
           ? (reportSnap.data() as { status?: string }).status
           : undefined
 
+        tx.update(dispatchRef, {
+          status: 'unable_to_complete',
+          unableToCompleteReason: reason,
+          statusUpdatedAt: now.toMillis(),
+          lastStatusAt: now.toMillis(),
+        })
+
         tx.update(reportRef, {
           status: 'verified',
           currentDispatchId: null,
-          lastStatusAt: now,
+          lastStatusAt: now.toMillis(),
         })
 
         const nowMs = now.toMillis()

@@ -40,7 +40,7 @@ beforeAll(async () => {
     projectId: 'submit-responder-witnessed-report-test',
     firestore: {
       host: 'localhost',
-      port: 8082,
+      port: 8081,
       rules:
         'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
     },

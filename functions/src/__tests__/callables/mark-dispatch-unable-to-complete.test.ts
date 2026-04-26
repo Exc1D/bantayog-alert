@@ -27,14 +27,17 @@ vi.mock('../../admin-init.js', () => ({
   },
 }))
 
-import { triggerSOS, triggerSosCore } from '../../callables/trigger-sos.js'
+import {
+  markDispatchUnableToComplete,
+  markDispatchUnableToCompleteCore,
+} from '../../callables/mark-dispatch-unable-to-complete.js'
 import { seedActiveAccount } from '../helpers/seed-factories.js'
 
 let testEnv: RulesTestEnvironment
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
-    projectId: 'trigger-sos-test',
+    projectId: 'mark-dispatch-unable-to-complete-test',
     firestore: {
       host: 'localhost',
       port: 8081,
@@ -59,7 +62,6 @@ async function seedDispatchActive(
   reportId: string,
   responderUid: string,
   status: string,
-  overrides: Record<string, unknown> = {},
 ): Promise<void> {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
@@ -78,13 +80,31 @@ async function seedDispatchActive(
         dispatchedAt: Date.now(),
         lastStatusAt: Date.now(),
         schemaVersion: 1,
-        ...overrides,
       })
   })
 }
 
-describe('triggerSosCore', () => {
-  it('sets sosTriggeredAt for an active dispatch', async () => {
+async function seedReport(
+  env: RulesTestEnvironment,
+  reportId: string,
+  status: string,
+): Promise<void> {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await db.collection('reports').doc(reportId).set({
+      reportId,
+      status,
+      municipalityId: 'daet',
+      schemaVersion: 1,
+      createdAt: Date.now(),
+      lastStatusAt: Date.now(),
+    })
+  })
+}
+
+describe('markDispatchUnableToCompleteCore', () => {
+  it('marks an active dispatch unable_to_complete and resets report to verified', async () => {
+    await seedReport(testEnv, 'report-1', 'assigned')
     await seedDispatchActive(testEnv, 'dispatch-1', 'report-1', 'r1', 'on_scene')
     await seedActiveAccount(testEnv, {
       uid: 'r1',
@@ -94,49 +114,29 @@ describe('triggerSosCore', () => {
 
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
-      const result = await triggerSosCore(db, {
+      const result = await markDispatchUnableToCompleteCore(db, {
         dispatchId: 'dispatch-1',
+        reason: 'Equipment failure',
+        idempotencyKey: crypto.randomUUID(),
         actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
         now: Timestamp.now(),
       })
 
-      expect(result.status).toBe('sos_triggered')
+      expect(result.status).toBe('unable_to_complete')
+      expect(result.dispatchId).toBe('dispatch-1')
 
       const dispatch = (await db.collection('dispatches').doc('dispatch-1').get()).data()
-      expect(dispatch?.sosTriggeredAt).toBeDefined()
+      expect(dispatch?.status).toBe('unable_to_complete')
+      expect(dispatch?.unableToCompleteReason).toBe('Equipment failure')
 
-      const notifications = await db
-        .collection('admin_notifications')
-        .where('type', '==', 'sos_triggered')
-        .get()
-      expect(notifications.docs).toHaveLength(1)
-    })
-  })
-
-  it('rejects when SOS already triggered (rate limit)', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-2', 'report-2', 'r1', 'on_scene', {
-      sosTriggeredAt: Date.now(),
-    })
-    await seedActiveAccount(testEnv, {
-      uid: 'r1',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
-
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
-      await expect(
-        triggerSosCore(db, {
-          dispatchId: 'dispatch-2',
-          actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
-          now: Timestamp.now(),
-        }),
-      ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
+      const report = (await db.collection('reports').doc('report-1').get()).data()
+      expect(report?.status).toBe('verified')
     })
   })
 
   it('rejects when dispatch is not active', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-3', 'report-3', 'r1', 'pending')
+    await seedReport(testEnv, 'report-2', 'assigned')
+    await seedDispatchActive(testEnv, 'dispatch-2', 'report-2', 'r1', 'pending')
     await seedActiveAccount(testEnv, {
       uid: 'r1',
       role: 'responder',
@@ -146,8 +146,10 @@ describe('triggerSosCore', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
-        triggerSosCore(db, {
-          dispatchId: 'dispatch-3',
+        markDispatchUnableToCompleteCore(db, {
+          dispatchId: 'dispatch-2',
+          reason: 'Cannot reach',
+          idempotencyKey: crypto.randomUUID(),
           actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
           now: Timestamp.now(),
         }),
@@ -155,7 +157,45 @@ describe('triggerSosCore', () => {
     })
   })
 
+  it('is idempotent on same key', async () => {
+    await seedReport(testEnv, 'report-3', 'assigned')
+    await seedDispatchActive(testEnv, 'dispatch-3', 'report-3', 'r1', 'en_route')
+    await seedActiveAccount(testEnv, {
+      uid: 'r1',
+      role: 'responder',
+      municipalityId: 'daet',
+    })
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore
+      const key = crypto.randomUUID()
+      const first = await markDispatchUnableToCompleteCore(db, {
+        dispatchId: 'dispatch-3',
+        reason: 'Road blocked',
+        idempotencyKey: key,
+        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+        now: Timestamp.now(),
+      })
+      const second = await markDispatchUnableToCompleteCore(db, {
+        dispatchId: 'dispatch-3',
+        reason: 'Road blocked',
+        idempotencyKey: key,
+        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+        now: Timestamp.now(),
+      })
+
+      expect(second.status).toBe(first.status)
+
+      const dispatches = await db
+        .collection('dispatch_events')
+        .where('dispatchId', '==', 'dispatch-3')
+        .get()
+      expect(dispatches.docs).toHaveLength(1)
+    })
+  })
+
   it('rejects when caller is not the assigned responder', async () => {
+    await seedReport(testEnv, 'report-4', 'assigned')
     await seedDispatchActive(testEnv, 'dispatch-4', 'report-4', 'r1', 'on_scene')
     await seedActiveAccount(testEnv, {
       uid: 'r2',
@@ -166,8 +206,10 @@ describe('triggerSosCore', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
-        triggerSosCore(db, {
+        markDispatchUnableToCompleteCore(db, {
           dispatchId: 'dispatch-4',
+          reason: 'Not mine',
+          idempotencyKey: crypto.randomUUID(),
           actor: { uid: 'r2', claims: { role: 'responder', municipalityId: 'daet' } },
           now: Timestamp.now(),
         }),
@@ -176,16 +218,20 @@ describe('triggerSosCore', () => {
   })
 })
 
-describe('triggerSOS callable', () => {
-  const callCallable = triggerSOS as unknown as (request: {
+describe('markDispatchUnableToComplete callable', () => {
+  const callCallable = markDispatchUnableToComplete as unknown as (request: {
     auth?: { uid: string; token: { role: string; accountStatus: 'active' } }
-    data: { dispatchId: string }
-  }) => Promise<{ status: 'sos_triggered'; dispatchId: string }>
+    data: { dispatchId: string; reason: string; idempotencyKey: string }
+  }) => Promise<{ status: 'unable_to_complete'; dispatchId: string }>
 
   it('rejects unauthenticated request', async () => {
     await expect(
       callCallable({
-        data: { dispatchId: 'dispatch-x' },
+        data: {
+          dispatchId: 'dispatch-x',
+          reason: 'No gear',
+          idempotencyKey: crypto.randomUUID(),
+        },
       }),
     ).rejects.toMatchObject({ code: 'unauthenticated' })
   })
@@ -197,7 +243,11 @@ describe('triggerSOS callable', () => {
           uid: 'admin-1',
           token: { role: 'municipal_admin', accountStatus: 'active' },
         },
-        data: { dispatchId: 'dispatch-x' },
+        data: {
+          dispatchId: 'dispatch-x',
+          reason: 'No gear',
+          idempotencyKey: crypto.randomUUID(),
+        },
       }),
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })

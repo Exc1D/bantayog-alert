@@ -37,7 +37,7 @@ beforeAll(async () => {
     projectId: 'request-backup-test',
     firestore: {
       host: 'localhost',
-      port: 8084,
+      port: 8081,
       rules:
         'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
     },

@@ -70,6 +70,13 @@ Durable rules worth keeping across sessions.
 - `awaitFreshAuthToken` built on `onIdTokenChanged` must start `getIdToken(true)` **inside** the Promise constructor (not after it) so a rejection can call `unsubscribe()` and `reject()` rather than leaving the promise hanging forever.
 - Always check the `null` return of `awaitFreshAuthToken` before invoking an `httpsCallable`; a missing `currentUser` means no auth header and the callable will fail with an opaque error.
 
+## Phase 6 Responder App (2026-04-26)
+
+- **Callable tests with `@firebase/rules-unit-testing` must use the project emulator port.** The project `firebase.json` configures Firestore on 8081. Test files that hardcode other ports (8080, 8082, 8083, 8084) will fail with `ECONNREFUSED` even when the emulator is running.
+- **`firebase-admin/firestore Timestamp` objects are rejected by the JS SDK Firestore used in `rules-unit-testing`.** When core functions accept a `db: Firestore` parameter and are tested with `testEnv.unauthenticatedContext().firestore()`, any `tx.set/update` that passes an admin `Timestamp` directly throws `invalid-argument`. Fix: write `.toMillis()` (number) instead of the `Timestamp` object. This is consistent with client-side consumption patterns (e.g. `request-lookup` already returns `lastStatusAt: number`).
+- **Firestore transactions strictly enforce reads-before-writes.** A transaction that does `tx.update(...)` followed by `tx.get(...)` on a different document throws `Firestore transactions require all reads to be executed before all writes.` This is enforced by the emulator/JS SDK and is a real correctness issue, not just a test quirk.
+- **Capacitor native plugins (`@capacitor-community/background-geolocation`, `@capacitor/push-notifications`) cannot be exercised in Playwright or Node.js unit tests.** Any feature that depends on native platform APIs requires physical device testing or mock-heavy integration tests. Document skips explicitly instead of leaving empty stubs.
+
 ## Misc
 
 - `navigator.clipboard` in happy-dom often needs to be defined as an own property before spying.
