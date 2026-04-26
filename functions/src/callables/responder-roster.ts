@@ -36,7 +36,7 @@ const bulkAvailabilityOverrideSchema = z
 interface SuspendRevokeDeps {
   uid: string
   idempotencyKey: string
-  actor: { uid: string; claims: { role: string; agencyId?: string } }
+  actor: { uid: string; claims: { role: string; agencyId?: string; accountStatus?: string } }
   now: Timestamp
   targetStatus: 'suspended' | 'revoked'
 }
@@ -130,6 +130,11 @@ export const suspendResponder = onCall(
   async (request: CallableRequest<unknown>) => {
     const actor = requireAuth(request, ['agency_admin'])
 
+    const actorClaims = actor.claims as { role: string; agencyId?: string; accountStatus?: string }
+    if (actorClaims.accountStatus !== 'active') {
+      throw new HttpsError('permission-denied', 'admin account not active')
+    }
+
     const parsed = suspendResponderSchema.safeParse(request.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 
@@ -139,7 +144,7 @@ export const suspendResponder = onCall(
         idempotencyKey: parsed.data.idempotencyKey,
         actor: {
           uid: actor.uid,
-          claims: actor.claims as { role: string; agencyId?: string },
+          claims: actorClaims,
         },
         now: Timestamp.now(),
         targetStatus: 'suspended',
@@ -161,6 +166,11 @@ export const revokeResponder = onCall(
   async (request: CallableRequest<unknown>) => {
     const actor = requireAuth(request, ['agency_admin'])
 
+    const actorClaims = actor.claims as { role: string; agencyId?: string; accountStatus?: string }
+    if (actorClaims.accountStatus !== 'active') {
+      throw new HttpsError('permission-denied', 'admin account not active')
+    }
+
     const parsed = revokeResponderSchema.safeParse(request.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 
@@ -170,7 +180,7 @@ export const revokeResponder = onCall(
         idempotencyKey: parsed.data.idempotencyKey,
         actor: {
           uid: actor.uid,
-          claims: actor.claims as { role: string; agencyId?: string },
+          claims: actorClaims,
         },
         now: Timestamp.now(),
         targetStatus: 'revoked',
@@ -186,7 +196,7 @@ interface BulkAvailabilityOverrideDeps {
   uids: string[]
   status: string
   idempotencyKey: string
-  actor: { uid: string; claims: { role: string; agencyId?: string } }
+  actor: { uid: string; claims: { role: string; agencyId?: string; accountStatus?: string } }
   now: Timestamp
 }
 
@@ -194,54 +204,69 @@ export async function bulkAvailabilityOverrideCore(
   db: Firestore,
   deps: BulkAvailabilityOverrideDeps,
 ): Promise<{ updated: number }> {
-  const { uids, status, actor, now } = deps
+  const { uids, status, idempotencyKey, actor, now } = deps
 
-  const rl = await checkRateLimit(db, {
-    key: `bulkAvailabilityOverride:${actor.uid}`,
-    limit: 5,
-    windowSeconds: 60,
-    now,
-  })
-  if (!rl.allowed) {
-    throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-      retryAfterSeconds: rl.retryAfterSeconds,
-    })
-  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
 
-  const batch = db.batch()
-  let updated = 0
-
-  for (const uid of uids) {
-    const responderRef = db.collection('responders').doc(uid)
-    const snap = await responderRef.get()
-
-    if (!snap.exists) continue
-
-    const data = snap.data() as { agencyId?: string }
-    if (data.agencyId !== actor.claims.agencyId) continue
-
-    batch.update(responderRef, {
-      availability: status,
-      updatedAt: now.toMillis(),
-    })
-    updated++
-  }
-
-  await batch.commit()
-
-  log({
-    severity: 'INFO',
-    code: 'responder.bulk_availability_override',
-    message: `Bulk availability override updated ${String(updated)} responders`,
-    data: {
-      requested: uids.length,
-      updated,
-      status,
-      actorUid: actor.uid,
+  const { result } = await withIdempotency(
+    db,
+    {
+      key: `bulkAvailabilityOverride:${actor.uid}:${idempotencyKey}`,
+      payload: idempotentPayload,
+      now: () => now.toMillis(),
     },
-  })
+    async () => {
+      const rl = await checkRateLimit(db, {
+        key: `bulkAvailabilityOverride:${actor.uid}`,
+        limit: 5,
+        windowSeconds: 60,
+        now,
+      })
+      if (!rl.allowed) {
+        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
+          retryAfterSeconds: rl.retryAfterSeconds,
+        })
+      }
 
-  return { updated }
+      const batch = db.batch()
+      let updated = 0
+
+      for (const uid of uids) {
+        const responderRef = db.collection('responders').doc(uid)
+        const snap = await responderRef.get()
+
+        if (!snap.exists) continue
+
+        const data = snap.data() as { agencyId?: string }
+        if (data.agencyId !== actor.claims.agencyId) continue
+
+        batch.update(responderRef, {
+          availability: status,
+          updatedAt: now.toMillis(),
+        })
+        updated++
+      }
+
+      await batch.commit()
+
+      log({
+        severity: 'INFO',
+        code: 'responder.bulk_availability_override',
+        message: `Bulk availability override updated ${String(updated)} responders`,
+        data: {
+          requested: uids.length,
+          updated,
+          status,
+          actorUid: actor.uid,
+        },
+      })
+
+      return { updated }
+    },
+  )
+
+  return result
 }
 
 export const bulkAvailabilityOverride = onCall(
@@ -254,6 +279,11 @@ export const bulkAvailabilityOverride = onCall(
   async (request: CallableRequest<unknown>) => {
     const actor = requireAuth(request, ['agency_admin'])
 
+    const actorClaims = actor.claims as { role: string; agencyId?: string; accountStatus?: string }
+    if (actorClaims.accountStatus !== 'active') {
+      throw new HttpsError('permission-denied', 'admin account not active')
+    }
+
     const parsed = bulkAvailabilityOverrideSchema.safeParse(request.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 
@@ -264,7 +294,7 @@ export const bulkAvailabilityOverride = onCall(
         idempotencyKey: parsed.data.idempotencyKey,
         actor: {
           uid: actor.uid,
-          claims: actor.claims as { role: string; agencyId?: string },
+          claims: actorClaims,
         },
         now: Timestamp.now(),
       })

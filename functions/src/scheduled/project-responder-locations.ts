@@ -86,11 +86,13 @@ export async function projectResponderLocationsCore(
 
     byMunicipality[muniId] ??= {}
 
+    const telemetryTs = typeof loc.capturedAt === 'number' ? loc.capturedAt : now
+
     byMunicipality[muniId][uid] = {
       lat: roundToGrid(loc.lat),
       lng: roundToGrid(loc.lng),
       freshness,
-      lastSeenAt: now,
+      lastSeenAt: telemetryTs,
     }
   }
 

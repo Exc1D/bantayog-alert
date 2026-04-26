@@ -104,7 +104,7 @@ export async function initiateResponderHandoffCore(
       return { success: false as const, errorCode: 'not-found' }
     }
 
-    if (fromData.isActive !== true || toData.isActive !== true) {
+    if (fromData.accountStatus !== 'active' || toData.accountStatus !== 'active') {
       return { success: false as const, errorCode: 'failed-precondition' }
     }
 

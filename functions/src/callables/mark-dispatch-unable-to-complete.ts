@@ -80,9 +80,13 @@ export async function markDispatchUnableToCompleteCore(
 
         const reportRef = db.collection('reports').doc(dispatch.reportId)
         const reportSnap = await tx.get(reportRef)
-        const currentReportStatus = reportSnap.exists
-          ? (reportSnap.data() as { status?: string }).status
-          : undefined
+        if (!reportSnap.exists) {
+          throw new BantayogError(
+            BantayogErrorCode.NOT_FOUND,
+            `Report "${dispatch.reportId}" not found`,
+          )
+        }
+        const currentReportStatus = (reportSnap.data() as { status?: string }).status
 
         tx.update(dispatchRef, {
           status: 'unable_to_complete',
