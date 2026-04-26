@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { useCallback, useEffect, useState } from 'react'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import {
   dispatchDocSchema,
@@ -113,5 +113,41 @@ export function useDispatch(dispatchId: string | undefined) {
     return unsub
   }, [dispatchId])
 
-  return { dispatch, loading, error }
+  const refresh = useCallback(async () => {
+    if (!dispatchId) {
+      queueMicrotask(() => {
+        setDispatch(undefined)
+        setError(undefined)
+        setLoading(false)
+      })
+      return
+    }
+    setLoading(true)
+    try {
+      const snap = await getDoc(doc(db, 'dispatches', dispatchId))
+      if (!snap.exists()) {
+        setDispatch(undefined)
+        setError(undefined)
+        return
+      }
+      const parsed = dispatchDocSchema.parse(
+        normalizeDispatchSnapshot(snap.data() as Record<string, unknown>),
+      )
+      setDispatch({
+        ...parsed,
+        dispatchId: snap.id,
+        uiStatus: getResponderUiState(parsed.status),
+        terminalSurface: getTerminalSurface(parsed.status),
+      })
+      setError(undefined)
+    } catch (err: unknown) {
+      console.error('[useDispatch] refresh failed:', err)
+      setDispatch(undefined)
+      setError(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      setLoading(false)
+    }
+  }, [dispatchId])
+
+  return { dispatch, loading, error, refresh }
 }

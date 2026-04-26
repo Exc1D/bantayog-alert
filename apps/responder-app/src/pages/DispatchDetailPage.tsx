@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch } from '../hooks/useDispatch'
 import { useAcceptDispatch } from '../hooks/useAcceptDispatch'
 import { useAdvanceDispatch } from '../hooks/useAdvanceDispatch'
 import { useDeclineDispatch } from '../hooks/useDeclineDispatch'
 import { useResponderTelemetry } from '../hooks/useResponderTelemetry'
+import { useMarkDispatchUnableToComplete } from '../hooks/useMarkDispatchUnableToComplete'
 import { useAuth } from '@bantayog/shared-ui'
 import { CancelledScreen } from './CancelledScreen'
 import { RaceLossScreen } from './RaceLossScreen'
@@ -71,6 +72,36 @@ function DeclineForm({
   )
 }
 
+function UnableToCompleteForm({
+  onSubmit,
+  loading,
+}: {
+  onSubmit: (reason: string) => void
+  loading: boolean
+}) {
+  const [reason, setReason] = useState('')
+  return (
+    <div>
+      <textarea
+        value={reason}
+        onChange={(e) => {
+          setReason(e.target.value)
+        }}
+        placeholder="Reason unable to complete (required)"
+        rows={3}
+      />
+      <button
+        onClick={() => {
+          onSubmit(reason)
+        }}
+        disabled={!reason.trim() || loading}
+      >
+        {loading ? 'Submitting…' : 'Unable to complete'}
+      </button>
+    </div>
+  )
+}
+
 function getFirebaseErrorCode(error: Error | undefined): string {
   if (!error || typeof error !== 'object' || !('code' in error)) {
     return ''
@@ -98,13 +129,17 @@ function getActionErrorMessage(error: Error | undefined): string | null {
   if (error.message === 'resolutionSummary_required') {
     return 'Please provide a resolution summary before completing this action.'
   }
+  if (error.message === 'reason_required') {
+    return 'Please provide a reason before completing this action.'
+  }
   return 'Something went wrong. Please retry.'
 }
 
 export function DispatchDetailPage() {
   const { dispatchId } = useParams<{ dispatchId: string }>()
+  const navigate = useNavigate()
   const { user } = useAuth()
-  const { dispatch, loading, error } = useDispatch(dispatchId)
+  const { dispatch, loading, error, refresh } = useDispatch(dispatchId)
 
   useResponderTelemetry(user?.uid, dispatchId, dispatch?.status)
 
@@ -124,6 +159,11 @@ export function DispatchDetailPage() {
     error: advanceError,
   } = useAdvanceDispatch(dispatch?.dispatchId ?? '')
   const advanceState = { advance, loading: advanceLoading, error: advanceError }
+  const {
+    markUnableToComplete,
+    loading: markingUnable,
+    error: unableError,
+  } = useMarkDispatchUnableToComplete(dispatch?.dispatchId ?? '')
 
   useEffect(() => {
     if (dispatch?.status === 'accepted') {
@@ -131,10 +171,18 @@ export function DispatchDetailPage() {
     }
   }, [dispatch?.status, advance])
 
+  useEffect(() => {
+    if (acceptError || declineError || advanceError || unableError) {
+      void refresh()
+    }
+  }, [acceptError, declineError, advanceError, unableError, refresh])
+
   if (loading) return <Skeleton />
+  if (dispatch?.terminalSurface === 'cancelled') {
+    return <CancelledScreen dispatch={dispatch} />
+  }
   if (error) return <p>Error: {error.message}</p>
   if (!dispatch) return <NotFound />
-  if (dispatch.terminalSurface === 'cancelled') return <CancelledScreen dispatch={dispatch} />
   if (
     dispatch.terminalSurface === 'race_loss' ||
     getFirebaseErrorCode(acceptError) === 'functions/already-exists'
@@ -206,6 +254,42 @@ export function DispatchDetailPage() {
       {advanceState.loading && <p>Updating...</p>}
       {advanceState.error && (
         <p style={{ color: 'red' }}>{getActionErrorMessage(advanceState.error)}</p>
+      )}
+      {(['accepted', 'acknowledged', 'en_route', 'on_scene'] as string[]).includes(
+        dispatch.status,
+      ) && (
+        <>
+          <button
+            onClick={() => {
+              void navigate(`/dispatches/${dispatchId ?? ''}/witness-report`)
+            }}
+          >
+            File Witness Report
+          </button>
+          <button
+            onClick={() => {
+              void navigate(`/dispatches/${dispatchId ?? ''}/backup`)
+            }}
+          >
+            Request Backup
+          </button>
+          <button
+            onClick={() => {
+              void navigate(`/dispatches/${dispatchId ?? ''}/sos`)
+            }}
+          >
+            SOS
+          </button>
+          <UnableToCompleteForm
+            loading={markingUnable}
+            onSubmit={(reason) => {
+              void markUnableToComplete(reason).catch((err: unknown) => {
+                console.error('[DispatchDetailPage] unable to complete failed:', err)
+              })
+            }}
+          />
+          {unableError && <p style={{ color: 'red' }}>{getActionErrorMessage(unableError)}</p>}
+        </>
       )}
     </main>
   )

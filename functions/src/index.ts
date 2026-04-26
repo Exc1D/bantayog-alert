@@ -32,6 +32,10 @@ export { duplicateClusterTrigger } from './triggers/duplicate-cluster-trigger.js
 export { mergeDuplicates } from './callables/merge-duplicates.js'
 export { initiateShiftHandoff, acceptShiftHandoff } from './callables/shift-handoff.js'
 export {
+  initiateResponderHandoff,
+  acceptResponderHandoff,
+} from './callables/responder-shift-handoff.js'
+export {
   massAlertReachPlanPreview,
   sendMassAlert,
   requestMassAlertEscalation,

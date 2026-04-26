@@ -247,7 +247,7 @@ service cloud.firestore {
       );
       allow update: if uid() == rUid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['availabilityStatus']);
+                       .hasOnly(['availabilityStatus','availabilityReason','updatedAt']);
       allow create, delete: if false;
     }
 

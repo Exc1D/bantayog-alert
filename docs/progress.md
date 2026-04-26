@@ -2,6 +2,27 @@
 
 ## Current
 
+### Phase 6 Responder App — Task 8: Responder-to-responder handoff and availability management (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `packages/shared-validators/src/coordination.ts` — added `responderShiftHandoffDocSchema` with `fromUid`, `toUid`, `agencyId`, `municipalityId`, `reason`, `status` ('pending'|'accepted'|'declined'), `createdAt`, `expiresAt` (30min TTL), `schemaVersion`
+  - `packages/shared-validators/src/coordination.test.ts` — 4 tests for new schema (valid doc, invalid status, expiresAt validation, strict mode)
+  - `packages/shared-validators/src/responders.ts` — added `'available'` to `availabilityStatus` enum, added `availabilityReason` optional field
+  - `functions/src/callables/responder-shift-handoff.ts` — new callable file with `initiateResponderHandoff` (validates both UIDs are active responders in same agency, creates `responder_shift_handoffs` doc with idempotency) and `acceptResponderHandoff` (transitions status to 'accepted', fails if expired)
+  - `functions/src/index.ts` — exports two new callables
+  - `apps/responder-app/src/hooks/useResponderAvailability.ts` — new hook reading `responders/{uid}.availabilityStatus` via Firestore snapshot, exposing `setAvailability(status, reason?)` that writes to responder doc with `availabilityReason` validation
+  - `apps/responder-app/src/pages/DispatchListPage.tsx` — added availability status badge, status dropdown with reason input, and "Start Shift Handoff" form with target UID and reason
+  - `infra/firebase/firestore.rules` — expanded responder self-update `hasOnly` to include `availabilityStatus`, `availabilityReason`, and `updatedAt`
+- Also fixed pre-existing lint/type errors in Task 5/6 files (`DispatchDetailPage.tsx`, `ResponderWitnessReportPage.tsx`, `SosPage.tsx`, `BackupRequestPage.tsx`, `useDispatch.ts`) so verification passes cleanly
+- Verification:
+  - `pnpm --filter @bantayog/shared-validators test` — PASS (227 tests)
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
 ### Phase 6 Responder App — Task 5: Responder location projection (2026-04-26)
 
 - Status: DONE
