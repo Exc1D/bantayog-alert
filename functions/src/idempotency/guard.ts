@@ -65,7 +65,12 @@ export async function withIdempotency<TPayload, TResult>(
     return { result: cached, fromCache: true }
   }
 
-  const result = await op()
-  await keyRef.update({ resultPayload: result, processing: false, completedAt: now() })
-  return { result, fromCache: false }
+  try {
+    const result = await op()
+    await keyRef.update({ resultPayload: result, processing: false, completedAt: now() })
+    return { result, fromCache: false }
+  } catch (err) {
+    await keyRef.update({ processing: false })
+    throw err
+  }
 }
