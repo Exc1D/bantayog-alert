@@ -2,6 +2,13 @@
 
 ## Current
 
+### Test fixture fix — command_channel_threads/messages seed data (2026-04-26)
+
+- Status: DONE
+- Branch: `phase5-cluster-c` (same branch as phase 5 work)
+- Files changed: `functions/src/__tests__/rules/public-collections.rules.test.ts`, `functions/src/__tests__/helpers/seed-factories.ts`
+- Summary: Tests for superadmin reading `command_channel_threads` and `command_channel_messages` failed because rules check `participantUids[uid]` on each doc. Seed data added to the `beforeAll` block. `getDoc` used instead of `getDocs` due to emulator collection-list indexing quirk.
+
 ### Phase 5 Cluster C + PRE-C — Broadcast + Intelligence (2026-04-25)
 
 - Status: DONE
