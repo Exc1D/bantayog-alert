@@ -187,7 +187,11 @@ export async function seedResponder(
 export async function seedDispatchRT(
   env: RulesTestEnvironment,
   dispatchId: string,
-  overrides: Partial<Record<string, unknown>> = {},
+  overrides: Partial<
+    Record<string, unknown> & {
+      assignedTo?: { uid?: string; agencyId?: string; municipalityId?: string }
+    }
+  > = {},
 ): Promise<void> {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
@@ -198,6 +202,12 @@ export async function seedDispatchRT(
       agencyId: 'agency-1',
       priority: 'high',
       status: 'pending',
+      // FIX: Add assignedTo field to satisfy firestore rules that check assignedTo.uid
+      assignedTo: {
+        uid: overrides.assignedTo?.uid ?? '',
+        agencyId: overrides.assignedTo?.agencyId ?? 'agency-1',
+        municipalityId: overrides.assignedTo?.municipalityId ?? 'daet',
+      },
       assignedResponderUids: [],
       createdAt: ts,
       updatedAt: ts,
