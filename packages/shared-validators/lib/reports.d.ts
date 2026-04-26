@@ -236,6 +236,7 @@ export declare const inboxPayloadSchema: z.ZodObject<{
         phone: z.ZodString;
         smsConsent: z.ZodLiteral<true>;
     }, z.core.$strict>>;
+    followUpConsent: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strict>;
 export type InboxPayload = z.infer<typeof inboxPayloadSchema>;
 //# sourceMappingURL=reports.d.ts.map

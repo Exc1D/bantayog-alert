@@ -373,10 +373,15 @@ service cloud.firestore {
     }
 
     match /mass_alert_requests/{requestId} {
+      function isMassAlertMuniAdmin() {
+        return isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality;
+      }
       allow read: if isActivePrivileged()
-                  && (isSuperadmin()
-                      || (isMuniAdmin() && myMunicipality() == resource.data.requestedByMunicipality));
-      allow write: if false;
+                  && (isSuperadmin() || isMassAlertMuniAdmin());
+      // Callables use Admin SDK (bypasses rules); no client write path is intended.
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     match /shift_handoffs/{handoffId} {

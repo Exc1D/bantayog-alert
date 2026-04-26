@@ -238,6 +238,7 @@ export async function processInboxItemCore(
               locale: muniLocale,
               smsConsent: true,
               municipalityId: geo.municipalityId,
+              followUpConsent: payload.followUpConsent === true,
               createdAt,
               schemaVersion: 1,
             })

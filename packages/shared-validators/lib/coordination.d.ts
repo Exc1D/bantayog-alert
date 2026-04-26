@@ -96,6 +96,12 @@ export declare const massAlertRequestDocSchema: z.ZodObject<{
     acknowledgedAt: z.ZodOptional<z.ZodNumber>;
     cancelledAt: z.ZodOptional<z.ZodNumber>;
     sentAt: z.ZodOptional<z.ZodNumber>;
+    evidencePack: z.ZodOptional<z.ZodObject<{
+        linkedReportIds: z.ZodArray<z.ZodString>;
+        pagasaSignalRef: z.ZodOptional<z.ZodString>;
+        notes: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    forwardedBy: z.ZodOptional<z.ZodString>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export declare const shiftHandoffDocSchema: z.ZodObject<{

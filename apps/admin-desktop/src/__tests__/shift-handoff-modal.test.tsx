@@ -33,7 +33,7 @@ vi.mock('../hooks/useMuniReports', () => ({
 }))
 
 vi.mock('../hooks/usePendingHandoffs', () => ({
-  usePendingHandoffs: () => [],
+  usePendingHandoffs: () => ({ handoffs: [], error: null }),
 }))
 
 vi.mock('../pages/ReportDetailPanel', () => ({ ReportDetailPanel: () => <div>detail</div> }))

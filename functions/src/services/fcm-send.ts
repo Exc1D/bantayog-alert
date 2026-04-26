@@ -91,12 +91,18 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
 
   // Step 4: Remove invalid tokens from the responder's document.
   if (invalidTokens.length > 0) {
-    await adminDb
-      .collection('responders')
-      .doc(uid)
-      .update({
+    const ref = adminDb.collection('responders').doc(uid)
+    await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref)
+      if (!snap.exists) return
+      const currentTokens = (snap.data()?.fcmTokens as string[] | undefined) ?? []
+      const invalidSet = new Set(invalidTokens)
+      const remainingTokens = currentTokens.filter((t) => !invalidSet.has(t))
+      tx.update(ref, {
         fcmTokens: FieldValue.arrayRemove(...invalidTokens),
+        hasFcmToken: remainingTokens.length > 0,
       })
+    })
     warnings.push('fcm_one_token_invalid')
   }
 

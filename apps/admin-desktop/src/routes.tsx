@@ -3,6 +3,7 @@ import { ProtectedRoute } from '@bantayog/shared-ui'
 import { LoginPage } from './pages/LoginPage'
 import { TriageQueuePage } from './pages/TriageQueuePage'
 import { AgencyAssistanceQueuePage } from './pages/AgencyAssistanceQueuePage'
+import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -36,6 +37,19 @@ export const router = createBrowserRouter([
         }
       >
         <AgencyAssistanceQueuePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/analytics',
+    element: (
+      <ProtectedRoute
+        allowedRoles={['municipal_admin', 'provincial_superadmin']}
+        requireActive
+        requireMunicipalityIdForRoles={['municipal_admin']}
+        unauthorizedFallback={<div role="alert">You do not have access to this page.</div>}
+      >
+        <AnalyticsDashboardPage />
       </ProtectedRoute>
     ),
   },

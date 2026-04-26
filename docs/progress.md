@@ -2,6 +2,23 @@
 
 ## Current
 
+### Phase 5 Cluster C + PRE-C — Broadcast + Intelligence (2026-04-25)
+
+- Status: DONE
+- Branch: `phase5-cluster-c`
+- Scope:
+  - PRE-C.1: `hasFcmToken` maintenance in registration + cleanup paths (`useRegisterFcmToken.ts`, `fcm-send.ts`)
+  - PRE-C.2: `reportSmsConsentDocSchema` extended with `municipalityId` + `followUpConsent`; `process-inbox-item.ts` updated
+  - PRE-C.3: `massAlertRequestDocSchema` status enum expanded (8 states); `firestore.rules` updated for ndrrmc flow
+  - C.1: `mass_alert` SMS template + `renderBroadcastTemplate` + `enqueueBroadcastSms`; `sendMassAlertFcm` batched FCM; 4 mass-alert callables (`massAlertReachPlanPreview`, `sendMassAlert`, `requestMassAlertEscalation`, `forwardMassAlertToNDRRMC`); `MassAlertModal` UI
+  - C.2: `CAMARINES_NORTE_MUNICIPALITY_IDS` in shared-data; `analyticsSnapshotWriter` scheduled CF; `AnalyticsDashboardPage` with React Query + SVG trend chart + `/analytics` route
+- Verification:
+  - Functions tests: 31/31 pass (PRE-C.2, mass-alert rules, mass-alert callables, analytics snapshot writer)
+  - Admin-desktop tests: 3/3 analytics dashboard pass; 10/10 mass-alert modal pass (2 pre-existing failures in AgencyAssistanceQueuePage unrelated)
+  - `npx turbo run lint typecheck` — 26/26 pass
+- Commits: `6471065..663da6e` (13 commits)
+- Bug fixed: `analytics-snapshot-writer.ts` had province aggregate write inside municipality for-loop (overwriting per iteration); moved outside loop
+
 ### Task 8: A.3 — ShiftHandoffModal + incoming handoff banner UI (2026-04-25)
 
 - Status: DONE

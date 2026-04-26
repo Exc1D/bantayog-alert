@@ -27,6 +27,17 @@ export type ReportStatus =
   | 'cancelled_false_report'
   | 'merged_as_duplicate'
 
+// Active statuses used for analytics/listing queries — ensures consistent "active incident" counting across screens.
+export const ACTIVE_REPORT_STATUSES: readonly ReportStatus[] = [
+  'new',
+  'awaiting_verify',
+  'verified',
+  'assigned',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+] as const
+
 // Dispatch lifecycle — spec §5.4 (Phase 3c: en_route + on_scene).
 export type DispatchStatus =
   | 'pending'

@@ -27,6 +27,12 @@ export { borderAutoShareTrigger } from './triggers/border-auto-share.js'
 export { duplicateClusterTrigger } from './triggers/duplicate-cluster-trigger.js'
 export { mergeDuplicates } from './callables/merge-duplicates.js'
 export { initiateShiftHandoff, acceptShiftHandoff } from './callables/shift-handoff.js'
+export {
+  massAlertReachPlanPreview,
+  sendMassAlert,
+  requestMassAlertEscalation,
+  forwardMassAlertToNDRRMC,
+} from './callables/mass-alert.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
@@ -117,3 +123,4 @@ export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js'
 export { smsDeliveryReport } from './http/sms-delivery-report.js'
 export { smsInboundWebhook } from './http/sms-inbound.js'
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js'
+export { analyticsSnapshotWriter } from './scheduled/analytics-snapshot-writer.js'

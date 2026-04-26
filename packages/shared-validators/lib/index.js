@@ -19,7 +19,7 @@ export { moderationIncidentDocSchema } from './moderation.js';
 export { rateLimitDocSchema } from './rate-limits.js';
 export { idempotencyKeyDocSchema } from './idempotency-keys.js';
 export { deadLetterDocSchema } from './dead-letters.js';
-export { renderTemplate, SmsTemplateError } from './sms-templates.js';
+export { renderTemplate, renderBroadcastTemplate, SmsTemplateError } from './sms-templates.js';
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js';
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js';
 export { dispatchToReportState } from './state-machines/dispatch-to-report.js';

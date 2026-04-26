@@ -71,4 +71,56 @@ export const callables = {
       functions,
       'acceptShiftHandoff',
     )(payload).then((r) => r.data),
+  massAlertReachPlanPreview: (payload: {
+    targetScope: { municipalityIds: string[] }
+    message: string
+  }) =>
+    httpsCallable<
+      typeof payload,
+      {
+        route: 'direct' | 'ndrrmc_escalation'
+        fcmCount: number
+        smsCount: number
+        segmentCount: number
+        unicodeWarning: boolean
+      }
+    >(
+      functions,
+      'massAlertReachPlanPreview',
+    )(payload).then((r) => r.data),
+  sendMassAlert: (payload: {
+    reachPlan: {
+      route: 'direct' | 'ndrrmc_escalation'
+      fcmCount: number
+      smsCount: number
+      segmentCount: number
+      unicodeWarning: boolean
+    }
+    message: string
+    targetScope: { municipalityIds: string[] }
+    idempotencyKey: string
+  }) =>
+    httpsCallable<typeof payload, { requestId: string }>(
+      functions,
+      'sendMassAlert',
+    )(payload).then((r) => r.data),
+  requestMassAlertEscalation: (payload: {
+    message: string
+    targetScope: { municipalityIds: string[] }
+    evidencePack?: { linkedReportIds: string[]; pagasaSignalRef?: string; notes?: string }
+    idempotencyKey: string
+  }) =>
+    httpsCallable<typeof payload, { requestId: string }>(
+      functions,
+      'requestMassAlertEscalation',
+    )(payload).then((r) => r.data),
+  forwardMassAlertToNDRRMC: (payload: {
+    requestId: string
+    forwardMethod: 'email' | 'sms' | 'portal'
+    ndrrrcRecipient: string
+  }) =>
+    httpsCallable<typeof payload, { success: boolean }>(
+      functions,
+      'forwardMassAlertToNDRRMC',
+    )(payload).then((r) => r.data),
 }
