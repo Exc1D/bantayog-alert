@@ -15,6 +15,10 @@ export { acceptDispatch } from './callables/accept-dispatch.js'
 export { advanceDispatch } from './callables/advance-dispatch.js'
 export { declineDispatch } from './callables/decline-dispatch.js'
 export { closeReport } from './callables/close-report.js'
+export { submitResponderWitnessedReport } from './callables/submit-responder-witnessed-report.js'
+export { triggerSOS } from './callables/trigger-sos.js'
+export { requestBackup } from './callables/request-backup.js'
+export { markDispatchUnableToComplete } from './callables/mark-dispatch-unable-to-complete.js'
 export {
   requestAgencyAssistance,
   acceptAgencyAssistance,

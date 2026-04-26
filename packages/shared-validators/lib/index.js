@@ -7,7 +7,7 @@ export { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportShar
 export { dispatchDocSchema, dispatchStatusSchema, advanceDispatchRequestSchema, } from './dispatches.js';
 export { reportEventSchema, dispatchEventSchema } from './events.js';
 export { agencyDocSchema } from './agencies.js';
-export { responderDocSchema } from './responders.js';
+export { responderDocSchema, responderTelemetryPayloadSchema } from './responders.js';
 export { userDocSchema } from './users.js';
 export { reportSmsConsentDocSchema } from './users.js';
 export { smsInboxDocSchema, smsOutboxDocSchema, smsSessionDocSchema, smsProviderHealthDocSchema, smsProviderIdSchema, smsReportInboxFieldsSchema, } from './sms.js';

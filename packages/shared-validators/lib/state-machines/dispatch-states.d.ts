@@ -7,7 +7,7 @@
  * the full business logic is available.
  */
 import type { DispatchStatus } from '../dispatches.js';
-export declare const DISPATCH_STATES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene", "resolved", "declined", "timed_out", "cancelled", "superseded"];
+export declare const DISPATCH_STATES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene", "resolved", "declined", "timed_out", "cancelled", "superseded", "unable_to_complete"];
 /**
  * Valid dispatch state transitions.
  *

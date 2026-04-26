@@ -55,6 +55,7 @@ describe('dispatchStatusSchema', () => {
             'timed_out',
             'cancelled',
             'superseded',
+            'unable_to_complete',
         ];
         for (const status of statuses) {
             expect(dispatchStatusSchema.parse(status)).toBe(status);

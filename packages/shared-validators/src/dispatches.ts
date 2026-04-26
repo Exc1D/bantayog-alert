@@ -29,6 +29,7 @@ export const dispatchStatusSchema = z.enum([
   'timed_out',
   'cancelled',
   'superseded',
+  'unable_to_complete',
 ])
 
 export type DispatchStatus = z.infer<typeof dispatchStatusSchema>

@@ -16,4 +16,17 @@ export const responderDocSchema = z
     updatedAt: z.number().int(),
 })
     .strict();
+export const responderTelemetryPayloadSchema = z
+    .object({
+    capturedAt: z.number(),
+    receivedAt: z.number().optional(),
+    lat: z.number(),
+    lng: z.number(),
+    accuracy: z.number(),
+    batteryPct: z.number().min(0).max(100),
+    motionState: z.enum(['moving', 'walking', 'still', 'unknown']),
+    appVersion: z.string(),
+    telemetryStatus: z.enum(['active', 'degraded', 'stale', 'offline']),
+})
+    .strict();
 //# sourceMappingURL=responders.js.map

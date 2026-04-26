@@ -19,5 +19,27 @@ export declare const responderDocSchema: z.ZodObject<{
     createdAt: z.ZodNumber;
     updatedAt: z.ZodNumber;
 }, z.core.$strict>;
+export declare const responderTelemetryPayloadSchema: z.ZodObject<{
+    capturedAt: z.ZodNumber;
+    receivedAt: z.ZodOptional<z.ZodNumber>;
+    lat: z.ZodNumber;
+    lng: z.ZodNumber;
+    accuracy: z.ZodNumber;
+    batteryPct: z.ZodNumber;
+    motionState: z.ZodEnum<{
+        unknown: "unknown";
+        moving: "moving";
+        walking: "walking";
+        still: "still";
+    }>;
+    appVersion: z.ZodString;
+    telemetryStatus: z.ZodEnum<{
+        active: "active";
+        degraded: "degraded";
+        stale: "stale";
+        offline: "offline";
+    }>;
+}, z.core.$strict>;
+export type ResponderTelemetryPayload = z.infer<typeof responderTelemetryPayloadSchema>;
 export type ResponderDoc = z.infer<typeof responderDocSchema>;
 //# sourceMappingURL=responders.d.ts.map
