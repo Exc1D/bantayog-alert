@@ -101,8 +101,6 @@ export function useResponderTelemetry(
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (cancelled) return
           try {
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (cancelled) return
             await setDoc(doc(db, 'responders', uid), { lastTelemetryAt: now }, { merge: true })
           } catch (fsErr: unknown) {
             console.error(
