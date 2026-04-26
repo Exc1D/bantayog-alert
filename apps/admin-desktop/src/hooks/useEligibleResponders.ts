@@ -2,22 +2,12 @@ import { useEffect, useState } from 'react'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../app/firebase'
 
-import { computeFreshness, type Freshness } from '../utils/freshness'
-
-const FRESHNESS_ORDER: Record<Freshness, number> = {
-  fresh: 0,
-  degraded: 1,
-  stale: 2,
-  offline: 3,
-}
-
 export interface EligibleResponder {
   uid: string
   displayName: string
   agencyId: string
   availabilityStatus: string
   lastTelemetryAt: number | null
-  freshness: Freshness
 }
 
 export function useEligibleResponders(municipalityId: string | undefined) {
@@ -47,7 +37,6 @@ export function useEligibleResponders(municipalityId: string | undefined) {
             agencyId: String(data.agencyId ?? 'unknown'),
             availabilityStatus: String(data.availabilityStatus ?? 'unknown'),
             lastTelemetryAt,
-            freshness: computeFreshness(lastTelemetryAt),
           }
         })
         .filter((r) => r.availabilityStatus !== 'off_duty')
@@ -55,9 +44,10 @@ export function useEligibleResponders(municipalityId: string | undefined) {
           const aAvailable = a.availabilityStatus === 'available' ? 0 : 1
           const bAvailable = b.availabilityStatus === 'available' ? 0 : 1
           if (aAvailable !== bAvailable) return aAvailable - bAvailable
-          const aFresh = FRESHNESS_ORDER[a.freshness]
-          const bFresh = FRESHNESS_ORDER[b.freshness]
-          if (aFresh !== bFresh) return aFresh - bFresh
+          // More recent telemetry first (nulls last)
+          const aTime = a.lastTelemetryAt ?? 0
+          const bTime = b.lastTelemetryAt ?? 0
+          if (aTime !== bTime) return bTime - aTime
           return a.displayName.localeCompare(b.displayName)
         })
       setResponders(eligible)

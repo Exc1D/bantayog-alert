@@ -62,12 +62,16 @@ export function useAgencyAssistanceQueue(agencyId: string | undefined) {
   const [backupRequests, setBackupRequests] = useState<BackupRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [requestsReady, setRequestsReady] = useState(false)
+  const [backupReady, setBackupReady] = useState(false)
 
   useEffect(() => {
     queueMicrotask(() => {
       setError(null)
       setRequests([])
       setBackupRequests([])
+      setRequestsReady(false)
+      setBackupReady(false)
     })
 
     if (!agencyId) {
@@ -103,11 +107,11 @@ export function useAgencyAssistanceQueue(agencyId: string | undefined) {
           return [{ ...result.data, id: doc.id }]
         })
         setRequests(parsed)
-        setLoading(false)
+        setRequestsReady(true)
       },
       (err) => {
         setError(err.message)
-        setLoading(false)
+        setRequestsReady(true)
       },
     )
 
@@ -121,14 +125,11 @@ export function useAgencyAssistanceQueue(agencyId: string | undefined) {
           return req ? [req] : []
         })
         setBackupRequests(parsed)
+        setBackupReady(true)
       },
       (err) => {
-        log({
-          severity: 'WARNING',
-          code: 'backup_request.subscription_error',
-          message: `Non-fatal backup subscription error: ${err.message}`,
-          data: {},
-        })
+        setError(err.message)
+        setBackupReady(true)
       },
     )
 
@@ -137,6 +138,13 @@ export function useAgencyAssistanceQueue(agencyId: string | undefined) {
       unsubscribeBackup()
     }
   }, [agencyId])
+
+  useEffect(() => {
+    if (requestsReady && backupReady) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(false)
+    }
+  }, [requestsReady, backupReady])
 
   return { requests, backupRequests, loading, error }
 }
