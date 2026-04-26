@@ -2,6 +2,18 @@
 
 ## Current
 
+### Phase 6 Responder App — Task 1: Lock native mobile foundation (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/package.json` — added `@capacitor/push-notifications`, `@capacitor/network`, `@capacitor/preferences`, `@capacitor/device`, `@capacitor-community/background-geolocation`, `@capacitor/ios`, `@capacitor/android`
+  - `apps/responder-app/capacitor.config.ts` — added comment documenting background geolocation plugin choice
+  - `apps/responder-app/ios/App/App/Info.plist` — added `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription`, `UIBackgroundModes` with `location`
+  - `apps/responder-app/android/app/src/main/AndroidManifest.xml` — added `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`
+  - Native projects created under `apps/responder-app/ios/` and `apps/responder-app/android/`
+- Summary: Installed and locked Capacitor v8 plugin set. Chose `@capacitor-community/background-geolocation` because `@capawesome/capacitor-background-geolocation` does not exist on npm and `@capacitor/background-runner` is designed for periodic tasks, not continuous tracking. iOS and Android native shells generated, web app embedded via `cap sync`. Build and sync verified.
+
 ### Test fixture fix — command_channel_threads/messages seed data (2026-04-26)
 
 - Status: DONE
