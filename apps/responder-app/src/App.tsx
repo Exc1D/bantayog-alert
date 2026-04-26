@@ -5,6 +5,8 @@ import { AppRouter } from './routes'
 import { AuthProvider, useAuth } from '@bantayog/shared-ui'
 import { auth } from './app/firebase'
 import { useRegisterFcmToken } from './hooks/useRegisterFcmToken'
+import { useOwnDispatches } from './hooks/useOwnDispatches'
+import { useResponderTelemetry } from './hooks/useResponderTelemetry'
 import { subscribeForegroundPush, subscribeNotificationTap } from './services/push-client'
 
 function FcmSetup() {
@@ -54,11 +56,22 @@ function NotificationRouter() {
   return null
 }
 
+function TelemetryProvider() {
+  const { user } = useAuth()
+  const { groups } = useOwnDispatches(user?.uid)
+  const firstActive = groups.active[0]
+
+  useResponderTelemetry(user?.uid, firstActive?.dispatchId, firstActive?.status)
+
+  return null
+}
+
 export default function App() {
   return (
     <AuthProvider auth={auth}>
       <FcmSetup />
       <NotificationRouter />
+      <TelemetryProvider />
       <AppRouter />
     </AuthProvider>
   )
