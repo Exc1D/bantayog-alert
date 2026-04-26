@@ -123,4 +123,23 @@ export const callables = {
       functions,
       'forwardMassAlertToNDRRMC',
     )(payload).then((r) => r.data),
+  suspendResponder: (payload: { uid: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { uid: string; status: 'suspended' }>(
+      functions,
+      'suspendResponder',
+    )(payload).then((r) => r.data),
+  revokeResponder: (payload: { uid: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { uid: string; status: 'revoked' }>(
+      functions,
+      'revokeResponder',
+    )(payload).then((r) => r.data),
+  bulkAvailabilityOverride: (payload: {
+    uids: string[]
+    status: string
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { updated: number }>(
+      functions,
+      'bulkAvailabilityOverride',
+    )(payload).then((r) => r.data),
 }

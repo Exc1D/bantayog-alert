@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage'
 import { TriageQueuePage } from './pages/TriageQueuePage'
 import { AgencyAssistanceQueuePage } from './pages/AgencyAssistanceQueuePage'
 import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage'
+import { RosterPage } from './pages/RosterPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -50,6 +51,18 @@ export const router = createBrowserRouter([
         unauthorizedFallback={<div role="alert">You do not have access to this page.</div>}
       >
         <AnalyticsDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/roster',
+    element: (
+      <ProtectedRoute
+        allowedRoles={['agency_admin']}
+        requireActive
+        unauthorizedFallback={<div role="alert">You do not have access to this page.</div>}
+      >
+        <RosterPage />
       </ProtectedRoute>
     ),
   },

@@ -2,6 +2,25 @@
 
 ## Current
 
+### Phase 6 Responder App — Task 9: Extend the admin desktop for agency responder operations (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/admin-desktop/src/hooks/useRosterManagement.ts` — new hook; lists agency responders with `availabilityStatus` and `lastTelemetryAt`; exposes `suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride` actions
+  - `apps/admin-desktop/src/pages/RosterPage.tsx` — new page at `/roster`; checkbox selection, availability badge, freshness indicator, bulk override dropdown, Suspend/Revoke action buttons
+  - `apps/admin-desktop/src/routes.tsx` — added `/roster` route protected for `agency_admin`
+  - `apps/admin-desktop/src/hooks/useEligibleResponders.ts` — extended `EligibleResponder` with `availabilityStatus`, `lastTelemetryAt`, `freshness`; added `computeFreshness` (fresh/degraded/stale/offline thresholds from project-responder-locations); sort by available first, then freshness, then name
+  - `apps/admin-desktop/src/pages/DispatchModal.tsx` — added availability status badge and freshness color indicator next to each eligible responder; inherits new sort from hook
+  - `apps/admin-desktop/src/hooks/useAgencyAssistanceQueue.ts` — new hook; dual Firestore listeners for `agency_assistance_requests` and `backup_requests` filtered by agencyId
+  - `apps/admin-desktop/src/pages/AgencyAssistanceQueuePage.tsx` — refactored to use `useAgencyAssistanceQueue`; displays both agency assistance requests and backup requests with Accept/Decline buttons; wired to existing `acceptAgencyAssistance`/`declineAgencyAssistance` callables
+  - `apps/admin-desktop/src/pages/AgencyAssistanceQueuePage.test.tsx` — updated to mock `useAgencyAssistanceQueue` hook instead of firebase/firestore (follows existing `triage-queue.test.tsx` pattern)
+  - `apps/admin-desktop/src/services/callables.ts` — added `suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride` callable wrappers
+- Verification:
+  - `pnpm --filter @bantayog/admin-desktop typecheck` — PASS
+  - `pnpm --filter @bantayog/admin-desktop lint` — PASS
+  - `pnpm --filter @bantayog/admin-desktop test` — PASS (37/37; pre-existing `field-mode-store.test.ts` firebase auth init failure unrelated)
+
 ### Phase 6 Responder App — Task 8: Responder-to-responder handoff and availability management (2026-04-26)
 
 - Status: DONE
