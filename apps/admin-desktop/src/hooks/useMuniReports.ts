@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import type { ReportStatus, Severity } from '@bantayog/shared-types'
+import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 
 export interface MuniReportRow {
   reportId: string
@@ -21,8 +22,6 @@ export interface MuniReportRow {
   createdAt: Timestamp
   municipalityLabel: string
 }
-
-const ACTIVE_STATUSES: ReportStatus[] = ['new', 'awaiting_verify', 'verified', 'assigned']
 
 export function useMuniReports(municipalityId: string | undefined) {
   const [limitCount, setLimitCount] = useState(100)
@@ -48,7 +47,7 @@ export function useMuniReports(municipalityId: string | undefined) {
     const q = query(
       collection(db, 'report_ops'),
       where('municipalityId', '==', municipalityId),
-      where('status', 'in', ACTIVE_STATUSES),
+      where('status', 'in', ACTIVE_REPORT_STATUSES),
       orderBy('createdAt', 'desc'),
       limit(limitCount + 1),
     )

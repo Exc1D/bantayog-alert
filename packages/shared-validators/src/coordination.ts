@@ -85,7 +85,7 @@ export const massAlertRequestDocSchema = z
     sentAt: z.number().int().optional(),
     evidencePack: z
       .object({
-        linkedReportIds: z.array(z.string()),
+        linkedReportIds: z.array(z.string().min(1)),
         pagasaSignalRef: z.string().optional(),
         notes: z.string().max(2000).optional(),
       })

@@ -25,16 +25,24 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
   const [pagasaSignalRef, setPagasaSignalRef] = useState('')
   const [notes, setNotes] = useState('')
 
+  const normalizedMessage = message.trim()
+  const normalizedPagasaSignalRef = pagasaSignalRef.trim()
+  const normalizedNotes = notes.trim()
+
   const encoding = message ? detectEncoding(message).encoding : 'GSM-7'
 
   const handlePreview = () => {
-    setLoading(true)
+    if (!normalizedMessage) {
+      setError('Message cannot be empty')
+      return
+    }
     setError(null)
+    setLoading(true)
     void (async () => {
       try {
         const plan = await callables.massAlertReachPlanPreview({
           targetScope: { municipalityIds: [municipalityId] },
-          message,
+          message: normalizedMessage,
         })
         setReachPlan(plan)
       } catch (err: unknown) {
@@ -50,12 +58,13 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
       setError('Direct send is not available for this alert scope')
       return
     }
+    setError(null)
     setLoading(true)
     void (async () => {
       try {
         await callables.sendMassAlert({
           reachPlan,
-          message,
+          message: normalizedMessage,
           targetScope: { municipalityIds: [municipalityId] },
           idempotencyKey: sendKeyRef.current,
         })
@@ -69,16 +78,21 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
   }
 
   const handleEscalate = () => {
+    if (normalizedNotes.length > 2000) {
+      setError('Notes must be 2000 characters or fewer')
+      return
+    }
+    setError(null)
     setLoading(true)
     void (async () => {
       try {
         await callables.requestMassAlertEscalation({
-          message,
+          message: normalizedMessage,
           targetScope: { municipalityIds: [municipalityId] },
           evidencePack: {
             linkedReportIds: [],
-            ...(pagasaSignalRef ? { pagasaSignalRef } : {}),
-            ...(notes ? { notes } : {}),
+            ...(normalizedPagasaSignalRef ? { pagasaSignalRef: normalizedPagasaSignalRef } : {}),
+            ...(normalizedNotes ? { notes: normalizedNotes } : {}),
           },
           idempotencyKey: escalateKeyRef.current,
         })
@@ -116,7 +130,7 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
         {reachPlan?.unicodeWarning && <span> ⚠ UCS-2 (multi-byte)</span>}
         {reachPlan && <> · Segments: {reachPlan.segmentCount}</>}
       </p>
-      <button onClick={handlePreview} disabled={!message || loading}>
+      <button onClick={handlePreview} disabled={!normalizedMessage || loading}>
         Preview Reach
       </button>
       {reachPlan && (
@@ -154,6 +168,7 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
           <textarea
             id="escalation-notes"
             value={notes}
+            maxLength={2000}
             onChange={(e) => {
               setNotes(e.target.value)
               escalateKeyRef.current = crypto.randomUUID()

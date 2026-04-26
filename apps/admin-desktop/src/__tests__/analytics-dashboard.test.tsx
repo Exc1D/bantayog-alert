@@ -10,9 +10,11 @@ vi.mock('@bantayog/shared-ui', () => ({
   }),
 }))
 
-const { mockGetCountFromServer, mockGetDocs, mockWhere } = vi.hoisted(() => ({
+const { mockGetCountFromServer, mockGetDocs, mockGetDoc, mockDoc, mockWhere } = vi.hoisted(() => ({
   mockGetCountFromServer: vi.fn(),
   mockGetDocs: vi.fn(),
+  mockGetDoc: vi.fn(),
+  mockDoc: vi.fn(() => ({})),
   mockWhere: vi.fn(() => ({})),
 }))
 
@@ -25,6 +27,8 @@ vi.mock('firebase/firestore', () => ({
   orderBy: vi.fn(() => ({})),
   limit: vi.fn(() => ({})),
   getDocs: mockGetDocs,
+  getDoc: mockGetDoc,
+  doc: mockDoc,
 }))
 
 import { AnalyticsDashboardPage } from '../pages/AnalyticsDashboardPage'
@@ -39,6 +43,7 @@ describe('AnalyticsDashboardPage', () => {
     vi.clearAllMocks()
     mockGetCountFromServer.mockResolvedValue({ data: () => ({ count: 42 }) })
     mockGetDocs.mockResolvedValue({ docs: [] })
+    mockGetDoc.mockResolvedValue({ exists: () => false })
     mockWhere.mockReturnValue({})
   })
 
@@ -47,7 +52,7 @@ describe('AnalyticsDashboardPage', () => {
     expect(await screen.findByText('42')).toBeInTheDocument()
   })
 
-  it('shows a loading state while snapshot data is fetching', () => {
+  it('shows a loading state while analytics count is fetching', () => {
     mockGetCountFromServer.mockImplementationOnce(
       () =>
         new Promise<void>(() => {
@@ -56,6 +61,17 @@ describe('AnalyticsDashboardPage', () => {
     )
     render(<AnalyticsDashboardPage />, { wrapper })
     expect(screen.getByText(/loading/i)).toBeInTheDocument()
+  })
+
+  it('shows trend loading state while snapshot data is fetching', async () => {
+    mockGetDocs.mockImplementationOnce(
+      () =>
+        new Promise(() => {
+          /* never resolves */
+        }),
+    )
+    render(<AnalyticsDashboardPage />, { wrapper })
+    expect(await screen.findByText('Loading trend…')).toBeInTheDocument()
   })
 
   it("scopes data to the caller's municipalityId for muni admins", async () => {
@@ -72,12 +88,16 @@ describe('AnalyticsDashboardPage', () => {
     mockGetDocs.mockResolvedValueOnce({
       docs: [
         {
+          id: '2026-04-20',
           data: () => ({
-            date: '2026-04-20',
             reportsByStatus: { verified: 5, closed: 2 },
           }),
         },
       ],
+    })
+    mockGetDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ reportsByStatus: { verified: 5, closed: 2 } }),
     })
     render(<AnalyticsDashboardPage />, { wrapper })
     expect(await screen.findByLabelText('7-day trend chart')).toBeInTheDocument()

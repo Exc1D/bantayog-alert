@@ -12,16 +12,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import { useAuth } from '@bantayog/shared-ui'
-
-const ACTIVE_STATUSES = [
-  'new',
-  'awaiting_verify',
-  'verified',
-  'assigned',
-  'acknowledged',
-  'en_route',
-  'on_scene',
-]
+import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 
 export function AnalyticsDashboardPage() {
   const { claims } = useAuth()
@@ -34,7 +25,7 @@ export function AnalyticsDashboardPage() {
       const q = query(
         collection(db, 'report_ops'),
         ...(municipalityId ? [where('municipalityId', '==', municipalityId)] : []),
-        where('status', 'in', ACTIVE_STATUSES),
+        where('status', 'in', ACTIVE_REPORT_STATUSES),
       )
       const snap = await getCountFromServer(q)
       return snap.data().count

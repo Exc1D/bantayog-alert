@@ -6,7 +6,7 @@ import {
 } from '@firebase/rules-unit-testing'
 import { createTestEnv, authed } from '../helpers/rules-harness.js'
 import { seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
-import { setDoc, doc } from 'firebase/firestore'
+import { setDoc, getDoc, doc } from 'firebase/firestore'
 
 let testEnv: RulesTestEnvironment
 
@@ -86,5 +86,36 @@ describe('mass_alert_requests rules', () => {
   it('denies citizen writes', async () => {
     const db = authed(testEnv, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-4'), baseAlert('queued')))
+  })
+
+  it('allows muni admin to read own municipality request', async () => {
+    const adminDb = authed(
+      testEnv,
+      'admin-uid',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(setDoc(doc(adminDb, 'mass_alert_requests', 'read-1'), baseAlert('queued')))
+    await assertSucceeds(getDoc(doc(adminDb, 'mass_alert_requests', 'read-1')))
+  })
+
+  it('allows active superadmin to read any request', async () => {
+    const adminDb = authed(
+      testEnv,
+      'admin-uid',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(setDoc(doc(adminDb, 'mass_alert_requests', 'read-2'), baseAlert('queued')))
+
+    const superDb = authed(testEnv, 'super-admin', staffClaims({ role: 'provincial_superadmin' }))
+    await assertSucceeds(getDoc(doc(superDb, 'mass_alert_requests', 'read-2')))
+  })
+
+  it('denies read for inactive privileged account', async () => {
+    const inactiveDb = authed(
+      testEnv,
+      'admin-uid',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet', accountStatus: 'suspended' }),
+    )
+    await assertFails(getDoc(doc(inactiveDb, 'mass_alert_requests', 'read-3')))
   })
 })

@@ -8,6 +8,11 @@ const log = logDimension('fcmMassSend')
 const TOKEN_BATCH_SIZE = 500
 const MAX_BATCHES = 10
 
+function normalizeFcmTokens(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((t): t is string => typeof t === 'string' && t.length > 0)
+}
+
 export interface MassSendResult {
   successCount: number
   failureCount: number
@@ -47,10 +52,9 @@ export async function sendMassAlertFcm(
       .where('municipalityId', 'in', chunk)
       .get()
     for (const respDoc of snaps.docs) {
-      const tokens = respDoc.data().fcmTokens as string[] | undefined
-      if (!tokens) continue
+      const tokens = normalizeFcmTokens(respDoc.data().fcmTokens)
+      if (tokens.length === 0) continue
       for (const token of tokens) {
-        if (!token) continue
         const owners = tokenOwners.get(token) ?? []
         owners.push(respDoc.id)
         tokenOwners.set(token, owners)
@@ -127,7 +131,7 @@ export async function sendMassAlertFcm(
         await db.runTransaction(async (tx) => {
           const snap = await tx.get(ref)
           if (!snap.exists) return
-          const currentTokens = (snap.data()?.fcmTokens as string[] | undefined) ?? []
+          const currentTokens = normalizeFcmTokens(snap.data()?.fcmTokens)
           const invalidSet = new Set(badTokens)
           const remainingTokens = currentTokens.filter((t) => !invalidSet.has(t))
           tx.update(ref, {
@@ -138,17 +142,25 @@ export async function sendMassAlertFcm(
       }),
     )
     const failedCount = results.filter((r) => r.status === 'rejected').length
+    const successfulCount = ownerToInvalidTokens.size - failedCount
     if (failedCount > 0) {
       log({
         severity: 'ERROR',
         code: 'fcm.mass.cleanup.failed',
-        message: `${String(failedCount)} cleanup transaction(s) failed`,
+        message: String(failedCount) + ' cleanup transaction(s) failed',
       })
     }
     log({
       severity: 'WARNING',
       code: 'fcm.mass.invalid_tokens',
-      message: `Removed ${String(invalidTokens.length)} invalid token(s) from ${String(ownerToInvalidTokens.size)} responder(s)`,
+      message:
+        'Cleaned up ' +
+        String(successfulCount) +
+        '/' +
+        String(invalidTokens.length) +
+        ' invalid token(s) from ' +
+        String(ownerToInvalidTokens.size) +
+        ' responder(s)',
     })
   }
 
