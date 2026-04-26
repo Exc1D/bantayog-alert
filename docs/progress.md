@@ -643,6 +643,26 @@
   IAM Credentials API disabled for acceptance flow
   No valid staging hosting deploy
 
+### CodeRabbit Round 2 Review Fixes (2026-04-26)
+
+- Status: complete
+- Files touched: 27 files across responder-app, admin-desktop, functions, shared-validators, infra/firebase
+- Key fixes:
+  - **telemetry-client.ts**: Removed stale `refCount` references, fixed missing return of unsubscribe function on native path, added `subscribers.delete(onLocation)` on setup failure to prevent leaks.
+  - **useResponderTelemetry.ts**: Added `cancelled` guard before Firestore `setDoc` and eslint-disable comments for intentional closure-mutation checks.
+  - **useAgencyAssistanceQueue.ts**: Added `requestsReady` + `backupReady` flags so `setLoading(false)` only fires after both onSnapshot listeners have resolved; backup errors now surface into `error` state.
+  - **useEligibleResponders.ts**: Removed stale `freshness` from persisted state; sort now uses `lastTelemetryAt` directly.
+  - **RosterPage.tsx**: Added 30-second interval tick to force re-evaluation of freshness labels as time passes.
+  - **DispatchModal.tsx**: Derives `freshness` at render time via `computeFreshness(r.lastTelemetryAt)` instead of stale persisted value.
+  - **shared-validators index.ts**: Added missing `responderShiftHandoffDocSchema` and `ResponderShiftHandoffDoc` exports (was defined in `coordination.ts` but never re-exported, causing functions typecheck failure).
+  - **shared-validators build**: Rebuilt `lib/` outputs after index export addition.
+  - **firestore.rules**: Regenerated from template via `pnpm exec tsx scripts/build-rules.ts` (template already had Round 1 fixes for `lastTelemetryAt` and `updatedAt is int || is timestamp`).
+- Verification:
+  - `pnpm run typecheck --filter=@bantayog/responder-app --filter=@bantayog/admin-desktop --filter=@bantayog/functions --filter=@bantayog/shared-validators` → PASS
+  - `pnpm run lint --filter=@bantayog/responder-app --filter=@bantayog/admin-desktop --filter=@bantayog/functions` → PASS
+  - `pnpm run test` in `packages/shared-validators` → 229 tests PASS
+  - Functions tests have pre-existing failures unrelated to these changes (dispatch mirror, accept-dispatch, cancel-dispatch, close-report, rate-limit, etc. — emulator/setup issues).
+
 ### Phase 0 Foundation
 
 - Status: complete

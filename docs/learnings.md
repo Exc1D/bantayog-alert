@@ -99,3 +99,12 @@ Durable rules worth keeping across sessions.
 - Firebase emulators: rules tests using `createTestEnv` from `rules-harness.ts` require `--only firestore,database,storage` (all three emulators). The harness configures storage rules even for Firestore-only tests.
 - `pnpm --filter` from a worktree resolves to the main repo's `package.json`, not the worktree's. For emulator test commands that need `pnpm --filter`, run `npx vitest` directly inside the package directory instead.
 - Firestore emulator rules evaluation: `getDoc` (document read) and `getDocs` (collection list) can behave differently in the emulator after seeding. `getDoc` finds documents immediately; `getDocs` may fail with "Property X is undefined on object" for collections whose rules check `resource.data` fields, even when the document is confirmed to exist via `getDoc` in the same test. Workaround: use `getDoc` for rules validation when `getDocs` is affected by this indexing issue.
+
+## CodeRabbit Round 2 Fixes (2026-04-26)
+
+- **`@typescript-eslint/no-unnecessary-condition` flags closure-mutated booleans.** A `let cancelled = false` reassigned in a cleanup closure will be flagged as "always falsy" at every read site. Intentional cancellation guards need `// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition`.
+- **`react-hooks/set-state-in-effect` rejects synchronous `setState` inside `useEffect` bodies.** For derived state that must be set synchronously (e.g. `setLoading(false)` when two independent listener readiness flags both become true), use `// eslint-disable-next-line react-hooks/set-state-in-effect`.
+- **Zod `.trim().min(1)` already rejects whitespace-only strings.** `.trim()` is a transform; `"   "` becomes `""` and then `.min(1)` rejects. An extra `.refine(v => v.trim().length > 0)` is redundant.
+- **Shared package schemas must be re-exported from `index.ts`.** Defining a schema in a module file is not enough — if it's not in `src/index.ts`, the built `lib/index.js` won't expose it and downstream packages will get `TS2724: has no exported member named 'X'`.
+- **Capacitor plugin void-return callbacks need braces.** `return () => clearInterval(id)` triggers `@typescript-eslint/no-confusing-void-expression` because `clearInterval` returns `void`. Use `return () => { clearInterval(id) }`.
+- **When refactoring from `refCount` to `Set<subscribers>`, remove ALL stale `refCount` references.** Leaving `refCount--` behind causes runtime `ReferenceError` because the variable no longer exists.
