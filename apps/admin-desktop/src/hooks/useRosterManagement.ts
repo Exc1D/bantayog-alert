@@ -70,7 +70,10 @@ export function useRosterManagement(agencyId: string | undefined) {
     await callables.revokeResponder({ uid, idempotencyKey: crypto.randomUUID() })
   }
 
-  const bulkAvailabilityOverride = async (uids: string[], status: string) => {
+  const bulkAvailabilityOverride = async (
+    uids: string[],
+    status: 'available' | 'unavailable' | 'off_duty',
+  ) => {
     await callables.bulkAvailabilityOverride({
       uids,
       status,

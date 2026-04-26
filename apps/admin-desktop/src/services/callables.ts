@@ -3,6 +3,7 @@ import { functions } from '../app/firebase'
 import type { ReportStatus, DispatchStatus } from '@bantayog/shared-types'
 
 type IdempotencyKey = string
+type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
 
 export const callables = {
   verifyReport: (payload: { reportId: string; idempotencyKey: IdempotencyKey }) =>
@@ -135,7 +136,7 @@ export const callables = {
     )(payload).then((r) => r.data),
   bulkAvailabilityOverride: (payload: {
     uids: string[]
-    status: string
+    status: AvailabilityStatus
     idempotencyKey: IdempotencyKey
   }) =>
     httpsCallable<typeof payload, { updated: number }>(
