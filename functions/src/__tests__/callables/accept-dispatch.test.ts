@@ -19,7 +19,7 @@ let testEnv: RulesTestEnvironment
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'accept-dispatch-test',
-    firestore: { host: 'localhost', port: 8080 },
+    firestore: { host: 'localhost', port: 8081 },
   })
 })
 
