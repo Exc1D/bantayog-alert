@@ -5,6 +5,7 @@ import { processInboxItemCore } from '../../triggers/process-inbox-item.js';
 const PERMISSIVE_RULES = 'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}';
 let env;
 const TEST_SALT = 'test-sms-salt-prc2';
+const PREV_SMS_SALT = process.env.SMS_MSISDN_HASH_SALT;
 beforeAll(async () => {
     process.env.SMS_MSISDN_HASH_SALT = TEST_SALT;
     env = await initializeTestEnvironment({
@@ -25,6 +26,12 @@ beforeAll(async () => {
 afterAll(async () => {
     if (env)
         await env.cleanup();
+    if (PREV_SMS_SALT === undefined) {
+        delete process.env.SMS_MSISDN_HASH_SALT;
+    }
+    else {
+        process.env.SMS_MSISDN_HASH_SALT = PREV_SMS_SALT;
+    }
 });
 beforeEach(async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

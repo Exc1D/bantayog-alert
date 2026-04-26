@@ -345,6 +345,31 @@ describe('mass_alert_requests rules', () => {
     )
   })
 
+  // 13b. Superadmin update rejected when disallowed fields are included
+  it('rejects superadmin updating disallowed fields', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'mass_alert_requests', 'req-disallowed'),
+        baseAlert('pending_ndrrmc_review'),
+      )
+    })
+    const db = authed(testEnv, 'super-1', staffClaims({ role: 'provincial_superadmin' }))
+    await seedActiveAccount(testEnv, {
+      uid: 'super-1',
+      role: 'provincial_superadmin',
+    })
+    await assertFails(
+      setDoc(
+        doc(db, 'mass_alert_requests', 'req-disallowed'),
+        {
+          status: 'sent',
+          requestedByUid: 'hacked', // ← disallowed field
+        },
+        { merge: true },
+      ),
+    )
+  })
+
   // 14. Extra field rejected - client injects unknown field
   it('denies extra field injection', async () => {
     const db = authed(

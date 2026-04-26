@@ -73,9 +73,11 @@ describe('duplicateClusterTrigger', () => {
             visibility: { scope: 'municipality', sharedWith: [] },
             schemaVersion: 1,
         };
+        await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH });
         const snap = makeSnap('r-new', newData);
         await duplicateClusterTriggerCore(adminDb, snap);
         const updated = await adminDb.collection('report_ops').doc('r-new').get();
+        expect(updated.exists).toBe(true);
         expect(updated.data()?.duplicateClusterId).toBeUndefined();
     });
     it('sets duplicateClusterId on both reports when same type + muni + within geohash proximity + within 2h', async () => {
@@ -122,9 +124,11 @@ describe('duplicateClusterTrigger', () => {
             visibility: { scope: 'municipality', sharedWith: [] },
             schemaVersion: 1,
         };
+        await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH });
         const snap = makeSnap('r-new', newData);
         await duplicateClusterTriggerCore(adminDb, snap);
         const updated = await adminDb.collection('report_ops').doc('r-new').get();
+        expect(updated.exists).toBe(true);
         expect(updated.data()?.duplicateClusterId).toBeUndefined();
     });
     it('does not cluster reports older than 2h', async () => {
@@ -147,9 +151,11 @@ describe('duplicateClusterTrigger', () => {
             visibility: { scope: 'municipality', sharedWith: [] },
             schemaVersion: 1,
         };
+        await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH });
         const snap = makeSnap('r-new', newData);
         await duplicateClusterTriggerCore(adminDb, snap);
         const updated = await adminDb.collection('report_ops').doc('r-new').get();
+        expect(updated.exists).toBe(true);
         expect(updated.data()?.duplicateClusterId).toBeUndefined();
     });
     it('assigns the same existing clusterId when a third report joins a cluster', async () => {
@@ -193,9 +199,11 @@ describe('duplicateClusterTrigger', () => {
             visibility: { scope: 'municipality', sharedWith: [] },
             schemaVersion: 1,
         };
+        await seedReportOps('r-noloc', {});
         const snap = makeSnap('r-noloc', newData);
         await duplicateClusterTriggerCore(adminDb, snap);
         const updated = await adminDb.collection('report_ops').doc('r-noloc').get();
+        expect(updated.exists).toBe(true);
         expect(updated.data()?.duplicateClusterId).toBeUndefined();
     });
     it('is safe to run twice (idempotent cluster assignment)', async () => {

@@ -148,7 +148,7 @@ describe('analyticsSnapshotWriter', () => {
         expect(data.reportsByStatus.new).toBe(1);
     });
     it('handles a municipality with zero reports without erroring', async () => {
-        await expect(analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: ts })).resolves.not.toThrow();
+        await expect(analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })).resolves.not.toThrow();
     });
 });
 //# sourceMappingURL=analytics-snapshot-writer.test.js.map

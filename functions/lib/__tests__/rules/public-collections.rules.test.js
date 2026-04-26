@@ -187,10 +187,14 @@ describe('privileged read tests for callable collections', () => {
         // even though the document exists and getDoc succeeds. getDoc validates the same rule.
         const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
         await assertSucceeds(getDoc(doc(db, 'command_channel_threads', 'thread-1')));
+        // TODO(BANTAYOG-PHASE6): getDocs (list) fails because rules reference resource.data.participantUids
+        // which is undefined during list evaluation. Rules need separate allow list rule.
     });
     it('superadmin with active privileged claim can read command_channel_messages', async () => {
         const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
         await assertSucceeds(getDoc(doc(db, 'command_channel_messages', 'msg-1')));
+        // TODO(BANTAYOG-PHASE6): getDocs (list) fails because rules reference resource.data.threadId
+        // which is undefined during list evaluation. Rules need separate allow list rule.
     });
     it('superadmin with active privileged claim can read mass_alert_requests', async () => {
         const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));

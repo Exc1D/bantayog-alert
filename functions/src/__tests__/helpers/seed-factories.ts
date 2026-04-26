@@ -203,18 +203,20 @@ export async function seedDispatchRT(
       municipalityId: assignedToOverride?.municipalityId ?? 'daet',
     }
     await setDoc(doc(db, 'dispatches', dispatchId), {
-      ...restOverrides,
       dispatchId,
       municipalityId: 'daet',
       reportId: 'report-1',
       agencyId: 'agency-1',
       priority: 'high',
       status: 'pending',
-      assignedTo: mergedAssignedTo,
       assignedResponderUids: [],
       createdAt: ts,
       updatedAt: ts,
       schemaVersion: 1,
+      ...restOverrides,
+      // assignedTo placed last: restOverrides cannot contain it (destructured out above),
+      // so mergedAssignedTo always wins
+      assignedTo: mergedAssignedTo,
     })
   })
 }

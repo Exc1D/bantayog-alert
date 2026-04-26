@@ -2,7 +2,7 @@ import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import { assertFails, assertSucceeds, } from '@firebase/rules-unit-testing';
 import { createTestEnv, authed } from '../helpers/rules-harness.js';
 import { seedActiveAccount, staffClaims } from '../helpers/seed-factories.js';
-import { setDoc, getDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
 let testEnv;
 beforeAll(async () => {
     testEnv = await createTestEnv('mass-alert-rules-test');
@@ -87,13 +87,15 @@ describe('mass_alert_requests rules', () => {
     // 2. Missing requestedByMunicipality - deny when field is missing
     it('denies missing requestedByMunicipality', async () => {
         const db = authed(testEnv, 'admin-uid', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
-        const { requestedByMunicipality: _unused, ...alertWithoutMuni } = baseAlert('queued');
+        const alertWithoutMuni = { ...baseAlert('queued') };
+        delete alertWithoutMuni.requestedByMunicipality;
         await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-no-muni'), alertWithoutMuni));
     });
     // 3. Missing status - deny when status field is missing
     it('denies missing status field', async () => {
         const db = authed(testEnv, 'admin-uid', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
-        const { status: _unused, ...alertWithoutStatus } = baseAlert('queued');
+        const alertWithoutStatus = { ...baseAlert('queued') };
+        delete alertWithoutStatus.status;
         await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-no-status'), alertWithoutStatus));
     });
     // 4. Invalid status values - deny for 'approved', 'rejected', 'forwarded_to_ndrrmc'
@@ -126,6 +128,13 @@ describe('mass_alert_requests rules', () => {
             ...baseAlert('queued'),
             requestedByUid: 'super-admin', // must match auth uid
         }));
+    });
+    // 6b. Superadmin create denied when requestedByMunicipality is missing
+    it('denies superadmin create when requestedByMunicipality is missing', async () => {
+        const db = authed(testEnv, 'super-admin', staffClaims({ role: 'provincial_superadmin' }));
+        const payload = { ...baseAlert('queued'), requestedByUid: 'super-admin' };
+        delete payload.requestedByMunicipality;
+        await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-super-missing-muni'), payload));
     });
     // 7. Cross-municipality read denied - deny read for other municipality's docs
     it('denies cross-municipality read', async () => {
@@ -188,6 +197,21 @@ describe('mass_alert_requests rules', () => {
         });
         const superDb = authed(testEnv, 'super-admin', staffClaims({ role: 'provincial_superadmin' }));
         await assertSucceeds(setDoc(doc(superDb, 'mass_alert_requests', 'req-status-update'), { status: 'sent' }, { merge: true }));
+    });
+    // 13b. Superadmin update rejected when disallowed fields are included
+    it('rejects superadmin updating disallowed fields', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), 'mass_alert_requests', 'req-disallowed'), baseAlert('pending_ndrrmc_review'));
+        });
+        const db = authed(testEnv, 'super-1', staffClaims({ role: 'provincial_superadmin' }));
+        await seedActiveAccount(testEnv, {
+            uid: 'super-1',
+            role: 'provincial_superadmin',
+        });
+        await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-disallowed'), {
+            status: 'sent',
+            requestedByUid: 'hacked', // ← disallowed field
+        }, { merge: true }));
     });
     // 14. Extra field rejected - client injects unknown field
     it('denies extra field injection', async () => {

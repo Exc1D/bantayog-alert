@@ -146,6 +146,13 @@ export async function seedResponder(env, responderId, overrides = {}) {
 export async function seedDispatchRT(env, dispatchId, overrides = {}) {
     await env.withSecurityRulesDisabled(async (ctx) => {
         const db = ctx.firestore();
+        // Extract assignedTo separately so we can merge with defaults instead of overwriting
+        const { assignedTo: assignedToOverride, ...restOverrides } = overrides;
+        const mergedAssignedTo = {
+            uid: assignedToOverride?.uid ?? '',
+            agencyId: assignedToOverride?.agencyId ?? 'agency-1',
+            municipalityId: assignedToOverride?.municipalityId ?? 'daet',
+        };
         await setDoc(doc(db, 'dispatches', dispatchId), {
             dispatchId,
             municipalityId: 'daet',
@@ -153,17 +160,14 @@ export async function seedDispatchRT(env, dispatchId, overrides = {}) {
             agencyId: 'agency-1',
             priority: 'high',
             status: 'pending',
-            // FIX: Add assignedTo field to satisfy firestore rules that check assignedTo.uid
-            assignedTo: {
-                uid: overrides.assignedTo?.uid || '',
-                agencyId: overrides.assignedTo?.agencyId || 'agency-1',
-                municipalityId: overrides.assignedTo?.municipalityId || 'daet',
-            },
             assignedResponderUids: [],
             createdAt: ts,
             updatedAt: ts,
             schemaVersion: 1,
-            ...overrides,
+            ...restOverrides,
+            // assignedTo placed last: restOverrides cannot contain it (destructured out above),
+            // so mergedAssignedTo always wins
+            assignedTo: mergedAssignedTo,
         });
     });
 }

@@ -183,7 +183,7 @@ describe('analyticsSnapshotWriter', () => {
 
   it('handles a municipality with zero reports without erroring', async () => {
     await expect(
-      analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: ts }),
+      analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) }),
     ).resolves.not.toThrow()
   })
 })

@@ -26,25 +26,31 @@ function isEmulatorRunning(emulator) {
     return true;
 }
 export async function createTestEnv(projectId) {
-    // Poll the hub until Firestore registers, or time out after 30 attempts (15s with 500ms poll).
+    // Poll the hub until Firestore registers and is in running state, or time out after 30 attempts (15s with 500ms poll).
     let hubData = null;
+    let lastHubError = null;
     for (let i = 0; i < 30; i++) {
         try {
-            const res = await fetch('http://localhost:4400/emulators', { signal: AbortSignal.timeout(500) });
+            const res = await fetch('http://localhost:4400/emulators', {
+                signal: AbortSignal.timeout(500),
+            });
             if (res.ok) {
-                hubData = await res.json();
-                if (hubData.firestore)
+                hubData = (await res.json());
+                // Check both presence AND running state
+                if (hubData.firestore && isEmulatorRunning(hubData.firestore))
                     break;
             }
         }
-        catch {
-            // not ready yet
+        catch (err) {
+            lastHubError = err;
         }
         await new Promise((r) => setTimeout(r, 500));
     }
-    if (!hubData?.firestore) {
+    if (!hubData?.firestore || !isEmulatorRunning(hubData.firestore)) {
+        const lastErrorMsg = lastHubError instanceof Error ? ` Last hub error: ${lastHubError.message}` : '';
         throw new Error('[rules-harness] Firestore emulator did not register with the hub after 15s. ' +
-            'Ensure `firebase emulators:exec` is running with `--only firestore` (or `--only firestore,database,storage`).');
+            'Ensure `firebase emulators:exec` is running with `--only firestore` (or `--only firestore,database,storage`).' +
+            lastErrorMsg);
     }
     // Even after registration, Firestore needs a moment to start accepting gRPC connections.
     await new Promise((r) => setTimeout(r, 2000));
