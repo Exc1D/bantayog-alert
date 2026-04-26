@@ -7,7 +7,6 @@ import { auth } from './app/firebase'
 import { useRegisterFcmToken } from './hooks/useRegisterFcmToken'
 import { useOwnDispatches } from './hooks/useOwnDispatches'
 import { useResponderTelemetry } from './hooks/useResponderTelemetry'
-import { subscribeForegroundPush, subscribeNotificationTap } from './services/push-client'
 
 function FcmSetup() {
   const { user } = useAuth()
@@ -37,25 +36,6 @@ function FcmSetup() {
   return null
 }
 
-function NotificationRouter() {
-  useEffect(() => {
-    const unsubscribeTap = subscribeNotificationTap((dispatchId) => {
-      window.location.assign(`/dispatches/${dispatchId}`)
-    })
-
-    const unsubscribeForeground = subscribeForegroundPush((payload) => {
-      console.warn('Foreground push received:', payload)
-    })
-
-    return () => {
-      unsubscribeTap()
-      unsubscribeForeground()
-    }
-  }, [])
-
-  return null
-}
-
 function TelemetryProvider() {
   const { user } = useAuth()
   const { groups } = useOwnDispatches(user?.uid)
@@ -70,7 +50,6 @@ export default function App() {
   return (
     <AuthProvider auth={auth}>
       <FcmSetup />
-      <NotificationRouter />
       <TelemetryProvider />
       <AppRouter />
     </AuthProvider>

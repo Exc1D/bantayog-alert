@@ -4,9 +4,7 @@ import { useDispatch } from '../hooks/useDispatch'
 import { useAcceptDispatch } from '../hooks/useAcceptDispatch'
 import { useAdvanceDispatch } from '../hooks/useAdvanceDispatch'
 import { useDeclineDispatch } from '../hooks/useDeclineDispatch'
-import { useResponderTelemetry } from '../hooks/useResponderTelemetry'
 import { useMarkDispatchUnableToComplete } from '../hooks/useMarkDispatchUnableToComplete'
-import { useAuth } from '@bantayog/shared-ui'
 import { CancelledScreen } from './CancelledScreen'
 import { RaceLossScreen } from './RaceLossScreen'
 
@@ -138,10 +136,7 @@ function getActionErrorMessage(error: Error | undefined): string | null {
 export function DispatchDetailPage() {
   const { dispatchId } = useParams<{ dispatchId: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { dispatch, loading, error, refresh } = useDispatch(dispatchId)
-
-  useResponderTelemetry(user?.uid, dispatchId, dispatch?.status)
 
   const {
     accept,
