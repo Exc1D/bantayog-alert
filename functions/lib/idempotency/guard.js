@@ -9,6 +9,14 @@ export class IdempotencyMismatchError extends Error {
         this.name = 'IdempotencyMismatchError';
     }
 }
+export class IdempotencyInProgressError extends Error {
+    key;
+    constructor(key) {
+        super(`IN_PROGRESS: idempotency key "${key}" is currently being processed by a concurrent call`);
+        this.key = key;
+        this.name = 'IdempotencyInProgressError';
+    }
+}
 export async function withIdempotency(db, opts, op) {
     const now = opts.now ?? (() => Date.now());
     const hash = await canonicalPayloadHash(opts.payload);
@@ -20,6 +28,7 @@ export async function withIdempotency(db, opts, op) {
                 key: opts.key,
                 payloadHash: hash,
                 firstSeenAt: now(),
+                processing: true,
             });
             return null;
         }
@@ -27,13 +36,16 @@ export async function withIdempotency(db, opts, op) {
         if (data.payloadHash !== hash) {
             throw new IdempotencyMismatchError(opts.key, data.firstSeenAt);
         }
+        if (data.processing && !('resultPayload' in data)) {
+            throw new IdempotencyInProgressError(opts.key);
+        }
         return (data.resultPayload ?? null);
     });
     if (cached != null) {
         return { result: cached, fromCache: true };
     }
     const result = await op();
-    await keyRef.update({ resultPayload: result, completedAt: now() });
+    await keyRef.update({ resultPayload: result, processing: false, completedAt: now() });
     return { result, fromCache: false };
 }
 //# sourceMappingURL=guard.js.map

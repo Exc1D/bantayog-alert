@@ -228,6 +228,14 @@ describe('mass_alert_requests rules', () => {
     )
   })
 
+  // 6b. Superadmin create denied when requestedByMunicipality is missing
+  it('denies superadmin create when requestedByMunicipality is missing', async () => {
+    const db = authed(testEnv, 'super-admin', staffClaims({ role: 'provincial_superadmin' }))
+    const payload = { ...baseAlert('queued'), requestedByUid: 'super-admin' }
+    delete (payload as Record<string, unknown>).requestedByMunicipality
+    await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-super-missing-muni'), payload))
+  })
+
   // 7. Cross-municipality read denied - deny read for other municipality's docs
   it('denies cross-municipality read', async () => {
     // Seed a document in daet municipality

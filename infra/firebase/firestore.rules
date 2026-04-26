@@ -409,6 +409,7 @@ service cloud.firestore {
       function allowedCreateStatus() {
         let valid = isActivePrivileged()
             && request.resource.data.requestedByUid == uid()
+            && request.resource.data.requestedByMunicipality != null
             && (isSuperadmin() || isMassAlertMuniAdminForCreate())
             && request.resource.data.status is string
             && request.resource.data.status in ['queued', 'pending_ndrrmc_review'];

@@ -153,6 +153,12 @@ export async function seedDispatchRT(env, dispatchId, overrides = {}) {
             agencyId: 'agency-1',
             priority: 'high',
             status: 'pending',
+            // FIX: Add assignedTo field to satisfy firestore rules that check assignedTo.uid
+            assignedTo: {
+                uid: overrides.assignedTo?.uid || '',
+                agencyId: overrides.assignedTo?.agencyId || 'agency-1',
+                municipalityId: overrides.assignedTo?.municipalityId || 'daet',
+            },
             assignedResponderUids: [],
             createdAt: ts,
             updatedAt: ts,

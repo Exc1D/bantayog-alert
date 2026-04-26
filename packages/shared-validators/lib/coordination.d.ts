@@ -100,7 +100,7 @@ export declare const massAlertRequestDocSchema: z.ZodObject<{
         linkedReportIds: z.ZodArray<z.ZodString>;
         pagasaSignalRef: z.ZodOptional<z.ZodString>;
         notes: z.ZodOptional<z.ZodString>;
-    }, z.core.$strip>>;
+    }, z.core.$strict>>;
     forwardedBy: z.ZodOptional<z.ZodString>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;

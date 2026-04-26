@@ -179,6 +179,7 @@ export async function processInboxItemCore(input) {
                         locale: muniLocale,
                         smsConsent: true,
                         municipalityId: geo.municipalityId,
+                        followUpConsent: payload.followUpConsent === true,
                         createdAt,
                         schemaVersion: 1,
                     });

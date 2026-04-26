@@ -195,24 +195,26 @@ export async function seedDispatchRT(
 ): Promise<void> {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
+    // Extract assignedTo separately so we can merge with defaults instead of overwriting
+    const { assignedTo: assignedToOverride, ...restOverrides } = overrides
+    const mergedAssignedTo = {
+      uid: assignedToOverride?.uid ?? '',
+      agencyId: assignedToOverride?.agencyId ?? 'agency-1',
+      municipalityId: assignedToOverride?.municipalityId ?? 'daet',
+    }
     await setDoc(doc(db, 'dispatches', dispatchId), {
+      ...restOverrides,
       dispatchId,
       municipalityId: 'daet',
       reportId: 'report-1',
       agencyId: 'agency-1',
       priority: 'high',
       status: 'pending',
-      // FIX: Add assignedTo field to satisfy firestore rules that check assignedTo.uid
-      assignedTo: {
-        uid: overrides.assignedTo?.uid ?? '',
-        agencyId: overrides.assignedTo?.agencyId ?? 'agency-1',
-        municipalityId: overrides.assignedTo?.municipalityId ?? 'daet',
-      },
+      assignedTo: mergedAssignedTo,
       assignedResponderUids: [],
       createdAt: ts,
       updatedAt: ts,
       schemaVersion: 1,
-      ...overrides,
     })
   })
 }

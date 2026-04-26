@@ -43,8 +43,9 @@ function isEmulatorRunning(emulator: HubEmulatorConfig | undefined): boolean {
 }
 
 export async function createTestEnv(projectId: string): Promise<RulesTestEnvironment> {
-  // Poll the hub until Firestore registers, or time out after 30 attempts (15s with 500ms poll).
+  // Poll the hub until Firestore registers and is in running state, or time out after 30 attempts (15s with 500ms poll).
   let hubData: HubResponse | null = null
+  let lastHubError: unknown = null
   for (let i = 0; i < 30; i++) {
     try {
       const res = await fetch('http://localhost:4400/emulators', {
@@ -52,18 +53,22 @@ export async function createTestEnv(projectId: string): Promise<RulesTestEnviron
       })
       if (res.ok) {
         hubData = (await res.json()) as HubResponse
-        if (hubData.firestore) break
+        // Check both presence AND running state
+        if (hubData.firestore && isEmulatorRunning(hubData.firestore)) break
       }
-    } catch {
-      // not ready yet
+    } catch (err: unknown) {
+      lastHubError = err
     }
     await new Promise((r) => setTimeout(r, 500))
   }
 
-  if (!hubData?.firestore) {
+  if (!hubData?.firestore || !isEmulatorRunning(hubData.firestore)) {
+    const lastErrorMsg =
+      lastHubError instanceof Error ? ` Last hub error: ${lastHubError.message}` : ''
     throw new Error(
       '[rules-harness] Firestore emulator did not register with the hub after 15s. ' +
-        'Ensure `firebase emulators:exec` is running with `--only firestore` (or `--only firestore,database,storage`).',
+        'Ensure `firebase emulators:exec` is running with `--only firestore` (or `--only firestore,database,storage`).' +
+        lastErrorMsg,
     )
   }
 

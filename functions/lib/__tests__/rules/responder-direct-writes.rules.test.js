@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { doc, setDoc } from 'firebase/firestore';
-import { FieldValue } from 'firebase-admin/firestore';
+import { serverTimestamp } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, it } from 'vitest';
 import { authed, createTestEnv } from '../helpers/rules-harness.js';
 import { seedActiveAccount, staffClaims } from '../helpers/seed-factories.js';
@@ -45,7 +45,7 @@ describe('responder direct-write on dispatches/{id}', () => {
         const db = authed(env, 'resp-1', staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }));
         await assertSucceeds(db.collection('dispatches').doc('dispatch-1').update({
             status: 'acknowledged',
-            lastStatusAt: FieldValue.serverTimestamp(),
+            lastStatusAt: serverTimestamp(),
         }));
     });
     it('denies acknowledged → resolved (skipping en_route/on_scene)', async () => {
@@ -97,7 +97,7 @@ describe('responder direct-write on dispatches/{id}', () => {
         const db = authed(env, 'resp-1', staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }));
         await assertFails(db.collection('dispatches').doc('dispatch-3').update({
             status: 'resolved',
-            lastStatusAt: FieldValue.serverTimestamp(),
+            lastStatusAt: serverTimestamp(),
         }));
     });
     it('allows on_scene → resolved with resolutionSummary', async () => {
@@ -121,7 +121,7 @@ describe('responder direct-write on dispatches/{id}', () => {
         const db = authed(env, 'resp-1', staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }));
         await assertSucceeds(db.collection('dispatches').doc('dispatch-4').update({
             status: 'resolved',
-            lastStatusAt: FieldValue.serverTimestamp(),
+            lastStatusAt: serverTimestamp(),
             resolutionSummary: 'Secured the area, no injuries reported.',
         }));
     });
@@ -154,7 +154,7 @@ describe('responder direct-write on dispatches/{id}', () => {
         await assertFails(db
             .collection('dispatches')
             .doc('dispatch-5')
-            .update({ status: 'acknowledged', lastStatusAt: FieldValue.serverTimestamp() }));
+            .update({ status: 'acknowledged', lastStatusAt: serverTimestamp() }));
     });
     it('denies writes that touch fields outside the allowlist', async () => {
         await env.withSecurityRulesDisabled(async (ctx) => {
@@ -180,7 +180,7 @@ describe('responder direct-write on dispatches/{id}', () => {
             .doc('dispatch-6')
             .update({
             status: 'acknowledged',
-            lastStatusAt: FieldValue.serverTimestamp(),
+            lastStatusAt: serverTimestamp(),
             assignedTo: { uid: 'someone-else', agencyId: 'bfp', municipalityId: 'daet' },
         }));
     });

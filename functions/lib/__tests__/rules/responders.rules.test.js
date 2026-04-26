@@ -17,7 +17,7 @@ beforeAll(async () => {
         municipalityId: 'daet',
         agencyId: 'bfp',
     });
-    await seedResponder(env, 'responder-1', { municipalityId: 'daet' });
+    await seedResponder(env, 'resp-1', { municipalityId: 'daet' });
 });
 afterAll(async () => {
     await env.cleanup();
@@ -25,7 +25,7 @@ afterAll(async () => {
 describe('responders rules', () => {
     it('responder can read own document', async () => {
         const db = authed(env, 'resp-1', staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }));
-        await assertSucceeds(getDoc(doc(db, 'responders/responder-1')));
+        await assertSucceeds(getDoc(doc(db, 'responders/resp-1')));
     });
     it('responder cannot read other responder document', async () => {
         const db = authed(env, 'resp-1', staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }));
@@ -33,7 +33,7 @@ describe('responders rules', () => {
     });
     it('municipality admin can read responders in their municipality', async () => {
         const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
-        await assertSucceeds(getDoc(doc(db, 'responders/responder-1')));
+        await assertSucceeds(getDoc(doc(db, 'responders/resp-1')));
     });
     it('responder writes are callable-only', async () => {
         const db = authed(env, 'resp-1', staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }));

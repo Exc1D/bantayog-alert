@@ -4,19 +4,88 @@ import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 const FIRESTORE_RULES_PATH = resolve(process.cwd(), '../infra/firebase/firestore.rules');
 const RTDB_RULES_PATH = resolve(process.cwd(), '../infra/firebase/database.rules.json');
 const STORAGE_RULES_PATH = resolve(process.cwd(), '../infra/firebase/storage.rules');
+function extractEmulatorHostPort(emulator) {
+    if (!emulator)
+        return null;
+    const host = emulator.host;
+    const port = emulator.port;
+    if (typeof port !== 'number' || port <= 0) {
+        console.warn(`[rules-harness] skipping emulator with invalid port: ${JSON.stringify(emulator)}`);
+        return null;
+    }
+    return { host, port };
+}
+function isEmulatorRunning(emulator) {
+    if (!emulator)
+        return false;
+    // If the hub reports a state field, require it to be "running".
+    // Absent state field is treated as running (for hub versions that omit it).
+    if ('state' in emulator) {
+        return emulator.state === 'running';
+    }
+    return true;
+}
 export async function createTestEnv(projectId) {
-    return initializeTestEnvironment({
-        projectId,
-        firestore: {
+    // Poll the hub until Firestore registers, or time out after 30 attempts (15s with 500ms poll).
+    let hubData = null;
+    for (let i = 0; i < 30; i++) {
+        try {
+            const res = await fetch('http://localhost:4400/emulators', { signal: AbortSignal.timeout(500) });
+            if (res.ok) {
+                hubData = await res.json();
+                if (hubData.firestore)
+                    break;
+            }
+        }
+        catch {
+            // not ready yet
+        }
+        await new Promise((r) => setTimeout(r, 500));
+    }
+    if (!hubData?.firestore) {
+        throw new Error('[rules-harness] Firestore emulator did not register with the hub after 15s. ' +
+            'Ensure `firebase emulators:exec` is running with `--only firestore` (or `--only firestore,database,storage`).');
+    }
+    // Even after registration, Firestore needs a moment to start accepting gRPC connections.
+    await new Promise((r) => setTimeout(r, 2000));
+    // Build config dynamically based on which emulators the hub reports as running.
+    // This avoids connection errors when only a subset of emulators is started.
+    const config = { projectId };
+    const firestoreInfo = extractEmulatorHostPort(hubData.firestore);
+    if (firestoreInfo && isEmulatorRunning(hubData.firestore)) {
+        config.firestore = {
+            host: firestoreInfo.host,
+            port: firestoreInfo.port,
             rules: readFileSync(FIRESTORE_RULES_PATH, 'utf8'),
-        },
-        database: {
+        };
+    }
+    const databaseInfo = extractEmulatorHostPort(hubData.database);
+    if (databaseInfo && isEmulatorRunning(hubData.database)) {
+        config.database = {
+            host: databaseInfo.host,
+            port: databaseInfo.port,
             rules: readFileSync(RTDB_RULES_PATH, 'utf8'),
-        },
-        storage: {
+        };
+    }
+    const storageInfo = extractEmulatorHostPort(hubData.storage);
+    if (storageInfo && isEmulatorRunning(hubData.storage)) {
+        config.storage = {
+            host: storageInfo.host,
+            port: storageInfo.port,
             rules: readFileSync(STORAGE_RULES_PATH, 'utf8'),
-        },
-    });
+        };
+    }
+    if (Object.keys(config).length === 1) {
+        throw new Error('[rules-harness] No emulators reported as running by the hub. ' +
+            'Check that the emulator suite started successfully and all requested services are enabled.');
+    }
+    try {
+        return await initializeTestEnvironment(config);
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new Error(`[rules-harness] initializeTestEnvironment failed: ${message}`, { cause: err });
+    }
 }
 export function authed(env, uid, claims) {
     return env.authenticatedContext(uid, claims).firestore();
