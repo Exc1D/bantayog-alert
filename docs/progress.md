@@ -2,6 +2,37 @@
 
 ## Current
 
+### Phase 6 Responder App — Task 6: Responder field callables (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `functions/src/callables/submit-responder-witnessed-report.ts` — new callable for responders to file a witness report while on dispatch; includes rate limiting, idempotency, report + report_private + report_ops + report_lookup + report_events + admin_notifications writes
+  - `functions/src/callables/trigger-sos.ts` — new callable to trigger SOS on an active dispatch; writes `sosTriggeredAt` to dispatch and creates admin notification
+  - `functions/src/callables/request-backup.ts` — new callable to request backup on an active dispatch; creates `backup_requests` doc and admin notification
+  - `functions/src/callables/mark-dispatch-unable-to-complete.ts` — new callable to mark a dispatch as `unable_to_complete`; updates dispatch status, resets report to `verified`, and creates dispatch + report events
+  - `functions/src/index.ts` — exports four new callables
+  - `packages/shared-validators/src/dispatches.ts` — added `unable_to_complete` to `DispatchStatus` enum validation
+  - `packages/shared-validators/src/state-machines/dispatch-states.ts` — added `unable_to_complete` as terminal state with transitions from active states
+  - `packages/shared-types/src/enums.ts` — added `unable_to_complete` to `DispatchStatus` enum
+  - `packages/shared-types/lib/` — rebuilt
+- Verification:
+  - `pnpm --filter @bantayog/functions typecheck` — PASS
+  - `pnpm --filter @bantayog/functions lint` — PASS
+
+### Phase 6 Responder App — Task 4: Native telemetry capture (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/src/services/telemetry-client.ts` — new unified telemetry client using `@capacitor-community/background-geolocation` on native, falling back to `navigator.geolocation.watchPosition` on web; exports `startTracking`, `stopTracking`, `getBatteryPercentage`
+  - `apps/responder-app/src/hooks/useResponderTelemetry.ts` — new hook that starts tracking when dispatch is active, throttles RTDB writes by motion state and battery level, validates payload with `responderTelemetryPayloadSchema`, writes to `responder_locations/{uid}` and `responders/{uid}.lastTelemetryAt`
+  - `apps/responder-app/src/App.tsx` — added `TelemetryProvider` component that feeds the first active dispatch into `useResponderTelemetry`
+  - `apps/responder-app/src/pages/DispatchDetailPage.tsx` — added `useResponderTelemetry` call scoped to the viewed dispatch
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
 ### Phase 6 Responder App — Task 3: Telemetry contracts and RTDB write boundaries (2026-04-26)
 
 - Status: DONE
