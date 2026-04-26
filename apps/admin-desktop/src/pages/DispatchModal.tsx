@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useEligibleResponders } from '../hooks/useEligibleResponders'
-import { type Freshness } from '../utils/freshness'
+import { computeFreshness, type Freshness } from '../utils/freshness'
 import { callables } from '../services/callables'
 
 const FRESHNESS_COLOR: Record<Freshness, string> = {
@@ -80,10 +80,10 @@ export function DispatchModal({
                     style={{
                       marginLeft: 8,
                       fontSize: '0.75rem',
-                      color: FRESHNESS_COLOR[r.freshness],
+                      color: FRESHNESS_COLOR[computeFreshness(r.lastTelemetryAt)],
                     }}
                   >
-                    {r.freshness}
+                    {computeFreshness(r.lastTelemetryAt)}
                   </span>
                 )}
               </label>

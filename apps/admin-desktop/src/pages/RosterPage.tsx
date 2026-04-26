@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useRosterManagement } from '../hooks/useRosterManagement'
 import { computeFreshness, type Freshness } from '../utils/freshness'
@@ -28,6 +28,16 @@ export function RosterPage() {
   const [banner, setBanner] = useState<string | null>(null)
   const [actingUid, setActingUid] = useState<string | null>(null)
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTick((t) => t + 1)
+    }, 30_000)
+    return () => {
+      clearInterval(id)
+    }
+  }, [])
 
   const toggleSelection = (uid: string) => {
     setSelectedUids((prev) => {
