@@ -7,7 +7,9 @@
 import { defineSecret } from 'firebase-functions/params';
 import { getMessaging } from 'firebase-admin/messaging';
 import { FieldValue } from 'firebase-admin/firestore';
+import { logDimension } from '@bantayog/shared-validators';
 import { adminDb } from '../admin-init.js';
+const log = logDimension('fcmSend');
 export const FCM_VAPID_PRIVATE_KEY = defineSecret('FCM_VAPID_PRIVATE_KEY');
 /**
  * Send a push notification to all FCM tokens registered for a responder.
@@ -76,18 +78,33 @@ export async function sendFcmToResponder(payload) {
     // Step 4: Remove invalid tokens from the responder's document.
     if (invalidTokens.length > 0) {
         const ref = adminDb.collection('responders').doc(uid);
-        await adminDb.runTransaction(async (tx) => {
-            const snap = await tx.get(ref);
-            if (!snap.exists)
-                return;
-            const currentTokens = snap.data()?.fcmTokens ?? [];
-            const invalidSet = new Set(invalidTokens);
-            const remainingTokens = currentTokens.filter((t) => !invalidSet.has(t));
-            tx.update(ref, {
-                fcmTokens: FieldValue.arrayRemove(...invalidTokens),
-                hasFcmToken: remainingTokens.length > 0,
+        try {
+            await adminDb.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                if (!snap.exists)
+                    return;
+                const rawData = snap.data();
+                const currentTokens = Array.isArray(rawData?.fcmTokens)
+                    ? rawData.fcmTokens
+                    : [];
+                const invalidSet = new Set(invalidTokens);
+                const remainingTokens = currentTokens.filter((t) => !invalidSet.has(t));
+                if (remainingTokens.length < currentTokens.length) {
+                    const tokensToRemove = invalidTokens.filter((t) => typeof t === 'string');
+                    tx.update(ref, {
+                        fcmTokens: FieldValue.arrayRemove(...tokensToRemove),
+                        hasFcmToken: remainingTokens.length > 0,
+                    });
+                }
             });
-        });
+        }
+        catch (err) {
+            log({
+                severity: 'WARNING',
+                code: 'fcm.cleanup.failed',
+                message: err instanceof Error ? err.message : 'FCM token cleanup failed',
+            });
+        }
         warnings.push('fcm_one_token_invalid');
     }
     return { warnings };

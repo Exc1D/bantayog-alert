@@ -131,13 +131,7 @@ export async function sendMassAlertFcm(db, opts) {
         log({
             severity: 'WARNING',
             code: 'fcm.mass.invalid_tokens',
-            message: 'Cleaned up ' +
-                String(successfulCount) +
-                '/' +
-                String(invalidTokens.length) +
-                ' invalid token(s) from ' +
-                String(ownerToInvalidTokens.size) +
-                ' responder(s)',
+            message: `Cleaned up ${String(invalidTokens.length)} invalid token(s) across ${String(ownerToInvalidTokens.size)} responder(s) in ${String(successfulCount)} successful transaction(s)`,
         });
     }
     log({
