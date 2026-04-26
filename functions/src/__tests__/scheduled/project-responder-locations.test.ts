@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import type { Database } from 'firebase-admin/database'
 import {
@@ -15,6 +15,10 @@ beforeEach(async () => {
     database: { host: 'localhost', port: 9000 },
   })
   await testEnv.clearDatabase()
+})
+
+afterEach(async () => {
+  await testEnv.cleanup()
 })
 
 describe('roundToGrid', () => {

@@ -53,13 +53,21 @@ afterAll(async () => {
   await testEnv.cleanup()
 })
 
-async function seedDispatchActive(
-  env: RulesTestEnvironment,
-  dispatchId: string,
-  reportId: string,
-  responderUid: string,
-  status: string,
-): Promise<void> {
+interface SeedDispatchActiveOpts {
+  env: RulesTestEnvironment
+  dispatchId: string
+  reportId: string
+  responderUid: string
+  status: string
+}
+
+async function seedDispatchActive({
+  env,
+  dispatchId,
+  reportId,
+  responderUid,
+  status,
+}: SeedDispatchActiveOpts): Promise<void> {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
     await db
@@ -83,7 +91,13 @@ async function seedDispatchActive(
 
 describe('requestBackupCore', () => {
   it('creates a backup request for an active dispatch', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-1', 'report-1', 'r1', 'on_scene')
+    await seedDispatchActive({
+      env: testEnv,
+      dispatchId: 'dispatch-1',
+      reportId: 'report-1',
+      responderUid: 'r1',
+      status: 'on_scene',
+    })
     await seedActiveAccount(testEnv, {
       uid: 'r1',
       role: 'responder',
@@ -122,7 +136,13 @@ describe('requestBackupCore', () => {
   })
 
   it('rejects when dispatch is not active', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-2', 'report-2', 'r1', 'pending')
+    await seedDispatchActive({
+      env: testEnv,
+      dispatchId: 'dispatch-2',
+      reportId: 'report-2',
+      responderUid: 'r1',
+      status: 'pending',
+    })
     await seedActiveAccount(testEnv, {
       uid: 'r1',
       role: 'responder',
@@ -144,7 +164,13 @@ describe('requestBackupCore', () => {
   })
 
   it('is idempotent on same key', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-3', 'report-3', 'r1', 'en_route')
+    await seedDispatchActive({
+      env: testEnv,
+      dispatchId: 'dispatch-3',
+      reportId: 'report-3',
+      responderUid: 'r1',
+      status: 'en_route',
+    })
     await seedActiveAccount(testEnv, {
       uid: 'r1',
       role: 'responder',
@@ -177,7 +203,13 @@ describe('requestBackupCore', () => {
   })
 
   it('rejects when caller is not the assigned responder', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-4', 'report-4', 'r1', 'on_scene')
+    await seedDispatchActive({
+      env: testEnv,
+      dispatchId: 'dispatch-4',
+      reportId: 'report-4',
+      responderUid: 'r1',
+      status: 'on_scene',
+    })
     await seedActiveAccount(testEnv, {
       uid: 'r2',
       role: 'responder',
