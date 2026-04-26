@@ -15,6 +15,19 @@
   - `pnpm --filter @bantayog/shared-validators test` — PASS (223 tests)
   - `firebase emulators:exec --only firestore,database,storage "pnpm --filter @bantayog/functions exec vitest run src/__tests__/rtdb.rules.test.ts src/__tests__/rules/responders.rules.test.ts"` — PASS (22 tests)
 
+### Phase 6 Responder App — Task 2: Native push abstraction (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `apps/responder-app/src/services/push-client.ts` — new unified push abstraction using `@capacitor/push-notifications` on native, falling back to Firebase web FCM on web
+  - `apps/responder-app/src/hooks/useRegisterFcmToken.ts` — now calls `acquirePushToken()` from push-client instead of directly using `acquireFcmToken()`; removed service worker logic from hook
+  - `apps/responder-app/src/App.tsx` — `FcmSetup` skips SW registration on native; added `NotificationRouter` component that wires foreground push listener and routes notification tap-throughs to `/dispatches/:id`
+- Summary: Replaced the web-only FCM path with a runtime-native push abstraction. On `Capacitor.isNativePlatform()`: uses Capacitor push-notifications plugin for token registration, foreground handling, and tap-through deep linking. On web: preserves existing service worker + Firebase messaging flow. Firestore write contract (`responders/{uid}.hasFcmToken = true`) preserved.
+- Verification:
+  - `pnpm --filter @bantayog/responder-app typecheck` — PASS
+  - `pnpm --filter @bantayog/responder-app lint` — PASS
+
 ### Phase 6 Responder App — Task 1: Lock native mobile foundation (2026-04-26)
 
 - Status: DONE
