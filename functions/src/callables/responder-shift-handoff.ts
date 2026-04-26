@@ -34,7 +34,7 @@ const log = logDimension('responderShiftHandoff')
 const initiateSchema = z
   .object({
     toUid: z.string().min(1),
-    reason: z.string().max(1000),
+    reason: z.string().trim().min(1).max(1000),
     idempotencyKey: z.uuid(),
   })
   .strict()
@@ -63,11 +63,11 @@ export async function initiateResponderHandoffCore(
   actor: ResponderHandoffActor,
   correlationId: string,
 ): Promise<InitiateResult> {
-  if (actor.claims.active !== true) {
+  if (actor.claims.accountStatus !== 'active') {
     log({
       severity: 'ERROR',
       code: 'responderHandoff.initiate.inactive',
-      message: 'Caller account is not active',
+      message: 'Caller account status is not active',
       data: { uid: actor.uid, correlationId },
     })
     return { success: false, errorCode: 'permission-denied' }
@@ -150,11 +150,11 @@ export async function acceptResponderHandoffCore(
   actor: ResponderHandoffActor,
   correlationId: string,
 ): Promise<AcceptResult> {
-  if (actor.claims.active !== true) {
+  if (actor.claims.accountStatus !== 'active') {
     log({
       severity: 'ERROR',
       code: 'responderHandoff.accept.inactive',
-      message: 'Caller account is not active',
+      message: 'Caller account status is not active',
       data: { uid: actor.uid, correlationId },
     })
     return { success: false, errorCode: 'permission-denied' }
@@ -218,7 +218,11 @@ export async function acceptResponderHandoffCore(
 }
 
 export const initiateResponderHandoff = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: process.env.NODE_ENV === 'production',
+    maxInstances: 100,
+  },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token as Record<string, unknown> | null
@@ -226,8 +230,8 @@ export const initiateResponderHandoff = onCall(
     if (claims.role !== 'responder') {
       throw new HttpsError('permission-denied', 'responder role required')
     }
-    if (claims.active !== true) {
-      throw new HttpsError('permission-denied', 'account is not active')
+    if (claims.accountStatus !== 'active') {
+      throw new HttpsError('permission-denied', 'account status is not active')
     }
 
     const parsed = initiateSchema.safeParse(req.data)
@@ -265,7 +269,11 @@ export const initiateResponderHandoff = onCall(
 )
 
 export const acceptResponderHandoff = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: process.env.NODE_ENV === 'production',
+    maxInstances: 100,
+  },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token as Record<string, unknown> | null
@@ -273,8 +281,8 @@ export const acceptResponderHandoff = onCall(
     if (claims.role !== 'responder') {
       throw new HttpsError('permission-denied', 'responder role required')
     }
-    if (claims.active !== true) {
-      throw new HttpsError('permission-denied', 'account is not active')
+    if (claims.accountStatus !== 'active') {
+      throw new HttpsError('permission-denied', 'account status is not active')
     }
 
     const parsed = acceptSchema.safeParse(req.data)
