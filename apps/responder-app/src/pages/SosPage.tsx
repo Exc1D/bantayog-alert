@@ -27,7 +27,11 @@ export function SosPage() {
         WARNING: This will trigger an emergency SOS alert to dispatch control. Only use in genuine
         emergencies.
       </p>
-      {error && <p style={{ color: 'red' }}>{error.message}</p>}
+      {error && (
+        <p role="alert" aria-live="assertive" style={{ color: 'red' }}>
+          Unable to trigger SOS. Please try again.
+        </p>
+      )}
       <button
         onClick={() => {
           void handleConfirm()

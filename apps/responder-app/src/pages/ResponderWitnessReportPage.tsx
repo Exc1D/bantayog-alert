@@ -18,7 +18,8 @@ export function ResponderWitnessReportPage() {
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!reportType || !description || !severity) {
+    const normalizedDescription = description.trim()
+    if (!reportType || !normalizedDescription || !severity) {
       setValidationError('Report type, description, and severity are required.')
       return
     }
@@ -26,7 +27,7 @@ export function ResponderWitnessReportPage() {
     try {
       await submit({
         reportType,
-        description: description.trim(),
+        description: normalizedDescription,
         severity,
         ...(photoUrl.trim() ? { photoUrl: photoUrl.trim() } : {}),
       })
