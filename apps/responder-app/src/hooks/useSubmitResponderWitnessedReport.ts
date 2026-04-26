@@ -35,6 +35,19 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
       throw err
     }
     const normalizedDescription = payload.description.trim()
+    const normalizedPhotoUrl = payload.photoUrl?.trim()
+    if (normalizedPhotoUrl) {
+      try {
+        const url = new URL(normalizedPhotoUrl)
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          throw new Error('invalid protocol')
+        }
+      } catch {
+        const err = new Error('photo_url_invalid')
+        setError(err)
+        throw err
+      }
+    }
     const allowedSeverity = new Set(['low', 'medium', 'high'])
     const allowedReportTypes = new Set([
       'flood',
@@ -79,8 +92,11 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
         { reportId: string; publicTrackingRef: string }
       >(functions, 'submitResponderWitnessedReport')
       await fn({
-        dispatchId,
-        ...payload,
+        dispatchId: normalizedDispatchId,
+        reportType: payload.reportType,
+        description: normalizedDescription,
+        severity: payload.severity,
+        ...(normalizedPhotoUrl ? { photoUrl: normalizedPhotoUrl } : {}),
         publicLocation,
         idempotencyKey: keyRef.current,
       })

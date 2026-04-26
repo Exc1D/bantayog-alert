@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import {
@@ -65,6 +65,11 @@ export function useDispatch(dispatchId: string | undefined) {
   const [dispatch, setDispatch] = useState<DispatchDoc | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | undefined>(undefined)
+  const latestDispatchIdRef = useRef<string | undefined>(dispatchId)
+
+  useEffect(() => {
+    latestDispatchIdRef.current = dispatchId
+  }, [dispatchId])
 
   useEffect(() => {
     if (!dispatchId) {
@@ -115,7 +120,8 @@ export function useDispatch(dispatchId: string | undefined) {
   }, [dispatchId])
 
   const refresh = useCallback(async () => {
-    if (!dispatchId) {
+    const requestedDispatchId = dispatchId
+    if (!requestedDispatchId) {
       queueMicrotask(() => {
         setDispatch(undefined)
         setError(undefined)
@@ -125,9 +131,9 @@ export function useDispatch(dispatchId: string | undefined) {
     }
     setLoading(true)
     try {
-      const snap = await getDoc(doc(db, 'dispatches', dispatchId))
+      const snap = await getDoc(doc(db, 'dispatches', requestedDispatchId))
+      if (latestDispatchIdRef.current !== requestedDispatchId) return
       if (!snap.exists()) {
-        setLoading(false)
         setDispatch(undefined)
         setError(undefined)
         return
@@ -143,11 +149,14 @@ export function useDispatch(dispatchId: string | undefined) {
       })
       setError(undefined)
     } catch (err: unknown) {
+      if (latestDispatchIdRef.current !== requestedDispatchId) return
       console.error('[useDispatch] refresh failed:', err)
       setDispatch(undefined)
       setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
-      setLoading(false)
+      if (latestDispatchIdRef.current === requestedDispatchId) {
+        setLoading(false)
+      }
     }
   }, [dispatchId])
 

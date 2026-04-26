@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
+import { deleteField, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from '../app/firebase'
 
 export type ResponderAvailabilityStatus = 'available' | 'unavailable' | 'off_duty' | 'on_break'
@@ -70,8 +70,8 @@ export function useResponderAvailability(uid: string | undefined): UseResponderA
         ref,
         {
           availabilityStatus: newStatus,
-          ...(trimmedReason ? { availabilityReason: trimmedReason } : {}),
-          updatedAt: serverTimestamp(),
+          availabilityReason: trimmedReason ?? deleteField(),
+          updatedAt: Date.now(),
         },
         { merge: true },
       )

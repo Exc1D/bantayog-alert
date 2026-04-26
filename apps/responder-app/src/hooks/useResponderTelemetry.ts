@@ -70,6 +70,8 @@ export function useResponderTelemetry(
         } catch {
           batteryPct = 100
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (cancelled) return
         const batteryLow = batteryPct < 20
         const intervalMs = getIntervalMs(motionState, batteryLow)
         const now = Date.now()
@@ -93,8 +95,14 @@ export function useResponderTelemetry(
 
         try {
           const validated = responderTelemetryPayloadSchema.parse(payload)
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (cancelled) return
           await set(ref(rtdb, `responder_locations/${uid}`), validated)
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (cancelled) return
           try {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (cancelled) return
             await setDoc(doc(db, 'responders', uid), { lastTelemetryAt: now }, { merge: true })
           } catch (fsErr: unknown) {
             console.error(
@@ -103,6 +111,8 @@ export function useResponderTelemetry(
             )
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (cancelled) return
           // Fire-and-forget metadata write for projection job
           const municipalityId = claims?.municipalityId
           const agencyId = claims?.agencyId
