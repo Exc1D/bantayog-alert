@@ -108,3 +108,9 @@ Durable rules worth keeping across sessions.
 - **Shared package schemas must be re-exported from `index.ts`.** Defining a schema in a module file is not enough — if it's not in `src/index.ts`, the built `lib/index.js` won't expose it and downstream packages will get `TS2724: has no exported member named 'X'`.
 - **Capacitor plugin void-return callbacks need braces.** `return () => clearInterval(id)` triggers `@typescript-eslint/no-confusing-void-expression` because `clearInterval` returns `void`. Use `return () => { clearInterval(id) }`.
 - **When refactoring from `refCount` to `Set<subscribers>`, remove ALL stale `refCount` references.** Leaving `refCount--` behind causes runtime `ReferenceError` because the variable no longer exists.
+
+## CodeRabbit Round 3 Review Fixes (2026-04-27)
+
+- **Firestore rules for optional fields need explicit null/omitted handling.** When a field is `.optional()` in Zod (e.g., `availabilityReason`), the Firestore rule must handle three cases: field not in `affectedKeys()` (not changed), field is `null` (explicitly cleared), or field is a valid string within length bounds. Using `affectedKeys()` to check whether the field was even part of the write avoids false-rejection on unrelated updates.
+- **CodeQL "Useless conditional" on closure-mutated booleans is a false positive.** `let cancelled = false` mutated in a cleanup closure will be flagged, but the checks are genuinely needed between `await` points. `eslint-disable` is the correct response — the static analyzer cannot model async closure mutation.
+- **PR review "out of sync" errors may be stale.** Always verify by running the codegen (`pnpm exec tsx scripts/build-rules.ts`) and checking `git diff` before making changes — the sync issue may have been resolved in a prior commit.

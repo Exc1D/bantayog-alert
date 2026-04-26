@@ -254,7 +254,10 @@ service cloud.firestore {
                        .hasOnly(['availabilityStatus', 'availabilityReason', 'updatedAt', 'lastTelemetryAt'])
                     && request.resource.data.availabilityStatus in ['available', 'on_duty', 'off_duty', 'on_break', 'unavailable']
                     && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is timestamp)
-                    && (request.resource.data.availabilityStatus == 'available' || (request.resource.data.availabilityReason is string && request.resource.data.availabilityReason.size() >= 1));
+                    && (request.resource.data.availabilityStatus == 'available' || (request.resource.data.availabilityReason is string && request.resource.data.availabilityReason.size() >= 1))
+                    && (!('availabilityReason' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.availabilityReason == null
+                        || (request.resource.data.availabilityReason is string && request.resource.data.availabilityReason.size() <= 500));
       allow create, delete: if false;
     }
 

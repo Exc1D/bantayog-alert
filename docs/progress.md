@@ -646,6 +646,17 @@
 ### CodeRabbit Round 2 Review Fixes (2026-04-26)
 
 - Status: complete
+
+### CodeRabbit Round 3 / PR #68 Review Fixes (2026-04-27)
+
+- Status: in progress
+- Files touched: `infra/firebase/firestore.rules.template`, `infra/firebase/firestore.rules`
+- Key fixes:
+  - **availabilityReason validation**: Added `size() <= 500` cap and null/omitted handling to the responder update rule, matching `z.string().max(500).optional()` from shared-validators.
+  - **Stale findings verified as already resolved**: Field name mismatch (`availability` → `availabilityStatus`) already fixed in prior commit. Rules already in sync with codegen. Useless `cancelled` conditional already addressed.
+- Verification:
+  - `pnpm exec tsx scripts/build-rules.ts` → PASS (no diff after regeneration)
+  - `pnpm exec vitest run` → 232 tests PASS
 - Files touched: 27 files across responder-app, admin-desktop, functions, shared-validators, infra/firebase
 - Key fixes:
   - **telemetry-client.ts**: Removed stale `refCount` references, fixed missing return of unsubscribe function on native path, added `subscribers.delete(onLocation)` on setup failure to prevent leaks.
