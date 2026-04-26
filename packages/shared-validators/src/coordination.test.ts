@@ -86,7 +86,7 @@ describe('Coordination Schemas', () => {
         createdAt: 1713350400000,
         forwardedAt: 1713350401000,
         forwardMethod: 'sms',
-        ndrrrcRecipient: 'NDRRMC-ops',
+        ndrrmcRecipient: 'NDRRMC-ops',
         sentAt: 1713350402000,
         schemaVersion: 1,
       }

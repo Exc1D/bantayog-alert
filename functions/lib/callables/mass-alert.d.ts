@@ -75,7 +75,7 @@ export declare function requestMassAlertEscalationCore(db: FirebaseFirestore.Fir
 export declare function forwardMassAlertToNDRRMCCore(db: FirebaseFirestore.Firestore, input: {
     requestId: string;
     forwardMethod: string;
-    ndrrrcRecipient: string;
+    ndrrmcRecipient: string;
 }, actor: MassAlertActor): Promise<{
     success: false;
     errorCode: "permission-denied";

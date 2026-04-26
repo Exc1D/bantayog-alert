@@ -75,7 +75,7 @@ export const massAlertRequestDocSchema = z
     createdAt: z.number().int(),
     forwardedAt: z.number().int().optional(),
     forwardMethod: z.string().optional(),
-    ndrrrcRecipient: z.string().optional(),
+    ndrrmcRecipient: z.string().optional(),
     acknowledgedAt: z.number().int().optional(),
     cancelledAt: z.number().int().optional(),
     sentAt: z.number().int().optional(),

@@ -51,6 +51,12 @@ export function renderTemplate(args) {
     return template.replace('{publicRef}', args.vars.publicRef);
 }
 export function renderBroadcastTemplate(args) {
+    if (typeof args.vars.municipalityName !== 'string') {
+        throw new SmsTemplateError('Invalid or missing municipalityName');
+    }
+    if (typeof args.vars.body !== 'string') {
+        throw new SmsTemplateError('Invalid or missing body');
+    }
     const municipalityName = args.vars.municipalityName.trim();
     const body = args.vars.body.trim();
     if (!municipalityName) {

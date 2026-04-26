@@ -92,7 +92,7 @@ export declare const massAlertRequestDocSchema: z.ZodObject<{
     createdAt: z.ZodNumber;
     forwardedAt: z.ZodOptional<z.ZodNumber>;
     forwardMethod: z.ZodOptional<z.ZodString>;
-    ndrrrcRecipient: z.ZodOptional<z.ZodString>;
+    ndrrmcRecipient: z.ZodOptional<z.ZodString>;
     acknowledgedAt: z.ZodOptional<z.ZodNumber>;
     cancelledAt: z.ZodOptional<z.ZodNumber>;
     sentAt: z.ZodOptional<z.ZodNumber>;

@@ -42,6 +42,9 @@ beforeAll(async () => {
 beforeEach(async () => {
     await testEnv.clearFirestore();
 });
+// Firestore emulator doesn't support count() aggregation queries.
+// This mock intercepts .where().where().count().get() chains and
+// returns snap.docs.length as the count.
 function mockCountOnDb(db) {
     const originalCollection = db.collection.bind(db);
     collectionSpy = vi.spyOn(db, 'collection').mockImplementation((collectionPath) => {
@@ -100,11 +103,11 @@ async function seedResponder(id, hasFcmToken) {
         });
     });
 }
-async function seedConsentRecord(id, municipalityId, followUpConsent) {
+async function seedConsentRecord(id, municipalityId, followUpConsent, phone) {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
         await setDoc(doc(ctx.firestore(), 'report_sms_consent', id), {
             reportId: `r-${id}`,
-            phone: '+639170000000',
+            phone: phone ?? '+639170000001',
             locale: 'tl',
             smsConsent: true,
             municipalityId,
@@ -266,9 +269,9 @@ describe('sendMassAlert', () => {
         expect(r1.requestId).toBe(r2.requestId);
     });
     it('queues SMS outbox entries when smsCount > 0', async () => {
-        process.env.SMS_MSISDN_HASH_SALT = 'test-salt';
-        await seedConsentRecord('sms-1', 'daet', true);
-        await seedConsentRecord('sms-2', 'daet', true);
+        process.env.SMS_MSISDN_HASH_SALT = 'test-salt-at-least-16-chars';
+        await seedConsentRecord('sms-1', 'daet', true, '+639170000001');
+        await seedConsentRecord('sms-2', 'daet', true, '+639170000002');
         const result = await sendMassAlertCore(adminDb, {
             reachPlan: {
                 route: 'direct',
@@ -333,7 +336,7 @@ describe('forwardMassAlertToNDRRMC', () => {
         const result = await forwardMassAlertToNDRRMCCore(adminDb, {
             requestId: 'req-1',
             forwardMethod: 'email',
-            ndrrrcRecipient: 'ndrrmc@gov.ph',
+            ndrrmcRecipient: 'ndrrmc@gov.ph',
         }, muniAdminActor);
         expect(result.success).toBe(false);
         expect(result.errorCode).toBe('permission-denied');
@@ -343,13 +346,13 @@ describe('forwardMassAlertToNDRRMC', () => {
         const result = await forwardMassAlertToNDRRMCCore(adminDb, {
             requestId: 'req-2',
             forwardMethod: 'email',
-            ndrrrcRecipient: 'ndrrmc@gov.ph',
+            ndrrmcRecipient: 'ndrrmc@gov.ph',
         }, superAdminActor);
         expect(result.success).toBe(true);
         const updated = await adminDb.collection('mass_alert_requests').doc('req-2').get();
         expect(updated.data()?.status).toBe('forwarded_to_ndrrmc');
         expect(updated.data()?.forwardMethod).toBe('email');
-        expect(updated.data()?.ndrrrcRecipient).toBe('ndrrmc@gov.ph');
+        expect(updated.data()?.ndrrmcRecipient).toBe('ndrrmc@gov.ph');
     });
     it('rejects forwarding a request that is not pending_ndrrmc_review', async () => {
         await testEnv.withSecurityRulesDisabled(async (ctx) => {
@@ -366,7 +369,7 @@ describe('forwardMassAlertToNDRRMC', () => {
         const result = await forwardMassAlertToNDRRMCCore(adminDb, {
             requestId: 'req-3',
             forwardMethod: 'email',
-            ndrrrcRecipient: 'ndrrmc@gov.ph',
+            ndrrmcRecipient: 'ndrrmc@gov.ph',
         }, superAdminActor);
         expect(result.success).toBe(false);
         expect(result.errorCode).toBe('failed-precondition');

@@ -55,6 +55,9 @@ beforeEach(async () => {
   await testEnv.clearFirestore()
 })
 
+// Firestore emulator doesn't support count() aggregation queries.
+// This mock intercepts .where().where().count().get() chains and
+// returns snap.docs.length as the count.
 function mockCountOnDb(db: Firestore) {
   const originalCollection = db.collection.bind(db)
   collectionSpy = vi.spyOn(db, 'collection').mockImplementation((collectionPath: string) => {
@@ -127,11 +130,16 @@ async function seedResponder(id: string, hasFcmToken: boolean) {
   })
 }
 
-async function seedConsentRecord(id: string, municipalityId: string, followUpConsent: boolean) {
+async function seedConsentRecord(
+  id: string,
+  municipalityId: string,
+  followUpConsent: boolean,
+  phone?: string,
+) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'report_sms_consent', id), {
       reportId: `r-${id}`,
-      phone: '+639170000000',
+      phone: phone ?? '+639170000001',
       locale: 'tl',
       smsConsent: true,
       municipalityId,
@@ -358,9 +366,9 @@ describe('sendMassAlert', () => {
   })
 
   it('queues SMS outbox entries when smsCount > 0', async () => {
-    process.env.SMS_MSISDN_HASH_SALT = 'test-salt'
-    await seedConsentRecord('sms-1', 'daet', true)
-    await seedConsentRecord('sms-2', 'daet', true)
+    process.env.SMS_MSISDN_HASH_SALT = 'test-salt-at-least-16-chars'
+    await seedConsentRecord('sms-1', 'daet', true, '+639170000001')
+    await seedConsentRecord('sms-2', 'daet', true, '+639170000002')
     const result = await sendMassAlertCore(
       adminDb,
       {
@@ -443,7 +451,7 @@ describe('forwardMassAlertToNDRRMC', () => {
       {
         requestId: 'req-1',
         forwardMethod: 'email',
-        ndrrrcRecipient: 'ndrrmc@gov.ph',
+        ndrrmcRecipient: 'ndrrmc@gov.ph',
       },
       muniAdminActor,
     )
@@ -458,7 +466,7 @@ describe('forwardMassAlertToNDRRMC', () => {
       {
         requestId: 'req-2',
         forwardMethod: 'email',
-        ndrrrcRecipient: 'ndrrmc@gov.ph',
+        ndrrmcRecipient: 'ndrrmc@gov.ph',
       },
       superAdminActor,
     )
@@ -466,7 +474,7 @@ describe('forwardMassAlertToNDRRMC', () => {
     const updated = await adminDb.collection('mass_alert_requests').doc('req-2').get()
     expect(updated.data()?.status).toBe('forwarded_to_ndrrmc')
     expect(updated.data()?.forwardMethod).toBe('email')
-    expect(updated.data()?.ndrrrcRecipient).toBe('ndrrmc@gov.ph')
+    expect(updated.data()?.ndrrmcRecipient).toBe('ndrrmc@gov.ph')
   })
 
   it('rejects forwarding a request that is not pending_ndrrmc_review', async () => {
@@ -486,7 +494,7 @@ describe('forwardMassAlertToNDRRMC', () => {
       {
         requestId: 'req-3',
         forwardMethod: 'email',
-        ndrrrcRecipient: 'ndrrmc@gov.ph',
+        ndrrmcRecipient: 'ndrrmc@gov.ph',
       },
       superAdminActor,
     )

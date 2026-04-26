@@ -117,7 +117,7 @@ export const callables = {
   forwardMassAlertToNDRRMC: (payload: {
     requestId: string
     forwardMethod: 'email' | 'sms' | 'portal'
-    ndrrrcRecipient: string
+    ndrrmcRecipient: string
   }) =>
     httpsCallable<typeof payload, { success: boolean }>(
       functions,
