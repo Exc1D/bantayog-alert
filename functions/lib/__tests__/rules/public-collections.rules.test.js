@@ -138,7 +138,7 @@ describe('privileged read tests for callable collections', () => {
             role: 'provincial_superadmin',
             permittedMunicipalityIds: ['daet'],
         });
-        // Seed command_channel_threads so rules can resolve participantUids
+        // Seed command_channel_threads and command_channel_messages atomically
         await env.withSecurityRulesDisabled(async (ctx) => {
             await setDoc(doc(ctx.firestore(), 'command_channel_threads', 'thread-1'), {
                 threadId: 'thread-1',
@@ -146,9 +146,6 @@ describe('privileged read tests for callable collections', () => {
                 municipalityId: 'daet',
                 createdAt: ts,
             });
-        });
-        // Seed command_channel_messages so rules can resolve thread participantUids via get()
-        await env.withSecurityRulesDisabled(async (ctx) => {
             await setDoc(doc(ctx.firestore(), 'command_channel_messages', 'msg-1'), {
                 messageId: 'msg-1',
                 threadId: 'thread-1',
@@ -181,7 +178,7 @@ describe('privileged read tests for callable collections', () => {
         const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
         await assertSucceeds(getDocs(collection(db, 'sms_outbox')));
     });
-    it('superadmin with active privileged claim can read command_channel_threads', async () => {
+    it('superadmin with active privileged claim can get a command_channel_thread document', async () => {
         // Document-level read confirms the superadmin can access a thread they participate in.
         // Collection-level getDocs fails in the emulator due to an indexing delay after seeding,
         // even though the document exists and getDoc succeeds. getDoc validates the same rule.
@@ -190,7 +187,7 @@ describe('privileged read tests for callable collections', () => {
         // TODO(BANTAYOG-PHASE6): getDocs (list) fails because rules reference resource.data.participantUids
         // which is undefined during list evaluation. Rules need separate allow list rule.
     });
-    it('superadmin with active privileged claim can read command_channel_messages', async () => {
+    it('superadmin with active privileged claim can get a command_channel_message document', async () => {
         const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
         await assertSucceeds(getDoc(doc(db, 'command_channel_messages', 'msg-1')));
         // TODO(BANTAYOG-PHASE6): getDocs (list) fails because rules reference resource.data.threadId

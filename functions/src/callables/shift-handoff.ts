@@ -9,7 +9,11 @@ import {
 import { z } from 'zod'
 import { adminDb } from '../admin-init.js'
 import { bantayogErrorToHttps } from './https-error.js'
-import { withIdempotency } from '../idempotency/guard.js'
+import {
+  withIdempotency,
+  IdempotencyInProgressError,
+  IdempotencyMismatchError,
+} from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { BantayogError, logDimension, type ReportStatus } from '@bantayog/shared-validators'
 import { type UserRole } from '@bantayog/shared-types'
@@ -70,11 +74,11 @@ export async function initiateShiftHandoffCore(
   }
 
   const municipalityId = actor.claims.municipalityId
-  if (!municipalityId) {
+  if (actor.claims.role === 'municipal_admin' && !municipalityId) {
     log({
       severity: 'ERROR',
       code: 'handoff.initiate.missing_municipality',
-      message: 'municipalityId missing',
+      message: 'municipalityId missing for municipal_admin',
       data: { uid: actor.uid, correlationId },
     })
     return { success: false, errorCode: 'permission-denied' }
@@ -190,7 +194,7 @@ export async function acceptShiftHandoffCore(
           if (handoff.toUid === actor.uid) {
             return { success: true as const }
           }
-          return { success: false, errorCode: 'already-accepted' }
+          return { success: false, errorCode: 'already-exists' }
         }
 
         tx.update(snap.ref, {
@@ -208,7 +212,15 @@ export async function acceptShiftHandoffCore(
         return { success: true as const }
       })
     },
-  )
+  ).catch((err: unknown): { result: AcceptResult; fromCache: boolean } => {
+    if (err instanceof IdempotencyInProgressError) {
+      return { result: { success: false, errorCode: 'resource-exhausted' }, fromCache: false }
+    }
+    if (err instanceof IdempotencyMismatchError) {
+      return { result: { success: false, errorCode: 'already-exists' }, fromCache: false }
+    }
+    throw err
+  })
 
   return cached
 }

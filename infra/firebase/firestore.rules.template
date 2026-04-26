@@ -61,7 +61,11 @@ service cloud.firestore {
           ])
           && request.resource.data.keys().hasAll([
             'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload'
-          ]);
+          ])
+          && request.resource.data.reporterUid is string
+          && request.resource.data.clientCreatedAt is number
+          && request.resource.data.idempotencyKey is string
+          && request.resource.data.payload is map;
       allow update, delete: if false;
     }
 

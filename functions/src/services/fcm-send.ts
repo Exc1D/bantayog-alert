@@ -100,12 +100,14 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
         const snap = await tx.get(ref)
         if (!snap.exists) return
         const rawData = snap.data()
-        const currentTokens: string[] = Array.isArray(rawData?.fcmTokens)
-          ? (rawData.fcmTokens as string[])
-          : []
+        const rawTokens: unknown[] = Array.isArray(rawData?.fcmTokens) ? rawData.fcmTokens : []
+        const currentTokens = rawTokens.filter((t): t is string => typeof t === 'string')
         const invalidSet = new Set(invalidTokens)
         const remainingTokens = currentTokens.filter((t) => !invalidSet.has(t))
-        if (remainingTokens.length < currentTokens.length) {
+        if (
+          remainingTokens.length < currentTokens.length ||
+          rawTokens.length !== currentTokens.length
+        ) {
           const tokensToRemove = invalidTokens.filter((t) => typeof t === 'string')
           tx.update(ref, {
             fcmTokens: FieldValue.arrayRemove(...tokensToRemove),

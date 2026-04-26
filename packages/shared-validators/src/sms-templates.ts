@@ -80,6 +80,10 @@ interface BroadcastRenderArgs {
 }
 
 export function renderBroadcastTemplate(args: BroadcastRenderArgs): string {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (!args?.vars || typeof args.vars !== 'object') {
+    throw new SmsTemplateError('Invalid or missing args.vars')
+  }
   if (typeof args.vars.municipalityName !== 'string') {
     throw new SmsTemplateError('Invalid or missing municipalityName')
   }

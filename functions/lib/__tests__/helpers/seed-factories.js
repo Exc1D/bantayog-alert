@@ -149,12 +149,11 @@ export async function seedDispatchRT(env, dispatchId, overrides = {}) {
         // Extract assignedTo separately so we can merge with defaults instead of overwriting
         const { assignedTo: assignedToOverride, ...restOverrides } = overrides;
         const mergedAssignedTo = {
-            uid: assignedToOverride?.uid ?? '',
+            ...(assignedToOverride?.uid !== undefined ? { uid: assignedToOverride.uid } : {}),
             agencyId: assignedToOverride?.agencyId ?? 'agency-1',
             municipalityId: assignedToOverride?.municipalityId ?? 'daet',
         };
         await setDoc(doc(db, 'dispatches', dispatchId), {
-            dispatchId,
             municipalityId: 'daet',
             reportId: 'report-1',
             agencyId: 'agency-1',
@@ -165,8 +164,8 @@ export async function seedDispatchRT(env, dispatchId, overrides = {}) {
             updatedAt: ts,
             schemaVersion: 1,
             ...restOverrides,
-            // assignedTo placed last: restOverrides cannot contain it (destructured out above),
-            // so mergedAssignedTo always wins
+            // dispatchId and assignedTo placed last so restOverrides cannot overwrite them
+            dispatchId,
             assignedTo: mergedAssignedTo,
         });
     });

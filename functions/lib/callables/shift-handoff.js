@@ -4,7 +4,7 @@ import { onCall, HttpsError, } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { adminDb } from '../admin-init.js';
 import { bantayogErrorToHttps } from './https-error.js';
-import { withIdempotency } from '../idempotency/guard.js';
+import { withIdempotency, IdempotencyInProgressError, IdempotencyMismatchError, } from '../idempotency/guard.js';
 import { checkRateLimit } from '../services/rate-limit.js';
 import { BantayogError, logDimension } from '@bantayog/shared-validators';
 import {} from '@bantayog/shared-types';
@@ -31,11 +31,11 @@ export async function initiateShiftHandoffCore(db, input, actor, correlationId) 
         return { success: false, errorCode: 'permission-denied' };
     }
     const municipalityId = actor.claims.municipalityId;
-    if (!municipalityId) {
+    if (actor.claims.role === 'municipal_admin' && !municipalityId) {
         log({
             severity: 'ERROR',
             code: 'handoff.initiate.missing_municipality',
-            message: 'municipalityId missing',
+            message: 'municipalityId missing for municipal_admin',
             data: { uid: actor.uid, correlationId },
         });
         return { success: false, errorCode: 'permission-denied' };
@@ -128,7 +128,7 @@ export async function acceptShiftHandoffCore(db, input, actor, correlationId) {
                 if (handoff.toUid === actor.uid) {
                     return { success: true };
                 }
-                return { success: false, errorCode: 'already-accepted' };
+                return { success: false, errorCode: 'already-exists' };
             }
             tx.update(snap.ref, {
                 status: 'accepted',
@@ -143,6 +143,14 @@ export async function acceptShiftHandoffCore(db, input, actor, correlationId) {
             });
             return { success: true };
         });
+    }).catch((err) => {
+        if (err instanceof IdempotencyInProgressError) {
+            return { result: { success: false, errorCode: 'resource-exhausted' }, fromCache: false };
+        }
+        if (err instanceof IdempotencyMismatchError) {
+            return { result: { success: false, errorCode: 'already-exists' }, fromCache: false };
+        }
+        throw err;
     });
     return cached;
 }

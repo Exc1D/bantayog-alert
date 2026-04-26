@@ -5,7 +5,11 @@ import { BantayogError, logDimension } from '@bantayog/shared-validators'
 import type { UserRole } from '@bantayog/shared-types'
 import { adminDb } from '../admin-init.js'
 import { bantayogErrorToHttps } from './https-error.js'
-import { withIdempotency, IdempotencyInProgressError } from '../idempotency/guard.js'
+import {
+  withIdempotency,
+  IdempotencyInProgressError,
+  IdempotencyMismatchError,
+} from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 
 const log = logDimension('mergeDuplicates')
@@ -211,6 +215,9 @@ export async function mergeDuplicatesCore(
   ).catch((err: unknown): { result: MergeDuplicatesResult; fromCache: boolean } => {
     if (err instanceof IdempotencyInProgressError) {
       return { result: { success: false, errorCode: 'resource-exhausted' }, fromCache: false }
+    }
+    if (err instanceof IdempotencyMismatchError) {
+      return { result: { success: false, errorCode: 'already-exists' }, fromCache: false }
     }
     throw err
   })

@@ -44,14 +44,17 @@ export async function withIdempotency(db, opts, op) {
     if (cached != null) {
         return { result: cached, fromCache: true };
     }
+    let result;
     try {
-        const result = await op();
-        await keyRef.update({ resultPayload: result, processing: false, completedAt: now() });
-        return { result, fromCache: false };
+        result = await op();
     }
     catch (err) {
+        // op() failed — clear processing so callers can retry
         await keyRef.update({ processing: false });
         throw err;
     }
+    // op() succeeded — persist result; leave processing=true on failure so callers back off
+    await keyRef.update({ resultPayload: result, processing: false, completedAt: now() });
+    return { result, fromCache: false };
 }
 //# sourceMappingURL=guard.js.map

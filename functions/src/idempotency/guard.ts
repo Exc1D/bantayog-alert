@@ -65,12 +65,16 @@ export async function withIdempotency<TPayload, TResult>(
     return { result: cached, fromCache: true }
   }
 
+  let result: TResult
   try {
-    const result = await op()
-    await keyRef.update({ resultPayload: result, processing: false, completedAt: now() })
-    return { result, fromCache: false }
+    result = await op()
   } catch (err) {
+    // op() failed — clear processing so callers can retry
     await keyRef.update({ processing: false })
     throw err
   }
+
+  // op() succeeded — persist result; leave processing=true on failure so callers back off
+  await keyRef.update({ resultPayload: result, processing: false, completedAt: now() })
+  return { result, fromCache: false }
 }

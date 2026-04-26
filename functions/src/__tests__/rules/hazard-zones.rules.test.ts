@@ -18,6 +18,7 @@ beforeAll(async () => {
     role: 'municipal_admin',
     municipalityId: 'daet',
   })
+  await seedActiveAccount(env, { uid: 'citizen-1', role: 'citizen' })
 })
 
 afterAll(async () => {
@@ -70,6 +71,12 @@ describe('hazard zones rules', () => {
         'daet-admin',
         staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
       )
+      await assertSucceeds(getDocs(collection(db, 'hazard_signals')))
+    })
+
+    it('citizens can read hazard signals', async () => {
+      // isAuthed() allows any active authenticated user — verify citizen role is covered
+      const db = authed(env, 'citizen-1', { accountStatus: 'active' })
       await assertSucceeds(getDocs(collection(db, 'hazard_signals')))
     })
 

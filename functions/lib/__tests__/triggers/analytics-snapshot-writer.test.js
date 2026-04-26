@@ -66,7 +66,7 @@ afterAll(async () => {
         collectionSpy.mockRestore();
     await testEnv.cleanup();
 });
-async function seedReportOp(id, municipalityId, status, severity) {
+async function seedReportOp({ id, municipalityId, status, severity, }) {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
         await setDoc(doc(ctx.firestore(), 'report_ops', id), {
             municipalityId,
@@ -96,9 +96,9 @@ describe('analyticsSnapshotWriter', () => {
         expect(snap.exists).toBe(true);
     });
     it('counts reports by status correctly', async () => {
-        await seedReportOp('r1', 'daet', 'new', 'high');
-        await seedReportOp('r2', 'daet', 'new', 'medium');
-        await seedReportOp('r3', 'daet', 'verified', 'high');
+        await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' });
+        await seedReportOp({ id: 'r2', municipalityId: 'daet', status: 'new', severity: 'medium' });
+        await seedReportOp({ id: 'r3', municipalityId: 'daet', status: 'verified', severity: 'high' });
         await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) });
         const snap = await adminDb
             .collection('analytics_snapshots')
@@ -111,8 +111,9 @@ describe('analyticsSnapshotWriter', () => {
         expect(data.reportsByStatus.verified).toBe(1);
     });
     it('counts reports by severity correctly', async () => {
-        await seedReportOp('r1', 'daet', 'new', 'high');
-        await seedReportOp('r2', 'daet', 'new', 'medium');
+        await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' });
+        await seedReportOp({ id: 'r2', municipalityId: 'daet', status: 'new', severity: 'medium' });
+        await seedReportOp({ id: 'r3', municipalityId: 'daet', status: 'verified', severity: 'critical' });
         await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) });
         const snap = await adminDb
             .collection('analytics_snapshots')
@@ -123,6 +124,7 @@ describe('analyticsSnapshotWriter', () => {
         const data = snap.data();
         expect(data.reportsBySeverity.high).toBe(1);
         expect(data.reportsBySeverity.medium).toBe(1);
+        expect(data.reportsBySeverity.critical).toBe(1);
     });
     it('writes a province-wide aggregate for superadmin scope', async () => {
         await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) });
@@ -135,7 +137,7 @@ describe('analyticsSnapshotWriter', () => {
         expect(provinceSnap.exists).toBe(true);
     });
     it('is idempotent — re-running overwrites, not duplicates', async () => {
-        await seedReportOp('r1', 'daet', 'new', 'high');
+        await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' });
         await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) });
         await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) });
         const snap = await adminDb

@@ -200,7 +200,7 @@ export async function sendMassAlertCore(
             })
             const { encoding, segmentCount } = detectEncoding(smsBody)
             const recipientMsisdnHash = hashMsisdn(phone, saltValue)
-            const raw = `mass_alert:${requestId}:${phone}`
+            const raw = `mass_alert:${requestId}:${recipientMsisdnHash}`
             const idempotencyKey = createHash('sha256').update(raw).digest('hex')
             const outboxRef = db.collection('sms_outbox').doc(idempotencyKey)
             batch.set(

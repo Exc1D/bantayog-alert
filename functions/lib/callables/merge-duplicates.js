@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { BantayogError, logDimension } from '@bantayog/shared-validators';
 import { adminDb } from '../admin-init.js';
 import { bantayogErrorToHttps } from './https-error.js';
-import { withIdempotency, IdempotencyInProgressError } from '../idempotency/guard.js';
+import { withIdempotency, IdempotencyInProgressError, IdempotencyMismatchError, } from '../idempotency/guard.js';
 import { checkRateLimit } from '../services/rate-limit.js';
 const log = logDimension('mergeDuplicates');
 const inputSchema = z
@@ -159,6 +159,9 @@ export async function mergeDuplicatesCore(db, input, actor, correlationId = cryp
     }).catch((err) => {
         if (err instanceof IdempotencyInProgressError) {
             return { result: { success: false, errorCode: 'resource-exhausted' }, fromCache: false };
+        }
+        if (err instanceof IdempotencyMismatchError) {
+            return { result: { success: false, errorCode: 'already-exists' }, fromCache: false };
         }
         throw err;
     });

@@ -245,5 +245,21 @@ describe('mass_alert_requests rules', () => {
             targetType: 'municipality',
         }));
     });
+    // 18. requestedByMunicipality null - deny (rule checks != null)
+    it('denies requestedByMunicipality null', async () => {
+        const db = authed(testEnv, 'admin-uid', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
+        await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-null-muni'), {
+            ...baseAlert('queued'),
+            requestedByMunicipality: null,
+        }));
+    });
+    // 19. status non-string - deny (rule checks status is string)
+    it('denies non-string status', async () => {
+        const db = authed(testEnv, 'admin-uid', staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }));
+        await assertFails(setDoc(doc(db, 'mass_alert_requests', 'req-status-number'), {
+            ...baseAlert('queued'),
+            status: 123,
+        }));
+    });
 });
 //# sourceMappingURL=mass-alert-requests.rules.test.js.map

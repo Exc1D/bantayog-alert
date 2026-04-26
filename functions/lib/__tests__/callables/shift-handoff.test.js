@@ -27,6 +27,7 @@ import { initiateShiftHandoffCore, acceptShiftHandoffCore } from '../../callable
 const uuid = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
 const ts = 1713350400000;
 let testEnv;
+const _origEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST;
 beforeAll(async () => {
     process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081';
     testEnv = await initializeTestEnvironment({
@@ -46,6 +47,12 @@ beforeEach(async () => {
 afterAll(async () => {
     await testEnv.cleanup();
     await deleteApp(adminApp);
+    if (_origEmulatorHost === undefined) {
+        delete process.env.FIRESTORE_EMULATOR_HOST;
+    }
+    else {
+        process.env.FIRESTORE_EMULATOR_HOST = _origEmulatorHost;
+    }
 });
 const adminActor = {
     uid: 'admin-from',
