@@ -2,6 +2,19 @@
 
 ## Current
 
+### Phase 6 Responder App — Task 3: Telemetry contracts and RTDB write boundaries (2026-04-26)
+
+- Status: DONE
+- Branch: `phase6/responder-app`
+- Files changed:
+  - `packages/shared-validators/src/responders.ts` — added `responderTelemetryPayloadSchema` with `capturedAt`, `receivedAt` (optional, server-side), `lat`, `lng`, `accuracy`, `batteryPct`, `motionState`, `appVersion`, `telemetryStatus`
+  - `packages/shared-validators/src/index.ts` — re-exported `responderTelemetryPayloadSchema` + `ResponderTelemetryPayload` type
+  - `infra/firebase/database.rules.json` — tightened `capturedAt` lower bound from 10 min to 60 s; added `motionState` to `.validate`; added `.write: false` at `shared_projection/$municipalityId` level
+  - `functions/src/__tests__/rtdb.rules.test.ts` — added `motionState` to `validPayload`; updated stale test from 10 min to 60 s; added parent-path write denial test for `shared_projection`
+- Verification:
+  - `pnpm --filter @bantayog/shared-validators test` — PASS (223 tests)
+  - `firebase emulators:exec --only firestore,database,storage "pnpm --filter @bantayog/functions exec vitest run src/__tests__/rtdb.rules.test.ts src/__tests__/rules/responders.rules.test.ts"` — PASS (22 tests)
+
 ### Phase 6 Responder App — Task 1: Lock native mobile foundation (2026-04-26)
 
 - Status: DONE

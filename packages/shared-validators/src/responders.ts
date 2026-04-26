@@ -18,4 +18,19 @@ export const responderDocSchema = z
   })
   .strict()
 
+export const responderTelemetryPayloadSchema = z
+  .object({
+    capturedAt: z.number(),
+    receivedAt: z.number().optional(),
+    lat: z.number(),
+    lng: z.number(),
+    accuracy: z.number(),
+    batteryPct: z.number().min(0).max(100),
+    motionState: z.enum(['moving', 'walking', 'still', 'unknown']),
+    appVersion: z.string(),
+    telemetryStatus: z.enum(['active', 'degraded', 'stale', 'offline']),
+  })
+  .strict()
+
+export type ResponderTelemetryPayload = z.infer<typeof responderTelemetryPayloadSchema>
 export type ResponderDoc = z.infer<typeof responderDocSchema>
