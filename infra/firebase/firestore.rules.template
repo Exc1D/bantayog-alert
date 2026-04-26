@@ -228,7 +228,9 @@ service cloud.firestore {
       );
       allow update: if uid() == rUid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['availabilityStatus']);
+                       .hasOnly(['availabilityStatus', 'availabilityReason', 'updatedAt'])
+                    && request.resource.data.availabilityStatus in ['available', 'on_duty', 'off_duty', 'on_break', 'unavailable']
+                    && request.resource.data.updatedAt is timestamp;
       allow create, delete: if false;
     }
 
