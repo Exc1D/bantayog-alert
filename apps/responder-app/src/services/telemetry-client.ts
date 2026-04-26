@@ -16,21 +16,20 @@ export interface TelemetryLocation {
   capturedAt: number
 }
 
-let refCount = 0
-let currentCallback: ((loc: TelemetryLocation) => void) | null = null
+const subscribers = new Set<(loc: TelemetryLocation) => void>()
 let watcherId: string | null = null
 let webWatchId: number | null = null
 
 export async function startTracking(
   _dispatchId: string,
   onLocation: (loc: TelemetryLocation) => void,
-): Promise<void> {
-  refCount++
-  currentCallback = onLocation
+): Promise<() => Promise<void>> {
+  subscribers.add(onLocation)
 
-  if (refCount > 1) {
-    // Already tracking; just updated callback
-    return
+  if (subscribers.size > 1) {
+    return async () => {
+      await stopTracking(onLocation)
+    }
   }
 
   if (Capacitor.isNativePlatform()) {
@@ -53,52 +52,64 @@ export async function startTracking(
             return
           }
           if (!location) return
-          currentCallback?.({
+          const loc: TelemetryLocation = {
             lat: location.latitude,
             lng: location.longitude,
             accuracy: location.accuracy,
             speed: location.speed,
             capturedAt: location.time ?? Date.now(),
-          })
+          }
+          for (const subscriber of subscribers) {
+            subscriber(loc)
+          }
         },
       )
     } catch (err: unknown) {
       console.error('[telemetry-client] addWatcher failed:', err)
-      refCount--
+      subscribers.delete(onLocation)
       throw err
     }
-    return
+    return async () => {
+      await stopTracking(onLocation)
+    }
   }
 
   // Web fallback — geolocation may be absent in non-HTTPS or restricted environments
   const geo = navigator.geolocation as Geolocation | undefined
   if (!geo) {
-    refCount--
+    subscribers.delete(onLocation)
     throw new Error('Geolocation not supported')
   }
 
   webWatchId = geo.watchPosition(
     (position) => {
-      currentCallback?.({
+      const loc: TelemetryLocation = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
         accuracy: position.coords.accuracy,
         speed: position.coords.speed,
         capturedAt: position.timestamp,
-      })
+      }
+      for (const subscriber of subscribers) {
+        subscriber(loc)
+      }
     },
     (err) => {
       console.error('[telemetry-client] web geolocation error:', err.message)
     },
     { enableHighAccuracy: true, maximumAge: 10000 },
   )
+
+  return async () => {
+    await stopTracking(onLocation)
+  }
 }
 
-export async function stopTracking(): Promise<void> {
-  refCount = Math.max(0, refCount - 1)
-  if (refCount > 0) return
-
-  currentCallback = null
+export async function stopTracking(onLocation?: (loc: TelemetryLocation) => void): Promise<void> {
+  if (onLocation) {
+    subscribers.delete(onLocation)
+  }
+  if (subscribers.size > 0) return
 
   if (watcherId) {
     try {

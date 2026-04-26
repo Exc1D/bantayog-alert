@@ -27,34 +27,46 @@ export async function acquirePushToken(): Promise<FcmTokenResult> {
     }
 
     return new Promise((resolve, reject) => {
-      let resolved = false
+      let isSettled = false
 
       const resolveOnce = (result: FcmTokenResult) => {
-        if (!resolved) {
-          resolved = true
+        if (!isSettled) {
+          isSettled = true
           resolve(result)
+        }
+      }
+      const rejectOnce = (err: unknown) => {
+        if (!isSettled) {
+          isSettled = true
+          reject(err instanceof Error ? err : new Error(String(err)))
         }
       }
 
       void (async () => {
-        const [registrationHandle, registrationErrorHandle] = await Promise.all([
-          PushNotifications.addListener('registration', (token) => {
-            void registrationHandle.remove()
-            void registrationErrorHandle.remove()
-            resolveOnce({ token: token.value })
-          }),
-          PushNotifications.addListener('registrationError', (err) => {
-            void registrationHandle.remove()
-            void registrationErrorHandle.remove()
-            resolveOnce({ token: null, error: err.error })
-          }),
-        ])
+        try {
+          const [registrationHandle, registrationErrorHandle] = await Promise.all([
+            PushNotifications.addListener('registration', (token) => {
+              void registrationHandle.remove()
+              void registrationErrorHandle.remove()
+              resolveOnce({ token: token.value })
+            }),
+            PushNotifications.addListener('registrationError', (err) => {
+              void registrationHandle.remove()
+              void registrationErrorHandle.remove()
+              resolveOnce({ token: null, error: err.error })
+            }),
+          ])
 
-        void PushNotifications.register().catch((err: unknown) => {
-          void registrationHandle.remove()
-          void registrationErrorHandle.remove()
-          reject(err instanceof Error ? err : new Error(String(err)))
-        })
+          try {
+            await PushNotifications.register()
+          } catch (err: unknown) {
+            void registrationHandle.remove()
+            void registrationErrorHandle.remove()
+            rejectOnce(err)
+          }
+        } catch (err: unknown) {
+          rejectOnce(err)
+        }
       })()
     })
   }
@@ -106,8 +118,12 @@ export function subscribeNotificationTap(onTap: (dispatchId: string) => void): (
     (action) => {
       const data = action.notification.data as Record<string, unknown> | undefined
       const dispatchId = data?.dispatchId
-      if (typeof dispatchId === 'string') {
-        onTap(dispatchId)
+      if (
+        typeof dispatchId === 'string' &&
+        dispatchId.trim().length > 0 &&
+        !dispatchId.includes('/')
+      ) {
+        onTap(dispatchId.trim())
       }
     },
   )
