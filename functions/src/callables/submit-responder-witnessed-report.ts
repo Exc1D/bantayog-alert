@@ -6,7 +6,7 @@ import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from './https-error.js'
 import { checkRateLimit } from '../services/rate-limit.js'
-import { randomBytes, createHash } from 'node:crypto'
+import { randomBytes, createHash, randomInt } from 'node:crypto'
 
 export const submitResponderWitnessedReportSchema = z
   .object({
@@ -51,10 +51,7 @@ export interface SubmitResponderWitnessedReportCoreDeps {
 
 function generatePublicRef(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  const bytes = randomBytes(8)
-  return Array.from(bytes)
-    .map((b) => chars[b % chars.length])
-    .join('')
+  return Array.from({ length: 8 }, () => chars[randomInt(chars.length)]).join('')
 }
 
 export async function submitResponderWitnessedReportCore(
