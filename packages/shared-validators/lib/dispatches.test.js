@@ -83,5 +83,13 @@ describe('DISPATCH_TRANSITIONS — 3c additions', () => {
             expect(isValidDispatchTransition(from, 'cancelled')).toBe(true);
         }
     });
+    it('allows active states → unable_to_complete', () => {
+        for (const from of ['accepted', 'acknowledged', 'en_route', 'on_scene']) {
+            expect(isValidDispatchTransition(from, 'unable_to_complete')).toBe(true);
+        }
+    });
+    it('denies unable_to_complete → resolved (terminal)', () => {
+        expect(isValidDispatchTransition('unable_to_complete', 'resolved')).toBe(false);
+    });
 });
 //# sourceMappingURL=dispatches.test.js.map

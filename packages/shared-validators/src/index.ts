@@ -72,6 +72,7 @@ export {
   commandChannelMessageDocSchema,
   massAlertRequestDocSchema,
   shiftHandoffDocSchema,
+  responderShiftHandoffDocSchema,
   breakglassEventDocSchema,
   fieldModeSessionDocSchema,
 } from './coordination.js'
@@ -81,6 +82,7 @@ export type {
   CommandChannelMessageDoc,
   MassAlertRequestDoc,
   ShiftHandoffDoc,
+  ResponderShiftHandoffDoc,
   BreakglassEventDoc,
   FieldModeSessionDoc,
 } from './coordination.js'

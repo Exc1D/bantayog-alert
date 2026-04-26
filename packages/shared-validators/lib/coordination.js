@@ -140,10 +140,10 @@ export const responderShiftHandoffDocSchema = z
     toUid: z.string().min(1),
     agencyId: z.string().min(1),
     municipalityId: z.string().min(1),
-    reason: z.string().min(1).max(1000),
+    reason: z.string().trim().min(1).max(1000),
     status: z.enum(['pending', 'accepted', 'declined']),
-    createdAt: z.number().int(),
-    expiresAt: z.number().int(),
+    createdAt: z.number().int().nonnegative(),
+    expiresAt: z.number().int().nonnegative(),
     schemaVersion: z.number().int().positive(),
 })
     .strict()
