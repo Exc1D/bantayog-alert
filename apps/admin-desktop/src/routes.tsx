@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { ProtectedRoute } from '@bantayog/shared-ui'
 import { LoginPage } from './pages/LoginPage'
+import { TotpEnrollmentPage } from './pages/TotpEnrollmentPage'
 import { TriageQueuePage } from './pages/TriageQueuePage'
 import { AgencyAssistanceQueuePage } from './pages/AgencyAssistanceQueuePage'
 import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage'
@@ -8,6 +9,7 @@ import { RosterPage } from './pages/RosterPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/totp-enroll', element: <TotpEnrollmentPage /> },
   {
     path: '/',
     element: (
