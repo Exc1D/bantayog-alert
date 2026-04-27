@@ -15,6 +15,10 @@ const upsertSchema = z.object({
   available: z.boolean(),
 })
 
+const archiveSchema = z.object({
+  id: z.string().min(1),
+})
+
 export async function upsertProvincialResourceCore(
   db: Firestore,
   input: unknown,
@@ -101,6 +105,7 @@ export const archiveProvincialResource = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
     const { uid } = requireAuth(request, ['superadmin', 'pdrrmo'])
-    return archiveProvincialResourceCore(getFirestore(), request.data as { id: string }, { uid })
+    const { id } = archiveSchema.parse(request.data)
+    return archiveProvincialResourceCore(getFirestore(), { id }, { uid })
   },
 )
