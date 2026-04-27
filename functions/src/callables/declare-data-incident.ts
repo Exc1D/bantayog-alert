@@ -16,7 +16,7 @@ const dataIncidentInputSchema = z.object({
   severity: z.enum(['critical', 'high', 'medium', 'low']),
   affectedCollections: z.array(z.string().min(1)),
   affectedDataClasses: z.array(z.string().min(1)),
-  estimatedAffectedSubjects: z.number().int().optional(),
+  estimatedAffectedSubjects: z.number().int().nonnegative().optional(),
   summary: z.string().min(1).max(2000),
 })
 

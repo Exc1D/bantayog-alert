@@ -142,6 +142,7 @@ export const deactivateBreakGlass = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
     const { uid, claims } = requireAuth(request, ['superadmin'])
+    requireMfaAuth(request)
     await deactivateBreakGlassCore(getFirestore(), getAuth(), { uid, claims })
   },
 )
