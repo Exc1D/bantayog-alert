@@ -123,6 +123,8 @@ export const breakglassEventDocSchema = z
     resourceRef: z.string().optional(),
     createdAt: z.number().int(),
     correlationId: z.string().min(1),
+    expiresAt: z.number().int().optional(),
+    sessionStartedAt: z.number().int().optional(),
     schemaVersion: z.number().int().positive(),
   })
   .strict()
