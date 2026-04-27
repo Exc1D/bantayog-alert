@@ -101,4 +101,32 @@ describe('requireMfaAuth', () => {
       })
     }).not.toThrow()
   })
+
+  it('throws mfa_required when auth is null', () => {
+    expect(() => {
+      requireMfaAuth({ auth: null })
+    }).toThrow('mfa_required')
+  })
+
+  it('throws mfa_required when auth is undefined', () => {
+    expect(() => {
+      requireMfaAuth({})
+    }).toThrow('mfa_required')
+  })
+
+  it('throws mfa_required when firebase claim is undefined', () => {
+    expect(() => {
+      requireMfaAuth({
+        auth: { uid: 'u1', token: { role: 'superadmin' } },
+      })
+    }).toThrow('mfa_required')
+  })
+
+  it('throws mfa_required when sign_in_second_factor is a number', () => {
+    expect(() => {
+      requireMfaAuth({
+        auth: { uid: 'u1', token: { firebase: { sign_in_second_factor: 42 } } },
+      })
+    }).toThrow('mfa_required')
+  })
 })
