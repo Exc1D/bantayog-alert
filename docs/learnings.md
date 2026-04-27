@@ -96,6 +96,16 @@
 - Capacitor void-return callbacks need braces: `return () => { clearInterval(id) }`.
 - When refactoring from `refCount` to `Set<subscribers>`, remove ALL stale `refCount` references.
 
+## Phase 7 — Provincial Superadmin
+
+- `@google-cloud/bigquery` `.table.query()` doesn't exist; use `bq.query()` directly for SQL queries.
+- BigQuery query results are untyped; extract into typed helpers with `as unknown as RowType[]` to satisfy strict ESLint rules (`no-unsafe-member-access`, `no-unsafe-argument`).
+- `@typescript-eslint/no-unnecessary-condition` flags `?.` on non-optional fields in function parameter types — use `.` when the type declares the field as required.
+- Firestore path template literals (`db.doc(\`...\`)`) trigger `no-restricted-syntax`lint; use chained`.collection().doc()` instead.
+- `@typescript-eslint/no-misused-promises` flags async onClick handlers; wrap with `() => void asyncFn()`.
+- `bcryptjs` preferred over `bcrypt` in this repo — pure JS, no native compilation.
+- `@google-cloud/logging` must be added as explicit dependency when using Cloud Logging API in triggers.
+
 ## Misc
 
 - `navigator.clipboard` in happy-dom often needs to be defined as an own property before spying.

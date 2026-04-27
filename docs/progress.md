@@ -1,6 +1,30 @@
 # Progress
 
-## Current — Phase 6 Responder App (branch: `phase6/responder-app`)
+## Current — Phase 7 Provincial Superadmin + NDRRMC + Break-Glass
+
+### PRE-7 — Audit & Auth Foundation (branch: `feature/phase7-pre`)
+
+| Task                                    | Status  | Notes                                                                                             |
+| --------------------------------------- | ------- | ------------------------------------------------------------------------------------------------- |
+| 1. Schema additions (shared-validators) | ✅ DONE | `dataIncidentDocSchema`, extended `breakglassEventDocSchema` + `agencyDocSchema`. 229 tests pass. |
+| 2. `requireMfaAuth()` + tests           | ✅ DONE | 6 test cases including edge cases (null auth, missing firebase, non-string factor). 14/14 pass.   |
+| 3. `audit-stream.ts` service            | ✅ DONE | Fire-and-forget BigQuery streaming. `@google-cloud/bigquery@^7.9.2` added.                        |
+| 4. Audit export batch + health check    | ✅ DONE | 5min batch, 10min health check with FCM alert. `@google-cloud/logging` added.                     |
+| 5. Analytics snapshot extension         | ✅ DONE | `resolvedToday` + `avgResponseTimeMinutes` on province summary. 7/7 tests.                        |
+| 6. Bare-bones TOTP enrollment page      | ✅ DONE | `/totp-enroll` route, unprotected. Firebase v12 TOTP MFA.                                         |
+| 7. Seed break-glass config script       | ✅ DONE | `bcryptjs`, idempotent, `system_config/break_glass_config`.                                       |
+
+**Staging gate:** Pending — needs 24h soak before 7.A can deploy.
+
+### 7.A — Security Callables (branch: `feature/phase7-a`) — IN PROGRESS
+
+### 7.B — Superadmin UI (branch: `feature/phase7-b`) — BLOCKED by 7.A
+
+### 7.C — Drill & Verification — BLOCKED by 7.B
+
+---
+
+## Phase 6 — Responder App (branch: `phase6/responder-app`) — COMPLETE
 
 | Task                                             | Status  | Notes                                                                                                                                                                          |
 | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
