@@ -1,116 +1,102 @@
-# Learnings
-
-Durable rules worth keeping across sessions.
+# Learnings — Durable Rules
 
 ## Process
 
-- Re-read files after edits, subagent work, or context compaction. The file on disk is the source of truth.
-- For behavior changes, get a real red test before implementation.
-- Don’t bundle unrelated fixes in the same branch or conversation.
-- After a squash merge, preserve or recreate a remote branch/ref before deleting it if the original commit history still matters; the content may be in `main` while the branch ancestry is gone.
-- Firestore emulator seeded writes will fail fast if the current rules file cannot compile; Playwright fixtures that depend on Firestore writes need the rules harness fixed first, not just a better seed helper.
-- A workspace package exported as TypeScript source can still break Firebase Functions emulator analysis even if Vitest can import it; give the emulator a real JS entrypoint.
-- Idempotency hashing that runs in callable code must be async and Web Crypto-safe; a `require('node:crypto')` fallback can fail under ESM/browser bundling even when the code works in unit tests.
-- When a callable looks like an auth or App Check problem, verify the initialized functions region before chasing browser state; a region mismatch can produce misleading unauthenticated failures.
-- **Stale compiled functions binary is the first thing to check when `FirebaseError: internal` appears in E2E but unit tests pass.** The emulator runs `functions/lib/`, not `functions/src/`. If source was changed (e.g. `enforceAppCheck`) but `pnpm --filter @bantayog/functions build` was not re-run, the emulator silently enforces the old setting. Fix: rebuild before running `firebase emulators:exec`.
-- `createTestEnv()` in this repo expects Firestore, Database, and Storage emulators. If you only boot Firestore, rules tests that initialize the shared harness fail before they reach assertions.
-- When a payload schema is `strict()` and a field is truly transitional, strip that field before validation instead of widening the schema and accidentally allowing unrelated junk.
-- If a transitional field is part of the contract, model it explicitly in the schema instead of stripping it in the trigger. Stripping is only the fallback when the field is truly out-of-band.
-- Ops-facing document schemas should use ops-specific enums, not the broader public report enum, or the rules/tests will drift silently.
-- Do not assume `tsc --outDir lib` will refresh every checked-in declaration the way you expect; verify the emitted `.d.ts` against source and patch the artifact if the generator still leaves stale enum ordering behind.
-- `z.string().uuid()` trips `@typescript-eslint/no-deprecated` under the current lint config. Use `z.uuid()` in shared validators.
-- Collection query tests can fail on a rule that is really written for per-document access. If the rule uses `resource.data` in a way that doesn’t support `list`, switch the test to `getDoc` or rewrite the rule intentionally.
-- In Firestore rules tests, never seed documents via `env.unauthenticatedContext().firestore()` when the collection's `create` rule is `false`; the seeding throws before the test assertion runs. Always use `env.withSecurityRulesDisabled()` for seeding.
-- Rules transition tests must match the actual transition table in `firestore.rules`. A test that assumes a transition is invalid when the rules allow it will pass trivially (or fail confusingly) and hides real coverage gaps. Always verify the rule source before writing the test expectation.
+- Re-read files after edits/subagents/compaction. Disk is truth.
+- Red test before behavior changes. Don’t bundle unrelated fixes.
+- After squash merge, preserve branch ancestry if history matters.
+- Firestore emulator seeded writes fail fast if rules don’t compile; fix rules harness first.
+- Workspace packages exported as TS source can break Functions emulator; give it a real JS entrypoint.
+- Idempotency hashing in callable code must be async and Web Crypto-safe; `node:crypto` fallback fails under ESM/browser bundling.
+- Verify functions region before chasing auth/App Check issues; region mismatch produces misleading unauthenticated errors.
+- **Stale `functions/lib/` binary is the #1 cause of `FirebaseError: internal` in E2E.** Rebuild after source changes.
+- `createTestEnv()` requires Firestore, Database, and Storage emulators all running.
+- Strict Zod schemas: strip transitional fields before validation rather than widening the schema.
+- Ops-facing schemas should use ops-specific enums, not broader public enums.
+- Don’t trust `tsc --outDir lib` to refresh declarations; verify emitted `.d.ts`.
+- Use `z.uuid()` instead of `z.string().uuid()` (deprecated lint rule).
+- Collection query rules differ from per-document rules; use `getDoc` if `getDocs` fails on `resource.data` checks.
+- Seed documents via `env.withSecurityRulesDisabled()`, not unauthenticated context, when `create` is `false`.
+- Rules transition tests must match the actual transition table in `firestore.rules`.
 
 ## Firestore
 
-- In admin transactions, all reads must happen before the first write.
-- When optional data controls writes, fetch it up front instead of reading later in the transaction.
-- Prefer stable Firestore error codes over matching error messages.
+- All reads before first write in transactions.
+- Fetch optional data up front; don’t read later in the transaction.
+- Prefer stable error codes over message matching.
 
 ## Security
 
-- If missing auth or scope should deny access, fail explicitly; don’t use permissive fallbacks.
-- When normalizing fields, update both read and write paths.
-- In Firestore Rules, verify function signatures match call sites; unused parameters are a smell.
+- Fail explicitly on missing auth/scope; no permissive fallbacks.
+- Normalize fields on both read and write paths.
+- Verify Firestore Rules function signatures match call sites.
 
 ## Testing
 
 - `vi.hoisted()` mocks must be created inside the hoisted callback.
-- `requestAnimationFrame` in Vitest is safer with an explicit captured callback than with timer assumptions.
-- Firebase integration tests often need module-level mocks for Firestore/Auth setup.
-- A passing test is not enough; confirm it actually exercises the changed path.
-- Firebase Admin SDK (`firebase-admin/firestore`) and Client SDK (`firebase/firestore`) are type-incompatible — never mix `setDoc(doc(adminDb, ...), data)` patterns. Use Admin SDK exclusively for admin contexts, or Client SDK exclusively for test contexts.
-- Callable error handling should use the runtime client code (`not-found`) rather than the internal enum name; normalize the error code the client actually receives.
-- `waitFor(() => expect(...))` triggers `no-confusing-void-expression`; wrap the assertion body in braces.
-- Local dev should not hard-crash on missing Vite env vars if the screen can degrade gracefully; gate Firebase consumers and surface a clear inline message instead.
-- Functions emulator source analysis still follows workspace package entrypoints; exporting TypeScript sources from a package without a runtime JS build can break emulator startup before any test runs.
-- In a React shell, auth-dependent setup must render inside the `AuthProvider`; otherwise startup effects can crash the entire app before the router mounts.
+- `requestAnimationFrame` in Vitest: capture callback explicitly, don’t assume timers.
+- A passing test is not enough; confirm it exercises the changed path.
+- Never mix Admin SDK and Client SDK Firestore calls in the same context.
+- Callable error handling: use runtime client code (`not-found`), not internal enum names.
+- Wrap `waitFor(() => expect(...))` assertion body in braces to avoid `no-confusing-void-expression`.
+- Local dev should not hard-crash on missing Vite env vars; gate Firebase consumers and show inline messages.
+- In React, auth-dependent setup must render inside `AuthProvider` or startup effects crash the app before router mounts.
 
 ## React
 
-- Render-body ref assignment can trigger loops; move ref syncing into `useEffect` when needed.
-- `useRef(initial)` does not track later state changes; sync refs explicitly if they must stay current.
-- Critical external data should be fetched internally or required as a prop, not left optional.
-- `react-hooks/refs` will flag `ref.current` reads during render; pass render-time values through state instead of reading mutable refs in JSX.
-- If CodeQL flags a React blob-preview path as `js/xss-through-dom`, annotation-only suppressions are brittle; render the file into a `canvas` via `createImageBitmap` instead of piping a blob URL string into JSX.
-- React Router v7 `useNavigate` returns `Promise<void>`; wrap invocations with `void` to satisfy `no-floating-promises`, or `await` them in async handlers.
+- Render-body ref assignment can trigger loops; sync refs in `useEffect`.
+- `useRef(initial)` does not track later state; sync explicitly if current value needed.
+- Critical external data should be fetched internally or required as a prop.
+- `react-hooks/refs` flags `ref.current` reads during render; pass render-time values through state.
+- CodeQL `js/xss-through-dom` on blob previews: render via `createImageBitmap` + `canvas` instead of blob URL in JSX.
+- React Router v7 `useNavigate` returns `Promise<void>`; wrap with `void` or `await`.
 
 ## TypeScript
 
-- Use `catch (err: unknown)` and narrow explicitly.
-- Avoid `any`; prefer real types or `unknown`.
+- `catch (err: unknown)` and narrow explicitly. Avoid `any`.
 - With `exactOptionalPropertyTypes`, omit optional keys entirely instead of assigning `undefined`.
-- **`catch (_err: unknown) { void _err }` does not satisfy `@typescript-eslint/no-unused-vars` in all configs.** If the linter rejects `_`-prefixed catch variables, prefer `catch { /* reason */ }` with an explicit comment over a disabled lint rule. Only capture the error when you actually log or transform it.
+- `_`-prefixed catch variables may still trigger `no-unused-vars`. Prefer `catch { /* reason */ }` with a comment.
 
 ## Auth / Async
 
-- In Firebase Auth `onAuthStateChanged`, the promise started by `getIdTokenResult(true)` can resolve after a later auth change. Guard all `.then`/`.catch`/`.finally` handlers with an `active` flag (closed over from `useEffect`) and a `uid` check (`auth.currentUser?.uid !== capturedUid`) before calling `setClaims`/`setLoading`.
-- `awaitFreshAuthToken` built on `onIdTokenChanged` must start `getIdToken(true)` **inside** the Promise constructor (not after it) so a rejection can call `unsubscribe()` and `reject()` rather than leaving the promise hanging forever.
-- Always check the `null` return of `awaitFreshAuthToken` before invoking an `httpsCallable`; a missing `currentUser` means no auth header and the callable will fail with an opaque error.
+- In `onAuthStateChanged`, guard `.then`/`.catch` with an `active` flag + uid check to prevent stale promises overwriting state.
+- `awaitFreshAuthToken` must start `getIdToken(true)` inside the Promise constructor so rejection can unsubscribe and reject.
+- Null-check `awaitFreshAuthToken` before invoking `httpsCallable`; missing user = opaque failure.
 
-## Phase 6 Responder App (2026-04-26)
+## Phase 6 Responder App
 
-- **Callable tests with `@firebase/rules-unit-testing` must use the project emulator port.** The project `firebase.json` configures Firestore on 8081. Test files that hardcode other ports (8080, 8082, 8083, 8084) will fail with `ECONNREFUSED` even when the emulator is running.
-- **`firebase-admin/firestore Timestamp` objects are rejected by the JS SDK Firestore used in `rules-unit-testing`.** When core functions accept a `db: Firestore` parameter and are tested with `testEnv.unauthenticatedContext().firestore()`, any `tx.set/update` that passes an admin `Timestamp` directly throws `invalid-argument`. Fix: write `.toMillis()` (number) instead of the `Timestamp` object. This is consistent with client-side consumption patterns (e.g. `request-lookup` already returns `lastStatusAt: number`).
-- **Firestore transactions strictly enforce reads-before-writes.** A transaction that does `tx.update(...)` followed by `tx.get(...)` on a different document throws `Firestore transactions require all reads to be executed before all writes.` This is enforced by the emulator/JS SDK and is a real correctness issue, not just a test quirk.
-- **Capacitor native plugins (`@capacitor-community/background-geolocation`, `@capacitor/push-notifications`) cannot be exercised in Playwright or Node.js unit tests.** Any feature that depends on native platform APIs requires physical device testing or mock-heavy integration tests. Document skips explicitly instead of leaving empty stubs.
+- `@firebase/rules-unit-testing` must use the project emulator port (8081 per `firebase.json`). Hardcoded ports cause `ECONNREFUSED`.
+- Admin `Timestamp` objects are rejected by the JS SDK Firestore used in `rules-unit-testing`. Write `.toMillis()` (number) instead.
+- Firestore transactions strictly enforce reads-before-writes; violation throws even in emulator.
+- Capacitor native plugins cannot be exercised in Playwright or Node.js unit tests; document skips explicitly.
+
+## Refactoring / Monorepo
+
+- When renaming files, remove stale build artifacts (`lib/*.js`, `.d.ts`, `.map`) manually.
+- Shared packages consumed by apps need the app’s runtime deps (e.g., `firebase`, `react-router-dom`) as `peerDependencies`.
+- Shared `AuthProvider` using `Record<string, unknown>` for claims pushes type-narrowing burden to consumers; validate with `typeof` checks.
+- `useCallback` is required for functions exposed through context to prevent infinite re-render loops.
+- Mock `onAuthStateChanged` must return an unsubscribe function; it’s a module-level function, not an `Auth` method.
+
+## Testing Patterns
+
+- `vi.mock` factory references must use `vi.hoisted(() => ({ mockFn: vi.fn() }))`, not plain `const`.
+- Mock `getFirestore` in `firebase/firestore` mocks if the module calls it at module scope.
+- Mock paths are relative to the test file, not the repo root.
+- `firebase-admin` v12+ `.where` overload changes; use `vi.spyOn(collRef, 'where' as any)` to bypass TS overload resolution.
+- `pnpm --filter` from a worktree resolves to the main repo’s `package.json`, not the worktree’s. Use `npx vitest` directly inside the package directory instead.
+- `getDoc` finds seeded docs immediately; `getDocs` may fail with "Property X is undefined" due to emulator indexing. Use `getDoc` for rules validation when affected.
+
+## CodeRabbit / Static Analysis
+
+- Closure-mutated booleans (`let cancelled = false` reassigned in cleanup) trigger `no-unnecessary-condition` and CodeQL "Useless conditional". These are false positives; use `eslint-disable`.
+- `react-hooks/set-state-in-effect` rejects synchronous `setState` in `useEffect`. Use `eslint-disable` for derived state that must be set synchronously.
+- Zod `.trim().min(1)` already rejects whitespace-only strings; extra `.refine(v => v.trim().length > 0)` is redundant.
+- Shared package schemas must be re-exported from `src/index.ts` or downstream packages get `TS2724`.
+- Capacitor void-return callbacks need braces: `return () => { clearInterval(id) }`.
+- When refactoring from `refCount` to `Set<subscribers>`, remove ALL stale `refCount` references.
 
 ## Misc
 
 - `navigator.clipboard` in happy-dom often needs to be defined as an own property before spying.
-- Risky backend changes need emulator verification first and should not go to prod in the same session.
-
-## Refactoring / Monorepo Hygiene
-
-- When extracting a module and renaming the original file (e.g., `inbound.ts` → `parser.ts`), stale build artifacts (`lib/inbound.js`, `.d.ts`, `.map`) must be manually removed or they will confuse future readers and tooling.
-- Consolidating duplicated React components across apps into a shared package requires adding the consuming app's runtime dependencies (e.g., `firebase`, `react-router-dom`) as `peerDependencies` in the shared package; otherwise typecheck passes locally but breaks in isolation.
-- A shared `AuthProvider` that uses `Record<string, unknown>` for claims pushes type-narrowing burden to every consumer. This is acceptable for a shared boundary, but consumers should validate with `typeof` checks rather than casting.
-- `useCallback` is required for functions exposed through context (like `refreshClaims` and `signOut`) to prevent infinite re-render loops in consumers that include them in `useEffect` dependency arrays.
-- When mocking Firebase Auth's `onAuthStateChanged` with `vi.mock('firebase/auth', ...)`, the mock must return an unsubscribe function; the real `onAuthStateChanged` is a module-level function, not a method on the `Auth` instance.
-
-## Testing Patterns (2026-04-25 Cluster C)
-
-- `vi.mock` factory functions are hoisted above all other code. If a mock factory references a variable (e.g., `mockGetCountFromServer`), the variable must be declared with `vi.hoisted(() => ({ mockFn: vi.fn() }))` — not with a plain `const`. Otherwise: `ReferenceError: Cannot access before initialization`.
-- When mocking `firebase/firestore` for admin-desktop tests, include `getFirestore: vi.fn(() => ({}))` in the mock factory. The `../app/firebase` module calls `getFirestore` at module scope — if the mock doesn't provide it, you get `auth/invalid-api-key` from the real Firebase init.
-- Mock path from `apps/admin-desktop/src/__tests__/` to `apps/admin-desktop/src/app/firebase.ts` is `../app/firebase` (one level up), not `../../app/firebase` (two levels up). Two levels up resolves to the monorepo root.
-- Spy on `collRef.where` and mock its implementation in Firestore admin SDK tests: the `.where` method signature changed in firebase-admin v12+. Use `vi.spyOn(collRef, 'where' as any)` to bypass the TypeScript overload resolution that causes `TS2345: Target signature provides too few arguments`.
-- Firebase emulators: rules tests using `createTestEnv` from `rules-harness.ts` require `--only firestore,database,storage` (all three emulators). The harness configures storage rules even for Firestore-only tests.
-- `pnpm --filter` from a worktree resolves to the main repo's `package.json`, not the worktree's. For emulator test commands that need `pnpm --filter`, run `npx vitest` directly inside the package directory instead.
-- Firestore emulator rules evaluation: `getDoc` (document read) and `getDocs` (collection list) can behave differently in the emulator after seeding. `getDoc` finds documents immediately; `getDocs` may fail with "Property X is undefined on object" for collections whose rules check `resource.data` fields, even when the document is confirmed to exist via `getDoc` in the same test. Workaround: use `getDoc` for rules validation when `getDocs` is affected by this indexing issue.
-
-## CodeRabbit Round 2 Fixes (2026-04-26)
-
-- **`@typescript-eslint/no-unnecessary-condition` flags closure-mutated booleans.** A `let cancelled = false` reassigned in a cleanup closure will be flagged as "always falsy" at every read site. Intentional cancellation guards need `// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition`.
-- **`react-hooks/set-state-in-effect` rejects synchronous `setState` inside `useEffect` bodies.** For derived state that must be set synchronously (e.g. `setLoading(false)` when two independent listener readiness flags both become true), use `// eslint-disable-next-line react-hooks/set-state-in-effect`.
-- **Zod `.trim().min(1)` already rejects whitespace-only strings.** `.trim()` is a transform; `"   "` becomes `""` and then `.min(1)` rejects. An extra `.refine(v => v.trim().length > 0)` is redundant.
-- **Shared package schemas must be re-exported from `index.ts`.** Defining a schema in a module file is not enough — if it's not in `src/index.ts`, the built `lib/index.js` won't expose it and downstream packages will get `TS2724: has no exported member named 'X'`.
-- **Capacitor plugin void-return callbacks need braces.** `return () => clearInterval(id)` triggers `@typescript-eslint/no-confusing-void-expression` because `clearInterval` returns `void`. Use `return () => { clearInterval(id) }`.
-- **When refactoring from `refCount` to `Set<subscribers>`, remove ALL stale `refCount` references.** Leaving `refCount--` behind causes runtime `ReferenceError` because the variable no longer exists.
-
-## CodeRabbit Round 3 Review Fixes (2026-04-27)
-
-- **Firestore rules for optional fields need explicit null/omitted handling.** When a field is `.optional()` in Zod (e.g., `availabilityReason`), the Firestore rule must handle three cases: field not in `affectedKeys()` (not changed), field is `null` (explicitly cleared), or field is a valid string within length bounds. Using `affectedKeys()` to check whether the field was even part of the write avoids false-rejection on unrelated updates.
-- **CodeQL "Useless conditional" on closure-mutated booleans is a false positive.** `let cancelled = false` mutated in a cleanup closure will be flagged, but the checks are genuinely needed between `await` points. `eslint-disable` is the correct response — the static analyzer cannot model async closure mutation.
-- **PR review "out of sync" errors may be stale.** Always verify by running the codegen (`pnpm exec tsx scripts/build-rules.ts`) and checking `git diff` before making changes — the sync issue may have been resolved in a prior commit.
+- Risky backend changes need emulator verification first; never prod-deploy in the same session.
