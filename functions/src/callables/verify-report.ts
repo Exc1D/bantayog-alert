@@ -228,9 +228,9 @@ export const verifyReport = onCall(
         actor: {
           uid: req.auth.uid,
           claims: {
-            role: claims.role as string,
+            role: claims.role,
             municipalityId: claims.municipalityId as string,
-            active: claims.active as boolean,
+            active: claims.active,
           },
         },
         now: Timestamp.now(),

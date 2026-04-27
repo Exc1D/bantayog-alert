@@ -113,7 +113,12 @@ describe('analyticsSnapshotWriter', () => {
     it('counts reports by severity correctly', async () => {
         await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' });
         await seedReportOp({ id: 'r2', municipalityId: 'daet', status: 'new', severity: 'medium' });
-        await seedReportOp({ id: 'r3', municipalityId: 'daet', status: 'verified', severity: 'critical' });
+        await seedReportOp({
+            id: 'r3',
+            municipalityId: 'daet',
+            status: 'verified',
+            severity: 'critical',
+        });
         await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) });
         const snap = await adminDb
             .collection('analytics_snapshots')

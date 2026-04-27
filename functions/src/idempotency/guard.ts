@@ -58,7 +58,7 @@ export async function withIdempotency<TPayload, TResult>(
     if (data.processing && !('resultPayload' in data)) {
       throw new IdempotencyInProgressError(opts.key)
     }
-    return (data.resultPayload ?? null) as TResult | null
+    return data.resultPayload ?? null
   })
 
   if (cached != null) {

@@ -85,9 +85,7 @@ export function useDispatch(dispatchId: string | undefined) {
             return
           }
 
-          const parsed = dispatchDocSchema.parse(
-            normalizeDispatchSnapshot(snap.data() as Record<string, unknown>),
-          )
+          const parsed = dispatchDocSchema.parse(normalizeDispatchSnapshot(snap.data()))
           setDispatch({
             ...parsed,
             dispatchId: snap.id,
@@ -106,7 +104,7 @@ export function useDispatch(dispatchId: string | undefined) {
       (err) => {
         const error = err as { code?: string; message?: string }
         console.error('[useDispatch] listener error:', error.code, error.message)
-        setError(err as Error)
+        setError(err)
         setLoading(false)
       },
     )

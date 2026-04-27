@@ -49,11 +49,14 @@ describe('responder direct-write on dispatches/{id}', () => {
         }));
     });
     it('denies acknowledged → resolved (skipping en_route/on_scene)', async () => {
-        const db = env.unauthenticatedContext().firestore();
-        await setDoc(doc(db, 'dispatches/d-2'), {
-            status: 'acknowledged',
-            responderUid: 'resp-1',
-            municipalityId: 'daet',
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await setDoc(doc(db, 'dispatches/d-2'), {
+                status: 'acknowledged',
+                assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
+                municipalityId: 'daet',
+                lastStatusAt: Date.now(),
+            });
         });
         const authedDb = authed(env, 'resp-1', {
             role: 'responder',
@@ -62,19 +65,22 @@ describe('responder direct-write on dispatches/{id}', () => {
         });
         await assertFails(setDoc(doc(authedDb, 'dispatches/d-2'), { status: 'resolved' }, { merge: true }));
     });
-    it('denies acknowledged → cancelled (responder cannot cancel)', async () => {
-        const db = env.unauthenticatedContext().firestore();
-        await setDoc(doc(db, 'dispatches/d-3'), {
-            status: 'acknowledged',
-            assignedTo: { uid: 'resp-1' },
-            municipalityId: 'daet',
+    it('denies acknowledged → pending (invalid reverse transition)', async () => {
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await setDoc(doc(db, 'dispatches/d-3'), {
+                status: 'acknowledged',
+                assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
+                municipalityId: 'daet',
+                lastStatusAt: Date.now(),
+            });
         });
         const authedDb = authed(env, 'resp-1', {
             role: 'responder',
             municipalityId: 'daet',
             agencyId: 'bfp',
         });
-        await assertFails(setDoc(doc(authedDb, 'dispatches/d-3'), { status: 'cancelled' }, { merge: true }));
+        await assertFails(setDoc(doc(authedDb, 'dispatches/d-3'), { status: 'pending' }, { merge: true }));
     });
     it('denies on_scene → resolved without resolutionSummary', async () => {
         await env.withSecurityRulesDisabled(async (ctx) => {

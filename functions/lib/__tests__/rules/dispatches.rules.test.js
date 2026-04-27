@@ -19,6 +19,7 @@ beforeAll(async () => {
     });
     await seedDispatchRT(env, 'dispatch-1', {
         municipalityId: 'daet',
+        status: 'accepted',
         assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
     });
 });
@@ -44,7 +45,7 @@ describe('dispatches rules', () => {
     });
     it('responder cannot update with invalid status transition', async () => {
         const db = authed(env, 'resp-1', staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }));
-        await assertFails(updateDoc(doc(db, 'dispatches/dispatch-1'), { status: 'cancelled', updatedAt: ts }));
+        await assertFails(updateDoc(doc(db, 'dispatches/dispatch-1'), { status: 'resolved', updatedAt: ts }));
     });
 });
 //# sourceMappingURL=dispatches.rules.test.js.map

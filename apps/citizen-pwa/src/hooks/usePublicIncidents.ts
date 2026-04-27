@@ -24,9 +24,9 @@ function isPublicIncidentData(value: unknown): value is Omit<PublicIncident, 'id
     !!location &&
     typeof location === 'object' &&
     typeof (location as Record<string, unknown>).lat === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lat as number) &&
+    Number.isFinite((location as Record<string, unknown>).lat) &&
     typeof (location as Record<string, unknown>).lng === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lng as number)
+    Number.isFinite((location as Record<string, unknown>).lng)
   )
 }
 

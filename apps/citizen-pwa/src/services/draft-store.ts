@@ -60,7 +60,7 @@ function getDraftStorage(): DraftStorage {
   _draftStorage ??= localforage.createInstance({
     name: 'bantayog-drafts',
     storeName: 'drafts',
-  }) as unknown as DraftStorage
+  })
   return _draftStorage
 }
 
@@ -68,7 +68,7 @@ function getPhotoStorage(): PhotoStorage {
   _photoStorage ??= localforage.createInstance({
     name: 'bantayog-photos',
     storeName: 'photos',
-  }) as unknown as PhotoStorage
+  })
   return _photoStorage
 }
 
