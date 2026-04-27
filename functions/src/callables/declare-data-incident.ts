@@ -54,7 +54,7 @@ export async function declareDataIncidentCore(
   void streamAuditEvent({
     eventType: 'data_incident_declared',
     actorUid: actor.uid,
-    sessionId: incidentId,
+    targetDocumentId: incidentId,
     occurredAt: now,
   })
 

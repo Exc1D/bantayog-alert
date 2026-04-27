@@ -62,14 +62,12 @@ function makeDb(configData: Record<string, unknown> | null): MockDb {
   }
 }
 
-function makeAuth() {
+function makeAuth(existingClaims?: Record<string, unknown>) {
   const setCustomUserClaims = vi.fn().mockResolvedValue(undefined)
   const getUser = vi.fn().mockResolvedValue({
-    customClaims: {
-      breakGlassSession: true,
-      breakGlassSessionId: 'existing-session',
-      breakGlassExpiresAt: Date.now() + 100000,
+    customClaims: existingClaims ?? {
       role: 'superadmin',
+      municipalityId: 'daet',
     },
   })
   return { setCustomUserClaims, getUser }
@@ -196,6 +194,51 @@ describe('initiateBreakGlassCore', () => {
         { uid: 'u1' },
       ),
     ).rejects.toThrow('break_glass_codes_invalid')
+  })
+
+  it('preserves existing custom claims when initiating break-glass session', async () => {
+    const db = makeDb({ hashedCodes: [hashedA, hashedB] }) as unknown as Parameters<
+      typeof initiateBreakGlassCore
+    >[0]
+    const auth = makeAuth()
+
+    const result = await initiateBreakGlassCore(
+      db,
+      auth as unknown as Parameters<typeof initiateBreakGlassCore>[1],
+      { codeA: CODE_A, codeB: CODE_B, reason: 'test' },
+      { uid: 'u1' },
+    )
+
+    const calls = auth.setCustomUserClaims.mock.calls
+    expect(calls.length).toBe(1)
+    const claimsArg = calls[0]![1] as Record<string, unknown>
+    expect(claimsArg.role).toBe('superadmin')
+    expect(claimsArg.breakGlassSession).toBe(true)
+    expect(claimsArg.breakGlassSessionId).toBe(result.sessionId)
+    expect(claimsArg.breakGlassExpiresAt).toBeGreaterThan(Date.now())
+  })
+
+  it('rejects when user already has an active break-glass session', async () => {
+    const db = makeDb({ hashedCodes: [hashedA, hashedB] }) as unknown as Parameters<
+      typeof initiateBreakGlassCore
+    >[0]
+    const auth = makeAuth()
+    auth.getUser = vi.fn().mockResolvedValue({
+      customClaims: {
+        breakGlassSession: true,
+        breakGlassSessionId: 'existing-session',
+        breakGlassExpiresAt: Date.now() + 3600000,
+      },
+    })
+
+    await expect(
+      initiateBreakGlassCore(
+        db,
+        auth as unknown as Parameters<typeof initiateBreakGlassCore>[1],
+        { codeA: CODE_A, codeB: CODE_B, reason: 'test' },
+        { uid: 'u1' },
+      ),
+    ).rejects.toThrow('active_break_glass_session_exists')
   })
 
   it('succeeds with correct codes, returns sessionId, sets claims, writes event', async () => {
@@ -325,6 +368,7 @@ describe('deactivateBreakGlassCore', () => {
 
     expect(auth.setCustomUserClaims).toHaveBeenCalledWith('u1', {
       role: 'superadmin',
+      municipalityId: 'daet',
     })
     expect(rawDb.eventUpdateFn).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -13,7 +13,12 @@ export async function setRetentionExemptCore(
   if (!(ALLOWED_COLLECTIONS as readonly string[]).includes(input.collection)) {
     throw new HttpsError('invalid-argument', 'collection_not_allowed')
   }
-  await db.collection(input.collection).doc(input.documentId).update({
+  const docRef = db.collection(input.collection).doc(input.documentId)
+  const docSnap = await docRef.get()
+  if (!docSnap.exists) {
+    throw new HttpsError('not-found', 'document_not_found')
+  }
+  await docRef.update({
     retentionExempt: input.exempt,
     retentionExemptReason: input.reason,
     retentionExemptSetBy: actor.uid,

@@ -92,7 +92,10 @@ export async function analyticsSnapshotWriterCore(
     schemaVersion: 1,
   })
 
-  const startOfDayMs = new Date(`${date}T00:00:00.000Z`).getTime()
+  const startOfDayMs = Date.parse(`${date}T00:00:00.000Z`)
+  if (Number.isNaN(startOfDayMs)) {
+    throw new Error(`Invalid date format: ${date}`)
+  }
   const endOfDayMs = startOfDayMs + 86400000
   const resolvedSnap = await db
     .collection('report_ops')
@@ -103,7 +106,11 @@ export async function analyticsSnapshotWriterCore(
   const resolvedToday = resolvedSnap.size
   const resolvedWithTimes = resolvedSnap.docs.filter((d) => {
     const data = d.data()
-    return typeof data.createdAt === 'number' && typeof data.resolvedAt === 'number'
+    return (
+      typeof data.createdAt === 'number' &&
+      typeof data.resolvedAt === 'number' &&
+      data.resolvedAt >= data.createdAt
+    )
   })
   const avgResponseTimeMinutes =
     resolvedWithTimes.length > 0

@@ -40,9 +40,13 @@ export async function recordIncidentResponseEventCore(
     }
 
     const incidentData = incidentSnap.data() as { status: string }
-    const currentIndex = PHASE_ORDER.indexOf(incidentData.status as (typeof PHASE_ORDER)[number])
-    const nextIndex = PHASE_ORDER.indexOf(validated.phase)
+    const currentStatus = incidentData.status
+    const currentIndex = PHASE_ORDER.indexOf(currentStatus as (typeof PHASE_ORDER)[number])
+    if (currentIndex === -1) {
+      throw new HttpsError('failed-precondition', 'incident_has_invalid_status')
+    }
 
+    const nextIndex = PHASE_ORDER.indexOf(validated.phase)
     if (nextIndex !== currentIndex + 1) {
       throw new HttpsError('failed-precondition', 'invalid_phase_transition')
     }

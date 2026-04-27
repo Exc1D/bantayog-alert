@@ -24,6 +24,11 @@ export async function upsertProvincialResourceCore(
   const id = validated.id ?? randomUUID()
   const now = Date.now()
 
+  const existingDoc = await db.collection('provincial_resources').doc(id).get()
+  const existingArchived = existingDoc.exists
+    ? (existingDoc.data() as { archived?: boolean }).archived
+    : false
+
   await db.collection('provincial_resources').doc(id).set({
     id,
     name: validated.name,
@@ -32,7 +37,7 @@ export async function upsertProvincialResourceCore(
     unit: validated.unit,
     location: validated.location,
     available: validated.available,
-    archived: false,
+    archived: existingArchived,
     lastUpdatedBy: actor.uid,
     lastUpdatedAt: now,
     schemaVersion: 1,

@@ -35,7 +35,7 @@ export const dataIncidentDocSchema = z
     severity: z.enum(['critical', 'high', 'medium', 'low']),
     affectedCollections: z.array(z.string().min(1)),
     affectedDataClasses: z.array(z.string().min(1)),
-    estimatedAffectedSubjects: z.number().int().optional(),
+    estimatedAffectedSubjects: z.number().int().nonnegative().optional(),
     summary: z.string().min(1).max(2000),
     status: z.enum([
       'declared',
@@ -54,5 +54,8 @@ export const dataIncidentDocSchema = z
     schemaVersion: z.number().int().positive(),
   })
   .strict()
+  .refine((data) => !data.closedAt || data.closedAt >= data.declaredAt, {
+    message: 'closedAt must be greater than or equal to declaredAt',
+  })
 
 export type DataIncidentDoc = z.infer<typeof dataIncidentDocSchema>

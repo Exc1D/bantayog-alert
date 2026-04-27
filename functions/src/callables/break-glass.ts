@@ -3,16 +3,19 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import * as bcrypt from 'bcryptjs'
 import { randomUUID } from 'node:crypto'
+import { z } from 'zod'
 import { requireAuth, requireMfaAuth } from './https-error.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
 
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 
-interface BreakGlassInput {
-  codeA: string
-  codeB: string
-  reason: string
-}
+const breakGlassInputSchema = z.object({
+  codeA: z.string().min(1).max(100),
+  codeB: z.string().min(1).max(100),
+  reason: z.string().min(1).max(500),
+})
+
+type BreakGlassInput = z.infer<typeof breakGlassInputSchema>
 
 export async function initiateBreakGlassCore(
   db: Firestore,
@@ -49,11 +52,18 @@ export async function initiateBreakGlassCore(
     throw new HttpsError('unauthenticated', 'break_glass_codes_invalid')
   }
 
+  const userRecord = await adminAuth.getUser(actor.uid)
+  if (userRecord.customClaims?.breakGlassSession) {
+    throw new HttpsError('failed-precondition', 'active_break_glass_session_exists')
+  }
+
   const sessionId = randomUUID()
   const now = Date.now()
   const expiresAt = now + FOUR_HOURS_MS
 
+  const existingClaims = userRecord.customClaims ?? {}
   await adminAuth.setCustomUserClaims(actor.uid, {
+    ...existingClaims,
     breakGlassSession: true,
     breakGlassSessionId: sessionId,
     breakGlassExpiresAt: expiresAt,
@@ -84,7 +94,7 @@ export const initiateBreakGlass = onCall(
   async (request) => {
     const { uid } = requireAuth(request, ['superadmin'])
     requireMfaAuth(request)
-    const data = request.data as BreakGlassInput
+    const data = breakGlassInputSchema.parse(request.data)
     return initiateBreakGlassCore(getFirestore(), getAuth(), data, { uid })
   },
 )

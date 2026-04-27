@@ -1,4 +1,4 @@
-import { onCall } from 'firebase-functions/v2/https'
+import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { requireAuth } from './https-error.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
@@ -8,7 +8,12 @@ export async function toggleMutualAidVisibilityCore(
   input: { agencyId: string; visible: boolean },
   actor: { uid: string },
 ): Promise<void> {
-  await db.collection('agencies').doc(input.agencyId).update({
+  const agencyRef = db.collection('agencies').doc(input.agencyId)
+  const agencyDoc = await agencyRef.get()
+  if (!agencyDoc.exists) {
+    throw new HttpsError('not-found', 'agency_not_found')
+  }
+  await agencyRef.update({
     mutualAidVisible: input.visible,
   })
   void streamAuditEvent({
