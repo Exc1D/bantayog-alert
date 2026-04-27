@@ -138,3 +138,17 @@ export { smsDeliveryReport } from './http/sms-delivery-report.js'
 export { smsInboundWebhook } from './http/sms-inbound.js'
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js'
 export { analyticsSnapshotWriter } from './scheduled/analytics-snapshot-writer.js'
+export { auditExportBatch } from './triggers/audit-export-batch.js'
+export { auditExportHealthCheck } from './triggers/audit-export-health-check.js'
+export { sweepExpiredBreakGlassSessions } from './triggers/sweep-expired-break-glass-sessions.js'
+export { initiateBreakGlass, deactivateBreakGlass } from './callables/break-glass.js'
+export { declareEmergency } from './callables/declare-emergency.js'
+export { declareDataIncident } from './callables/declare-data-incident.js'
+export { recordIncidentResponseEvent } from './callables/record-incident-response-event.js'
+export { setRetentionExempt } from './callables/set-retention-exempt.js'
+export { approveErasureRequest } from './callables/approve-erasure-request.js'
+export { toggleMutualAidVisibility } from './callables/toggle-mutual-aid-visibility.js'
+export {
+  upsertProvincialResource,
+  archiveProvincialResource,
+} from './callables/provincial-resources.js'

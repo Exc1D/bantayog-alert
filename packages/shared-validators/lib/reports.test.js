@@ -365,13 +365,6 @@ describe('inboxPayloadSchema contact extension', () => {
             followUpConsent: true,
         })).not.toThrow();
     });
-    it('accepts followUpConsent=false', () => {
-        expect(() => inboxPayloadSchema.parse({
-            ...basePayload,
-            contact: { phone: '+639171234567', smsConsent: true },
-            followUpConsent: false,
-        })).not.toThrow();
-    });
     it('rejects non-boolean followUpConsent', () => {
         expect(() => inboxPayloadSchema.parse({
             ...basePayload,

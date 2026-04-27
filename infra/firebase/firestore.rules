@@ -481,6 +481,31 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // Phase 7: data incidents, provincial resources, erasure requests,
+    // system health.
+    // ================================================================
+
+    match /data_incidents/{id} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /provincial_resources/{id} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    match /erasure_requests/{id} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
+    match /system_health/{id} {
+      allow read: if isSuperadmin();
+      allow write: if false;
+    }
+
+    // ================================================================
     // Default deny — every collection not explicitly matched above.
     // Phase 2+ will add specific match blocks for reports, report_private,
     // report_ops, dispatches, responders, etc.

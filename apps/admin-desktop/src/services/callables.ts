@@ -143,4 +143,72 @@ export const callables = {
       functions,
       'bulkAvailabilityOverride',
     )(payload).then((r) => r.data),
+  initiateBreakGlass: (payload: { codeA: string; codeB: string; reason: string }) =>
+    httpsCallable<typeof payload, { sessionId: string }>(
+      functions,
+      'initiateBreakGlass',
+    )(payload).then((r) => r.data),
+  deactivateBreakGlass: () =>
+    httpsCallable<Record<string, never>>(functions, 'deactivateBreakGlass')({}).then((r) => r.data),
+  declareEmergency: (payload: {
+    hazardType: string
+    affectedMunicipalityIds: string[]
+    message: string
+  }) =>
+    httpsCallable<typeof payload, { alertId: string }>(
+      functions,
+      'declareEmergency',
+    )(payload).then((r) => r.data),
+  declareDataIncident: (payload: {
+    incidentType: string
+    severity: string
+    affectedCollections: string[]
+    affectedDataClasses: string[]
+    estimatedAffectedSubjects?: number
+    summary: string
+  }) =>
+    httpsCallable<typeof payload, { incidentId: string }>(
+      functions,
+      'declareDataIncident',
+    )(payload).then((r) => r.data),
+  recordIncidentResponseEvent: (payload: { incidentId: string; phase: string; notes?: string }) =>
+    httpsCallable<typeof payload, { eventId: string }>(
+      functions,
+      'recordIncidentResponseEvent',
+    )(payload).then((r) => r.data),
+  setRetentionExempt: (payload: {
+    collection: string
+    documentId: string
+    exempt: boolean
+    reason: string
+  }) => httpsCallable<typeof payload>(functions, 'setRetentionExempt')(payload).then((r) => r.data),
+  approveErasureRequest: (payload: {
+    erasureRequestId: string
+    approved: boolean
+    reason?: string
+  }) =>
+    httpsCallable<typeof payload>(functions, 'approveErasureRequest')(payload).then((r) => r.data),
+  toggleMutualAidVisibility: (payload: { agencyId: string; visible: boolean }) =>
+    httpsCallable<typeof payload>(
+      functions,
+      'toggleMutualAidVisibility',
+    )(payload).then((r) => r.data),
+  upsertProvincialResource: (payload: {
+    id?: string
+    name: string
+    type: string
+    quantity: number
+    unit: string
+    location: string
+    available: boolean
+  }) =>
+    httpsCallable<typeof payload, { id: string }>(
+      functions,
+      'upsertProvincialResource',
+    )(payload).then((r) => r.data),
+  archiveProvincialResource: (payload: { id: string }) =>
+    httpsCallable<typeof payload>(
+      functions,
+      'archiveProvincialResource',
+    )(payload).then((r) => r.data),
 }

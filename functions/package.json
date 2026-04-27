@@ -29,6 +29,8 @@
   },
   "dependencies": {
     "@bantayog/shared-data": "workspace:*",
+    "@google-cloud/bigquery": "^7.9.2",
+    "@google-cloud/logging": "^7.0.0",
     "@bantayog/shared-sms-parser": "workspace:*",
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
@@ -41,10 +43,12 @@
     "geojson": "^0.5.0",
     "ngeohash": "^0.6.3",
     "sharp": "^0.34.5",
+    "bcryptjs": "^2.4.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/ngeohash": "^0.6.8",
     "@types/node": "^20.12.0",
     "firebase": "^12.0.0",
