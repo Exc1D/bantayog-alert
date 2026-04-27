@@ -4,6 +4,7 @@ import {
   BANTAYOG_TO_HTTPS_CODE,
   bantayogErrorToHttps,
   requireAuth,
+  requireMfaAuth,
 } from '../../callables/https-error.js'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 
@@ -81,5 +82,23 @@ describe('requireAuth', () => {
       role: 'municipal_admin',
       municipalityId: 'm1',
     })
+  })
+})
+
+describe('requireMfaAuth', () => {
+  it('throws mfa_required when sign_in_second_factor is absent', () => {
+    expect(() => {
+      requireMfaAuth({
+        auth: { uid: 'u1', token: { firebase: {} } },
+      })
+    }).toThrow('mfa_required')
+  })
+
+  it('passes when sign_in_second_factor is a string', () => {
+    expect(() => {
+      requireMfaAuth({
+        auth: { uid: 'u1', token: { firebase: { sign_in_second_factor: 'totp' } } },
+      })
+    }).not.toThrow()
   })
 })
