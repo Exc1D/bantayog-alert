@@ -71,7 +71,7 @@ export async function initiateBreakGlassCore(
 
   await db.collection('breakglass_events').doc(sessionId).set({
     sessionId,
-    actor: actor.uid,
+    actorUid: actor.uid,
     action: 'initiated',
     reason: input.reason,
     correlationId: sessionId,
