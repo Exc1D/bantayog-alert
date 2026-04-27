@@ -5,6 +5,7 @@ import { db } from '../app/firebase'
 import { useProvinceMetrics } from '../hooks/useProvinceMetrics'
 import { useMunicipalPerformance } from '../hooks/useMunicipalPerformance'
 import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
+import { NdrrrmcDrawer } from '../components/NdrrrmcDrawer'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -356,56 +357,12 @@ export function ProvinceDashboardPage() {
         </div>
       </section>
 
-      {/* NDRRMC Drawer — Task 4 stub */}
-      {ndrrmcOpen && (
-        <div
-          role="dialog"
-          aria-label="NDRRMC Escalation Drawer"
-          style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '480px',
-            background: '#fff',
-            boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
-            zIndex: 50,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '16px 20px',
-              borderBottom: '1px solid #e5e7eb',
-            }}
-          >
-            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>NDRRMC Escalation</h2>
-            <button
-              type="button"
-              aria-label="Close NDRRMC drawer"
-              onClick={() => {
-                setNdrrmcOpen(false)
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '20px',
-                cursor: 'pointer',
-                color: '#6b7280',
-              }}
-            >
-              ×
-            </button>
-          </div>
-          <div style={{ padding: '24px', color: '#6b7280', fontSize: '14px' }}>
-            NDRRMC Drawer placeholder — Task 4
-          </div>
-        </div>
-      )}
+      <NdrrrmcDrawer
+        open={ndrrmcOpen}
+        onClose={() => {
+          setNdrrmcOpen(false)
+        }}
+      />
     </main>
   )
 }
