@@ -31,7 +31,7 @@ export async function declareDataIncidentCore(
   const now = Date.now()
 
   await db.runTransaction(async (tx) => {
-    // eslint-disable-line @typescript-eslint/require-await -- Firestore SDK requires async callback
+    await Promise.resolve() // Firestore transaction callback requires async
     tx.set(db.collection('data_incidents').doc(incidentId), {
       ...validated,
       incidentId,
