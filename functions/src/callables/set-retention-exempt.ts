@@ -1,35 +1,39 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { z } from 'zod'
 import { requireAuth, requireMfaAuth } from './https-error.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
 
-const ALLOWED_COLLECTIONS = ['reports', 'report_private', 'report_ops', 'sms_inbox'] as const
+const inputSchema = z.object({
+  collection: z.enum(['reports', 'report_private', 'report_ops', 'sms_inbox']),
+  documentId: z.string().min(1),
+  exempt: z.boolean(),
+  reason: z.string().min(1),
+})
 
 export async function setRetentionExemptCore(
   db: Firestore,
-  input: { collection: string; documentId: string; exempt: boolean; reason: string },
+  input: unknown,
   actor: { uid: string },
 ): Promise<void> {
-  if (!(ALLOWED_COLLECTIONS as readonly string[]).includes(input.collection)) {
-    throw new HttpsError('invalid-argument', 'collection_not_allowed')
-  }
-  const docRef = db.collection(input.collection).doc(input.documentId)
+  const parsed = inputSchema.parse(input)
+  const docRef = db.collection(parsed.collection).doc(parsed.documentId)
   const docSnap = await docRef.get()
   if (!docSnap.exists) {
     throw new HttpsError('not-found', 'document_not_found')
   }
   await docRef.update({
-    retentionExempt: input.exempt,
-    retentionExemptReason: input.reason,
+    retentionExempt: parsed.exempt,
+    retentionExemptReason: parsed.reason,
     retentionExemptSetBy: actor.uid,
     retentionExemptSetAt: Date.now(),
   })
   void streamAuditEvent({
     eventType: 'retention_exempt_set',
     actorUid: actor.uid,
-    targetCollection: input.collection,
-    targetDocumentId: input.documentId,
-    metadata: { exempt: input.exempt },
+    targetCollection: parsed.collection,
+    targetDocumentId: parsed.documentId,
+    metadata: { exempt: parsed.exempt },
     occurredAt: Date.now(),
   })
 }
@@ -39,10 +43,6 @@ export const setRetentionExempt = onCall(
   async (request) => {
     const { uid } = requireAuth(request, ['superadmin'])
     requireMfaAuth(request)
-    await setRetentionExemptCore(
-      getFirestore(),
-      request.data as { collection: string; documentId: string; exempt: boolean; reason: string },
-      { uid },
-    )
+    await setRetentionExemptCore(getFirestore(), request.data, { uid })
   },
 )

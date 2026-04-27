@@ -31,7 +31,7 @@ export async function declareDataIncidentCore(
   const now = Date.now()
 
   await db.runTransaction(async (tx) => {
-    await Promise.resolve() // Firestore transaction callback requires async
+    await Promise.resolve()
     tx.set(db.collection('data_incidents').doc(incidentId), {
       ...validated,
       incidentId,

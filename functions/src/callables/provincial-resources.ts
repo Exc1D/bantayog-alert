@@ -26,7 +26,7 @@ export async function upsertProvincialResourceCore(
 
   const existingDoc = await db.collection('provincial_resources').doc(id).get()
   const existingArchived = existingDoc.exists
-    ? (existingDoc.data() as { archived?: boolean }).archived
+    ? ((existingDoc.data() as { archived?: boolean }).archived ?? false)
     : false
 
   await db.collection('provincial_resources').doc(id).set({

@@ -58,8 +58,12 @@ export const auditExportHealthCheck = onSchedule(
             body: `Streaming gap: ${String(streamingGapSeconds)}s · Batch gap: ${String(batchGapSeconds)}s`,
           },
         })
-      } catch {
-        /* non-critical */
+      } catch (err) {
+        console.error('[audit-export-health-check] failed to send FCM alert', {
+          streamingGapSeconds,
+          batchGapSeconds,
+          message: err instanceof Error ? err.message : String(err),
+        })
       }
     }
   },
