@@ -92,6 +92,34 @@ export async function analyticsSnapshotWriterCore(
     schemaVersion: 1,
   })
 
+  const startOfDayMs = new Date(`${date}T00:00:00.000Z`).getTime()
+  const endOfDayMs = startOfDayMs + 86400000
+  const resolvedSnap = await db
+    .collection('report_ops')
+    .where('status', '==', 'resolved')
+    .where('resolvedAt', '>=', startOfDayMs)
+    .where('resolvedAt', '<', endOfDayMs)
+    .get()
+  const resolvedToday = resolvedSnap.size
+  const resolvedWithTimes = resolvedSnap.docs.filter((d) => {
+    const data = d.data()
+    return typeof data.createdAt === 'number' && typeof data.resolvedAt === 'number'
+  })
+  const avgResponseTimeMinutes =
+    resolvedWithTimes.length > 0
+      ? resolvedWithTimes.reduce((sum, d) => {
+          const data = d.data()
+          return sum + (data.resolvedAt - data.createdAt) / 60000
+        }, 0) / resolvedWithTimes.length
+      : null
+
+  await db
+    .collection('analytics_snapshots')
+    .doc(date)
+    .collection('province')
+    .doc('summary')
+    .set({ resolvedToday, avgResponseTimeMinutes }, { merge: true })
+
   log({
     severity: 'INFO',
     code: 'analytics.done',

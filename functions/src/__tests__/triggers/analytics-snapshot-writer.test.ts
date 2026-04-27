@@ -203,4 +203,50 @@ describe('analyticsSnapshotWriter', () => {
       analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) }),
     ).resolves.not.toThrow()
   })
+
+  it('computes resolvedToday and avgResponseTimeMinutes for province summary', async () => {
+    const dayStart = new Date(`${dateStr}T00:00:00.000Z`).getTime()
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'report_ops', 'resolved-r1'), {
+        municipalityId: 'daet',
+        status: 'resolved',
+        severity: 'high',
+        reportType: 'flood',
+        createdAt: dayStart + 3600000,
+        updatedAt: dayStart + 7200000,
+        resolvedAt: dayStart + 7200000,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        schemaVersion: 1,
+      })
+      await setDoc(doc(ctx.firestore(), 'report_ops', 'resolved-r2'), {
+        municipalityId: 'daet',
+        status: 'resolved',
+        severity: 'medium',
+        reportType: 'flood',
+        createdAt: dayStart + 7200000,
+        updatedAt: dayStart + 18000000,
+        resolvedAt: dayStart + 18000000,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        schemaVersion: 1,
+      })
+    })
+
+    await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
+
+    const provinceSnap = await adminDb
+      .collection('analytics_snapshots')
+      .doc(dateStr)
+      .collection('province')
+      .doc('summary')
+      .get()
+    const data = provinceSnap.data()!
+    expect(data.resolvedToday).toBe(2)
+    expect(data.avgResponseTimeMinutes).toBeCloseTo(120, 0)
+  })
 })
