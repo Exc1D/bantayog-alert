@@ -1,4 +1,4 @@
-import { onCall } from 'firebase-functions/v2/https'
+import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
@@ -28,20 +28,32 @@ export async function upsertProvincialResourceCore(
   const existingArchived = existingDoc.exists
     ? ((existingDoc.data() as { archived?: boolean }).archived ?? false)
     : false
+  const existingData = existingDoc.exists
+    ? (existingDoc.data() as { archivedBy?: string; archivedAt?: number })
+    : { archivedBy: undefined, archivedAt: undefined }
 
-  await db.collection('provincial_resources').doc(id).set({
-    id,
-    name: validated.name,
-    type: validated.type,
-    quantity: validated.quantity,
-    unit: validated.unit,
-    location: validated.location,
-    available: validated.available,
-    archived: existingArchived,
-    lastUpdatedBy: actor.uid,
-    lastUpdatedAt: now,
-    schemaVersion: 1,
-  })
+  await db
+    .collection('provincial_resources')
+    .doc(id)
+    .set({
+      id,
+      name: validated.name,
+      type: validated.type,
+      quantity: validated.quantity,
+      unit: validated.unit,
+      location: validated.location,
+      available: validated.available,
+      archived: existingArchived,
+      ...(existingArchived && existingData.archivedBy
+        ? { archivedBy: existingData.archivedBy }
+        : {}),
+      ...(existingArchived && existingData.archivedAt
+        ? { archivedAt: existingData.archivedAt }
+        : {}),
+      lastUpdatedBy: actor.uid,
+      lastUpdatedAt: now,
+      schemaVersion: 1,
+    })
 
   void streamAuditEvent({
     eventType: 'provincial_resource_upserted',
@@ -67,6 +79,10 @@ export async function archiveProvincialResourceCore(
   input: { id: string },
   actor: { uid: string },
 ): Promise<void> {
+  const docSnap = await db.collection('provincial_resources').doc(input.id).get()
+  if (!docSnap.exists) {
+    throw new HttpsError('not-found', 'provincial_resource_not_found')
+  }
   await db.collection('provincial_resources').doc(input.id).update({
     archived: true,
     archivedBy: actor.uid,

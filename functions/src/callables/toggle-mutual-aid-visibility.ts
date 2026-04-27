@@ -14,21 +14,25 @@ export async function toggleMutualAidVisibilityCore(
   input: unknown,
   actor: { uid: string },
 ): Promise<void> {
-  const parsed = inputSchema.parse(input)
-  const agencyRef = db.collection('agencies').doc(parsed.agencyId)
+  const parsed = inputSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new HttpsError('invalid-argument', 'invalid_toggle_mutual_aid_visibility_payload')
+  }
+  const { agencyId, visible } = parsed.data
+  const agencyRef = db.collection('agencies').doc(agencyId)
   const agencyDoc = await agencyRef.get()
   if (!agencyDoc.exists) {
     throw new HttpsError('not-found', 'agency_not_found')
   }
   await agencyRef.update({
-    mutualAidVisible: parsed.visible,
+    mutualAidVisible: visible,
   })
   void streamAuditEvent({
     eventType: 'mutual_aid_visibility_toggled',
     actorUid: actor.uid,
     targetCollection: 'agencies',
-    targetDocumentId: parsed.agencyId,
-    metadata: { visible: parsed.visible },
+    targetDocumentId: agencyId,
+    metadata: { visible },
     occurredAt: Date.now(),
   })
 }

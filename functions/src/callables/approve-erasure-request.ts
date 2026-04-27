@@ -15,24 +15,43 @@ export async function approveErasureRequestCore(
   input: unknown,
   actor: { uid: string },
 ): Promise<void> {
-  const parsed = inputSchema.parse(input)
-  const doc = await db.collection('erasure_requests').doc(parsed.erasureRequestId).get()
-  if (!doc.exists) {
-    throw new HttpsError('not-found', 'erasure_request_not_found')
+  const parsed = inputSchema.safeParse(input)
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+    let msg = 'invalid_input'
+    if (issues.length > 0) {
+      const firstIssue = issues[0]
+      if (firstIssue) {
+        msg = firstIssue.message
+      }
+    }
+    throw new HttpsError('invalid-argument', msg)
   }
-  const status = parsed.approved ? 'approved_pending_anonymization' : 'denied'
-  await doc.ref.update({
-    status,
-    reviewedBy: actor.uid,
-    reviewedAt: Date.now(),
-    ...(parsed.reason ? { reviewReason: parsed.reason } : {}),
-  })
-  void streamAuditEvent({
-    eventType: 'erasure_request_reviewed',
-    actorUid: actor.uid,
-    targetDocumentId: parsed.erasureRequestId,
-    metadata: { approved: parsed.approved },
-    occurredAt: Date.now(),
+  const data = parsed.data
+
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(db.collection('erasure_requests').doc(data.erasureRequestId))
+    if (!doc.exists) {
+      throw new HttpsError('not-found', 'erasure_request_not_found')
+    }
+    const currentStatus = doc.data()?.status
+    if (currentStatus !== 'pending') {
+      throw new HttpsError('failed-precondition', 'erasure_already_reviewed')
+    }
+    const status = data.approved ? 'approved_pending_anonymization' : 'denied'
+    tx.update(doc.ref, {
+      status,
+      reviewedBy: actor.uid,
+      reviewedAt: Date.now(),
+      ...(data.reason ? { reviewReason: data.reason } : {}),
+    })
+    void streamAuditEvent({
+      eventType: 'erasure_request_reviewed',
+      actorUid: actor.uid,
+      targetDocumentId: data.erasureRequestId,
+      metadata: { approved: data.approved },
+      occurredAt: Date.now(),
+    })
   })
 }
 

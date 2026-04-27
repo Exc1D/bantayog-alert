@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { detectEncoding } from '@bantayog/shared-validators'
 import { callables } from '../services/callables'
 
@@ -16,33 +16,21 @@ interface Props {
 }
 
 export function MassAlertModal({ municipalityId, onClose }: Props) {
-  const sendKeyRef = useRef<string>(crypto.randomUUID())
-  const escalateKeyRef = useRef<string>(crypto.randomUUID())
   const [message, setMessage] = useState('')
   const [reachPlan, setReachPlan] = useState<ReachPlan | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pagasaSignalRef, setPagasaSignalRef] = useState('')
-  const [notes, setNotes] = useState('')
-
-  const normalizedMessage = message.trim()
-  const normalizedPagasaSignalRef = pagasaSignalRef.trim()
-  const normalizedNotes = notes.trim()
 
   const encoding = message ? detectEncoding(message).encoding : 'GSM-7'
 
   const handlePreview = () => {
-    if (!normalizedMessage) {
-      setError('Message cannot be empty')
-      return
-    }
-    setError(null)
     setLoading(true)
+    setError(null)
     void (async () => {
       try {
         const plan = await callables.massAlertReachPlanPreview({
           targetScope: { municipalityIds: [municipalityId] },
-          message: normalizedMessage,
+          message,
         })
         setReachPlan(plan)
       } catch (err: unknown) {
@@ -58,15 +46,14 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
       setError('Direct send is not available for this alert scope')
       return
     }
-    setError(null)
     setLoading(true)
     void (async () => {
       try {
         await callables.sendMassAlert({
           reachPlan,
-          message: normalizedMessage,
+          message,
           targetScope: { municipalityIds: [municipalityId] },
-          idempotencyKey: sendKeyRef.current,
+          idempotencyKey: crypto.randomUUID(),
         })
         onClose()
       } catch (err: unknown) {
@@ -78,23 +65,14 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
   }
 
   const handleEscalate = () => {
-    if (normalizedNotes.length > 2000) {
-      setError('Notes must be 2000 characters or fewer')
-      return
-    }
-    setError(null)
     setLoading(true)
     void (async () => {
       try {
         await callables.requestMassAlertEscalation({
-          message: normalizedMessage,
+          message,
           targetScope: { municipalityIds: [municipalityId] },
-          evidencePack: {
-            linkedReportIds: [],
-            ...(normalizedPagasaSignalRef ? { pagasaSignalRef: normalizedPagasaSignalRef } : {}),
-            ...(normalizedNotes ? { notes: normalizedNotes } : {}),
-          },
-          idempotencyKey: escalateKeyRef.current,
+          evidencePack: { linkedReportIds: [] },
+          idempotencyKey: crypto.randomUUID(),
         })
         onClose()
       } catch (err: unknown) {
@@ -120,8 +98,6 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
         onChange={(e) => {
           setMessage(e.target.value)
           setReachPlan(null)
-          sendKeyRef.current = crypto.randomUUID()
-          escalateKeyRef.current = crypto.randomUUID()
         }}
         rows={4}
       />
@@ -130,7 +106,7 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
         {reachPlan?.unicodeWarning && <span> ⚠ UCS-2 (multi-byte)</span>}
         {reachPlan && <> · Segments: {reachPlan.segmentCount}</>}
       </p>
-      <button onClick={handlePreview} disabled={!normalizedMessage || loading}>
+      <button onClick={handlePreview} disabled={!message || loading}>
         Preview Reach
       </button>
       {reachPlan && (
@@ -153,32 +129,9 @@ export function MassAlertModal({ municipalityId, onClose }: Props) {
         Send Alert
       </button>
       {reachPlan?.route === 'ndrrmc_escalation' && (
-        <>
-          <label htmlFor="pagasa-signal-ref">PAGASA Signal Ref (optional)</label>
-          <input
-            id="pagasa-signal-ref"
-            type="text"
-            value={pagasaSignalRef}
-            onChange={(e) => {
-              setPagasaSignalRef(e.target.value)
-              escalateKeyRef.current = crypto.randomUUID()
-            }}
-          />
-          <label htmlFor="escalation-notes">Notes (optional)</label>
-          <textarea
-            id="escalation-notes"
-            value={notes}
-            maxLength={2000}
-            onChange={(e) => {
-              setNotes(e.target.value)
-              escalateKeyRef.current = crypto.randomUUID()
-            }}
-            rows={2}
-          />
-          <button onClick={handleEscalate} disabled={loading}>
-            Request NDRRMC Escalation
-          </button>
-        </>
+        <button onClick={handleEscalate} disabled={loading}>
+          Request NDRRMC Escalation
+        </button>
       )}
       <button onClick={onClose}>Cancel</button>
     </dialog>
