@@ -9,16 +9,20 @@ interface LastAtRow {
   lastAt: { value: string } | null
 }
 
+// extractLastMs expects INT64 epoch (numeric)
 function extractLastMs(rows: LastAtRow[]): number {
   const row = rows[0]
   if (!row?.lastAt?.value) return 0
-  return Number(row.lastAt.value)
+  const ms = Number(row.lastAt.value)
+  return Number.isNaN(ms) ? 0 : ms
 }
 
+// extractLastDateMs expects timestamp string (from batch_events.timestamp column)
 function extractLastDateMs(rows: LastAtRow[]): number {
   const row = rows[0]
   if (!row?.lastAt?.value) return 0
-  return new Date(row.lastAt.value).getTime()
+  const ms = new Date(row.lastAt.value).getTime()
+  return Number.isNaN(ms) ? 0 : ms
 }
 
 export const auditExportHealthCheck = onSchedule(
