@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@bantayog/shared-data": "workspace:*",
+    "@google-cloud/bigquery": "^7.9.2",
     "@bantayog/shared-sms-parser": "workspace:*",
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
