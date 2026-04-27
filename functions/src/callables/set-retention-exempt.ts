@@ -16,24 +16,28 @@ export async function setRetentionExemptCore(
   input: unknown,
   actor: { uid: string },
 ): Promise<void> {
-  const parsed = inputSchema.parse(input)
-  const docRef = db.collection(parsed.collection).doc(parsed.documentId)
+  const parsed = inputSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new HttpsError('invalid-argument', 'invalid_retention_exempt_payload')
+  }
+  const data = parsed.data
+  const docRef = db.collection(data.collection).doc(data.documentId)
   const docSnap = await docRef.get()
   if (!docSnap.exists) {
     throw new HttpsError('not-found', 'document_not_found')
   }
   await docRef.update({
-    retentionExempt: parsed.exempt,
-    retentionExemptReason: parsed.reason,
+    retentionExempt: data.exempt,
+    retentionExemptReason: data.reason,
     retentionExemptSetBy: actor.uid,
     retentionExemptSetAt: Date.now(),
   })
   void streamAuditEvent({
     eventType: 'retention_exempt_set',
     actorUid: actor.uid,
-    targetCollection: parsed.collection,
-    targetDocumentId: parsed.documentId,
-    metadata: { exempt: parsed.exempt },
+    targetCollection: data.collection,
+    targetDocumentId: data.documentId,
+    metadata: { exempt: data.exempt },
     occurredAt: Date.now(),
   })
 }
