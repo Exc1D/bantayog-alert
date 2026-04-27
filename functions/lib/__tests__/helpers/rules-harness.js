@@ -25,14 +25,19 @@ function isEmulatorRunning(emulator) {
     }
     return true;
 }
+const HUB_POLL_URL = 'http://localhost:4400/emulators';
+const MAX_HUB_POLL_ATTEMPTS = 30;
+const HUB_POLL_INTERVAL_MS = 500;
+const HUB_FETCH_TIMEOUT_MS = 500;
+const POST_REGISTRATION_DELAY_MS = 2000;
 export async function createTestEnv(projectId) {
-    // Poll the hub until Firestore registers and is in running state, or time out after 30 attempts (15s with 500ms poll).
+    // Poll the hub until Firestore registers and is in running state, or time out after MAX_HUB_POLL_ATTEMPTS (15s with 500ms poll).
     let hubData = null;
     let lastHubError = null;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < MAX_HUB_POLL_ATTEMPTS; i++) {
         try {
-            const res = await fetch('http://localhost:4400/emulators', {
-                signal: AbortSignal.timeout(500),
+            const res = await fetch(HUB_POLL_URL, {
+                signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
             });
             if (res.ok) {
                 hubData = (await res.json());
@@ -44,7 +49,7 @@ export async function createTestEnv(projectId) {
         catch (err) {
             lastHubError = err;
         }
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, HUB_POLL_INTERVAL_MS));
     }
     if (!hubData?.firestore || !isEmulatorRunning(hubData.firestore)) {
         const lastErrorMsg = lastHubError instanceof Error ? ` Last hub error: ${lastHubError.message}` : '';
@@ -53,7 +58,7 @@ export async function createTestEnv(projectId) {
             lastErrorMsg);
     }
     // Even after registration, Firestore needs a moment to start accepting gRPC connections.
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, POST_REGISTRATION_DELAY_MS));
     // Build config dynamically based on which emulators the hub reports as running.
     // This avoids connection errors when only a subset of emulators is started.
     const config = { projectId };

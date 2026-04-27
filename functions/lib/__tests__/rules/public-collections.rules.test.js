@@ -1,7 +1,7 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { collection, getDocs, addDoc, doc, setDoc, getDoc } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, it } from 'vitest';
-import { authed, createTestEnv } from '../helpers/rules-harness.js';
+import { authed, createTestEnv, unauthed } from '../helpers/rules-harness.js';
 import { seedActiveAccount, seedAgency, staffClaims, ts } from '../helpers/seed-factories.js';
 let env;
 beforeAll(async () => {
@@ -212,6 +212,72 @@ describe('privileged read tests for callable collections', () => {
     it('superadmin with active privileged claim can read incident_response_events', async () => {
         const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
         await assertSucceeds(getDocs(collection(db, 'incident_response_events')));
+    });
+    describe('Phase 7 collections', () => {
+        it('any authed user can read provincial_resources', async () => {
+            const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }));
+            await assertSucceeds(getDocs(collection(db, 'provincial_resources')));
+        });
+        it('unauthed user cannot read provincial_resources', async () => {
+            const db = unauthed(env);
+            await assertFails(getDocs(collection(db, 'provincial_resources')));
+        });
+        it('superadmin with active privileged claim can read data_incidents', async () => {
+            const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
+            await assertSucceeds(getDocs(collection(db, 'data_incidents')));
+        });
+        it('non-superadmin cannot read data_incidents', async () => {
+            const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }));
+            await assertFails(getDocs(collection(db, 'data_incidents')));
+        });
+        it('superadmin with active privileged claim can read erasure_requests', async () => {
+            const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
+            await assertSucceeds(getDocs(collection(db, 'erasure_requests')));
+        });
+        it('non-superadmin cannot read erasure_requests', async () => {
+            const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }));
+            await assertFails(getDocs(collection(db, 'erasure_requests')));
+        });
+        it('superadmin can read system_health', async () => {
+            const db = authed(env, 'super-1', staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }));
+            await assertSucceeds(getDocs(collection(db, 'system_health')));
+        });
+        it('non-superadmin cannot read system_health', async () => {
+            const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }));
+            await assertFails(getDocs(collection(db, 'system_health')));
+        });
+        it('suspended superadmin cannot read data_incidents', async () => {
+            const db = authed(env, 'super-1', staffClaims({
+                role: 'provincial_superadmin',
+                permittedMunicipalityIds: ['daet'],
+                accountStatus: 'suspended',
+            }));
+            await assertFails(getDocs(collection(db, 'data_incidents')));
+        });
+        it('suspended superadmin cannot write data_incidents', async () => {
+            const db = authed(env, 'super-1', staffClaims({
+                role: 'provincial_superadmin',
+                permittedMunicipalityIds: ['daet'],
+                accountStatus: 'suspended',
+            }));
+            await assertFails(addDoc(collection(db, 'data_incidents'), { schemaVersion: 1, createdAt: ts }));
+        });
+        it('suspended superadmin cannot read erasure_requests', async () => {
+            const db = authed(env, 'super-1', staffClaims({
+                role: 'provincial_superadmin',
+                permittedMunicipalityIds: ['daet'],
+                accountStatus: 'suspended',
+            }));
+            await assertFails(getDocs(collection(db, 'erasure_requests')));
+        });
+        it('suspended superadmin cannot write erasure_requests', async () => {
+            const db = authed(env, 'super-1', staffClaims({
+                role: 'provincial_superadmin',
+                permittedMunicipalityIds: ['daet'],
+                accountStatus: 'suspended',
+            }));
+            await assertFails(addDoc(collection(db, 'erasure_requests'), { schemaVersion: 1, createdAt: ts }));
+        });
     });
 });
 //# sourceMappingURL=public-collections.rules.test.js.map

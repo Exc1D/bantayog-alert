@@ -88,7 +88,8 @@ export async function sendFcmToResponder(payload) {
                 const currentTokens = rawTokens.filter((t) => typeof t === 'string');
                 const invalidSet = new Set(invalidTokens);
                 const remainingTokens = currentTokens.filter((t) => !invalidSet.has(t));
-                if (remainingTokens.length < currentTokens.length || rawTokens.length !== currentTokens.length) {
+                if (remainingTokens.length < currentTokens.length ||
+                    rawTokens.length !== currentTokens.length) {
                     const tokensToRemove = invalidTokens.filter((t) => typeof t === 'string');
                     tx.update(ref, {
                         fcmTokens: FieldValue.arrayRemove(...tokensToRemove),

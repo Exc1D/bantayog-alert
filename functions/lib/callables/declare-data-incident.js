@@ -15,7 +15,7 @@ const dataIncidentInputSchema = z.object({
     severity: z.enum(['critical', 'high', 'medium', 'low']),
     affectedCollections: z.array(z.string().min(1)),
     affectedDataClasses: z.array(z.string().min(1)),
-    estimatedAffectedSubjects: z.number().int().optional(),
+    estimatedAffectedSubjects: z.number().int().nonnegative().optional(),
     summary: z.string().min(1).max(2000),
 });
 export async function declareDataIncidentCore(db, input, actor) {
@@ -24,7 +24,7 @@ export async function declareDataIncidentCore(db, input, actor) {
     const eventId = randomUUID();
     const now = Date.now();
     await db.runTransaction(async (tx) => {
-        await Promise.resolve(); // Firestore transaction callback requires async
+        await Promise.resolve();
         tx.set(db.collection('data_incidents').doc(incidentId), {
             ...validated,
             incidentId,
@@ -46,7 +46,7 @@ export async function declareDataIncidentCore(db, input, actor) {
     void streamAuditEvent({
         eventType: 'data_incident_declared',
         actorUid: actor.uid,
-        sessionId: incidentId,
+        targetDocumentId: incidentId,
         occurredAt: now,
     });
     return { incidentId };

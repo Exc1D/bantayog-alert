@@ -36,8 +36,8 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now: Timestamp.now(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updatedAt: Date.now() as any,
+
+        updatedAt: Date.now(),
       })
       expect(result.allowed).toBe(true)
       expect(result.remaining).toBe(59)
@@ -57,8 +57,8 @@ describe('checkRateLimit', () => {
           limit: 60,
           windowSeconds: 60,
           now,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          updatedAt: nowMs as any,
+
+          updatedAt: nowMs,
         })
       }
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -67,8 +67,8 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updatedAt: nowMs as any,
+
+        updatedAt: nowMs,
       })
       expect(denied.allowed).toBe(false)
       expect(denied.retryAfterSeconds).toBeGreaterThan(0)
@@ -88,8 +88,8 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now: old,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updatedAt: old.toMillis() as any,
+
+        updatedAt: old.toMillis(),
       })
       // Now call with current time — old entry must be filtered out
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -98,8 +98,8 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updatedAt: now.toMillis() as any,
+
+        updatedAt: now.toMillis(),
       })
       expect(result.allowed).toBe(true)
     })

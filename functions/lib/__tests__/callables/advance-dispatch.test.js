@@ -11,7 +11,7 @@ let testEnv;
 beforeAll(async () => {
     testEnv = await initializeTestEnvironment({
         projectId: 'advance-dispatch-test',
-        firestore: { host: 'localhost', port: 8080 },
+        firestore: { host: 'localhost', port: 8081 },
     });
 });
 beforeEach(async () => {

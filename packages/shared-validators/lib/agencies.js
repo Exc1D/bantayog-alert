@@ -7,6 +7,7 @@ export const agencyDocSchema = z
     jurisdiction: z.enum(['provincial', 'municipal', 'national']),
     contactEmail: z.email().optional(),
     contactPhone: z.string().optional(),
+    mutualAidVisible: z.boolean().optional(),
     dispatchDefaults: z
         .object({
         timeoutHighMs: z.number().int().positive(),

@@ -128,6 +128,8 @@ export declare const breakglassEventDocSchema: z.ZodObject<{
     resourceRef: z.ZodOptional<z.ZodString>;
     createdAt: z.ZodNumber;
     correlationId: z.ZodString;
+    expiresAt: z.ZodOptional<z.ZodNumber>;
+    sessionStartedAt: z.ZodOptional<z.ZodNumber>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export declare const fieldModeSessionDocSchema: z.ZodObject<{

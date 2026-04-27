@@ -30,7 +30,11 @@ export async function recordIncidentResponseEventCore(db, input, actor) {
             throw new HttpsError('not-found', 'incident_not_found');
         }
         const incidentData = incidentSnap.data();
-        const currentIndex = PHASE_ORDER.indexOf(incidentData.status);
+        const currentStatus = incidentData.status;
+        const currentIndex = PHASE_ORDER.indexOf(currentStatus);
+        if (currentIndex === -1) {
+            throw new HttpsError('failed-precondition', 'incident_has_invalid_status');
+        }
         const nextIndex = PHASE_ORDER.indexOf(validated.phase);
         if (nextIndex !== currentIndex + 1) {
             throw new HttpsError('failed-precondition', 'invalid_phase_transition');

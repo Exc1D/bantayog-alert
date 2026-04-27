@@ -35,14 +35,14 @@ export const auditExportHealthCheck = onSchedule(
       'SELECT MAX(occurredAt) as lastAt FROM bantayog_audit.streaming_events',
       { timeoutMs: 30000 },
     )
-    const lastStreamMs = extractLastMs(streamRows as unknown as LastAtRow[])
+    const lastStreamMs = extractLastMs(streamRows as LastAtRow[])
     const streamingGapSeconds = Math.floor((now - lastStreamMs) / 1000)
 
     const [batchRows] = await bq.query(
       'SELECT MAX(timestamp) as lastAt FROM bantayog_audit.batch_events',
       { timeoutMs: 30000 },
     )
-    const lastBatchMs = extractLastDateMs(batchRows as unknown as LastAtRow[])
+    const lastBatchMs = extractLastDateMs(batchRows as LastAtRow[])
     const batchGapSeconds = Math.floor((now - lastBatchMs) / 1000)
 
     const healthy = streamingGapSeconds < 60 && batchGapSeconds < 900

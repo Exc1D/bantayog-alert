@@ -11,4 +11,10 @@ export declare function requireAuth(request: {
     uid: string;
     claims: Record<string, unknown>;
 };
+export declare function requireMfaAuth(request: {
+    auth?: {
+        uid: string;
+        token: Record<string, unknown>;
+    } | null;
+}): void;
 //# sourceMappingURL=https-error.d.ts.map

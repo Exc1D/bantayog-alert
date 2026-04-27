@@ -34,7 +34,12 @@ export const sweepExpiredBreakGlassSessions = onSchedule({ schedule: 'every 5 mi
             });
         }
         catch (err) {
-            console.error('[sweep-break-glass] failed for session', sessionId, err);
+            const message = err instanceof Error ? err.message : String(err);
+            const stack = err instanceof Error ? err.stack : undefined;
+            console.error('[sweep-break-glass] failed for session', sessionId, {
+                message,
+                stack,
+            });
         }
     }
 });

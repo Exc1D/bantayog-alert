@@ -98,7 +98,7 @@ describe('initiateShiftHandoff', () => {
       },
       {
         uid: 'u1',
-        claims: { role: 'citizen' as UserRole, active: true, auth_time: Math.floor(ts / 1000) },
+        claims: { role: 'citizen', active: true, auth_time: Math.floor(ts / 1000) },
       },
       'corr-1',
     )
@@ -118,7 +118,7 @@ describe('initiateShiftHandoff', () => {
       {
         uid: 'admin-inactive',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'daet',
           active: false,
           auth_time: Math.floor(ts / 1000),
@@ -142,7 +142,7 @@ describe('initiateShiftHandoff', () => {
       {
         uid: 'admin-no-muni',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           active: true,
           auth_time: Math.floor(ts / 1000),
         },
@@ -254,7 +254,7 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'admin-to',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'daet',
           active: false,
           auth_time: Math.floor(ts / 1000),
@@ -275,7 +275,7 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'admin-to',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'daet',
           active: true,
           auth_time: Math.floor(ts / 1000),
@@ -297,7 +297,7 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'admin-to',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'daet',
           active: true,
           auth_time: Math.floor(ts / 1000),
@@ -319,7 +319,7 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'admin-from',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'daet',
           active: true,
           auth_time: Math.floor(ts / 1000),
@@ -341,7 +341,7 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'other-admin',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'labo',
           active: true,
           auth_time: Math.floor(ts / 1000),
@@ -363,7 +363,7 @@ describe('acceptShiftHandoff', () => {
       {
         uid: 'admin-to',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'daet',
           active: true,
           auth_time: Math.floor(ts / 1000),

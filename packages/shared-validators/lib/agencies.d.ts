@@ -17,6 +17,7 @@ export declare const agencyDocSchema: z.ZodObject<{
     }>;
     contactEmail: z.ZodOptional<z.ZodEmail>;
     contactPhone: z.ZodOptional<z.ZodString>;
+    mutualAidVisible: z.ZodOptional<z.ZodBoolean>;
     dispatchDefaults: z.ZodOptional<z.ZodObject<{
         timeoutHighMs: z.ZodNumber;
         timeoutMediumMs: z.ZodNumber;
