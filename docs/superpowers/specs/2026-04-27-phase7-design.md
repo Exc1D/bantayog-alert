@@ -37,7 +37,13 @@ Must complete and pass a 24-hour staging soak before any 7.A work begins.
 
 3. **`functions/src/triggers/audit-export-health-check.ts`** — scheduled Cloud Function every 10 minutes. Compares the timestamp of the last successful streaming write and last successful batch export against SLO thresholds. Overwrites a single `system_health/latest` document with current gap metrics. Alerts (via admin notification) if streaming gap > 60 seconds or batch gap > 15 minutes.
 
-4. **TOTP enrollment callable** — `enrollTotp(data: { verificationCode: string })` callable. Uses Firebase Auth Admin SDK `multiFactor(user).enroll()`. Returns the TOTP secret URI for display.
+4. **TOTP enrollment page (client-side flow)** — TOTP enrollment is driven entirely by the Firebase **client** SDK. The Admin SDK has no user-level TOTP enrollment API. The bare-minimum `/totp-enroll` page in admin-desktop implements:
+   1. `multiFactor(auth.currentUser).getSession()` → get enrollment session
+   2. `TotpMultiFactorGenerator.generateSecret(session)` → returns `TotpSecret` with `secretKey` and `generateQrCodeUrl()`
+   3. Display QR code rendered from `otpauth://` URI + raw secret key
+   4. User enters code to verify → `TotpMultiFactorGenerator.assertionForEnrollment(totpSecret, code)`
+   5. `multiFactor(auth.currentUser).enroll(assertion, 'Authenticator')`
+      No callable needed for enrollment — there is no server role in this flow.
 
 5. **`requireMfaAuth()` backend enforcement** — added to `functions/src/callables/https-error.ts`. Checks `request.auth.token.firebase.sign_in_second_factor` — NOT a custom claim. Implementation:
 
@@ -54,11 +60,23 @@ Must complete and pass a 24-hour staging soak before any 7.A work begins.
 
    Applied to all privileged callables: `initiateBreakGlass`, `declareEmergency`, `setRetentionExempt`, `declareDataIncident`, `approveErasureRequest`.
 
+   **Implementation note:** The `request.auth.token.firebase.sign_in_second_factor` field path must be verified with a decoded TOTP-auth JWT before shipping. Add a test in 7.C that calls `requireMfaAuth` with a token captured from a TOTP-authenticated emulator session and confirms it passes; call it with a password-only token and confirm it throws `mfa_required`.
+
 6. **Bare-minimum TOTP enrollment page** — functional but unstyled `/totp-enroll` route in admin-desktop. Shows TOTP secret as plaintext URI, code verification input, success redirect. Polished version ships in 7.B.
 
 7. **Privileged-read streaming audit** — `report_private` and `report_contacts` reads during break-glass sessions emit `streamAuditEvent()` calls. This is the only collection where reads are audited (writes are already covered by Firestore triggers).
 
-8. **Schema additions** — `dataIncidentDocSchema` added to `packages/shared-validators/src/incident-response.ts` (alongside the existing `incidentResponseEventSchema` which already has `incidentId` FK). `breakglassEventDocSchema` already exists in `coordination.ts` — no change needed.
+8. **Schema additions:**
+
+   a. `dataIncidentDocSchema` added to `packages/shared-validators/src/incident-response.ts` (alongside the existing `incidentResponseEventSchema` which already has `incidentId` FK).
+
+   b. `breakglassEventDocSchema` in `coordination.ts` extended with `expiresAt: z.number().int()` and `sessionStartedAt: z.number().int()` fields (needed by the expiry sweep to determine active sessions without reading custom claims).
+
+   c. `agencyDocSchema` in `agencies.ts` extended with `mutualAidVisible: z.boolean().optional()` (needed by `toggleMutualAidVisibility` callable — schema is `.strict()` so any undocumented write would be rejected by validators).
+
+   d. `analyticsSnapshotWriter` extended to compute and write `avgResponseTimeMinutes` and `resolvedToday` to province-level summary docs (needed by Province Dashboard live metrics that cannot be derived from existing snapshot fields).
+
+   **Required dependencies:** Add `@google-cloud/bigquery-storage` to `functions/package.json` for the BigQuery Storage Write API. BigQuery dataset: `bantayog_audit`. Tables: `streaming_events` (streaming pipeline), `batch_events` (batch pipeline). Table schemas must be created in infra before PRE-7 functions are deployed.
 
    `dataIncidentDocSchema` shape:
 
@@ -93,16 +111,23 @@ Depend on PRE-7 exit criteria passing.
    - Input: `{ codeA: string, codeB: string, reason: string }`
    - Validates both codes against `system_config/break_glass_config.hashedCodes[]` (bcrypt compare — codes belong to different controllers, order-independent)
    - Sets custom claim `breakGlassSession: true` + `breakGlassSessionId: uuid` + `breakGlassExpiresAt: now + 4h` via Admin SDK `setCustomUserClaims`
-   - Writes `breakglass_events/{sessionId}` doc using existing `breakglassEventDocSchema`
+   - Writes `breakglass_events/{sessionId}` doc with `expiresAt: now + 4h`, `sessionStartedAt: now`, `action: 'initiated'`
    - Calls `streamAuditEvent()` — never blocks
-   - Enqueues a Cloud Tasks task targeting `deactivateBreakGlass` at T+4h
+   - **No Cloud Tasks.** Auto-expiry is handled by a scheduled sweep (see Deliverable 2).
+   - **Client must call `auth.currentUser.getIdToken(true)` after this callable returns** before transitioning the UI to session-active state — custom claims do not take effect until the token is force-refreshed.
 
-2. **`deactivateBreakGlass`** — Cloud Tasks HTTP target + manually-callable endpoint.
+2. **`deactivateBreakGlass`** — `onCall` callable for manual deactivation.
    - Clears `breakGlassSession`, `breakGlassSessionId`, `breakGlassExpiresAt` custom claims
-   - Writes deactivation event to `breakglass_events`
+   - Updates `breakglass_events/{sessionId}` with `action: 'deactivated'`, `deactivatedAt: now`
    - Calls `streamAuditEvent()`
 
-3. **`declareEmergency`** — callable at `functions/src/callables/declare-emergency.ts`.
+3. **`sweepExpiredBreakGlassSessions`** — scheduled Cloud Function, every 5 minutes.
+   - Queries `breakglass_events` where `action == 'initiated'` and `expiresAt < now`
+   - For each expired session: calls Admin SDK `setCustomUserClaims` to clear break-glass claims, updates event doc with `action: 'auto_expired'`, calls `streamAuditEvent()`
+   - This replaces Cloud Tasks for auto-expiry. No new dependencies required.
+   - Added to the new-files list in the "Files to Create" section.
+
+4. **`declareEmergency`** — callable at `functions/src/callables/declare-emergency.ts`.
    - Requires `requireAuth` + `requireMfaAuth` + `superadmin` role
    - Input: `{ hazardType: string, affectedMunicipalityIds: string[], message: string }`
    - Reuses `sendMassAlertFcm` (from Phase 5) for FCM batch fan-out to all active staff
@@ -110,36 +135,36 @@ Depend on PRE-7 exit criteria passing.
    - Writes `alerts/{id}` with `alertType: 'emergency'`
    - Calls `streamAuditEvent()`
 
-4. **`setRetentionExempt`** — callable at `functions/src/callables/set-retention-exempt.ts`.
+5. **`setRetentionExempt`** — callable at `functions/src/callables/set-retention-exempt.ts`.
    - Requires `requireAuth` + `requireMfaAuth` + `superadmin` role
    - Input: `{ collection: string, documentId: string, exempt: boolean, reason: string }`
    - Collection allowlist: `['reports', 'report_private', 'report_ops', 'sms_inbox']`
    - Writes `retentionExempt: true/false` + `retentionExemptReason` to the target document
    - Calls `streamAuditEvent()`
 
-5. **`declareDataIncident`** — callable at `functions/src/callables/declare-data-incident.ts`.
+6. **`declareDataIncident`** — callable at `functions/src/callables/declare-data-incident.ts`.
    - Requires `requireAuth` + `requireMfaAuth` + `superadmin` role
    - Firestore transaction: atomically writes `data_incidents/{incidentId}` doc + first `incident_response_events/{eventId}` with `phase: 'declared'`
    - `incidentId` is server-generated UUID
    - Calls `streamAuditEvent()`
 
-6. **`recordIncidentResponseEvent`** — callable at `functions/src/callables/record-incident-response-event.ts`.
+7. **`recordIncidentResponseEvent`** — callable at `functions/src/callables/record-incident-response-event.ts`.
    - Requires `requireAuth` + `superadmin` or `pdrrmo` role
    - Validates forward-only phase transitions (declared → contained → preserved → assessed → … → closed)
    - Transaction: appends new event, updates parent `data_incidents/{id}.status`
    - Calls `streamAuditEvent()`
 
-7. **Provincial resources CRUD** — three callables in `functions/src/callables/provincial-resources.ts`:
+8. **Provincial resources CRUD** — three callables in `functions/src/callables/provincial-resources.ts`:
    - `upsertProvincialResource({ id?: string, name, type, quantity, unit, location, available })`
    - `archiveProvincialResource({ id })`
    - `listProvincialResources` (optional — UI may read directly)
    - Collection: `provincial_resources/{id}`
 
-8. **`toggleMutualAidVisibility`** — callable. Sets `mutualAidVisible: boolean` on an agency document. Controls whether the agency's responders appear in cross-municipality dispatch pools.
+9. **`toggleMutualAidVisibility`** — callable. Sets `mutualAidVisible: boolean` on an agency document. Controls whether the agency's responders appear in cross-municipality dispatch pools.
 
-9. **`approveErasureRequest`** — callable. RA 10173 (Data Privacy Act) compliance. Input: `{ requestId: string, approved: boolean, reason: string }`. Writes decision to `erasure_requests/{id}`, triggers downstream anonymization pipeline if approved. Calls `streamAuditEvent()`.
+10. **`approveErasureRequest`** — callable. RA 10173 (Data Privacy Act) compliance. Input: `{ requestId: string, approved: boolean, reason: string }`. Writes decision to `erasure_requests/{id}` with `status: 'approved_pending_anonymization'` (approved) or `status: 'denied'` (rejected). **Phase 7 ships the request/approval workflow only** — the anonymization pipeline that actually removes/pseudonymizes PII is Phase 8. The `approved_pending_anonymization` status makes the gap explicit and prevents false compliance confidence. Calls `streamAuditEvent()`.
 
-**Exit criteria:** All callables callable from emulator. Every action writes to streaming audit. Break-glass 4h auto-expiry tested (Cloud Tasks fires, claims cleared). `requireMfaAuth()` gate verified on all privileged callables.
+**Exit criteria:** All callables callable from emulator. Every action writes to streaming audit. Break-glass 4h auto-expiry tested (sweep fires, claims cleared). `requireMfaAuth()` gate verified on all privileged callables. Token-refresh step confirmed before session-active state displays.
 
 ---
 
@@ -150,19 +175,24 @@ Depends on 7.A exit criteria.
 **Pages and components in `apps/admin-desktop`:**
 
 1. **Province Analytics Dashboard** — landing page for superadmin, route `/province/dashboard`.
-   - 6-column province-wide metrics row: Active Reports · Responders Available · Avg Response Time · Resolved Today · Muni Issues (n/12) · System Health indicator
-   - Anomaly detection alert card: auto-surfaces municipalities with response time > threshold or no active admin shift
-   - Municipal performance table (sortable, clickable rows → drill-down panel): columns — Municipality, Active, Resp. Time, Resolved%, Resources, Admin Status
+   - 6-column province-wide metrics row with explicit data sources:
+     - **Active Reports** — live `onSnapshot` on `reports` where `status in ['submitted','verified','assigned']`, province-wide
+     - **Responders Available** — live `onSnapshot` on `responders` where `availabilityStatus == 'available'`
+     - **Avg Response Time** — `analytics_snapshots/{today}/province/summary.avgResponseTimeMinutes` (extended field, see PRE-7 schema additions 8d)
+     - **Resolved Today** — `analytics_snapshots/{today}/province/summary.resolvedToday` (extended field, see PRE-7 schema additions 8d)
+     - **Muni Issues (n/12)** — computed client-side: count of municipalities with `avgResponseTimeMinutes > 15` or `adminStatus == 'no_shift'` from the municipal performance table query
+     - **System Health** — `system_health/latest` doc (written by `auditExportHealthCheck`)
+   - Anomaly detection alert card: auto-surfaces municipalities with response time > 15 min threshold or no active admin shift
+   - Municipal performance table (sortable, clickable rows → drill-down panel): columns — Municipality, Active, Resp. Time, Resolved%, Resources, Admin Status. Data source: `analytics_snapshots/{today}/{municipalityId}/summary` per municipality.
    - NDRRMC queue widget (compact): shows pending count + oldest 2 items, "Open drawer" button
    - Quick actions column: Declare Data Incident, Manage Resources, System Health, Dead-Letter Replay
-   - Trend analysis charts (2): incident volume and response time over 7 days — read from `analytics_snapshots` collection (written by `analyticsSnapshotWriter` from Phase 5)
-   - Live metrics (Active Reports, Responders Available, Avg Response Time) — Firestore `onSnapshot` listeners, not cached snapshots
+   - Trend analysis charts (2 — 7-day historical only): incident volume and response time — `analytics_snapshots/{date}/province/summary` for last 7 dates. These are daily snapshots, not live data.
    - No inline map — map is Screen 2
 
 2. **NDRRMC escalation drawer** — right-side drawer on Province Dashboard (no navigation away).
    - Forward flow: opens after "Open drawer" click; shows pending `massAlertRequests` in `pending_ndrrmc_review` status
    - Per-item: hazard type, linked reports count, evidence text, barangay targets
-   - Forward method selector: Phone / Email / Formal Letter (radio buttons). Phone shows NDRRMC hotline. Email shows pre-filled subject. Formal Letter shows template link.
+   - Forward method selector uses the existing `forwardMassAlertToNDRRMC` callable's enum `['email', 'sms', 'portal']` — not "Phone/Formal Letter." Display labels: "Email", "SMS/Text", "Portal Submission." Changing the enum is out of scope for Phase 7.
    - After forwarding: receipt/reference# acknowledgment input field
    - Reject: requires reason
    - Bottom disclaimer: "Escalation submitted to NDRRMC" ≠ "ECBS alert sent"
@@ -204,9 +234,9 @@ Depends on 7.A exit criteria.
 
 **Pilot-blocker scenarios (all must pass in staging):**
 
-1. **Break-glass drill** — two controllers enter dual codes → 4h session activates (claim set) → all privileged reads during session audited in BigQuery → Cloud Tasks auto-deactivation fires at T+4h → audit trail shows initiation + session events + deactivation. Manual deactivation path also verified.
+1. **Break-glass drill** — two controllers enter dual codes → `initiateBreakGlass` callable returns → client calls `getIdToken(true)` → session-active state appears with correct session ID → privileged reads during session audited in BigQuery → 5-minute sweep (`sweepExpiredBreakGlassSessions`) fires and clears claims (simulated by setting `expiresAt` to past) → audit trail shows initiation + auto-expiry events. Manual `deactivateBreakGlass` path also verified.
 
-2. **NDRRMC escalation tabletop** — seed test `massAlertRequest` in `pending_ndrrmc_review` → superadmin opens drawer → selects forward method → `forwardMassAlertToNDRRMC` called → status → `ndrrmc_forwarded` → receipt logged → audit event written.
+2. **NDRRMC escalation tabletop** — seed test `massAlertRequest` in `pending_ndrrmc_review` → superadmin opens drawer → selects forward method (`email`/`sms`/`portal`) → `forwardMassAlertToNDRRMC` called → status transitions to `forwarded_to_ndrrmc` → receipt logged → audit event written.
 
 3. **`declareEmergency` fan-out test** — callable invoked against test account set → FCM batch delivery confirmed for all active-staff tokens → SMS enqueued for subscribed citizens in affected municipalities → `alerts/{id}` doc written with `alertType: 'emergency'`.
 
@@ -243,9 +273,29 @@ Firebase MFA status is in `request.auth.token.firebase.sign_in_second_factor` (a
 
 Both codes are validated server-side against `system_config/break_glass_config.hashedCodes[]`. Codes belong to different physical people (Controller A = initiating superadmin, Controller B = second authorized person). The system cannot verify physical separation — this is a procedural control enforced by policy, not code. The audit trail provides accountability.
 
-### `data_incidents` parent collection
+### `data_incidents` parent collection + `incident_response_events` flat collection
 
-Shape B: parent `data_incidents/{incidentId}` document + `incident_response_events/{eventId}` sub-collection with `incidentId` FK. The existing `incidentResponseEventSchema` in `incident-response.ts` already has `incidentId: z.string().min(1)`, confirming this shape was the original intent. Only `dataIncidentDocSchema` needs to be added to that file.
+`incident_response_events` is a **top-level flat collection** (not a sub-collection of `data_incidents`). The existing `incidentResponseEventSchema` already has `incidentId: z.string().min(1)` as the FK — this is intentional. The existing Firestore rule at the top-level `incident_response_events` path already grants read to `isSuperadmin() && isActivePrivileged()`. Only the write path needs to be added (Admin SDK callables bypass client rules, but a rule document is cleaner than an implicit bypass). The "parent doc + sub-collection" framing in earlier brainstorming was a mistake — the flat shape is already committed.
+
+### Break-glass auto-expiry via scheduled sweep, not Cloud Tasks
+
+Cloud Tasks `onTaskDispatched` and `onCall` are incompatible function types — they cannot share a single export. Rather than add `@google-cloud/tasks` as a dependency and manage queue configuration, the 4h session expiry uses a scheduled sweep (`sweepExpiredBreakGlassSessions`) that runs every 5 minutes. This is simpler, has no new infra dependencies, and the 5-minute sweep resolution is acceptable for a 4h session.
+
+### TOTP enrollment is client-side only
+
+The Firebase Admin SDK has no user-level TOTP enrollment API. TOTP enrollment uses only the Firebase client SDK (`TotpMultiFactorGenerator`). The server's role is only `requireMfaAuth()` enforcement — checking `sign_in_second_factor` in the decoded JWT.
+
+### Token refresh after break-glass activation
+
+`setCustomUserClaims` updates take effect only after a token refresh. The break-glass UI must call `auth.currentUser.getIdToken(true)` after `initiateBreakGlass` returns before showing the session-active state. Same pattern as the existing `awaitFreshAuthToken` in the responder app.
+
+### Data erasure: Phase 7 = approval workflow, Phase 8 = anonymization
+
+`approveErasureRequest` in Phase 7 records the human approval decision with status `approved_pending_anonymization`. This is explicit about the gap — operators know the data has not yet been removed. Actual PII anonymization is Phase 8 scope. RA 10173 compliance for Phase 7 means having an audited approval trail, not automated deletion.
+
+### `system_config/break_glass_config` bootstrap required
+
+The hashed codes document must be seeded before any break-glass drill. A one-time admin script (`scripts/seed-break-glass-config.ts`) must be added in PRE-7. It generates two random codes, bcrypt-hashes them (cost factor 12), writes to `system_config/break_glass_config.hashedCodes[]`, and prints the plaintext codes for secure distribution to Controller A and Controller B. The script must be idempotent (no-op if codes already exist).
 
 ### NDRRMC forward does not mean ECBS alert
 
@@ -268,6 +318,7 @@ Per role spec §2.2: the superadmin landing page is not a command dashboard — 
 - `functions/src/services/audit-stream.ts`
 - `functions/src/triggers/audit-export-batch.ts`
 - `functions/src/triggers/audit-export-health-check.ts`
+- `functions/src/triggers/sweep-expired-break-glass-sessions.ts`
 - `functions/src/callables/break-glass.ts`
 - `functions/src/callables/declare-emergency.ts`
 - `functions/src/callables/declare-data-incident.ts`
@@ -313,6 +364,18 @@ Per role spec §2.2: the superadmin landing page is not a command dashboard — 
 ### Infrastructure
 
 - `infra/firebase/firestore.rules` (via template) — add rules for `data_incidents`, `incident_response_events`, `provincial_resources`, `erasure_requests`, `system_health`
+
+---
+
+### New files (scripts)
+
+- `scripts/seed-break-glass-config.ts` — one-time bootstrap for `system_config/break_glass_config.hashedCodes[]`
+
+---
+
+## Implementation Plan Gate
+
+**The writing-plans output must treat PRE-7 as a separate branch with a staging deployment gate.** 7.A tasks must not start until the PRE-7 branch is merged, deployed to staging, and has completed the 24-hour soak. The plan must make this an explicit dependency node — a flat task list with PRE-7 and 7.A tasks intermixed would silently violate the exit criteria.
 
 ---
 
