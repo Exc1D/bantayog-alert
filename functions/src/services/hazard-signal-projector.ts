@@ -83,7 +83,15 @@ export function projectHazardSignalStatus(input: {
       coveredCount === allMunicipalities ? 'province' : active ? 'municipalities' : undefined,
     affectedMunicipalityIds: effectiveScopes.map((s) => s.municipalityId),
     effectiveScopes,
-    validUntil: active ? Math.min(...eligible.map((s): number => s.validUntil)) : undefined,
+    validUntil: active
+      ? Math.min(
+          ...effectiveScopes.map((scope) => {
+            const sig = eligible.find((s) => s.id === scope.signalId)
+            // sig is always present: effectiveScopes are built from eligible
+            return sig?.validUntil ?? Infinity
+          }),
+        )
+      : undefined,
     manualOverrideActive: hasManual,
     scraperDegraded: input.scraperDegraded ?? false,
     lastProjectedAt: input.now,

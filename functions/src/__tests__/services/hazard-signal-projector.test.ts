@@ -91,6 +91,31 @@ describe('projectHazardSignalStatus', () => {
     expect(result.active).toBe(false)
   })
 
+  it('validUntil reflects the winning signal expiry, not a losing signals expiry', () => {
+    const result = projectHazardSignalStatus({
+      now: NOW,
+      signals: [
+        // Manual wins for daet; expires late
+        manualSignal({
+          id: 'm-1',
+          affectedMunicipalityIds: ['daet'],
+          signalLevel: 3,
+          validUntil: NOW + 7200000,
+        }),
+        // Scraper loses for daet; expires soon — must NOT drag validUntil down
+        scraperSignal({
+          id: 's-1',
+          affectedMunicipalityIds: ['daet'],
+          signalLevel: 4,
+          validUntil: NOW + 60000,
+        }),
+      ],
+    })
+
+    expect(result.active).toBe(true)
+    expect(result.validUntil).toBe(NOW + 7200000)
+  })
+
   it('marks inactive when the only scraper signal is expired', () => {
     const result: HazardSignalStatusDoc = projectHazardSignalStatus({
       now: NOW,
