@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { CAMARINES_NORTE_MUNICIPALITIES } from './municipalities'
 import { hazardZoneDocSchema, hazardSignalDocSchema, hazardZoneHistoryDocSchema } from './hazard'
 
 describe('Hazard Schemas', () => {
@@ -134,12 +135,20 @@ describe('Hazard Schemas', () => {
   describe('hazardSignalDocSchema', () => {
     it('accepts valid hazard signal document', () => {
       const validDoc = {
-        source: 'pagasa_webhook' as const,
+        hazardType: 'tropical_cyclone' as const,
         signalLevel: 5,
-        affectedMunicipalityIds: ['daet', 'vinzons'],
-        createdAt: 1713350400000,
-        createdBy: 'admin-1',
-        expiresAt: 1713436800000,
+        source: 'manual' as const,
+        scopeType: 'province' as const,
+        affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map(
+          (municipality) => municipality.id,
+        ),
+        status: 'active' as const,
+        validFrom: 1713350400000,
+        validUntil: 1713436800000,
+        recordedAt: 1713350400000,
+        rawSource: 'manual',
+        recordedBy: 'admin-1',
+        reason: 'PAGASA radio confirmation',
         schemaVersion: 1,
       }
       expect(() => hazardSignalDocSchema.parse(validDoc)).not.toThrow()
@@ -147,10 +156,16 @@ describe('Hazard Schemas', () => {
 
     it('rejects invalid source literal', () => {
       const invalidDoc = {
-        source: 'invalid-source',
+        hazardType: 'tropical_cyclone' as const,
         signalLevel: 3,
+        source: 'invalid-source',
+        scopeType: 'municipalities' as const,
         affectedMunicipalityIds: ['daet'],
-        createdAt: 1713350400000,
+        status: 'active' as const,
+        validFrom: 1713350400000,
+        validUntil: 1713436800000,
+        recordedAt: 1713350400000,
+        rawSource: 'manual',
         schemaVersion: 1,
       }
       expect(() => hazardSignalDocSchema.parse(invalidDoc)).toThrow()
@@ -158,10 +173,16 @@ describe('Hazard Schemas', () => {
 
     it('rejects signalLevel outside 0-5 range', () => {
       const invalidDoc = {
-        source: 'pagasa_webhook' as const,
+        hazardType: 'tropical_cyclone' as const,
         signalLevel: 6, // must be 0-5
+        source: 'manual' as const,
+        scopeType: 'municipalities' as const,
         affectedMunicipalityIds: ['daet'],
-        createdAt: 1713350400000,
+        status: 'active' as const,
+        validFrom: 1713350400000,
+        validUntil: 1713436800000,
+        recordedAt: 1713350400000,
+        rawSource: 'manual',
         schemaVersion: 1,
       }
       expect(() => hazardSignalDocSchema.parse(invalidDoc)).toThrow()
@@ -169,10 +190,16 @@ describe('Hazard Schemas', () => {
 
     it('rejects unknown keys via strict mode', () => {
       const docWithExtraKey = {
-        source: 'pagasa_webhook' as const,
+        hazardType: 'tropical_cyclone' as const,
         signalLevel: 4,
+        source: 'manual' as const,
+        scopeType: 'municipalities' as const,
         affectedMunicipalityIds: ['daet'],
-        createdAt: 1713350400000,
+        status: 'active' as const,
+        validFrom: 1713350400000,
+        validUntil: 1713436800000,
+        recordedAt: 1713350400000,
+        rawSource: 'manual',
         schemaVersion: 1,
         unknownField: 'should not be allowed',
       }

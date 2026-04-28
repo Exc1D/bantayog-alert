@@ -13,9 +13,6 @@ const bbox = z
 const hazardTypeSchema = z.enum(['flood', 'landslide', 'storm_surge'])
 const signalSourceSchema = z.enum(['manual', 'scraper'])
 const signalStatusSchema = z.enum(['active', 'cleared', 'expired', 'superseded', 'quarantined'])
-const provinceMunicipalityIds = CAMARINES_NORTE_MUNICIPALITIES.map(
-  (municipality) => municipality.id,
-)
 
 export const hazardZoneDocSchema = z
   .object({
@@ -75,8 +72,7 @@ export const hazardSignalDocSchema = z
   .refine(
     (doc) =>
       doc.scopeType !== 'province' ||
-      (doc.affectedMunicipalityIds.length === provinceMunicipalityIds.length &&
-        doc.affectedMunicipalityIds.every((id, index) => id === provinceMunicipalityIds[index])),
+      doc.affectedMunicipalityIds.length === CAMARINES_NORTE_MUNICIPALITIES.length,
     { message: 'province scope must normalize to the full municipality set' },
   )
 
@@ -88,22 +84,18 @@ export const hazardSignalStatusDocSchema = z
     effectiveSource: signalSourceSchema.optional(),
     scopeType: z.enum(['province', 'municipalities']).optional(),
     affectedMunicipalityIds: z.array(z.string().min(1)),
-    effectiveScopes: z
-      .array(
-        z
-          .object({
-            municipalityId: z.string().min(1),
-            signalLevel: z.number().int().min(1).max(5),
-            source: signalSourceSchema,
-            signalId: z.string().min(1),
-          })
-          .strict(),
-      )
-      .min(1),
+    effectiveScopes: z.array(
+      z
+        .object({
+          municipalityId: z.string().min(1),
+          signalLevel: z.number().int().min(1).max(5),
+          source: signalSourceSchema,
+          signalId: z.string().min(1),
+        })
+        .strict(),
+    ),
     validUntil: z.number().int().optional(),
     manualOverrideActive: z.boolean(),
-    scraperLastSuccessAt: z.number().int().optional(),
-    scraperLastFailureAt: z.number().int().optional(),
     scraperDegraded: z.boolean(),
     lastProjectedAt: z.number().int(),
     degradedReasons: z.array(z.string().min(1)),
