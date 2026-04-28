@@ -32,6 +32,7 @@ export {
 export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js'
 export { shareReport } from './callables/share-report.js'
 export { addCommandChannelMessage } from './callables/add-command-channel-message.js'
+export { hazardSignalExpirySweep } from './triggers/hazard-signal-expiry-sweep.js'
 export { borderAutoShareTrigger } from './triggers/border-auto-share.js'
 export { duplicateClusterTrigger } from './triggers/duplicate-cluster-trigger.js'
 export { mergeDuplicates } from './callables/merge-duplicates.js'
