@@ -325,6 +325,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "hazard_signals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "validUntil", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

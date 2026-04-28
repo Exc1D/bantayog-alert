@@ -32,6 +32,7 @@ export {
 export { enterFieldMode, exitFieldMode } from './callables/enter-field-mode.js'
 export { shareReport } from './callables/share-report.js'
 export { addCommandChannelMessage } from './callables/add-command-channel-message.js'
+export { hazardSignalExpirySweep } from './triggers/hazard-signal-expiry-sweep.js'
 export { borderAutoShareTrigger } from './triggers/border-auto-share.js'
 export { duplicateClusterTrigger } from './triggers/duplicate-cluster-trigger.js'
 export { mergeDuplicates } from './callables/merge-duplicates.js'
@@ -138,6 +139,7 @@ export { smsDeliveryReport } from './http/sms-delivery-report.js'
 export { smsInboundWebhook } from './http/sms-inbound.js'
 export { smsInboundProcessor } from './firestore/sms-inbound-processor.js'
 export { analyticsSnapshotWriter } from './scheduled/analytics-snapshot-writer.js'
+export { costSnapshotWriter } from './triggers/cost-snapshot-writer.js'
 export { auditExportBatch } from './triggers/audit-export-batch.js'
 export { auditExportHealthCheck } from './triggers/audit-export-health-check.js'
 export { sweepExpiredBreakGlassSessions } from './triggers/sweep-expired-break-glass-sessions.js'
@@ -152,3 +154,5 @@ export {
   upsertProvincialResource,
   archiveProvincialResource,
 } from './callables/provincial-resources.js'
+export { declareHazardSignal, clearHazardSignal } from './callables/declare-hazard-signal.js'
+export { replaySignalDeadLetter } from './callables/replay-signal-dead-letter.js'

@@ -13,7 +13,7 @@ export { reportSmsConsentDocSchema } from './users.js';
 export { smsInboxDocSchema, smsOutboxDocSchema, smsSessionDocSchema, smsProviderHealthDocSchema, smsProviderIdSchema, smsReportInboxFieldsSchema, } from './sms.js';
 export { detectEncoding } from './sms-encoding.js';
 export { agencyAssistanceRequestDocSchema, commandChannelThreadDocSchema, commandChannelMessageDocSchema, massAlertRequestDocSchema, shiftHandoffDocSchema, responderShiftHandoffDocSchema, breakglassEventDocSchema, fieldModeSessionDocSchema, } from './coordination.js';
-export { hazardZoneDocSchema, hazardZoneHistoryDocSchema, hazardSignalDocSchema } from './hazard.js';
+export { hazardZoneDocSchema, hazardZoneHistoryDocSchema, hazardSignalDocSchema, hazardSignalStatusDocSchema, } from './hazard.js';
 export { incidentResponseEventSchema, dataIncidentDocSchema } from './incident-response.js';
 export { moderationIncidentDocSchema } from './moderation.js';
 export { rateLimitDocSchema } from './rate-limits.js';

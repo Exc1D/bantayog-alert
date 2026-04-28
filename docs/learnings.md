@@ -30,13 +30,14 @@
 - Fail explicitly on missing auth/scope; no permissive fallbacks.
 - Normalize fields on both read and write paths.
 - Verify Firestore Rules function signatures match call sites.
-- Staff MFA audits must inspect `multiFactor.enrolledFactors` directly; custom claims only describe role and access, not whether TOTP is actually enrolled.
+- Staff MFA audits must inspect `multiFactor.enrolledFactors` directly; `CustomClaims.mfaEnrolled` (or any custom claim) can record intent but is not the source of truth — only `enrolledFactors` reflects whether TOTP is actually enrolled and the factor type.
 
 ## Testing
 
 - `vi.hoisted()` mocks must be created inside the hoisted callback.
 - `requestAnimationFrame` in Vitest: capture callback explicitly, don’t assume timers.
 - A passing test is not enough; confirm it exercises the changed path.
+- BigQuery summary jobs should keep the core dependency-injected; mocking `query()` directly is simpler than testing the scheduler wrapper.
 - Never mix Admin SDK and Client SDK Firestore calls in the same context.
 - Callable error handling: use runtime client code (`not-found`), not internal enum names.
 - Wrap `waitFor(() => expect(...))` assertion body in braces to avoid `no-confusing-void-expression`.

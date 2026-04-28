@@ -419,5 +419,54 @@ describe('privileged read tests for callable collections', () => {
         addDoc(collection(db, 'erasure_requests'), { schemaVersion: 1, createdAt: ts }),
       )
     })
+
+    describe('hazard_signal_status', () => {
+      it('superadmin with active privileged claim can read hazard signal status', async () => {
+        const db = authed(
+          env,
+          'super-1',
+          staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+        )
+        await assertSucceeds(getDocs(collection(db, 'hazard_signal_status')))
+      })
+
+      it('citizen cannot read hazard signal status', async () => {
+        const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
+        await assertFails(getDocs(collection(db, 'hazard_signal_status')))
+      })
+
+      it('client writes to hazard signal status remain blocked', async () => {
+        const db = authed(
+          env,
+          'super-1',
+          staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+        )
+        await assertFails(
+          setDoc(doc(db, 'hazard_signal_status', 'current'), {
+            active: false,
+            affectedMunicipalityIds: [],
+            effectiveScopes: [],
+            manualOverrideActive: false,
+            scraperDegraded: false,
+            lastProjectedAt: ts,
+            degradedReasons: [],
+            schemaVersion: 1,
+          }),
+        )
+      })
+
+      it('suspended superadmin cannot read hazard signal status', async () => {
+        const db = authed(
+          env,
+          'super-1',
+          staffClaims({
+            role: 'provincial_superadmin',
+            permittedMunicipalityIds: ['daet'],
+            accountStatus: 'suspended',
+          }),
+        )
+        await assertFails(getDocs(collection(db, 'hazard_signal_status')))
+      })
+    })
   })
 })
