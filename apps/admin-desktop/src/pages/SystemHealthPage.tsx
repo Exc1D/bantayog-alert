@@ -174,6 +174,43 @@ export function SystemHealthPage() {
       </div>
 
       <div style={CARD_STYLE}>
+        <div style={SECTION_TITLE_STYLE}>Signal Controls</div>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
+          Declare or clear TCWS signal levels. A runbook link is available below for surge pre-warm
+          procedures.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <button
+            style={BTN_STYLE}
+            onClick={() => {
+              console.warn('declare signal triggered (stub)')
+            }}
+          >
+            Declare Signal
+          </button>
+          <button
+            style={BTN_STYLE}
+            onClick={() => {
+              console.warn('clear active signal triggered (stub)')
+            }}
+          >
+            Clear Active Signal
+          </button>
+        </div>
+        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+          TCWS signal ≥ 2 active?{' '}
+          <a
+            href="https://github.com/Exc1D/bantayog-alert/blob/main/infra/runbooks/surge-prewarm.md"
+            target="_blank"
+            rel="noreferrer"
+            style={{ textDecoration: 'underline', color: '#2563eb' }}
+          >
+            Surge Runbook
+          </a>
+        </p>
+      </div>
+
+      <div style={CARD_STYLE}>
         <div style={SECTION_TITLE_STYLE}>Operations</div>
         <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
           Replay dead-letter audit events that failed to stream to BigQuery.
