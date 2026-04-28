@@ -174,6 +174,42 @@ export function SystemHealthPage() {
       </div>
 
       <div style={CARD_STYLE}>
+        <div style={SECTION_TITLE_STYLE}>Signal Controls</div>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
+          Declare or clear TCWS signal levels. A runbook link is available below for surge pre-warm
+          procedures. Signal controls are currently not active in this environment; these buttons
+          are placeholders and do not send or clear real signals yet.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <button
+            style={{ ...BTN_STYLE, opacity: 0.5, cursor: 'not-allowed' }}
+            disabled
+            title="Signal controls are not yet active; no real signal will be declared."
+          >
+            Declare Signal
+          </button>
+          <button
+            style={{ ...BTN_STYLE, opacity: 0.5, cursor: 'not-allowed' }}
+            disabled
+            title="Signal controls are not yet active; no real signal will be cleared."
+          >
+            Clear Active Signal
+          </button>
+        </div>
+        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+          TCWS signal ≥ 2 active?{' '}
+          <a
+            href="https://github.com/Exc1D/bantayog-alert/blob/main/infra/runbooks/surge-prewarm.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'underline', color: '#2563eb' }}
+          >
+            Surge Runbook
+          </a>
+        </p>
+      </div>
+
+      <div style={CARD_STYLE}>
         <div style={SECTION_TITLE_STYLE}>Operations</div>
         <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
           Replay dead-letter audit events that failed to stream to BigQuery.

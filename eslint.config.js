@@ -22,6 +22,8 @@ export default tseslint.config(
       'scripts/**',
       // Plain-JS service worker — excluded from TypeScript project service.
       'apps/responder-app/public/firebase-messaging-sw.js',
+      // k6 load-test scripts — plain JS, not part of any TS project.
+      'e2e-tests/k6/**/*.js',
     ],
   },
 

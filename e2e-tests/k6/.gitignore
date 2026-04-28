@@ -1,0 +1,4 @@
+# k6 staging credentials — never commit
+.env
+.env.*
+*.service-account.json
