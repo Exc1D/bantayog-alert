@@ -4,6 +4,7 @@
 // Usage:
 //   tsx e2e-tests/k6/seed.ts seed dispatch <responderUid>
 //   tsx e2e-tests/k6/seed.ts seed inbox
+//   tsx e2e-tests/k6/seed.ts seed check-processed <id>
 //   tsx e2e-tests/k6/seed.ts teardown dispatch <id1,id2,id3>
 //   tsx e2e-tests/k6/seed.ts teardown inbox <id>
 //

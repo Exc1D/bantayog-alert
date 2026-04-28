@@ -80,6 +80,14 @@ for i in 1 2 3; do
 done
 ```
 
+If the admin token gets 403 when reading `report_inbox` (Firestor rules may block it),
+use the seed script's Admin SDK fallback to verify processing instead:
+
+```bash
+npx tsx e2e-tests/k6/seed.ts seed check-processed $INBOX_ID
+# Expected: {"id":"...","processed":true}
+```
+
 ## Run order
 
 Run in this order to avoid Firestore artifact interference:
