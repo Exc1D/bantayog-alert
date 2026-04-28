@@ -264,7 +264,7 @@ export const initiateShiftHandoff = onCall(
         ...(claims.municipalityId !== undefined
           ? { municipalityId: claims.municipalityId as string }
           : {}),
-        active: claims.active as boolean,
+        active: claims.active,
         auth_time: claims.auth_time as number,
       },
     }
@@ -321,7 +321,7 @@ export const acceptShiftHandoff = onCall(
         ...(claims.municipalityId !== undefined
           ? { municipalityId: claims.municipalityId as string }
           : {}),
-        active: claims.active as boolean,
+        active: claims.active,
         auth_time: claims.auth_time as number,
       },
     }

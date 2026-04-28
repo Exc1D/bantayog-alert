@@ -121,7 +121,7 @@ export function useAgencyAssistanceQueue(agencyId: string | undefined) {
       backupQ,
       (snapshot) => {
         const parsed = snapshot.docs.flatMap((doc) => {
-          const req = parseBackupRequest(doc.id, doc.data() as Record<string, unknown>)
+          const req = parseBackupRequest(doc.id, doc.data())
           return req ? [req] : []
         })
         setBackupRequests(parsed)

@@ -32,7 +32,7 @@ export function AuthProvider({ children, auth }: AuthProviderProps) {
       // Guard against stale user (sign-out or account switch during refresh)
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (auth.currentUser?.uid !== currentUser.uid) return
-      setClaims(token.claims as Record<string, unknown>)
+      setClaims(token.claims)
     } catch (err: unknown) {
       console.error('[AuthProvider] token refresh failed:', err)
       setClaims(null)
@@ -49,7 +49,7 @@ export function AuthProvider({ children, auth }: AuthProviderProps) {
           .getIdTokenResult(true)
           .then((token) => {
             if (!active || auth.currentUser?.uid !== uid) return
-            setClaims(token.claims as Record<string, unknown>)
+            setClaims(token.claims)
           })
           .catch((err: unknown) => {
             if (!active || auth.currentUser?.uid !== uid) return

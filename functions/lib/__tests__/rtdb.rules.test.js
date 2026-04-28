@@ -23,7 +23,7 @@ const SV_ADMIN_UID = 'sv-admin';
 const PDRRMO_ADMIN_UID = 'pdrrmo-admin';
 const BFP_ADMIN_UID = 'bfp-admin';
 const CITIZEN_UID = 'citizen-1';
-// Minimal valid telemetry payload satisfying all 7 .validate fields
+// Minimal valid telemetry payload satisfying all .validate fields
 function validPayload(capturedAt) {
     return {
         capturedAt,
@@ -31,6 +31,7 @@ function validPayload(capturedAt) {
         lng: 122.9544,
         accuracy: 5.0,
         batteryPct: 80,
+        motionState: 'moving',
         appVersion: '1.0.0',
         telemetryStatus: 'active',
     };
@@ -80,12 +81,12 @@ describe('responder_locations write', () => {
         // now + 70 000 ms exceeds the <= now + 60 000 guard
         await assertFails(db.ref(`responder_locations/${RESPONDER_UID}`).set(validPayload(Date.now() + 70_000)));
     });
-    it('blocks write when capturedAt is older than 10 minutes', async () => {
+    it('blocks write when capturedAt is older than 60 seconds', async () => {
         const db = env
             .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
             .database();
-        // now - 700 000 ms violates the >= now - 600 000 guard
-        await assertFails(db.ref(`responder_locations/${RESPONDER_UID}`).set(validPayload(Date.now() - 700_000)));
+        // now - 70 000 ms violates the >= now - 60 000 guard
+        await assertFails(db.ref(`responder_locations/${RESPONDER_UID}`).set(validPayload(Date.now() - 70_000)));
     });
     it('blocks a non-responder role from writing to responder_locations', async () => {
         const db = env
@@ -227,6 +228,15 @@ describe('shared_projection access', () => {
         })
             .database();
         await assertFails(db.ref(`shared_projection/daet/${RESPONDER_UID}`).set({ lat: 99, lng: 99 }));
+    });
+    it('blocks any client write to shared_projection parent path', async () => {
+        const db = env
+            .authenticatedContext(SUPERADMIN_UID, {
+            role: 'provincial_superadmin',
+            accountStatus: 'active',
+        })
+            .database();
+        await assertFails(db.ref(`shared_projection/daet`).set({ [RESPONDER_UID]: { lat: 99, lng: 99 } }));
     });
 });
 //# sourceMappingURL=rtdb.rules.test.js.map

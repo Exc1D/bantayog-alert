@@ -150,7 +150,7 @@ export const rejectReport = onCall(
         actor: {
           uid: req.auth.uid,
           claims: {
-            role: claims.role as string,
+            role: claims.role,
             municipalityId: claims.municipalityId as string,
           },
         },

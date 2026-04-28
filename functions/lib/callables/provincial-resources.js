@@ -1,4 +1,4 @@
-import { onCall } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -13,11 +13,24 @@ const upsertSchema = z.object({
     location: z.string().min(1).max(300),
     available: z.boolean(),
 });
+const archiveSchema = z.object({
+    id: z.string().min(1),
+});
 export async function upsertProvincialResourceCore(db, input, actor) {
     const validated = upsertSchema.parse(input);
     const id = validated.id ?? randomUUID();
     const now = Date.now();
-    await db.collection('provincial_resources').doc(id).set({
+    const existingDoc = await db.collection('provincial_resources').doc(id).get();
+    const existingArchived = existingDoc.exists
+        ? (existingDoc.data().archived ?? false)
+        : false;
+    const existingData = existingDoc.exists
+        ? existingDoc.data()
+        : { archivedBy: undefined, archivedAt: undefined };
+    await db
+        .collection('provincial_resources')
+        .doc(id)
+        .set({
         id,
         name: validated.name,
         type: validated.type,
@@ -25,7 +38,13 @@ export async function upsertProvincialResourceCore(db, input, actor) {
         unit: validated.unit,
         location: validated.location,
         available: validated.available,
-        archived: false,
+        archived: existingArchived,
+        ...(existingArchived && existingData.archivedBy
+            ? { archivedBy: existingData.archivedBy }
+            : {}),
+        ...(existingArchived && existingData.archivedAt
+            ? { archivedAt: existingData.archivedAt }
+            : {}),
         lastUpdatedBy: actor.uid,
         lastUpdatedAt: now,
         schemaVersion: 1,
@@ -44,6 +63,10 @@ export const upsertProvincialResource = onCall({ region: 'asia-southeast1', enfo
     return upsertProvincialResourceCore(getFirestore(), request.data, { uid });
 });
 export async function archiveProvincialResourceCore(db, input, actor) {
+    const docSnap = await db.collection('provincial_resources').doc(input.id).get();
+    if (!docSnap.exists) {
+        throw new HttpsError('not-found', 'provincial_resource_not_found');
+    }
     await db.collection('provincial_resources').doc(input.id).update({
         archived: true,
         archivedBy: actor.uid,
@@ -59,6 +82,7 @@ export async function archiveProvincialResourceCore(db, input, actor) {
 }
 export const archiveProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
     const { uid } = requireAuth(request, ['superadmin', 'pdrrmo']);
-    return archiveProvincialResourceCore(getFirestore(), request.data, { uid });
+    const { id } = archiveSchema.parse(request.data);
+    return archiveProvincialResourceCore(getFirestore(), { id }, { uid });
 });
 //# sourceMappingURL=provincial-resources.js.map

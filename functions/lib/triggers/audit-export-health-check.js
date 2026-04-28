@@ -3,25 +3,29 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { BigQuery } from '@google-cloud/bigquery';
 const bq = new BigQuery();
+// extractLastMs expects INT64 epoch (numeric)
 function extractLastMs(rows) {
     const row = rows[0];
     if (!row?.lastAt?.value)
         return 0;
-    return Number(row.lastAt.value);
+    const ms = Number(row.lastAt.value);
+    return Number.isNaN(ms) ? 0 : ms;
 }
+// extractLastDateMs expects timestamp string (from batch_events.timestamp column)
 function extractLastDateMs(rows) {
     const row = rows[0];
     if (!row?.lastAt?.value)
         return 0;
-    return new Date(row.lastAt.value).getTime();
+    const ms = new Date(row.lastAt.value).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
 }
 export const auditExportHealthCheck = onSchedule({ schedule: 'every 10 minutes', region: 'asia-southeast1', timeZone: 'UTC' }, async () => {
     const db = getFirestore();
     const now = Date.now();
-    const [streamRows] = await bq.query('SELECT MAX(occurredAt) as lastAt FROM bantayog_audit.streaming_events');
+    const [streamRows] = await bq.query('SELECT MAX(occurredAt) as lastAt FROM bantayog_audit.streaming_events', { timeoutMs: 30000 });
     const lastStreamMs = extractLastMs(streamRows);
     const streamingGapSeconds = Math.floor((now - lastStreamMs) / 1000);
-    const [batchRows] = await bq.query('SELECT MAX(timestamp) as lastAt FROM bantayog_audit.batch_events');
+    const [batchRows] = await bq.query('SELECT MAX(timestamp) as lastAt FROM bantayog_audit.batch_events', { timeoutMs: 30000 });
     const lastBatchMs = extractLastDateMs(batchRows);
     const batchGapSeconds = Math.floor((now - lastBatchMs) / 1000);
     const healthy = streamingGapSeconds < 60 && batchGapSeconds < 900;
@@ -41,8 +45,12 @@ export const auditExportHealthCheck = onSchedule({ schedule: 'every 10 minutes',
                 },
             });
         }
-        catch {
-            /* non-critical */
+        catch (err) {
+            console.error('[audit-export-health-check] failed to send FCM alert', {
+                streamingGapSeconds,
+                batchGapSeconds,
+                message: err instanceof Error ? err.message : String(err),
+            });
         }
     }
 });

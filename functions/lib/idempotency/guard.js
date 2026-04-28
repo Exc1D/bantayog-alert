@@ -39,7 +39,7 @@ export async function withIdempotency(db, opts, op) {
         if (data.processing && !('resultPayload' in data)) {
             throw new IdempotencyInProgressError(opts.key);
         }
-        return (data.resultPayload ?? null);
+        return data.resultPayload ?? null;
     });
     if (cached != null) {
         return { result: cached, fromCache: true };

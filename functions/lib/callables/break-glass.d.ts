@@ -1,10 +1,12 @@
 import { type Firestore } from 'firebase-admin/firestore';
 import { type Auth } from 'firebase-admin/auth';
-interface BreakGlassInput {
-    codeA: string;
-    codeB: string;
-    reason: string;
-}
+import { z } from 'zod';
+declare const breakGlassInputSchema: z.ZodObject<{
+    codeA: z.ZodString;
+    codeB: z.ZodString;
+    reason: z.ZodString;
+}, z.core.$strip>;
+type BreakGlassInput = z.infer<typeof breakGlassInputSchema>;
 export declare function initiateBreakGlassCore(db: Firestore, adminAuth: Auth, input: BreakGlassInput, actor: {
     uid: string;
 }): Promise<{

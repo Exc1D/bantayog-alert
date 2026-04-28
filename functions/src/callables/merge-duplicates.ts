@@ -76,8 +76,8 @@ export async function mergeDuplicatesCore(
   const { result: cached } = await withIdempotency(
     db,
     { key: `mergeDuplicates:${actor.uid}:${idempotencyKey}`, payload: input },
-    async () => {
-      return db.runTransaction(async (tx) => {
+    async (): Promise<MergeDuplicatesResult> => {
+      return db.runTransaction(async (tx): Promise<MergeDuplicatesResult> => {
         // Read report_ops inside transaction
         const opsSnaps = await Promise.all(
           allIds.map((id) => tx.get(db.collection('report_ops').doc(id))),
@@ -86,7 +86,7 @@ export async function mergeDuplicatesCore(
         // Fail fast if any missing
         for (const snap of opsSnaps) {
           if (!snap.exists) {
-            return { success: false, errorCode: 'not-found' } as MergeDuplicatesResult
+            return { success: false, errorCode: 'not-found' }
           }
         }
 
@@ -102,13 +102,13 @@ export async function mergeDuplicatesCore(
         // Validate all reports have municipalityId
         const missingMunicipality = opsData.some((d) => !d.municipalityId)
         if (missingMunicipality) {
-          return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
+          return { success: false, errorCode: 'failed-precondition' }
         }
 
         // Municipality check
         const municipalities = new Set(opsData.map((d) => d.municipalityId))
         if (municipalities.size > 1) {
-          return { success: false, errorCode: 'invalid-argument' } as MergeDuplicatesResult
+          return { success: false, errorCode: 'invalid-argument' }
         }
 
         // Cluster check — all reports must share exactly one cluster ID
@@ -116,10 +116,10 @@ export async function mergeDuplicatesCore(
           .map((d) => d.duplicateClusterId)
           .filter((id): id is string => typeof id === 'string' && id.length > 0)
         if (clusterIds.length !== opsData.length) {
-          return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
+          return { success: false, errorCode: 'failed-precondition' }
         }
         if (new Set(clusterIds).size > 1) {
-          return { success: false, errorCode: 'failed-precondition' } as MergeDuplicatesResult
+          return { success: false, errorCode: 'failed-precondition' }
         }
 
         // Municipality authorization
@@ -128,7 +128,7 @@ export async function mergeDuplicatesCore(
           actor.claims.role === 'municipal_admin' &&
           actor.claims.municipalityId !== municipalityId
         ) {
-          return { success: false, errorCode: 'permission-denied' } as MergeDuplicatesResult
+          return { success: false, errorCode: 'permission-denied' }
         }
 
         const reportSnaps = await Promise.all(
@@ -137,17 +137,17 @@ export async function mergeDuplicatesCore(
 
         for (const snap of reportSnaps) {
           if (!snap.exists) {
-            return { success: false, errorCode: 'not-found' } as MergeDuplicatesResult
+            return { success: false, errorCode: 'not-found' }
           }
         }
 
         const primarySnap = reportSnaps.find((s) => s.id === primaryReportId)
         if (!primarySnap) {
-          return { success: false, errorCode: 'not-found' } as MergeDuplicatesResult
+          return { success: false, errorCode: 'not-found' }
         }
         const primaryReportData = primarySnap.data()
         if (!primaryReportData) {
-          return { success: false, errorCode: 'not-found' } as MergeDuplicatesResult
+          return { success: false, errorCode: 'not-found' }
         }
 
         const primaryMediaRefs = primaryReportData.mediaRefs
@@ -209,7 +209,7 @@ export async function mergeDuplicatesCore(
           data: { correlationId },
         })
 
-        return { success: true, mergedCount: duplicateReportIds.length } as MergeDuplicatesResult
+        return { success: true, mergedCount: duplicateReportIds.length }
       })
     },
   ).catch((err: unknown): { result: MergeDuplicatesResult; fromCache: boolean } => {
@@ -259,8 +259,8 @@ export const mergeDuplicates = onCall(
     try {
       const correlationId = crypto.randomUUID()
       const actorClaims: MergeDuplicatesActor['claims'] = {
-        role: claims.role as UserRole,
-        active: claims.active as boolean,
+        role: claims.role,
+        active: claims.active,
         auth_time: claims.auth_time as number,
       }
       if (typeof claims.municipalityId === 'string') {

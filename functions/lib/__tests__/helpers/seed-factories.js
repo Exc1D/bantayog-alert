@@ -139,10 +139,6 @@ export async function seedResponder(env, responderId, overrides = {}) {
         });
     });
 }
-/**
- * Seeds a dispatches document using RulesTestEnvironment context.
- * Use with env.withSecurityRulesDisabled() — not for Firestore admin SDK use.
- */
 export async function seedDispatchRT(env, dispatchId, overrides = {}) {
     await env.withSecurityRulesDisabled(async (ctx) => {
         const db = ctx.firestore();

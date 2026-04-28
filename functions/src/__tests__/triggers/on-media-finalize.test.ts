@@ -27,7 +27,7 @@ describe('onMediaFinalizeCore', () => {
     mockFile.download.mockResolvedValue([Buffer.from('%PDF-1.4\n', 'utf8')])
     const writePending = vi.fn()
     const result = await onMediaFinalizeCore({
-      bucket: bucket() as never,
+      bucket: bucket(),
       objectName: 'pending/abc',
       writePending,
     })
@@ -44,7 +44,7 @@ describe('onMediaFinalizeCore', () => {
     mockFile.download.mockResolvedValue([jpeg])
     const writePending = vi.fn()
     const result = await onMediaFinalizeCore({
-      bucket: bucket() as never,
+      bucket: bucket(),
       objectName: 'pending/upload-1',
       writePending,
     })
@@ -74,7 +74,7 @@ describe('onMediaFinalizeCore', () => {
     mockFile.download.mockResolvedValue([jpegWithExif])
     const writePending = vi.fn()
     const result = await onMediaFinalizeCore({
-      bucket: bucket() as never,
+      bucket: bucket(),
       objectName: 'pending/upload-2',
       writePending,
     })

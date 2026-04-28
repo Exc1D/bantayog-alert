@@ -109,7 +109,7 @@ describe('mergeDuplicates', () => {
       },
       {
         uid: 'citizen-1',
-        claims: { role: 'citizen' as UserRole, active: true, auth_time: Math.floor(ts / 1000) },
+        claims: { role: 'citizen', active: true, auth_time: Math.floor(ts / 1000) },
       },
     )
     expectError(result, 'permission-denied')
@@ -128,7 +128,7 @@ describe('mergeDuplicates', () => {
       {
         uid: 'admin-1',
         claims: {
-          role: 'municipal_admin' as UserRole,
+          role: 'municipal_admin',
           municipalityId: 'daet',
           active: false,
           auth_time: Math.floor(ts / 1000),

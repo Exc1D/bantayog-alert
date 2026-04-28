@@ -38,4 +38,10 @@ export function requireAuth(request, allowedRoles) {
     }
     return { uid: request.auth.uid, claims };
 }
+export function requireMfaAuth(request) {
+    const firebase = request.auth?.token.firebase;
+    if (typeof firebase?.sign_in_second_factor !== 'string') {
+        throw new HttpsError('unauthenticated', 'mfa_required');
+    }
+}
 //# sourceMappingURL=https-error.js.map

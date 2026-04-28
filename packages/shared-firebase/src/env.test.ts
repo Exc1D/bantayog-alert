@@ -25,7 +25,7 @@ describe('parseFirebaseWebEnv', () => {
       parseFirebaseWebEnv({
         VITE_FIREBASE_API_KEY: 'api-key',
         // missing others
-      } as Record<string, string>),
+      }),
     ).toThrow(/Missing required Firebase env var/)
   })
 })

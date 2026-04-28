@@ -1,4 +1,3 @@
-import { Timestamp as AdminTimestamp } from 'firebase-admin/firestore';
 export async function checkRateLimit(db, { key, limit, windowSeconds, now, updatedAt }) {
     const ref = db.collection('rate_limits').doc(key);
     return db.runTransaction(async (tx) => {
@@ -14,7 +13,7 @@ export async function checkRateLimit(db, { key, limit, windowSeconds, now, updat
         }
         fresh.push(now.toMillis());
         const pruned = fresh.slice(-limit);
-        tx.set(ref, { timestamps: pruned, updatedAt: updatedAt ?? AdminTimestamp.now() }, { merge: true });
+        tx.set(ref, { timestamps: pruned, updatedAt: updatedAt ?? now.toMillis() }, { merge: true });
         return { allowed: true, remaining: limit - pruned.length, retryAfterSeconds: 0 };
     });
 }

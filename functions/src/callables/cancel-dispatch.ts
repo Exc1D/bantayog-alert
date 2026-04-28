@@ -190,7 +190,7 @@ export const cancelDispatch = onCall(
           uid: req.auth.uid,
           claims: {
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            ...(claims.role !== undefined && { role: claims.role as string }),
+            ...(claims.role !== undefined && { role: claims.role }),
             ...(claims.municipalityId !== undefined && {
               municipalityId: claims.municipalityId as string,
             }),
