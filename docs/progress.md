@@ -90,6 +90,10 @@
 - **Phase 4b SMS Inbound Pipeline (2026-04-22)** — Globe Labs webhook, SMS parser with fuzzy barangay matching, auto-reply, integration + acceptance tests. Bug: `publicLocation: null` caused `out_of_jurisdiction` silent routing; fixed by making field optional.
 - **Phase 4a Git Recovery (2026-04-21)** — Restored orphaned branch tip to `origin/recovery/phase-4a-outbound-sms`.
 
+## Deferred Decisions
+
+- **4 observability dashboards (Arch Spec §13.9)** — Ops, Backend, Compliance, Cost views deferred to Phase 11 (Audit Hardening). System Health page from 8B already covers surge-time operator needs. These dashboards are a reporting/compliance concern, not a pilot-gate concern.
+
 ## Older Completed
 
 - Phase 3b Admin Triage + Dispatch — Code complete; staging UI verification blocked by hosting/cert issues.
