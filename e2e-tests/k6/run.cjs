@@ -10,13 +10,13 @@ if (!scenario) {
   process.exit(1)
 }
 
-const { execSync } = require('child_process')
+const { execFileSync } = require('child_process')
 const path = require('path')
 
 const scenarioPath = path.join(__dirname, 'scenarios', `${scenario}.js`)
 
 try {
-  execSync(`k6 run "${scenarioPath}"`, { stdio: 'inherit' })
+  execFileSync('k6', ['run', scenarioPath], { stdio: 'inherit' })
 } catch (err) {
   process.exit(err.status || 1)
 }
