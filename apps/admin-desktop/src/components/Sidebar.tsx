@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
+import { EmergencyDeclarationModal } from './EmergencyDeclarationModal'
 
 const COLOR_PROVINCE = '#7c3aed'
 const COLOR_DANGER = '#dc2626'
@@ -37,79 +39,124 @@ export function Sidebar() {
   const { claims } = useAuth()
   const role = typeof claims?.role === 'string' ? claims.role : ''
   const isProvinceAdmin = role === 'provincial_superadmin'
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState(false)
 
   return (
-    <nav
-      aria-label="Main navigation"
-      style={{
-        width: '220px',
-        minHeight: '100vh',
-        borderRight: '1px solid #e0e0e0',
-        padding: '16px 8px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        background: '#fafafa',
-        flexShrink: 0,
-      }}
-    >
-      {/* Municipal / shared routes */}
-      <p
+    <>
+      <EmergencyDeclarationModal
+        open={emergencyModalOpen}
+        onClose={() => {
+          setEmergencyModalOpen(false)
+        }}
+      />
+      <nav
+        aria-label="Main navigation"
         style={{
-          fontSize: '11px',
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: '#888',
-          padding: '4px 16px',
-          margin: 0,
+          width: '220px',
+          minHeight: '100vh',
+          borderRight: '1px solid #e0e0e0',
+          padding: '16px 8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          background: '#fafafa',
+          flexShrink: 0,
         }}
       >
-        Operations
-      </p>
-      <SidebarLink to="/" label="Triage Queue" />
-      <SidebarLink to="/analytics" label="Analytics" />
-      <SidebarLink to="/agency" label="Agency Queue" />
-      <SidebarLink to="/roster" label="Roster" />
+        {/* Municipal / shared routes */}
+        <p
+          style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: '#888',
+            padding: '4px 16px',
+            margin: 0,
+          }}
+        >
+          Operations
+        </p>
+        <SidebarLink to="/" label="Triage Queue" />
+        <SidebarLink to="/analytics" label="Analytics" />
+        <SidebarLink to="/agency" label="Agency Queue" />
+        <SidebarLink to="/roster" label="Roster" />
 
-      {/* Province section — only for provincial_superadmin */}
-      {isProvinceAdmin && (
-        <>
-          <hr
-            style={{
-              border: 'none',
-              borderTop: '1px solid #e0e0e0',
-              margin: '12px 8px',
-            }}
-          />
-          <p
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: COLOR_PROVINCE,
-              padding: '4px 16px',
-              margin: 0,
-            }}
-          >
-            Province
-          </p>
-          <SidebarLink to="/province/dashboard" label="Province Dashboard" color={COLOR_PROVINCE} />
-          <SidebarLink to="/province/map" label="Province Map" color={COLOR_PROVINCE} />
-          <SidebarLink to="/province/users" label="User Management" color={COLOR_PROVINCE} />
-          <SidebarLink to="/province/resources" label="Resources" color={COLOR_PROVINCE} />
-          <SidebarLink to="/province/system-health" label="System Health" color={COLOR_PROVINCE} />
-          <hr
-            style={{
-              border: 'none',
-              borderTop: '1px solid #e0e0e0',
-              margin: '12px 8px',
-            }}
-          />
-          <SidebarLink to="/province/break-glass" label="Break Glass" color={COLOR_DANGER} />
-        </>
-      )}
-    </nav>
+        {/* Province section — only for provincial_superadmin */}
+        {isProvinceAdmin && (
+          <>
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid #e0e0e0',
+                margin: '12px 8px',
+              }}
+            />
+            <p
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: COLOR_PROVINCE,
+                padding: '4px 16px',
+                margin: 0,
+              }}
+            >
+              Province
+            </p>
+            <SidebarLink
+              to="/province/dashboard"
+              label="Province Dashboard"
+              color={COLOR_PROVINCE}
+            />
+            <SidebarLink to="/province/map" label="Province Map" color={COLOR_PROVINCE} />
+            <SidebarLink to="/province/users" label="User Management" color={COLOR_PROVINCE} />
+            <SidebarLink to="/province/resources" label="Resources" color={COLOR_PROVINCE} />
+            <SidebarLink
+              to="/province/system-health"
+              label="System Health"
+              color={COLOR_PROVINCE}
+            />
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid #e0e0e0',
+                margin: '12px 8px',
+              }}
+            />
+            <SidebarLink to="/province/break-glass" label="Break Glass" color={COLOR_DANGER} />
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid #e0e0e0',
+                margin: '12px 8px',
+              }}
+            />
+            <button
+              onClick={() => {
+                setEmergencyModalOpen(true)
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '10px 16px',
+                background: '#dc2626',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                letterSpacing: '0.01em',
+              }}
+            >
+              ⚡ Declare Emergency
+            </button>
+          </>
+        )}
+      </nav>
+    </>
   )
 }
