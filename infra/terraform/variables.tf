@@ -35,3 +35,9 @@ variable "state_bucket" {
   description = "GCS bucket for Terraform state (must exist before init)"
   type        = string
 }
+
+variable "surge_min_instances" {
+  description = "minInstances for hot-path Cloud Functions during TCWS surge. Default: 3. Set to 20 during TCWS signal level >= 2 per the pre-warm runbook at infra/runbooks/surge-prewarm.md."
+  type        = number
+  default     = 3
+}
