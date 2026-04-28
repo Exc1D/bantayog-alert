@@ -1,0 +1,149 @@
+import { describe, it, expect, vi } from 'vitest'
+import type { Firestore } from 'firebase-admin/firestore'
+import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
+
+vi.mock('firebase-functions/v2/https', () => ({
+  onCall: vi.fn((_opts: unknown, fn: unknown) => fn),
+  HttpsError: class HttpsError extends Error {
+    code: string
+    constructor(code: string, message: string) {
+      super(message)
+      this.code = code
+    }
+  },
+}))
+
+function createMockDb() {
+  const setFn = vi.fn().mockResolvedValue(undefined)
+  const updateFn = vi.fn().mockResolvedValue(undefined)
+  const docFn = vi.fn(() => ({ set: setFn, update: updateFn }))
+  const collectionFn = vi.fn(() => ({ doc: docFn }))
+  return {
+    collection: collectionFn,
+    _setFn: setFn,
+    _updateFn: updateFn,
+    _docFn: docFn,
+  } as unknown as Firestore & {
+    _setFn: typeof setFn
+    _updateFn: typeof updateFn
+    _docFn: typeof docFn
+  }
+}
+
+const superadminActor = { uid: 'super-1', role: 'provincial_superadmin' }
+const muniAdminActor = { uid: 'muni-1', role: 'municipal_admin' }
+const ts = Date.now() + 60_000
+
+import {
+  declareHazardSignalCore,
+  clearHazardSignalCore,
+} from '../../callables/declare-hazard-signal.js'
+
+describe('declareHazardSignalCore', () => {
+  it('rejects non-superadmin callers', async () => {
+    const db = createMockDb()
+    await expect(
+      declareHazardSignalCore(
+        db,
+        {
+          signalLevel: 3,
+          scopeType: 'province',
+          affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
+          validUntil: ts,
+          reason: 'test',
+        },
+        muniAdminActor,
+      ),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
+  })
+
+  it('normalizes province scope to all municipalities', async () => {
+    const db = createMockDb()
+    const result = await declareHazardSignalCore(
+      db,
+      {
+        signalLevel: 4,
+        scopeType: 'province',
+        affectedMunicipalityIds: ['daet'],
+        validUntil: ts,
+        reason: 'test',
+      },
+      superadminActor,
+    )
+
+    expect(result.affectedMunicipalityIds).toEqual(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
+  })
+
+  it('writes a valid hazard signal document', async () => {
+    const db = createMockDb()
+    await declareHazardSignalCore(
+      db,
+      {
+        signalLevel: 3,
+        scopeType: 'municipalities',
+        affectedMunicipalityIds: ['daet'],
+        validUntil: ts,
+        reason: 'PAGASA radio confirmation',
+      },
+      superadminActor,
+    )
+
+    expect(db._setFn).toHaveBeenCalledOnce()
+    const firstCall = db._setFn.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const written = firstCall![0] as Record<string, unknown>
+    expect(written).toMatchObject({
+      hazardType: 'tropical_cyclone',
+      source: 'manual',
+      status: 'active',
+      schemaVersion: 1,
+    })
+  })
+
+  it('returns signalId and affectedMunicipalityIds', async () => {
+    const db = createMockDb()
+    const result = await declareHazardSignalCore(
+      db,
+      {
+        signalLevel: 2,
+        scopeType: 'municipalities',
+        affectedMunicipalityIds: ['daet', 'san-vicente'],
+        validUntil: ts,
+        reason: 'test',
+      },
+      superadminActor,
+    )
+
+    expect(typeof result.signalId).toBe('string')
+    expect(result.affectedMunicipalityIds).toEqual(['daet', 'san-vicente'])
+  })
+})
+
+describe('clearHazardSignalCore', () => {
+  it('rejects non-superadmin callers', async () => {
+    const db = createMockDb()
+    await expect(
+      clearHazardSignalCore(db, { signalId: 'sig-1', reason: 'all clear' }, muniAdminActor),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
+  })
+
+  it('marks the signal as cleared', async () => {
+    const updateFn = vi.fn().mockResolvedValue(undefined)
+    const docFn = vi.fn(() => ({ update: updateFn }))
+    const db = { collection: vi.fn(() => ({ doc: docFn })) } as unknown as Firestore
+    await clearHazardSignalCore(db, { signalId: 'sig-1', reason: 'storm passed' }, superadminActor)
+
+    expect(updateFn).toHaveBeenCalledWith(expect.objectContaining({ status: 'cleared' }))
+  })
+
+  it('returns signalId and cleared status', async () => {
+    const db = createMockDb()
+    const result = await clearHazardSignalCore(
+      db,
+      { signalId: 'sig-42', reason: 'all clear' },
+      superadminActor,
+    )
+
+    expect(result).toEqual({ signalId: 'sig-42', status: 'cleared' })
+  })
+})

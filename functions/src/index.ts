@@ -152,3 +152,4 @@ export {
   upsertProvincialResource,
   archiveProvincialResource,
 } from './callables/provincial-resources.js'
+export { declareHazardSignal, clearHazardSignal } from './callables/declare-hazard-signal.js'
