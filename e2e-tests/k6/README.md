@@ -9,6 +9,16 @@ Runs against **staging only**. Never point these at dev or prod.
 - `tsx` available: `npx tsx --version` (or `pnpm add -D tsx -w`)
 - Staging env vars set (see below)
 
+## Quick start
+
+```bash
+# Run a scenario via the package.json wrapper
+SCENARIO=accept-dispatch-race npm run load-test
+
+# Or invoke k6 directly
+k6 run e2e-tests/k6/scenarios/accept-dispatch-race.js
+```
+
 ## Required env vars
 
 | Variable                     | Description                                                    |

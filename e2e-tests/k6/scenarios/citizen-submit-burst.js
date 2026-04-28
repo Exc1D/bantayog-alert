@@ -85,12 +85,14 @@ export default function (data) {
     submitted.add(1)
     check({ name }, { 'document created': (v) => typeof v.name === 'string' })
   } catch (err) {
-    // createDocument throws on non-200; inspect the error to classify
+    // createDocument throws on non-200; extract HTTP status from message like "(404): ..."
     const msg = String(err)
-    if (msg.includes('429')) {
+    const statusMatch = msg.match(/\((\d{3})\)/)
+    const status = statusMatch ? Number(statusMatch[1]) : 0
+    if (status === 429) {
       rateLimited.add(1)
       // 429 is acceptable — rate limiting is correct behavior, not an error
-    } else if (msg.includes('5')) {
+    } else if (status >= 500 && status < 600) {
       serverErrors.add(1)
     }
   }

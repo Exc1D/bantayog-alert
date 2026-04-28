@@ -91,6 +91,13 @@ async function teardownInboxItem(id: string): Promise<void> {
   await db.collection('report_inbox').doc(id).delete()
 }
 
+async function checkProcessed(id: string): Promise<boolean> {
+  const snap = await db.collection('report_inbox').doc(id).get()
+  if (!snap.exists) throw new Error(`report_inbox/${id} not found`)
+  const processedAt = snap.get('processedAt')
+  return processedAt != null
+}
+
 // ---------------------------------------------------------------------------
 // CLI dispatch
 // ---------------------------------------------------------------------------
@@ -107,6 +114,11 @@ async function main() {
     } else if (subCommand === 'inbox') {
       const id = await seedInboxItem()
       console.log(JSON.stringify({ id }))
+    } else if (subCommand === 'check-processed') {
+      const id = rest[0]
+      if (!id) throw new Error('Usage: seed check-processed <id>')
+      const isProcessed = await checkProcessed(id)
+      console.log(JSON.stringify({ id, processed: isProcessed }))
     } else {
       throw new Error(`Unknown seed subcommand: ${subCommand}`)
     }
