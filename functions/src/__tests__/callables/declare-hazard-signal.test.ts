@@ -41,7 +41,7 @@ function createMockDb() {
 
 const superadminActor = { uid: 'super-1', role: 'provincial_superadmin' }
 const muniAdminActor = { uid: 'muni-1', role: 'municipal_admin' }
-const ts = Date.now() + 60_000
+const futureTimestamp = () => Date.now() + 60_000
 
 import {
   declareHazardSignalCore,
@@ -64,7 +64,7 @@ describe('declareHazardSignalCore', () => {
           signalLevel: 3,
           scopeType: 'province',
           affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
-          validUntil: ts,
+          validUntil: futureTimestamp(),
           reason: 'test',
         },
         muniAdminActor,
@@ -80,7 +80,7 @@ describe('declareHazardSignalCore', () => {
         signalLevel: 4,
         scopeType: 'province',
         affectedMunicipalityIds: ['daet'],
-        validUntil: ts,
+        validUntil: futureTimestamp(),
         reason: 'test',
       },
       superadminActor,
@@ -97,7 +97,7 @@ describe('declareHazardSignalCore', () => {
         signalLevel: 3,
         scopeType: 'municipalities',
         affectedMunicipalityIds: ['daet'],
-        validUntil: ts,
+        validUntil: futureTimestamp(),
         reason: 'PAGASA radio confirmation',
       },
       superadminActor,
@@ -123,7 +123,7 @@ describe('declareHazardSignalCore', () => {
         signalLevel: 2,
         scopeType: 'municipalities',
         affectedMunicipalityIds: ['daet', 'san-vicente'],
-        validUntil: ts,
+        validUntil: futureTimestamp(),
         reason: 'test',
       },
       superadminActor,

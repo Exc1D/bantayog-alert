@@ -103,36 +103,36 @@ export async function clearHazardSignalCore(
   db: Firestore,
   input: unknown,
   actor: { uid: string; role: string },
-): Promise<{ signalId: string; status: 'cleared'; clearedReason: string }> {
+): Promise<{ signalId: string; status: 'cleared' }> {
   if (actor.role !== 'provincial_superadmin') {
     throw new HttpsError('permission-denied', 'superadmin_required')
   }
 
   const validated = clearHazardSignalInputSchema.parse(input)
-
   const ref = db.collection('hazard_signals').doc(validated.signalId)
-  const snap = await ref.get()
-  if (!snap.exists) {
-    throw new HttpsError('not-found', 'signal_not_found')
-  }
-
-  const data = snap.data() as { status: string }
-  if (data.status !== 'active') {
-    throw new HttpsError('failed-precondition', 'signal_not_active')
-  }
-
   const now = Date.now()
 
-  await ref.update({
-    status: 'cleared',
-    clearedAt: now,
-    clearedBy: actor.uid,
-    clearedReason: validated.reason,
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) {
+      throw new HttpsError('not-found', 'signal_not_found')
+    }
+
+    const data = snap.data() as { status: string }
+    if (data.status !== 'active') {
+      throw new HttpsError('failed-precondition', 'signal_not_active')
+    }
+
+    tx.update(ref, {
+      status: 'cleared',
+      clearedAt: now,
+      clearedBy: actor.uid,
+    })
   })
 
   await replayHazardSignalProjection({ db, now })
 
-  return { signalId: validated.signalId, status: 'cleared', clearedReason: validated.reason }
+  return { signalId: validated.signalId, status: 'cleared' }
 }
 
 export const declareHazardSignal = onCall(

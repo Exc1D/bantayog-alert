@@ -116,6 +116,11 @@ export async function replayHazardSignalProjection(input: {
   now: number
 }): Promise<void> {
   const snap = await input.db.collection('hazard_signals').get()
+  const statusRef = input.db.collection('hazard_signal_status').doc('current')
+  const currentStatusSnap = await statusRef.get()
+  const currentStatus = currentStatusSnap.exists
+    ? (currentStatusSnap.data() as Partial<HazardSignalStatusDoc>)
+    : undefined
   const invalidSignalIds: string[] = []
   const signals: SignalWithId[] = snap.docs.flatMap((d) => {
     const parsed = hazardSignalDocSchema.safeParse(d.data())
@@ -129,7 +134,9 @@ export async function replayHazardSignalProjection(input: {
   const status: HazardSignalStatusDoc = projectHazardSignalStatus({
     now: input.now,
     signals,
+    scraperDegraded: currentStatus?.scraperDegraded ?? false,
+    degradedReasons: currentStatus?.degradedReasons ?? [],
     ...(invalidSignalIds.length > 0 ? { invalidSignalIds } : {}),
   })
-  await input.db.collection('hazard_signal_status').doc('current').set(status)
+  await statusRef.set(status)
 }

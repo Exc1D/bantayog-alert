@@ -154,6 +154,25 @@ describe('Hazard Schemas', () => {
       expect(() => hazardSignalDocSchema.parse(validDoc)).not.toThrow()
     })
 
+    it('rejects province scope when municipality set is incomplete', () => {
+      const invalidDoc = {
+        hazardType: 'tropical_cyclone' as const,
+        signalLevel: 3,
+        source: 'manual' as const,
+        scopeType: 'province' as const,
+        affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.slice(0, -1).map(
+          (municipality) => municipality.id,
+        ),
+        status: 'active' as const,
+        validFrom: 1713350400000,
+        validUntil: 1713436800000,
+        recordedAt: 1713350400000,
+        rawSource: 'manual',
+        schemaVersion: 1,
+      }
+      expect(() => hazardSignalDocSchema.parse(invalidDoc)).toThrow()
+    })
+
     it('rejects invalid source literal', () => {
       const invalidDoc = {
         hazardType: 'tropical_cyclone' as const,
