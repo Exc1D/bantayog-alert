@@ -6,21 +6,30 @@ import { BigQuery } from '@google-cloud/bigquery'
 const bq = new BigQuery()
 
 interface LastAtRow {
-  lastAt: { value: string } | null
+  lastAt: { value: string }
+}
+
+function isLastAtRow(row: unknown): row is LastAtRow {
+  if (typeof row !== 'object' || row === null) return false
+  const candidate = row as Record<string, unknown>
+  const lastAt = candidate.lastAt
+  if (typeof lastAt !== 'object' || lastAt === null) return false
+  const lastAtRecord = lastAt as Record<string, unknown>
+  return typeof lastAtRecord.value === 'string'
 }
 
 // extractLastMs expects INT64 epoch (numeric)
-function extractLastMs(rows: LastAtRow[]): number {
+function extractLastMs(rows: readonly unknown[]): number {
   const row = rows[0]
-  if (!row?.lastAt?.value) return 0
+  if (!isLastAtRow(row)) return 0
   const ms = Number(row.lastAt.value)
   return Number.isNaN(ms) ? 0 : ms
 }
 
 // extractLastDateMs expects timestamp string (from batch_events.timestamp column)
-function extractLastDateMs(rows: LastAtRow[]): number {
+function extractLastDateMs(rows: readonly unknown[]): number {
   const row = rows[0]
-  if (!row?.lastAt?.value) return 0
+  if (!isLastAtRow(row)) return 0
   const ms = new Date(row.lastAt.value).getTime()
   return Number.isNaN(ms) ? 0 : ms
 }
@@ -35,14 +44,14 @@ export const auditExportHealthCheck = onSchedule(
       'SELECT MAX(occurredAt) as lastAt FROM bantayog_audit.streaming_events',
       { timeoutMs: 30000 },
     )
-    const lastStreamMs = extractLastMs(streamRows as unknown as LastAtRow[])
+    const lastStreamMs = extractLastMs(streamRows)
     const streamingGapSeconds = Math.floor((now - lastStreamMs) / 1000)
 
     const [batchRows] = await bq.query(
       'SELECT MAX(timestamp) as lastAt FROM bantayog_audit.batch_events',
       { timeoutMs: 30000 },
     )
-    const lastBatchMs = extractLastDateMs(batchRows as unknown as LastAtRow[])
+    const lastBatchMs = extractLastDateMs(batchRows)
     const batchGapSeconds = Math.floor((now - lastBatchMs) / 1000)
 
     const healthy = streamingGapSeconds < 60 && batchGapSeconds < 900
