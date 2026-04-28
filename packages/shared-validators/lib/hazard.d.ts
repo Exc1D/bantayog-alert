@@ -139,6 +139,7 @@ export declare const hazardSignalStatusDocSchema: z.ZodObject<{
     scraperDegraded: z.ZodBoolean;
     lastProjectedAt: z.ZodNumber;
     degradedReasons: z.ZodArray<z.ZodString>;
+    invalidSignalIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export type HazardZoneDoc = z.infer<typeof hazardZoneDocSchema>;

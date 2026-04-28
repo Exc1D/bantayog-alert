@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { CAMARINES_NORTE_MUNICIPALITIES, hazardSignalDocSchema } from '@bantayog/shared-validators'
+import { replayHazardSignalProjection } from '../services/hazard-signal-projector.js'
 
 const declareHazardSignalInputSchema = z.object({
   signalLevel: z.number().int().min(1).max(5),
@@ -17,6 +18,17 @@ const clearHazardSignalInputSchema = z.object({
   reason: z.string().min(1).max(500),
 })
 
+/**
+ * Declares a new hazard signal (tropical cyclone warning) for a province or set of municipalities.
+ * Validates the actor's superadmin role, normalizes province scope to all Camarines Norte
+ * municipalities, writes the signal document, and triggers a projection replay.
+ *
+ * @param db - Firestore instance
+ * @param input - Signal parameters (signalLevel, scopeType, affectedMunicipalityIds, validUntil, reason)
+ * @param actor - Authenticated user with uid and role
+ * @returns The created signalId and the normalized list of affected municipality IDs
+ * @throws HttpsError('permission-denied') if actor is not provincial_superadmin
+ */
 export async function declareHazardSignalCore(
   db: Firestore,
   input: unknown,
@@ -57,9 +69,24 @@ export async function declareHazardSignalCore(
 
   await db.collection('hazard_signals').doc(signalId).set(payload)
 
+  await replayHazardSignalProjection({ db, now })
+
   return { signalId, affectedMunicipalityIds: normalizedMunicipalityIds }
 }
 
+/**
+ * Clears an active hazard signal by marking it as cleared with the actor's uid and timestamp.
+ * Verifies the signal exists and is currently active before clearing, then triggers a
+ * projection replay to update the live status.
+ *
+ * @param db - Firestore instance
+ * @param input - Clear parameters (signalId, reason)
+ * @param actor - Authenticated user with uid and role
+ * @returns The cleared signalId and status
+ * @throws HttpsError('permission-denied') if actor is not provincial_superadmin
+ * @throws HttpsError('not-found') if the signal document does not exist
+ * @throws HttpsError('failed-precondition') if the signal is not currently active
+ */
 export async function clearHazardSignalCore(
   db: Firestore,
   input: unknown,
@@ -87,6 +114,8 @@ export async function clearHazardSignalCore(
     clearedAt: Date.now(),
     clearedBy: actor.uid,
   })
+
+  await replayHazardSignalProjection({ db, now: Date.now() })
 
   return { signalId: validated.signalId, status: 'cleared' }
 }

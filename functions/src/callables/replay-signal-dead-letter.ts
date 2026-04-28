@@ -33,6 +33,19 @@ function extractReplayableHtml(payload: unknown): string | null {
   return null
 }
 
+/**
+ * Replays unresolved dead-letter entries for a given category.
+ * For `hazard_signal_projection`, replays the full projection and marks all items resolved.
+ * For `pagasa_scraper`, re-processes each dead letter's HTML payload through the
+ * PAGASA poll pipeline and marks individual items resolved on success.
+ *
+ * @param db - Firestore instance
+ * @param input - Replay category (`pagasa_scraper` or `hazard_signal_projection`)
+ * @param actor - Authenticated user with role claim
+ * @returns Number of dead letters successfully replayed
+ * @throws HttpsError('permission-denied') if actor is not provincial_superadmin
+ * @throws HttpsError('failed-precondition') if a pagasa_scraper dead letter has no replayable HTML
+ */
 export async function replaySignalDeadLetterCore(
   db: Firestore,
   input: ReplaySignalDeadLetterInput,
@@ -44,24 +57,27 @@ export async function replaySignalDeadLetterCore(
     .where('category', '==', input.category)
     .limit(20)
     .get()
+
+  // Filter to unresolved items in memory to avoid composite index requirement
+  const unresolved = snap.docs.filter((d) => d.data().resolvedAt === undefined)
   const now = Date.now()
 
   if (input.category === 'hazard_signal_projection') {
-    if (snap.size === 0) return { replayed: 0 }
+    if (unresolved.length === 0) return { replayed: 0 }
     await replayHazardSignalProjection({ db, now })
     await Promise.all(
-      snap.docs.map(async (doc) => {
+      unresolved.map(async (doc) => {
         await doc.ref.update({
           resolvedAt: now,
           resolvedBy: actor.uid,
         })
       }),
     )
-    return { replayed: snap.size }
+    return { replayed: unresolved.length }
   }
 
   let replayed = 0
-  for (const doc of snap.docs) {
+  for (const doc of unresolved) {
     const payload = extractReplayableHtml(doc.data().payload)
     if (payload === null) {
       throw new HttpsError('failed-precondition', 'dead_letter_payload_unreplayable')

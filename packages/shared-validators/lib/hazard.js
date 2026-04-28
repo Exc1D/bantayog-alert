@@ -83,6 +83,7 @@ export const hazardSignalStatusDocSchema = z
     scraperDegraded: z.boolean(),
     lastProjectedAt: z.number().int(),
     degradedReasons: z.array(z.string().min(1)),
+    invalidSignalIds: z.array(z.string().min(1)).optional(),
     schemaVersion: z.number().int().positive(),
 })
     .strict();

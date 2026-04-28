@@ -2,6 +2,14 @@ import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { replayHazardSignalProjection } from '../services/hazard-signal-projector.js'
 
+/**
+ * Sweeps expired hazard signals and marks them as expired.
+ * Queries all active signals whose validUntil has passed, marks each as expired
+ * (with error handling per-signal), and replays the projection if any signals were expired.
+ *
+ * @param input - Firestore instance and optional now() override
+ * @returns Count of signals successfully expired
+ */
 export async function hazardSignalExpirySweepCore(input: {
   db: Firestore
   now?: () => number
@@ -14,13 +22,21 @@ export async function hazardSignalExpirySweepCore(input: {
     .where('validUntil', '<=', now)
     .get()
 
+  let expired = 0
   for (const signalDoc of snap.docs) {
-    await signalDoc.ref.update({ status: 'expired' })
+    try {
+      await signalDoc.ref.update({ status: 'expired' })
+      expired++
+    } catch (err) {
+      console.error('Failed to expire signal', signalDoc.id, err)
+    }
   }
 
-  await replayHazardSignalProjection({ db: input.db, now })
+  if (expired > 0) {
+    await replayHazardSignalProjection({ db: input.db, now })
+  }
 
-  return { expired: snap.docs.length }
+  return { expired }
 }
 
 export const hazardSignalExpirySweep = onSchedule(

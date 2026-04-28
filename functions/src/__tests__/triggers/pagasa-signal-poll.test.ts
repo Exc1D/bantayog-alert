@@ -45,13 +45,22 @@ const BROKEN_HTML = `<html><body>INVALID`
 function createMockDb() {
   const setFn = vi.fn().mockResolvedValue(undefined)
   const addFn = vi.fn().mockResolvedValue({ id: 'dl-1' })
-  const docFn = vi.fn(() => ({ set: setFn }))
+  const getFn = vi.fn().mockResolvedValue({
+    exists: true,
+    data: () => ({ degradedReasons: [] }),
+  })
+  const docFn = vi.fn(() => ({ set: setFn, get: getFn }))
   const collectionFn = vi.fn(() => ({ doc: docFn, add: addFn }))
   return {
     collection: collectionFn,
     _setFn: setFn,
     _addFn: addFn,
-  } as unknown as Firestore & { _setFn: typeof setFn; _addFn: typeof addFn }
+    _getFn: getFn,
+  } as unknown as Firestore & {
+    _setFn: typeof setFn
+    _addFn: typeof addFn
+    _getFn: typeof getFn
+  }
 }
 
 interface ParsedSignal {
@@ -188,7 +197,7 @@ describe('pagasaSignalPollCore', () => {
     expect(result.scraperDegraded).toBe(true)
   })
 
-  it('clears degraded state after the next successful non-quarantined run', async () => {
+  it('returns scraperDegraded false after the next successful non-quarantined run', async () => {
     const db = createMockDb()
     let callCount = 0
 

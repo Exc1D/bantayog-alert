@@ -46,6 +46,7 @@ export function projectHazardSignalStatus(input: {
   signals: SignalWithId[]
   scraperDegraded?: boolean
   degradedReasons?: string[]
+  invalidSignalIds?: string[]
 }): HazardSignalStatusDoc {
   // Only signals whose status is 'active' AND whose validUntil is still in the future
   const eligible = input.signals.filter((s) => s.status === 'active' && s.validUntil > input.now)
@@ -71,17 +72,18 @@ export function projectHazardSignalStatus(input: {
   const active = effectiveScopes.length > 0
   const levels = effectiveScopes.map((s) => s.signalLevel)
   const hasManual = effectiveScopes.some((s) => s.source === 'manual')
+  const winner = active
+    ? effectiveScopes.reduce((max, s) => (s.signalLevel > max.signalLevel ? s : max))
+    : null
 
   const allMunicipalities = CAMARINES_NORTE_MUNICIPALITIES.length
   const coveredCount = effectiveScopes.length
 
   return {
     active,
-    effectiveSignalId: active
-      ? effectiveScopes.reduce((max, s) => (s.signalLevel > max.signalLevel ? s : max)).signalId
-      : undefined,
+    effectiveSignalId: winner?.signalId,
     effectiveLevel: active ? Math.max(...levels) : undefined,
-    effectiveSource: active ? (hasManual ? 'manual' : effectiveScopes[0]?.source) : undefined,
+    effectiveSource: active ? (hasManual ? 'manual' : winner?.source) : undefined,
     scopeType:
       coveredCount === allMunicipalities ? 'province' : active ? 'municipalities' : undefined,
     affectedMunicipalityIds: effectiveScopes.map((s) => s.municipalityId),
@@ -99,6 +101,7 @@ export function projectHazardSignalStatus(input: {
     scraperDegraded: input.scraperDegraded ?? false,
     lastProjectedAt: input.now,
     degradedReasons: input.degradedReasons ?? [],
+    invalidSignalIds: input.invalidSignalIds,
     schemaVersion: 1,
   }
 }
@@ -113,14 +116,20 @@ export async function replayHazardSignalProjection(input: {
   now: number
 }): Promise<void> {
   const snap = await input.db.collection('hazard_signals').get()
+  const invalidSignalIds: string[] = []
   const signals: SignalWithId[] = snap.docs.flatMap((d) => {
     const parsed = hazardSignalDocSchema.safeParse(d.data())
     if (!parsed.success) {
       console.error('hazard_signals doc failed validation', d.id, parsed.error.issues)
+      invalidSignalIds.push(d.id)
       return []
     }
     return [{ id: d.id, ...parsed.data }]
   })
-  const status: HazardSignalStatusDoc = projectHazardSignalStatus({ now: input.now, signals })
-  await input.db.collection('hazard_signal_status').doc('current').set(status)
+  const status: HazardSignalStatusDoc = projectHazardSignalStatus({
+    now: input.now,
+    signals,
+    ...(invalidSignalIds.length > 0 ? { invalidSignalIds } : {}),
+  })
+  await input.db.collection('hazard_signal_status').doc('current').set(status, { merge: true })
 }

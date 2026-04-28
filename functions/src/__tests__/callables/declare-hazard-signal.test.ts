@@ -2,6 +2,12 @@ import { describe, it, expect, vi } from 'vitest'
 import type { Firestore } from 'firebase-admin/firestore'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 
+const mockReplay = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
+vi.mock('../../services/hazard-signal-projector.js', () => ({
+  replayHazardSignalProjection: mockReplay,
+}))
+
 vi.mock('firebase-functions/v2/https', () => ({
   onCall: vi.fn((_opts: unknown, fn: unknown) => fn),
   HttpsError: class HttpsError extends Error {
@@ -41,6 +47,12 @@ import {
   declareHazardSignalCore,
   clearHazardSignalCore,
 } from '../../callables/declare-hazard-signal.js'
+
+import { beforeEach } from 'vitest'
+
+beforeEach(() => {
+  mockReplay.mockClear()
+})
 
 describe('declareHazardSignalCore', () => {
   it('rejects non-superadmin callers', async () => {

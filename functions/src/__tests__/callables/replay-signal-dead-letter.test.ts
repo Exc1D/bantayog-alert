@@ -97,6 +97,12 @@ describe('replaySignalDeadLetter', () => {
       db: mockDb,
       now: expect.any(Number),
     })
+    expect(
+      (mockDb as unknown as { _updateFn: ReturnType<typeof vi.fn> })._updateFn,
+    ).toHaveBeenCalledWith({
+      resolvedAt: expect.any(Number),
+      resolvedBy: 'super-1',
+    })
   })
 
   it('replays pagasa scraper dead letters with replayable html payloads', async () => {
@@ -144,6 +150,47 @@ describe('replaySignalDeadLetter', () => {
         data: { category: 'hazard_signal_projection' },
       }),
     ).rejects.toMatchObject({ code: 'permission-denied' })
+  })
+
+  it('throws failed-precondition for unreplayable payload', async () => {
+    mockDb = createMockDb([{ category: 'pagasa_scraper', payload: {} }])
+
+    const invokeReplay = replaySignalDeadLetter as unknown as (request: {
+      auth: { uid: string; token: { role: string } }
+      data: { category: 'pagasa_scraper' }
+    }) => Promise<{ replayed: number }>
+
+    await expect(
+      invokeReplay({
+        auth: {
+          uid: 'super-1',
+          token: { role: 'provincial_superadmin' },
+        },
+        data: { category: 'pagasa_scraper' },
+      }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' })
+  })
+
+  it('does not mark resolved when pagasaSignalPollCore returns non-updated', async () => {
+    const db = createMockDb([{ category: 'pagasa_scraper', payload: '<html>TCWS #3 Daet</html>' }])
+    mockDb = db
+    mockPagasaSignalPollCore.mockResolvedValue({ status: 'no-change', scraperDegraded: false })
+
+    const invokeReplay = replaySignalDeadLetter as unknown as (request: {
+      auth: { uid: string; token: { role: string } }
+      data: { category: 'pagasa_scraper' }
+    }) => Promise<{ replayed: number }>
+
+    const result = await invokeReplay({
+      auth: {
+        uid: 'super-1',
+        token: { role: 'provincial_superadmin' },
+      },
+      data: { category: 'pagasa_scraper' },
+    })
+
+    expect(result).toEqual({ replayed: 0 })
+    expect(db._updateFn).not.toHaveBeenCalled()
   })
 
   it('rejects unsupported categories with invalid-argument', async () => {

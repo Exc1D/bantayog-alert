@@ -1,6 +1,14 @@
 import type { Firestore } from 'firebase-admin/firestore'
+import { CAMARINES_NORTE_MUNICIPALITIES, hazardSignalDocSchema } from '@bantayog/shared-validators'
 import { replayHazardSignalProjection } from '../services/hazard-signal-projector.js'
 
+/**
+ * Persists a scraper-derived signal to Firestore after validating it against hazardSignalDocSchema.
+ *
+ * @param db - Firestore instance
+ * @param signal - Parsed signal data from the PAGASA scraper
+ * @param _now - Timestamp (reserved for future use)
+ */
 export async function upsertScraperSignal(
   db: Firestore,
   signal: {
@@ -24,9 +32,21 @@ export async function upsertScraperSignal(
     ...signal,
     schemaVersion: 1,
   }
-  await db.collection('hazard_signals').doc(signal.signalId).set(payload)
+  const parsed = hazardSignalDocSchema.safeParse(payload)
+  if (!parsed.success) {
+    throw new Error(`Invalid scraper signal: ${parsed.error.message}`)
+  }
+  await db.collection('hazard_signals').doc(signal.signalId).set(parsed.data)
 }
 
+/**
+ * Writes a dead-letter record for a failed scraper or projection operation.
+ *
+ * @param db - Firestore instance
+ * @param category - Dead letter category (`pagasa_scraper` or `hazard_signal_projection`)
+ * @param payload - The failed payload (HTML string or error details)
+ * @param _now - Timestamp (reserved for future use)
+ */
 export async function writeSignalDeadLetter(
   db: Firestore,
   category: string,
@@ -43,6 +63,13 @@ export async function writeSignalDeadLetter(
   })
 }
 
+/**
+ * Marks the scraper as degraded by updating `hazard_signal_status/current` with a degradation reason.
+ *
+ * @param db - Firestore instance
+ * @param now - Current timestamp
+ * @param reason - Human-readable reason for degradation
+ */
 export async function markScraperDegraded(
   db: Firestore,
   now: number,
@@ -67,6 +94,12 @@ export async function markScraperDegraded(
     )
 }
 
+/**
+ * Clears the scraper degraded state by removing degradation reasons from `hazard_signal_status/current`.
+ *
+ * @param db - Firestore instance
+ * @param now - Current timestamp
+ */
 export async function clearScraperDegraded(db: Firestore, now: number): Promise<void> {
   await db
     .collection('hazard_signal_status')
@@ -103,16 +136,17 @@ export function parsePagasaSignal(html: string): ParseResult {
   const municipalityIds: string[] = []
   const municipalityPatterns = [
     'Daet',
-    'San Jose',
     'Basud',
-    'Camarines Norte',
-    'Mercedes',
-    'Paracale',
-    'Labo',
     'Capalonga',
     'Jose Panganiban',
-    'Vinzons',
+    'Labo',
+    'Mercedes',
+    'Paracale',
+    'San Lorenzo Ruiz',
+    'San Vicente',
     'Santa Elena',
+    'Talisay',
+    'Vinzons',
   ]
 
   for (const pattern of municipalityPatterns) {
@@ -138,7 +172,10 @@ export function parsePagasaSignal(html: string): ParseResult {
       hazardType: 'tropical_cyclone',
       signalLevel,
       source: 'scraper' as const,
-      scopeType: municipalityIds.length >= 11 ? ('province' as const) : ('municipalities' as const),
+      scopeType:
+        municipalityIds.length === CAMARINES_NORTE_MUNICIPALITIES.length
+          ? ('province' as const)
+          : ('municipalities' as const),
       affectedMunicipalityIds: municipalityIds,
       status: 'active' as const,
       validFrom: Date.now(),
@@ -150,19 +187,15 @@ export function parsePagasaSignal(html: string): ParseResult {
   }
 }
 
+/**
+ * Determines whether a parsed PAGASA signal is trusted by verifying all affected
+ * municipality IDs are in the canonical Camarines Norte set.
+ *
+ * @param signal - Parsed signal record
+ * @returns True if all affected municipality IDs are recognized
+ */
 export function isTrustedParsedSignal(signal: Record<string, unknown>): boolean {
-  const KNOWN_MUNICIPALITIES = new Set([
-    'daet',
-    'san-jose',
-    'basud',
-    'mercedes',
-    'paracale',
-    'labo',
-    'capalonga',
-    'jose-panganiban',
-    'vinzons',
-    'santa-elena',
-  ])
+  const KNOWN_MUNICIPALITIES = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
 
   const affected = signal.affectedMunicipalityIds as string[]
   if (!Array.isArray(affected)) return false
@@ -181,15 +214,25 @@ export interface PagasaSignalPollResult {
   scraperDegraded: boolean
 }
 
+/**
+ * Orchestrates the PAGASA TCWS scraping pipeline: fetches HTML, parses signals,
+ * validates against the trust allowlist, writes trusted signals to Firestore,
+ * and replays the projection. On failure, writes a dead letter and marks degradation.
+ *
+ * @param input - Firestore instance, HTML fetch function, and optional now() override
+ * @returns Result with status, scraper degradation flag
+ */
 export async function pagasaSignalPollCore(input: {
   db: Firestore
   fetchHtml: () => Promise<string>
   now?: () => number
 }): Promise<PagasaSignalPollResult> {
   const now = input.now ?? (() => Date.now())
+  let fetchedHtml: string | undefined
 
   try {
-    const html = await input.fetchHtml()
+    fetchedHtml = await input.fetchHtml()
+    const html = fetchedHtml
     const parsed = parsePagasaSignal(html)
 
     if (!parsed.ok) {
@@ -233,7 +276,13 @@ export async function pagasaSignalPollCore(input: {
     await replayHazardSignalProjection({ db: input.db, now: now() })
     return { status: 'updated', scraperDegraded: false }
   } catch (err) {
-    await writeSignalDeadLetter(input.db, 'pagasa_scraper', String(err), {}, now())
+    await writeSignalDeadLetter(
+      input.db,
+      'pagasa_scraper',
+      String(err),
+      fetchedHtml ? { html: fetchedHtml } : {},
+      now(),
+    )
     await markScraperDegraded(input.db, now(), 'fetch_failed')
     return { status: 'failed', scraperDegraded: true }
   }
