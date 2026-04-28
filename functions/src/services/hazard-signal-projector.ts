@@ -14,6 +14,7 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import {
   CAMARINES_NORTE_MUNICIPALITIES,
+  hazardSignalDocSchema,
   type HazardSignalDoc,
   type HazardSignalStatusDoc,
 } from '@bantayog/shared-validators'
@@ -76,7 +77,12 @@ export function projectHazardSignalStatus(input: {
 
   return {
     active,
-    effectiveSignalId: effectiveScopes[0]?.signalId,
+    effectiveSignalId: active
+      ? effectiveScopes.reduce(
+          (max, s) => (s.signalLevel > max.signalLevel ? s : max),
+          effectiveScopes[0],
+        ).signalId
+      : undefined,
     effectiveLevel: active ? Math.max(...levels) : undefined,
     effectiveSource: active ? (hasManual ? 'manual' : effectiveScopes[0]?.source) : undefined,
     scopeType:
@@ -110,7 +116,14 @@ export async function replayHazardSignalProjection(input: {
   now: number
 }): Promise<void> {
   const snap = await input.db.collection('hazard_signals').get()
-  const signals: SignalWithId[] = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SignalWithId)
+  const signals: SignalWithId[] = snap.docs.flatMap((d) => {
+    const parsed = hazardSignalDocSchema.safeParse(d.data())
+    if (!parsed.success) {
+      console.error('hazard_signals doc failed validation', d.id, parsed.error.issues)
+      return []
+    }
+    return [{ id: d.id, ...parsed.data }]
+  })
   const status: HazardSignalStatusDoc = projectHazardSignalStatus({ now: input.now, signals })
   await input.db.collection('hazard_signal_status').doc('current').set(status)
 }

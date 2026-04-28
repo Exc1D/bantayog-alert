@@ -4,11 +4,13 @@ import { projectHazardSignalStatus } from '../../services/hazard-signal-projecto
 
 const NOW = 1713350400000
 
+type SignalStatus = 'active' | 'cleared' | 'expired' | 'superseded' | 'quarantined'
+
 function manualSignal(overrides: {
   id: string
   affectedMunicipalityIds: string[]
   signalLevel?: number
-  status?: string
+  status?: SignalStatus
   validUntil?: number
 }): HazardSignalDoc & { id: string } {
   return {
@@ -18,7 +20,7 @@ function manualSignal(overrides: {
     source: 'manual',
     scopeType: 'municipalities',
     affectedMunicipalityIds: overrides.affectedMunicipalityIds,
-    status: (overrides.status ?? 'active') as never,
+    status: overrides.status ?? 'active',
     validFrom: NOW - 3600000,
     validUntil: overrides.validUntil ?? NOW + 3600000,
     recordedAt: NOW - 1000,
@@ -32,7 +34,7 @@ function scraperSignal(overrides: {
   id: string
   affectedMunicipalityIds: string[]
   signalLevel?: number
-  status?: string
+  status?: SignalStatus
   validUntil?: number
 }): HazardSignalDoc & { id: string } {
   return {
@@ -42,7 +44,7 @@ function scraperSignal(overrides: {
     source: 'scraper',
     scopeType: 'municipalities',
     affectedMunicipalityIds: overrides.affectedMunicipalityIds,
-    status: (overrides.status ?? 'active') as never,
+    status: overrides.status ?? 'active',
     validFrom: NOW - 3600000,
     validUntil: overrides.validUntil ?? NOW + 3600000,
     recordedAt: NOW - 2000,
@@ -125,5 +127,47 @@ describe('projectHazardSignalStatus', () => {
     })
 
     expect(result.active).toBe(false)
+  })
+
+  it('validUntil is the minimum across all municipality winners', () => {
+    const result = projectHazardSignalStatus({
+      now: NOW,
+      signals: [
+        manualSignal({
+          id: 'm-daet',
+          affectedMunicipalityIds: ['daet'],
+          validUntil: NOW + 7200000,
+        }),
+        manualSignal({
+          id: 'm-basud',
+          affectedMunicipalityIds: ['basud'],
+          validUntil: NOW + 3600000,
+        }),
+      ],
+    })
+    expect(result.active).toBe(true)
+    expect(result.validUntil).toBe(NOW + 3600000)
+  })
+
+  it('newer recordedAt wins tie-break when sources match', () => {
+    const result = projectHazardSignalStatus({
+      now: NOW,
+      signals: [
+        // both scrapers for same municipality; s-newer has higher recordedAt
+        {
+          ...scraperSignal({ id: 's-older', affectedMunicipalityIds: ['daet'] }),
+          recordedAt: NOW - 5000,
+        },
+        {
+          ...scraperSignal({ id: 's-newer', affectedMunicipalityIds: ['daet'] }),
+          recordedAt: NOW - 1000,
+        },
+      ],
+    })
+    expect(result.effectiveScopes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ municipalityId: 'daet', signalId: 's-newer' }),
+      ]),
+    )
   })
 })
