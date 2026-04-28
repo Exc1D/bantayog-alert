@@ -78,10 +78,7 @@ export function projectHazardSignalStatus(input: {
   return {
     active,
     effectiveSignalId: active
-      ? effectiveScopes.reduce(
-          (max, s) => (s.signalLevel > max.signalLevel ? s : max),
-          effectiveScopes[0],
-        ).signalId
+      ? effectiveScopes.reduce((max, s) => (s.signalLevel > max.signalLevel ? s : max)).signalId
       : undefined,
     effectiveLevel: active ? Math.max(...levels) : undefined,
     effectiveSource: active ? (hasManual ? 'manual' : effectiveScopes[0]?.source) : undefined,

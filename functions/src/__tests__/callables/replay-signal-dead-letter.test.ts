@@ -130,28 +130,38 @@ describe('replaySignalDeadLetter', () => {
   it('rejects non-superadmin callers', async () => {
     mockDb = createMockDb([])
 
+    const invokeReplay = replaySignalDeadLetter as unknown as (request: {
+      auth: { uid: string; token: { role: string } }
+      data: { category: string }
+    }) => Promise<{ replayed: number }>
+
     await expect(
-      replaySignalDeadLetter({
+      invokeReplay({
         auth: {
           uid: 'super-1',
           token: { role: 'municipal_admin' },
         },
         data: { category: 'hazard_signal_projection' },
-      } as never),
+      }),
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
   it('rejects unsupported categories with invalid-argument', async () => {
     mockDb = createMockDb([])
 
+    const invokeReplay = replaySignalDeadLetter as unknown as (request: {
+      auth: { uid: string; token: { role: string } }
+      data: { category: string }
+    }) => Promise<{ replayed: number }>
+
     await expect(
-      replaySignalDeadLetter({
+      invokeReplay({
         auth: {
           uid: 'super-1',
           token: { role: 'provincial_superadmin' },
         },
         data: { category: 'unknown' },
-      } as never),
+      }),
     ).rejects.toMatchObject({ code: 'invalid-argument' })
   })
 })

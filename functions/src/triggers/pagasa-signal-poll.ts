@@ -91,7 +91,11 @@ export function parsePagasaSignal(html: string): ParseResult {
     return { ok: false, reason: 'no_tcws_signal_found' }
   }
 
-  const signalLevel = parseInt(tcwsMatch[1], 10)
+  const levelStr = tcwsMatch[1]
+  if (!levelStr) {
+    return { ok: false, reason: 'invalid_signal_level' }
+  }
+  const signalLevel = parseInt(levelStr, 10)
   if (isNaN(signalLevel) || signalLevel < 1 || signalLevel > 5) {
     return { ok: false, reason: 'invalid_signal_level' }
   }

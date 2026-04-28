@@ -59,7 +59,7 @@ interface ParsedSignal {
   hazardType: 'tropical_cyclone'
   signalLevel: number
   source: 'scraper'
-  scopeType: 'municipalities'
+  scopeType: 'municipalities' | 'province'
   affectedMunicipalityIds: string[]
   status: 'active'
   validFrom: number
@@ -71,10 +71,8 @@ interface ParsedSignal {
 
 type ParseResult = { ok: true; value: ParsedSignal } | { ok: false; reason: string }
 
-const mockParsePagasaSignal = vi.hoisted(() => vi.fn() as unknown as (html: string) => ParseResult)
-const mockIsTrustedParsedSignal = vi.hoisted(
-  () => vi.fn() as unknown as (signal: ParsedSignal) => boolean,
-)
+const mockParsePagasaSignal = vi.hoisted(() => vi.fn<(html: string) => ParseResult>())
+const mockIsTrustedParsedSignal = vi.hoisted(() => vi.fn<(signal: ParsedSignal) => boolean>())
 
 vi.mock('../../triggers/pagasa-signal-poll.js', () => ({
   parsePagasaSignal: mockParsePagasaSignal,
@@ -121,7 +119,6 @@ beforeEach(() => {
   mockReplay.mockClear()
   mockParsePagasaSignal.mockClear()
   mockIsTrustedParsedSignal.mockClear()
-  mockParseCallCount = 0
 })
 
 describe('pagasaSignalPollCore', () => {

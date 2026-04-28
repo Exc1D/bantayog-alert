@@ -505,11 +505,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /hazard_signal_status/{id} {
-      allow read: if isSuperadmin() && isActivePrivileged();
-      allow write: if false;
-    }
-
     // ================================================================
     // Default deny — every collection not explicitly matched above.
     // Phase 2+ will add specific match blocks for reports, report_private,
