@@ -16,11 +16,33 @@
 
 **Staging gate:** Pending — needs 24h soak before 7.A can deploy.
 
-### 7.A — Security Callables (branch: `feature/phase7-a`) — IN PROGRESS
+### 7.A — Security Callables (branch: `feature/phase7-a`) — COMPLETE
 
-### 7.B — Superadmin UI (branch: `feature/phase7-b`) — BLOCKED by 7.A
+| Task                                                                          | Status  | Notes                                                                                                          |
+| ----------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| 1. `initiateBreakGlass` + `deactivateBreakGlass`                              | ✅ DONE | Dual-code bcryptjs verification, 4h session, custom claims, audit stream. Tests pass.                          |
+| 2. `sweepExpiredBreakGlassSessions` trigger                                   | ✅ DONE | Scheduled every 5min, clears claims + updates event doc on expiry.                                             |
+| 3. `declareEmergency` callable                                                | ✅ DONE | Firestore transaction + FCM fan-out + SMS enqueue. requireMfaAuth enforced.                                    |
+| 4. `declareDataIncident` + `recordIncidentResponseEvent`                      | ✅ DONE | Flat top-level collections, forward-only phase transitions.                                                    |
+| 5. `setRetentionExempt`, `approveErasureRequest`, `toggleMutualAidVisibility` | ✅ DONE | Collection allowlist, approval-only workflow, mutualAidVisible field.                                          |
+| 6. Provincial resources callables                                             | ✅ DONE | `upsertProvincialResource` + `archiveProvincialResource`.                                                      |
+| 7. Firestore rules additions                                                  | ✅ DONE | data_incidents, provincial_resources, erasure_requests, system_health, breakglass_events rules added.          |
+| 8. Export all + admin-desktop callable wrappers                               | ✅ DONE | All callables exported from functions/src/index.ts; typed wrappers in admin-desktop/src/services/callables.ts. |
 
-### 7.C — Drill & Verification — BLOCKED by 7.B
+### 7.B — Superadmin UI (branch: `feature/phase7-b`) — COMPLETE
+
+| Task                                                          | Status  | Notes                                                                                                                   |
+| ------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1. Routes + sidebar nav extension                             | ✅ DONE | `/province/*` routes behind ProtectedRoute; PROVINCE sidebar section (purple), Break-Glass (red, divider).              |
+| 2. `useProvinceMetrics` + `useMunicipalPerformance`           | ✅ DONE | 4 onSnapshot sources; 12-municipality batch reads via `CAMARINES_NORTE_MUNICIPALITIES` constant.                        |
+| 3. Province Analytics Dashboard                               | ✅ DONE | 6 KPI cards, anomaly alert, MunicipalPerformanceTable (sortable), NDRRMC widget, quick actions, 7-day trend table.      |
+| 4. NDRRMC escalation drawer                                   | ✅ DONE | email/sms/portal methods, receipt input, reject-with-reason, sticky disclaimer. Live Firestore query.                   |
+| 5. Emergency Declaration modal                                | ✅ DONE | 2-step (form → TOTP verify), impact note, callDeclareEmergency. Trigger button gated to provincial_superadmin.          |
+| 6. `useBreakGlass` hook + Break-Glass page                    | ✅ DONE | Force token refresh after initiate/deactivate. Countdown timer. Red banners.                                            |
+| 7. ProvinceMap, UserManagement, Resources, SystemHealth pages | ✅ DONE | Map with responder + incident data; user table + erasure drawer; resource CRUD (add/edit/archive); health gaps display. |
+| 8. Polished TOTP enrollment page                              | ✅ DONE | 3-step: QR scan (qrcode.react), verify code, recovery codes (generated once, downloadable). Navigates to dashboard.     |
+
+### 7.C — Drill & Verification — BLOCKED by 7.B merge
 
 ---
 
