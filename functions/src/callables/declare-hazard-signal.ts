@@ -71,7 +71,18 @@ export async function clearHazardSignalCore(
 
   const validated = clearHazardSignalInputSchema.parse(input)
 
-  await db.collection('hazard_signals').doc(validated.signalId).update({
+  const ref = db.collection('hazard_signals').doc(validated.signalId)
+  const snap = await ref.get()
+  if (!snap.exists) {
+    throw new HttpsError('not-found', 'signal_not_found')
+  }
+
+  const data = snap.data() as { status: string }
+  if (data.status !== 'active') {
+    throw new HttpsError('failed-precondition', 'signal_not_active')
+  }
+
+  await ref.update({
     status: 'cleared',
     clearedAt: Date.now(),
     clearedBy: actor.uid,
