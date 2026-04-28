@@ -99,30 +99,34 @@ All env vars are staging-scoped. `K6_SERVICE_ACCOUNT_JSON` must never contain a 
 
 **Pilot-blocker:** #26
 
-**What it tests:** Exactly one responder wins a contested dispatch. No double-acceptance. No silent loss. No server errors.
+**What it tests:** Exactly one responder wins a contested dispatch under concurrent retries. No double-acceptance. No silent loss. No server errors.
+
+**Schema constraint (verified in code):** `acceptDispatch` gates on `assignedTo.uid === actor.uid` — a single-UID assignment. Multi-UID contention is not supported by the current schema. The correct contention model is: one dispatch, one assigned responder, 50 concurrent retry attempts from the same responder (simulating network-retry storm). The Firestore transaction ensures the first commit wins; the rest see `status !== 'pending'` and receive `CONFLICT`.
 
 **Setup:**
 
-- Seed one dispatch in `dispatched` state in staging via Admin SDK before the run
-- Pre-fetch 50 responder test account ID tokens in k6 `setup`
-- Tokens are valid for the full run duration (scenarios complete in under 6 min; tokens last 1 hour)
+- Seed one dispatch in `pending` state with `assignedTo: { uid: responderUid }` and all required dispatch schema fields via Admin SDK
+- All 50 VUs share one responder account's credentials (the assigned responder)
+- Pre-fetch the responder ID token once in k6 `setup`; all VUs reuse it
+- Between iterations: Admin SDK resets the dispatch to `{ status: 'pending' }` and removes `acceptedAt` — do not re-seed the full document
 
 **Script behavior:**
 
-- 50 VUs all call `acceptDispatch` with the same dispatch ID simultaneously (k6 barrier sync — all VUs wait at a shared signal before the timed window begins)
-- Scenario runs 3 consecutive iterations; a new dispatch is seeded per iteration via `setup`
+- 50 VUs all call `acceptDispatch` with the same `dispatchId` simultaneously (k6 barrier sync — all VUs wait at a shared signal before the timed window begins)
+- Each VU generates a **unique `idempotencyKey` UUID** — this bypasses the idempotency dedup cache so all 50 hit the Firestore transaction independently
+- Scenario runs 3 consecutive iterations
 
 **Pass criteria:**
 
 - Exactly 1 `ok` response per iteration
-- 49 VUs receive a deterministic non-5xx error (`failed-precondition` or `already-exists`)
-- 0 server errors (5xx) on any VU in any iteration
+- 49 VUs receive `already-exists` HTTP error (mapped from `CONFLICT` — dispatch no longer `pending`)
+- 0 `FORBIDDEN` or 5xx responses on any VU in any iteration
 - p99 < 2s across all 50 VUs
 - All 3 consecutive iterations clean
 
 **If it fails:**
 
-- Check whether `acceptDispatch` uses the idempotency guard or a Firestore transaction with a state-gate check
+- If losers receive 5xx instead of `already-exists`: the Firestore transaction is not correctly gating on status; likely a 1-file fix in `accept-dispatch.ts`
 - If a fix of 3 files or fewer resolves it, apply under the backend fix gate
 - If the fix exceeds 3 files, track as named issue in `progress.md` and 8A exits
 
@@ -164,24 +168,29 @@ All env vars are staging-scoped. `K6_SERVICE_ACCOUNT_JSON` must never contain a 
 
 **What it tests:** The reconciliation sweep catches an inbox item that was never processed (trigger missed). No item silently disappears.
 
+**Sweep behavior (verified in code):** `inboxReconciliationSweep` runs every 5 minutes. It queries `report_inbox` where `clientCreatedAt < (now - 2min)` and `processedAt` is not set. It claims items by atomically setting `processedAt` before calling `processInboxItemCore`. Once `processedAt` is set, the item is considered accounted for — regardless of whether processing succeeded or failed.
+
 **Setup:**
 
-- k6 `setup` uses Admin SDK (`K6_SERVICE_ACCOUNT_JSON`) to write one inbox item directly to Firestore in `pending` state with `createdAt` set 10 minutes in the past
-- This bypasses the `processInboxItem` trigger entirely — the sweep is the only recovery path
-- No test-flag code in `processInboxItem` or any production function
+- k6 `setup` uses Admin SDK (`K6_SERVICE_ACCOUNT_JSON`) to write one document to `report_inbox` with:
+  - `clientCreatedAt: Date.now() - 10 * 60 * 1000` (10 min in the past — well within sweep staleness threshold)
+  - All other required `report_inbox` schema fields
+  - No `processedAt` field set
+- This bypasses the `processInboxItem` Firestore trigger entirely — the sweep is the only recovery path
+- No test-flag code in any production function
 
 **Script behavior:**
 
-- Seed the stale item via Admin SDK
-- Poll `system_health/latest.inboxReconciliationBacklog` every 30s
-- Also poll the item document directly for status change
-- Pass when item is either materialized (reports triptych created) or in dead-letter with a recorded error
+- Seed the stale item via Admin SDK in `setup`
+- Poll `report_inbox/{itemId}` document every 30s
+- Pass when `processedAt` field is set on the item document (item claimed and processed by sweep)
 - Timeout at 6 min
+- After each trial: delete the seeded item via Admin SDK cleanup before next trial
 
 **Pass criteria:**
 
-- Item accounted for (materialized or dead-lettered with error) within 5 min
-- 0 items "missing" (neither materialized nor in dead-letter)
+- `processedAt` set on seeded item within 5 min
+- 0 items where `processedAt` remains unset at timeout ("missing")
 - 3 consecutive clean trials
 
 **If a trial fails (item still pending at 5:01 min):**
@@ -193,11 +202,27 @@ All env vars are staging-scoped. `K6_SERVICE_ACCOUNT_JSON` must never contain a 
 
 ---
 
+## Scenario Cleanup
+
+Each scenario leaves Firestore artifacts. Cleanup is required between repeated runs and after the full suite.
+
+| Scenario               | Cleanup action                                                                                                                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accept-dispatch-race` | Between iterations: Admin SDK resets dispatch `status: 'pending'`, removes `acceptedAt`. After all iterations: delete the dispatch document.                                                                                                                              |
+| `citizen-submit-burst` | After run: delete the 100 seeded `report_inbox` items and any materialized `reports` documents. The dead-letter baseline check is relative (before vs after), so leftover items from previous runs do not affect the gate — but delete them anyway to keep staging clean. |
+| `cold-start-inbox`     | After each trial: delete the seeded `report_inbox` item via Admin SDK (already in the script's `teardown` block).                                                                                                                                                         |
+
+Run order (3 → 1 → 2) ensures cold-start resolves before the burst scenario measures dead-letter baseline.
+
+---
+
 ## Pre-warm Runbook
 
 **Location:** `infra/runbooks/surge-prewarm.md`
 
-**Linked from:** System Health page in Admin Desktop — a static `Surge Runbook` link in the Signal Controls card. A runbook not findable during an incident is worthless.
+**Note:** `infra/runbooks/` directory does not exist — must be created. The `surge_min_instances` Terraform variable also does not exist in `infra/terraform/variables.tf` — must be added during implementation.
+
+**Linked from:** System Health page in Admin Desktop — a static `Surge Runbook` link added to the Signal Controls card in `apps/admin-desktop/src/pages/SystemHealthPage.tsx`. A runbook not findable during an incident is worthless.
 
 **Trigger:** TCWS signal level 2 or higher is active on the System Health page.
 
@@ -295,7 +320,13 @@ Phase 8A is complete when all of the following are true:
 
 **Root `package.json`:** add `load-test` script.
 
+**Files to modify (existing):**
+
+- `apps/admin-desktop/src/pages/SystemHealthPage.tsx` — add static `Surge Runbook` link in Signal Controls card
+- `infra/terraform/variables.tf` — add `surge_min_instances` variable (default: `3`)
+- Root `package.json` — add `load-test` script
+
 **Possible backend fixes (conditional, 3 files or fewer):**
 
-- `functions/src/callables/accept-dispatch*.ts` — if race test reveals state-gate bug
+- `functions/src/callables/accept-dispatch.ts` — if race test reveals state-gate bug
 - `functions/src/idempotency/guard.ts` — if dedup logic needs tuning
