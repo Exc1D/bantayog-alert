@@ -58,8 +58,13 @@ export const options = {
 }
 
 export function setup() {
-  const dispatchIds = __ENV.DISPATCH_IDS.split(',').map((s) => s.trim())
-  if (dispatchIds.length < 3) {
+  const rawDispatchIds = __ENV.DISPATCH_IDS
+  if (!rawDispatchIds) throw new Error('DISPATCH_IDS env var is required')
+  const dispatchIds = rawDispatchIds
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (dispatchIds.length !== 3) {
     throw new Error('DISPATCH_IDS must contain exactly 3 comma-separated dispatch IDs')
   }
   const token = getIdToken(API_KEY, __ENV.K6_TEST_RESPONDER_EMAIL, __ENV.K6_TEST_RESPONDER_PASSWORD)
@@ -86,7 +91,7 @@ export default function (data) {
   check(res, {
     'no server error': (r) => r.status < 500,
     'no forbidden (wrong responder UID or inactive account)': (r) => r.status !== 403,
-    'winner or expected conflict': (r) => r.status === 200 || r.status === 409,
+    'winner or expected conflict': (r) => isOk(r) || isConflict(r),
   })
 }
 
@@ -97,7 +102,16 @@ export function handleSummary(data) {
   const totalForbidden = data.metrics.race_forbidden?.values?.count ?? 0
   const p99 = data.metrics.http_req_duration?.values?.['p(99)'] ?? 0
 
-  const passed = totalWins === 3 && totalErrors === 0 && totalForbidden === 0 && p99 < 2000
+  const checksRate = data.metrics.checks?.values?.rate ?? 0
+  const expectedConflicts = 3 * (50 - 1)
+
+  const passed =
+    totalWins === 3 &&
+    totalConflicts === expectedConflicts &&
+    totalErrors === 0 &&
+    totalForbidden === 0 &&
+    checksRate === 1 &&
+    p99 < 2000
 
   const summary = {
     passed,

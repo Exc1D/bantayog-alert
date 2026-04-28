@@ -19,10 +19,12 @@ Only available if these functions are configured in Terraform. Check `infra/terr
 
 1. Open `infra/terraform/variables.tf` and confirm `surge_min_instances` exists.
 2. Run:
+
    ```bash
    cd infra/terraform
    terraform apply -var="surge_min_instances=20"
    ```
+
 3. Verify in Firebase Console → Functions → each target function shows `Min instances: 20`.
 4. Estimated apply time: ~3 min.
 

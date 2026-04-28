@@ -41,7 +41,12 @@ export function setup() {
 }
 
 export default function (data) {
-  const fields = readDocument(PROJECT_ID, 'report_inbox', ITEM_ID, data.token)
+  const fields = readDocument({
+    projectId: PROJECT_ID,
+    collection: 'report_inbox',
+    docId: ITEM_ID,
+    tokenData: data.token,
+  })
 
   if (fields === null) {
     console.error(`report_inbox/${ITEM_ID} not found — was it deleted prematurely?`)

@@ -47,9 +47,14 @@ async function seedDispatch(responderUid: string): Promise<string> {
       agencyId: 'bfp-daet',
       municipalityId: 'daet',
     },
+    dispatchedBy: 'k6-test-admin',
+    dispatchedByRole: 'municipal_admin',
     dispatchedAt: now,
     lastStatusAt: now,
+    statusUpdatedAt: now.toMillis(),
     acknowledgementDeadlineAt: Timestamp.fromMillis(now.toMillis() + 15 * 60 * 1000),
+    idempotencyKey: crypto.randomUUID(),
+    idempotencyPayloadHash: 'a'.repeat(64),
     correlationId: crypto.randomUUID(),
     schemaVersion: 1,
   })
@@ -65,8 +70,12 @@ async function seedInboxItem(): Promise<string> {
     reporterUid: 'k6-test-citizen',
     clientCreatedAt: Date.now() - 10 * 60 * 1000,
     idempotencyKey: crypto.randomUUID(),
-    publicRef: `K6-${ref.id.slice(0, 6).toUpperCase()}`,
-    secretHash: `k6-placeholder-hash-${ref.id}`,
+    publicRef: ref.id
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 8)
+      .padEnd(8, '0'),
+    secretHash: crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, ''),
     correlationId: crypto.randomUUID(),
     payload: {
       reportType: 'flood',

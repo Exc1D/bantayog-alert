@@ -2,16 +2,25 @@
 import http from 'k6/http'
 import { assertTokenFresh } from './firebase-auth.js'
 
+function requirePathSegment(name, value) {
+  if (typeof value !== 'string' || value.trim() === '' || /[/?#]/.test(value)) {
+    throw new Error(`Invalid ${name}: ${String(value)}`)
+  }
+  return value.trim()
+}
+
 /**
  * Reads a Firestore document via REST API.
  * Returns null if document does not exist.
  * Returns the raw `fields` object if found.
  */
-export function readDocument(projectId, collection, docId, tokenData) {
+export function readDocument({ projectId, collection, docId, tokenData }) {
   assertTokenFresh(tokenData)
+  const safeCollection = requirePathSegment('collection', collection)
+  const safeDocId = requirePathSegment('docId', docId)
   const url =
     `https://firestore.googleapis.com/v1/projects/${projectId}` +
-    `/databases/(default)/documents/${collection}/${docId}`
+    `/databases/(default)/documents/${encodeURIComponent(safeCollection)}/${encodeURIComponent(safeDocId)}`
   const res = http.get(url, { headers: { Authorization: `Bearer ${tokenData.token}` } })
   if (res.status === 404) return null
   if (res.status !== 200) throw new Error(`Firestore read failed (${res.status}): ${res.body}`)
@@ -23,11 +32,12 @@ export function readDocument(projectId, collection, docId, tokenData) {
  * `fields` must use Firestore REST typed-value format.
  * Returns the created document resource name (includes the generated ID).
  */
-export function createDocument(projectId, collection, fields, tokenData) {
+export function createDocument({ projectId, collection, fields, tokenData }) {
   assertTokenFresh(tokenData)
+  const safeCollection = requirePathSegment('collection', collection)
   const url =
     `https://firestore.googleapis.com/v1/projects/${projectId}` +
-    `/databases/(default)/documents/${collection}`
+    `/databases/(default)/documents/${encodeURIComponent(safeCollection)}`
   const res = http.post(url, JSON.stringify({ fields }), {
     headers: {
       'Content-Type': 'application/json',

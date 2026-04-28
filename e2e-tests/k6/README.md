@@ -80,7 +80,7 @@ for i in 1 2 3; do
 done
 ```
 
-If the admin token gets 403 when reading `report_inbox` (Firestor rules may block it),
+If the admin token gets 403 when reading `report_inbox` (Firestore rules may block it),
 use the seed script's Admin SDK fallback to verify processing instead:
 
 ```bash

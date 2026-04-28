@@ -14,6 +14,7 @@ const submitted = new Counter('citizen_submitted')
 const rateLimited = new Counter('citizen_rate_limited')
 const serverErrors = new Counter('citizen_server_errors')
 const unexpectedErrors = new Counter('citizen_unexpected_errors')
+const clientErrors = new Counter('citizen_client_errors')
 
 export const options = {
   scenarios: {
@@ -31,6 +32,8 @@ export const options = {
     citizen_server_errors: ['count==0'],
     // Any non-200 that is not 429 or 5xx must be 0 (e.g. 403/404 from rules misconfig)
     citizen_unexpected_errors: ['count==0'],
+    // Unexpected 4xx client errors (other than 429) must be 0
+    citizen_client_errors: ['count==0'],
   },
 }
 
@@ -84,7 +87,12 @@ export default function (data) {
 
   // createDocument POSTs to Firestore REST — returns the resource name on success
   try {
-    const name = createDocument(PROJECT_ID, 'report_inbox', fields, token)
+    const name = createDocument({
+      projectId: PROJECT_ID,
+      collection: 'report_inbox',
+      fields,
+      tokenData: token,
+    })
     submitted.add(1)
     check({ name }, { 'document created': (v) => typeof v.name === 'string' })
   } catch (err) {
@@ -97,6 +105,9 @@ export default function (data) {
       // 429 is acceptable — rate limiting is correct behavior, not an error
     } else if (status >= 500 && status < 600) {
       serverErrors.add(1)
+    } else if (status >= 400 && status < 500) {
+      clientErrors.add(1)
+      console.error('Unexpected client error in createDocument', { status, message: msg })
     } else {
       unexpectedErrors.add(1)
       console.error('Unexpected Firestore error status in createDocument', { status, message: msg })
