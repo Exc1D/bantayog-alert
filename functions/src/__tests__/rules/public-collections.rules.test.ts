@@ -427,12 +427,12 @@ describe('privileged read tests for callable collections', () => {
           'super-1',
           staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
         )
-        await assertSucceeds(getDoc(doc(db, 'hazard_signal_status', 'current')))
+        await assertSucceeds(getDocs(collection(db, 'hazard_signal_status')))
       })
 
       it('citizen cannot read hazard signal status', async () => {
         const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
-        await assertFails(getDoc(doc(db, 'hazard_signal_status', 'current')))
+        await assertFails(getDocs(collection(db, 'hazard_signal_status')))
       })
 
       it('client writes to hazard signal status remain blocked', async () => {
@@ -453,6 +453,19 @@ describe('privileged read tests for callable collections', () => {
             schemaVersion: 1,
           }),
         )
+      })
+
+      it('suspended superadmin cannot read hazard signal status', async () => {
+        const db = authed(
+          env,
+          'super-1',
+          staffClaims({
+            role: 'provincial_superadmin',
+            permittedMunicipalityIds: ['daet'],
+            accountStatus: 'suspended',
+          }),
+        )
+        await assertFails(getDocs(collection(db, 'hazard_signal_status')))
       })
     })
   })
