@@ -85,13 +85,19 @@ describe('hazard schemas', () => {
             schemaVersion: 1,
         })).toMatchObject({ status: 'active', signalLevel: 4 });
     });
-    it('rejects province scope when affectedMunicipalityIds is empty', () => {
+    it('rejects province scope when affectedMunicipalityIds is not the canonical municipality set', () => {
+        // Replace the last real municipality ID with a fake one — still length-correct,
+        // so this specifically exercises the Set-equality refinement, not just min(1).
+        const wrongIds = [
+            ...CAMARINES_NORTE_MUNICIPALITIES.slice(0, -1).map((m) => m.id),
+            'not-a-real-municipality',
+        ];
         expect(() => hazardSignalDocSchema.parse({
             hazardType: 'tropical_cyclone',
             signalLevel: 3,
             source: 'manual',
             scopeType: 'province',
-            affectedMunicipalityIds: [],
+            affectedMunicipalityIds: wrongIds,
             status: 'active',
             validFrom: ts,
             validUntil: ts + 1,

@@ -60,8 +60,44 @@ export const hazardSignalDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict()
-    .refine((doc) => doc.scopeType !== 'province' ||
-    doc.affectedMunicipalityIds.length === CAMARINES_NORTE_MUNICIPALITIES.length, { message: 'province scope must normalize to the full municipality set' });
+    .refine((doc) => {
+    if (doc.scopeType !== 'province')
+        return true;
+    const expected = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id));
+    const actual = new Set(doc.affectedMunicipalityIds);
+    return actual.size === expected.size && [...expected].every((id) => actual.has(id));
+}, { message: 'province scope must normalize to the full municipality set' })
+    .superRefine((doc, ctx) => {
+    const hasClearedMeta = doc.clearedAt !== undefined || doc.clearedBy !== undefined;
+    if (doc.status === 'cleared') {
+        if (doc.clearedAt === undefined || doc.clearedBy === undefined) {
+            ctx.addIssue({
+                code: 'custom',
+                message: 'cleared status requires clearedAt and clearedBy',
+            });
+        }
+    }
+    else if (hasClearedMeta) {
+        ctx.addIssue({
+            code: 'custom',
+            message: 'clearedAt/clearedBy are only valid for cleared signals',
+        });
+    }
+    if (doc.status === 'superseded') {
+        if (doc.supersededBy === undefined) {
+            ctx.addIssue({
+                code: 'custom',
+                message: 'superseded status requires supersededBy',
+            });
+        }
+    }
+    else if (doc.supersededBy !== undefined) {
+        ctx.addIssue({
+            code: 'custom',
+            message: 'supersededBy is only valid for superseded signals',
+        });
+    }
+});
 export const hazardSignalStatusDocSchema = z
     .object({
     active: z.boolean(),
