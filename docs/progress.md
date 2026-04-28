@@ -83,6 +83,7 @@
 - **Code quality + security refactor (2026-04-23)** — 14 `catch (err: unknown)` conversions, error logging improvements, 8 new https-error tests.
 - **Phase 5 Responder MVP (2026-04-23)** — Decline callable, queue/detail hooks, Playwright smoke (6 pass, 4 skipped). Fixed stale `enforceAppCheck` binary causing E2E `internal` error.
 - **3-Step Wizard Wiring (2026-04-23)** — WizardContainer + SubmissionPanel. 101 tests pass.
+- **Phase 8B cost snapshot writer (2026-04-28)** — Scheduled BigQuery summarizer now writes `costSnapshot` into `system_health/latest`; focused writer test passes.
 - **Citizen PWA Firebase env fallback (2026-04-22)** — Graceful degradation when `VITE_FIREBASE_*` vars missing.
 - **Map Tab (2026-04-22)** — Full Leaflet implementation with public incident + own-report layers.
 - **PR #56 Review Fixes (2026-04-22)** — 18 fixes across citizen PWA: guard empty report ref, canvas blob preview for CodeQL, offline state fixes, schema alignment.
