@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'
 
 const bbox = z
   .object({
@@ -10,6 +11,11 @@ const bbox = z
   .strict()
 
 const hazardTypeSchema = z.enum(['flood', 'landslide', 'storm_surge'])
+const signalSourceSchema = z.enum(['manual', 'scraper'])
+const signalStatusSchema = z.enum(['active', 'cleared', 'expired', 'superseded', 'quarantined'])
+const provinceMunicipalityIds = CAMARINES_NORTE_MUNICIPALITIES.map(
+  (municipality) => municipality.id,
+)
 
 export const hazardZoneDocSchema = z
   .object({
@@ -48,12 +54,59 @@ export const hazardZoneHistoryDocSchema = hazardZoneDocSchema.extend({
 
 export const hazardSignalDocSchema = z
   .object({
-    source: z.enum(['pagasa_webhook', 'pagasa_scraper', 'manual_superadmin']),
-    signalLevel: z.number().int().min(0).max(5),
-    affectedMunicipalityIds: z.array(z.string()),
-    createdAt: z.number().int(),
-    expiresAt: z.number().int().optional(),
-    createdBy: z.string().optional(),
+    hazardType: z.literal('tropical_cyclone'),
+    signalLevel: z.number().int().min(1).max(5),
+    source: signalSourceSchema,
+    scopeType: z.enum(['province', 'municipalities']),
+    affectedMunicipalityIds: z.array(z.string().min(1)).min(1),
+    status: signalStatusSchema,
+    validFrom: z.number().int(),
+    validUntil: z.number().int(),
+    recordedAt: z.number().int(),
+    rawSource: z.string().min(1),
+    recordedBy: z.string().min(1).optional(),
+    reason: z.string().min(1).optional(),
+    clearedAt: z.number().int().optional(),
+    clearedBy: z.string().min(1).optional(),
+    supersededBy: z.string().min(1).optional(),
+    schemaVersion: z.number().int().positive(),
+  })
+  .strict()
+  .refine(
+    (doc) =>
+      doc.scopeType !== 'province' ||
+      (doc.affectedMunicipalityIds.length === provinceMunicipalityIds.length &&
+        doc.affectedMunicipalityIds.every((id, index) => id === provinceMunicipalityIds[index])),
+    { message: 'province scope must normalize to the full municipality set' },
+  )
+
+export const hazardSignalStatusDocSchema = z
+  .object({
+    active: z.boolean(),
+    effectiveSignalId: z.string().min(1).optional(),
+    effectiveLevel: z.number().int().min(1).max(5).optional(),
+    effectiveSource: signalSourceSchema.optional(),
+    scopeType: z.enum(['province', 'municipalities']).optional(),
+    affectedMunicipalityIds: z.array(z.string().min(1)),
+    effectiveScopes: z
+      .array(
+        z
+          .object({
+            municipalityId: z.string().min(1),
+            signalLevel: z.number().int().min(1).max(5),
+            source: signalSourceSchema,
+            signalId: z.string().min(1),
+          })
+          .strict(),
+      )
+      .min(1),
+    validUntil: z.number().int().optional(),
+    manualOverrideActive: z.boolean(),
+    scraperLastSuccessAt: z.number().int().optional(),
+    scraperLastFailureAt: z.number().int().optional(),
+    scraperDegraded: z.boolean(),
+    lastProjectedAt: z.number().int(),
+    degradedReasons: z.array(z.string().min(1)),
     schemaVersion: z.number().int().positive(),
   })
   .strict()
@@ -61,3 +114,4 @@ export const hazardSignalDocSchema = z
 export type HazardZoneDoc = z.infer<typeof hazardZoneDocSchema>
 export type HazardZoneHistoryDoc = z.infer<typeof hazardZoneHistoryDocSchema>
 export type HazardSignalDoc = z.infer<typeof hazardSignalDocSchema>
+export type HazardSignalStatusDoc = z.infer<typeof hazardSignalStatusDocSchema>

@@ -8,6 +8,11 @@ import { rateLimitDocSchema } from './rate-limits.js'
 import { idempotencyKeyDocSchema } from './idempotency-keys.js'
 import { deadLetterDocSchema } from './dead-letters.js'
 import { alertDocSchema } from './alerts-emergencies.js'
+import {
+  CAMARINES_NORTE_MUNICIPALITIES,
+  hazardSignalDocSchema,
+  hazardSignalStatusDocSchema,
+} from './index.js'
 
 const ts = 1713350400000
 
@@ -82,6 +87,68 @@ describe('hazard schemas', () => {
         schemaVersion: 1,
       }),
     ).toThrow()
+  })
+
+  it('accepts a manual tcws signal lifecycle document', () => {
+    expect(
+      hazardSignalDocSchema.parse({
+        hazardType: 'tropical_cyclone',
+        signalLevel: 4,
+        source: 'manual',
+        scopeType: 'province',
+        affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
+        status: 'active',
+        validFrom: ts,
+        validUntil: ts + 60 * 60 * 1000,
+        recordedAt: ts,
+        rawSource: 'manual',
+        recordedBy: 'super-1',
+        reason: 'PAGASA radio confirmation',
+        schemaVersion: 1,
+      }),
+    ).toMatchObject({ status: 'active', signalLevel: 4 })
+  })
+
+  it('rejects province scope when affectedMunicipalityIds is empty', () => {
+    expect(() =>
+      hazardSignalDocSchema.parse({
+        hazardType: 'tropical_cyclone',
+        signalLevel: 3,
+        source: 'manual',
+        scopeType: 'province',
+        affectedMunicipalityIds: [],
+        status: 'active',
+        validFrom: ts,
+        validUntil: ts + 1,
+        recordedAt: ts,
+        rawSource: 'manual',
+        recordedBy: 'super-1',
+        reason: 'test',
+        schemaVersion: 1,
+      }),
+    ).toThrow()
+  })
+
+  it('accepts a projected hazard signal status document', () => {
+    expect(
+      hazardSignalStatusDocSchema.parse({
+        active: true,
+        effectiveSignalId: 'sig-1',
+        effectiveLevel: 4,
+        effectiveSource: 'manual',
+        scopeType: 'province',
+        affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
+        effectiveScopes: [
+          { municipalityId: 'daet', signalLevel: 4, source: 'manual', signalId: 'sig-1' },
+        ],
+        validUntil: ts + 60 * 60 * 1000,
+        manualOverrideActive: true,
+        scraperDegraded: false,
+        lastProjectedAt: ts,
+        degradedReasons: [],
+        schemaVersion: 1,
+      }),
+    ).toMatchObject({ active: true })
   })
 })
 

@@ -86,8 +86,18 @@ export type {
   BreakglassEventDoc,
   FieldModeSessionDoc,
 } from './coordination.js'
-export { hazardZoneDocSchema, hazardZoneHistoryDocSchema, hazardSignalDocSchema } from './hazard.js'
-export type { HazardZoneDoc, HazardZoneHistoryDoc, HazardSignalDoc } from './hazard.js'
+export {
+  hazardZoneDocSchema,
+  hazardZoneHistoryDocSchema,
+  hazardSignalDocSchema,
+  hazardSignalStatusDocSchema,
+} from './hazard.js'
+export type {
+  HazardZoneDoc,
+  HazardZoneHistoryDoc,
+  HazardSignalDoc,
+  HazardSignalStatusDoc,
+} from './hazard.js'
 export { incidentResponseEventSchema, dataIncidentDocSchema } from './incident-response.js'
 export type { IncidentResponseEvent, DataIncidentDoc } from './incident-response.js'
 export { moderationIncidentDocSchema } from './moderation.js'
