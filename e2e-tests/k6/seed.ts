@@ -11,6 +11,7 @@
 //   K6_FIREBASE_PROJECT_ID  — e.g. "bantayog-staging"
 //   K6_SERVICE_ACCOUNT_JSON — path to staging service account JSON file
 //
+/* eslint-disable no-console */
 // NEVER point K6_SERVICE_ACCOUNT_JSON at a prod service account.
 
 import { initializeApp, cert, type ServiceAccount } from 'firebase-admin/app'
@@ -107,7 +108,7 @@ async function main() {
       const id = await seedInboxItem()
       console.log(JSON.stringify({ id }))
     } else {
-      throw new Error(`Unknown seed subcommand: ${subCommand ?? '(none)'}`)
+      throw new Error(`Unknown seed subcommand: ${subCommand}`)
     }
   } else if (command === 'teardown') {
     if (subCommand === 'dispatch') {
@@ -121,14 +122,14 @@ async function main() {
       await teardownInboxItem(id)
       console.log(JSON.stringify({ deleted: id }))
     } else {
-      throw new Error(`Unknown teardown subcommand: ${subCommand ?? '(none)'}`)
+      throw new Error(`Unknown teardown subcommand: ${subCommand}`)
     }
   } else {
-    throw new Error(`Unknown command: ${command ?? '(none)'}. Use: seed | teardown`)
+    throw new Error(`Unknown command: ${command}. Use: seed | teardown`)
   }
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   console.error(String(err))
   process.exit(1)
 })
