@@ -43,6 +43,10 @@ Phase 8B exists so operators can run the system during a storm without leaving t
 - Broad incident-management workflows already covered in Phase 7
 - Turning `System Health` into a generic admin super-console
 
+### Retention Boundary
+
+Phase 8B signal documents are operational and audit records, not citizen-erasure artifacts. `cleared`, `expired`, and `superseded` describe signal lifecycle only. They do **not** imply RA 10173 deletion or anonymization behavior. Phase 8C owns the citizen erasure/anonymization path; Phase 8B records remain subject to the platform’s operational audit retention policy.
+
 ---
 
 ## Core Decisions
@@ -55,6 +59,7 @@ Phase 8B exists so operators can run the system during a storm without leaving t
 6. **Manual declarations require `validUntil`.** Signals also support explicit early clear to avoid relying on memory.
 7. **Manual override wins.** If manual and scraper signals conflict, manual is the effective state until cleared or expired.
 8. **Read-first UI, small action surface.** The page prioritizes clear status over more buttons.
+9. **Province scope normalizes through shared constants.** Province-wide scope must derive its municipality set from the shared Camarines Norte municipality constant already used elsewhere in the repo, not from ad hoc literals.
 
 ---
 
@@ -113,7 +118,7 @@ Canonical lifecycle document for one TCWS declaration.
 - `source: 'manual' | 'scraper'`
 - `scopeType: 'province' | 'municipalities'`
 - `affectedMunicipalityIds: string[]`
-- `status: 'active' | 'cleared' | 'expired' | 'superseded'`
+- `status: 'active' | 'cleared' | 'expired' | 'superseded' | 'quarantined'`
 - `validFrom: Timestamp`
 - `validUntil: Timestamp`
 - `recordedAt: Timestamp`
@@ -134,7 +139,7 @@ Canonical lifecycle document for one TCWS declaration.
 
 One document represents one declared signal lifecycle. Lifecycle state updates happen on that document instead of through a separate “surge mode” toggle model.
 
-For `scopeType: 'province'`, `affectedMunicipalityIds` is normalized to the full set of 12 Camarines Norte municipalities. The system does not allow an empty array as an alternate representation of province-wide scope.
+For `scopeType: 'province'`, `affectedMunicipalityIds` is normalized from the shared `CAMARINES_NORTE_MUNICIPALITIES` constant already exported in the repo. The system does not allow an empty array as an alternate representation of province-wide scope. The province count is therefore data-derived, not hardcoded in callable logic.
 
 ### `hazard_signal_status/current`
 
@@ -144,10 +149,11 @@ Derived read model for live operator state.
 
 - `active: boolean`
 - `effectiveSignalId?: string`
-- `effectiveLevel?: 1 | 2 | 3 | 4 | 5`
+- `effectiveLevel?: 1 | 2 | 3 | 4 | 5` // highest currently effective level, for summary display
 - `effectiveSource?: 'manual' | 'scraper'`
 - `scopeType?: 'province' | 'municipalities'`
 - `affectedMunicipalityIds: string[]`
+- `effectiveScopes: Array<{ municipalityId: string; signalLevel: 1 | 2 | 3 | 4 | 5; source: 'manual' | 'scraper'; signalId: string }>`
 - `validUntil?: Timestamp`
 - `manualOverrideActive: boolean`
 - `scraperLastSuccessAt?: Timestamp`
@@ -159,6 +165,13 @@ Derived read model for live operator state.
 ### `system_health/latest`
 
 Remains the broad health document, but gains signal-aware summary fields so the UI does not have to stitch operational state together from multiple raw collections.
+
+### Access Expectations
+
+- `hazard_signals` remains read-only to clients and write-only through backend/Admin SDK paths.
+- `hazard_signal_status/current` is a client-readable projection for privileged staff surfaces only; citizen clients do not read it.
+- `system_health/latest` remains superadmin-facing operational health, not a public or citizen surface.
+- No new client write path is introduced for either `hazard_signals` or `hazard_signal_status`.
 
 ---
 
@@ -198,19 +211,45 @@ Remains the broad health document, but gains signal-aware summary fields so the 
 2. If parse succeeds, backend writes canonical scraper-sourced `hazard_signals`.
 3. Projector recomputes effective state.
 4. If parse fails, scraper health degrades visibly and dead-letter/audit signals are emitted.
+5. If parse succeeds but produces suspicious output, it does **not** become effective automatically. Instead the candidate signal is written as `quarantined`, scraper health degrades, and manual declaration remains the safe operational path.
 
 ### Precedence Rules
 
-- Manual declaration is the trusted operational override.
-- Manual active signal outranks active scraper state.
-- New manual declaration supersedes older active manual declaration.
+- Effective state is resolved municipality-by-municipality, not by a single global document order.
+- Expired, cleared, superseded, and quarantined documents are excluded from effective-state computation.
+- Manual declaration is the trusted operational override for the municipalities it covers, regardless of signal level.
+- If two active manual declarations cover the same municipality, the more recently recorded declaration wins for that municipality. Exact-timestamp ties break by higher signal level, then stable `signalId`.
+- If two active scraper declarations cover the same municipality, the same recency and tie-break rules apply.
+- `effectiveLevel` in `hazard_signal_status/current` is the highest resulting municipality-level signal for summary display.
+- New manual declaration supersedes older active manual declaration as a terminal lifecycle transition; a superseded document does not revive later when the newer declaration expires. If prior state needs to return, it must be re-declared as a new signal.
 - Clearing or expiring manual state reveals the best still-valid scraper-derived state, if one exists.
+- Ordering between expiry sweep and concurrent scraper writes is resolved by recomputing from the full active set at projection time; correctness does not depend on event arrival order.
+
+### Projection Repair Path
+
+- A manual declare or clear callable succeeds only after the canonical signal write succeeds.
+- If canonical write succeeds but projection update fails, the signal document remains the source of truth and a retryable projection repair path must reconcile `hazard_signal_status/current`.
+- Phase 8B therefore includes a backend projection replay mechanism, not just UI warnings about stale projection.
+
+### Cost Snapshot Feed
+
+- Cost does not come from direct UI billing queries.
+- The 8B design assumes Cloud Billing export into BigQuery, followed by a scheduled summarizer that writes a small operator-facing spend snapshot into the health surface.
+- The `System Health` page shows that summarized operator signal only: today vs baseline and anomaly state.
+
+### Dead-Letter Replay Path
+
+- `Replay Dead Letter` is not a placeholder button.
+- Phase 8B includes a backend replay path for signal-related dead letters and projection repair failures.
+- Replay operates by category, not by blind bulk retry. The initial categories in scope are `pagasa_scraper` and `hazard_signal_projection`.
 
 ---
 
 ## Admin Desktop Surface
 
 `System Health` becomes the operator control plane for Phase 8B. It stays read-heavy with a small, guarded action surface.
+
+Before the detailed cards, the page shows a ranked incident summary strip so the operator sees the highest-priority degradation first instead of a flat wall of red states.
 
 ### Cards
 
@@ -257,6 +296,7 @@ Remains the broad health document, but gains signal-aware summary fields so the 
 - Live storm-state must be obvious within one screen.
 - Stale data must be shown as stale, not healthy.
 - Phase 8B does not add a large set of emergency buttons.
+- Degraded states are ranked. Projection stale, active signal ambiguity, and dead-letter growth outrank cost anomalies and lower-priority warnings.
 
 ---
 
@@ -279,11 +319,18 @@ Remains the broad health document, but gains signal-aware summary fields so the 
 - `System Health` shows degraded scraper state and fallback guidance.
 - Existing manual signal remains authoritative.
 
+**PAGASA wrong-but-parseable output**
+
+- Syntactically valid scraper output is still subject to sanity validation before it becomes effective.
+- Suspicious changes are quarantined instead of promoted to active effective state. Examples: invalid municipality IDs, empty scope, impossible province normalization, or policy-defined high-risk signal jumps.
+- Quarantined output degrades scraper health and requires manual operator review/override.
+
 **Projector failure**
 
 - The UI does not guess from raw signal documents.
 - `lastProjectedAt` becomes stale and degraded state is surfaced.
 - Manual actions remain available, but operators are warned that projected live state is stale.
+- Projection failure writes retryable repair state and dead-letter context for replay.
 
 **Manual clear while scraper signal exists**
 
@@ -300,6 +347,11 @@ Remains the broad health document, but gains signal-aware summary fields so the 
 
 - Scheduled sweep marks it `expired`.
 - Projected status recomputes immediately after expiry handling.
+
+**Scraper degraded auto-recovery**
+
+- The next successful non-quarantined scraper run clears the degraded flag automatically and updates `scraperLastSuccessAt`.
+- Recovery does not require manual operator cleanup.
 
 **Health-data staleness**
 
@@ -326,15 +378,20 @@ Remains the broad health document, but gains signal-aware summary fields so the 
 - manual signal becomes effective state
 - active manual signal outranks active scraper signal
 - clearing manual signal reveals valid scraper state if present
+- clearing manual signal reveals no signal when only expired scraper state remains
 - expired manual signal drops out of effective state
 - overlapping scoped signals produce one deterministic effective status document
+- superseded manual declarations do not revive when the newer declaration expires
+- expiry sweep and concurrent scraper writes converge to the same projected result regardless of event order
 
 **Scraper tests**
 
 - valid PAGASA parse writes canonical scraper-sourced signal document
 - unchanged source bulletin does not create noisy duplicate writes
 - unparseable source marks scraper degraded and produces dead-letter/audit signal
+- wrong-but-parseable suspicious output is quarantined and does not become effective state
 - scraper failure does not alter manual control availability
+- successful scraper recovery clears degraded state automatically
 
 **Health aggregation tests**
 
@@ -342,6 +399,7 @@ Remains the broad health document, but gains signal-aware summary fields so the 
 - stale projection is surfaced as degraded
 - stale scraper is surfaced as degraded
 - stale health document is surfaced as stale in UI semantics
+- cost snapshot fields are populated from the scheduled summarizer, not computed client-side
 
 **UI tests**
 
@@ -357,6 +415,7 @@ Remains the broad health document, but gains signal-aware summary fields so the 
 - manual clear drill
 - expiry drill
 - scraper degradation drill
+- scraper recovery drill
 - area-scoped declaration drill
 
 ---
@@ -370,6 +429,7 @@ Phase 8B is complete when all of these are true:
 - `System Health` is the primary operator surface for signal state
 - manual declare, clear, and expiry all work in staging
 - scraper failure degrades honestly and preserves manual fallback
+- signal-related dead-letter replay and projection repair path work in staging
 - audit trail exists for all signal-control actions
 - operators do not need GCP console access to understand current storm-state
 
