@@ -83,7 +83,7 @@ export function projectHazardSignalStatus(input: {
     active,
     effectiveSignalId: winner?.signalId,
     effectiveLevel: active ? Math.max(...levels) : undefined,
-    effectiveSource: active ? (hasManual ? 'manual' : winner?.source) : undefined,
+    effectiveSource: winner?.source,
     scopeType:
       coveredCount === allMunicipalities ? 'province' : active ? 'municipalities' : undefined,
     affectedMunicipalityIds: effectiveScopes.map((s) => s.municipalityId),

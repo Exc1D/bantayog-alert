@@ -45,6 +45,14 @@ export async function declareHazardSignalCore(
       ? CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id)
       : validated.affectedMunicipalityIds
 
+  if (validated.scopeType === 'municipalities') {
+    const KNOWN = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
+    const unknown = normalizedMunicipalityIds.filter((id) => !KNOWN.has(id))
+    if (unknown.length > 0) {
+      throw new HttpsError('invalid-argument', `unknown_municipality_ids: ${unknown.join(', ')}`)
+    }
+  }
+
   const signalId = randomUUID()
   const now = Date.now()
 

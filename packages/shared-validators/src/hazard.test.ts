@@ -174,7 +174,7 @@ describe('Hazard Schemas', () => {
     it('rejects signalLevel outside 0-5 range', () => {
       const invalidDoc = {
         hazardType: 'tropical_cyclone' as const,
-        signalLevel: 6, // must be 0-5
+        signalLevel: 6, // must be 1-5
         source: 'manual' as const,
         scopeType: 'municipalities' as const,
         affectedMunicipalityIds: ['daet'],

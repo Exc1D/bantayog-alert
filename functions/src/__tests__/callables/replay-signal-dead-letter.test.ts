@@ -68,6 +68,7 @@ import { replaySignalDeadLetter } from '../../callables/replay-signal-dead-lette
 beforeEach(() => {
   mockReplayHazardSignalProjection.mockClear()
   mockPagasaSignalPollCore.mockClear()
+  mockPagasaSignalPollCore.mockResolvedValue({ status: 'updated', scraperDegraded: false })
 })
 
 describe('replaySignalDeadLetter', () => {
