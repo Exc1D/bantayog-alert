@@ -54,12 +54,12 @@ describe('hazardSignalExpirySweepCore', () => {
     expect(mockReplay).toHaveBeenCalledWith({ db, now: NOW })
   })
 
-  it('returns expired: 0 and still calls replay when no signals have expired', async () => {
+  it('returns expired: 0 and skips replay when no signals have expired', async () => {
     const db = createMockDb([]) // no expired signals
     const result = await hazardSignalExpirySweepCore({ db, now: () => NOW })
 
     expect(result.expired).toBe(0)
-    expect(mockReplay).toHaveBeenCalledOnce()
+    expect(mockReplay).not.toHaveBeenCalled()
   })
 
   it('marks multiple expired signals and calls replay once', async () => {
@@ -76,6 +76,6 @@ describe('hazardSignalExpirySweepCore', () => {
   it('uses default now function when not provided', async () => {
     const db = createMockDb([])
     await hazardSignalExpirySweepCore({ db })
-    expect(mockReplay).toHaveBeenCalledOnce()
+    expect(mockReplay).not.toHaveBeenCalled()
   })
 })
