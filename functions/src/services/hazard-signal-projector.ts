@@ -131,5 +131,5 @@ export async function replayHazardSignalProjection(input: {
     signals,
     ...(invalidSignalIds.length > 0 ? { invalidSignalIds } : {}),
   })
-  await input.db.collection('hazard_signal_status').doc('current').set(status, { merge: true })
+  await input.db.collection('hazard_signal_status').doc('current').set(status)
 }

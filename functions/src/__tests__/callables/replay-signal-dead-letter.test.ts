@@ -175,7 +175,7 @@ describe('replaySignalDeadLetter', () => {
   it('does not mark resolved when pagasaSignalPollCore returns non-updated', async () => {
     const db = createMockDb([{ category: 'pagasa_scraper', payload: '<html>TCWS #3 Daet</html>' }])
     mockDb = db
-    mockPagasaSignalPollCore.mockResolvedValue({ status: 'no-change', scraperDegraded: false })
+    mockPagasaSignalPollCore.mockResolvedValue({ status: 'failed', scraperDegraded: true })
 
     const invokeReplay = replaySignalDeadLetter as unknown as (request: {
       auth: { uid: string; token: { role: string } }

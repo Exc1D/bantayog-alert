@@ -161,7 +161,7 @@ describe('Hazard Schemas', () => {
             };
             expect(() => hazardSignalDocSchema.parse(invalidDoc)).toThrow();
         });
-        it('rejects signalLevel outside 0-5 range', () => {
+        it('rejects signalLevel outside 1-5 range', () => {
             const invalidDoc = {
                 hazardType: 'tropical_cyclone',
                 signalLevel: 6, // must be 1-5

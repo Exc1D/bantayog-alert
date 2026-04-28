@@ -132,6 +132,23 @@ describe('declareHazardSignalCore', () => {
     expect(typeof result.signalId).toBe('string')
     expect(result.affectedMunicipalityIds).toEqual(['daet', 'san-vicente'])
   })
+
+  it('rejects validUntil that is already expired', async () => {
+    const db = createMockDb()
+    await expect(
+      declareHazardSignalCore(
+        db,
+        {
+          signalLevel: 3,
+          scopeType: 'province',
+          affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
+          validUntil: Date.now() - 1000,
+          reason: 'test',
+        },
+        superadminActor,
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-argument' })
+  })
 })
 
 describe('clearHazardSignalCore', () => {
@@ -178,6 +195,6 @@ describe('clearHazardSignalCore', () => {
       superadminActor,
     )
 
-    expect(result).toEqual({ signalId: 'sig-42', status: 'cleared' })
+    expect(result).toEqual({ signalId: 'sig-42', status: 'cleared', clearedReason: 'all clear' })
   })
 })
