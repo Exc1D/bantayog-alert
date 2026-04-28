@@ -13,6 +13,7 @@ const API_KEY = __ENV.K6_API_KEY
 const submitted = new Counter('citizen_submitted')
 const rateLimited = new Counter('citizen_rate_limited')
 const serverErrors = new Counter('citizen_server_errors')
+const unexpectedErrors = new Counter('citizen_unexpected_errors')
 
 export const options = {
   scenarios: {
@@ -28,6 +29,8 @@ export const options = {
     http_req_duration: ['p(99)<10000'],
     // Server errors must be 0; rate limits (429) are excluded via the check below
     citizen_server_errors: ['count==0'],
+    // Any non-200 that is not 429 or 5xx must be 0 (e.g. 403/404 from rules misconfig)
+    citizen_unexpected_errors: ['count==0'],
   },
 }
 
@@ -94,6 +97,9 @@ export default function (data) {
       // 429 is acceptable — rate limiting is correct behavior, not an error
     } else if (status >= 500 && status < 600) {
       serverErrors.add(1)
+    } else {
+      unexpectedErrors.add(1)
+      console.error('Unexpected Firestore error status in createDocument', { status, message: msg })
     }
   }
 }

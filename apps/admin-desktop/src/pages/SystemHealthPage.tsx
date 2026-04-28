@@ -177,22 +177,21 @@ export function SystemHealthPage() {
         <div style={SECTION_TITLE_STYLE}>Signal Controls</div>
         <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
           Declare or clear TCWS signal levels. A runbook link is available below for surge pre-warm
-          procedures.
+          procedures. Signal controls are currently not active in this environment; these buttons
+          are placeholders and do not send or clear real signals yet.
         </p>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <button
-            style={BTN_STYLE}
-            onClick={() => {
-              console.warn('declare signal triggered (stub)')
-            }}
+            style={{ ...BTN_STYLE, opacity: 0.5, cursor: 'not-allowed' }}
+            disabled
+            title="Signal controls are not yet active; no real signal will be declared."
           >
             Declare Signal
           </button>
           <button
-            style={BTN_STYLE}
-            onClick={() => {
-              console.warn('clear active signal triggered (stub)')
-            }}
+            style={{ ...BTN_STYLE, opacity: 0.5, cursor: 'not-allowed' }}
+            disabled
+            title="Signal controls are not yet active; no real signal will be cleared."
           >
             Clear Active Signal
           </button>
@@ -202,7 +201,7 @@ export function SystemHealthPage() {
           <a
             href="https://github.com/Exc1D/bantayog-alert/blob/main/infra/runbooks/surge-prewarm.md"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             style={{ textDecoration: 'underline', color: '#2563eb' }}
           >
             Surge Runbook
