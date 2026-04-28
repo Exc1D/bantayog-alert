@@ -42,7 +42,14 @@
 | 7. ProvinceMap, UserManagement, Resources, SystemHealth pages | ✅ DONE | Map with responder + incident data; user table + erasure drawer; resource CRUD (add/edit/archive); health gaps display. |
 | 8. Polished TOTP enrollment page                              | ✅ DONE | 3-step: QR scan (qrcode.react), verify code, recovery codes (generated once, downloadable). Navigates to dashboard.     |
 
-### 7.C — Drill & Verification — BLOCKED by 7.B merge
+### 7.C — Drill & Verification — IN PROGRESS
+
+| Task                                               | Status         | Notes                                                                                     |
+| -------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------- |
+| 1. Drill test helpers and fixtures                 | ✅ DONE        | `src/__tests__/callables/break-glass.drill.test.ts` covers all 5 drill scenarios.         |
+| 2. Final lint + typecheck gate                     | ✅ DONE        | `pnpm exec turbo run lint typecheck` passes after the latest Phase 7.C cleanup.           |
+| 3. 100% TOTP enrollment for staff test accounts    | 🔄 IN PROGRESS | `scripts/check-staff-totp-enrollment.ts` audits `multiFactor.enrolledFactors` in staging. |
+| 4. Update `docs/progress.md` + `docs/learnings.md` | ✅ DONE        | Progress and learning notes updated for the verification slice.                           |
 
 ---
 

@@ -30,6 +30,7 @@
 - Fail explicitly on missing auth/scope; no permissive fallbacks.
 - Normalize fields on both read and write paths.
 - Verify Firestore Rules function signatures match call sites.
+- Staff MFA audits must inspect `multiFactor.enrolledFactors` directly; custom claims only describe role and access, not whether TOTP is actually enrolled.
 
 ## Testing
 
