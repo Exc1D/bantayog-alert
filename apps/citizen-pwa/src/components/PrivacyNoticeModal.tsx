@@ -13,7 +13,12 @@ export function PrivacyNoticeModal({ uid }: Props) {
   const [visible, setVisible] = useState(() => {
     try {
       return typeof localStorage !== 'undefined' && !localStorage.getItem(STORAGE_KEY)
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        console.warn('[PrivacyNotice] localStorage quota exceeded')
+      } else {
+        console.error('[PrivacyNotice] Unexpected localStorage error:', err)
+      }
       return false
     }
   })
@@ -23,8 +28,12 @@ export function PrivacyNoticeModal({ uid }: Props) {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, '1')
       }
-    } catch {
-      // localStorage unavailable — silently continue
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        console.warn('[PrivacyNotice] localStorage quota exceeded')
+      } else {
+        console.error('[PrivacyNotice] Unexpected localStorage error:', err)
+      }
     }
     setVisible(false)
 
@@ -78,7 +87,9 @@ export function PrivacyNoticeModal({ uid }: Props) {
           lokasyon, at impormasyon sa pakikipag-ugnayan ay maaaring gamitin para sa koordinasyon ng
           pagtugon sa sakuna sa Camarines Norte.
         </p>
-        <p style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '0.75rem', color: '#4b5563' }}>
+        <p
+          style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '0.75rem', color: '#4b5563' }}
+        >
           By using <strong>Bantayog Alert</strong>, you agree that your reports, location, and
           contact information may be used to coordinate disaster response in Camarines Norte.
         </p>
@@ -87,7 +98,9 @@ export function PrivacyNoticeModal({ uid }: Props) {
           Act of 2012). Mayroon kang karapatang ma-access, itama, at hilingin ang pagbubura ng iyong
           personal na datos.
         </p>
-        <p style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', color: '#4b5563' }}>
+        <p
+          style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', color: '#4b5563' }}
+        >
           Your data is protected under <strong>Republic Act 10173</strong> (Data Privacy Act of
           2012). You have the right to access, correct, and request erasure of your personal data.
           Contact PDRRMO Camarines Norte for inquiries.

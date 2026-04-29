@@ -12,15 +12,26 @@ export function PrivacyNoticeModal({ uid }: Props) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    void getDoc(doc(db, 'users', uid)).then((snap) => {
-      const version = snap.data()?.privacyNoticeVersion as string | undefined
-      if (version !== NOTICE_VERSION) setVisible(true)
-    })
+    void getDoc(doc(db, 'users', uid))
+      .then((snap) => {
+        const version = snap.data()?.privacyNoticeVersion as string | undefined
+        if (version !== NOTICE_VERSION) setVisible(true)
+      })
+      .catch((err: unknown) => {
+        console.error('[PrivacyNotice] Failed to read user doc:', err)
+        setVisible(true)
+      })
   }, [uid])
 
   function handleDismiss() {
     setVisible(false)
-    void setDoc(doc(db, 'users', uid), { privacyNoticeVersion: NOTICE_VERSION }, { merge: true })
+    void setDoc(
+      doc(db, 'users', uid),
+      { privacyNoticeVersion: NOTICE_VERSION },
+      { merge: true },
+    ).catch((err: unknown) => {
+      console.error('[PrivacyNotice] Failed to persist consent:', err)
+    })
   }
 
   if (!visible) return null
@@ -58,7 +69,9 @@ export function PrivacyNoticeModal({ uid }: Props) {
           Bilang responder ng <strong>Bantayog Alert</strong>, ang iyong lokasyon at mga aksyon ay
           naitala para sa koordinasyon ng pagtugon sa sakuna sa Camarines Norte.
         </p>
-        <p style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', color: '#4b5563' }}>
+        <p
+          style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', color: '#4b5563' }}
+        >
           As a <strong>Bantayog Alert</strong> responder, your location and actions are logged to
           coordinate disaster response. Your data is protected under Republic Act 10173.
         </p>
