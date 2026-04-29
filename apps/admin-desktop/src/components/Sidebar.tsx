@@ -134,6 +134,7 @@ export function Sidebar() {
               }}
             />
             <button
+              aria-label="Declare Emergency"
               onClick={() => {
                 setEmergencyModalOpen(true)
               }}

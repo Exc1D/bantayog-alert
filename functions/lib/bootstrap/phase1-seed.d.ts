@@ -1,3 +1,4 @@
+import type { UpdateUrlsDoc } from '@bantayog/shared-types';
 export declare function buildPhase1SeedDocs(updatedAt: number): {
     systemConfig: {
         min_app_version: {
@@ -6,6 +7,7 @@ export declare function buildPhase1SeedDocs(updatedAt: number): {
             responder: string;
             updatedAt: number;
         };
+        update_urls: UpdateUrlsDoc;
     };
     alerts: {
         id: string;

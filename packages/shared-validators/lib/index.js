@@ -1,7 +1,7 @@
 export { canonicalPayloadHash } from './idempotency.js';
 export { normalizeMsisdn, msisdnPhSchema, hashMsisdn, MsisdnInvalidError } from './msisdn.js';
 export { activeAccountSchema, claimRevocationSchema, setStaffClaimsInputSchema, suspendStaffAccountInputSchema, } from './auth.js';
-export { minAppVersionSchema } from './config.js';
+export { minAppVersionSchema, semverLt } from './config.js';
 export { alertSchema } from './alerts.js';
 export { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportSharingDocSchema, reportNoteDocSchema, reportSharingEventDocSchema, reportContactsDocSchema, reportLookupDocSchema, reportInboxDocSchema, inboxPayloadSchema, hazardTagSchema, } from './reports.js';
 export { dispatchDocSchema, dispatchStatusSchema, advanceDispatchRequestSchema, } from './dispatches.js';

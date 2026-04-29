@@ -17,3 +17,11 @@ createRoot(rootEl).render(
     </QueryProvider>
   </StrictMode>,
 )
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err: unknown) => {
+      console.error('Service worker registration failed:', err)
+    })
+  })
+}

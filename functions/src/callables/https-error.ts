@@ -50,8 +50,12 @@ export function requireAuth(
 export function requireMfaAuth(request: {
   auth?: { uid: string; token: Record<string, unknown> } | null
 }): void {
-  const firebase = request.auth?.token.firebase as Record<string, unknown> | undefined
-  if (typeof firebase?.sign_in_second_factor !== 'string') {
+  const firebase = request.auth?.token.firebase
+  if (
+    typeof firebase !== 'object' ||
+    firebase === null ||
+    typeof (firebase as Record<string, unknown>).sign_in_second_factor !== 'string'
+  ) {
     throw new HttpsError('unauthenticated', 'mfa_required')
   }
 }

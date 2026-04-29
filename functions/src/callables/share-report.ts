@@ -83,9 +83,7 @@ export async function shareReportCore(
 
         const opsReadSnap = await tx.get(opsRef)
         const opsData = opsReadSnap.data() as OpsDoc | undefined
-        const currentScope = opsData?.visibility?.scope ?? 'municipality'
         const currentShared = opsData?.visibility?.sharedWith ?? []
-        void currentScope
 
         const threadRef = db.collection('command_channel_threads').doc()
         const eventRef = sharingRef.collection('events').doc()

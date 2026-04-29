@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { z } from 'zod';
 import { requireAuth, requireMfaAuth } from './https-error.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
@@ -8,48 +9,86 @@ const inputSchema = z.object({
     approved: z.boolean(),
     reason: z.string().max(1000).optional(),
 });
-export async function approveErasureRequestCore(db, input, actor) {
+export async function approveErasureRequestCore(db, auth, input, actor) {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
-        const issues = parsed.error.issues;
-        let msg = 'invalid_input';
-        if (issues.length > 0) {
-            const firstIssue = issues[0];
-            if (firstIssue) {
-                msg = firstIssue.message;
-            }
-        }
-        throw new HttpsError('invalid-argument', msg);
+        const firstIssue = parsed.error.issues[0];
+        throw new HttpsError('invalid-argument', firstIssue?.message ?? 'invalid_input');
     }
     const data = parsed.data;
-    await db.runTransaction(async (tx) => {
-        const doc = await tx.get(db.collection('erasure_requests').doc(data.erasureRequestId));
-        if (!doc.exists) {
-            throw new HttpsError('not-found', 'erasure_request_not_found');
-        }
-        const currentStatus = doc.data()?.status;
-        if (currentStatus !== 'pending') {
-            throw new HttpsError('failed-precondition', 'erasure_already_reviewed');
-        }
-        const status = data.approved ? 'approved_pending_anonymization' : 'denied';
-        tx.update(doc.ref, {
-            status,
-            reviewedBy: actor.uid,
-            reviewedAt: Date.now(),
-            ...(data.reason ? { reviewReason: data.reason } : {}),
+    // Transaction gate: read + verify status before writing.
+    // Prevents concurrent approve+deny both succeeding on 'pending_review'.
+    const requestRef = db.collection('erasure_requests').doc(data.erasureRequestId);
+    if (data.approved) {
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(requestRef);
+            if (!snap.exists)
+                throw new HttpsError('not-found', 'erasure_request_not_found');
+            if (snap.data()?.status !== 'pending_review') {
+                throw new HttpsError('failed-precondition', 'erasure_already_reviewed');
+            }
+            tx.update(requestRef, {
+                status: 'approved_pending_anonymization',
+                reviewedBy: actor.uid,
+                reviewedAt: Date.now(),
+                ...(data.reason ? { reviewReason: data.reason } : {}),
+            });
         });
         void streamAuditEvent({
             eventType: 'erasure_request_reviewed',
             actorUid: actor.uid,
             targetDocumentId: data.erasureRequestId,
-            metadata: { approved: data.approved },
+            metadata: { approved: true },
             occurredAt: Date.now(),
         });
+        return;
+    }
+    // Deny path: re-enable Auth → update doc + delete sentinel → rollback on failure.
+    const snap = await requestRef.get();
+    if (!snap.exists)
+        throw new HttpsError('not-found', 'erasure_request_not_found');
+    const citizenUid = snap.data()?.citizenUid;
+    await auth.updateUser(citizenUid, { disabled: false });
+    try {
+        await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(requestRef);
+            if (!fresh.exists)
+                throw new HttpsError('not-found', 'erasure_request_not_found');
+            if (fresh.data()?.status !== 'pending_review') {
+                throw new HttpsError('failed-precondition', 'erasure_already_reviewed');
+            }
+            const sentinelRef = db.collection('erasure_active').doc(citizenUid);
+            tx.update(requestRef, {
+                status: 'denied',
+                reviewedBy: actor.uid,
+                reviewedAt: Date.now(),
+                ...(data.reason ? { reviewReason: data.reason } : {}),
+            });
+            tx.delete(sentinelRef);
+        });
+    }
+    catch (err) {
+        // Re-throw domain errors (not-found, failed-precondition) as-is.
+        if (err instanceof HttpsError)
+            throw err;
+        // Doc write failed after Auth was re-enabled — re-disable Auth as rollback.
+        await auth.updateUser(citizenUid, { disabled: true }).catch((rollbackErr) => {
+            // Log but don't throw — the original error takes precedence.
+            console.error('CRITICAL: rollback re-disable failed for', citizenUid, rollbackErr);
+        });
+        throw new HttpsError('internal', 'deny_write_failed');
+    }
+    void streamAuditEvent({
+        eventType: 'erasure_request_reviewed',
+        actorUid: actor.uid,
+        targetDocumentId: data.erasureRequestId,
+        metadata: { approved: false },
+        occurredAt: Date.now(),
     });
 }
 export const approveErasureRequest = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
     const { uid } = requireAuth(request, ['superadmin']);
     requireMfaAuth(request);
-    await approveErasureRequestCore(getFirestore(), request.data, { uid });
+    await approveErasureRequestCore(getFirestore(), getAuth(), request.data, { uid });
 });
 //# sourceMappingURL=approve-erasure-request.js.map

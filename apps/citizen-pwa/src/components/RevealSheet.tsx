@@ -115,10 +115,18 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       <div
         className="reveal-backdrop"
         role="button"
+        aria-label="Close"
         tabIndex={0}
-        onClick={state === 'success' ? onClose : undefined}
+        onClick={onClose}
         onKeyDown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && state === 'success') onClose?.()
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            if (state === 'success') onClose?.()
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            onClose?.()
+          }
         }}
       />
       <div className="reveal-sheet">
