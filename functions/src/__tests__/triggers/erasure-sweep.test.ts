@@ -64,6 +64,9 @@ async function seedApprovedRequest(
 }
 
 beforeEach(async () => {
+  mockUpdateUser.mockReset()
+  mockDeleteUser.mockReset()
+  mockGetFiles.mockReset()
   mockUpdateUser.mockResolvedValue(undefined)
   mockDeleteUser.mockResolvedValue(undefined)
   mockGetFiles.mockResolvedValue([[]])

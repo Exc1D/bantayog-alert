@@ -20,9 +20,12 @@ service firebase.storage {
     // Report media: path is report_media/{municipalityId}/{reportId}/{filename}
     // Admin SDK uploads; admin-of-muni reads.
     match /report_media/{municipalityId}/{reportId}/{filename} {
+      // NOTE: Citizen read is unscoped because Storage rules cannot query
+      // Firestore for report ownership. Future fix: embed owner UID in object
+      // metadata and validate against request.auth.uid.
       allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
                   || (isSuperadmin() && municipalityId in permittedMunis())
-                  || isCitizen();   // citizens read their own report media
+                  || isCitizen();
       allow write: if false;
     }
 

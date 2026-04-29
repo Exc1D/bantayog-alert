@@ -24,18 +24,21 @@ export async function setErasureLegalHoldCore(
   const data = parsed.data
 
   const ref = db.collection('erasure_requests').doc(data.erasureRequestId)
-  const snap = await ref.get()
-  if (!snap.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
 
-  const status = snap.data()?.status as string
-  if (TERMINAL_STATUSES.has(status)) {
-    throw new HttpsError('failed-precondition', 'cannot_hold_terminal_request')
-  }
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
 
-  await ref.update({
-    legalHold: data.hold,
-    legalHoldReason: data.reason,
-    legalHoldSetBy: actor.uid,
+    const status = snap.data()?.status as string
+    if (TERMINAL_STATUSES.has(status)) {
+      throw new HttpsError('failed-precondition', 'cannot_hold_terminal_request')
+    }
+
+    tx.update(ref, {
+      legalHold: data.hold,
+      legalHoldReason: data.reason,
+      legalHoldSetBy: actor.uid,
+    })
   })
 
   void streamAuditEvent({

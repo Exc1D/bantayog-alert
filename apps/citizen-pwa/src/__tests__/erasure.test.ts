@@ -35,9 +35,9 @@ describe('requestDataErasureAndSignOut', () => {
 
   it('still calls signOut if already-exists error (prior request pending)', async () => {
     mockCallable.mockRejectedValueOnce({ code: 'already-exists' })
-    // already-exists is not a client error — prior request is in-flight
-    // service re-throws to let the UI decide how to handle it
-    await expect(requestDataErasureAndSignOut()).rejects.toMatchObject({ code: 'already-exists' })
-    expect(mockSignOut).not.toHaveBeenCalled()
+    // already-exists means a prior request is in-flight; treat as success
+    // so the user is signed out and the UI transitions to goodbye
+    await requestDataErasureAndSignOut()
+    expect(mockSignOut).toHaveBeenCalled()
   })
 })

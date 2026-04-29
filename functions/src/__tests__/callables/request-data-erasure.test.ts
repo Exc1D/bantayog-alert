@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { requestDataErasureCore } from '../../callables/request-data-erasure.js'
 
-const mockUpdateUser = vi.fn()
+const { mockUpdateUser } = vi.hoisted(() => ({ mockUpdateUser: vi.fn() }))
 vi.mock('firebase-admin/auth', () => ({
   getAuth: () => ({ updateUser: mockUpdateUser }),
 }))
@@ -12,6 +12,7 @@ vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
 let env: RulesTestEnvironment | undefined
 
 beforeEach(async () => {
+  mockUpdateUser.mockReset()
   mockUpdateUser.mockResolvedValue(undefined)
   env = await initializeTestEnvironment({
     projectId: 'demo-8c-erasure',

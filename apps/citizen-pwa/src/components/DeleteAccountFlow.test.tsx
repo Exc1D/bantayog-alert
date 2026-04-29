@@ -1,12 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DeleteAccountFlow } from './DeleteAccountFlow.js'
 
-const mockErasure = vi.fn()
+const { mockErasure } = vi.hoisted(() => ({ mockErasure: vi.fn() }))
 vi.mock('../services/erasure.js', () => ({
   requestDataErasureAndSignOut: (): Promise<void> => mockErasure() as Promise<void>,
 }))
+
+beforeEach(() => {
+  mockErasure.mockReset()
+})
 
 describe('DeleteAccountFlow', () => {
   it('renders trigger button', () => {
@@ -65,6 +69,21 @@ describe('DeleteAccountFlow', () => {
     await user.click(screen.getByRole('button', { name: /confirm deletion/i }))
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeDefined()
+    })
+  })
+
+  it('calls onGoodbye when callable returns already-exists', async () => {
+    // Service swallows already-exists and resolves so user is signed out
+    mockErasure.mockResolvedValueOnce(undefined)
+    const onGoodbye = vi.fn()
+    const user = userEvent.setup()
+    render(<DeleteAccountFlow onGoodbye={onGoodbye} />)
+    await user.click(screen.getByRole('button', { name: /delete my account/i }))
+    await user.click(screen.getByRole('button', { name: /yes, delete my account/i }))
+    await user.type(screen.getByPlaceholderText(/type delete/i), 'DELETE')
+    await user.click(screen.getByRole('button', { name: /confirm deletion/i }))
+    await waitFor(() => {
+      expect(onGoodbye).toHaveBeenCalled()
     })
   })
 })

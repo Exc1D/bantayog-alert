@@ -123,6 +123,10 @@ export async function retentionSweepCore(
     .get()
 
   for (const doc of toDelete.docs) {
+    const data = doc.data()
+    // Skip reports belonging to citizens with active erasure requests
+    if (activeErasureUids.has(data.submittedBy as string)) continue
+
     try {
       await input.db.collection('report_private').doc(doc.id).delete()
       await input.db.collection('report_contacts').doc(doc.id).delete()

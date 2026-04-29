@@ -26,11 +26,19 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
     })()
   }, [onGoodbye])
 
+  const goIdle = useCallback(() => {
+    setStep('idle')
+    setTyped('')
+    setError(null)
+  }, [])
+
   if (step === 'idle') {
     return (
       <button
         onClick={() => {
           setStep('warn')
+          setTyped('')
+          setError(null)
         }}
         style={{ color: 'red' }}
       >
@@ -50,16 +58,12 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
           <li>Sign you out immediately</li>
         </ul>
         <p>This cannot be undone. Your request will be reviewed before deletion is complete.</p>
-        <button
-          onClick={() => {
-            setStep('idle')
-          }}
-        >
-          Cancel
-        </button>
+        <button onClick={goIdle}>Cancel</button>
         <button
           onClick={() => {
             setStep('confirm')
+            setTyped('')
+            setError(null)
           }}
         >
           Yes, delete my account →
@@ -82,13 +86,7 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
         autoComplete="off"
       />
       {error && <p role="alert">{error}</p>}
-      <button
-        onClick={() => {
-          setStep('idle')
-        }}
-      >
-        Cancel
-      </button>
+      <button onClick={goIdle}>Cancel</button>
       <button disabled={typed !== 'DELETE' || step === 'submitting'} onClick={handleConfirm}>
         Confirm deletion
       </button>

@@ -79,7 +79,7 @@ describe('setErasureLegalHoldCore', () => {
     })
   })
 
-  it('throws failed-precondition on completed or denied request', async () => {
+  it('throws failed-precondition on completed request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await db
@@ -90,6 +90,23 @@ describe('setErasureLegalHoldCore', () => {
         setErasureLegalHoldCore(
           db,
           { erasureRequestId: 'req-3', hold: true, reason: 'x' },
+          { uid: 'admin-1' },
+        ),
+      ).rejects.toMatchObject({ code: 'failed-precondition' })
+    })
+  })
+
+  it('throws failed-precondition on denied request', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await db
+        .collection('erasure_requests')
+        .doc('req-denied')
+        .set({ citizenUid: 'uid-d', status: 'denied', requestedAt: Date.now() })
+      await expect(
+        setErasureLegalHoldCore(
+          db,
+          { erasureRequestId: 'req-denied', hold: true, reason: 'x' },
           { uid: 'admin-1' },
         ),
       ).rejects.toMatchObject({ code: 'failed-precondition' })

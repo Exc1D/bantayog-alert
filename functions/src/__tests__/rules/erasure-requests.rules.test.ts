@@ -96,6 +96,9 @@ describe('erasure_requests rules', () => {
         status: 'pending_review',
         requestedAt: Date.now(),
       })
+      await setDoc(doc(ctx.firestore(), 'active_accounts', 'uid-admin'), {
+        accountStatus: 'active',
+      })
     })
     const db = env!.authenticatedContext('uid-admin', superadminToken).firestore()
     await assertSucceeds(getDoc(doc(db, 'erasure_requests', 'req-any')))

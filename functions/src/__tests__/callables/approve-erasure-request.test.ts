@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { approveErasureRequestCore } from '../../callables/approve-erasure-request.js'
 
-const mockUpdateUser = vi.fn()
+const { mockUpdateUser } = vi.hoisted(() => ({ mockUpdateUser: vi.fn() }))
 vi.mock('firebase-admin/auth', () => ({
   getAuth: () => ({ updateUser: mockUpdateUser }),
 }))
@@ -20,6 +20,7 @@ async function seedRequest(db: any, id: string, status: string, citizenUid = 'ui
 }
 
 beforeEach(async () => {
+  mockUpdateUser.mockReset()
   mockUpdateUser.mockResolvedValue(undefined)
   env = await initializeTestEnvironment({
     projectId: 'demo-8c-approve',
@@ -94,18 +95,27 @@ describe('approveErasureRequestCore', () => {
     })
   })
 
-  it('deny rollback: re-disables Auth if doc write fails', async () => {
+  it('re-disables Auth on deny transaction failure', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
+      const { getAuth } = await import('firebase-admin/auth')
       await seedRequest(db, 'req-4', 'pending_review')
-      // Force the doc write to fail by deleting the doc before approve runs write
-      // Simulate by making updateUser succeed but then the second step fails
-      // We test rollback by checking the re-disable call when an error is thrown
       mockUpdateUser
         .mockResolvedValueOnce(undefined) // re-enable succeeds
         .mockResolvedValueOnce(undefined) // re-disable succeeds
-      // Manually verify rollback path exists in the implementation
-      expect(true).toBe(true) // Rollback path is verified by inspecting implementation code
+      // Force the transaction to fail with a non-domain error so rollback is triggered
+      const originalRunTransaction = db.runTransaction.bind(db)
+      db.runTransaction = () => Promise.reject(new Error('simulated tx failure'))
+      await expect(
+        approveErasureRequestCore(
+          db,
+          getAuth(),
+          { erasureRequestId: 'req-4', approved: false, reason: 'nope' },
+          { uid: 'admin-1' },
+        ),
+      ).rejects.toMatchObject({ code: 'internal' })
+      expect(mockUpdateUser).toHaveBeenLastCalledWith('uid-citizen', { disabled: true })
+      db.runTransaction = originalRunTransaction
     })
   })
 })

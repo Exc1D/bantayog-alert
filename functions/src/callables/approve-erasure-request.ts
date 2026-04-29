@@ -79,8 +79,9 @@ export async function approveErasureRequestCore(
     // Re-throw domain errors (not-found, failed-precondition) as-is.
     if (err instanceof HttpsError) throw err
     // Doc write failed after Auth was re-enabled — re-disable Auth as rollback.
-    await auth.updateUser(citizenUid, { disabled: true }).catch(() => {
+    await auth.updateUser(citizenUid, { disabled: true }).catch((rollbackErr: unknown) => {
       // Log but don't throw — the original error takes precedence.
+      console.error('CRITICAL: rollback re-disable failed for', citizenUid, rollbackErr)
     })
     throw new HttpsError('internal', 'deny_write_failed')
   }
