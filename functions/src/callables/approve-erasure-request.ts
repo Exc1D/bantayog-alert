@@ -29,7 +29,7 @@ export async function approveErasureRequestCore(
   const requestRef = db.collection('erasure_requests').doc(data.erasureRequestId)
 
   if (data.approved) {
-    await db.runTransaction((tx) => {
+    await db.runTransaction(async (tx) => {
       const snap = await tx.get(requestRef)
       if (!snap.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
       if (snap.data()?.status !== 'pending_review') {
@@ -63,7 +63,8 @@ export async function approveErasureRequestCore(
   await auth.updateUser(citizenUid, { disabled: false })
 
   try {
-    await db.runTransaction((tx) => {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    await db.runTransaction(async (tx) => {
       const sentinelRef = db.collection('erasure_active').doc(citizenUid)
       tx.update(requestRef, {
         status: 'denied',
