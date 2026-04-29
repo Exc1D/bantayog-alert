@@ -63,4 +63,11 @@ describe('App routes', () => {
       expect(screen.getByText(/Feed tab/)).toBeInTheDocument()
     })
   })
+
+  it('shows incident detail without shell chrome at /incidents/:id', async () => {
+    await renderAppAt('/incidents/test-id')
+    expect(screen.getByText('Incident detail')).toBeInTheDocument()
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
+  })
 })
