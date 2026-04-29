@@ -17,7 +17,15 @@ Phase 8A (surge validation) and Phase 8B (signal ingest, operator control) are a
 ## Decision Log
 
 **Retention schedule overrides arch spec §11.2 for unverified reports.**
-The arch spec specifies 6-month anonymize / 12-month purge. Phase 8C adopts 1-week anonymize / 1-month hard-delete for unverified reports. Rationale: faster cleanup is more privacy-protective and pilot scale does not require the longer retention windows. This applies to unverified reports only. Verified reports are retained indefinitely as public record (anonymized to `citizen_deleted` on erasure).
+The arch spec specifies 6-month anonymize / 12-month purge. Phase 8C adopts 1-week anonymize / 1-month hard-delete for unverified reports. Rationale: faster cleanup is more privacy-protective and pilot scale does not require the longer retention windows. This applies to unverified reports only. Verified reports are retained indefinitely as public record (anonymized to `citizen_deleted` on erasure). This deviation must be registered in the platform's DPIA before citizen data processing begins.
+
+**Audit trail retention: 7 years.**
+`erasure_requests` documents and their `auditLog` subcollections are retained for 7 years from `requestedAt`, consistent with the civil code statute of limitations under RA 10173.
+
+**Pseudonymous erasure gap — production launch blocker for SMS registration flow.**
+`erasureSweep` only processes reports linked by `submittedBy === citizenUid`. Citizens who submitted via SMS (pseudonymous, no Auth UID) before registering an account have no erasure path for pre-registration data — their PII lives in `sms_inbox`/`sms_sessions` under a `senderMsisdnHash` that the system cannot link to their new Auth UID. This is a direct RA 10173 §16 compliance gap. It affects the primary feature-phone onboarding path, not a niche case.
+
+Production launch gate: This gap must be resolved — or explicitly acknowledged by PDRRMO legal counsel as a deferred compliance risk with a documented mitigation timeline — before the citizen SMS onboarding path is activated in production. The gap is not a Phase 8C exit blocker; it is a production launch blocker for the SMS registration flow. Resolution requires a UID-linkage mechanism at registration time, tracked as a named issue.
 
 ---
 
@@ -33,10 +41,10 @@ The arch spec specifies 6-month anonymize / 12-month purge. Phase 8C adopts 1-we
 
 ### Out of Scope
 
-- Pseudonymous submission erasure — pseudonymous reports have no UID linkage to authenticated citizens and are handled exclusively by `retentionSweep` time-based deletion
+- Pseudonymous submission erasure — pseudonymous reports have no UID linkage to authenticated citizens and are handled exclusively by `retentionSweep` time-based deletion. See Decision Log for compliance gap and production launch gate.
 - "Right to Access" / data export flow (separate feature)
 - Breach notification workflow
-- Verified report deletion — verified reports are public record and are anonymized in-place, never hard-deleted
+- Verified report deletion — verified reports are retained as public record under RA 10173 §18 (public interest / legal obligation exemption). Formal legal review and NPC registration confirmation required before production launch. Erasure anonymizes in-place; hard-delete is never performed on verified reports.
 
 ---
 
@@ -51,38 +59,46 @@ The arch spec specifies 6-month anonymize / 12-month purge. Phase 8C adopts 1-we
 | `retentionSweep`          | Scheduled CF | Daily                            |
 | PWA delete-account screen | UI           | Settings → Privacy flow          |
 
-### One existing unit modified
+### One new callable + one modified
 
-| Unit                    | Change                                                    |
-| ----------------------- | --------------------------------------------------------- |
-| `approveErasureRequest` | Add Auth re-enable + rollback discipline to the deny path |
+| Unit                    | Change                                                                                        |
+| ----------------------- | --------------------------------------------------------------------------------------------- |
+| `approveErasureRequest` | Add Auth re-enable + rollback discipline to the deny path; preserve existing transaction gate |
+| `setErasureLegalHold`   | New — superadmin + MFA; sets/clears `legalHold` flag on `erasure_requests/{id}`               |
 
 ### Data flow
 
 ```
 Citizen "Delete my account"
   → requestDataErasure callable
+      → write erasure_active/{uid} sentinel + erasure_requests/{id} (atomic transaction)
       → disable Firebase Auth (Admin SDK)
-      → write erasure_requests/{id} { status: 'pending_review' }
-      → rollback (re-enable Auth) if doc write fails
+      → rollback (delete docs) if Auth disable fails
   → client signOut()
 
 Superadmin approves in Admin Desktop
-  → approveErasureRequest callable
+  → approveErasureRequest callable (Firestore transaction gate)
       → status: 'approved_pending_anonymization'
 
-erasureSweep (every 15 min)
-  → claims: status → 'executing', sweepRunId: <uuid>
+Superadmin sets legal hold
+  → setErasureLegalHold callable
+      → legalHold: true/false on erasure_requests/{id}
+
+erasureSweep (every 15 min, sequential claim)
+  → skip if legalHold === true (surface in system_health)
+  → claim one record: status → 'executing', sweepRunId: <uuid>
   → collect report IDs by citizenUid
-  → read report_private for msisdnHashes (before nulling)
+  → read report_private for senderMsisdnHashes (before nulling)
   → anonymize reports, report_private, report_contacts, sms docs
   → delete Storage blobs (all reports)
   → hard-delete Firebase Auth account  ← last
+  → delete erasure_active/{uid} sentinel
   → status: 'completed'
   → on failure: re-enable Auth, status → 'dead_lettered'
 
 Superadmin denies
-  → re-enable Firebase Auth
+  → re-enable Firebase Auth (Firestore transaction gate)
+  → delete erasure_active/{uid} sentinel
   → status: 'denied'
   → rollback (re-disable) if doc write fails
 
@@ -128,6 +144,9 @@ executing
 | -------------------- | ------------- | -------------------------------------------------- |
 | `citizenUid`         | `string`      | `requestDataErasure` callable                      |
 | `status`             | enum (above)  | status transitions                                 |
+| `legalHold`          | `boolean`     | `setErasureLegalHold` callable (default `false`)   |
+| `legalHoldReason`    | `string?`     | `setErasureLegalHold` callable                     |
+| `legalHoldSetBy`     | `string?`     | `setErasureLegalHold` callable                     |
 | `requestedAt`        | `number` (ms) | `requestDataErasure` callable                      |
 | `reviewedBy`         | `string`      | `approveErasureRequest` callable                   |
 | `reviewedAt`         | `number` (ms) | `approveErasureRequest` callable                   |
@@ -138,9 +157,11 @@ executing
 | `deadLetteredAt`     | `number` (ms) | `erasureSweep` on failure                          |
 | `deadLetterReason`   | `string`      | `erasureSweep` on failure                          |
 
-**Subcollection:** `erasure_requests/{id}/auditLog/{eventId}` — one entry per status transition with actor, timestamp, and metadata. Separate from the BigQuery audit stream so the record survives even if streaming is degraded.
+**Subcollection:** `erasure_requests/{id}/auditLog/{eventId}` — one entry per status transition with actor, timestamp, and metadata. Separate from the BigQuery audit stream so the record survives even if streaming is degraded. Retained for 7 years from `requestedAt` (RA 10173 + civil code statute of limitations).
 
-**Idempotency gate in `requestDataErasure`:** Blocks new submission if existing request has status `∈ ['pending_review', 'approved_pending_anonymization', 'executing']`. Allows re-submission if status `∈ ['completed', 'denied', 'dead_lettered']`.
+**Idempotency gate in `requestDataErasure`:** Enforced atomically via a sentinel doc `erasure_active/{citizenUid}`. The callable writes the sentinel and the `erasure_requests` doc in a single Firestore transaction — if the sentinel already exists, the transaction fails with `already-exists`. The sentinel is deleted when the request reaches `completed`, `denied`, or `dead_lettered`. This prevents the double-call race where two concurrent submissions both pass a status check before either writes.
+
+Re-submission allowed (sentinel absent) when prior request is `∈ ['completed', 'denied', 'dead_lettered']`.
 
 ---
 
@@ -156,7 +177,7 @@ executing
 | Firebase Storage       | Hard-delete all blobs for all citizen reports (verified and unverified)             |
 | Firebase Auth          | Hard-delete last — non-reversible                                                   |
 
-**Invariant:** `reports/{id}` is never deleted by `erasureSweep` — only anonymized. Verified reports survive as public record with `submittedBy: 'citizen_deleted'` and `mediaRedacted: true`. The `retentionSweep`'s `submittedBy !== 'citizen_deleted'` guard ensures these are never re-processed.
+**Invariant:** `reports/{id}` is never deleted by `erasureSweep` — only anonymized. Verified reports survive as public record under the RA 10173 §18 public interest / legal obligation exemption, with `submittedBy: 'citizen_deleted'` and `mediaRedacted: true`. The `retentionSweep`'s `submittedBy !== 'citizen_deleted'` guard ensures these are never re-processed. This exemption requires formal legal review and NPC registration before production launch.
 
 ---
 
@@ -196,23 +217,24 @@ Citizen-facing. Called from the PWA "Delete my account" confirmation flow.
 **Execution:**
 
 ```
-1. Check no active erasure_request for this UID
-   (status ∈ ['pending_review', 'approved_pending_anonymization', 'executing'])
-   → throw 'already-exists' if one exists
+1. In a single Firestore transaction:
+   a. Attempt to create erasure_active/{uid} (fails atomically if it exists)
+      → throw 'already-exists' if sentinel present
+   b. Write erasure_requests/{newId} {
+        citizenUid: uid,
+        status: 'pending_review',
+        legalHold: false,
+        requestedAt: Date.now()
+      }
+   ← doc write before Auth disable: if write fails, no side effects
 
 2. updateUser(uid, { disabled: true })   ← Admin SDK
 
-3. Write erasure_requests/{newId} {
-     citizenUid: uid,
-     status: 'pending_review',
-     requestedAt: Date.now()
-   }
-
-4. If step 3 fails:
-   → updateUser(uid, { disabled: false })   ← rollback
+3. If step 2 fails:
+   → delete erasure_requests/{newId} and erasure_active/{uid}   ← rollback
    → throw 'internal'
 
-5. streamAuditEvent('erasure_request_submitted', ...)
+4. streamAuditEvent('erasure_request_submitted', ...)
 ```
 
 **Client after callable returns:** calls `signOut()` — the account is already server-side disabled; sign-out is the UX signal.
@@ -221,16 +243,20 @@ Citizen-facing. Called from the PWA "Delete my account" confirmation flow.
 
 ### `approveErasureRequest` (modify existing — deny path)
 
-The approval path (`approved: true`) is unchanged — sets status to `approved_pending_anonymization`.
+The approval path (`approved: true`) is unchanged — wraps the status check and update in a Firestore transaction that reads and verifies `status === 'pending_review'` before writing, preventing concurrent approve+deny from both reading `pending_review` and both succeeding. The existing implementation already uses `db.runTransaction()`; the deny path modification must preserve this wrapper.
 
 **Deny path (new behavior):**
 
 ```
-1. Verify status === 'pending_review' (existing gate)
+1. Firestore transaction:
+   a. Read erasure_requests/{id}
+   b. Verify status === 'pending_review' → throw 'failed-precondition' if not
 
 2. updateUser(citizenUid, { disabled: false })   ← re-enable Auth
 
-3. Update erasure_requests/{id} { status: 'denied', reviewedBy, reviewedAt, reviewReason }
+3. Firestore transaction:
+   a. Update erasure_requests/{id} { status: 'denied', reviewedBy, reviewedAt, reviewReason }
+   b. Delete erasure_active/{citizenUid}   ← release sentinel
 
 4. If step 3 fails:
    → updateUser(citizenUid, { disabled: true })   ← re-disable Auth
@@ -241,31 +267,52 @@ The approval path (`approved: true`) is unchanged — sets status to `approved_p
 
 ---
 
+### `setErasureLegalHold` (new)
+
+Superadmin-facing. Pauses or resumes `erasureSweep` processing for a specific request without altering its status.
+
+**Auth:** Superadmin + MFA (`requireAuth(request, ['superadmin'])`, `requireMfaAuth(request)`).
+
+**Input:** `{ erasureRequestId: string, hold: boolean, reason: string }`.
+
+**Execution:**
+
+```
+1. Read erasure_requests/{id} → throw 'not-found' if absent
+2. Verify status ∈ ['pending_review', 'approved_pending_anonymization', 'executing']
+   → throw 'failed-precondition' if completed, denied, or dead_lettered
+3. Update { legalHold: hold, legalHoldReason: reason, legalHoldSetBy: actor.uid }
+4. streamAuditEvent('erasure_legal_hold_set' | 'erasure_legal_hold_cleared', ...)
+```
+
+`erasureSweep` checks `legalHold === true` before claiming any record. Held records are surfaced in `system_health/latest` as a separate counter so operators know they exist without manual Firestore queries.
+
+---
+
 ## Sweep Behavior
 
 ### `erasureSweep` — runs every 15 minutes
 
 **Scope constraint (explicit):** Only processes reports where `submittedBy === citizenUid`. Pseudonymous submissions have no authenticated UID linkage and are not in scope. They are handled exclusively by `retentionSweep`.
 
-**Claim step:** Query `erasure_requests` where `status === 'approved_pending_anonymization'`, batch of 10. Atomically write `{ status: 'executing', sweepRunId: <uuid>, executionStartedAt: Date.now() }` before any destructive work. Records stuck in `executing` for > 30 min are re-claimable; re-claim writes a new `sweepRunId`, overwriting the stale one.
+**Claim step (sequential — one record per invocation):** Query `erasure_requests` where `status === 'approved_pending_anonymization'` and `legalHold !== true`, limit 1. Skip any record where `legalHold === true` — surface held records in `system_health/latest.legalHoldErasureCount` so operators see them without manual queries. Atomically write `{ status: 'executing', sweepRunId: <uuid>, executionStartedAt: Date.now() }` before any destructive work on the claimed record. Records stuck in `executing` for > 30 min are re-claimable; re-claim writes a new `sweepRunId`, overwriting the stale one. Sequential claiming prevents mid-batch timeout from stranding unclaimed records in `executing` state.
 
 **Execution order per record:**
 
 ```
 1. Collect report IDs where submittedBy === citizenUid
-2. Read report_private for each → extract msisdnHashes (deduplicated)
+2. Read report_private for each → extract senderMsisdnHashes (deduplicated)
    ← must happen before report_private is nulled
 3. Anonymize reports/{id}: submittedBy → 'citizen_deleted', mediaRedacted → true
 4. Null report_private/{id}: citizenName, rawPhone, gpsExact, addressText
 5. Null report_contacts/{id}: all content fields
-6. Null sms_sessions where msisdnHash ∈ collected hashes
-7. Null sms_inbox docs linked to those sessions
-   ← implementation note: verify the foreign-key field on sms_inbox
-     that references the session (e.g. sessionId or msisdnHash)
-     against the actual schema before implementing this step
+6. Null sms_sessions where senderMsisdnHash ∈ collected hashes
+7. Null sms_inbox docs where senderMsisdnHash ∈ collected hashes
+   (join is via senderMsisdnHash on sms_inbox, not a sessionId foreign key)
 8. Delete Storage blobs for all citizen reports (verified and unverified)
 9. Hard-delete Firebase Auth account  ← last, non-reversible
-10. status → 'completed', completedAt: Date.now()
+10. Delete erasure_active/{citizenUid} sentinel
+11. status → 'completed', completedAt: Date.now()
 ```
 
 Steps 1–8 are idempotent and safe to retry. Step 9 is not retryable if it succeeds.
@@ -379,14 +426,46 @@ Static, unauthenticated. Plain message: "Your deletion request has been submitte
 
 ---
 
-## Firestore Rules — `erasure_requests/{id}`
+## Firestore Rules
 
-| Operation | Who                                                                                             |
-| --------- | ----------------------------------------------------------------------------------------------- |
-| Create    | Authenticated citizen where `citizenUid === request.auth.uid` and `status === 'pending_review'` |
-| Read      | Citizen where `citizenUid === request.auth.uid`, or superadmin                                  |
-| Update    | Sweep / service account only — no client write path after creation                              |
-| Delete    | Nobody — documents are terminal audit records                                                   |
+### `erasure_requests/{id}`
+
+| Operation | Who                                                                                                                                                                         |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create    | Authenticated citizen where `citizenUid === request.auth.uid` and `status === 'pending_review'`                                                                             |
+| Read      | Citizen where `citizenUid === request.auth.uid`, or superadmin                                                                                                              |
+| Update    | Service account only — status allowlist enforced: clients cannot write `executing`, `completed`, `dead_lettered`, `approved_pending_anonymization`, or `legalHold` directly |
+| Delete    | Nobody — documents are terminal audit records                                                                                                                               |
+
+### `erasure_requests/{id}/auditLog/{eventId}`
+
+| Operation | Who                       |
+| --------- | ------------------------- |
+| Read      | Superadmin only           |
+| Write     | Service account only      |
+| Delete    | Nobody — 7-year retention |
+
+### `erasure_active/{citizenUid}` (sentinel)
+
+| Operation | Who                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| Create    | Authenticated citizen where `citizenUid === request.auth.uid` (callable-only path in practice) |
+| Read      | Citizen where `citizenUid === request.auth.uid`, or superadmin                                 |
+| Delete    | Service account only (on completion, denial, or dead-letter)                                   |
+
+---
+
+## Storage Rules
+
+Citizens' report media (`/reports/{uid}/...`) is not public by default:
+
+| Operation            | Who                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Read                 | Authenticated citizen where the path UID matches `request.auth.uid`, or authenticated staff (superadmin, municipal admin, agency admin) |
+| Write / Delete       | Service account only (sweeps handle all blob deletion)                                                                                  |
+| Unauthenticated read | Denied — no public blob access                                                                                                          |
+
+Admin SDK (sweeps) bypasses Storage rules — no rule change needed for deletion paths.
 
 ---
 
@@ -396,58 +475,75 @@ Static, unauthenticated. Plain message: "Your deletion request has been submitte
 
 - Rejects unauthenticated callers
 - Rejects non-citizen roles
-- Blocks submission when active request exists (`pending_review`, `approved_pending_anonymization`, `executing`)
-- Allows re-submission when prior request is `dead_lettered`, `completed`, or `denied`
-- Disables Firebase Auth before writing erasure request doc
-- Rolls back (re-enables Auth) if doc write fails
+- Blocks submission atomically via `erasure_active/{uid}` sentinel — concurrent double-call produces exactly one success and one `already-exists`
+- Allows re-submission when sentinel is absent (prior request `dead_lettered`, `completed`, or `denied`)
+- Writes doc and sentinel before disabling Auth (doc write with no Auth side effect on failure)
+- Auth disable failure rolls back: deletes doc and sentinel, throws `internal`
 - Streams audit event on success
 
 ### Callable tests — `approveErasureRequest` (deny path additions)
 
+- Approve and deny both use Firestore transaction to gate on `status === 'pending_review'`; concurrent approve + deny on same record: exactly one succeeds, one receives `failed-precondition`
 - Deny re-enables Firebase Auth account
+- Deny deletes `erasure_active/{uid}` sentinel on success
 - Deny rollback: re-disables Auth if status doc write fails
 - Deny surfaces error to operator on rollback
 
+### Callable tests — `setErasureLegalHold`
+
+- Rejects non-superadmin callers
+- Rejects callers without MFA
+- Sets `legalHold: true` with reason and actor UID
+- Clears `legalHold: false`
+- Rejects hold on completed, denied, or dead-lettered request
+- Streams audit event for both set and clear
+
 ### `erasureSweep` tests
 
-- Claims only `approved_pending_anonymization` records; skips `executing`, `completed`, `denied`, `dead_lettered`
+- Claims only `approved_pending_anonymization` records where `legalHold !== true`
+- Skips records where `legalHold === true`; increments `system_health/latest.legalHoldErasureCount`
+- Claims one record per invocation (sequential); does not bulk-claim
 - Re-claims stale `executing` records (> 30 min old); new `sweepRunId` overwrites the stale one
-- Pseudonymous report (no `submittedBy`) present in Firestore: sweep completes with zero documents processed, no error (explicit skip, not silent failure)
-- Execution order: SMS join reads happen before `report_private` is nulled
+- Pseudonymous report (no `submittedBy`) present in Firestore: assert sweep completes with zero documents processed and zero fields modified — explicit skip, not a coincidental no-op from UID not matching
+- Execution order: `senderMsisdnHash` extraction happens before `report_private` is nulled
 - Verified reports anonymized in-place: `submittedBy → 'citizen_deleted'`, `mediaRedacted → true`
 - Unverified reports anonymized in-place (same fields)
 - `report_private` content fields nulled; structural fields survive
 - `report_contacts` content fields nulled
+- `sms_inbox` and `sms_sessions` joined via `senderMsisdnHash` and nulled
 - Storage blobs deleted for all reports (verified and unverified)
-- Firebase Auth hard-delete is the final step
+- Firebase Auth hard-delete is step 9 — final, after all Firestore and Storage steps
+- `erasure_active/{uid}` sentinel deleted after Auth hard-delete
 - On step failure: Auth re-enabled, status → `dead_lettered`, audit event fired
 - On Auth re-enable failure: CRITICAL alert fired at separate severity from dead-letter audit event
-- `dead_lettered` request does not block re-submission via `requestDataErasure`
+- `dead_lettered` request does not block re-submission (sentinel is absent after dead-letter cleanup)
 
 ### `retentionSweep` tests
 
 - Skips reports where `submittedBy === 'citizen_deleted'`
-- Skips reports belonging to active erasure requests
+- Active erasure skip: seed a report owned by a citizen with `status: 'executing'` erasure request; assert `retentionAnonymizedAt` is NOT set after sweep — confirms the in-memory UID check ran and excluded it
 - 1-week anonymize: nulls PII fields, deletes Storage blobs, sets `retentionAnonymizedAt` and `retentionHardDeleteEligibleAt`
-- 1-month delete: hard-deletes report + subcollections, writes audit log doc
-- Hard-delete query targets `retentionHardDeleteEligibleAt < now` — does not search deleted documents
+- 1-month delete: hard-deletes report + subcollections, writes audit log doc with `retentionDeletedAt`
+- Hard-delete query targets `retentionHardDeleteEligibleAt < now` — does not attempt to find deleted documents
 
 ### Firestore rules tests
 
-- Citizen can create `erasure_requests` with own UID and `pending_review` status only
+- Citizen can create `erasure_requests` with own UID and `status === 'pending_review'` only
 - Citizen can read own request; cannot read another citizen's request
-- Citizen cannot update status after creation
+- Citizen cannot write `executing`, `completed`, `dead_lettered`, `approved_pending_anonymization`, or `legalHold` directly
 - Superadmin can read all requests
-- Client cannot write `executing`, `completed`, or `dead_lettered` status directly
+- `auditLog` subcollection: superadmin can read; citizen cannot read or write; service account writes
+- Sentinel `erasure_active/{uid}`: citizen can read own; service account deletes
 
 ### Staging drills
 
-- Submit erasure request → verify Auth disabled, doc created with `pending_review`
-- Approve request → verify `erasureSweep` picks it up within 15 min, all docs anonymized, Auth hard-deleted, status `completed`
-- Deny request → verify Auth re-enabled, status `denied`
-- Force sweep failure (mock step 5) → verify dead-letter path fires, Auth re-enabled
+- Submit erasure request → verify doc written first, then Auth disabled, sentinel created, status `pending_review`
+- Approve request → verify `erasureSweep` picks it up within 15 min, all docs anonymized in order, Auth hard-deleted last, sentinel deleted, status `completed`
+- Deny request → verify Auth re-enabled, sentinel deleted, status `denied`
+- Set legal hold on approved request → verify sweep skips it; clear hold → verify sweep processes it on next run
+- Force sweep failure (mock step 5) → verify dead-letter path fires, Auth re-enabled, sentinel cleaned up
 - Force sweep failure + Auth re-enable failure → verify CRITICAL alert fires at distinct severity
-- Retention 1-week drill: seed report with `submittedAt` > 7 days ago, run sweep, verify anonymization and `retentionHardDeleteEligibleAt` set
+- Retention 1-week drill: seed unverified report with `submittedAt` > 7 days ago, run sweep, verify PII nulled and `retentionHardDeleteEligibleAt` set
 - Retention 1-month drill: seed report with `retentionHardDeleteEligibleAt` in the past, run sweep, verify hard-delete and audit log doc written
 
 ---
@@ -456,11 +552,14 @@ Static, unauthenticated. Plain message: "Your deletion request has been submitte
 
 Phase 8C is complete when all of the following are true:
 
-- `requestDataErasure` callable deployed; citizen can submit from PWA; Auth disabled on submission; rollback tested
-- `approveErasureRequest` deny path re-enables Auth with rollback discipline; tested
-- `erasureSweep` deployed; approved requests processed within 15 min in staging; all doc classes anonymized; Auth deleted last; dead-letter path tested
-- `retentionSweep` deployed; 1-week anonymize and 1-month hard-delete verified in staging
-- Firestore rules cover create/read/update access for `erasure_requests`; rules tests pass
+- `requestDataErasure` callable deployed; sentinel-based idempotency tested; doc-before-Auth order verified; rollback tested
+- `approveErasureRequest` deny path re-enables Auth with transaction gate and rollback discipline; concurrent approve+deny race tested
+- `setErasureLegalHold` callable deployed; sweep skip verified; superadmin + MFA gate tested
+- `erasureSweep` deployed; sequential claim verified (no bulk claiming); approved requests processed within 15 min in staging; all doc classes anonymized in correct order; Auth deleted last; sentinel deleted; legal hold skip tested; dead-letter path tested
+- `retentionSweep` deployed; 1-week anonymize and 1-month hard-delete verified in staging; active erasure skip confirmed via in-memory check test
+- Firestore rules for `erasure_requests`, `auditLog` subcollection, and `erasure_active` sentinel deployed and rules tests pass
+- Storage rules deployed; unauthenticated reads denied; citizen read-own-blobs verified
 - Citizen PWA delete-account flow tested end-to-end in staging browser
+- Pseudonymous erasure gap documented in `docs/progress.md` as a named production launch blocker with RA 10173 §16 compliance risk
 - `docs/learnings.md` updated with Phase 8C decisions
 - `docs/progress.md` updated with Phase 8C status
