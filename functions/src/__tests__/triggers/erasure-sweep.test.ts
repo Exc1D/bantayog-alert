@@ -67,6 +67,7 @@ beforeEach(async () => {
   mockUpdateUser.mockReset()
   mockDeleteUser.mockReset()
   mockGetFiles.mockReset()
+  mockDeleteFile.mockReset()
   mockUpdateUser.mockResolvedValue(undefined)
   mockDeleteUser.mockResolvedValue(undefined)
   mockGetFiles.mockResolvedValue([[]])
@@ -94,12 +95,26 @@ afterEach(async () => {
 })
 
 describe('erasureSweepCore', () => {
-  it('anonymizes report fields and deletes Auth on approved request', async () => {
+  it('anonymizes report fields, deletes storage, and deletes Auth on approved request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { getAuth } = await import('firebase-admin/auth')
       const { getStorage } = await import('firebase-admin/storage')
       await seedApprovedRequest(db, 'req-1', 'uid-citizen')
+
+      // Seed two storage files for report-1
+      mockGetFiles.mockResolvedValueOnce([
+        [
+          {
+            delete: (): Promise<void> =>
+              mockDeleteFile('report_media/report-1/photo1.jpg') as Promise<void>,
+          },
+          {
+            delete: (): Promise<void> =>
+              mockDeleteFile('report_media/report-1/photo2.jpg') as Promise<void>,
+          },
+        ],
+      ])
 
       const result = await erasureSweepCore({ db, auth: getAuth(), storage: getStorage() })
       expect(result.processed).toBe(1)
@@ -120,6 +135,11 @@ describe('erasureSweepCore', () => {
 
       // Auth deleted (last)
       expect(mockDeleteUser).toHaveBeenCalledWith('uid-citizen')
+
+      // Storage cleaned up
+      expect(mockGetFiles).toHaveBeenCalledWith({ prefix: 'report_media/report-1/' })
+      expect(mockDeleteFile).toHaveBeenCalledWith('report_media/report-1/photo1.jpg')
+      expect(mockDeleteFile).toHaveBeenCalledWith('report_media/report-1/photo2.jpg')
 
       // Sentinel deleted
       const sentinel = await db.collection('erasure_active').doc('uid-citizen').get()
@@ -166,7 +186,7 @@ describe('erasureSweepCore', () => {
     })
   })
 
-  it('dead-letters and re-enables Auth on failure, fires CRITICAL alert if re-enable fails', async () => {
+  it('dead-letters and re-enables Auth on erasure failure when re-enable succeeds', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { getAuth } = await import('firebase-admin/auth')
@@ -183,6 +203,28 @@ describe('erasureSweepCore', () => {
       expect(reqSnap.data().deadLetterReason).toContain('auth error')
       // Auth re-enable was attempted
       expect(mockUpdateUser).toHaveBeenCalledWith('uid-fail', { disabled: false })
+    })
+  })
+
+  it('throws and dead-letters when Auth re-enable fails after erasure failure', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { getAuth } = await import('firebase-admin/auth')
+      const { getStorage } = await import('firebase-admin/storage')
+      await seedApprovedRequest(db, 'req-dual-fail', 'uid-dual-fail')
+      mockDeleteUser.mockRejectedValueOnce(new Error('auth error'))
+      mockUpdateUser.mockRejectedValueOnce(new Error('re-enable failed'))
+
+      await expect(
+        erasureSweepCore({ db, auth: getAuth(), storage: getStorage() }),
+      ).rejects.toThrow('re-enable failed')
+
+      const reqSnap = await db.collection('erasure_requests').doc('req-dual-fail').get()
+      expect(reqSnap.data().status).toBe('dead_lettered')
+      expect(reqSnap.data().deadLetterReason).toContain('auth error')
+      expect(reqSnap.data().deadLetterReason).toContain('re-enable failed')
+      // Auth re-enable was attempted
+      expect(mockUpdateUser).toHaveBeenCalledWith('uid-dual-fail', { disabled: false })
     })
   })
 
@@ -214,6 +256,80 @@ describe('erasureSweepCore', () => {
       const reqSnap = await db.collection('erasure_requests').doc('req-stale').get()
       expect(reqSnap.data().sweepRunId).not.toBe('old-run-id')
       expect(reqSnap.data().status).toBe('completed')
+    })
+  })
+
+  // Gap 3: SMS nulling paths (senderMsisdnHash)
+  it('nulls sms_sessions and sms_inbox by senderMsisdnHash', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { getAuth } = await import('firebase-admin/auth')
+      const { getStorage } = await import('firebase-admin/storage')
+      await seedApprovedRequest(db, 'req-sms', 'uid-sms')
+      // Add senderMsisdnHash to report_private
+      await db.collection('report_private').doc('report-1').update({
+        senderMsisdnHash: 'hash-abc-123',
+      })
+      // Seed sms_sessions and sms_inbox with matching hash
+      await db.collection('sms_sessions').doc('sess-1').set({
+        senderMsisdnHash: 'hash-abc-123',
+        msisdn: '+639171234567',
+      })
+      await db.collection('sms_inbox').doc('msg-1').set({
+        senderMsisdnHash: 'hash-abc-123',
+        msisdn: '+639171234567',
+        rawBody: 'test message',
+      })
+
+      const result = await erasureSweepCore({ db, auth: getAuth(), storage: getStorage() })
+      expect(result.processed).toBe(1)
+
+      const sessSnap = await db.collection('sms_sessions').doc('sess-1').get()
+      expect(sessSnap.data().senderMsisdnHash).toBeNull()
+      expect(sessSnap.data().msisdn).toBeNull()
+
+      const msgSnap = await db.collection('sms_inbox').doc('msg-1').get()
+      expect(msgSnap.data().senderMsisdnHash).toBeNull()
+      expect(msgSnap.data().msisdn).toBeNull()
+      expect(msgSnap.data().rawBody).toBeNull()
+    })
+  })
+
+  // Gap 4: claim_lost_race throw path
+  it('throws claim_lost_race when record is no longer eligible', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { getAuth } = await import('firebase-admin/auth')
+      const { getStorage } = await import('firebase-admin/storage')
+      await seedApprovedRequest(db, 'req-race', 'uid-race')
+      // Change status to executing so the transaction sees it's not ready and not stale
+      await db.collection('erasure_requests').doc('req-race').update({
+        status: 'executing',
+        executionStartedAt: Date.now(),
+      })
+
+      await expect(
+        erasureSweepCore({ db, auth: getAuth(), storage: getStorage() }),
+      ).rejects.toThrow('claim_lost_race')
+    })
+  })
+
+  // Gap 5: deadLettered count on failure
+  it('dead-letters a request when deleteUser fails', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { getAuth } = await import('firebase-admin/auth')
+      const { getStorage } = await import('firebase-admin/storage')
+      await seedApprovedRequest(db, 'req-dead', 'uid-dead')
+      mockDeleteUser.mockRejectedValueOnce(new Error('auth delete failed'))
+
+      const result = await erasureSweepCore({ db, auth: getAuth(), storage: getStorage() })
+      expect(result.deadLettered).toBe(1)
+      expect(result.processed).toBe(0)
+
+      const reqSnap = await db.collection('erasure_requests').doc('req-dead').get()
+      expect(reqSnap.data().status).toBe('dead_lettered')
+      expect(reqSnap.data().deadLetterReason).toContain('auth delete failed')
     })
   })
 })
