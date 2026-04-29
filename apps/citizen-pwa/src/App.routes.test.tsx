@@ -18,6 +18,14 @@ vi.mock('./components/LookupScreen.js', () => ({
   LookupScreen: () => <div>Lookup</div>,
 }))
 
+vi.mock('./components/FeedTab.js', () => ({
+  FeedTab: () => <div>Feed tab</div>,
+}))
+
+vi.mock('./components/IncidentDetailPage.js', () => ({
+  IncidentDetailPage: () => <div>Incident detail</div>,
+}))
+
 async function renderAppAt(pathname: string) {
   window.history.pushState({}, '', pathname)
   vi.resetModules()
@@ -52,7 +60,7 @@ describe('App routes', () => {
     await renderAppAt('/')
     fireEvent.click(screen.getByRole('button', { name: /feed/i }))
     await waitFor(() => {
-      expect(screen.getByText(/Feed — coming soon/)).toBeInTheDocument()
+      expect(screen.getByText(/Feed tab/)).toBeInTheDocument()
     })
   })
 })
