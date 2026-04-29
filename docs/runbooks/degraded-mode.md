@@ -1,7 +1,7 @@
 # Bantayog Alert — Degraded-Mode Runbook
 
 **Version:** 1.0  
-**Last Tabletop:** ___________________
+**Last Tabletop:** **\*\*\*\***\_\_\_**\*\*\*\***
 
 ---
 
@@ -11,6 +11,7 @@
 Cloud Monitoring alert fires (Functions error rate elevated). Ops on-call email notified.
 
 **First-responder action:**
+
 1. Confirm Firebase Hosting status at https://status.firebase.google.com
 2. Post SMS instructions to barangay announcement channels:
    `BANTAYOG <type> <barangay name>` — example: `BANTAYOG BAHA DAET CENTRO`
@@ -24,6 +25,7 @@ Cloud Monitoring alert fires (Functions error rate elevated). Ops on-call email 
 No data loss — SMS reports in sms_inbox are processed normally on recovery.
 
 **Rollback if bad deploy caused it:**
+
 ```
 git checkout v1.0.0-pilot
 firebase deploy --project bantayog-alert --only hosting
@@ -37,6 +39,7 @@ firebase deploy --project bantayog-alert --only hosting
 Backend on-call email notified.
 
 **First-responder action:**
+
 1. Check Cloud Functions console for error details.
 2. If our deploy caused it, rollback immediately:
    ```
@@ -62,6 +65,7 @@ Dead-letter queue alert fires (ops on-call email).
 Check sms_outbox in Firestore for status="dead_letter".
 
 **First-responder action:**
+
 1. Check provider status:
    - Semaphore: https://semaphore.co
    - Globe Labs: https://developer.globelabs.com.ph
@@ -86,6 +90,7 @@ Cloud Monitoring RTDB alert fires. Ops on-call email notified.
 (report submission, dispatch, verify, resolve, field notes — unaffected).
 
 **First-responder action:**
+
 1. Confirm RTDB unavailability at https://status.firebase.google.com
 2. Notify MDRRMO admins via SMS: "Responder map may be stale. Contact dispatched
    responders by phone for location updates. All other functions are normal."

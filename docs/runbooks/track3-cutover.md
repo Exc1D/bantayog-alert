@@ -2,6 +2,7 @@
 
 **Target:** bantayog-prod goes live for the Daet pilot  
 **Required participants:**
+
 - Engineer (Exxeed) — technical lead
 - PDRRMO coordinator — available for signoff
 - BFP pilot responder — available for Step 6 field drill
@@ -13,7 +14,7 @@
 - [ ] All Track 2 exit gates confirmed green
 - [ ] BFP pilot responder scheduled and briefed on drill scenario
 - [ ] PDRRMO Director confirmed available for Step 7 signoff
-- [ ] Globe Labs keyword confirmation received. Date: ___
+- [ ] Globe Labs keyword confirmation received. Date: \_\_\_
 - [ ] Pilot-launch statement: pre-approved template printed and ready to sign
 - [ ] Rollback commands tested in staging (git checkout v1.0.0-pilot, firebase hosting rollback)
 - [ ] pilot-staff-manifest.csv prepared with 3+ MDRRMO + 10+ BFP accounts
@@ -24,6 +25,7 @@
 ## Step 1 — Apply monitoring module to prod
 
 Add to `infra/terraform/main.tf`:
+
 ```hcl
 module "monitoring" {
   source                  = "./modules/monitoring/prod"
@@ -41,11 +43,13 @@ terraform apply -var-file=envs/prod/terraform.tfvars   # explicit user approval 
 ```
 
 **Exit gate — confirm notification channel reachable:**
+
 ```
 terraform output
 gcloud alpha monitoring policies test \
   --notification-channels=<backend_channel_id>
 ```
+
 Confirm on-call email receives the test notification.
 Policy existence alone is not sufficient — a misconfigured channel is invisible until 2 AM.
 
@@ -90,6 +94,7 @@ Expected: HTTP 200, Firebase Hosting headers.
 If DNS is not propagated, halt. Do not proceed until URL is confirmed live.
 
 Open in fresh browser (no cache). Confirm:
+
 - Citizen PWA loads
 - Privacy notice modal renders bilingually
 - Version gate does NOT block (1.0.0 >= 1.0.0)
@@ -103,6 +108,7 @@ Rollback: `firebase hosting:channel:rollback live --project bantayog-alert`
 Send one test SMS from a non-staff number: `BANTAYOG TEST`
 
 Confirm:
+
 - Message appears in prod sms_inbox collection
 - Auto-reply is received on the test device
 
@@ -134,13 +140,14 @@ Record timestamps:
 | Admin closes | | |
 
 The 30-day operational clock starts when this report reaches 'resolved' in prod Firestore.
-Clock start time: ___________________
+Clock start time: **\*\*\*\***\_\_\_**\*\*\*\***
 
 ---
 
 ## Step 7 — PDRRMO Director signoff
 
 Director reviews in admin dashboard:
+
 - Resolved test report visible
 - Staff accounts listed in User Management page
 - System Health page (/system_health) shows green indicators
@@ -164,6 +171,7 @@ git push origin v1.0.0-pilot-live
 ```
 
 Update docs/progress.md:
+
 - Mark Phase 9 COMPLETE
 - Record: 30-day pilot clock start date/time
 - Record: BFP drill SLO baseline measurements

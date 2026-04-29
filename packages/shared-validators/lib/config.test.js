@@ -14,19 +14,19 @@ describe('semverLt', () => {
         expect(semverLt('1.1.0', '1.0.0')).toBe(false);
     });
     it('returns true and warns on invalid input (fail-safe)', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn());
         expect(semverLt('1.0.0-beta', '1.0.0')).toBe(true);
         expect(warnSpy).toHaveBeenCalledWith('[semverLt] Invalid semver input: "1.0.0-beta" vs "1.0.0"');
         warnSpy.mockRestore();
     });
     it('returns true and warns on empty input', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn());
         expect(semverLt('', '1.0.0')).toBe(true);
         expect(warnSpy).toHaveBeenCalledWith('[semverLt] Invalid semver input: "" vs "1.0.0"');
         warnSpy.mockRestore();
     });
     it('returns true and warns on malformed input', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn());
         expect(semverLt('1.0', '1.0.0')).toBe(true);
         expect(semverLt('1.0.0.1', '1.0.0')).toBe(true);
         warnSpy.mockRestore();

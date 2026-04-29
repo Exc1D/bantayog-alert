@@ -12,14 +12,14 @@ resource "google_bigquery_table" "streaming_events" {
   deletion_protection = true
 
   schema = jsonencode([
-    { name = "event_type",         type = "STRING",    mode = "REQUIRED" },
-    { name = "actor_uid",          type = "STRING",    mode = "REQUIRED" },
-    { name = "session_id",         type = "STRING",    mode = "NULLABLE" },
-    { name = "target_collection",  type = "STRING",    mode = "NULLABLE" },
-    { name = "target_document_id", type = "STRING",    mode = "NULLABLE" },
-    { name = "metadata",           type = "STRING",    mode = "NULLABLE" },
-    { name = "occurred_at",        type = "INTEGER",   mode = "REQUIRED" },
-    { name = "inserted_at",        type = "TIMESTAMP", mode = "NULLABLE" }
+    { name = "event_type", type = "STRING", mode = "REQUIRED" },
+    { name = "actor_uid", type = "STRING", mode = "REQUIRED" },
+    { name = "session_id", type = "STRING", mode = "NULLABLE" },
+    { name = "target_collection", type = "STRING", mode = "NULLABLE" },
+    { name = "target_document_id", type = "STRING", mode = "NULLABLE" },
+    { name = "metadata", type = "STRING", mode = "NULLABLE" },
+    { name = "occurred_at", type = "INTEGER", mode = "REQUIRED" },
+    { name = "inserted_at", type = "TIMESTAMP", mode = "NULLABLE" }
   ])
 }
 
@@ -30,9 +30,9 @@ resource "google_bigquery_table" "batch_events" {
   deletion_protection = true
 
   schema = jsonencode([
-    { name = "log_name",  type = "STRING",    mode = "REQUIRED" },
-    { name = "resource",  type = "STRING",    mode = "NULLABLE" },
-    { name = "payload",   type = "STRING",    mode = "NULLABLE" },
+    { name = "log_name", type = "STRING", mode = "REQUIRED" },
+    { name = "resource", type = "STRING", mode = "NULLABLE" },
+    { name = "payload", type = "STRING", mode = "NULLABLE" },
     { name = "timestamp", type = "TIMESTAMP", mode = "NULLABLE" }
   ])
 }

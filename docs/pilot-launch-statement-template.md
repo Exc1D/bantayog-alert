@@ -2,7 +2,7 @@
 
 **Platform:** Bantayog Alert v1.0.0-pilot  
 **Document Version:** 1.0  
-**Date:** ___________________
+**Date:** **\*\*\*\***\_\_\_**\*\*\*\***
 
 ---
 
@@ -10,10 +10,11 @@
 
 **Municipality:** Daet, Camarines Norte  
 **Participating Agencies:** Daet MDRRMO, BFP Daet Station  
-**Pilot Start Date:** ___________________ (date of PDRRMO Director signature)  
-**30-Day Pilot Period Ends:** ___________________
+**Pilot Start Date:** **\*\*\*\***\_\_\_**\*\*\*\*** (date of PDRRMO Director signature)  
+**30-Day Pilot Period Ends:** **\*\*\*\***\_\_\_**\*\*\*\***
 
 **Included at Launch:**
+
 - Citizen disaster reporting via web PWA (bantayog.camarines-norte.gov.ph)
 - Staff admin dashboard (admin.bantayog.camarines-norte.gov.ph)
 - Responder mobile app (iOS TestFlight / Android MDM)
@@ -21,6 +22,7 @@
 - PAGASA weather alert integration (15-minute polling + manual toggle)
 
 **Deferred — Not Included at Launch:**
+
 - Anonymous feature-phone SMS onboarding — deferred pending resolution of RA 10173 §16
   pseudonymous erasure gap. Citizens may report via web PWA or register their SMS number
   with MDRRMO staff.
@@ -31,28 +33,28 @@
 
 Per Arch Spec §13.2:
 
-| Metric | Target |
-|--------|--------|
-| Citizen submit → admin visible | ≤ 30 seconds (p95) |
-| Admin verify → dispatch FCM delivery | ≤ 10 seconds |
-| System availability | ≥ 99% (excl. planned maintenance) |
-| Restore RTO | ≤ 4 hours |
+| Metric                               | Target                            |
+| ------------------------------------ | --------------------------------- |
+| Citizen submit → admin visible       | ≤ 30 seconds (p95)                |
+| Admin verify → dispatch FCM delivery | ≤ 10 seconds                      |
+| System availability                  | ≥ 99% (excl. planned maintenance) |
+| Restore RTO                          | ≤ 4 hours                         |
 
 Pilot baseline measurements recorded from Track 3 BFP field drill:
 
-| Metric | Measured |
-|--------|---------|
-| Citizen submit → admin visible | ___ seconds |
-| Admin verify → dispatch FCM delivery | ___ seconds |
+| Metric                               | Measured       |
+| ------------------------------------ | -------------- |
+| Citizen submit → admin visible       | \_\_\_ seconds |
+| Admin verify → dispatch FCM delivery | \_\_\_ seconds |
 
 ---
 
 ## 3. Named Responsible Parties
 
 **Named Pilot Coordinator:**  
-Name: ___________________________  
+Name: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***  
 Position: PDRRMO Director, Camarines Norte  
-Contact: ___________________________
+Contact: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
 
 **Named Technical Responsible:**  
 Name: David Aviado (Exxeed)  
@@ -77,22 +79,22 @@ The undersigned acknowledge that:
 
 **PDRRMO Director, Camarines Norte**
 
-Signature: _____________________________
+Signature: **\*\***\*\***\*\***\_**\*\***\*\***\*\***
 
-Printed Name: _____________________________
+Printed Name: **\*\***\*\***\*\***\_**\*\***\*\***\*\***
 
-Date: _____________________________
+Date: **\*\***\*\***\*\***\_**\*\***\*\***\*\***
 
 ---
 
 **Technical Lead**
 
-Signature: _____________________________
+Signature: **\*\***\*\***\*\***\_**\*\***\*\***\*\***
 
 Printed Name: David Aviado
 
-Date: _____________________________
+Date: **\*\***\*\***\*\***\_**\*\***\*\***\*\***
 
 ---
 
-*Scan signed copy to `docs/pilot-launch-statement-signed.pdf` and commit to the repository.*
+_Scan signed copy to `docs/pilot-launch-statement-signed.pdf` and commit to the repository._
