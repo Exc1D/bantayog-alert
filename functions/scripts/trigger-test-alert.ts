@@ -14,6 +14,12 @@ const project = process.argv[2] ?? 'bantayog-alert-staging'
 const logging = new Logging({ projectId: project })
 
 async function main(): Promise<void> {
+  const [metrics] = await logging.getMetrics()
+  const metricExists = metrics.some((m) => m.name === 'bantayog/test_alert_trigger')
+  if (!metricExists) {
+    console.warn('WARNING: Log metric bantayog/test_alert_trigger not found. Alert may not fire.')
+  }
+
   const log = logging.log('bantayog-synthetic-alert')
 
   const metadata = {

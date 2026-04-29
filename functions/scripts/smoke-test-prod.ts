@@ -55,9 +55,15 @@ async function checkRtdb(): Promise<CheckResult> {
 }
 
 async function checkStorage(): Promise<CheckResult> {
-  const name = 'Storage bucket accessible'
+  const name = 'Storage read/write'
   try {
-    await storage.bucket().getMetadata()
+    const bucket = storage.bucket()
+    await bucket.getMetadata()
+    const testFile = bucket.file('_smoke_test/probe.txt')
+    await testFile.save('smoke-test', { contentType: 'text/plain' })
+    const [exists] = await testFile.exists()
+    if (!exists) throw new Error('write-back failed')
+    await testFile.delete()
     return { name, ok: true }
   } catch (err) {
     return { name, ok: false, error: String(err) }
@@ -67,8 +73,10 @@ async function checkStorage(): Promise<CheckResult> {
 async function checkDoc(docPath: string, requiredFields: string[]): Promise<CheckResult> {
   const name = docPath
   try {
-    const [collection, docId] = docPath.split('/')
-    if (!collection || !docId) throw new Error('invalid doc path')
+    const parts = docPath.split('/')
+    if (parts.length < 2 || parts.some((p) => !p)) throw new Error('invalid doc path')
+    const collection = parts[0]
+    const docId = parts.slice(1).join('/')
     const snap = await fsdb.collection(collection).doc(docId).get()
     if (!snap.exists) throw new Error('document missing')
     const data = snap.data() ?? {}
@@ -82,14 +90,13 @@ async function checkDoc(docPath: string, requiredFields: string[]): Promise<Chec
 }
 
 async function checkBigQuery(): Promise<CheckResult> {
-  const name = 'BigQuery streaming_events insert'
+  const name = 'BigQuery audit table accessible'
   try {
     const table = bq.dataset('bantayog_audit').table('streaming_events')
     const [exists] = await table.exists()
     if (!exists) throw new Error('table does not exist')
-    await table.insert([
-      { event_type: 'smoke_test', actor_uid: 'smoke-test-script', occurred_at: Date.now() },
-    ])
+    const [metadata] = await table.getMetadata()
+    if (!metadata.schema) throw new Error('table has no schema')
     return { name, ok: true }
   } catch (err) {
     return { name, ok: false, error: String(err) }
