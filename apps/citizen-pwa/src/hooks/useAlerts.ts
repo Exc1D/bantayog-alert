@@ -3,10 +3,11 @@ import { subscribeAlerts } from '@bantayog/shared-firebase'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { AlertDoc } from '@bantayog/shared-types'
 
-export function useAlerts(): { alerts: AlertDoc[]; loading: boolean } {
+export function useAlerts(): { alerts: AlertDoc[]; loading: boolean; error: Error | null } {
   const firebaseConfigured = hasFirebaseConfig()
   const [alerts, setAlerts] = useState<AlertDoc[]>([])
   const [loading, setLoading] = useState(firebaseConfigured)
+  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     if (!firebaseConfigured) {
@@ -15,13 +16,20 @@ export function useAlerts(): { alerts: AlertDoc[]; loading: boolean } {
       return
     }
 
-    const unsubscribe = subscribeAlerts(db(), (docs) => {
-      setAlerts(docs)
-      setLoading(false)
-    })
+    const unsubscribe = subscribeAlerts(
+      db(),
+      (docs) => {
+        setAlerts(docs)
+        setLoading(false)
+      },
+      (err) => {
+        setError(err)
+        setLoading(false)
+      },
+    )
 
     return unsubscribe
   }, [firebaseConfigured])
 
-  return { alerts, loading }
+  return { alerts, loading, error }
 }
