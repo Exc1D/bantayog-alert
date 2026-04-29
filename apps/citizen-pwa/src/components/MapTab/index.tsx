@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import { FilterBar } from './FilterBar.js'
 import { PeekSheet } from './PeekSheet.js'
@@ -30,6 +31,7 @@ interface SelectedPin {
   id: string
   type: 'incident' | 'myReport'
   label: string
+  severity?: 'high' | 'medium' | 'low'
 }
 
 function severityLabel(severity: Filters['severity'] | MyReport['severity']): string {
@@ -46,6 +48,7 @@ function toMapProgressLabel(report: MyReport['status']): string {
 }
 
 export function MapTab() {
+  const navigate = useNavigate()
   const mapElRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
@@ -153,6 +156,7 @@ export function MapTab() {
     setSelectedPin({
       id: incident.id,
       type: 'incident',
+      severity: incident.severity,
       label: `${INCIDENT_LABELS[incident.reportType] ?? incident.reportType} · ${severityLabel(incident.severity)} · ${incident.barangayId}, ${incident.municipalityLabel}`,
     })
     setSheetPhase('peek')
@@ -264,6 +268,9 @@ export function MapTab() {
           }}
           onCollapse={() => {
             setSheetPhase('peek')
+          }}
+          onReportSimilar={() => {
+            void navigate('/report')
           }}
         />
       ) : null}

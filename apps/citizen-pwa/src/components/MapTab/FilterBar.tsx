@@ -14,13 +14,18 @@ interface Props {
   disabled?: boolean
 }
 
-const SEVERITIES: Filters['severity'][] = ['all', 'high', 'medium', 'low']
-const WINDOWS: Filters['window'][] = ['24h', '7d', '30d']
+const SEVERITIES: { value: SeverityFilter; label: string; dot?: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'high', label: 'High', dot: '#dc2626' },
+  { value: 'medium', label: 'Medium', dot: '#a73400' },
+  { value: 'low', label: 'Low', dot: '#001e40' },
+]
 
-function nextValue<T>(values: readonly T[], current: T): T {
-  const index = values.indexOf(current)
-  return values[(index + 1) % values.length] ?? current
-}
+const WINDOWS: { value: WindowFilter; label: string }[] = [
+  { value: '24h', label: '24h' },
+  { value: '7d', label: '7d' },
+  { value: '30d', label: '30d' },
+]
 
 export function FilterBar({ filters, onChange, disabled }: Props) {
   return (
@@ -30,55 +35,84 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
         position: 'absolute',
         top: 12,
         left: 12,
+        right: 12,
         zIndex: 40,
-        display: 'flex',
-        gap: 8,
-        padding: 8,
-        borderRadius: 999,
-        background: 'rgba(255,255,255,0.52)',
+        padding: '8px 10px',
+        borderRadius: 16,
+        background: 'rgba(255,255,255,0.88)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+        boxShadow: '0 4px 16px rgba(15,23,42,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
       }}
     >
-      <button
-        type="button"
-        onClick={() => {
-          if (disabled) return
-          onChange({ ...filters, severity: nextValue(SEVERITIES, filters.severity) })
-        }}
-        disabled={disabled}
-        style={pillStyle(disabled, filters.severity !== 'all')}
-      >
-        Severity: {filters.severity}
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          if (disabled) return
-          onChange({ ...filters, window: nextValue(WINDOWS, filters.window) })
-        }}
-        disabled={disabled}
-        style={pillStyle(disabled, filters.window !== '24h')}
-      >
-        Window: {filters.window}
-      </button>
+      <div role="group" aria-label="Severity" style={{ display: 'flex', gap: 4 }}>
+        {SEVERITIES.map(({ value, label, dot }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={filters.severity === value}
+            disabled={disabled}
+            onClick={() => {
+              if (disabled) return
+              onChange({ ...filters, severity: value })
+            }}
+            style={chipStyle(filters.severity === value, disabled)}
+          >
+            {dot ? (
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: dot,
+                  marginRight: 4,
+                  verticalAlign: 'middle',
+                }}
+              />
+            ) : null}
+            {label}
+          </button>
+        ))}
+      </div>
+      <div role="group" aria-label="Time window" style={{ display: 'flex', gap: 4 }}>
+        {WINDOWS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={filters.window === value}
+            disabled={disabled}
+            onClick={() => {
+              if (disabled) return
+              onChange({ ...filters, window: value })
+            }}
+            style={chipStyle(filters.window === value, disabled)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
 
-function pillStyle(disabled?: boolean, active?: boolean): CSSProperties {
+function chipStyle(active?: boolean, disabled?: boolean): CSSProperties {
   return {
-    border: active ? '1px solid rgba(0, 30, 64, 0.18)' : '1px solid rgba(15, 23, 42, 0.12)',
+    flex: 1,
+    border: active ? '1.5px solid rgba(0,30,64,0.22)' : '1.5px solid rgba(15,23,42,0.08)',
     borderRadius: 999,
-    background: active ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.92)',
-    color: active ? 'var(--color-primary)' : 'var(--color-on-surface, #0f172a)',
-    padding: '10px 14px',
-    fontSize: '0.875rem',
-    fontWeight: 600,
-    lineHeight: 1,
-    boxShadow: active ? '0 12px 28px rgba(0, 30, 64, 0.12)' : '0 8px 24px rgba(15, 23, 42, 0.08)',
+    background: active ? '#001e40' : 'rgba(255,255,255,0.9)',
+    color: active ? '#ffffff' : '#0f172a',
+    padding: '5px 8px',
+    fontSize: '0.75rem',
+    fontWeight: active ? 700 : 500,
+    lineHeight: 1.2,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.6 : 1,
+    opacity: disabled ? 0.55 : 1,
+    textAlign: 'center',
   }
 }
