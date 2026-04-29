@@ -1,6 +1,25 @@
 # Progress
 
-## Current — Phase 7 Provincial Superadmin + NDRRMC + Break-Glass
+## Current — Phase 8C — RA 10173 Erasure & Anonymization
+
+### 8C — RA 10173 Erasure Execution — COMPLETE
+
+| Task                            | Status  | Notes                                                      |
+| ------------------------------- | ------- | ---------------------------------------------------------- |
+| requestDataErasure callable     | ✅ DONE | Sentinel idempotency, write-before-disable order           |
+| approveErasureRequest deny path | ✅ DONE | Auth re-enable, sentinel delete, transaction gate          |
+| setErasureLegalHold callable    | ✅ DONE | Superadmin + MFA, terminal status guard                    |
+| erasureSweep (15 min)           | ✅ DONE | Sequential claim, all-or-nothing, dead-letter path         |
+| retentionSweep (daily)          | ✅ DONE | 1-week anonymize, 1-month hard-delete, active erasure skip |
+| Firestore rules                 | ✅ DONE | erasure_requests, erasure_active, auditLog                 |
+| Storage rules                   | ✅ DONE | Citizen read-own media                                     |
+| Citizen PWA delete-account flow | ✅ DONE | Two-step modal, GoodbyeScreen, /goodbye route              |
+
+**Open production launch blocker:** Pseudonymous erasure gap (RA 10173 §16) — citizens who submitted via SMS before registering have no erasure path for pre-registration sms_inbox/sms_sessions data. SMS onboarding path cannot go to production until this is resolved. Requires UID-linkage mechanism at registration time.
+
+---
+
+## Phase 7 Provincial Superadmin + NDRRMC + Break-Glass
 
 ### PRE-7 — Audit & Auth Foundation (branch: `feature/phase7-pre`)
 

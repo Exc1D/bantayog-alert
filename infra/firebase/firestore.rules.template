@@ -473,8 +473,39 @@ service cloud.firestore {
     }
 
     match /erasure_requests/{id} {
-      allow read: if isSuperadmin() && isActivePrivileged();
-      allow write: if false;
+      allow create: if isAuthed()
+                    && request.auth.uid == request.resource.data.citizenUid
+                    && request.resource.data.status == 'pending_review'
+                    && request.resource.data.keys().hasOnly([
+                         'citizenUid', 'status', 'legalHold', 'requestedAt'
+                       ])
+                    && request.resource.data.keys().hasAll([
+                         'citizenUid', 'status', 'requestedAt'
+                       ])
+                    && request.resource.data.citizenUid is string
+                    && request.resource.data.status is string
+                    && request.resource.data.legalHold is bool
+                    && request.resource.data.requestedAt is int;
+      allow read: if (isAuthed() && request.auth.uid == resource.data.citizenUid)
+                  || (isSuperadmin() && isActivePrivileged());
+      // All other writes (status transitions, legalHold) are service-account only.
+      allow update, delete: if false;
+
+      match /auditLog/{eventId} {
+        allow read: if isSuperadmin() && isActivePrivileged();
+        allow write: if false;
+      }
+    }
+
+    match /erasure_active/{citizenUid} {
+      allow create: if isAuthed() && request.auth.uid == citizenUid
+                    && request.resource.data.keys().hasOnly(['citizenUid', 'createdAt'])
+                    && request.resource.data.keys().hasAll(['citizenUid', 'createdAt'])
+                    && request.resource.data.citizenUid is string
+                    && request.resource.data.createdAt is int;
+      allow read: if (isAuthed() && request.auth.uid == citizenUid)
+                  || (isSuperadmin() && isActivePrivileged());
+      allow update, delete: if false;
     }
 
     match /system_health/{id} {

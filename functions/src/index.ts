@@ -149,6 +149,10 @@ export { declareDataIncident } from './callables/declare-data-incident.js'
 export { recordIncidentResponseEvent } from './callables/record-incident-response-event.js'
 export { setRetentionExempt } from './callables/set-retention-exempt.js'
 export { approveErasureRequest } from './callables/approve-erasure-request.js'
+export { requestDataErasure } from './callables/request-data-erasure.js'
+export { setErasureLegalHold } from './callables/set-erasure-legal-hold.js'
+export { erasureSweep } from './triggers/erasure-sweep.js'
+export { retentionSweep } from './triggers/retention-sweep.js'
 export { toggleMutualAidVisibility } from './callables/toggle-mutual-aid-visibility.js'
 export {
   upsertProvincialResource,

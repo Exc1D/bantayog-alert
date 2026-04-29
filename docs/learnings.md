@@ -108,6 +108,16 @@
 - `bcryptjs` preferred over `bcrypt` in this repo — pure JS, no native compilation.
 - `@google-cloud/logging` must be added as explicit dependency when using Cloud Logging API in triggers.
 
+## Phase 8C — RA 10173 Erasure
+
+- Write Firestore doc before disabling Firebase Auth in erasure callables — if Auth disable fails, doc deletion is the rollback, not Auth re-enable. Simpler invariant with no side effects on write failure.
+- `erasure_active/{uid}` sentinel pattern makes the concurrent double-submission race atomic via Firestore transaction. Status checks alone are not sufficient (TOCTOU).
+- `erasureSweep` must be sequential (claim one, process, then claim next). Bulk-claiming multiple records lets timeouts strand unclaimed records in `executing` state permanently until the 30-min staleness window.
+- Auth hard-delete must be the last step in erasure execution — it is the only non-reversible step and must not precede any Firestore/Storage operation that could fail.
+- `retentionSweep` must exclude reports belonging to citizens with active erasure requests via an in-memory UID set. Firestore does not support cross-collection NOT IN filters.
+- `retentionHardDeleteEligibleAt` as a queryable field (set at anonymization time + 30 days) avoids the "find a deleted document" problem for the 1-month threshold query.
+- `sms_inbox` join is via `senderMsisdnHash` field directly — not via a session ID foreign key. Verify field names against actual schema before implementing SMS nulling steps.
+
 ## Misc
 
 - `navigator.clipboard` in happy-dom often needs to be defined as an own property before spying.
