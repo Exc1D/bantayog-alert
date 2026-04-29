@@ -33,7 +33,10 @@ for (const name of REQUIRED_SECRETS) {
   )
 
   if (result.status !== 0 || result.error) {
-    console.error(`x ${name} — MISSING OR INACCESSIBLE`)
+    const reason = result.error
+      ? `gcloud error: ${result.error.message}`
+      : `exit code ${result.status}`
+    console.error(`x ${name} — MISSING OR INACCESSIBLE (${reason})`)
     missing.push(name)
     continue
   }
