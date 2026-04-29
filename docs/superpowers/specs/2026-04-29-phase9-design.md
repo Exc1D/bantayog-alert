@@ -17,7 +17,7 @@ Phase 9 launches the Daet pilot with **web PWA + staff-registered SMS only**. An
 
 Each track has a hard exit gate. Track N+1 does not begin until Track N's exit gate is fully green.
 
-```
+```text
 Track 1 — Prod Infra Bootstrap     (~2 days)
 Track 2 — Build & Harden           (~1 week, staging-parity gated)
 Track 3 — Cutover & Go-Live        (1 planned session)
@@ -55,7 +55,7 @@ New script: `scripts/check-prod-secrets.ts` (Track 1 deliverable). Reads a manif
 
 Required secrets:
 
-```
+```text
 SEMAPHORE_API_KEY
 GLOBE_LABS_APP_ID
 GLOBE_LABS_APP_SECRET
@@ -334,7 +334,7 @@ Document result in `docs/runbooks/restore-drill-log.md` with: start time, stop t
 
 Pre-session checklist hard gate:
 
-```
+```text
 BANTAYOG keyword pre-registration submitted: date ___
 Globe Labs confirmation received: date ___
 ```
@@ -430,7 +430,7 @@ Rollback: Firebase Hosting channel rollback to previous release. ~1 min.
 
 Confirm `BANTAYOG` keyword is live on the registered webhook URL. Send one test SMS from a non-staff number:
 
-```
+```text
 BANTAYOG TEST
 ```
 
