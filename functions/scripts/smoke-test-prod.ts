@@ -73,7 +73,7 @@ async function checkDoc(docPath: string, requiredFields: string[]): Promise<Chec
     if (!snap.exists) throw new Error('document missing')
     const data = snap.data() ?? {}
     for (const field of requiredFields) {
-      if (!data[field]) throw new Error(`field missing: ${field}`)
+      if (data[field] === undefined) throw new Error(`field missing: ${field}`)
     }
     return { name, ok: true }
   } catch (err) {

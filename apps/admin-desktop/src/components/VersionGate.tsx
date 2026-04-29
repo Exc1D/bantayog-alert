@@ -1,6 +1,15 @@
 import type { ReactNode } from 'react'
 import { useVersionGate } from '../hooks/useVersionGate'
 
+function isValidHttpsUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 interface Props {
   children: ReactNode
 }
@@ -30,7 +39,7 @@ export function VersionGate({ children }: Props) {
         <p style={{ color: '#4b5563', marginBottom: '1.5rem' }}>
           This version is no longer supported. Contact the system administrator.
         </p>
-        {updateUrl && (
+        {updateUrl && isValidHttpsUrl(updateUrl) && (
           <a href={updateUrl} style={{ color: '#1d4ed8', textDecoration: 'underline' }}>
             Open updated admin dashboard
           </a>

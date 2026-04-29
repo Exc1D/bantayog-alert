@@ -5,7 +5,7 @@ import { db } from '../app/firebase'
 
 declare const __APP_VERSION__: string
 
-function semverLt(a: string, b: string): boolean {
+export function semverLt(a: string, b: string): boolean {
   const pa = a.split('.').map(Number)
   const pb = b.split('.').map(Number)
   for (let i = 0; i < 3; i++) {
