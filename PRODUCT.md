@@ -1,9 +1,5 @@
 # Product
 
-## Register
-
-product
-
 ## Users
 
 Citizens of Camarines Norte, Philippines. Reporting during active emergencies — flood water rising, a landslide just happened, they smell smoke. Time-pressured, scared, often in motion. Tech literacy ranges from first-time smartphone users to daily app users; the interface must work for both without condescending to either. Mobile-first: iOS Safari and Android Chrome on mid-range to low-end Android devices. Connectivity is unreliable during the exact moments the app matters most. Many will report without creating an account — pseudonymous use is supported and respected, not treated as a lesser experience.
