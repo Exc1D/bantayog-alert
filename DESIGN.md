@@ -206,12 +206,12 @@ This system is tonal and flat-by-default. Surfaces are separated by background c
 
 ### Shadow Vocabulary
 
-- **Hair Lift** (`box-shadow: 0 1px 3px rgba(0,0,0,0.10)`): Cards at rest. The minimum shadow — barely perceptible. Used to distinguish card surface from the Cloud Surface background.
+- **Hair Lift** (`box-shadow: 0 1px 3px rgba(0,0,0,0.10)`): Cards at rest. The minimum shadow — barely perceptible. Used to distinguish card surface from the Cloud Surface background. This is the single exception to the Flat-By-Default Rule.
 - **Sheet Rise** (`box-shadow: 0 -10px 40px rgba(0,0,0,0.20)`): Bottom sheets (RevealSheet) floating over the app layer. The upward direction signals "this is above everything."
 - **Focus Ring** (`box-shadow: 0 0 0 2px #fff, 0 0 0 4px #001e40`): Double-ring on all interactive elements at focus. White inner ring separates the ring from any background color. Authority Navy outer ring provides AAA contrast.
 - **Frosted Nav** (`background: rgba(255,255,255,0.85); backdrop-filter: blur(24px)`): The bottom navigation bar. The only glassmorphic surface in the system, justified by its function: it must appear above the map layer without fully obscuring it. Do not use blur + transparency anywhere else.
 
-**The Flat-By-Default Rule.** If an element is not physically floating above other content (drawer, sheet, toast), it has no shadow. Background color differentiation handles the rest. Shadows on static content cards, list items, or inputs are prohibited.
+**The Flat-By-Default Rule.** If an element is not physically floating above other content (drawer, sheet, toast), it has no shadow. Background color differentiation handles the rest. Shadows on static content cards, list items, or inputs are prohibited beyond the Hair Lift shadow on cards.
 
 ## 5. Components
 
@@ -289,7 +289,7 @@ The reference box is the emotional peak of the submission flow. It signals: "You
 
 - **Don't** use shopping-app patterns: promotional banners, badge counts on tabs for non-critical information, competing CTAs, decorative hero sections. This app is used during emergencies. Visual noise costs lives.
 - **Don't** add a third accent color. Authority Navy and Alert Sienna are the complete interactive palette. Resist adding teal, purple, or any additional brand hue — they have no semantic role here.
-- **Don't** use `border-left` or `border-right` greater than 1px as a colored stripe on cards, list items, alerts, or callouts. Use a full border, a background tint, or a leading icon instead. The existing `.field-group--urgent` pattern (left-stripe) violates this rule and should be replaced with a full `border: 2px solid` treatment.
+- **Don't** use `border-left` or `border-right` greater than 1px as a colored stripe on cards, list items, alerts, or callouts. Use a full border, a background tint, or a leading icon instead.
 - **Don't** use gradient text (`background-clip: text` with a gradient background). Status information must be a solid color.
 - **Don't** put two primary buttons on the same screen. If you find yourself reaching for two, one of the actions is not primary.
 - **Don't** use JetBrains Mono outside the tracking reference context. It is reserved for machine-generated identifiers.
@@ -298,3 +298,4 @@ The reference box is the emotional peak of the submission flow. It signals: "You
 - **Don't** use the warm cream gradient surface (`#fff5ef` → `#ffeee6`) as a general card or section background. It belongs to the RevealSheet tracking reference box — its emotional weight depends on its rarity.
 - **Don't** implement a dark mode. The scene for this app is: a citizen in daylight, rain, or bright sunlight, outdoors, on a low-end Android. Light mode with AAA contrast is the correct answer for that scene.
 - **Don't** use cards for navigation. Cards are content containers. Navigation belongs in the bottom tab bar or in button elements.
+- **Don't** use emojis, use lucide react icons instead.
