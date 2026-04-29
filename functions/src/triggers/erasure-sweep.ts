@@ -88,7 +88,7 @@ export async function erasureSweepCore(input: ErasureSweepInput): Promise<Erasur
     result.processed++
   } catch (err: unknown) {
     const reason = err instanceof Error ? err.message : String(err)
-    log({
+    void log({
       severity: 'ERROR',
       code: 'ERASURE_SWEEP_FAILURE',
       message: `erasure sweep failed for ${citizenUid}: ${reason}`,
@@ -99,17 +99,27 @@ export async function erasureSweepCore(input: ErasureSweepInput): Promise<Erasur
     try {
       await input.auth.updateUser(citizenUid, { disabled: false })
     } catch (reEnableErr: unknown) {
+      const reEnableReason =
+        reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr)
       // CRITICAL: citizen is locked out and sweep failed — manual intervention required
-      log({
+      void log({
         severity: 'CRITICAL',
         code: 'ERASURE_SWEEP_AUTH_REENABLE_FAILED',
         message: `Auth re-enable failed after erasure sweep failure for ${citizenUid}`,
         data: {
           citizenUid,
           originalError: reason,
-          reEnableError: reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr),
+          reEnableError: reEnableReason,
         },
       })
+      await candidate.ref.update({
+        status: 'dead_lettered',
+        deadLetterReason: `erasure_failed_and_auth_reenable_failed: ${reason}; re-enable: ${reEnableReason}`,
+        deadLetteredAt: now(),
+      })
+      throw new Error(
+        `Auth re-enable failed after erasure failure for ${citizenUid}: ${reEnableReason}`,
+      )
     }
 
     await candidate.ref.update({
