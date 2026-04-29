@@ -23,7 +23,7 @@ export async function auditExportBatchCore(opts: {
   }))
   try {
     await opts.bqTable.insert(rows)
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn('[audit-export-batch] insert failed', err)
   }
   return { exported: rows.length }

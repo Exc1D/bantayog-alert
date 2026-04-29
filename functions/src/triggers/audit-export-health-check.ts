@@ -18,20 +18,13 @@ function isLastAtRow(row: unknown): row is LastAtRow {
   return typeof lastAtRecord.value === 'string'
 }
 
-// extractLastMs expects INT64 epoch (numeric)
-function extractLastMs(rows: readonly unknown[]): number {
+function extractTimestampMs(rows: readonly unknown[]): number {
   const row = rows[0]
   if (!isLastAtRow(row)) return 0
-  const ms = Number(row.lastAt.value)
-  return Number.isNaN(ms) ? 0 : ms
-}
-
-// extractLastDateMs expects timestamp string (from batch_events.timestamp column)
-function extractLastDateMs(rows: readonly unknown[]): number {
-  const row = rows[0]
-  if (!isLastAtRow(row)) return 0
-  const ms = new Date(row.lastAt.value).getTime()
-  return Number.isNaN(ms) ? 0 : ms
+  const numeric = Number(row.lastAt.value)
+  if (!Number.isNaN(numeric)) return numeric
+  const dateMs = new Date(row.lastAt.value).getTime()
+  return Number.isNaN(dateMs) ? 0 : dateMs
 }
 
 export interface AuditExportHealthCheckResult {
@@ -54,14 +47,14 @@ export async function auditExportHealthCheckCore(
     'SELECT MAX(occurredAt) as lastAt FROM bantayog_audit.streaming_events',
     { timeoutMs: 30000 },
   )
-  const lastStreamMs = extractLastMs(streamRows)
+  const lastStreamMs = extractTimestampMs(streamRows)
   const streamingGapSeconds = Math.floor((now - lastStreamMs) / 1000)
 
   const [batchRows] = await opts.query(
     'SELECT MAX(timestamp) as lastAt FROM bantayog_audit.batch_events',
     { timeoutMs: 30000 },
   )
-  const lastBatchMs = extractLastDateMs(batchRows)
+  const lastBatchMs = extractTimestampMs(batchRows)
   const batchGapSeconds = Math.floor((now - lastBatchMs) / 1000)
 
   const healthy = streamingGapSeconds < 60 && batchGapSeconds < 900

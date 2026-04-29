@@ -5,7 +5,16 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    caches
+      .keys()
+      .then((cacheNames) =>
+        Promise.all(
+          cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name)),
+        ),
+      )
+      .then(() => self.clients.claim()),
+  )
 })
 
 self.addEventListener('fetch', (event) => {

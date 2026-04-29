@@ -120,6 +120,10 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
             e.preventDefault()
             if (state === 'success') onClose?.()
           }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            onClose?.()
+          }
         }}
       />
       <div className="reveal-sheet">

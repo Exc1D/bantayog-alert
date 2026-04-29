@@ -88,7 +88,7 @@ export async function erasureSweepCore(input: ErasureSweepInput): Promise<Erasur
     result.processed++
   } catch (err: unknown) {
     const reason = err instanceof Error ? err.message : String(err)
-    void log({
+    log({
       severity: 'ERROR',
       code: 'ERASURE_SWEEP_FAILURE',
       message: `erasure sweep failed for ${citizenUid}: ${reason}`,
@@ -102,7 +102,7 @@ export async function erasureSweepCore(input: ErasureSweepInput): Promise<Erasur
       const reEnableReason =
         reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr)
       // CRITICAL: citizen is locked out and sweep failed — manual intervention required
-      void log({
+      log({
         severity: 'CRITICAL',
         code: 'ERASURE_SWEEP_AUTH_REENABLE_FAILED',
         message: `Auth re-enable failed after erasure sweep failure for ${citizenUid}`,
@@ -218,7 +218,7 @@ async function executeErasure(
   await input.auth.deleteUser(citizenUid)
 
   // Sentinel deletion happens in the caller after this function returns (step 10)
-  void log({
+  log({
     severity: 'INFO',
     code: 'ERASURE_EXECUTED',
     message: `erasure executed for ${citizenUid}`,
