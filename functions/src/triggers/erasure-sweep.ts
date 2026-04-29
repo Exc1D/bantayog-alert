@@ -54,8 +54,22 @@ export async function erasureSweepCore(input: ErasureSweepInput): Promise<Erasur
   const sweepRunId = crypto.randomUUID()
   const citizenUid = candidate.data().citizenUid as string
 
-  // Claim the record
-  await candidate.ref.update({ status: 'executing', sweepRunId, executionStartedAt: now() })
+  // Claim the record transactionally to prevent double-processing by concurrent sweeps.
+  await input.db.runTransaction(async (tx) => {
+    const fresh = await tx.get(candidate.ref)
+    const status = fresh.data()?.status as string
+    const legalHold = fresh.data()?.legalHold as boolean | undefined
+    const executionStartedAt = fresh.data()?.executionStartedAt as number | undefined
+    const isReady = status === 'approved_pending_anonymization' && legalHold !== true
+    const isStale =
+      status === 'executing' &&
+      executionStartedAt != null &&
+      executionStartedAt < now() - STALE_EXECUTING_MS
+    if (!isReady && !isStale) {
+      throw new Error('claim_lost_race')
+    }
+    tx.update(candidate.ref, { status: 'executing', sweepRunId, executionStartedAt: now() })
+  })
 
   try {
     await executeErasure(input, citizenUid, candidate.ref.id)
@@ -184,8 +198,8 @@ async function executeErasure(
 
   // Step 8: Delete Storage blobs for all citizen reports (verified and unverified)
   for (const reportId of reportIds) {
-    const [files] = await input.storage.bucket().getFiles({ prefix: `report_media/` })
-    for (const file of files.filter((f) => f.name.includes(reportId))) {
+    const [files] = await input.storage.bucket().getFiles({ prefix: `report_media/${reportId}/` })
+    for (const file of files) {
       await file.delete()
     }
   }

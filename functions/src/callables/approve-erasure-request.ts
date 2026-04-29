@@ -55,16 +55,17 @@ export async function approveErasureRequestCore(
   // Deny path: re-enable Auth → update doc + delete sentinel → rollback on failure.
   const snap = await requestRef.get()
   if (!snap.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
-  if (snap.data()?.status !== 'pending_review') {
-    throw new HttpsError('failed-precondition', 'erasure_already_reviewed')
-  }
   const citizenUid = snap.data()?.citizenUid as string
 
   await auth.updateUser(citizenUid, { disabled: false })
 
   try {
-    // eslint-disable-next-line @typescript-eslint/require-await
     await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(requestRef)
+      if (!fresh.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
+      if (fresh.data()?.status !== 'pending_review') {
+        throw new HttpsError('failed-precondition', 'erasure_already_reviewed')
+      }
       const sentinelRef = db.collection('erasure_active').doc(citizenUid)
       tx.update(requestRef, {
         status: 'denied',
@@ -74,7 +75,9 @@ export async function approveErasureRequestCore(
       })
       tx.delete(sentinelRef)
     })
-  } catch {
+  } catch (err: unknown) {
+    // Re-throw domain errors (not-found, failed-precondition) as-is.
+    if (err instanceof HttpsError) throw err
     // Doc write failed after Auth was re-enabled — re-disable Auth as rollback.
     await auth.updateUser(citizenUid, { disabled: true }).catch(() => {
       // Log but don't throw — the original error takes precedence.

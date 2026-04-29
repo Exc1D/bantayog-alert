@@ -41,8 +41,8 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
 
   if (step === 'warn') {
     return (
-      <div role="dialog" aria-modal="true">
-        <h2>Delete your account?</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="delete-warn-title">
+        <h2 id="delete-warn-title">Delete your account?</h2>
         <p>This will permanently:</p>
         <ul>
           <li>Remove your name, contact info, and account</li>
@@ -69,8 +69,8 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
   }
 
   return (
-    <div role="dialog" aria-modal="true">
-      <h2>Are you sure?</h2>
+    <div role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+      <h2 id="delete-confirm-title">Are you sure?</h2>
       <label htmlFor="delete-confirm">Type DELETE to confirm</label>
       <input
         id="delete-confirm"

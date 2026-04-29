@@ -75,9 +75,9 @@ export async function retentionSweepCore(
         await input.db.collection('report_contacts').doc(doc.id).update(nulled)
       }
 
-      // Delete Storage blobs
-      const [files] = await input.storage.bucket().getFiles({ prefix: 'report_media/' })
-      for (const file of files.filter((f) => f.name.includes(doc.id))) {
+      // Delete Storage blobs for this report only
+      const [files] = await input.storage.bucket().getFiles({ prefix: `report_media/${doc.id}/` })
+      for (const file of files) {
         await file.delete()
       }
 
