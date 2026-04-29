@@ -1,0 +1,39 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const mockCallable = vi.fn()
+const mockSignOut = vi.fn()
+vi.mock('../services/firebase.js', () => ({
+  fns: vi.fn(),
+  auth: vi.fn(),
+  httpsCallable: () => mockCallable,
+}))
+vi.mock('firebase/auth', () => ({ signOut: mockSignOut }))
+
+import { requestDataErasureAndSignOut } from '../services/erasure.js'
+
+beforeEach(() => {
+  mockCallable.mockResolvedValue({ data: {} })
+  mockSignOut.mockResolvedValue(undefined)
+})
+
+describe('requestDataErasureAndSignOut', () => {
+  it('calls requestDataErasure callable then signOut', async () => {
+    await requestDataErasureAndSignOut()
+    expect(mockCallable).toHaveBeenCalledWith({})
+    expect(mockSignOut).toHaveBeenCalled()
+  })
+
+  it('throws if callable fails without calling signOut', async () => {
+    mockCallable.mockRejectedValueOnce({ code: 'internal' })
+    await expect(requestDataErasureAndSignOut()).rejects.toMatchObject({ code: 'internal' })
+    expect(mockSignOut).not.toHaveBeenCalled()
+  })
+
+  it('still calls signOut if already-exists error (prior request pending)', async () => {
+    mockCallable.mockRejectedValueOnce({ code: 'already-exists' })
+    // already-exists is not a client error — prior request is in-flight
+    // service re-throws to let the UI decide how to handle it
+    await expect(requestDataErasureAndSignOut()).rejects.toMatchObject({ code: 'already-exists' })
+    expect(mockSignOut).not.toHaveBeenCalled()
+  })
+})
