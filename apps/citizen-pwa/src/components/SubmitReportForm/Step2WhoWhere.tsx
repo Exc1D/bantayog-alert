@@ -181,7 +181,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
             }}
           >
             <MapPin size={18} />
-            <span>Pick my municipality on the map</span>
+            <span>Pick my municipality manually</span>
           </button>
         </div>
       ) : null}
