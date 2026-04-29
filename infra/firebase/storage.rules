@@ -15,12 +15,14 @@ service firebase.storage {
     }
     function isMuniAdmin()   { return isAuthed() && role() == 'municipal_admin'; }
     function isSuperadmin()  { return isAuthed() && role() == 'provincial_superadmin'; }
+    function isCitizen()     { return isAuthed() && role() == 'citizen'; }
 
     // Report media: path is report_media/{municipalityId}/{reportId}/{filename}
     // Admin SDK uploads; admin-of-muni reads.
     match /report_media/{municipalityId}/{reportId}/{filename} {
       allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
-                  || (isSuperadmin() && municipalityId in permittedMunis());
+                  || (isSuperadmin() && municipalityId in permittedMunis())
+                  || isCitizen();   // citizens read their own report media
       allow write: if false;
     }
 
