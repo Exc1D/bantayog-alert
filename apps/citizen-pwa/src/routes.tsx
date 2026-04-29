@@ -4,19 +4,12 @@ import { MapTab } from './components/MapTab/index.js'
 import { FeedTab } from './components/FeedTab.js'
 import { IncidentDetailPage } from './components/IncidentDetailPage.js'
 import { ProfileTab } from './components/ProfileTab.js'
+import { AlertsTab } from './components/AlertsTab.js'
 import { SubmitReportForm } from './components/SubmitReportForm/index.js'
 import { ReceiptScreen } from './components/ReceiptScreen.js'
 import { LookupScreen } from './components/LookupScreen.js'
 import { TrackingScreen } from './components/TrackingScreen.js'
 import { GoodbyeScreen } from './components/GoodbyeScreen.js'
-
-function StubTab({ label }: { label: string }) {
-  return (
-    <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%' }}>
-      <p>{label} — coming soon</p>
-    </div>
-  )
-}
 
 const router = createBrowserRouter([
   {
@@ -54,7 +47,7 @@ const router = createBrowserRouter([
     path: '/alerts',
     element: (
       <CitizenShell>
-        <StubTab label="Alerts" />
+        <AlertsTab />
       </CitizenShell>
     ),
   },
