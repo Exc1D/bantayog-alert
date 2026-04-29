@@ -15,3 +15,9 @@ export interface AlertDoc {
   publishedAt: number
   publishedBy: string
 }
+
+export interface UpdateUrlsDoc {
+  citizen: string
+  responder: string
+  admin: string
+}

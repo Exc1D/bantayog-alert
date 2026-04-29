@@ -25,3 +25,11 @@ module "pubsub" {
 
   depends_on = [module.firebase_project]
 }
+
+module "bigquery" {
+  source     = "./modules/bigquery"
+  project_id = var.project_id
+  location   = "asia-southeast1"
+
+  depends_on = [module.firebase_project]
+}

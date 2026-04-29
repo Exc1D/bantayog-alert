@@ -1,5 +1,6 @@
 import { type Firestore } from 'firebase-admin/firestore';
-export declare function approveErasureRequestCore(db: Firestore, input: unknown, actor: {
+import { type Auth } from 'firebase-admin/auth';
+export declare function approveErasureRequestCore(db: Firestore, auth: Auth, input: unknown, actor: {
     uid: string;
 }): Promise<void>;
 export declare const approveErasureRequest: import("firebase-functions/https").CallableFunction<any, Promise<void>, unknown>;

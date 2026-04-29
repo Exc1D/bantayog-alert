@@ -1,0 +1,7 @@
+# Copy to pilot-staff-manifest.csv and fill in real values before running.
+# agencyId is optional — leave blank for municipal_admin with no agency assignment.
+email,role,municipalityId,agencyId
+maria.reyes@daet.gov.ph,municipal_admin,daet,
+juan.dela-cruz@bfp-daet.gov.ph,responder,daet,bfp-daet
+ana.santos@bfp-daet.gov.ph,responder,daet,bfp-daet
+pedro.garcia@daet.gov.ph,agency_admin,daet,bfp-daet

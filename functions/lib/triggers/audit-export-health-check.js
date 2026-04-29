@@ -3,10 +3,20 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { BigQuery } from '@google-cloud/bigquery';
 const bq = new BigQuery();
+function isLastAtRow(row) {
+    if (typeof row !== 'object' || row === null)
+        return false;
+    const candidate = row;
+    const lastAt = candidate.lastAt;
+    if (typeof lastAt !== 'object' || lastAt === null)
+        return false;
+    const lastAtRecord = lastAt;
+    return typeof lastAtRecord.value === 'string';
+}
 // extractLastMs expects INT64 epoch (numeric)
 function extractLastMs(rows) {
     const row = rows[0];
-    if (!row?.lastAt?.value)
+    if (!isLastAtRow(row))
         return 0;
     const ms = Number(row.lastAt.value);
     return Number.isNaN(ms) ? 0 : ms;
@@ -14,7 +24,7 @@ function extractLastMs(rows) {
 // extractLastDateMs expects timestamp string (from batch_events.timestamp column)
 function extractLastDateMs(rows) {
     const row = rows[0];
-    if (!row?.lastAt?.value)
+    if (!isLastAtRow(row))
         return 0;
     const ms = new Date(row.lastAt.value).getTime();
     return Number.isNaN(ms) ? 0 : ms;
