@@ -18,6 +18,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       icon: <Check size={16} />,
       headline: 'We heard you. We are here.',
       subline: 'Your report is with Daet MDRRMO. Keep your line open.',
+      sublineTl: 'Narinig namin kayo. Hawak na ng MDRRMO ang inyong ulat.',
       bannerVariant: 'success' as const,
       receiverText: 'Received by Daet MDRRMO',
       primaryButton: 'Track this report',
@@ -30,6 +31,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       headline: "We've saved your report.",
       subline:
         "You're offline right now. The moment your phone reconnects, we'll send this to Daet MDRRMO automatically. Walang mawawala. Safe ito sa phone mo.",
+      sublineTl: undefined,
       bannerVariant: 'queued' as const,
       receiverText: 'Waiting for signal · auto-retry on',
       primaryButton: 'Try sending now',
@@ -42,6 +44,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       headline: "We couldn't send it yet.",
       subline:
         'Your report is safe on your phone. The network is having trouble reaching the Admins — this is not your fault. If this is life-threatening, please call now.',
+      sublineTl: 'Ligtas pa rin ang inyong ulat dito sa telepono. Kung emergency, tawagan kami.',
       bannerVariant: 'failed' as const,
       receiverText: undefined,
       primaryButton: 'Try again',
@@ -125,7 +128,14 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
           {variant.headline}
         </StatusBanner>
 
-        <p className="reveal-subheadline">{variant.subline}</p>
+        <p className="reveal-subheadline">
+          {variant.subline}
+          {variant.sublineTl ? (
+            <span className="tl-hint" style={{ display: 'block', marginTop: '0.25rem' }}>
+              {variant.sublineTl}
+            </span>
+          ) : null}
+        </p>
 
         <div
           className={`reveal-ref-box${state === 'queued' ? ' reveal-ref-box--queued' : state === 'failed_retryable' ? ' reveal-ref-box--failed' : ''}`}

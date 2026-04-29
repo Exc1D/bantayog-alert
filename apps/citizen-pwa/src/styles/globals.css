@@ -397,11 +397,14 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
+  max-height: 90svh;
+  overflow-y: auto;
   background: white;
   border-radius: 1.5rem 1.5rem 0 0;
   padding: 1.25rem;
   pointer-events: auto;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  animation: revealSlideUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .reveal-handle {
@@ -500,6 +503,15 @@ body {
 
 .reveal-secondary-btn {
   margin-top: 0.5rem;
+}
+
+@keyframes revealSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes pulse {
