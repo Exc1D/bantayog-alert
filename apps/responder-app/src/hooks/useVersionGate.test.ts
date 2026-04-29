@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { semverLt } from './useVersionGate'
+import { semverLt } from '@bantayog/shared-validators'
 
 describe('semverLt', () => {
   it('returns true when a is older than b', () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('../app/firebase', () => ({ db: {} }))
 
-import { semverLt } from './useVersionGate'
+import { semverLt } from '@bantayog/shared-validators'
 
 describe('semverLt', () => {
   it('returns true when a is older than b', () => {
