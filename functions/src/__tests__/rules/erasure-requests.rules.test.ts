@@ -13,9 +13,8 @@ const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/fire
 
 let env: RulesTestEnvironment | undefined
 
-const citizenToken = { uid: 'uid-citizen', role: 'citizen', accountStatus: 'active' }
+const citizenToken = { role: 'citizen', accountStatus: 'active' }
 const superadminToken = {
-  uid: 'uid-admin',
   role: 'provincial_superadmin',
   accountStatus: 'active',
   mfaVerified: true,
