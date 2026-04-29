@@ -96,7 +96,10 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
       </div>
 
       <h2 className="step-title">What&apos;s happening?</h2>
-      <p className="step-subtitle">Add a photo and choose the type</p>
+      <p className="step-subtitle">
+        Add a photo and choose the incident type.
+        <span className="tl-hint">Magdagdag ng larawan at piliin ang uri ng insidente.</span>
+      </p>
 
       <div className="camera-viewfinder">
         {photoFile ? (
@@ -105,14 +108,14 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
           ) : (
             <div className="camera-placeholder">
               <p className="camera-placeholder-text">{photoFile.name}</p>
-              <p className="camera-caption">Photo selected</p>
+              <p className="camera-caption">Napili na ang larawan</p>
             </div>
           )
         ) : (
           <div className="camera-placeholder">
-            <p className="camera-placeholder-text">Camera viewfinder</p>
+            <p className="camera-placeholder-text">Tap to add a photo of the incident</p>
             <div className="camera-circle" />
-            <p className="camera-caption">Tap to capture</p>
+            <p className="camera-caption">Larawan ng insidente</p>
           </div>
         )}
         <div className="camera-btn">
@@ -132,8 +135,9 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
           setPhotoFile(null)
         }}
         className="no-photo-link"
+        aria-label="Skip photo and continue without one"
       >
-        No photo — continue without
+        Skip photo — continue without
       </button>
       <input
         id="photo-input"
@@ -145,7 +149,10 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
       />
 
       <div className="field-group">
-        <p className="field-label">Type of incident</p>
+        <p className="field-label">
+          Type of incident
+          <span className="tl-hint">Uri ng insidente — piliin ang pinakamalapit</span>
+        </p>
         <div className="type-grid">
           {INCIDENT_TYPES.map(({ value, label, Icon }) => (
             <button

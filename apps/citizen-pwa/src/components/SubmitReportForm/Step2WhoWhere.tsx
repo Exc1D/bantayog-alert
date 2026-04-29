@@ -155,11 +155,14 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       </div>
 
       <h2 className="step-title">Where and who?</h2>
-      <p className="step-subtitle">All fields below are required</p>
+      <p className="step-subtitle">
+        Help responders reach you faster by sharing your location.
+        <span className="tl-hint">Tulungan ang mga rescuer na mahanap kayo nang mas mabilis.</span>
+      </p>
 
       {locationMethod === null && !gpsLoading ? (
         <div className="location-picker-start">
-          <p className="location-picker-prompt">How would you like to provide your location?</p>
+          <p className="location-picker-prompt">How are you sharing your location?</p>
           <button
             type="button"
             className="location-picker-btn"
@@ -178,7 +181,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
             }}
           >
             <MapPin size={18} />
-            <span>Choose municipality manually</span>
+            <span>Pick my municipality on the map</span>
           </button>
         </div>
       ) : null}

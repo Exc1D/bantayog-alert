@@ -634,10 +634,24 @@ body {
 
 .field-group--urgent {
   background: var(--color-surface-warn);
-  border: 1px solid var(--color-border-warn);
-  border-left: 3px solid var(--color-failed-fg);
+  border: 2px solid var(--color-failed-fg);
   border-radius: 0.5rem;
   padding: 0.75rem;
+}
+
+.tl-hint {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: 0.125rem;
+}
+
+.memory-hint {
+  font-size: 0.6875rem;
+  color: var(--color-success-fg);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
 }
 
 .type-grid {
