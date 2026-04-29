@@ -7,6 +7,8 @@ import { auth } from './app/firebase'
 import { useRegisterFcmToken } from './hooks/useRegisterFcmToken'
 import { useOwnDispatches } from './hooks/useOwnDispatches'
 import { useResponderTelemetry } from './hooks/useResponderTelemetry'
+import { VersionGate } from './components/VersionGate'
+import { PrivacyNoticeModal } from './components/PrivacyNoticeModal'
 
 function FcmSetup() {
   const { user } = useAuth()
@@ -46,12 +48,21 @@ function TelemetryProvider() {
   return null
 }
 
+function PrivacyGate() {
+  const { user } = useAuth()
+  if (!user) return null
+  return <PrivacyNoticeModal uid={user.uid} />
+}
+
 export default function App() {
   return (
-    <AuthProvider auth={auth}>
-      <FcmSetup />
-      <TelemetryProvider />
-      <AppRouter />
-    </AuthProvider>
+    <VersionGate>
+      <AuthProvider auth={auth}>
+        <PrivacyGate />
+        <FcmSetup />
+        <TelemetryProvider />
+        <AppRouter />
+      </AuthProvider>
+    </VersionGate>
   )
 }
