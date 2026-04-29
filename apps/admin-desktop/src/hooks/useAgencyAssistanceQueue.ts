@@ -128,7 +128,7 @@ export function useAgencyAssistanceQueue(agencyId: string | undefined) {
         setBackupReady(true)
       },
       (err) => {
-        setError(err.message)
+        setError((prev) => prev ?? err.message)
         setBackupReady(true)
       },
     )
