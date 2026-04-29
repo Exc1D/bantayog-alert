@@ -11,17 +11,16 @@ export async function auditExportBatchCore(opts: {
 }): Promise<{ exported: number }> {
   const [entries] = await opts.loggingLog.getEntries({ pageSize: 500 })
   if (entries.length === 0) return { exported: 0 }
-  const rows = entries.map(
-    (e: {
-      metadata?: { logName?: unknown; resource?: unknown; timestamp?: unknown }
-      data?: unknown
-    }) => ({
-      logName: e.metadata?.logName,
-      resource: JSON.stringify(e.metadata?.resource),
-      payload: JSON.stringify(e.data),
-      timestamp: e.metadata?.timestamp,
-    }),
-  )
+  interface LogEntry {
+    metadata?: { logName?: unknown; resource?: unknown; timestamp?: unknown }
+    data?: unknown
+  }
+  const rows = (entries as LogEntry[]).map((e) => ({
+    logName: e.metadata?.logName,
+    resource: JSON.stringify(e.metadata?.resource),
+    payload: JSON.stringify(e.data),
+    timestamp: e.metadata?.timestamp,
+  }))
   try {
     await opts.bqTable.insert(rows)
   } catch (err) {
