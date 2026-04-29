@@ -2,7 +2,7 @@
 /**
  * Idempotent staff provisioning for the Bantayog Alert pilot.
  * Creates Firebase Auth accounts, sets custom claims, writes active_accounts docs,
- * and generates password-reset links.
+ * and generates password-reset links (links are logged to stdout).
  *
  * Usage:
  *   npx tsx scripts/provision-pilot-staff.ts \
@@ -36,11 +36,27 @@ const adminDb = getFirestore()
 
 type StaffRole = 'municipal_admin' | 'agency_admin' | 'provincial_superadmin' | 'responder'
 
+const VALID_ROLES: StaffRole[] = [
+  'municipal_admin',
+  'agency_admin',
+  'provincial_superadmin',
+  'responder',
+]
+
 interface StaffRow {
   email: string
   role: StaffRole
   municipalityId: string
   agencyId: string
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function assertStaffRole(value: string): StaffRole {
+  if (!VALID_ROLES.includes(value as StaffRole)) {
+    throw new Error(`Invalid role "${value}". Expected one of: ${VALID_ROLES.join(', ')}`)
+  }
+  return value as StaffRole
 }
 
 async function readCsv(path: string): Promise<StaffRow[]> {
@@ -55,6 +71,12 @@ async function readCsv(path: string): Promise<StaffRow[]> {
     const cols = trimmed.split(',').map((s) => s.trim())
     if (isFirst) {
       headers = cols
+      const required = ['email', 'role']
+      for (const h of required) {
+        if (!headers.includes(h)) {
+          throw new Error(`CSV missing required header: "${h}". Found: ${headers.join(', ')}`)
+        }
+      }
       isFirst = false
       continue
     }
@@ -62,9 +84,14 @@ async function readCsv(path: string): Promise<StaffRow[]> {
     headers.forEach((h, i) => {
       row[h] = cols[i] ?? ''
     })
+    const email = row['email'] ?? ''
+    const roleRaw = row['role'] ?? 'responder'
+    if (!EMAIL_RE.test(email)) {
+      throw new Error(`Invalid email "${email}" in row: ${JSON.stringify(row)}`)
+    }
     rows.push({
-      email: row['email'] ?? '',
-      role: (row['role'] ?? 'responder') as StaffRole,
+      email,
+      role: assertStaffRole(roleRaw),
       municipalityId: row['municipalityId'] ?? '',
       agencyId: row['agencyId'] ?? '',
     })
@@ -129,7 +156,8 @@ async function provisionRow(row: StaffRow): Promise<RowResult> {
         { merge: true },
       )
 
-    await adminAuth.generatePasswordResetLink(email)
+    const resetLink = await adminAuth.generatePasswordResetLink(email)
+    console.log(`[INFO] Reset link for ${email}: ${resetLink}`)
 
     return { email, status, uid }
   } catch (err) {
@@ -151,10 +179,9 @@ async function main(): Promise<void> {
     const result = await provisionRow(row)
     results.push(result)
     const icon = result.status === 'failed' ? 'FAIL' : 'ok'
-    const detail =
-      result.error
-        ? ` — ${result.error}`
-        : ` (uid: ${result.uid ?? 'n/a'}, ${result.status})`
+    const detail = result.error
+      ? ` — ${result.error}`
+      : ` (uid: ${result.uid ?? 'n/a'}, ${result.status})`
     console.log(`[${icon}] ${result.email}${detail}`)
   }
 
@@ -167,7 +194,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `\n${results.length} account(s) provisioned. Staff must set passwords via reset link.`,
+    `\n${results.length} account(s) provisioned. Password reset links logged above — distribute securely to staff.`,
   )
 }
 
