@@ -522,6 +522,7 @@ Signs the pre-approved pilot-launch statement. Scan and store as `docs/pilot-lau
 ## 8. Deferred Items (Out of Phase 9 Scope)
 
 - Anonymous feature-phone SMS onboarding (blocked: RA 10173 §16 erasure gap)
+- PAGASA webhook tier: the official PAGASA-provided webhook API is not yet coordinated. The scraper (15-min poll) and manual toggle tiers were built and validated in Phase 8 and deploy to prod as part of Track 1. The webhook tier remains deferred pending PAGASA coordination; it is not a pilot-launch gate. Prod PAGASA coverage at launch = scraper + manual toggle only.
 - Phase 10: Hazard & Geoanalytics
 - Phase 11: Independent-citizen field drill; 72-hour breach drill; capability contract tests; training curriculum
 - Privacy notice active re-consent on version bump (v2 backlog)
