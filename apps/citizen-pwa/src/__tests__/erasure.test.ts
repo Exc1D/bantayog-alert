@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const mockCallable = vi.fn()
-const mockSignOut = vi.fn()
+const { mockCallable, mockSignOut } = vi.hoisted(() => ({
+  mockCallable: vi.fn(),
+  mockSignOut: vi.fn(),
+}))
 vi.mock('../services/firebase.js', () => ({
   fns: vi.fn(),
   auth: vi.fn(),
@@ -12,6 +14,8 @@ vi.mock('firebase/auth', () => ({ signOut: mockSignOut }))
 import { requestDataErasureAndSignOut } from '../services/erasure.js'
 
 beforeEach(() => {
+  mockCallable.mockClear()
+  mockSignOut.mockClear()
   mockCallable.mockResolvedValue({ data: {} })
   mockSignOut.mockResolvedValue(undefined)
 })
