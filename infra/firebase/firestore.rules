@@ -496,8 +496,25 @@ service cloud.firestore {
     }
 
     match /erasure_requests/{id} {
-      allow read: if isSuperadmin() && isActivePrivileged();
-      allow write: if false;
+      allow create: if isAuthed()
+                    && request.auth.uid == request.resource.data.citizenUid
+                    && request.resource.data.status == 'pending_review';
+      allow read: if (isAuthed() && request.auth.uid == resource.data.citizenUid)
+                  || (isSuperadmin() && isActivePrivileged());
+      // All other writes (status transitions, legalHold) are service-account only.
+      allow update, delete: if false;
+
+      match /auditLog/{eventId} {
+        allow read: if isSuperadmin() && isActivePrivileged();
+        allow write: if false;
+      }
+    }
+
+    match /erasure_active/{citizenUid} {
+      allow create: if isAuthed() && request.auth.uid == citizenUid;
+      allow read: if (isAuthed() && request.auth.uid == citizenUid)
+                  || (isSuperadmin() && isActivePrivileged());
+      allow update, delete: if false;
     }
 
     match /system_health/{id} {
