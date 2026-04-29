@@ -1,5 +1,13 @@
 # Learnings — Durable Rules
 
+## Citizen PWA / React Hooks
+
+- `react-hooks/set-state-in-effect` fires on synchronous `setState` inside `useEffect` early-return branches. Add `// eslint-disable-next-line react-hooks/set-state-in-effect` only where needed — `eslint --fix` (run by lint-staged) will remove unused disable directives automatically after running.
+- `vi.mock` at module top level does NOT cover newly routed components — add mocks for every new route's component in `App.routes.test.tsx` when replacing stub routes.
+- Passing navigation callbacks as props (e.g., `onReportSimilar={() => void navigate(...)}`) avoids `useNavigate` being called in components tested without a Router context — the pattern is cleaner than wrapping every test with a MemoryRouter.
+- `subscribeAlerts` from `@bantayog/shared-firebase` takes a raw `Firestore` instance; the citizen-pwa's `db()` helper satisfies this directly.
+- RevealSheet: spring-eased slide-up (`cubic-bezier(0.34, 1.56, 0.64, 1)`) + `max-height: 90svh` scroll guard are the minimum polish required on any bottom-sheet component.
+
 ## Process
 
 - Re-read files after edits/subagents/compaction. Disk is truth.

@@ -1,6 +1,23 @@
 # Progress
 
-## Current — Phase 8C — RA 10173 Erasure & Anonymization
+## Current — Phase 9 Citizen PWA Redesign (branch: feat/citizen-pwa-redesign)
+
+### Citizen PWA — All 6 Screens — COMPLETE
+
+| Screen         | Status  | Notes                                                                          |
+| -------------- | ------- | ------------------------------------------------------------------------------ |
+| 1. Report Form | ✅ DONE | Border fix, .tl-hint class, Tagalog hints on all 3 steps, bilingual CTA        |
+| 2. Map Tab     | ✅ DONE | Chip FilterBar, severity dot PeekSheet, severity badge DetailSheet             |
+| 3. Feed Tab    | ✅ DONE | FeedCard, SkeletonCard, chip filters, /incidents/:id deep-link                 |
+| 4. Profile Tab | ✅ DONE | My Reports list (useMyActiveReports), status badges, DeleteAccountFlow section |
+| 5. Alerts Tab  | ✅ DONE | useAlerts → subscribeAlerts, severity sort, loading/empty states               |
+| 6. RevealSheet | ✅ DONE | Slide-up animation, max-height scroll guard, Tagalog sublines                  |
+
+**New components/hooks:** FeedTab, IncidentDetailPage, ProfileTab, AlertsTab, useIncident, useAlerts
+
+---
+
+## Phase 8C — RA 10173 Erasure & Anonymization
 
 ### 8C — RA 10173 Erasure Execution — COMPLETE
 
