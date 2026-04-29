@@ -143,14 +143,19 @@ export function TrackingScreen() {
           <RefreshCw size={14} style={{ marginRight: '4px' }} />
           Update report
         </Button>
-        <Button
-          variant="primary"
-          fullWidth
-          onClick={() => (window.location.href = `tel:${RESPONDER_PHONE_NUMBER}`)}
+        <a
+          href={`tel:${RESPONDER_PHONE_NUMBER}`}
+          className="btn btn--primary btn--full"
+          style={{
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <PhoneCall size={14} style={{ marginRight: '4px' }} />
           Call responders
-        </Button>
+        </a>
       </div>
 
       {report.status === 'resolved' ? (

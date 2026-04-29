@@ -50,6 +50,7 @@ export function PrivacyNoticeModal({ uid }: Props) {
       }}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="privacy-notice-title"
     >
       <div
         style={{
@@ -62,7 +63,10 @@ export function PrivacyNoticeModal({ uid }: Props) {
           overflowY: 'auto',
         }}
       >
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>
+        <h2
+          id="privacy-notice-title"
+          style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}
+        >
           Abiso sa Pagprotekta ng Datos / Data Privacy Notice
         </h2>
         <p style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '0.75rem' }}>

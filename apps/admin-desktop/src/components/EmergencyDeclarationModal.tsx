@@ -77,10 +77,20 @@ const IMPACT_NOTE_STYLE: React.CSSProperties = {
   marginTop: '12px',
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string
+  htmlFor?: string
+  children: React.ReactNode
+}) {
   return (
     <div style={{ marginBottom: '16px' }}>
-      <label style={LABEL_STYLE}>{label}</label>
+      <label htmlFor={htmlFor} style={LABEL_STYLE}>
+        {label}
+      </label>
       {children}
     </div>
   )
@@ -211,8 +221,12 @@ export function EmergencyDeclarationModal({ open, onClose }: EmergencyDeclaratio
               />
             </FieldGroup>
 
-            <FieldGroup label="Affected Municipalities * (hold Ctrl/Cmd to select multiple)">
+            <FieldGroup
+              label="Affected Municipalities * (hold Ctrl/Cmd to select multiple)"
+              htmlFor="affected-municipalities"
+            >
               <select
+                id="affected-municipalities"
                 ref={selectRef}
                 multiple
                 size={8}
