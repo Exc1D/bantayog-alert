@@ -52,12 +52,10 @@ export async function approveErasureRequestCore(
     return
   }
 
-  // Deny path: re-enable Auth → update doc + delete sentinel → rollback on failure.
+  // Deny path: update doc + delete sentinel FIRST, then re-enable Auth.
   const snap = await requestRef.get()
   if (!snap.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
   const citizenUid = snap.data()?.citizenUid as string
-
-  await auth.updateUser(citizenUid, { disabled: false })
 
   try {
     await db.runTransaction(async (tx) => {
@@ -78,12 +76,17 @@ export async function approveErasureRequestCore(
   } catch (err: unknown) {
     // Re-throw domain errors (not-found, failed-precondition) as-is.
     if (err instanceof HttpsError) throw err
-    // Doc write failed after Auth was re-enabled — re-disable Auth as rollback.
-    await auth.updateUser(citizenUid, { disabled: true }).catch((rollbackErr: unknown) => {
-      // Log but don't throw — the original error takes precedence.
-      console.error('CRITICAL: rollback re-disable failed for', citizenUid, rollbackErr)
-    })
-    throw new HttpsError('internal', 'deny_write_failed')
+    const originalReason = err instanceof Error ? err.message : String(err)
+    throw new HttpsError('internal', `deny_write_failed: ${originalReason}`)
+  }
+
+  // Re-enable Auth after successful denial.
+  try {
+    await auth.updateUser(citizenUid, { disabled: false })
+  } catch (reEnableErr: unknown) {
+    const reason = reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr)
+    console.error('CRITICAL: Auth re-enable failed after erasure denial for', citizenUid, reason)
+    throw new HttpsError('internal', `auth_reenable_failed_after_deny: ${reason}`)
   }
 
   void streamAuditEvent({

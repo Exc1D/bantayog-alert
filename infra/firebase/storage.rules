@@ -24,8 +24,7 @@ service firebase.storage {
       // Firestore for report ownership. Future fix: embed owner UID in object
       // metadata and validate against request.auth.uid.
       allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
-                  || (isSuperadmin() && municipalityId in permittedMunis())
-                  || isCitizen();
+                  || (isSuperadmin() && municipalityId in permittedMunis());
       allow write: if false;
     }
 
