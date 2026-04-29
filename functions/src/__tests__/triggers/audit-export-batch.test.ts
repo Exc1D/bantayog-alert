@@ -43,4 +43,25 @@ describe('auditExportBatchCore', () => {
       }),
     ])
   })
+
+  // Gap 7: BQ insert failure silent-swallow
+  it('returns exported count even when BigQuery insert fails', async () => {
+    mockGetEntries.mockResolvedValueOnce([
+      [
+        {
+          metadata: { logName: 'test-log', resource: {}, timestamp: '2024-01-01T00:00:00Z' },
+          data: {},
+        },
+      ],
+    ])
+    mockInsert.mockRejectedValueOnce(new Error('bq insert failed'))
+
+    const result = await auditExportBatchCore({
+      bqTable: { insert: mockInsert },
+      loggingLog: { getEntries: mockGetEntries },
+    })
+
+    expect(result.exported).toBe(1)
+    expect(mockInsert).toHaveBeenCalled()
+  })
 })

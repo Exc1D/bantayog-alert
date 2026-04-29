@@ -56,4 +56,22 @@ describe('auditExportHealthCheckCore', () => {
       }),
     )
   })
+
+  // Gap 6: Batch gap threshold (900s) not tested
+  it('marks unhealthy when batch gap exceeds 900s threshold', async () => {
+    const now = 1713350400000
+    mockQuery
+      .mockResolvedValueOnce([[{ lastAt: { value: String(now - 30000) } }]])
+      .mockResolvedValueOnce([[{ lastAt: { value: new Date(now - 1000000).toISOString() } }]])
+
+    const { db, messaging } = createMockDeps()
+    const result = await auditExportHealthCheckCore(db, messaging, {
+      query: mockQuery,
+      now: () => now,
+    })
+
+    expect(result.healthy).toBe(false)
+    expect(result.batchGapSeconds).toBeGreaterThanOrEqual(900)
+    expect(mockSend).toHaveBeenCalled()
+  })
 })

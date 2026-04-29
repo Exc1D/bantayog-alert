@@ -39,4 +39,30 @@ describe('streamAuditEvent', () => {
       }),
     ).resolves.toBeUndefined()
   })
+
+  // Gap 9: Full AuditStreamEvent contract
+  it('forwards all event fields to BigQuery', async () => {
+    mockInsert.mockResolvedValueOnce(undefined)
+    await streamAuditEvent({
+      eventType: 'erasure_completed',
+      actorUid: 'system',
+      sessionId: 'sess-1',
+      targetCollection: 'reports',
+      targetDocumentId: 'doc-1',
+      metadata: { reason: 'test' },
+      occurredAt: 1713350400000,
+    })
+
+    expect(mockInsert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        eventType: 'erasure_completed',
+        actorUid: 'system',
+        sessionId: 'sess-1',
+        targetCollection: 'reports',
+        targetDocumentId: 'doc-1',
+        metadata: { reason: 'test' },
+        occurredAt: 1713350400000,
+      }),
+    ])
+  })
 })

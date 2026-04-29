@@ -58,7 +58,7 @@ export async function sweepExpiredBreakGlassSessionsCore(
         stack,
       })
       result.failed++
-      throw err
+      continue
     }
   }
 

@@ -55,7 +55,7 @@ export function useBreakGlass() {
             loading: false,
           })
         }
-      } catch (err) {
+      } catch (err: unknown) {
         if (!unmountedRef.current) {
           setState({
             active: false,
@@ -86,7 +86,7 @@ export function useBreakGlass() {
           loading: false,
         })
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (!unmountedRef.current) {
         setState({
           active: false,
