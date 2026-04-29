@@ -135,9 +135,9 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
           setPhotoFile(null)
         }}
         className="no-photo-link"
-        aria-label="Skip photo and continue without one"
+        aria-label="Skip photo for now"
       >
-        Skip photo — continue without
+        Skip photo for now
       </button>
       <input
         id="photo-input"
