@@ -57,6 +57,7 @@ export async function sweepExpiredBreakGlassSessionsCore(
         message,
         stack,
       })
+      // Log, count failure, and CONTINUE to next session — one bad session must not block the sweep
       result.failed++
       continue
     }

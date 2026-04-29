@@ -25,6 +25,9 @@ export async function auditExportBatchCore(opts: {
     await opts.bqTable.insert(rows)
   } catch (err: unknown) {
     console.warn('[audit-export-batch] insert failed', err)
+    throw err instanceof Error
+      ? new Error(`BigQuery insert failed: ${err.message}`)
+      : new Error('BigQuery insert failed')
   }
   return { exported: rows.length }
 }

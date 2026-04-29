@@ -74,7 +74,7 @@ export async function auditExportHealthCheckCore(
           body: `Streaming gap: ${String(streamingGapSeconds)}s · Batch gap: ${String(batchGapSeconds)}s`,
         },
       })
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[audit-export-health-check] failed to send FCM alert', {
         streamingGapSeconds,
         batchGapSeconds,
