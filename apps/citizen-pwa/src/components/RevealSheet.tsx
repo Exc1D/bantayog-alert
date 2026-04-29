@@ -114,7 +114,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
         role="button"
         aria-label="Close"
         tabIndex={0}
-        onClick={state === 'success' ? onClose : undefined}
+        onClick={onClose}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()

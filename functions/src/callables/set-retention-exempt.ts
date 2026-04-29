@@ -28,7 +28,7 @@ export async function setRetentionExemptCore(
   }
   const docData = docSnap.data() as Record<string, unknown>
   const docMunicipalityId = docData.municipalityId as string | undefined
-  if (docMunicipalityId && !actor.permittedMunicipalityIds.includes(docMunicipalityId)) {
+  if (!docMunicipalityId || !actor.permittedMunicipalityIds.includes(docMunicipalityId)) {
     throw new HttpsError('permission-denied', 'municipality_not_permitted')
   }
   await docRef.update({
@@ -53,7 +53,9 @@ export const setRetentionExempt = onCall(
     const { uid, claims } = requireAuth(request, ['superadmin'])
     requireMfaAuth(request)
     const permittedMunicipalityIds = Array.isArray(claims.permittedMunicipalityIds)
-      ? (claims.permittedMunicipalityIds as string[])
+      ? (claims.permittedMunicipalityIds as unknown[]).filter(
+          (v): v is string => typeof v === 'string',
+        )
       : []
     await setRetentionExemptCore(getFirestore(), request.data, { uid, permittedMunicipalityIds })
   },

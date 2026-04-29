@@ -48,14 +48,14 @@ export async function auditExportHealthCheckCore(
     { timeoutMs: 30000 },
   )
   const lastStreamMs = extractTimestampMs(streamRows)
-  const streamingGapSeconds = Math.floor((now - lastStreamMs) / 1000)
+  const streamingGapSeconds = Math.max(0, Math.floor((now - lastStreamMs) / 1000))
 
   const [batchRows] = await opts.query(
     'SELECT MAX(timestamp) as lastAt FROM bantayog_audit.batch_events',
     { timeoutMs: 30000 },
   )
   const lastBatchMs = extractTimestampMs(batchRows)
-  const batchGapSeconds = Math.floor((now - lastBatchMs) / 1000)
+  const batchGapSeconds = Math.max(0, Math.floor((now - lastBatchMs) / 1000))
 
   const healthy = streamingGapSeconds < 60 && batchGapSeconds < 900
   await db.doc('system_health/latest').set({

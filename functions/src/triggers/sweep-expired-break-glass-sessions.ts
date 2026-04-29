@@ -27,7 +27,14 @@ export async function sweepExpiredBreakGlassSessionsCore(
     .get()
 
   for (const doc of snap.docs) {
-    const { actorUid, sessionId } = doc.data() as { actorUid: string; sessionId: string }
+    const data = doc.data()
+    const actorUid = typeof data.actorUid === 'string' ? data.actorUid : undefined
+    const sessionId = typeof data.sessionId === 'string' ? data.sessionId : undefined
+    if (!actorUid || !sessionId) {
+      console.error('[sweep-break-glass] malformed document', doc.id)
+      result.failed++
+      continue
+    }
     try {
       const userRecord = await input.auth.getUser(actorUid)
       const currentClaims = userRecord.customClaims ?? {}

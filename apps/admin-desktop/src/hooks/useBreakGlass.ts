@@ -33,14 +33,27 @@ export function useBreakGlass() {
 
   const initiateSession = useCallback(
     async (codeA: string, codeB: string, reason: string): Promise<void> => {
+      const normalizedCodeA = codeA.trim()
+      const normalizedCodeB = codeB.trim()
+      const normalizedReason = reason.trim()
+      if (!normalizedCodeA || !normalizedCodeB || !normalizedReason) {
+        if (!unmountedRef.current) {
+          setState((s) => ({
+            ...s,
+            error: 'Code A, Code B, and reason are required',
+            loading: false,
+          }))
+        }
+        return
+      }
       if (!unmountedRef.current) {
         setState((s) => ({ ...s, loading: true, error: null }))
       }
       try {
         const { sessionId } = await callables.initiateBreakGlass({
-          codeA,
-          codeB,
-          reason,
+          codeA: normalizedCodeA,
+          codeB: normalizedCodeB,
+          reason: normalizedReason,
         })
         // Force token refresh so custom claims take effect immediately.
         // Without this, the client JWT still carries the pre-session claims
@@ -88,13 +101,11 @@ export function useBreakGlass() {
       }
     } catch (err: unknown) {
       if (!unmountedRef.current) {
-        setState({
-          active: false,
-          sessionId: null,
-          expiresAt: null,
+        setState((s) => ({
+          ...s,
           error: err instanceof Error ? err.message : 'Deactivation failed',
           loading: false,
-        })
+        }))
       }
     }
   }, [auth])

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { sweepExpiredBreakGlassSessionsCore } from '../../triggers/sweep-expired-break-glass-sessions.js'
@@ -36,7 +36,7 @@ afterEach(async () => {
 describe('sweepExpiredBreakGlassSessionsCore', () => {
   it('expires initiated sessions past their expiration and clears claims', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as any // eslint-disable-line @typescript-eslint/no-explicit-any
       const { getAuth } = await import('firebase-admin/auth')
       const now = Date.now()
       await db
@@ -65,7 +65,7 @@ describe('sweepExpiredBreakGlassSessionsCore', () => {
 
   it('skips sessions that have not yet expired', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as any // eslint-disable-line @typescript-eslint/no-explicit-any
       const { getAuth } = await import('firebase-admin/auth')
       const now = Date.now()
       await db
@@ -89,7 +89,7 @@ describe('sweepExpiredBreakGlassSessionsCore', () => {
 
   it('counts failure but continues loop when setCustomUserClaims fails', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as any // eslint-disable-line @typescript-eslint/no-explicit-any
       const { getAuth } = await import('firebase-admin/auth')
       const now = Date.now()
       await db
@@ -127,7 +127,7 @@ describe('sweepExpiredBreakGlassSessionsCore', () => {
   // Gap 1: getUser throwing (e.g., deleted user)
   it('counts failure but continues when getUser throws', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as any // eslint-disable-line @typescript-eslint/no-explicit-any
       const { getAuth } = await import('firebase-admin/auth')
       const now = Date.now()
       await db
@@ -165,7 +165,7 @@ describe('sweepExpiredBreakGlassSessionsCore', () => {
   // Gap 2: setCustomUserClaims succeeds but doc update fails
   it('counts failure when doc update fails after claims are cleared', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as any // eslint-disable-line @typescript-eslint/no-explicit-any
       const { getAuth } = await import('firebase-admin/auth')
       const now = Date.now()
       await db
@@ -179,10 +179,10 @@ describe('sweepExpiredBreakGlassSessionsCore', () => {
           createdAt: now - 2000,
         })
 
-      const originalUpdate = db.collection('breakglass_events').doc('event-7').update
-      db.collection('breakglass_events').doc('event-7').update = vi
-        .fn()
-        .mockRejectedValueOnce(new Error('doc update failed'))
+      const docRef = db.collection('breakglass_events').doc('event-7')
+      const DocRefProto = Object.getPrototypeOf(docRef)
+      const originalUpdate = DocRefProto.update
+      DocRefProto.update = vi.fn().mockRejectedValueOnce(new Error('doc update failed'))
 
       const result = await sweepExpiredBreakGlassSessionsCore({ db, auth: getAuth() })
       expect(result.expired).toBe(0)
@@ -192,14 +192,14 @@ describe('sweepExpiredBreakGlassSessionsCore', () => {
       expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user-7', { role: 'superadmin' })
 
       // Restore original update for cleanup
-      db.collection('breakglass_events').doc('event-7').update = originalUpdate
+      DocRefProto.update = originalUpdate
     })
   })
 
   // Gap 8: deactivated action state exclusion
   it('does not auto-expire deactivated sessions', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as any // eslint-disable-line @typescript-eslint/no-explicit-any
       const { getAuth } = await import('firebase-admin/auth')
       const now = Date.now()
       await db

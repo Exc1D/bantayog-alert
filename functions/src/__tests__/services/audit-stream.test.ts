@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockInsert = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 
@@ -15,6 +15,10 @@ vi.mock('@google-cloud/bigquery', () => ({
 }))
 
 import { streamAuditEvent } from '../../services/audit-stream.js'
+
+beforeEach(() => {
+  mockInsert.mockClear()
+})
 
 describe('streamAuditEvent', () => {
   it('inserts the event into BigQuery without throwing on success', async () => {

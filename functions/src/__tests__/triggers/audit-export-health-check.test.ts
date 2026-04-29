@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Firestore } from 'firebase-admin/firestore'
 import type { Messaging } from 'firebase-admin/messaging'
 
-const mockQuery = vi.fn()
-const mockSet = vi.fn().mockResolvedValue(undefined)
-const mockSend = vi.fn().mockResolvedValue(undefined)
+const mockQuery = vi.hoisted(() => vi.fn())
+const mockSet = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockSend = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 
 function createMockDeps() {
   const db = {
@@ -17,6 +17,12 @@ function createMockDeps() {
 }
 
 import { auditExportHealthCheckCore } from '../../triggers/audit-export-health-check.js'
+
+beforeEach(() => {
+  mockQuery.mockReset()
+  mockSet.mockClear()
+  mockSend.mockClear()
+})
 
 describe('auditExportHealthCheckCore', () => {
   it('marks healthy when gaps are within thresholds', async () => {

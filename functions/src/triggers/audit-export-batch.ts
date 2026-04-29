@@ -7,9 +7,17 @@ const logging = new Logging()
 
 export async function auditExportBatchCore(opts: {
   bqTable: { insert(rows: unknown[]): Promise<unknown> }
-  loggingLog: { getEntries(options: { pageSize: number }): Promise<[unknown[], ...unknown[]]> }
+  loggingLog: {
+    getEntries(options: { pageSize: number; filter?: string }): Promise<[unknown[], ...unknown[]]>
+  }
+  now?: () => number
 }): Promise<{ exported: number }> {
-  const [entries] = await opts.loggingLog.getEntries({ pageSize: 500 })
+  const now = opts.now ? opts.now() : Date.now()
+  const sixMinutesAgo = new Date(now - 6 * 60 * 1000).toISOString()
+  const [entries] = await opts.loggingLog.getEntries({
+    pageSize: 500,
+    filter: `timestamp >= "${sixMinutesAgo}"`,
+  })
   if (entries.length === 0) return { exported: 0 }
   interface LogEntry {
     metadata?: { logName?: unknown; resource?: unknown; timestamp?: unknown }

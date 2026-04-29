@@ -1,9 +1,34 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mockInsert = vi.fn().mockResolvedValue(undefined)
-const mockGetEntries = vi.fn().mockResolvedValue([[]])
+const mockInsert = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockGetEntries = vi.hoisted(() => vi.fn().mockResolvedValue([[]]))
+
+vi.mock('@google-cloud/logging', () => ({
+  Logging: class {
+    log() {
+      return { getEntries: mockGetEntries }
+    }
+  },
+}))
+
+vi.mock('@google-cloud/bigquery', () => ({
+  BigQuery: class {
+    dataset() {
+      return {
+        table() {
+          return { insert: mockInsert }
+        },
+      }
+    }
+  },
+}))
 
 import { auditExportBatchCore } from '../../triggers/audit-export-batch.js'
+
+beforeEach(() => {
+  mockInsert.mockClear()
+  mockGetEntries.mockClear()
+})
 
 describe('auditExportBatchCore', () => {
   it('returns 0 when no log entries exist', async () => {

@@ -53,18 +53,16 @@ export async function approveErasureRequestCore(
   }
 
   // Deny path: update doc + delete sentinel FIRST, then re-enable Auth.
-  const snap = await requestRef.get()
-  if (!snap.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
-  const citizenUid = snap.data()?.citizenUid as string
-
+  let citizenUid: string
   try {
-    await db.runTransaction(async (tx) => {
+    citizenUid = await db.runTransaction(async (tx) => {
       const fresh = await tx.get(requestRef)
       if (!fresh.exists) throw new HttpsError('not-found', 'erasure_request_not_found')
       if (fresh.data()?.status !== 'pending_review') {
         throw new HttpsError('failed-precondition', 'erasure_already_reviewed')
       }
-      const sentinelRef = db.collection('erasure_active').doc(citizenUid)
+      const uid = fresh.data()?.citizenUid as string
+      const sentinelRef = db.collection('erasure_active').doc(uid)
       tx.update(requestRef, {
         status: 'denied',
         reviewedBy: actor.uid,
@@ -72,6 +70,7 @@ export async function approveErasureRequestCore(
         ...(data.reason ? { reviewReason: data.reason } : {}),
       })
       tx.delete(sentinelRef)
+      return uid
     })
   } catch (err: unknown) {
     // Re-throw domain errors (not-found, failed-precondition) as-is.
@@ -86,6 +85,12 @@ export async function approveErasureRequestCore(
   } catch (reEnableErr: unknown) {
     const reason = reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr)
     console.error('CRITICAL: Auth re-enable failed after erasure denial for', citizenUid, reason)
+    // Persist remediation state so ops can find and fix the locked-out citizen
+    await requestRef.update({
+      status: 'denied_remediation_required',
+      remediationReason: `auth_reenable_failed: ${reason}`,
+      remediationRequiredAt: Date.now(),
+    })
     throw new HttpsError('internal', `auth_reenable_failed_after_deny: ${reason}`)
   }
 

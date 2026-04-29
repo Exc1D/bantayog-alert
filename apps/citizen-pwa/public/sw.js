@@ -10,7 +10,9 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((cacheNames) =>
         Promise.all(
-          cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name)),
+          cacheNames
+            .filter((name) => name.startsWith('bantayog-shell-') && name !== CACHE_NAME)
+            .map((name) => caches.delete(name)),
         ),
       )
       .then(() => self.clients.claim()),
@@ -27,6 +29,11 @@ self.addEventListener('fetch', (event) => {
         }
         return response
       })
-      .catch(() => caches.match(event.request)),
+      .catch((err) => {
+        if (event.request.method === 'GET') {
+          return caches.match(event.request)
+        }
+        throw err
+      }),
   )
 })
