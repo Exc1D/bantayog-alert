@@ -34,7 +34,7 @@ Adapt the reference design (`Downloads/Citizen_PWA`) as the visual shell for the
 - All Firebase, XState, localForage, and submission logic
 - All test files (`*.test.tsx`, `*.test.ts`)
 - Firestore rules, Cloud Functions, shared packages
-- `MapTab` (Leaflet — complex, separate concern; left as-is for now)
+- `MapTab` **Leaflet map tiles and incident layer logic** — untouched; only the UI chrome overlaid on the map is restyled (see §7.4a)
 - `TrackingScreen`, `GoodbyeScreen`, `IncidentDetailPage` (functional, not high-visibility)
 
 ---
@@ -239,16 +239,57 @@ Replaces the bare `<section>` with a bottom-sheet overlay matching the reference
 
 The slot-machine `useSlotMachine` hook is extracted to `src/hooks/useSlotMachine.ts`.
 
+### 7.4a MapTab — UI Chrome Only
+
+**Design inspiration: Google Maps** — the map fills 100% of the viewport with UI elements floating over it as frosted-glass cards. The Leaflet map and all incident/report layers are left completely unchanged. Only the chrome is restyled.
+
+**File:** `src/components/MapTab/index.tsx` (chrome restyle only — no logic changes)
+
+**Search bar (top float):**
+
+- `absolute top-3 left-3 right-3 z-float`
+- `bg-white/90 backdrop-blur-md rounded-full shadow-md h-12 px-4`
+- `Search` icon (Lucide, `text-surface-400`) + placeholder "Search Camarines Norte..."
+- Mirrors Google Maps search pill — floats above the map, not in a header
+
+**Filter chips (below search bar):**
+
+- Horizontal scroll row of incident-type chips: `absolute top-[68px] left-3 right-3 z-float`
+- `no-scrollbar flex gap-2`
+- Each chip: `bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium shadow-sm`
+- Active: `bg-brand-500 text-white`
+
+**My Location FAB:**
+
+- `absolute bottom-32 right-4 z-float` (above nav, below any sheet)
+- `w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center`
+- `Crosshair` icon, `text-surface-700` — taps existing GPS hook
+
+**Peek sheet (incident selected):**
+
+- Existing `PeekSheet.tsx` and `DetailSheet.tsx` logic untouched
+- Restyle container: `bg-white rounded-t-2xl shadow-2xl` with drag handle pill
+- Mirrors Google Maps bottom card: business name = incident type (bold, large), address row = barangay/municipality, action buttons row = "Track" + "Report Similar"
+- Sheet slides up with framer-motion `y: '100%' → 0`, spring ease
+
+**File change:** `src/components/MapTab/index.tsx` — RESTYLE chrome only; `PeekSheet.tsx`, `DetailSheet.tsx` — restyle container/card only, zero logic changes.
+
+---
+
 ### 7.5 FeedTab
+
+**Design inspiration: Facebook News Feed** — familiar infinite-scroll card stream, each card feels like a social post: avatar/icon area, bold title, subtext, timestamp, and a subtle action row. The familiarity lowers the cognitive load for first-time reporters.
 
 **File:** `src/components/FeedTab.tsx` (restyle)
 
-- Page header: `px-4 py-4`, `text-[22px] font-bold text-surface-900` "Community Reports"
-- Incident cards: `bg-white rounded-lg shadow-sm border border-surface-200 p-4`
-- Severity chip: colored left border (3px) + small badge using semantic color classes
-- Incident type icon from existing `utils/incident-meta.tsx` (unchanged)
-- Timestamp: `text-xs text-surface-400`
-- Skeleton loader cards while loading (shimmer animation via `animate-shimmer`)
+- **Sticky top bar:** `bg-surface-50/90 backdrop-blur-md` with "Community Reports" title + filter icon (right) — mirrors Facebook's top bar pattern
+- **Filter chips row** (horizontal scroll, `no-scrollbar`): All / Flood / Fire / Medical / etc. — active chip = `bg-brand-500 text-white`, inactive = `bg-surface-100 text-surface-600`. Matches Facebook's Stories/filter row.
+- **Feed cards** (`bg-white rounded-xl shadow-sm mx-3 my-2`):
+  - **Header row:** Incident type icon in a colored circle (left) + incident type label (bold) + municipality/barangay (subtext) + timestamp (right, `text-xs text-surface-400`)
+  - **Severity badge:** Pill chip, color-coded (danger / warning / info / success) — positioned top-right of card like Facebook's reaction count bubble
+  - **Body:** One-line description if available; photo thumbnail (right-aligned, `w-20 h-20 rounded-lg object-cover`) if present
+  - **Footer action row:** `border-t border-surface-100 mt-3 pt-2 flex gap-4` — "Track" link (brand color) + status label (`text-xs text-surface-400`) — mirrors Facebook's Like/Comment/Share row in weight and position
+- Skeleton loader cards while loading (`animate-shimmer` on placeholder rows)
 - Empty state: centered icon + "No reports yet" in `text-surface-400`
 
 ### 7.6 AlertsTab
@@ -352,32 +393,35 @@ All 203 existing tests must remain green.
 
 ## 10. File Change Summary
 
-| File                                                | Action                                           |
-| --------------------------------------------------- | ------------------------------------------------ |
-| `apps/citizen-pwa/tailwind.config.js`               | CREATE                                           |
-| `apps/citizen-pwa/postcss.config.js`                | CREATE                                           |
-| `apps/citizen-pwa/src/styles/design-tokens.css`     | REPLACE (add Tailwind directives + new tokens)   |
-| `apps/citizen-pwa/src/lib/design-tokens.ts`         | DELETE                                           |
-| `apps/citizen-pwa/src/lib/uiStore.ts`               | CREATE                                           |
-| `apps/citizen-pwa/src/hooks/useSlotMachine.ts`      | CREATE                                           |
-| `apps/citizen-pwa/src/pages/SplashScreen.tsx`       | CREATE                                           |
-| `apps/citizen-pwa/src/pages/Onboarding.tsx`         | CREATE                                           |
-| `apps/citizen-pwa/src/routes.tsx`                   | UPDATE (add /splash, /onboarding routes)         |
-| `apps/citizen-pwa/src/App.tsx`                      | UPDATE (entry point logic for splash/onboarding) |
-| `apps/citizen-pwa/src/components/CitizenShell.tsx`  | RESTYLE                                          |
-| `apps/citizen-pwa/src/components/ReceiptScreen.tsx` | RESTYLE (ceremony)                               |
-| `apps/citizen-pwa/src/components/FeedTab.tsx`       | RESTYLE                                          |
-| `apps/citizen-pwa/src/components/AlertsTab.tsx`     | RESTYLE                                          |
-| `apps/citizen-pwa/src/components/ProfileTab.tsx`    | RESTYLE                                          |
-| `apps/citizen-pwa/src/pages/SettingsPage.tsx`       | RESTYLE                                          |
-| `apps/citizen-pwa/src/pages/RegisterPage.tsx`       | RESTYLE                                          |
-| `apps/citizen-pwa/src/components/LookupScreen.tsx`  | RESTYLE                                          |
-| `apps/citizen-pwa/src/components/RevealSheet.tsx`   | RESTYLE                                          |
-| `apps/citizen-pwa/src/components/Toast.tsx`         | RESTYLE                                          |
-| `apps/citizen-pwa/src/components/Toggle.tsx`        | RESTYLE                                          |
-| `apps/citizen-pwa/public/watchtower.svg`            | COPY from reference dist/                        |
-| `apps/citizen-pwa/package.json`                     | UPDATE (add framer-motion + tailwind devDeps)    |
-| `apps/citizen-pwa/src/App.routes.test.tsx`          | UPDATE (mock SplashScreen, Onboarding)           |
+| File                                                     | Action                                              |
+| -------------------------------------------------------- | --------------------------------------------------- |
+| `apps/citizen-pwa/tailwind.config.js`                    | CREATE                                              |
+| `apps/citizen-pwa/postcss.config.js`                     | CREATE                                              |
+| `apps/citizen-pwa/src/styles/design-tokens.css`          | REPLACE (add Tailwind directives + new tokens)      |
+| `apps/citizen-pwa/src/lib/design-tokens.ts`              | DELETE                                              |
+| `apps/citizen-pwa/src/lib/uiStore.ts`                    | CREATE                                              |
+| `apps/citizen-pwa/src/hooks/useSlotMachine.ts`           | CREATE                                              |
+| `apps/citizen-pwa/src/pages/SplashScreen.tsx`            | CREATE                                              |
+| `apps/citizen-pwa/src/pages/Onboarding.tsx`              | CREATE                                              |
+| `apps/citizen-pwa/src/routes.tsx`                        | UPDATE (add /splash, /onboarding routes)            |
+| `apps/citizen-pwa/src/App.tsx`                           | UPDATE (entry point logic for splash/onboarding)    |
+| `apps/citizen-pwa/src/components/CitizenShell.tsx`       | RESTYLE                                             |
+| `apps/citizen-pwa/src/components/ReceiptScreen.tsx`      | RESTYLE (ceremony)                                  |
+| `apps/citizen-pwa/src/components/FeedTab.tsx`            | RESTYLE                                             |
+| `apps/citizen-pwa/src/components/AlertsTab.tsx`          | RESTYLE                                             |
+| `apps/citizen-pwa/src/components/ProfileTab.tsx`         | RESTYLE                                             |
+| `apps/citizen-pwa/src/pages/SettingsPage.tsx`            | RESTYLE                                             |
+| `apps/citizen-pwa/src/pages/RegisterPage.tsx`            | RESTYLE                                             |
+| `apps/citizen-pwa/src/components/LookupScreen.tsx`       | RESTYLE                                             |
+| `apps/citizen-pwa/src/components/RevealSheet.tsx`        | RESTYLE                                             |
+| `apps/citizen-pwa/src/components/MapTab/index.tsx`       | RESTYLE chrome only (search bar, FAB, filter chips) |
+| `apps/citizen-pwa/src/components/MapTab/PeekSheet.tsx`   | RESTYLE container only                              |
+| `apps/citizen-pwa/src/components/MapTab/DetailSheet.tsx` | RESTYLE container only                              |
+| `apps/citizen-pwa/src/components/Toast.tsx`              | RESTYLE                                             |
+| `apps/citizen-pwa/src/components/Toggle.tsx`             | RESTYLE                                             |
+| `apps/citizen-pwa/public/watchtower.svg`                 | COPY from reference dist/                           |
+| `apps/citizen-pwa/package.json`                          | UPDATE (add framer-motion + tailwind devDeps)       |
+| `apps/citizen-pwa/src/App.routes.test.tsx`               | UPDATE (mock SplashScreen, Onboarding)              |
 
 ---
 
