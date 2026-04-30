@@ -85,9 +85,6 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
           >
             Track
           </button>
-          <button type="button" className="text-surface-500 text-sm">
-            Report Similar
-          </button>
         </div>
       </div>
     </div>

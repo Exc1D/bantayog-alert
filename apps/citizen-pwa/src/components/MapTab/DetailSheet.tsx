@@ -222,21 +222,15 @@ export function DetailSheet(props: Props) {
             <div
               className="w-2.5 h-2.5 rounded-full border-2"
               style={{
-                backgroundColor:
-                  index <= statusIndex
-                    ? 'var(--color-primary)'
-                    : 'var(--color-surface-container-low)',
-                borderColor: 'var(--color-primary)',
+                backgroundColor: index <= statusIndex ? '#0f9488' : '#d5dedd',
+                borderColor: '#0f9488',
               }}
             />
             {index < PROGRESS_STATUSES.length - 1 ? (
               <div
                 className="flex-1 h-0.5"
                 style={{
-                  backgroundColor:
-                    index < statusIndex
-                      ? 'var(--color-primary)'
-                      : 'var(--color-surface-container-low)',
+                  backgroundColor: index < statusIndex ? '#0f9488' : '#d5dedd',
                 }}
               />
             ) : null}
