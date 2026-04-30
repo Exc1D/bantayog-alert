@@ -112,6 +112,11 @@ export function LookupScreen() {
             Secret Code
           </span>
           <input
+            type="password"
+            autoComplete="new-password"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             value={secret}
             onChange={(e) => {
               setSecret(e.target.value)

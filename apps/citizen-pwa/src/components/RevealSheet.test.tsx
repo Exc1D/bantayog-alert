@@ -35,6 +35,10 @@ describe('RevealSheet', () => {
     })
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('renders with secretCode showing upgrade prompt after typewriter', async () => {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" secretCode="SECRET123" />)
     await act(async () => {

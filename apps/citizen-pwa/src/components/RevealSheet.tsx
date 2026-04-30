@@ -68,13 +68,14 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
 
   useEffect(() => {
     if (reducedMotion) return
+    let charInterval: ReturnType<typeof setInterval> | null = null
     const settleTimeout = setTimeout(() => {
       let i = 0
-      const charInterval = setInterval(() => {
+      charInterval = setInterval(() => {
         i += 1
         setDisplayedChars(i)
         if (i >= referenceCode.length) {
-          clearInterval(charInterval)
+          if (charInterval) clearInterval(charInterval)
           setTypewriterComplete(true)
           try {
             navigator.vibrate(200)
@@ -86,17 +87,22 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
     }, 400)
     return () => {
       clearTimeout(settleTimeout)
+      if (charInterval) clearInterval(charInterval)
     }
   }, [referenceCode, reducedMotion])
 
   const handleCopySecret = useCallback(async () => {
     if (!secretCode) return
-    await navigator.clipboard.writeText(secretCode)
-    setCopied(true)
-    const t = setTimeout(() => {
-      setCopied(false)
-    }, 2000)
-    void t
+    try {
+      await navigator.clipboard.writeText(secretCode)
+      setCopied(true)
+      const t = setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+      void t
+    } catch (e) {
+      console.error('Failed to copy secret code:', e)
+    }
   }, [secretCode])
 
   const afterglowTime = new Date().toLocaleTimeString('en-PH', {
@@ -169,7 +175,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
-            if (state === 'success') onClose?.()
+            onClose?.()
           }
           if (e.key === 'Escape') {
             e.preventDefault()

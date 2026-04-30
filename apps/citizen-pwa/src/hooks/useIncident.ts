@@ -14,6 +14,7 @@ const VALID_REPORT_TYPES: readonly string[] = [
   'accident',
   'structural',
   'security',
+  'power_outage',
   'other',
 ]
 
@@ -41,6 +42,10 @@ function isPublicIncidentData(value: unknown): value is Omit<PublicIncident, 'id
   if (!value || typeof value !== 'object') return false
   const data = value as Record<string, unknown>
   const location = data.publicLocation
+  const verifiedAtValid =
+    data.verifiedAt === undefined ||
+    data.verifiedAt === null ||
+    (typeof data.verifiedAt === 'number' && Number.isFinite(data.verifiedAt))
   return (
     typeof data.reportType === 'string' &&
     VALID_REPORT_TYPES.includes(data.reportType) &&
@@ -52,6 +57,7 @@ function isPublicIncidentData(value: unknown): value is Omit<PublicIncident, 'id
     typeof data.municipalityLabel === 'string' &&
     typeof data.submittedAt === 'number' &&
     Number.isFinite(data.submittedAt) &&
+    verifiedAtValid &&
     !!location &&
     typeof location === 'object' &&
     typeof (location as Record<string, unknown>).lat === 'number' &&

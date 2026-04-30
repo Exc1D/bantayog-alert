@@ -172,7 +172,7 @@ function SkeletonCard() {
 }
 
 export function AlertsTab() {
-  const { alerts, loading } = useAlerts()
+  const { alerts, loading, error } = useAlerts()
 
   const sorted = [...alerts].sort(
     (a, b) =>
@@ -218,6 +218,23 @@ export function AlertsTab() {
             <SkeletonCard />
             <SkeletonCard />
           </>
+        ) : error ? (
+          <div role="alert" style={{ padding: '48px 16px', textAlign: 'center' }}>
+            <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>⚠️</p>
+            <p
+              style={{
+                margin: '0 0 6px',
+                fontWeight: 700,
+                color: '#001e40',
+                fontSize: '0.9375rem',
+              }}
+            >
+              Could not load alerts
+            </p>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#52606d' }}>
+              {error instanceof Error ? error.message : 'Please try again later.'}
+            </p>
+          </div>
         ) : sorted.length === 0 ? (
           <div role="status" style={{ padding: '48px 16px', textAlign: 'center' }}>
             <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>✅</p>

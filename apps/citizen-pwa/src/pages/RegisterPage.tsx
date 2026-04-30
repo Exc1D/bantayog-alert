@@ -29,14 +29,21 @@ export function RegisterPage() {
   }, [verifier])
 
   const handleSendOtp = useCallback(async () => {
-    const currentUser = auth().currentUser
+    let firebaseAuth
+    try {
+      firebaseAuth = auth()
+    } catch {
+      toast('Authentication unavailable', 'error')
+      return
+    }
+    const currentUser = firebaseAuth.currentUser
     if (!currentUser) {
       toast('Not signed in', 'error')
       return
     }
     setLoading(true)
     try {
-      const recaptchaVerifier = new RecaptchaVerifier(auth(), 'recaptcha-container', {
+      const recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, 'recaptcha-container', {
         size: 'invisible',
       })
       setVerifier(recaptchaVerifier)
@@ -64,7 +71,14 @@ export function RegisterPage() {
   }, [confirmationResult, otp, toast])
 
   const handleSaveName = useCallback(async () => {
-    const currentUser = auth().currentUser
+    let firebaseAuth
+    try {
+      firebaseAuth = auth()
+    } catch {
+      toast('Authentication unavailable', 'error')
+      return
+    }
+    const currentUser = firebaseAuth.currentUser
     if (!currentUser) {
       toast('Not signed in', 'error')
       return

@@ -24,6 +24,14 @@ export function SettingsPage() {
   const [storageInfo, setStorageInfo] = useState<string>(INITIAL_STORAGE_INFO)
 
   useEffect(() => {
+    const hasStorage =
+      typeof (navigator as { storage?: { estimate?: unknown } }).storage?.estimate === 'function'
+    if (!hasStorage) {
+      queueMicrotask(() => {
+        setStorageInfo('Storage info unavailable')
+      })
+      return
+    }
     void navigator.storage
       .estimate()
       .then(({ usage, quota }) => {
@@ -40,14 +48,19 @@ export function SettingsPage() {
     setOfflineMode(v)
     try {
       localStorage.setItem('bantayog_offline_mode', String(v))
-    } catch {
-      // storage unavailable
+    } catch (e) {
+      console.error('Failed to set bantayog_offline_mode:', v, e)
     }
   }
 
   const handleSignOut = async () => {
-    await signOut(auth())
-    void navigate('/', { replace: true })
+    try {
+      await signOut(auth())
+      void navigate('/', { replace: true })
+    } catch (e) {
+      toast('Sign out failed', 'error')
+      console.error('Sign out failed:', e)
+    }
   }
 
   const sectionStyle: React.CSSProperties = {

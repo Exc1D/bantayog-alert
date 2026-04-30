@@ -30,10 +30,10 @@ describe('FeedTab', () => {
   it('renders filter chips without border', () => {
     renderFeedTab()
     const chips = screen.getAllByRole('button')
-    for (const chip of chips) {
-      if (chip.getAttribute('aria-pressed') !== null) {
-        expect(chip.style.border).toContain('none')
-      }
+    const filterChips = chips.filter((chip) => chip.getAttribute('aria-pressed') !== null)
+    expect(filterChips.length).toBeGreaterThan(0)
+    for (const chip of filterChips) {
+      expect(chip.style.border).toContain('none')
     }
   })
 })

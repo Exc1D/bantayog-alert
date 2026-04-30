@@ -12,6 +12,10 @@ describe('Toast', () => {
     vi.useFakeTimers()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('renders message when show is true', () => {
     render(<Toast show={true} message="Saved!" type="success" />)
     expect(screen.getByText('Saved!')).toBeInTheDocument()

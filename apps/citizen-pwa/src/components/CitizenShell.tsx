@@ -60,9 +60,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           Offline — {queueCount} report{queueCount !== 1 ? 's' : ''} queued
         </div>
       )}
-      <main style={{ minHeight: '100dvh', paddingTop: showBanner ? 100 : 64, paddingBottom: 88 }}>
-        {children}
-      </main>
+      <main style={{ minHeight: '100dvh', paddingTop: 64, paddingBottom: 88 }}>{children}</main>
       <nav
         aria-label="Main navigation"
         style={{
