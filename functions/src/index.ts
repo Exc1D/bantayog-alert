@@ -150,6 +150,7 @@ export { recordIncidentResponseEvent } from './callables/record-incident-respons
 export { setRetentionExempt } from './callables/set-retention-exempt.js'
 export { approveErasureRequest } from './callables/approve-erasure-request.js'
 export { requestDataErasure } from './callables/request-data-erasure.js'
+export { requestDataExport } from './callables/request-data-export.js'
 export { setErasureLegalHold } from './callables/set-erasure-legal-hold.js'
 export { erasureSweep } from './triggers/erasure-sweep.js'
 export { retentionSweep } from './triggers/retention-sweep.js'
