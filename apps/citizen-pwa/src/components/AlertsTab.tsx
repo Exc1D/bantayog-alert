@@ -1,4 +1,4 @@
-import { Siren, Bell, AlertTriangle, BellOff } from 'lucide-react'
+import { Siren, Bell, AlertTriangle, Building2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useAlerts } from '../hooks/useAlerts.js'
 import type { AlertDoc } from '@bantayog/shared-types'
@@ -26,6 +26,34 @@ function severityMeta(severity: string): { label: string; bg: string; color: str
   }
 }
 
+function severityBorderClass(severity: string): string {
+  switch (severity) {
+    case 'critical':
+      return 'border-l-[#dc2626]'
+    case 'high':
+    case 'warning':
+      return 'border-l-[#d97706]'
+    case 'info':
+      return 'border-l-[#2563eb]'
+    default:
+      return 'border-l-[#059669]'
+  }
+}
+
+function severityIconColor(severity: string): string {
+  switch (severity) {
+    case 'critical':
+      return '#dc2626'
+    case 'high':
+    case 'warning':
+      return '#d97706'
+    case 'info':
+      return '#2563eb'
+    default:
+      return '#059669'
+  }
+}
+
 function severityIcon(severity: string): ReactNode {
   if (severity === 'critical' || severity === 'high') return <Siren size={16} />
   return <Bell size={16} />
@@ -43,63 +71,33 @@ function timeAgo(ts: number): string {
 function AlertCard({ alert }: { alert: AlertDoc & { issuedBy?: string } }) {
   const { label, bg, color } = severityMeta(alert.severity)
   const icon = severityIcon(alert.severity)
-  const isCritical = alert.severity === 'critical' || alert.severity === 'high'
+  const borderClass = severityBorderClass(alert.severity)
+  const iconColor = severityIconColor(alert.severity)
 
   return (
-    <div
-      className="card"
-      style={{
-        marginBottom: '0.5rem',
-        padding: '0.875rem',
-        ...(isCritical ? { background: '#fffbfb', border: '1px solid #fecaca' } : {}),
-      }}
-    >
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span
-          aria-hidden="true"
-          style={{ flexShrink: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center' }}
-        >
-          {icon}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: 8,
-            }}
+    <div className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 ${borderClass}`}>
+      <div className="p-4">
+        <div className="flex items-start justify-between">
+          <span
+            aria-hidden="true"
+            className="flex-shrink-0 flex items-center mr-2"
+            style={{ color: iconColor }}
           >
-            <p
-              style={{
-                margin: 0,
-                fontWeight: 700,
-                fontSize: '0.9375rem',
-                color: '#001e40',
-                lineHeight: 1.3,
-              }}
-            >
-              {alert.title}
-            </p>
-            <span style={{ flexShrink: 0, fontSize: '0.6875rem', color: '#7b8794' }}>
-              {timeAgo(alert.publishedAt)}
-            </span>
-          </div>
-          <p
-            style={{
-              margin: '4px 0 8px',
-              fontSize: '0.8125rem',
-              color: '#374151',
-              lineHeight: 1.5,
-            }}
-          >
-            {alert.body}
+            {icon}
+          </span>
+          <p className="font-semibold text-[#25292a] text-sm flex-1">{alert.title}</p>
+          <span className="text-xs text-[#768081] ml-2 flex-shrink-0">
+            {timeAgo(alert.publishedAt)}
+          </span>
+        </div>
+        <p className="text-xs text-[#374151] mt-1 leading-relaxed">{alert.body}</p>
+        {alert.issuedBy && (
+          <p className="text-xs text-[#768081] mt-1 flex items-center gap-1">
+            <Building2 size={12} aria-hidden="true" />
+            {`Issued by: ${alert.issuedBy}`}
           </p>
-          {alert.issuedBy && (
-            <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#6b7280' }}>
-              Issued by: {alert.issuedBy}
-            </p>
-          )}
+        )}
+        <p className="text-xs text-[#768081] mt-2">
           <span
             style={{
               display: 'inline-block',
@@ -114,7 +112,7 @@ function AlertCard({ alert }: { alert: AlertDoc & { issuedBy?: string } }) {
           >
             {label}
           </span>
-        </div>
+        </p>
       </div>
     </div>
   )
@@ -122,49 +120,14 @@ function AlertCard({ alert }: { alert: AlertDoc & { issuedBy?: string } }) {
 
 function SkeletonCard() {
   return (
-    <div
-      className="card"
-      style={{ animation: 'pulse 1.6s ease-in-out infinite', marginBottom: '0.5rem' }}
-    >
-      <div style={{ display: 'flex', gap: 10 }}>
-        <div
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            background: '#e0e3e5',
-            flexShrink: 0,
-          }}
-        />
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              height: 14,
-              width: '65%',
-              background: '#e0e3e5',
-              borderRadius: 4,
-              marginBottom: 8,
-            }}
-          />
-          <div
-            style={{
-              height: 12,
-              width: '90%',
-              background: '#e0e3e5',
-              borderRadius: 4,
-              marginBottom: 6,
-            }}
-          />
-          <div
-            style={{
-              height: 12,
-              width: '70%',
-              background: '#e0e3e5',
-              borderRadius: 4,
-              marginBottom: 10,
-            }}
-          />
-          <div style={{ height: 18, width: 60, background: '#e0e3e5', borderRadius: 999 }} />
+    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 border-l-[#d5dedd] animate-pulse">
+      <div className="p-4 flex gap-2">
+        <div className="w-6 h-6 rounded-full bg-[#e0e3e5] flex-shrink-0" />
+        <div className="flex-1">
+          <div className="h-3.5 w-[65%] bg-[#e0e3e5] rounded mb-2" />
+          <div className="h-3 w-[90%] bg-[#e0e3e5] rounded mb-1.5" />
+          <div className="h-3 w-[70%] bg-[#e0e3e5] rounded mb-2.5" />
+          <div className="h-4 w-14 bg-[#e0e3e5] rounded-full" />
         </div>
       </div>
     </div>
@@ -180,92 +143,49 @@ export function AlertsTab() {
       b.publishedAt - a.publishedAt,
   )
 
+  const hasCritical = sorted.some((a) => a.severity === 'critical')
+
   return (
-    <div style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Sticky header */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          background: 'rgba(247,249,251,0.96)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          padding: '12px 16px 10px',
-          borderBottom: '1px solid #e5e7eb',
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: '#001e40' }}>
-          Alerts
-          <span
-            style={{
-              display: 'block',
-              fontSize: '0.6875rem',
-              fontWeight: 400,
-              color: '#7b8794',
-              marginTop: 2,
-            }}
-          >
-            Mga babala at abiso para sa inyong lugar
-          </span>
-        </h1>
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 py-4 border-b border-[#d5dedd]">
+        <h1 className="text-[20px] font-bold text-[#25292a]">Alerts</h1>
       </div>
 
+      {/* Active emergency strip */}
+      {hasCritical && (
+        <div className="bg-[#dc2626]/10 border-b border-[#dc2626]/20 px-4 py-2 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-[#dc2626] flex-shrink-0" />
+          <span className="text-sm font-bold text-[#dc2626]">Active emergency alert in effect</span>
+        </div>
+      )}
+
       {/* Content */}
-      <div style={{ padding: '12px 16px 24px' }}>
+      <div className="py-3 pb-6">
         {loading ? (
           <>
             <SkeletonCard />
             <SkeletonCard />
           </>
         ) : error ? (
-          <div role="alert" style={{ padding: '48px 16px', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 8px', color: '#b71c1c' }}>
-              <AlertTriangle size={40} />
-            </p>
-            <p
-              style={{
-                margin: '0 0 6px',
-                fontWeight: 700,
-                color: '#001e40',
-                fontSize: '0.9375rem',
-              }}
-            >
-              Could not load alerts
-            </p>
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#52606d' }}>
+          <div
+            role="alert"
+            className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
+          >
+            <AlertTriangle size={40} className="text-[#dc2626] mb-2" />
+            <p className="font-bold text-[#25292a] text-sm mb-1">Could not load alerts</p>
+            <p className="text-xs">
               {error instanceof Error ? error.message : 'Please try again later.'}
             </p>
           </div>
         ) : sorted.length === 0 ? (
-          <div role="status" style={{ padding: '48px 16px', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 8px', color: '#16a34a' }}>
-              <BellOff size={40} />
-            </p>
-            <p
-              style={{
-                margin: '0 0 6px',
-                fontWeight: 700,
-                color: '#001e40',
-                fontSize: '0.9375rem',
-              }}
-            >
-              No active alerts
-            </p>
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#52606d' }}>
-              You will be notified when new alerts are issued.
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.6875rem',
-                  color: '#7b8794',
-                  marginTop: 4,
-                  fontStyle: 'italic',
-                }}
-              >
-                Ipaaalam sa inyo kung may bagong babala.
-              </span>
-            </p>
+          <div
+            role="status"
+            className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
+          >
+            <Bell size={40} className="mb-2" />
+            <p className="font-bold text-[#25292a] text-sm mb-1">No active alerts</p>
+            <p className="text-xs">You will be notified when new alerts are issued.</p>
           </div>
         ) : (
           sorted.map((alert) => <AlertCard key={alert.id} alert={alert} />)
