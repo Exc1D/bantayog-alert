@@ -207,9 +207,9 @@ export function RevealSheet({
   }
 
   return (
-    <div className="reveal-overlay">
+    <div className="fixed inset-0 z-50 pointer-events-none">
       <div
-        className="reveal-backdrop"
+        className="absolute inset-0 bg-[#171a1a]/60 backdrop-blur-sm pointer-events-auto"
         role="button"
         aria-label="Close"
         tabIndex={0}
@@ -225,8 +225,13 @@ export function RevealSheet({
           }
         }}
       />
-      <div className="reveal-sheet">
-        <div className="reveal-handle" />
+      <div
+        className="absolute bottom-0 left-0 right-0 max-h-[90svh] overflow-y-auto bg-[#f8fafa] rounded-t-3xl p-5 pointer-events-auto shadow-2xl"
+        style={{
+          animation: 'reveal-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        }}
+      >
+        <div className="w-10 h-1 bg-[#a3adae] rounded-full mx-auto mt-3 mb-4" />
 
         <StatusBanner variant={variant.bannerVariant} icon={variant.icon}>
           {variant.headline}
@@ -310,18 +315,8 @@ export function RevealSheet({
                 SHOWN ONCE
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <code
-                style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  background: '#fff',
-                  borderRadius: 6,
-                  fontSize: '0.875rem',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.05em',
-                }}
-              >
+            <div className="flex gap-2 items-center">
+              <code className="flex-1 px-3 py-2 bg-white rounded-md text-sm font-mono tracking-wider">
                 {secretCode}
               </code>
               <button
@@ -329,18 +324,10 @@ export function RevealSheet({
                 onClick={() => {
                   void handleCopySecret()
                 }}
-                style={{
-                  padding: '8px',
-                  border: 'none',
-                  background: '#001e40',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
+                className="p-2 border-0 bg-[#0f9488] rounded-lg cursor-pointer flex items-center"
                 aria-label="Copy secret code"
               >
-                <Copy size={16} color="#fff" />
+                <Copy size={16} className="text-white" />
               </button>
             </div>
             {copied && (
