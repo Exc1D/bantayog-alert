@@ -1,4 +1,4 @@
-import { Siren, Bell } from 'lucide-react'
+import { Siren, Bell, AlertTriangle, BellOff } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useAlerts } from '../hooks/useAlerts.js'
 import type { AlertDoc } from '@bantayog/shared-types'
@@ -220,7 +220,9 @@ export function AlertsTab() {
           </>
         ) : error ? (
           <div role="alert" style={{ padding: '48px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>⚠️</p>
+            <p style={{ margin: '0 0 8px', color: '#b71c1c' }}>
+              <AlertTriangle size={40} />
+            </p>
             <p
               style={{
                 margin: '0 0 6px',
@@ -237,7 +239,9 @@ export function AlertsTab() {
           </div>
         ) : sorted.length === 0 ? (
           <div role="status" style={{ padding: '48px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>✅</p>
+            <p style={{ margin: '0 0 8px', color: '#16a34a' }}>
+              <BellOff size={40} />
+            </p>
             <p
               style={{
                 margin: '0 0 6px',

@@ -5,23 +5,17 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './CitizenShell.js'
 
-const mockUseOnlineStatus = vi.fn()
 const mockUseOfflineQueueCount = vi.fn()
-
-vi.mock('../hooks/useOnlineStatus.js', () => ({
-  useOnlineStatus: () => mockUseOnlineStatus(),
-}))
 
 vi.mock('../hooks/useOfflineQueueCount.js', () => ({
   useOfflineQueueCount: () => mockUseOfflineQueueCount(),
 }))
 
 function renderShell(pathname = '/', opts?: { offline?: boolean; queueCount?: number }) {
-  mockUseOnlineStatus.mockReturnValue({
+  mockUseOfflineQueueCount.mockReturnValue({
     isOnline: opts?.offline ? false : true,
-    navigatorOnline: opts?.offline ? false : true,
+    queueCount: opts?.queueCount ?? 0,
   })
-  mockUseOfflineQueueCount.mockReturnValue(opts?.queueCount ?? 0)
 
   const router = createMemoryRouter(
     [

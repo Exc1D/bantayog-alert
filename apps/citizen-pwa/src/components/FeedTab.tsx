@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CheckCircle, MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { usePublicIncidents } from '../hooks/usePublicIncidents.js'
 import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
@@ -62,7 +63,8 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
             </span>
           </div>
           <p style={{ margin: '3px 0 8px', fontSize: '0.8125rem', color: '#52606d' }}>
-            📍 {incident.barangayId ? `${incident.barangayId}, ` : ''}
+            <MapPin size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
+            {incident.barangayId ? `${incident.barangayId}, ` : ''}
             {incident.municipalityLabel}
           </p>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -267,7 +269,9 @@ export function FeedTab() {
           </div>
         ) : incidents.length === 0 ? (
           <div role="status" style={{ padding: '48px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>🌿</p>
+            <p style={{ margin: '0 0 8px', color: '#16a34a' }}>
+              <CheckCircle size={40} />
+            </p>
             <p
               style={{
                 margin: '0 0 6px',

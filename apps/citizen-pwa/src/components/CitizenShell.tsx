@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Map, Rss, AlertTriangle, Bell, User } from 'lucide-react'
-import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
 import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import '../styles/design-tokens.css'
 
@@ -16,9 +15,8 @@ const TABS = [
 export function CitizenShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { navigatorOnline } = useOnlineStatus()
-  const queueCount = useOfflineQueueCount()
-  const showBanner = !navigatorOnline
+  const { isOnline, queueCount } = useOfflineQueueCount()
+  const showBanner = !isOnline && queueCount > 0
 
   return (
     <div style={{ minHeight: '100dvh', overflow: 'hidden', background: 'var(--color-surface)' }}>

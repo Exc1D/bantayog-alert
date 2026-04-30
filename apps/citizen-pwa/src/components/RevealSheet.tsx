@@ -112,16 +112,15 @@ export function RevealSheet({
   }, [state])
 
   useEffect(() => {
-    if (typewriterComplete && secretCode) {
-      const t = setTimeout(
-        () => {
-          setSecretVisible(true)
-        },
-        reducedMotion ? 0 : 300,
-      )
-      return () => {
-        clearTimeout(t)
-      }
+    if (!typewriterComplete || !secretCode) return
+    const t = setTimeout(
+      () => {
+        setSecretVisible(true)
+      },
+      reducedMotion ? 0 : 300,
+    )
+    return () => {
+      clearTimeout(t)
     }
   }, [typewriterComplete, secretCode, reducedMotion])
 

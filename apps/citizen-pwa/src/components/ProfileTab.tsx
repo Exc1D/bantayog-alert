@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ClipboardList, MapPin, Settings } from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
@@ -110,7 +111,8 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
           </div>
           {report.municipalityLabel ? (
             <p style={{ margin: '3px 0 6px', fontSize: '0.8125rem', color: '#52606d' }}>
-              📍 {report.municipalityLabel}
+              <MapPin size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
+              {report.municipalityLabel}
             </p>
           ) : null}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
@@ -251,7 +253,7 @@ export function ProfileTab() {
             }}
             aria-label="Settings"
           >
-            ⚙
+            <Settings size={20} color="#52606d" />
           </button>
         )}
       </div>
@@ -302,7 +304,9 @@ export function ProfileTab() {
           </>
         ) : reports.length === 0 ? (
           <div role="status" style={{ padding: '36px 0', textAlign: 'center' }}>
-            <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>📋</p>
+            <p style={{ margin: '0 0 8px', color: '#52606d' }}>
+              <ClipboardList size={40} />
+            </p>
             <p
               style={{
                 margin: '0 0 6px',
