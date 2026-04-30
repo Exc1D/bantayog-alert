@@ -33,7 +33,7 @@ describe('FeedTab', () => {
     const filterChips = chips.filter((chip) => chip.getAttribute('aria-pressed') !== null)
     expect(filterChips.length).toBeGreaterThan(0)
     for (const chip of filterChips) {
-      expect(chip.style.border).toContain('none')
+      expect(chip.classList.contains('border-none')).toBe(true)
     }
   })
 })

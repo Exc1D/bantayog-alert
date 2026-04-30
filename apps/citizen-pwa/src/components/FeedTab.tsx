@@ -30,8 +30,7 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
     <button
       type="button"
       onClick={onTap}
-      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)] text-left cursor-pointer block"
-      style={{ border: 'none' }}
+      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)] text-left cursor-pointer block border-none"
     >
       {/* Header row */}
       <div className="flex items-start justify-between p-4 pb-2">
@@ -112,7 +111,7 @@ export function FeedTab() {
           <h1 className="text-[20px] font-bold text-[#25292a] m-0">Incident Feed</h1>
         </div>
         {/* Filter chips row */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mt-3" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-2 overflow-x-auto pb-1 mt-3 no-scrollbar">
           {SEVERITIES.map(({ value, label }) => (
             <button
               key={value}
@@ -123,10 +122,9 @@ export function FeedTab() {
               }}
               className={
                 filters.severity === value
-                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0'
-                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0'
+                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
               }
-              style={{ border: 'none', cursor: 'pointer' }}
             >
               {label}
             </button>
@@ -145,10 +143,9 @@ export function FeedTab() {
               }}
               className={
                 filters.window === value
-                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0'
-                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0'
+                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
               }
-              style={{ border: 'none', cursor: 'pointer' }}
             >
               {label}
             </button>
