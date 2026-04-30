@@ -122,6 +122,15 @@ export default tseslint.config(
     files: ['**/*.config.{js,ts}', '**/*.config.cjs'],
     languageOptions: {
       globals: { ...globals.node },
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: [
+            'apps/citizen-pwa/postcss.config.js',
+            'apps/citizen-pwa/tailwind.config.cjs',
+          ],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 )
