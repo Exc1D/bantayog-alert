@@ -70,8 +70,8 @@ export function Step3Review({
             <Heart size={16} />
           </div>
           <p className="consent-text">
-            <strong>We heard you. We are here.</strong> We&apos;ll let you know when help is on the
-            way. Please keep your line open.
+            <strong>We heard you. We are here.</strong> Narinig namin kayo. Nandito kami. We&apos;ll
+            notify you when help is on the way — please keep your phone line open.
           </p>
         </div>
       </div>
@@ -131,7 +131,8 @@ export function Step3Review({
           className="consent-checkbox"
         />
         <span className="consent-text-small">
-          I confirm this report is true. You may contact me.{' '}
+          I confirm this report is accurate and that I may be contacted for follow-up.{' '}
+          <em>Kumpirmo ko na totoo ang ulat na ito at maaari kayong makipag-ugnayan sa akin.</em>{' '}
           <button
             type="button"
             className="consent-link"
@@ -139,13 +140,13 @@ export function Step3Review({
               e.stopPropagation()
             }}
           >
-            Privacy notice ›
+            Privacy notice — Patakaran sa privacy ›
           </button>
         </span>
       </label>
 
       <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
-        {isSubmitting ? 'Submitting...' : 'Submit report'}
+        {isSubmitting ? 'Isinusumite...' : 'Submit report — I-ulat na'}
       </Button>
     </div>
   )

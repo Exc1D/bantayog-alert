@@ -2,6 +2,12 @@ import { useEffect, useRef, useState, type CSSProperties, type TouchEvent } from
 import { actionsFor } from '../../lib/reportActions.js'
 import type { MyReport, PublicIncident } from './types.js'
 
+const SEVERITY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
+  high: { bg: '#fee2e2', color: '#991b1b', label: 'HIGH' },
+  medium: { bg: '#fff5ef', color: '#a73400', label: 'MEDIUM' },
+  low: { bg: '#e0e7f0', color: '#001e40', label: 'LOW' },
+}
+
 type Props =
   | {
       mode: 'public'
@@ -9,6 +15,7 @@ type Props =
       sheetPhase: 'hidden' | 'peek' | 'expanded'
       onClose: () => void
       onCollapse: () => void
+      onReportSimilar?: () => void
     }
   | {
       mode: 'myReport'
@@ -125,38 +132,114 @@ export function DetailSheet(props: Props) {
 
   if (props.mode === 'public') {
     const incident = props.incident
+    const badge = SEVERITY_BADGE[incident.severity]
     return (
       <section style={baseStyle} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         {dragHandle}
-        <p
+
+        {/* Header */}
+        <div
           style={{
-            margin: 0,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontWeight: 800,
-            fontSize: '1.125rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: 12,
           }}
         >
-          {LABELS[incident.reportType] ?? incident.reportType}
-        </p>
-        <p
-          style={{
-            margin: '4px 0 12px',
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '0.75rem',
-            fontWeight: 700,
-          }}
-        >
-          {incident.severity.toUpperCase()}
-        </p>
-        <p style={{ margin: '0 0 4px', color: 'var(--color-on-surface-variant)' }}>
-          📍 {incident.barangayId}, {incident.municipalityLabel}
-        </p>
-        <p style={{ margin: '0 0 16px', color: 'var(--color-on-surface-variant)' }}>
+          <div>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: 800,
+                fontSize: '1.25rem',
+                color: '#001e40',
+              }}
+            >
+              {LABELS[incident.reportType] ?? incident.reportType}
+            </p>
+            {badge ? (
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginTop: 6,
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  fontSize: '0.625rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  background: badge.bg,
+                  color: badge.color,
+                }}
+              >
+                {badge.label}
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={props.onClose}
+            style={{
+              border: 'none',
+              background: '#f2f4f6',
+              color: '#52606d',
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Location */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <span aria-hidden="true" style={{ fontSize: '0.875rem' }}>
+            📍
+          </span>
+          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f' }}>
+            {incident.barangayId ? `${incident.barangayId}, ` : ''}
+            {incident.municipalityLabel}
+          </p>
+        </div>
+
+        {/* Time */}
+        <p style={{ margin: '0 0 20px', fontSize: '0.75rem', color: '#7b8794' }}>
           Reported {timeAgo(incident.submittedAt)}
         </p>
-        <button type="button" aria-label="Close" onClick={props.onClose}>
-          Close
-        </button>
+
+        {/* Report similar CTA */}
+        {props.onReportSimilar ? (
+          <button
+            type="button"
+            onClick={props.onReportSimilar}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: 12,
+              border: '1.5px solid rgba(0,30,64,0.16)',
+              background: '#f5f7fa',
+              color: '#001e40',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+          >
+            <span aria-hidden="true">⚡</span>
+            Report similar incident nearby
+          </button>
+        ) : null}
       </section>
     )
   }
