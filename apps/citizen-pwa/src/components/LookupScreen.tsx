@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft } from 'lucide-react'
 import { fns, hasFirebaseConfig, FIREBASE_ENV_ERROR_MESSAGE } from '../services/firebase.js'
-import { useReducedMotion } from '../hooks/useReducedMotion.js'
 
 interface LookupResult {
   status: string
@@ -17,7 +16,6 @@ export function LookupScreen() {
   const [result, setResult] = useState<LookupResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const reducedMotion = useReducedMotion()
 
   async function handleSubmit(e: React.SyntheticEvent): Promise<void> {
     e.preventDefault()
@@ -38,12 +36,9 @@ export function LookupScreen() {
   }
 
   return (
-    <div className="flex flex-col" style={{ minHeight: '100dvh', background: '#f0f4f4' }}>
+    <div className="flex flex-col min-h-[100dvh] bg-[#f0f4f4]">
       {/* Dark navy header */}
-      <div
-        className="flex items-center gap-3 px-4 pt-12 pb-6"
-        style={{ background: '#25292a', color: '#fff' }}
-      >
+      <div className="flex items-center gap-3 px-4 pt-12 pb-6 bg-[#25292a] text-white">
         <button
           type="button"
           onClick={() => {
@@ -54,27 +49,16 @@ export function LookupScreen() {
         >
           <ArrowLeft size={20} color="#fff" />
         </button>
-        <h1 className="m-0 font-bold" style={{ fontSize: 20 }}>
-          Check Report Status
-        </h1>
+        <h1 className="m-0 font-bold text-xl">Check Report Status</h1>
       </div>
 
       {/* Main content */}
       <div className="flex-1 px-4 pt-6">
-        <h2 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#001e40' }}>
-          Track your report
-        </h2>
-        <p style={{ margin: '0 0 4px', fontSize: '0.8125rem', color: '#52606d' }}>
+        <h2 className="mb-1 text-xl font-extrabold text-[#001e40]">Track your report</h2>
+        <p className="mb-1 text-[0.8125rem] text-[#52606d]">
           Enter your reference code and secret code to check your report status.
         </p>
-        <p
-          style={{
-            margin: '0 0 24px',
-            fontSize: '0.6875rem',
-            color: '#7b8794',
-            fontStyle: 'italic',
-          }}
-        >
+        <p className="mb-6 text-[0.6875rem] text-[#7b8794] italic">
           Ilagay ang reference at secret code para macheck ang ulat.
         </p>
 
@@ -84,10 +68,7 @@ export function LookupScreen() {
           }}
         >
           <label className="block mb-4">
-            <span
-              className="block text-xs font-semibold uppercase tracking-wider mb-2"
-              style={{ color: '#5e6667' }}
-            >
+            <span className="block text-xs font-semibold uppercase tracking-wider mb-2 text-[#5e6667]">
               Reference Code
             </span>
             <input
@@ -96,27 +77,13 @@ export function LookupScreen() {
                 setPublicRef(e.target.value)
               }}
               required
-              className="font-mono tracking-widest w-full h-12 rounded-xl px-4 text-base bg-white"
-              style={{
-                border: '1px solid #d5dedd',
-                outline: 'none',
-                transition: reducedMotion ? 'none' : 'border-color 200ms',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#0f9488'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#d5dedd'
-              }}
+              className="font-mono tracking-widest w-full h-12 rounded-xl px-4 text-base bg-white border border-[#d5dedd] outline-none focus:border-[#0f9488] motion-safe:transition-colors motion-safe:duration-200"
               placeholder="BA-2026-XXXXX"
             />
           </label>
 
           <label className="block mb-6">
-            <span
-              className="block text-xs font-semibold uppercase tracking-wider mb-2"
-              style={{ color: '#5e6667' }}
-            >
+            <span className="block text-xs font-semibold uppercase tracking-wider mb-2 text-[#5e6667]">
               Secret Code
             </span>
             <input
@@ -130,18 +97,7 @@ export function LookupScreen() {
                 setSecret(e.target.value)
               }}
               required
-              className="font-mono tracking-widest w-full h-12 rounded-xl px-4 text-base bg-white"
-              style={{
-                border: '1px solid #d5dedd',
-                outline: 'none',
-                transition: reducedMotion ? 'none' : 'border-color 200ms',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#0f9488'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#d5dedd'
-              }}
+              className="font-mono tracking-widest w-full h-12 rounded-xl px-4 text-base bg-white border border-[#d5dedd] outline-none focus:border-[#0f9488] motion-safe:transition-colors motion-safe:duration-200"
               placeholder="Your secret code"
             />
           </label>
@@ -149,12 +105,7 @@ export function LookupScreen() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-14 rounded-xl text-white font-semibold text-base border-0"
-            style={{
-              background: 'linear-gradient(135deg, #0f9488, #0d7377)',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-            }}
+            className={`w-full h-14 rounded-xl text-white font-semibold text-base border-0 bg-gradient-to-br from-[#0f9488] to-[#0d7377] ${loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {loading ? 'Checking…' : 'Check Status'}
           </button>
@@ -162,29 +113,29 @@ export function LookupScreen() {
 
         {error && (
           <div role="alert" className="mt-4">
-            <p style={{ color: '#b71c1c', fontSize: '0.875rem', fontWeight: 600 }}>{error}</p>
+            <p className="text-[#b71c1c] text-sm font-semibold">{error}</p>
           </div>
         )}
 
         {result && (
           <div className="mt-4 mb-6 p-4 bg-white rounded-xl">
             <div className="flex justify-between mb-3">
-              <span style={{ fontSize: '0.8125rem', color: '#52606d' }}>Status</span>
-              <span style={{ fontWeight: 700, color: '#001e40' }}>{result.status}</span>
+              <span className="text-[0.8125rem] text-[#52606d]">Status</span>
+              <span className="font-bold text-[#001e40]">{result.status}</span>
             </div>
             <div className="flex justify-between mb-3">
-              <span style={{ fontSize: '0.8125rem', color: '#52606d' }}>Municipality</span>
-              <span style={{ fontWeight: 600, color: '#001e40' }}>{result.municipalityLabel}</span>
+              <span className="text-[0.8125rem] text-[#52606d]">Municipality</span>
+              <span className="font-semibold text-[#001e40]">{result.municipalityLabel}</span>
             </div>
             <div className="flex justify-between mb-3">
-              <span style={{ fontSize: '0.8125rem', color: '#52606d' }}>Last update</span>
-              <span style={{ fontWeight: 600, color: '#001e40' }}>
+              <span className="text-[0.8125rem] text-[#52606d]">Last update</span>
+              <span className="font-semibold text-[#001e40]">
                 {new Date(result.lastStatusAt).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between">
-              <span style={{ fontSize: '0.8125rem', color: '#52606d' }}>Verified by</span>
-              <span style={{ fontWeight: 600, color: '#001e40' }}>
+              <span className="text-[0.8125rem] text-[#52606d]">Verified by</span>
+              <span className="font-semibold text-[#001e40]">
                 {result.verifiedBy ?? 'Daet MDRRMO'}
               </span>
             </div>
