@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList, EyeOff, MapPin, Settings, User as UserIcon } from 'lucide-react'
+import {
+  ClipboardList,
+  EyeOff,
+  MapPin,
+  Settings,
+  User as UserIcon,
+  Award,
+  ShieldCheck,
+  HeartHandshake,
+  Flame,
+  TrendingUp,
+  ChevronRight,
+} from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
@@ -13,40 +25,40 @@ function statusMeta(status: string): { label: string; bg: string; color: string 
   switch (status) {
     case 'queued':
     case 'draft_inbox':
-      return { label: 'Sending…', bg: '#e0e7f0', color: '#52606d' }
+      return { label: 'Sending…', bg: 'bg-surface-200', color: 'text-surface-600' }
     case 'new':
-      return { label: 'Received', bg: '#dbeafe', color: '#1e40af' }
+      return { label: 'Received', bg: 'bg-brand-100', color: 'text-brand-600' }
     case 'awaiting_verify':
-      return { label: 'Under review', bg: '#fef3c7', color: '#92400e' }
+      return { label: 'Under review', bg: 'bg-warning-400/20', color: 'text-warning-500' }
     case 'verified':
-      return { label: 'Verified', bg: '#dbeafe', color: '#1e40af' }
+      return { label: 'Verified', bg: 'bg-brand-100', color: 'text-brand-600' }
     case 'assigned':
     case 'acknowledged':
-      return { label: 'Help on the way', bg: '#d1fae5', color: '#065f46' }
+      return { label: 'Help on the way', bg: 'bg-success-400/20', color: 'text-success-500' }
     case 'en_route':
-      return { label: 'Responder en route', bg: '#d1fae5', color: '#065f46' }
+      return { label: 'Responder en route', bg: 'bg-success-400/20', color: 'text-success-500' }
     case 'on_scene':
-      return { label: 'On scene', bg: '#d1fae5', color: '#065f46' }
+      return { label: 'On scene', bg: 'bg-success-400/20', color: 'text-success-500' }
     case 'resolved':
     case 'closed':
-      return { label: 'Resolved', bg: '#d1fae5', color: '#065f46' }
+      return { label: 'Resolved', bg: 'bg-success-400/20', color: 'text-success-500' }
     case 'reopened':
-      return { label: 'Re-opened', bg: '#dbeafe', color: '#1e40af' }
+      return { label: 'Re-opened', bg: 'bg-brand-100', color: 'text-brand-600' }
     case 'rejected':
-      return { label: 'Not accepted', bg: '#fee2e2', color: '#991b1b' }
+      return { label: 'Not accepted', bg: 'bg-danger-400/20', color: 'text-danger-500' }
     case 'cancelled':
     case 'cancelled_false_report':
-      return { label: 'Cancelled', bg: '#e0e7f0', color: '#52606d' }
+      return { label: 'Cancelled', bg: 'bg-surface-200', color: 'text-surface-600' }
     case 'merged_as_duplicate':
-      return { label: 'Merged', bg: '#e0e7f0', color: '#52606d' }
+      return { label: 'Merged', bg: 'bg-surface-200', color: 'text-surface-600' }
     default:
-      return { label: status.replace(/_/g, ' '), bg: '#e0e7f0', color: '#52606d' }
+      return { label: status.replace(/_/g, ' '), bg: 'bg-surface-200', color: 'text-surface-600' }
   }
 }
 
 function severityDot(severity: string): string {
   if (severity === 'high') return '#dc2626'
-  if (severity === 'medium') return '#a73400'
+  if (severity === 'medium') return '#d97706'
   return '#334155'
 }
 
@@ -59,6 +71,106 @@ function timeAgo(ts: number): string {
   return `${String(Math.floor(hours / 24))}d ago`
 }
 
+/* ── Badge system ── */
+interface BadgeDef {
+  id: string
+  label: string
+  description: string
+  Icon: React.ComponentType<{ size?: number; className?: string }>
+  earned: boolean
+}
+
+function useBadges(reports: MyReport[]): BadgeDef[] {
+  const count = reports.length
+  const verifiedCount = reports.filter((r) => r.status === 'verified').length
+
+  return [
+    {
+      id: 'first-report',
+      label: 'First Report',
+      description: 'You started helping your community',
+      Icon: Award,
+      earned: count >= 1,
+    },
+    {
+      id: 'verified-reporter',
+      label: 'Verified Reporter',
+      description: 'A report you filed was verified',
+      Icon: ShieldCheck,
+      earned: verifiedCount >= 1,
+    },
+    {
+      id: 'community-helper',
+      label: 'Community Helper',
+      description: 'Filed 3+ reports',
+      Icon: HeartHandshake,
+      earned: count >= 3,
+    },
+    {
+      id: 'active-citizen',
+      label: 'Active Citizen',
+      description: 'Filed 5+ reports',
+      Icon: Flame,
+      earned: count >= 5,
+    },
+  ]
+}
+
+/* ── Report milestone tracker ── */
+function MilestoneTracker({ reports }: { reports: MyReport[] }) {
+  const counts = {
+    sent: reports.length,
+    review: reports.filter((r) => r.status === 'awaiting_verify').length,
+    verified: reports.filter((r) => r.status === 'verified').length,
+    resolved: reports.filter((r) => r.status === 'resolved' || r.status === 'closed').length,
+  }
+
+  const data = [
+    { label: 'Report sent', count: counts.sent },
+    { label: 'Under review', count: counts.review },
+    { label: 'Verified', count: counts.verified },
+    { label: 'Resolved', count: counts.resolved },
+  ]
+
+  return (
+    <div className="bg-white rounded-xl border border-surface-200 p-4 mx-4 mt-4">
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp size={16} className="text-brand-500" />
+        <h2 className="text-sm font-semibold text-surface-700">Report Milestones</h2>
+      </div>
+      <div className="flex gap-2">
+        {data.map((m, i) => {
+          const isActive = m.count > 0
+          const isLast = i === data.length - 1
+          return (
+            <div key={m.label} className="flex-1 flex items-center gap-2">
+              <div className="flex-1">
+                <div
+                  className={`h-2 rounded-full transition-colors ${
+                    isActive ? 'bg-brand-500' : 'bg-surface-200'
+                  }`}
+                />
+                <p
+                  className={`text-[10px] mt-1.5 text-center font-medium ${isActive ? 'text-surface-700' : 'text-surface-400'}`}
+                >
+                  {m.label}
+                </p>
+                {isActive && (
+                  <p className="text-[10px] text-center text-brand-500 font-semibold">{m.count}</p>
+                )}
+              </div>
+              {!isLast && (
+                <div className={`w-3 h-px ${isActive ? 'bg-brand-500' : 'bg-surface-200'}`} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ── Report card ── */
 function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) {
   const icon = incidentIcon(report.reportType)
   const label = incidentLabel(report.reportType)
@@ -69,7 +181,7 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
     <button
       type="button"
       onClick={onTap}
-      className="w-full text-left cursor-pointer bg-white rounded-xl p-3.5 mb-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-[#e5e7eb]"
+      className="w-full text-left cursor-pointer bg-white rounded-xl p-3.5 mb-2 border border-surface-200 shadow-sm active:scale-[0.99] transition-transform"
     >
       <div className="flex gap-2.5 items-start">
         <span aria-hidden="true" className="shrink-0 leading-snug flex items-center">
@@ -83,25 +195,24 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
                 className="w-2 h-2 rounded-full shrink-0 inline-block"
                 style={{ background: dot }}
               />
-              <p className="m-0 font-bold text-[0.9375rem] text-[#001e40]">{label}</p>
+              <p className="m-0 font-bold text-[0.9375rem] text-surface-900">{label}</p>
             </div>
-            <span className="shrink-0 text-[0.6875rem] text-[#7b8794]">
+            <span className="shrink-0 text-[0.6875rem] text-surface-400">
               {timeAgo(report.submittedAt)}
             </span>
           </div>
           {report.municipalityLabel ? (
-            <p className="mt-[3px] mb-1.5 text-[0.8125rem] text-[#52606d]">
+            <p className="mt-[3px] mb-1.5 text-[0.8125rem] text-surface-600">
               <MapPin size={12} className="inline align-middle" /> {report.municipalityLabel}
             </p>
           ) : null}
           <div className="flex gap-1.5 items-center mt-1.5">
             <span
-              className="px-2 py-0.5 rounded-full text-xs font-bold tracking-wide"
-              style={{ background: bg, color }}
+              className={`px-2 py-0.5 rounded-full text-xs font-bold tracking-wide ${bg} ${color}`}
             >
               {statusLabel}
             </span>
-            <span className="text-[0.6875rem] text-[#7b8794]">Ref: {report.publicRef}</span>
+            <span className="text-[0.6875rem] text-surface-400">Ref: {report.publicRef}</span>
           </div>
         </div>
       </div>
@@ -109,21 +220,23 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
   )
 }
 
+/* ── Skeleton card ── */
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl p-3.5 mb-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] animate-pulse">
+    <div className="bg-white rounded-xl p-3.5 mb-2 border border-surface-200 animate-pulse">
       <div className="flex gap-2.5">
-        <div className="w-6 h-6 rounded-full bg-[#e0e3e5] shrink-0" />
+        <div className="w-6 h-6 rounded-full bg-surface-200 shrink-0" />
         <div className="flex-1">
-          <div className="h-3.5 w-1/2 bg-[#e0e3e5] rounded mb-2" />
-          <div className="h-3 w-[35%] bg-[#e0e3e5] rounded mb-2.5" />
-          <div className="h-[18px] w-20 bg-[#e0e3e5] rounded-full" />
+          <div className="h-3.5 w-1/2 bg-surface-200 rounded mb-2" />
+          <div className="h-3 w-[35%] bg-surface-200 rounded mb-2.5" />
+          <div className="h-[18px] w-20 bg-surface-200 rounded-full" />
         </div>
       </div>
     </div>
   )
 }
 
+/* ── Main component ── */
 export function ProfileTab() {
   const navigate = useNavigate()
   const { reports, loading } = useMyActiveReports()
@@ -146,6 +259,9 @@ export function ProfileTab() {
   const initials =
     isRegistered && user.displayName ? user.displayName.slice(0, 2).toUpperCase() : ''
 
+  const badges = useBadges(reports)
+  const earnedBadges = badges.filter((b) => b.earned)
+
   if (authLoading) {
     return (
       <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -157,10 +273,12 @@ export function ProfileTab() {
   }
 
   return (
-    <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div
+      className="h-full overflow-y-auto bg-surface-100"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
       {/* Teal hero header */}
-      <div className="bg-[#0f9488] px-4 pt-12 pb-8">
-        {/* Avatar */}
+      <div className="bg-brand-500 px-4 pt-12 pb-8">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
             {initials ? (
@@ -177,7 +295,6 @@ export function ProfileTab() {
               {isRegistered ? 'Registered reporter' : 'Guest reporter'}
             </p>
           </div>
-          {/* Report count badge */}
           <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
             {reports.length} {reports.length === 1 ? 'report' : 'reports'} submitted
           </span>
@@ -186,14 +303,14 @@ export function ProfileTab() {
 
       {/* Pseudonymous banner */}
       {isPseudonymous && (
-        <div className="bg-[#e8f6f3] border border-[#c4e8e2] rounded-xl mx-4 p-4 mt-4">
+        <div className="bg-brand-50 border border-brand-200 rounded-xl mx-4 p-4 mt-4">
           <div className="flex gap-3 items-start">
-            <EyeOff size={18} className="text-[#0f9488] shrink-0 mt-0.5" />
+            <EyeOff size={18} className="text-brand-500 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="m-0 text-sm font-semibold text-[#001e40] mb-1">
+              <p className="m-0 text-sm font-semibold text-surface-900 mb-1">
                 You&apos;re using Bantayog anonymously
               </p>
-              <p className="m-0 text-xs text-[#52606d] mb-3">
+              <p className="m-0 text-xs text-surface-500 mb-3">
                 Register to track your reports across devices.
               </p>
               <button
@@ -201,7 +318,7 @@ export function ProfileTab() {
                 onClick={() => {
                   void navigate('/register')
                 }}
-                className="text-xs font-semibold text-[#0f9488] underline underline-offset-2 bg-transparent border-none cursor-pointer p-0"
+                className="text-xs font-semibold text-brand-500 underline underline-offset-2 bg-transparent border-none cursor-pointer p-0"
               >
                 Register to track your reports
               </button>
@@ -212,33 +329,86 @@ export function ProfileTab() {
 
       {/* Stats row */}
       <div className="flex gap-3 mx-4 mt-4">
-        <div className="bg-white rounded-xl p-4 flex-1 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-          <p className="m-0 text-2xl font-bold text-[#001e40]">{reports.length}</p>
-          <p className="m-0 text-xs text-[#52606d] mt-0.5">Reports Submitted</p>
+        <div className="bg-white rounded-xl p-4 flex-1 border border-surface-200 shadow-sm">
+          <p className="m-0 text-2xl font-bold text-surface-900">{reports.length}</p>
+          <p className="m-0 text-xs text-surface-500 mt-0.5">Reports Submitted</p>
         </div>
-        <div className="bg-white rounded-xl p-4 flex-1 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-          <p className="m-0 text-2xl font-bold text-[#0f9488]">{verifiedCount}</p>
-          <p className="m-0 text-xs text-[#52606d] mt-0.5">Verified</p>
+        <div className="bg-white rounded-xl p-4 flex-1 border border-surface-200 shadow-sm">
+          <p className="m-0 text-2xl font-bold text-brand-500">{verifiedCount}</p>
+          <p className="m-0 text-xs text-surface-500 mt-0.5">Verified</p>
         </div>
       </div>
 
-      {/* Settings gear row */}
-      <div className="flex items-center justify-between mx-4 mt-4 bg-white rounded-xl px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-        <span className="text-sm font-semibold text-[#001e40]">Settings</span>
+      {/* Badges */}
+      {earnedBadges.length > 0 && (
+        <div className="mx-4 mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Award size={16} className="text-brand-500" />
+            <h2 className="text-sm font-semibold text-surface-700">Achievements</h2>
+          </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {badges.map((badge) => (
+              <div
+                key={badge.id}
+                className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-opacity ${
+                  badge.earned
+                    ? 'bg-white border-surface-200 shadow-sm'
+                    : 'bg-surface-100 border-surface-200 opacity-40'
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    badge.earned ? 'bg-brand-100' : 'bg-surface-200'
+                  }`}
+                >
+                  <badge.Icon
+                    size={16}
+                    className={badge.earned ? 'text-brand-500' : 'text-surface-400'}
+                  />
+                </div>
+                <div>
+                  <p
+                    className={`text-xs font-semibold ${badge.earned ? 'text-surface-900' : 'text-surface-400'}`}
+                  >
+                    {badge.label}
+                  </p>
+                  <p className="text-[10px] text-surface-400">{badge.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Milestones */}
+      {reports.length > 0 && <MilestoneTracker reports={reports} />}
+
+      {/* Settings card */}
+      <div className="mx-4 mt-4 bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
         <button
           type="button"
           onClick={() => {
             void navigate('/settings')
           }}
           aria-label="Settings"
-          className="border-none bg-transparent cursor-pointer p-1 flex items-center"
+          className="w-full flex items-center justify-between px-4 py-3.5 bg-transparent border-none cursor-pointer text-left"
         >
-          <Settings size={20} className="text-[#52606d]" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center">
+              <Settings size={16} className="text-surface-600" />
+            </div>
+            <div>
+              <p className="m-0 text-sm font-semibold text-surface-900">Settings</p>
+              <p className="m-0 text-xs text-surface-400">Account, notifications, privacy</p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-surface-400" />
         </button>
       </div>
 
       {/* My Reports list */}
       <div className="px-4 pt-4">
+        <h2 className="text-sm font-semibold text-surface-700 mb-3">My Reports</h2>
         {loading ? (
           <>
             <SkeletonCard />
@@ -246,13 +416,13 @@ export function ProfileTab() {
           </>
         ) : reports.length === 0 ? (
           <div role="status" className="py-9 text-center">
-            <p className="m-0 mb-2 text-[#52606d]">
+            <p className="m-0 mb-2 text-surface-400">
               <ClipboardList size={40} />
             </p>
-            <p className="m-0 mb-1.5 font-bold text-[#001e40] text-[0.9375rem]">No reports yet</p>
-            <p className="m-0 mb-5 text-[0.8125rem] text-[#52606d]">
+            <p className="m-0 mb-1.5 font-bold text-surface-900 text-[0.9375rem]">No reports yet</p>
+            <p className="m-0 mb-5 text-[0.8125rem] text-surface-500">
               Your submitted reports will appear here.
-              <span className="block text-[0.6875rem] text-[#7b8794] mt-1 italic">
+              <span className="block text-[0.6875rem] text-surface-400 mt-1 italic">
                 Ang iyong mga ulat ay makikita dito.
               </span>
             </p>
@@ -280,10 +450,8 @@ export function ProfileTab() {
       </div>
 
       {/* Privacy section */}
-      <div className="mx-4 mt-5 pt-5 border-t border-[#e5e7eb]">
-        <h2 className="m-0 mb-3 text-sm font-bold text-[#52606d] uppercase tracking-[0.06em]">
-          Privacy
-        </h2>
+      <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-8">
+        <h2 className="m-0 mb-3 text-sm font-semibold text-surface-700">Privacy</h2>
         <DeleteAccountFlow onGoodbye={() => void navigate('/goodbye')} />
       </div>
 
