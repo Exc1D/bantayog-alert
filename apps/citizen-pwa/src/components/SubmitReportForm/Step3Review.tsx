@@ -8,6 +8,8 @@ import {
   Mountain,
   Waves,
   AlertTriangle,
+  MapPin,
+  AlertCircle,
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
@@ -49,105 +51,161 @@ export function Step3Review({
   const Icon = incident?.Icon ?? AlertTriangle
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <button type="button" onClick={onBack} aria-label="Go back" className="back-btn">
-          <ArrowLeft size={16} />
+    <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+      {/* Header */}
+      <div className="sticky top-0 z-nav bg-surface-100/90 backdrop-blur-md border-b border-surface-200 px-4 py-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Go back"
+          className="w-10 h-10 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
+        >
+          <ArrowLeft size={24} className="text-surface-700" />
         </button>
-        <span className="step-indicator">3 of 3</span>
+        <h1 className="text-lg font-semibold text-surface-900 flex-1">Review Report</h1>
+        <span className="text-sm font-medium text-surface-400">Step 3 of 3</span>
       </div>
 
-      <div className="progress-dots">
-        <div className="progress-dot progress-dot--active" />
-        <div className="progress-dot progress-dot--active" />
-        <div className="progress-dot progress-dot--active" />
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 px-5 pt-4 pb-2">
+        {[1, 2, 3].map((n) => {
+          const isCompleted = 3 > n
+          const isCurrent = 3 === n
+          return (
+            <div key={n} className="flex-1 flex items-center gap-2">
+              <div
+                className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
+                  isCompleted || isCurrent ? 'bg-brand-500' : 'bg-surface-200'
+                } ${isCurrent ? 'animate-pulse' : ''}`}
+              />
+            </div>
+          )
+        })}
       </div>
 
-      <div className="consent-banner">
-        <div className="consent-ornament" />
-        <div className="consent-row">
-          <div className="consent-heart">
-            <Heart size={16} />
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-6">
+        {/* "We heard you" banner */}
+        <div className="bg-brand-50 rounded-xl border border-brand-200 p-4 relative overflow-hidden">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-brand-500/10" />
+          <div className="flex gap-3 items-start relative">
+            <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center shrink-0">
+              <Heart size={16} className="text-white" />
+            </div>
+            <p className="text-sm text-surface-700 leading-relaxed">
+              <strong className="text-surface-900">We heard you. We are here.</strong> Narinig namin
+              kayo. Nandito kami. We&apos;ll notify you when help is on the way — please keep your
+              phone line open.
+            </p>
           </div>
-          <p className="consent-text">
-            <strong>We heard you. We are here.</strong> Narinig namin kayo. Nandito kami. We&apos;ll
-            notify you when help is on the way — please keep your phone line open.
+        </div>
+
+        {/* Summary card */}
+        <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-surface-200 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-surface-700">Report Summary</h2>
+          </div>
+
+          <div className="divide-y divide-surface-100">
+            {/* Type row */}
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Icon size={20} className="text-surface-400" />
+                <div>
+                  <p className="text-xs text-surface-400">Incident Type</p>
+                  <p className="text-sm font-semibold text-surface-900">
+                    {incident?.label ?? reportData.reportType}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Patient count row */}
+            {reportData.patientCount > 0 && (
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-surface-400">Patients</p>
+                  <p className="text-sm font-semibold text-surface-900">
+                    {reportData.patientCount}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Location row */}
+            <div className="px-4 py-3 flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                <MapPin size={20} className="text-surface-400 mt-0.5" />
+                <div>
+                  <p className="text-xs text-surface-400">Location</p>
+                  <p className="text-sm font-semibold text-surface-900">
+                    {reportData.locationMethod === 'manual' && reportData.municipalityLabel
+                      ? `${reportData.municipalityLabel}${reportData.barangayId ? `, ${reportData.barangayId}` : ''}`
+                      : `${reportData.location.lat.toFixed(5)}, ${reportData.location.lng.toFixed(5)}`}
+                  </p>
+                  {reportData.nearestLandmark && (
+                    <p className="text-xs text-surface-500 mt-0.5">{reportData.nearestLandmark}</p>
+                  )}
+                  <p className="text-xs text-surface-400 mt-0.5">
+                    {reportData.locationMethod === 'gps' ? 'GPS coordinates' : 'Manual location'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact row */}
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-surface-400">Contact</p>
+                <p className="text-sm font-semibold text-surface-900">{reportData.reporterName}</p>
+                <p className="text-xs text-surface-500">{reportData.reporterMsisdn}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Consent */}
+        <div className="bg-brand-50 rounded-xl border border-brand-200 p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <div className="mt-0.5">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => {
+                  setConsent(e.target.checked)
+                }}
+                className="w-5 h-5 rounded border-2 border-brand-300 text-brand-500 focus:ring-brand-500 accent-brand-500"
+              />
+            </div>
+            <span className="text-sm text-surface-700 leading-relaxed">
+              I confirm this report is accurate to the best of my knowledge. I consent to sharing
+              this information with emergency responders.{' '}
+              <em className="text-surface-500">Kumpirmo ko na totoo ang ulat na ito.</em>
+            </span>
+          </label>
+        </div>
+
+        {!consent && (
+          <p className="text-xs text-surface-400 text-center flex items-center justify-center gap-1">
+            <AlertCircle size={14} />
+            Please check the consent box to submit
           </p>
-        </div>
-      </div>
-
-      <h2 className="step-title">Review your report</h2>
-
-      <div className="review-card">
-        <p className="review-label">Incident</p>
-        <div className="review-value">
-          <Icon
-            size={14}
-            style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}
-          />
-          {incident?.label ?? reportData.reportType}
-        </div>
-        <div className="review-subvalue">
-          {reportData.patientCount} {reportData.patientCount === 1 ? 'patient' : 'patients'}
-        </div>
-      </div>
-
-      <div className="review-card">
-        <p className="review-label">Contact</p>
-        <div className="review-value">{reportData.reporterName}</div>
-        <div className="review-subvalue">{reportData.reporterMsisdn}</div>
-      </div>
-
-      <div className="review-card">
-        <p className="review-label">Location</p>
-        {reportData.locationMethod === 'manual' && reportData.municipalityLabel ? (
-          <>
-            <div className="review-value">
-              {reportData.municipalityLabel}
-              {reportData.barangayId ? `, ${reportData.barangayId}` : ''}
-            </div>
-            {reportData.nearestLandmark ? (
-              <div className="review-subvalue">{reportData.nearestLandmark}</div>
-            ) : null}
-            <div className="review-subvalue">Manual location</div>
-          </>
-        ) : (
-          <>
-            <div className="review-value">
-              {reportData.location.lat.toFixed(5)}, {reportData.location.lng.toFixed(5)}
-            </div>
-            <div className="review-subvalue">GPS coordinates</div>
-          </>
         )}
       </div>
 
-      <label className="consent-checkbox-label">
-        <input
-          type="checkbox"
-          checked={consent}
-          onChange={(e) => {
-            setConsent(e.target.checked)
-          }}
-          className="consent-checkbox"
-        />
-        <span className="consent-text-small">
-          I confirm this report is accurate and that I may be contacted for follow-up.{' '}
-          <em>Kumpirmo ko na totoo ang ulat na ito at maaari kayong makipag-ugnayan sa akin.</em>{' '}
-          <button
-            type="button"
-            className="consent-link"
-            onClick={(e) => {
-              e.stopPropagation()
-            }}
-          >
-            Privacy notice — Patakaran sa privacy ›
-          </button>
-        </span>
-      </label>
-
-      <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
-        {isSubmitting ? 'Isinusumite...' : 'Submit report — I-ulat na'}
-      </Button>
+      {/* Bottom action */}
+      <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
+        <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Sending...
+            </span>
+          ) : (
+            'Submit Report'
+          )}
+        </Button>
+      </div>
     </div>
   )
 }

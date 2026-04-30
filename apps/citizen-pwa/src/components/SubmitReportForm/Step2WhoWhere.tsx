@@ -56,7 +56,6 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   useEffect(() => {
     try {
       const savedName = localStorage.getItem('bantayog.reporter.name')
-      // Phone is session-only to limit long-lived PII exposure
       const savedMsisdn = sessionStorage.getItem('bantayog.reporter.msisdn')
       if (savedName || savedMsisdn) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -70,7 +69,6 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       } else if (!isSecurityError(err)) {
         console.warn('[Step2WhoWhere] Unexpected storage read error, skipping pre-fill', err)
       }
-      // SecurityError (private mode) is intentionally silent
     }
   }, [])
 
@@ -106,7 +104,6 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
 
     try {
       localStorage.setItem('bantayog.reporter.name', reporterName)
-      // Phone is session-only to limit long-lived PII exposure
       sessionStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
     } catch (err: unknown) {
       if (isQuotaExceededError(err)) {
@@ -114,7 +111,6 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
       } else if (!isSecurityError(err)) {
         console.warn('[Step2WhoWhere] Unexpected storage write error, skipping persist', err)
       }
-      // SecurityError (private mode) is intentionally silent
     }
 
     onNext({
@@ -140,127 +136,149 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
     false
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <button type="button" onClick={onBack} aria-label="Go back" className="back-btn">
-          <ArrowLeft size={16} />
+    <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+      {/* Header */}
+      <div className="sticky top-0 z-nav bg-surface-100/90 backdrop-blur-md border-b border-surface-200 px-4 py-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Go back"
+          className="w-10 h-10 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
+        >
+          <ArrowLeft size={24} className="text-surface-700" />
         </button>
-        <span className="step-indicator">2 of 3</span>
+        <h1 className="text-lg font-semibold text-surface-900 flex-1">Location &amp; Contact</h1>
+        <span className="text-sm font-medium text-surface-400">Step 2 of 3</span>
       </div>
 
-      <div className="progress-dots">
-        <div className="progress-dot progress-dot--active" />
-        <div className="progress-dot progress-dot--active" />
-        <div className="progress-dot progress-dot--inactive" />
-      </div>
-
-      <h2 className="step-title">Where and who?</h2>
-      <p className="step-subtitle">
-        Help responders reach you faster by sharing your location.
-        <span className="tl-hint">Tulungan ang mga rescuer na mahanap kayo nang mas mabilis.</span>
-      </p>
-
-      {locationMethod === null && !gpsLoading ? (
-        <div className="location-picker-start">
-          <p className="location-picker-prompt">How are you sharing your location?</p>
-          <button
-            type="button"
-            className="location-picker-btn"
-            onClick={() => {
-              void attemptGps()
-            }}
-          >
-            <Navigation size={18} />
-            <span>Use current location (GPS)</span>
-          </button>
-          <button
-            type="button"
-            className="location-picker-btn"
-            onClick={() => {
-              setLocationMethod('manual')
-            }}
-          >
-            <MapPin size={18} />
-            <span>Pick my municipality manually</span>
-          </button>
-        </div>
-      ) : null}
-
-      {gpsLoading ? (
-        <div className="location-loading">
-          <div className="location-loading-spinner" />
-          <p className="location-loading-text">Getting your location...</p>
-        </div>
-      ) : null}
-
-      {locationMethod === 'gps' && location ? (
-        <div className="field-group">
-          <p className="field-label">Location</p>
-          <button
-            type="button"
-            className="location-btn"
-            onClick={() => {
-              resetGps()
-            }}
-          >
-            <div className="location-icon">
-              <Navigation size={14} />
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 px-5 pt-4 pb-2">
+        {[1, 2, 3].map((n) => {
+          const isCompleted = 2 > n
+          const isCurrent = 2 === n
+          return (
+            <div key={n} className="flex-1 flex items-center gap-2">
+              <div
+                className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
+                  isCompleted || isCurrent ? 'bg-brand-500' : 'bg-surface-200'
+                } ${isCurrent ? 'animate-pulse' : ''}`}
+              />
             </div>
-            <div className="location-info">
-              <div className="location-primary">
-                {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+          )
+        })}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-6">
+        {/* Location */}
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-surface-700 block">Location</p>
+
+          {locationMethod === null && !gpsLoading ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-4 py-3.5 bg-white border border-surface-200 rounded-xl cursor-pointer text-sm font-semibold text-surface-900 active:bg-surface-50 transition-colors text-left"
+                onClick={() => {
+                  void attemptGps()
+                }}
+              >
+                <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
+                  <Navigation size={16} className="text-brand-500" />
+                </div>
+                Use current location (GPS)
+              </button>
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-4 py-3.5 bg-white border border-surface-200 rounded-xl cursor-pointer text-sm font-semibold text-surface-900 active:bg-surface-50 transition-colors text-left"
+                onClick={() => {
+                  setLocationMethod('manual')
+                }}
+              >
+                <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center">
+                  <MapPin size={16} className="text-surface-600" />
+                </div>
+                Pick my municipality manually
+              </button>
+            </div>
+          ) : null}
+
+          {gpsLoading ? (
+            <div className="flex flex-col items-center gap-3 py-8 bg-white rounded-xl border border-surface-200">
+              <div className="w-6 h-6 border-2 border-surface-200 border-t-brand-500 rounded-full animate-spin" />
+              <p className="text-sm text-surface-600">Getting your location...</p>
+            </div>
+          ) : null}
+
+          {locationMethod === 'gps' && location ? (
+            <div className="bg-white rounded-xl border border-surface-200 p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
+                  <Navigation size={16} className="text-brand-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-surface-900">
+                    {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                  </p>
+                  <p className="text-xs text-surface-400">GPS · accuracy varies</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetGps()
+                  }}
+                  className="text-xs font-semibold text-brand-500 bg-transparent border-none cursor-pointer"
+                >
+                  Change
+                </button>
               </div>
-              <div className="location-secondary">GPS · accuracy varies</div>
+              {locationError && <p className="text-xs text-danger-500">{locationError}</p>}
+              <div className="bg-surface-100 rounded-lg h-14 relative">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-warning-500 border-2 border-white rounded-full" />
+              </div>
             </div>
-            <span className="location-change">Change</span>
-          </button>
-          {locationError && <p className="field-error">{locationError}</p>}
-          <div className="map-preview">
-            <div className="map-marker" />
-          </div>
+          ) : null}
+
+          {locationMethod === 'manual' ? (
+            <div className="space-y-3">
+              <MunicipalitySelector
+                value={selectedMunicipalityId}
+                onChange={(muniId) => {
+                  setMunicipalityError(null)
+                  handleSelectMunicipality(muniId)
+                }}
+                error={municipalityError}
+              />
+              <BarangaySelector
+                municipalityId={selectedMunicipalityId}
+                value={selectedBarangayId ?? ''}
+                onChange={handleSelectBarangay}
+              />
+            </div>
+          ) : null}
+
+          {locationMethod === 'manual' && selectedMunicipalityId ? (
+            <div>
+              <p className="text-sm font-semibold text-surface-700 block mb-2">
+                Nearest landmark
+                <span className="font-normal text-surface-400 ml-1">— optional</span>
+              </p>
+              <input
+                type="text"
+                value={nearestLandmark}
+                onChange={(e) => {
+                  setNearestLandmark(e.target.value)
+                }}
+                placeholder="e.g. Near the town plaza, across from Mang Juan Store"
+                className="w-full min-h-[56px] rounded-xl border-2 border-surface-200 bg-white px-4 text-base text-surface-900 placeholder:text-surface-300 focus:border-brand-500 focus:outline-none transition-colors"
+                maxLength={200}
+              />
+            </div>
+          ) : null}
         </div>
-      ) : null}
 
-      {locationMethod === 'manual' ? (
-        <MunicipalitySelector
-          value={selectedMunicipalityId}
-          onChange={(muniId) => {
-            setMunicipalityError(null)
-            handleSelectMunicipality(muniId)
-          }}
-          error={municipalityError}
-        />
-      ) : null}
-
-      {locationMethod === 'manual' && (
-        <BarangaySelector
-          municipalityId={selectedMunicipalityId}
-          value={selectedBarangayId ?? ''}
-          onChange={handleSelectBarangay}
-        />
-      )}
-
-      {locationMethod === 'manual' && selectedMunicipalityId ? (
-        <div className="field-group">
-          <p className="field-label">
-            Nearest landmark
-            <span className="field-label-optional"> — optional</span>
-          </p>
-          <input
-            type="text"
-            value={nearestLandmark}
-            onChange={(e) => {
-              setNearestLandmark(e.target.value)
-            }}
-            placeholder="e.g. Near the town plaza, across from Mang Juan Store"
-            className="text-input"
-            maxLength={200}
-          />
-        </div>
-      ) : null}
-
-      {locationMethod !== null ? (
-        <>
+        {/* Contact + Is anyone hurt */}
+        {locationMethod !== null && (
           <ContactFields
             reporterName={reporterName}
             onReporterNameChange={setReporterName}
@@ -280,18 +298,22 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
             onPatientCountChange={setPatientCount}
             hasMemory={hasMemory}
           />
+        )}
+      </div>
 
+      {/* Bottom action */}
+      {locationMethod !== null && (
+        <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
           <Button
             variant="primary"
             fullWidth
             onClick={handleNext}
             disabled={!canProceed || isSubmitting}
-            style={{ marginTop: '1.5rem' }}
           >
-            {isSubmitting ? 'Please wait...' : 'Continue'}
+            {isSubmitting ? 'Please wait...' : 'Review Report'}
           </Button>
-        </>
-      ) : null}
+        </div>
+      )}
     </div>
   )
 }

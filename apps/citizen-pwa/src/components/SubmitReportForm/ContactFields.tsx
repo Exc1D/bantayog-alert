@@ -34,10 +34,19 @@ export function ContactFields({
   hasMemory = false,
 }: ContactFieldsProps) {
   return (
-    <>
-      {hasMemory && <p className="memory-hint">Pre-filled from your last report</p>}
-      <div className="field-group">
-        <label htmlFor="reporter-name" className="field-label">
+    <div className="space-y-5">
+      {hasMemory && (
+        <p className="memory-hint text-xs text-success-500 font-semibold">
+          Pre-filled from your last report
+        </p>
+      )}
+
+      {/* Name */}
+      <div>
+        <label
+          htmlFor="reporter-name"
+          className="text-sm font-semibold text-surface-700 block mb-2"
+        >
           Your name
         </label>
         <input
@@ -49,18 +58,22 @@ export function ContactFields({
             onNameErrorClear()
           }}
           placeholder="Maria Dela Cruz"
-          className="text-input"
+          className="w-full min-h-[56px] rounded-xl border-2 border-surface-200 bg-white px-4 text-base text-surface-900 placeholder:text-surface-300 focus:border-brand-500 focus:outline-none transition-colors"
           required
         />
         {nameError && (
-          <p className="field-error" data-testid="name-error">
+          <p className="field-error text-xs text-danger-500 mt-1.5" data-testid="name-error">
             {nameError}
           </p>
         )}
       </div>
 
-      <div className="field-group">
-        <label htmlFor="reporter-msisdn" className="field-label">
+      {/* Phone */}
+      <div>
+        <label
+          htmlFor="reporter-msisdn"
+          className="text-sm font-semibold text-surface-700 block mb-2"
+        >
           Phone number
         </label>
         <input
@@ -72,33 +85,39 @@ export function ContactFields({
             onPhoneErrorClear()
           }}
           placeholder="+63 912 345 6789"
-          className="text-input"
+          className="w-full min-h-[56px] rounded-xl border-2 border-surface-200 bg-white px-4 text-base text-surface-900 placeholder:text-surface-300 focus:border-brand-500 focus:outline-none transition-colors"
           required
         />
         {phoneError && (
-          <p className="field-error" data-testid="phone-error">
+          <p className="field-error text-xs text-danger-500 mt-1.5" data-testid="phone-error">
             {phoneError}
           </p>
         )}
-        <p className="phone-hint">
-          <strong>Gives you faster help.</strong> Admins call this number if they need more details.{' '}
-          <em>Mas mabilis kang matutulungan.</em>
+        <p className="text-xs text-surface-500 mt-1.5 leading-relaxed">
+          <span className="font-semibold text-surface-700">Gives you faster help.</span> Admins call
+          this number if they need more details.{' '}
+          <em className="text-surface-400">Mas mabilis kang matutulungan.</em>
         </p>
       </div>
 
-      <div className="field-group field-group--urgent">
-        <p className="field-label">
+      {/* Is anyone hurt? */}
+      <div className="bg-danger-500/5 border-2 border-danger-500/20 rounded-xl p-4">
+        <p className="text-sm font-semibold text-surface-700 mb-3">
           Is anyone hurt?
-          <em className="field-label-optional"> May injured ba?</em>
+          <em className="font-normal text-surface-400 ml-1">May injured ba?</em>
         </p>
-        <div className="toggle-group">
+        <div className="flex gap-2 mb-2">
           <button
             type="button"
             aria-pressed={anyoneHurt}
             onClick={() => {
               onAnyoneHurtChange(true)
             }}
-            className={`toggle-btn${anyoneHurt ? ' toggle-btn--selected' : ''}`}
+            className={`flex-1 min-h-[44px] rounded-xl text-sm font-semibold border-2 transition-all active:scale-[0.98] ${
+              anyoneHurt
+                ? 'bg-danger-500 border-danger-500 text-white'
+                : 'bg-white border-surface-200 text-surface-700'
+            }`}
           >
             Yes
           </button>
@@ -108,33 +127,43 @@ export function ContactFields({
             onClick={() => {
               onAnyoneHurtChange(false)
             }}
-            className={`toggle-btn${!anyoneHurt ? ' toggle-btn--selected' : ''}`}
+            className={`flex-1 min-h-[44px] rounded-xl text-sm font-semibold border-2 transition-all active:scale-[0.98] ${
+              !anyoneHurt
+                ? 'bg-brand-500 border-brand-500 text-white'
+                : 'bg-white border-surface-200 text-surface-700'
+            }`}
           >
             No
           </button>
         </div>
 
         {anyoneHurt && (
-          <div className="patient-advisory">
-            <p className="patient-advisory-label">How many patients?</p>
-            <div className="patient-counter">
+          <div className="bg-white rounded-xl p-3 mt-2 animate-[slideIn_0.2s_ease]">
+            <p className="text-xs font-bold text-surface-700 uppercase tracking-wide mb-2">
+              How many patients?
+            </p>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   onPatientCountChange(Math.max(0, patientCount - 1))
                 }}
-                className="counter-btn"
+                className="w-10 h-10 rounded-xl bg-surface-100 text-surface-700 border border-surface-200 flex items-center justify-center font-bold text-lg disabled:opacity-40"
                 disabled={patientCount === 0}
+                aria-label="−"
               >
                 −
               </button>
-              <div className="counter-display">{patientCount}</div>
+              <div className="flex-1 h-10 rounded-xl bg-surface-100 flex items-center justify-center font-bold text-surface-900">
+                {patientCount}
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   onPatientCountChange(patientCount + 1)
                 }}
-                className="counter-increment-btn"
+                className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-lg active:bg-brand-600"
+                aria-label="+"
               >
                 +
               </button>
@@ -142,6 +171,6 @@ export function ContactFields({
           </div>
         )}
       </div>
-    </>
+    </div>
   )
 }
