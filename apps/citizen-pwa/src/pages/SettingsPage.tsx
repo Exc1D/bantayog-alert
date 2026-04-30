@@ -22,6 +22,27 @@ export function SettingsPage() {
     }
   })
   const [storageInfo, setStorageInfo] = useState<string>(INITIAL_STORAGE_INFO)
+  const [alertSounds, setAlertSounds] = useState(() => {
+    try {
+      return localStorage.getItem('bantayog_alert_sounds') === 'true'
+    } catch {
+      return true
+    }
+  })
+  const [autoLocation, setAutoLocation] = useState(() => {
+    try {
+      return localStorage.getItem('bantayog_location_auto') !== 'false'
+    } catch {
+      return true
+    }
+  })
+  const [exportDisabled, setExportDisabled] = useState(() => {
+    try {
+      return sessionStorage.getItem('bantayog_export_requested') === '1'
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     const hasStorage =
@@ -51,6 +72,44 @@ export function SettingsPage() {
     } catch (e) {
       console.error('Failed to set bantayog_offline_mode:', v, e)
     }
+  }
+
+  const handleAlertSoundsToggle = (v: boolean) => {
+    setAlertSounds(v)
+    try {
+      localStorage.setItem('bantayog_alert_sounds', String(v))
+    } catch {
+      /* */
+    }
+  }
+
+  const handleAutoLocationToggle = (v: boolean) => {
+    setAutoLocation(v)
+    try {
+      localStorage.setItem('bantayog_location_auto', String(v))
+    } catch {
+      /* */
+    }
+  }
+
+  const handleDataExport = async () => {
+    try {
+      sessionStorage.setItem('bantayog_export_requested', '1')
+      setExportDisabled(true)
+      const { requestDataExport } = await import('../services/callables.js')
+      await requestDataExport()
+      toast("We'll email your data within 24 hours.", 'success')
+    } catch {
+      toast('Data export failed. Please try again.', 'error')
+    }
+    setTimeout(() => {
+      try {
+        sessionStorage.removeItem('bantayog_export_requested')
+      } catch {
+        /* */
+      }
+      setExportDisabled(false)
+    }, 60000)
   }
 
   const handleSignOut = async () => {
@@ -105,6 +164,18 @@ export function SettingsPage() {
       <div style={sectionStyle}>
         <div style={labelStyle}>Notifications</div>
         <Toggle checked={pushEnabled} onChange={setPushEnabled} label="Push notifications" />
+        <div style={{ marginTop: 12 }}>
+          <Toggle checked={alertSounds} onChange={handleAlertSoundsToggle} label="Alert sounds" />
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Location</div>
+        <Toggle
+          checked={autoLocation}
+          onChange={handleAutoLocationToggle}
+          label="Auto-detect location"
+        />
       </div>
 
       <div style={sectionStyle}>
@@ -122,20 +193,37 @@ export function SettingsPage() {
         <button
           type="button"
           onClick={() => {
-            toast('Coming soon', 'info')
+            void handleDataExport()
           }}
+          disabled={exportDisabled}
           style={{
             border: 'none',
             background: 'none',
-            color: '#001e40',
+            color: exportDisabled ? '#7b8794' : '#001e40',
             fontSize: '0.875rem',
             fontWeight: 600,
-            cursor: 'pointer',
+            cursor: exportDisabled ? 'not-allowed' : 'pointer',
             padding: '8px 0',
+            display: 'block',
           }}
         >
-          Request Data Export
+          {exportDisabled ? 'Coming soon' : 'Download my data'}
         </button>
+        <a
+          href="https://bantayog.alert/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'block',
+            marginTop: 8,
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            color: '#001e40',
+            textDecoration: 'none',
+          }}
+        >
+          Privacy Policy
+        </a>
       </div>
 
       <div style={sectionStyle}>

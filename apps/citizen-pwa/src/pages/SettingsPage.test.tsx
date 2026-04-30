@@ -35,6 +35,10 @@ vi.mock('../hooks/useToast.js', () => ({
   useToast: () => ({ show: false, message: '', type: 'info' as const, toast: vi.fn() }),
 }))
 
+vi.mock('../services/callables.js', () => ({
+  requestDataExport: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('../components/Toast.js', () => ({
   Toast: () => null,
 }))
@@ -50,8 +54,11 @@ describe('SettingsPage', () => {
     )
     expect(screen.getByText('Settings')).toBeInTheDocument()
     expect(screen.getByText('Push notifications')).toBeInTheDocument()
+    expect(screen.getByText('Alert sounds')).toBeInTheDocument()
+    expect(screen.getByText('Auto-detect location')).toBeInTheDocument()
     expect(screen.getByText('Offline-first cache')).toBeInTheDocument()
-    expect(screen.getByText('Request Data Export')).toBeInTheDocument()
+    expect(screen.getByText('Download my data')).toBeInTheDocument()
+    expect(screen.getByText('Privacy Policy')).toBeInTheDocument()
     expect(screen.getByText('Sign Out')).toBeInTheDocument()
   })
 
