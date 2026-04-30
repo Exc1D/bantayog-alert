@@ -345,6 +345,7 @@ export function useOfflineQueueCount(): number {
 - Import `RegisterPage` from `./pages/RegisterPage`
 - Import `SettingsPage` from `./pages/SettingsPage`
 - Add routes:
+
   ```ts
   { path: '/register', element: <RegisterPage /> },
   { path: '/settings', element: <SettingsPage /> },

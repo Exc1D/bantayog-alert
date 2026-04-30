@@ -108,7 +108,7 @@ The atom of the Dispatches tab. Extracted to `src/components/DispatchCard.tsx`.
 
 ### 5.1 Card Anatomy
 
-```
+```text
 [status badge]                    [#NNNN mono]
 [Incident Type — Severity]
 [Barangay, Municipality · X.X km]

@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Set Up Test Infrastructure
+## Task 1: Set Up Test Infrastructure
 
 **Files:**
 
