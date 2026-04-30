@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Crosshair } from 'lucide-react'
 import L from 'leaflet'
 import { FilterBar } from './FilterBar.js'
 import { PeekSheet } from './PeekSheet.js'
@@ -171,6 +172,10 @@ export function MapTab() {
     setSheetPhase('peek')
   }, [])
 
+  const handleRecenter = useCallback(() => {
+    mapRef.current?.flyTo(DAET_CENTER, DEFAULT_ZOOM, { duration: 1 })
+  }, [])
+
   const showEmpty =
     !incidentsLoading &&
     !myReportsLoading &&
@@ -179,16 +184,8 @@ export function MapTab() {
     myReports.length === 0
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        paddingTop: 64,
-        paddingBottom: 88,
-        boxSizing: 'border-box',
-      }}
-    >
-      <div ref={mapElRef} style={{ width: '100%', height: '100%' }} />
+    <div className="absolute inset-0 pt-16 pb-[88px] box-border">
+      <div ref={mapElRef} className="w-full h-full" />
 
       {mapInstance ? (
         <>
@@ -204,23 +201,22 @@ export function MapTab() {
 
       <FilterBar filters={filters} onChange={setFilters} disabled={isOffline} />
 
+      {/* Location FAB */}
+      <button
+        type="button"
+        onClick={handleRecenter}
+        className="absolute bottom-24 right-3 z-40 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-[#001e40] active:scale-95 transition-transform"
+        aria-label="Recenter map"
+      >
+        <Crosshair size={20} />
+      </button>
+
       {showEmpty ? (
         <div
           role="status"
-          style={{
-            position: 'absolute',
-            inset: '50% auto auto 50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10,
-            maxWidth: 280,
-            padding: '20px 24px',
-            borderRadius: 12,
-            background: 'var(--color-surface-container-low)',
-            boxShadow: '0 4px 24px rgba(0,30,64,0.12)',
-            textAlign: 'center',
-          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
         >
-          <p style={{ margin: 0, color: 'var(--color-on-surface-variant)' }}>
+          <p className="m-0 text-[#52606d] text-sm">
             No reported incidents in this area in the last {filters.window}.
           </p>
         </div>
@@ -229,19 +225,9 @@ export function MapTab() {
       {isOffline ? (
         <div
           role="alert"
-          style={{
-            position: 'absolute',
-            inset: 'auto 0 88px',
-            zIndex: 30,
-            padding: '8px 16px',
-            background: 'rgba(0,30,64,0.9)',
-            color: '#fff',
-            textAlign: 'center',
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '0.8rem',
-          }}
+          className="absolute left-0 right-0 bottom-[88px] z-30 px-4 py-2 bg-[#001e40]/90 text-white text-center text-[0.8rem]"
         >
-          📶 Offline — map data may be outdated
+          Offline — map data may be outdated
         </div>
       ) : null}
 
