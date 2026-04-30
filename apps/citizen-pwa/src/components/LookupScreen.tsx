@@ -8,6 +8,7 @@ interface LookupResult {
   status: string
   lastStatusAt: number
   municipalityLabel: string
+  verifiedBy?: string
 }
 
 export function LookupScreen() {
@@ -61,11 +62,23 @@ export function LookupScreen() {
         <h1 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800 }}>Check Report Status</h1>
       </div>
 
+      <div style={{ padding: '24px 16px 0' }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#001e40' }}>
+          Track your report
+        </h2>
+        <p style={{ margin: '0 0 4px', fontSize: '0.8125rem', color: '#52606d' }}>
+          Enter your reference code and secret code to check your report status.
+        </p>
+        <p style={{ margin: 0, fontSize: '0.6875rem', color: '#7b8794', fontStyle: 'italic' }}>
+          Ilagay ang reference at secret code para macheck ang ulat.
+        </p>
+      </div>
+
       <form
         onSubmit={(e) => {
           void handleSubmit(e)
         }}
-        style={{ padding: '24px 16px' }}
+        style={{ padding: '16px 16px 24px' }}
       >
         <label style={{ display: 'block', marginBottom: 16 }}>
           <span
@@ -90,8 +103,10 @@ export function LookupScreen() {
               padding: '10px 0',
               border: 'none',
               borderBottom: '2px solid #001e40',
+              borderRadius: '8px 8px 0 0',
               fontSize: '1rem',
-              background: 'transparent',
+              fontFamily: "'JetBrains Mono', monospace",
+              background: '#f2f4f6',
               outline: 'none',
               transition: reducedMotion ? 'none' : 'border-color 200ms',
             }}
@@ -127,8 +142,10 @@ export function LookupScreen() {
               padding: '10px 0',
               border: 'none',
               borderBottom: '2px solid #001e40',
+              borderRadius: '8px 8px 0 0',
               fontSize: '1rem',
-              background: 'transparent',
+              fontFamily: "'JetBrains Mono', monospace",
+              background: '#f2f4f6',
               outline: 'none',
               transition: reducedMotion ? 'none' : 'border-color 200ms',
             }}
@@ -152,7 +169,7 @@ export function LookupScreen() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? 'Looking up…' : 'Look Up'}
+          {loading ? 'Checking…' : 'Check Status'}
         </button>
       </form>
 
@@ -172,10 +189,16 @@ export function LookupScreen() {
             <span style={{ fontSize: '0.8125rem', color: '#52606d' }}>Municipality</span>
             <span style={{ fontWeight: 600, color: '#001e40' }}>{result.municipalityLabel}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
             <span style={{ fontSize: '0.8125rem', color: '#52606d' }}>Last update</span>
             <span style={{ fontWeight: 600, color: '#001e40' }}>
               {new Date(result.lastStatusAt).toLocaleString()}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.8125rem', color: '#52606d' }}>Verified by</span>
+            <span style={{ fontWeight: 600, color: '#001e40' }}>
+              {result.verifiedBy ?? 'Daet MDRRMO'}
             </span>
           </div>
         </div>

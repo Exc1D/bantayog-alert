@@ -25,7 +25,7 @@ describe('LookupScreen', () => {
   it('renders input and button', () => {
     render(<LookupScreen />)
     expect(screen.getByPlaceholderText('BA-2026-XXXXX')).toBeInTheDocument()
-    expect(screen.getByText('Look Up')).toBeInTheDocument()
+    expect(screen.getByText('Check Status')).toBeInTheDocument()
   })
 
   it('shows navy header', () => {
