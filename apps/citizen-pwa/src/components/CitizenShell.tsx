@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Map, Rss, AlertTriangle, Bell, User } from 'lucide-react'
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
+import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import '../styles/design-tokens.css'
 
 const TABS = [
@@ -14,6 +16,9 @@ const TABS = [
 export function CitizenShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { navigatorOnline } = useOnlineStatus()
+  const queueCount = useOfflineQueueCount()
+  const showBanner = !navigatorOnline
 
   return (
     <div style={{ minHeight: '100dvh', overflow: 'hidden', background: 'var(--color-surface)' }}>
@@ -35,9 +40,29 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           letterSpacing: '0.08em',
         }}
       >
-        VIGILANT
+        BANTAYOG ALERT
       </header>
-      <main style={{ minHeight: '100dvh', paddingTop: 64, paddingBottom: 88 }}>{children}</main>
+      {showBanner && (
+        <div
+          role="alert"
+          style={{
+            position: 'sticky',
+            top: 64,
+            zIndex: 49,
+            background: '#f26522',
+            color: '#fff',
+            textAlign: 'center',
+            padding: '8px 16px',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+          }}
+        >
+          Offline — {queueCount} report{queueCount !== 1 ? 's' : ''} queued
+        </div>
+      )}
+      <main style={{ minHeight: '100dvh', paddingTop: showBanner ? 100 : 64, paddingBottom: 88 }}>
+        {children}
+      </main>
       <nav
         aria-label="Main navigation"
         style={{

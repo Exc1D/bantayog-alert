@@ -26,6 +26,14 @@ vi.mock('./components/IncidentDetailPage.js', () => ({
   IncidentDetailPage: () => <div>Incident detail</div>,
 }))
 
+vi.mock('./pages/RegisterPage.js', () => ({
+  RegisterPage: () => <div>Register page</div>,
+}))
+
+vi.mock('./pages/SettingsPage.js', () => ({
+  SettingsPage: () => <div>Settings page</div>,
+}))
+
 async function renderAppAt(pathname: string) {
   window.history.pushState({}, '', pathname)
   vi.resetModules()
@@ -44,7 +52,7 @@ afterEach(() => {
 describe('App routes', () => {
   it('shows the map tab shell at /', async () => {
     await renderAppAt('/')
-    expect(screen.getByRole('banner')).toHaveTextContent('VIGILANT')
+    expect(screen.getByRole('banner')).toHaveTextContent('BANTAYOG ALERT')
     expect(screen.getByText('Map tab')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /map/i })).toHaveAttribute('aria-current', 'page')
   })
@@ -69,5 +77,15 @@ describe('App routes', () => {
     expect(screen.getByText('Incident detail')).toBeInTheDocument()
     expect(screen.queryByRole('banner')).not.toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
+  })
+
+  it('shows register page at /register', async () => {
+    await renderAppAt('/register')
+    expect(screen.getByText('Register page')).toBeInTheDocument()
+  })
+
+  it('shows settings page at /settings', async () => {
+    await renderAppAt('/settings')
+    expect(screen.getByText('Settings page')).toBeInTheDocument()
   })
 })

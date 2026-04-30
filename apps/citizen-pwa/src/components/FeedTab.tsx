@@ -1,35 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePublicIncidents } from '../hooks/usePublicIncidents.js'
+import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
 import type { PublicIncident, Filters } from './MapTab/types.js'
-
-const INCIDENT_LABELS: Record<string, string> = {
-  flood: 'Flood',
-  fire: 'Fire',
-  earthquake: 'Earthquake',
-  typhoon: 'Typhoon',
-  landslide: 'Landslide',
-  storm_surge: 'Storm Surge',
-  medical: 'Medical',
-  accident: 'Accident',
-  structural: 'Structural',
-  security: 'Security',
-  other: 'Other',
-}
-
-const INCIDENT_ICONS: Record<string, string> = {
-  flood: '🌊',
-  fire: '🔥',
-  earthquake: '⚠️',
-  typhoon: '🌀',
-  landslide: '⛰️',
-  storm_surge: '🌊',
-  medical: '🚑',
-  accident: '🚗',
-  structural: '🏗️',
-  security: '🚨',
-  other: '⚠️',
-}
 
 function timeAgo(timestamp: number): string {
   const minutes = Math.floor((Date.now() - timestamp) / 60000)
@@ -48,8 +21,8 @@ function severityStyle(severity: string): { bg: string; color: string } {
 
 function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => void }) {
   const { bg, color } = severityStyle(incident.severity)
-  const icon = INCIDENT_ICONS[incident.reportType] ?? '⚠️'
-  const label = INCIDENT_LABELS[incident.reportType] ?? incident.reportType
+  const icon = incidentIcon(incident.reportType)
+  const label = incidentLabel(incident.reportType)
 
   return (
     <button
@@ -66,7 +39,10 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
       }}
     >
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span aria-hidden="true" style={{ fontSize: '1.25rem', flexShrink: 0, lineHeight: 1.3 }}>
+        <span
+          aria-hidden="true"
+          style={{ flexShrink: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center' }}
+        >
           {icon}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -94,7 +70,7 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
               style={{
                 padding: '2px 8px',
                 borderRadius: 999,
-                fontSize: '0.625rem',
+                fontSize: '0.75rem',
                 fontWeight: 700,
                 letterSpacing: '0.05em',
                 background: bg,
@@ -158,11 +134,11 @@ function SkeletonCard() {
 function chipStyle(active: boolean): React.CSSProperties {
   return {
     flexShrink: 0,
-    border: active ? '1.5px solid rgba(0,30,64,0.22)' : '1.5px solid rgba(15,23,42,0.08)',
+    border: 'none',
     borderRadius: 999,
-    background: active ? '#001e40' : 'white',
+    background: active ? '#001e40' : '#f2f4f6',
     color: active ? 'white' : '#0f172a',
-    padding: '5px 12px',
+    padding: '8px 12px',
     fontSize: '0.75rem',
     fontWeight: active ? 700 : 500,
     cursor: 'pointer',

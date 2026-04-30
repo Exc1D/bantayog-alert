@@ -1,35 +1,12 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { onAuthStateChanged } from 'firebase/auth'
+import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
+import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
+import { auth } from '../services/firebase.js'
 import { DeleteAccountFlow } from './DeleteAccountFlow.js'
 import type { MyReport } from './MapTab/types.js'
-
-const INCIDENT_LABELS: Record<string, string> = {
-  flood: 'Flood',
-  fire: 'Fire',
-  earthquake: 'Earthquake',
-  typhoon: 'Typhoon',
-  landslide: 'Landslide',
-  storm_surge: 'Storm Surge',
-  medical: 'Medical',
-  accident: 'Accident',
-  structural: 'Structural',
-  security: 'Security',
-  other: 'Other',
-}
-
-const INCIDENT_ICONS: Record<string, string> = {
-  flood: '🌊',
-  fire: '🔥',
-  earthquake: '⚠️',
-  typhoon: '🌀',
-  landslide: '⛰️',
-  storm_surge: '🌊',
-  medical: '🚑',
-  accident: '🚗',
-  structural: '🏗️',
-  security: '🚨',
-  other: '⚠️',
-}
 
 function statusMeta(status: string): { label: string; bg: string; color: string } {
   switch (status) {
@@ -82,8 +59,8 @@ function timeAgo(ts: number): string {
 }
 
 function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) {
-  const icon = INCIDENT_ICONS[report.reportType] ?? '⚠️'
-  const label = INCIDENT_LABELS[report.reportType] ?? report.reportType
+  const icon = incidentIcon(report.reportType)
+  const label = incidentLabel(report.reportType)
   const { label: statusLabel, bg, color } = statusMeta(report.status)
   const dot = severityDot(report.severity)
 
@@ -103,7 +80,10 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
       }}
     >
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span aria-hidden="true" style={{ fontSize: '1.25rem', flexShrink: 0, lineHeight: 1.3 }}>
+        <span
+          aria-hidden="true"
+          style={{ flexShrink: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center' }}
+        >
           {icon}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -138,7 +118,7 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
               style={{
                 padding: '2px 8px',
                 borderRadius: 999,
-                fontSize: '0.625rem',
+                fontSize: '0.75rem',
                 fontWeight: 700,
                 letterSpacing: '0.05em',
                 background: bg,
@@ -200,6 +180,29 @@ function SkeletonCard() {
 export function ProfileTab() {
   const navigate = useNavigate()
   const { reports, loading } = useMyActiveReports()
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth(), (u) => {
+      setUser(u)
+      setAuthLoading(false)
+    })
+    return unsub
+  }, [])
+
+  const isPseudonymous = user?.isAnonymous === true
+  const isRegistered = user && !user.isAnonymous
+
+  if (authLoading) {
+    return (
+      <div style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+          <SkeletonCard />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -214,10 +217,13 @@ export function ProfileTab() {
           WebkitBackdropFilter: 'blur(12px)',
           padding: '12px 16px 10px',
           borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}
       >
         <h1 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: '#001e40' }}>
-          My Reports
+          {isRegistered ? (user.displayName ?? 'My Reports') : 'My Reports'}
           <span
             style={{
               display: 'block',
@@ -230,7 +236,62 @@ export function ProfileTab() {
             Mga ulat na iyong isinumite
           </span>
         </h1>
+        {isRegistered && (
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/settings')
+            }}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+              padding: 4,
+            }}
+            aria-label="Settings"
+          >
+            ⚙
+          </button>
+        )}
       </div>
+
+      {/* Pseudonymous banner */}
+      {isPseudonymous && (
+        <div
+          style={{
+            margin: '12px 16px',
+            padding: '12px 16px',
+            borderRadius: 10,
+            background: '#fff5ef',
+            border: '1px solid #fed7aa',
+          }}
+        >
+          <p
+            style={{ margin: '0 0 8px', fontSize: '0.8125rem', fontWeight: 600, color: '#001e40' }}
+          >
+            You&apos;re using Bantayog anonymously
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/register')
+            }}
+            style={{
+              border: 'none',
+              background: '#f26522',
+              color: '#fff',
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Register to track your reports
+          </button>
+        </div>
+      )}
 
       {/* Report list */}
       <div style={{ padding: '12px 16px 0' }}>

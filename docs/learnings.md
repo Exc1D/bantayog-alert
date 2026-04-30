@@ -129,4 +129,8 @@
 ## Misc
 
 - `navigator.clipboard` in happy-dom often needs to be defined as an own property before spying.
+- `navigator.storage` is undefined in happy-dom; mock with `Object.defineProperty(navigator, 'storage', { value: { estimate: () => Promise.resolve(...) } })` in tests.
+- `@typescript-eslint/no-confusing-void-expression` rejects `void clearInterval(id)` and `void navigate(...)` in arrow shorthand — add braces or use `.then()`/`.catch()` chains.
+- `@typescript-eslint/no-unnecessary-condition` flags `navigator.storage?.estimate` when the type says `storage` always exists — use runtime `.catch()` instead of optional chain for happy-dom safety.
+- `react-hooks/set-state-in-effect` rejects synchronous `setState` in `useEffect` body, even inside `catch` — move to `.catch()` callback on the Promise instead.
 - Risky backend changes need emulator verification first; never prod-deploy in the same session.

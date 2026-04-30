@@ -1,3 +1,5 @@
+import { Siren, Bell } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useAlerts } from '../hooks/useAlerts.js'
 import type { AlertDoc } from '@bantayog/shared-types'
 
@@ -24,16 +26,9 @@ function severityMeta(severity: string): { label: string; bg: string; color: str
   }
 }
 
-function severityIcon(severity: string): string {
-  switch (severity) {
-    case 'critical':
-    case 'high':
-      return '🚨'
-    case 'medium':
-      return '⚠️'
-    default:
-      return 'ℹ️'
-  }
+function severityIcon(severity: string): ReactNode {
+  if (severity === 'critical' || severity === 'high') return <Siren size={16} />
+  return <Bell size={16} />
 }
 
 function timeAgo(ts: number): string {
@@ -45,7 +40,7 @@ function timeAgo(ts: number): string {
   return `${String(Math.floor(hours / 24))}d ago`
 }
 
-function AlertCard({ alert }: { alert: AlertDoc }) {
+function AlertCard({ alert }: { alert: AlertDoc & { issuedBy?: string } }) {
   const { label, bg, color } = severityMeta(alert.severity)
   const icon = severityIcon(alert.severity)
   const isCritical = alert.severity === 'critical' || alert.severity === 'high'
@@ -60,7 +55,10 @@ function AlertCard({ alert }: { alert: AlertDoc }) {
       }}
     >
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span aria-hidden="true" style={{ fontSize: '1.25rem', flexShrink: 0, lineHeight: 1.3 }}>
+        <span
+          aria-hidden="true"
+          style={{ flexShrink: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center' }}
+        >
           {icon}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -97,12 +95,17 @@ function AlertCard({ alert }: { alert: AlertDoc }) {
           >
             {alert.body}
           </p>
+          {alert.issuedBy && (
+            <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#6b7280' }}>
+              Issued by: {alert.issuedBy}
+            </p>
+          )}
           <span
             style={{
               display: 'inline-block',
               padding: '2px 8px',
               borderRadius: 999,
-              fontSize: '0.625rem',
+              fontSize: '0.75rem',
               fontWeight: 700,
               letterSpacing: '0.05em',
               background: bg,

@@ -1,10 +1,28 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import '@testing-library/jest-dom/vitest'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './CitizenShell.js'
 
-function renderShell(pathname = '/') {
+const mockUseOnlineStatus = vi.fn()
+const mockUseOfflineQueueCount = vi.fn()
+
+vi.mock('../hooks/useOnlineStatus.js', () => ({
+  useOnlineStatus: () => mockUseOnlineStatus(),
+}))
+
+vi.mock('../hooks/useOfflineQueueCount.js', () => ({
+  useOfflineQueueCount: () => mockUseOfflineQueueCount(),
+}))
+
+function renderShell(pathname = '/', opts?: { offline?: boolean; queueCount?: number }) {
+  mockUseOnlineStatus.mockReturnValue({
+    isOnline: opts?.offline ? false : true,
+    navigatorOnline: opts?.offline ? false : true,
+  })
+  mockUseOfflineQueueCount.mockReturnValue(opts?.queueCount ?? 0)
+
   const router = createMemoryRouter(
     [
       {
@@ -30,7 +48,7 @@ function renderShell(pathname = '/') {
 describe('CitizenShell', () => {
   it('renders the fixed chrome and active tab', () => {
     renderShell('/')
-    expect(screen.getByRole('banner')).toHaveTextContent('VIGILANT')
+    expect(screen.getByRole('banner')).toHaveTextContent('BANTAYOG ALERT')
     expect(screen.getByRole('button', { name: /map/i })).toHaveAttribute('aria-current', 'page')
   })
 
@@ -46,5 +64,15 @@ describe('CitizenShell', () => {
     await waitFor(() => {
       expect(screen.getByText('Feed content')).toBeInTheDocument()
     })
+  })
+
+  it('shows offline banner when navigatorOnline is false', () => {
+    renderShell('/', { offline: true, queueCount: 3 })
+    expect(screen.getByRole('alert')).toHaveTextContent('Offline — 3 reports queued')
+  })
+
+  it('hides offline banner when online', () => {
+    renderShell('/')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

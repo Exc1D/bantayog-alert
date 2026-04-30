@@ -10,6 +10,8 @@ import { ReceiptScreen } from './components/ReceiptScreen.js'
 import { LookupScreen } from './components/LookupScreen.js'
 import { TrackingScreen } from './components/TrackingScreen.js'
 import { GoodbyeScreen } from './components/GoodbyeScreen.js'
+import { RegisterPage } from './pages/RegisterPage.js'
+import { SettingsPage } from './pages/SettingsPage.js'
 
 const router = createBrowserRouter([
   {
@@ -62,6 +64,8 @@ const router = createBrowserRouter([
   { path: '/receipt', element: <ReceiptScreen /> },
   { path: '/lookup', element: <LookupScreen /> },
   { path: '/goodbye', element: <GoodbyeScreen />, handle: { hideBottomNav: true } },
+  { path: '/register', element: <RegisterPage />, handle: { hideBottomNav: true } },
+  { path: '/settings', element: <SettingsPage />, handle: { hideBottomNav: true } },
 ])
 
 export function AppRoutes() {
