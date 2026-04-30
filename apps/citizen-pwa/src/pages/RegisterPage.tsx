@@ -6,7 +6,7 @@ import { auth } from '../services/firebase.js'
 import { useToast } from '../hooks/useToast.js'
 import { Toast } from '../components/Toast.js'
 
-type Step = 'phone' | 'otp' | 'name'
+type Step = 'phone' | 'otp' | 'name' | 'consent'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -16,6 +16,7 @@ export function RegisterPage() {
   const [phone, setPhone] = useState('+63')
   const [otp, setOtp] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [consentGiven, setConsentGiven] = useState(false)
   const [loading, setLoading] = useState(false)
   const [confirmationResult, setConfirmationResult] = useState<{
     confirm: (code: string) => Promise<unknown>
@@ -86,13 +87,19 @@ export function RegisterPage() {
     setLoading(true)
     try {
       await updateProfile(currentUser, { displayName })
-      void navigate('/', { replace: true })
+      setStep('consent')
     } catch (e: unknown) {
       toast(e instanceof Error ? e.message : 'Failed to save name', 'error')
     } finally {
       setLoading(false)
     }
   }, [displayName, navigate, toast])
+
+  const handleConsent = useCallback(() => {
+    if (!consentGiven) return
+    toast('Welcome to Bantayog Alert', 'success')
+    void navigate('/', { replace: true })
+  }, [consentGiven, navigate, toast])
 
   return (
     <div style={{ minHeight: '100dvh', background: '#f5f7fa' }}>
@@ -122,6 +129,19 @@ export function RegisterPage() {
       <div id="recaptcha-container" />
 
       <div style={{ padding: '24px 16px' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
+          {(['phone', 'otp', 'name', 'consent'] as const).map((s) => (
+            <div
+              key={s}
+              style={{
+                flex: 1,
+                height: 4,
+                borderRadius: 2,
+                background: step === s ? '#f26522' : '#e0e3e5',
+              }}
+            />
+          ))}
+        </div>
         {step === 'phone' && (
           <div>
             <p
@@ -279,6 +299,108 @@ export function RegisterPage() {
               }}
             >
               {loading ? 'Saving…' : 'Complete Registration'}
+            </button>
+          </div>
+        )}
+
+        {step === 'consent' && (
+          <div>
+            <p
+              style={{
+                margin: '0 0 16px',
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                color: '#001e40',
+              }}
+            >
+              Your previous reports are already linked to this account.
+            </p>
+            <p
+              style={{
+                margin: '0 0 4px',
+                fontSize: '0.6875rem',
+                color: '#7b8794',
+                fontStyle: 'italic',
+              }}
+            >
+              Nakakonekta na ang iyong mga naunang ulat sa account na ito.
+            </p>
+            <div
+              style={{
+                margin: '16px 0',
+                padding: '12px',
+                borderRadius: 8,
+                background: '#f2f4f6',
+              }}
+            >
+              <p
+                style={{
+                  margin: '0 0 8px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  color: '#001e40',
+                }}
+              >
+                Privacy Notice
+              </p>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: '#52606d', lineHeight: 1.5 }}>
+                Your data is processed under RA 10173 (Data Privacy Act of 2012). We collect only
+                what is necessary to process your reports and keep you informed. You may request
+                data deletion at any time.
+              </p>
+              <p
+                style={{
+                  margin: '4px 0 0',
+                  fontSize: '0.6875rem',
+                  color: '#7b8794',
+                  fontStyle: 'italic',
+                }}
+              >
+                Ang iyong datos ay pinoproseso ayon sa RA 10173. Kinokolekta lamang ang kailangan
+                para sa iyong mga ulat.
+              </p>
+            </div>
+            <label
+              style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'flex-start',
+                marginBottom: 16,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={consentGiven}
+                onChange={(e) => {
+                  setConsentGiven(e.target.checked)
+                }}
+                style={{ marginTop: 2 }}
+              />
+              <span style={{ fontSize: '0.8125rem', color: '#001e40' }}>
+                I have read and agree to the Terms of Use and Privacy Notice
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                handleConsent()
+              }}
+              disabled={!consentGiven}
+              style={{
+                width: '100%',
+                padding: '14px',
+                border: 'none',
+                borderRadius: 999,
+                background: '#f26522',
+                color: '#fff',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: !consentGiven ? 'not-allowed' : 'pointer',
+                opacity: !consentGiven ? 0.7 : 1,
+              }}
+            >
+              Create Account
             </button>
           </div>
         )}
