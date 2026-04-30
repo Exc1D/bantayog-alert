@@ -12,6 +12,7 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('../services/firebase.js', () => ({
   auth: () => ({}),
+  hasFirebaseConfig: () => true,
 }))
 
 vi.mock('../hooks/useMyActiveReports.js', () => ({

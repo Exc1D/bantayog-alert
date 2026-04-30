@@ -5,7 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
 import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
-import { auth } from '../services/firebase.js'
+import { auth, hasFirebaseConfig } from '../services/firebase.js'
 import { DeleteAccountFlow } from './DeleteAccountFlow.js'
 import type { MyReport } from './MapTab/types.js'
 
@@ -128,9 +128,10 @@ export function ProfileTab() {
   const navigate = useNavigate()
   const { reports, loading } = useMyActiveReports()
   const [user, setUser] = useState<User | null>(null)
-  const [authLoading, setAuthLoading] = useState(true)
+  const [authLoading, setAuthLoading] = useState(() => hasFirebaseConfig())
 
   useEffect(() => {
+    if (!hasFirebaseConfig()) return
     const unsub = onAuthStateChanged(auth(), (u) => {
       setUser(u)
       setAuthLoading(false)
