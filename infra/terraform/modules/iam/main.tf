@@ -35,6 +35,24 @@ resource "google_project_iam_member" "functions_fcm_sender" {
   member  = "serviceAccount:${google_service_account.functions.email}"
 }
 
+resource "google_project_iam_member" "functions_bigquery_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.functions.email}"
+}
+
+resource "google_project_iam_member" "functions_storage_creator" {
+  project = var.project_id
+  role    = "roles/storage.objectCreator"
+  member  = "serviceAccount:${google_service_account.functions.email}"
+}
+
+resource "google_project_iam_member" "functions_pubsub_publisher" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_service_account.functions.email}"
+}
+
 # CI deploy SA — Firebase admin roles scoped to what deploys need.
 resource "google_project_iam_member" "ci_firebase_admin" {
   project = var.project_id

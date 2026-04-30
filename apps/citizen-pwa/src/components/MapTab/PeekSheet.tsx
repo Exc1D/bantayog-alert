@@ -1,9 +1,16 @@
 import { useRef, type TouchEvent } from 'react'
 
+const SEVERITY_COLORS: Record<string, string> = {
+  high: '#dc2626',
+  medium: '#a73400',
+  low: '#001e40',
+}
+
 interface SelectedPin {
   id: string
   type: 'incident' | 'myReport'
   label: string
+  severity?: 'high' | 'medium' | 'low'
 }
 
 interface Props {
@@ -18,6 +25,11 @@ const SWIPE_THRESHOLD = 50
 export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
   const startY = useRef<number | null>(null)
   if (sheetPhase !== 'peek' || !pin) return null
+
+  const parts = pin.label.split(' · ')
+  const primaryText = parts[0] ?? pin.label
+  const secondaryText = parts.slice(1).join(' · ')
+  const dotColor = pin.severity ? SEVERITY_COLORS[pin.severity] : undefined
 
   function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
     startY.current = event.touches[0]?.clientY ?? null
@@ -45,9 +57,8 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
         position: 'fixed',
         inset: 'auto 0 88px',
         zIndex: 55,
-        height: 80,
-        padding: '8px 16px 0',
-        background: 'rgba(255,255,255,0.95)',
+        padding: '8px 16px 12px',
+        background: 'rgba(255,255,255,0.97)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         boxShadow: '0 -2px 16px rgba(0,30,64,0.1)',
@@ -61,42 +72,71 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
           width: 32,
           height: 4,
           borderRadius: 9999,
-          background: 'var(--color-on-surface-variant)',
-          opacity: 0.35,
+          background: '#d1d5db',
+          marginBottom: 10,
         }}
       />
-      <p
-        style={{
-          width: '100%',
-          margin: '8px 0 0',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          fontFamily: "'Inter', sans-serif",
-          fontSize: '0.875rem',
-          fontWeight: 500,
-          color: 'var(--color-primary)',
-        }}
-      >
-        {pin.label}
-      </p>
-      <button
-        type="button"
-        aria-label="Pull up for full detail"
-        onClick={onExpand}
-        style={{
-          alignSelf: 'flex-start',
-          border: 'none',
-          background: 'none',
-          padding: '2px 0 0',
-          color: 'var(--color-on-surface-variant)',
-          fontFamily: "'Inter', sans-serif",
-          fontSize: '0.75rem',
-          cursor: 'pointer',
-        }}
-      >
-        ↑ Pull up for full detail
-      </button>
+      <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {dotColor ? (
+          <span
+            aria-hidden="true"
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: dotColor,
+              flexShrink: 0,
+            }}
+          />
+        ) : null}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            style={{
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: '0.9375rem',
+              fontWeight: 700,
+              color: '#001e40',
+            }}
+          >
+            {primaryText}
+          </p>
+          {secondaryText ? (
+            <p
+              style={{
+                margin: '2px 0 0',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontSize: '0.75rem',
+                color: '#52606d',
+              }}
+            >
+              {secondaryText}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          aria-label="Pull up for full detail"
+          onClick={onExpand}
+          style={{
+            border: 'none',
+            background: '#001e40',
+            color: '#fff',
+            padding: '6px 12px',
+            borderRadius: 999,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        >
+          Details ↑
+        </button>
+      </div>
     </div>
   )
 }

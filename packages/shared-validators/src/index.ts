@@ -6,7 +6,7 @@ export {
   setStaffClaimsInputSchema,
   suspendStaffAccountInputSchema,
 } from './auth.js'
-export { minAppVersionSchema } from './config.js'
+export { minAppVersionSchema, semverLt } from './config.js'
 export { alertSchema } from './alerts.js'
 export {
   reportDocSchema,

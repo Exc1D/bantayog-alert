@@ -31,7 +31,11 @@ export function subscribeMinAppVersion(
   )
 }
 
-export function subscribeAlerts(db: Firestore, callback: (value: AlertDoc[]) => void): () => void {
+export function subscribeAlerts(
+  db: Firestore,
+  callback: (value: AlertDoc[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
   return onSnapshot(
     query(collection(db, 'alerts'), orderBy('publishedAt', 'desc'), limit(5)),
     (snapshot) => {
@@ -39,7 +43,11 @@ export function subscribeAlerts(db: Firestore, callback: (value: AlertDoc[]) => 
     },
     (error) => {
       console.error('subscribeAlerts error:', error)
-      callback([])
+      if (onError) {
+        onError(error)
+      } else {
+        callback([])
+      }
     },
   )
 }

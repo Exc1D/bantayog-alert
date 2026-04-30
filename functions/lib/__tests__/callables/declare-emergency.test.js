@@ -21,10 +21,22 @@ import { declareEmergencyCore } from '../../callables/declare-emergency.js';
 import { ZodError } from 'zod';
 function createMockDb() {
     const setFn = vi.fn().mockResolvedValue(undefined);
-    const docFn = vi.fn(() => ({ set: setFn }));
-    const collectionFn = vi.fn(() => ({ doc: docFn }));
+    const updateFn = vi.fn().mockResolvedValue(undefined);
+    const docFn = vi.fn(() => ({ set: setFn, update: updateFn }));
+    const queryGetFn = vi.fn().mockResolvedValue({ docs: [] });
+    const whereFn = vi.fn(() => ({ where: whereFn, get: queryGetFn }));
+    const collectionFn = vi.fn(() => ({
+        doc: docFn,
+        where: whereFn,
+    }));
+    const runTransaction = vi.fn((callback) => callback({
+        get: vi.fn().mockResolvedValue({ docs: [] }),
+        set: vi.fn().mockResolvedValue(undefined),
+        update: vi.fn().mockResolvedValue(undefined),
+    }));
     return {
         collection: collectionFn,
+        runTransaction,
         _setFn: setFn,
         _collectionFn: collectionFn,
     };

@@ -31,14 +31,15 @@ export async function requestDataErasureCore(
   // Disable Auth after successful doc write. Rollback docs if Auth fails.
   try {
     await auth.updateUser(actor.uid, { disabled: true })
-  } catch {
+  } catch (err: unknown) {
+    const reason = err instanceof Error ? err.message : String(err)
     const results = await Promise.allSettled([requestRef.delete(), sentinelRef.delete()])
     for (const r of results) {
       if (r.status === 'rejected') {
         console.error('CRITICAL: erasure rollback failed for', actor.uid, r.reason)
       }
     }
-    throw new HttpsError('internal', 'auth_disable_failed')
+    throw new HttpsError('internal', `auth_disable_failed: ${reason}`)
   }
 
   void streamAuditEvent({

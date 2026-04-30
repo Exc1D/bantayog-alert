@@ -484,7 +484,7 @@ service cloud.firestore {
                        ])
                     && request.resource.data.citizenUid is string
                     && request.resource.data.status is string
-                    && request.resource.data.legalHold is bool
+                    && request.resource.data.legalHold == false
                     && request.resource.data.requestedAt is int;
       allow read: if (isAuthed() && request.auth.uid == resource.data.citizenUid)
                   || (isSuperadmin() && isActivePrivileged());

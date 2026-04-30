@@ -1,4 +1,6 @@
-import { Check, Clock, AlertTriangle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Check, Clock, AlertTriangle, Copy } from 'lucide-react'
+import { useReducedMotion } from '../hooks/useReducedMotion.js'
 import { StatusBanner } from './ui/StatusBanner'
 import { Button } from './ui/Button'
 import { FallbackCards } from './ui/FallbackCards'
@@ -9,15 +11,22 @@ const HOTLINE_NUMBER = '(054) 721-1216'
 interface RevealSheetProps {
   state: 'success' | 'queued' | 'failed_retryable'
   referenceCode: string
+  secretCode?: string
+  reportCount?: number
   onClose?: () => void
 }
 
-export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps) {
+export function RevealSheet({ state, referenceCode, secretCode, onClose }: RevealSheetProps) {
+  const reducedMotion = useReducedMotion()
+  const [displayedChars, setDisplayedChars] = useState(reducedMotion ? referenceCode.length : 0)
+  const [typewriterComplete, setTypewriterComplete] = useState(reducedMotion)
+  const [copied, setCopied] = useState(false)
   const variants = {
     success: {
       icon: <Check size={16} />,
       headline: 'We heard you. We are here.',
       subline: 'Your report is with Daet MDRRMO. Keep your line open.',
+      sublineTl: 'Narinig namin kayo. Hawak na ng MDRRMO ang inyong ulat.',
       bannerVariant: 'success' as const,
       receiverText: 'Received by Daet MDRRMO',
       primaryButton: 'Track this report',
@@ -30,6 +39,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       headline: "We've saved your report.",
       subline:
         "You're offline right now. The moment your phone reconnects, we'll send this to Daet MDRRMO automatically. Walang mawawala. Safe ito sa phone mo.",
+      sublineTl: undefined,
       bannerVariant: 'queued' as const,
       receiverText: 'Waiting for signal · auto-retry on',
       primaryButton: 'Try sending now',
@@ -42,6 +52,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       headline: "We couldn't send it yet.",
       subline:
         'Your report is safe on your phone. The network is having trouble reaching the Admins — this is not your fault. If this is life-threatening, please call now.',
+      sublineTl: 'Ligtas pa rin ang inyong ulat dito sa telepono. Kung emergency, tawagan kami.',
       bannerVariant: 'failed' as const,
       receiverText: undefined,
       primaryButton: 'Try again',
@@ -52,6 +63,52 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
   }
 
   const variant = variants[state]
+
+  const displayedCode = referenceCode.slice(0, displayedChars)
+
+  useEffect(() => {
+    if (reducedMotion) return
+    let charInterval: ReturnType<typeof setInterval> | null = null
+    const settleTimeout = setTimeout(() => {
+      let i = 0
+      charInterval = setInterval(() => {
+        i += 1
+        setDisplayedChars(i)
+        if (i >= referenceCode.length) {
+          if (charInterval) clearInterval(charInterval)
+          setTypewriterComplete(true)
+          try {
+            navigator.vibrate(200)
+          } catch {
+            // vibrate not available
+          }
+        }
+      }, 60)
+    }, 400)
+    return () => {
+      clearTimeout(settleTimeout)
+      if (charInterval) clearInterval(charInterval)
+    }
+  }, [referenceCode, reducedMotion])
+
+  const handleCopySecret = useCallback(async () => {
+    if (!secretCode) return
+    try {
+      await navigator.clipboard.writeText(secretCode)
+      setCopied(true)
+      const t = setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+      void t
+    } catch (e) {
+      console.error('Failed to copy secret code:', e)
+    }
+  }, [secretCode])
+
+  const afterglowTime = new Date().toLocaleTimeString('en-PH', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 
   const handleTrackReport = () => {
     window.location.href = `/reports/${referenceCode}`
@@ -112,10 +169,18 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
       <div
         className="reveal-backdrop"
         role="button"
+        aria-label="Close"
         tabIndex={0}
-        onClick={state === 'success' ? onClose : undefined}
+        onClick={onClose}
         onKeyDown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && state === 'success') onClose?.()
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClose?.()
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            onClose?.()
+          }
         }}
       />
       <div className="reveal-sheet">
@@ -125,7 +190,14 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
           {variant.headline}
         </StatusBanner>
 
-        <p className="reveal-subheadline">{variant.subline}</p>
+        <p className="reveal-subheadline">
+          {variant.subline}
+          {variant.sublineTl ? (
+            <span className="tl-hint" style={{ display: 'block', marginTop: '0.25rem' }}>
+              {variant.sublineTl}
+            </span>
+          ) : null}
+        </p>
 
         <div
           className={`reveal-ref-box${state === 'queued' ? ' reveal-ref-box--queued' : state === 'failed_retryable' ? ' reveal-ref-box--failed' : ''}`}
@@ -133,7 +205,7 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
           <div className="reveal-ref-label">
             {state === 'queued' ? 'Draft reference' : 'Reference'}
           </div>
-          <div className="reveal-ref-code">{referenceCode}</div>
+          <div className="reveal-ref-code">{displayedCode}</div>
           <div className="reveal-ref-note">
             {state === 'success'
               ? `Submitted ${new Date().toLocaleTimeString()}`
@@ -153,6 +225,71 @@ export function RevealSheet({ state, referenceCode, onClose }: RevealSheetProps)
         ) : null}
 
         <Timeline events={timelineEvents[state]} />
+
+        {state === 'success' && typewriterComplete && (
+          <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#52606d', marginTop: 8 }}>
+            Sent at {afterglowTime} · Daet MDRRMO is on it
+          </div>
+        )}
+
+        {secretCode && state === 'success' && typewriterComplete && (
+          <div
+            style={{
+              margin: '12px 0',
+              padding: '12px',
+              borderRadius: 10,
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 8px',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: '#001e40',
+              }}
+            >
+              Save your secret code to track this report
+            </p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <code
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  background: '#fff',
+                  borderRadius: 6,
+                  fontSize: '0.875rem',
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {secretCode}
+              </code>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleCopySecret()
+                }}
+                style={{
+                  padding: '8px',
+                  border: 'none',
+                  background: '#001e40',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                aria-label="Copy secret code"
+              >
+                <Copy size={16} color="#fff" />
+              </button>
+            </div>
+            {copied && (
+              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#16a34a' }}>Copied!</p>
+            )}
+          </div>
+        )}
 
         {state !== 'success' ? (
           <FallbackCards

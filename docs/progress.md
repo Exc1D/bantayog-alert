@@ -1,6 +1,37 @@
 # Progress
 
-## Current — Phase 8C — RA 10173 Erasure & Anonymization
+## Current — Phase 9 Citizen PWA Redesign (branch: feat/citizen-pwa-redesign) — COMPLETE
+
+### Citizen PWA — All 18 Tasks — COMPLETE
+
+| Task                                      | Status  | Notes                                                                             |
+| ----------------------------------------- | ------- | --------------------------------------------------------------------------------- |
+| 1. Shared `utils/incident-meta.tsx`       | ✅ DONE | 12 incident type icon/label maps + tests                                          |
+| 2. Wordmark "VIGILANT" → "BANTAYOG ALERT" | ✅ DONE | CitizenShell + App.routes.test.tsx                                                |
+| 3. FeedTab polish                         | ✅ DONE | Lucide icons, chip styles, badge sizing + tests                                   |
+| 4. ProfileTab polish                      | ✅ DONE | Same consolidation + auth-aware redesign + tests                                  |
+| 5. AlertsTab polish                       | ✅ DONE | Lucide severity icons, issuedBy attribution + tests                               |
+| 6. RevealSheet ceremony                   | ✅ DONE | Typewriter (60ms/char), `navigator.vibrate(200)`, secret code copy prompt + tests |
+| 7. `useReducedMotion` hook                | ✅ DONE | matchMedia listener + tests                                                       |
+| 8. `Toggle` component                     | ✅ DONE | Accessible switch, keyboard, reduced-motion guard + tests                         |
+| 9. `useToast` + `Toast`                   | ✅ DONE | 3s auto-dismiss, slide-up + tests                                                 |
+| 10. `useOfflineQueueCount` hook           | ✅ DONE | Polls draftStore every 5s + tests                                                 |
+| 11. Offline banner in CitizenShell        | ✅ DONE | `useOnlineStatus` + `useOfflineQueueCount` + test                                 |
+| 12. Auth-aware ProfileTab                 | ✅ DONE | `onAuthStateChanged`, pseudonymous banner, settings gear + tests                  |
+| 13. AlertsTab `issuedBy` row              | ✅ DONE | Attribution + tests                                                               |
+| 14. LookupScreen redesign                 | ✅ DONE | Navy header, dual-code inputs, `requestLookup` callable + tests                   |
+| 15. RegisterPage (3-step OTP)             | ✅ DONE | Phone → OTP → name with RecaptchaVerifier + tests                                 |
+| 16. SettingsPage                          | ✅ DONE | Push/offline toggles, storage estimate, data export, sign-out + tests             |
+| 17. Routes (/register, /settings)         | ✅ DONE | routes.tsx + App.routes.test.tsx mocks + tests                                    |
+| 18. `requestDataExport` callable wrapper  | ✅ DONE | Placeholder (backend callable not yet implemented) + tests                        |
+
+**Gate:** `pnpm lint && pnpm typecheck && npx vitest run` — all green (203 tests pass, 38/38 files)
+
+**New components/hooks:** FeedTab, IncidentDetailPage, ProfileTab, AlertsTab, useIncident, useAlerts, useReducedMotion, Toggle, useToast, Toast, useOfflineQueueCount, RegisterPage, SettingsPage
+
+---
+
+## Phase 8C — RA 10173 Erasure & Anonymization
 
 ### 8C — RA 10173 Erasure Execution — COMPLETE
 

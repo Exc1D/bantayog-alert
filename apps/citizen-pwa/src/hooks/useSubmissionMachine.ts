@@ -161,6 +161,13 @@ export function useSubmissionMachine({
     setRetryCount(0)
   }, [])
 
+  // Keep a ref to the latest onSuccess so the retry effect always calls
+  // the current callback without needing to re-subscribe when it changes.
+  const onSuccessRef = useRef(onSuccess)
+  useEffect(() => {
+    onSuccessRef.current = onSuccess
+  })
+
   useEffect(() => {
     if (!isOnline) {
       return
@@ -173,12 +180,12 @@ export function useSubmissionMachine({
       void doSubmit(retryCountRef.current).then((publicRef) => {
         if (publicRef) {
           setState('server_confirmed')
-          onSuccess(publicRef)
+          onSuccessRef.current(publicRef)
         }
       })
     }
     triggerRetry()
-  }, [isOnline, state, doSubmit, onSuccess])
+  }, [isOnline, state, doSubmit])
 
   return {
     state,
