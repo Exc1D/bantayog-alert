@@ -95,7 +95,7 @@ export function RegisterPage() {
     } finally {
       setLoading(false)
     }
-  }, [displayName, navigate, toast])
+  }, [displayName, toast])
 
   const handleConsent = useCallback(() => {
     if (!consentGiven) return
