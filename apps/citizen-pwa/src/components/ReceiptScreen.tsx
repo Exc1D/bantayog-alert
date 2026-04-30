@@ -96,8 +96,7 @@ export function ReceiptScreen() {
 
       {/* Sheet */}
       <motion.div
-        className="relative z-10 bg-surface-50 rounded-t-3xl shadow-2xl overflow-hidden"
-        style={{ maxHeight: '85vh' }}
+        className="relative z-10 bg-surface-50 rounded-t-3xl shadow-2xl overflow-hidden max-h-[85vh]"
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         transition={{ duration: 0.4, ease: SHEET_EASE }}

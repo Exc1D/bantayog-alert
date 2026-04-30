@@ -74,9 +74,8 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
               />
             ))}
             <motion.div
-              className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center"
+              className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center bg-white/10"
               style={{
-                background: 'rgba(255,255,255,0.1)',
                 boxShadow: '0 0 20px rgba(13,148,136,0.5), 0 0 60px rgba(13,148,136,0.2)',
               }}
               initial={{ scale: 0.8, opacity: 0 }}

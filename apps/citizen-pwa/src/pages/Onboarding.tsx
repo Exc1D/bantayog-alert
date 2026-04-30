@@ -369,8 +369,7 @@ export function Onboarding() {
         <motion.button
           type="button"
           onClick={goNext}
-          className="w-full rounded-xl font-semibold text-base text-white flex items-center justify-center gap-2 bg-gradient-to-br from-brand-500 to-brand-600 active:scale-[0.98] transition-transform"
-          style={{ height: step === 2 ? 64 : 56 }}
+          className={`w-full rounded-xl font-semibold text-base text-white flex items-center justify-center gap-2 bg-gradient-to-br from-brand-500 to-brand-600 active:scale-[0.98] transition-transform ${step === 2 ? 'h-16' : 'h-14'}`}
           whileTap={{ scale: 0.98 }}
           aria-label={BUTTON_LABELS[step]}
         >
