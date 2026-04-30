@@ -24,7 +24,9 @@ vi.mock('../services/firebase.js', () => ({
 }))
 
 vi.mock('../components/Toggle.js', () => ({
-  Toggle: ({ label }: { label: string }) => <div>{label}</div>,
+  Toggle: ({ label }: { label: string }) => (
+    <div role="switch" aria-label={label} aria-checked="false" />
+  ),
 }))
 
 vi.mock('../components/DeleteAccountFlow.js', () => ({

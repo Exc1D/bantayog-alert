@@ -57,15 +57,6 @@ export function Toggle({ checked, onChange, label, disabled = false }: TogglePro
           }}
         />
       </button>
-      <span
-        style={{
-          fontSize: '0.875rem',
-          color: disabled ? '#9ca3af' : '#001e40',
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </span>
     </div>
   )
 }

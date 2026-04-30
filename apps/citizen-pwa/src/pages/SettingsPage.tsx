@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, LogOut } from 'lucide-react'
+import { ArrowLeft, LogOut, AlertTriangle } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import { auth } from '../services/firebase.js'
 import { Toggle } from '../components/Toggle.js'
@@ -122,141 +122,167 @@ export function SettingsPage() {
     }
   }
 
-  const sectionStyle: React.CSSProperties = {
-    padding: '16px',
-    borderBottom: '1px solid #e5e7eb',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: '0.6875rem',
-    fontWeight: 700,
-    color: '#7b8794',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.06em',
-    marginBottom: 12,
-  }
-
   return (
-    <div style={{ minHeight: '100dvh', background: '#f5f7fa' }}>
+    <div className="min-h-[100dvh]" style={{ background: '#f0f4f4' }}>
+      {/* Back header */}
       <div
-        style={{
-          background: '#001e40',
-          color: '#fff',
-          padding: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
+        className="flex items-center gap-3 px-4 py-4 border-b"
+        style={{ background: '#fff', borderColor: '#d5dedd' }}
       >
         <button
           type="button"
           onClick={() => {
             void navigate(-1)
           }}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+          className="p-0 border-none bg-transparent cursor-pointer"
           aria-label="Go back"
         >
-          <ChevronLeft size={20} color="#fff" />
+          <ArrowLeft size={20} style={{ color: '#25292a' }} />
         </button>
-        <h1 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800 }}>Settings</h1>
+        <h1 className="m-0 font-semibold" style={{ fontSize: 18, color: '#25292a' }}>
+          Settings
+        </h1>
       </div>
 
-      <div style={sectionStyle}>
-        <div style={labelStyle}>Notifications</div>
-        <Toggle checked={pushEnabled} onChange={setPushEnabled} label="Push notifications" />
-        <div style={{ marginTop: 12 }}>
+      {/* Notifications section */}
+      <p
+        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
+        style={{ color: '#768081' }}
+      >
+        Notifications
+      </p>
+      <div className="bg-white divide-y" style={{ borderColor: '#f0f4f4' }}>
+        <div className="flex items-center justify-between px-4 py-4">
+          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
+            Push notifications
+          </span>
+          <Toggle checked={pushEnabled} onChange={setPushEnabled} label="Push notifications" />
+        </div>
+        <div className="flex items-center justify-between px-4 py-4">
+          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
+            Alert sounds
+          </span>
           <Toggle checked={alertSounds} onChange={handleAlertSoundsToggle} label="Alert sounds" />
         </div>
       </div>
 
-      <div style={sectionStyle}>
-        <div style={labelStyle}>Location</div>
-        <Toggle
-          checked={autoLocation}
-          onChange={handleAutoLocationToggle}
-          label="Auto-detect location"
-        />
+      {/* Location section */}
+      <p
+        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
+        style={{ color: '#768081' }}
+      >
+        Location
+      </p>
+      <div className="bg-white">
+        <div className="flex items-center justify-between px-4 py-4">
+          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
+            Auto-detect location
+          </span>
+          <Toggle
+            checked={autoLocation}
+            onChange={handleAutoLocationToggle}
+            label="Auto-detect location"
+          />
+        </div>
       </div>
 
-      <div style={sectionStyle}>
-        <div style={labelStyle}>Offline Mode</div>
-        <Toggle checked={offlineMode} onChange={handleOfflineToggle} label="Offline-first cache" />
+      {/* Offline Mode section */}
+      <p
+        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
+        style={{ color: '#768081' }}
+      >
+        Offline Mode
+      </p>
+      <div className="bg-white">
+        <div className="flex items-center justify-between px-4 py-4">
+          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
+            Offline-first cache
+          </span>
+          <Toggle
+            checked={offlineMode}
+            onChange={handleOfflineToggle}
+            label="Offline-first cache"
+          />
+        </div>
       </div>
 
-      <div style={sectionStyle}>
-        <div style={labelStyle}>Storage</div>
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#001e40' }}>{storageInfo}</p>
+      {/* Storage section */}
+      <p
+        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
+        style={{ color: '#768081' }}
+      >
+        Storage
+      </p>
+      <div className="bg-white">
+        <div className="flex items-center justify-between px-4 py-4">
+          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
+            {storageInfo}
+          </span>
+        </div>
       </div>
 
-      <div style={sectionStyle}>
-        <div style={labelStyle}>Account</div>
-        <button
-          type="button"
-          onClick={() => {
-            void handleDataExport()
-          }}
-          disabled={exportDisabled}
-          style={{
-            border: 'none',
-            background: 'none',
-            color: exportDisabled ? '#7b8794' : '#001e40',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            cursor: exportDisabled ? 'not-allowed' : 'pointer',
-            padding: '8px 0',
-            display: 'block',
-          }}
-        >
-          {exportDisabled ? 'Coming soon' : 'Download my data'}
-        </button>
-        <a
-          href="https://bantayog.alert/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'block',
-            marginTop: 8,
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: '#001e40',
-            textDecoration: 'none',
-          }}
-        >
-          Privacy Policy
-        </a>
+      {/* Account section */}
+      <p
+        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
+        style={{ color: '#768081' }}
+      >
+        Account
+      </p>
+      <div className="bg-white divide-y" style={{ borderColor: '#f0f4f4' }}>
+        <div className="flex items-center justify-between px-4 py-4">
+          <button
+            type="button"
+            onClick={() => {
+              void handleDataExport()
+            }}
+            disabled={exportDisabled}
+            className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer disabled:cursor-not-allowed"
+            style={{ color: exportDisabled ? '#768081' : '#25292a' }}
+          >
+            {exportDisabled ? 'Coming soon' : 'Download my data'}
+          </button>
+        </div>
+        <div className="flex items-center justify-between px-4 py-4">
+          <a
+            href="https://bantayog.alert/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium no-underline"
+            style={{ color: '#25292a' }}
+          >
+            Privacy Policy
+          </a>
+        </div>
       </div>
 
-      <div style={sectionStyle}>
-        <div style={{ ...labelStyle, color: '#b71c1c' }}>Danger Zone</div>
-        <DeleteAccountFlow onGoodbye={() => void navigate('/goodbye')} />
+      {/* Danger Zone section */}
+      <p
+        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
+        style={{ color: '#768081' }}
+      >
+        Danger Zone
+      </p>
+      <div className="bg-white divide-y" style={{ borderColor: '#f0f4f4' }}>
+        <div className="flex items-center gap-2 px-4 py-4">
+          <AlertTriangle size={16} style={{ color: '#dc2626' }} />
+          <DeleteAccountFlow onGoodbye={() => void navigate('/goodbye')} />
+        </div>
+        <div className="flex items-center justify-between px-4 py-4">
+          <button
+            type="button"
+            onClick={() => {
+              void handleSignOut()
+            }}
+            className="flex items-center gap-2 text-sm font-medium bg-transparent border-none p-0 cursor-pointer"
+            style={{ color: '#dc2626' }}
+          >
+            <LogOut size={16} />
+            Sign Out
+          </button>
+        </div>
       </div>
 
-      <div style={{ padding: '24px 16px' }}>
-        <button
-          type="button"
-          onClick={() => {
-            void handleSignOut()
-          }}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            padding: '14px',
-            border: '1px solid #e5e7eb',
-            borderRadius: 999,
-            background: '#fff',
-            color: '#b71c1c',
-            fontSize: '1rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          <LogOut size={16} />
-          Sign Out
-        </button>
-      </div>
+      <div className="pb-8" />
 
       <Toast show={show} message={message} type={type} />
     </div>
