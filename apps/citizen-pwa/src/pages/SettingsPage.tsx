@@ -123,12 +123,9 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="min-h-[100dvh]" style={{ background: '#f0f4f4' }}>
+    <div className="min-h-[100dvh] bg-[#f0f4f4]">
       {/* Back header */}
-      <div
-        className="flex items-center gap-3 px-4 py-4 border-b"
-        style={{ background: '#fff', borderColor: '#d5dedd' }}
-      >
+      <div className="flex items-center gap-3 px-4 py-4 border-b bg-white border-[#d5dedd]">
         <button
           type="button"
           onClick={() => {
@@ -137,47 +134,33 @@ export function SettingsPage() {
           className="p-0 border-none bg-transparent cursor-pointer"
           aria-label="Go back"
         >
-          <ArrowLeft size={20} style={{ color: '#25292a' }} />
+          <ArrowLeft size={20} className="text-[#25292a]" />
         </button>
-        <h1 className="m-0 font-semibold" style={{ fontSize: 18, color: '#25292a' }}>
-          Settings
-        </h1>
+        <h1 className="m-0 font-semibold text-lg text-[#25292a]">Settings</h1>
       </div>
 
       {/* Notifications section */}
-      <p
-        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
-        style={{ color: '#768081' }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
         Notifications
       </p>
-      <div className="bg-white divide-y" style={{ borderColor: '#f0f4f4' }}>
+      <div className="bg-white divide-y divide-[#f0f4f4]">
         <div className="flex items-center justify-between px-4 py-4">
-          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
-            Push notifications
-          </span>
+          <span className="text-sm font-medium text-[#25292a]">Push notifications</span>
           <Toggle checked={pushEnabled} onChange={setPushEnabled} label="Push notifications" />
         </div>
         <div className="flex items-center justify-between px-4 py-4">
-          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
-            Alert sounds
-          </span>
+          <span className="text-sm font-medium text-[#25292a]">Alert sounds</span>
           <Toggle checked={alertSounds} onChange={handleAlertSoundsToggle} label="Alert sounds" />
         </div>
       </div>
 
       {/* Location section */}
-      <p
-        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
-        style={{ color: '#768081' }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
         Location
       </p>
       <div className="bg-white">
         <div className="flex items-center justify-between px-4 py-4">
-          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
-            Auto-detect location
-          </span>
+          <span className="text-sm font-medium text-[#25292a]">Auto-detect location</span>
           <Toggle
             checked={autoLocation}
             onChange={handleAutoLocationToggle}
@@ -187,17 +170,12 @@ export function SettingsPage() {
       </div>
 
       {/* Offline Mode section */}
-      <p
-        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
-        style={{ color: '#768081' }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
         Offline Mode
       </p>
       <div className="bg-white">
         <div className="flex items-center justify-between px-4 py-4">
-          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
-            Offline-first cache
-          </span>
+          <span className="text-sm font-medium text-[#25292a]">Offline-first cache</span>
           <Toggle
             checked={offlineMode}
             onChange={handleOfflineToggle}
@@ -207,28 +185,20 @@ export function SettingsPage() {
       </div>
 
       {/* Storage section */}
-      <p
-        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
-        style={{ color: '#768081' }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
         Storage
       </p>
       <div className="bg-white">
         <div className="flex items-center justify-between px-4 py-4">
-          <span className="text-sm font-medium" style={{ color: '#25292a' }}>
-            {storageInfo}
-          </span>
+          <span className="text-sm font-medium text-[#25292a]">{storageInfo}</span>
         </div>
       </div>
 
       {/* Account section */}
-      <p
-        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
-        style={{ color: '#768081' }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
         Account
       </p>
-      <div className="bg-white divide-y" style={{ borderColor: '#f0f4f4' }}>
+      <div className="bg-white divide-y divide-[#f0f4f4]">
         <div className="flex items-center justify-between px-4 py-4">
           <button
             type="button"
@@ -236,8 +206,7 @@ export function SettingsPage() {
               void handleDataExport()
             }}
             disabled={exportDisabled}
-            className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer disabled:cursor-not-allowed"
-            style={{ color: exportDisabled ? '#768081' : '#25292a' }}
+            className={`text-sm font-medium bg-transparent border-none p-0 cursor-pointer disabled:cursor-not-allowed ${exportDisabled ? 'text-[#768081]' : 'text-[#25292a]'}`}
           >
             {exportDisabled ? 'Coming soon' : 'Download my data'}
           </button>
@@ -247,8 +216,7 @@ export function SettingsPage() {
             href="https://bantayog.alert/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium no-underline"
-            style={{ color: '#25292a' }}
+            className="text-sm font-medium no-underline text-[#25292a]"
           >
             Privacy Policy
           </a>
@@ -256,15 +224,12 @@ export function SettingsPage() {
       </div>
 
       {/* Danger Zone section */}
-      <p
-        className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2"
-        style={{ color: '#768081' }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
         Danger Zone
       </p>
-      <div className="bg-white divide-y" style={{ borderColor: '#f0f4f4' }}>
+      <div className="bg-white divide-y divide-[#f0f4f4]">
         <div className="flex items-center gap-2 px-4 py-4">
-          <AlertTriangle size={16} style={{ color: '#dc2626' }} />
+          <AlertTriangle size={16} className="text-[#dc2626]" />
           <DeleteAccountFlow onGoodbye={() => void navigate('/goodbye')} />
         </div>
         <div className="flex items-center justify-between px-4 py-4">
@@ -273,8 +238,7 @@ export function SettingsPage() {
             onClick={() => {
               void handleSignOut()
             }}
-            className="flex items-center gap-2 text-sm font-medium bg-transparent border-none p-0 cursor-pointer"
-            style={{ color: '#dc2626' }}
+            className="flex items-center gap-2 text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-[#dc2626]"
           >
             <LogOut size={16} />
             Sign Out
