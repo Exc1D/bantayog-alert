@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList, MapPin, Settings } from 'lucide-react'
+import { ClipboardList, EyeOff, MapPin, Settings, User as UserIcon } from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
@@ -69,67 +69,39 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
     <button
       type="button"
       onClick={onTap}
-      className="card"
-      style={{
-        width: '100%',
-        textAlign: 'left',
-        cursor: 'pointer',
-        border: 'none',
-        display: 'block',
-        padding: '0.875rem',
-        marginBottom: '0.5rem',
-      }}
+      className="w-full text-left cursor-pointer bg-white rounded-xl p-3.5 mb-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-[#e5e7eb]"
     >
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span
-          aria-hidden="true"
-          style={{ flexShrink: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center' }}
-        >
+      <div className="flex gap-2.5 items-start">
+        <span aria-hidden="true" className="shrink-0 leading-snug flex items-center">
           {icon}
         </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between gap-2">
+            <div className="flex items-center gap-1.5">
               <span
                 aria-hidden="true"
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: dot,
-                  flexShrink: 0,
-                  display: 'inline-block',
-                }}
+                className="w-2 h-2 rounded-full shrink-0 inline-block"
+                style={{ background: dot }}
               />
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9375rem', color: '#001e40' }}>
-                {label}
-              </p>
+              <p className="m-0 font-bold text-[0.9375rem] text-[#001e40]">{label}</p>
             </div>
-            <span style={{ flexShrink: 0, fontSize: '0.6875rem', color: '#7b8794' }}>
+            <span className="shrink-0 text-[0.6875rem] text-[#7b8794]">
               {timeAgo(report.submittedAt)}
             </span>
           </div>
           {report.municipalityLabel ? (
-            <p style={{ margin: '3px 0 6px', fontSize: '0.8125rem', color: '#52606d' }}>
-              <MapPin size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
-              {report.municipalityLabel}
+            <p className="mt-[3px] mb-1.5 text-[0.8125rem] text-[#52606d]">
+              <MapPin size={12} className="inline align-middle" /> {report.municipalityLabel}
             </p>
           ) : null}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
+          <div className="flex gap-1.5 items-center mt-1.5">
             <span
-              style={{
-                padding: '2px 8px',
-                borderRadius: 999,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: '0.05em',
-                background: bg,
-                color,
-              }}
+              className="px-2 py-0.5 rounded-full text-xs font-bold tracking-wide"
+              style={{ background: bg, color }}
             >
               {statusLabel}
             </span>
-            <span style={{ fontSize: '0.6875rem', color: '#7b8794' }}>Ref: {report.publicRef}</span>
+            <span className="text-[0.6875rem] text-[#7b8794]">Ref: {report.publicRef}</span>
           </div>
         </div>
       </div>
@@ -139,40 +111,13 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
 
 function SkeletonCard() {
   return (
-    <div
-      className="card"
-      style={{ animation: 'pulse 1.6s ease-in-out infinite', marginBottom: '0.5rem' }}
-    >
-      <div style={{ display: 'flex', gap: 10 }}>
-        <div
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            background: '#e0e3e5',
-            flexShrink: 0,
-          }}
-        />
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              height: 14,
-              width: '50%',
-              background: '#e0e3e5',
-              borderRadius: 4,
-              marginBottom: 8,
-            }}
-          />
-          <div
-            style={{
-              height: 12,
-              width: '35%',
-              background: '#e0e3e5',
-              borderRadius: 4,
-              marginBottom: 10,
-            }}
-          />
-          <div style={{ height: 18, width: 80, background: '#e0e3e5', borderRadius: 999 }} />
+    <div className="bg-white rounded-xl p-3.5 mb-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] animate-pulse">
+      <div className="flex gap-2.5">
+        <div className="w-6 h-6 rounded-full bg-[#e0e3e5] shrink-0" />
+        <div className="flex-1">
+          <div className="h-3.5 w-1/2 bg-[#e0e3e5] rounded mb-2" />
+          <div className="h-3 w-[35%] bg-[#e0e3e5] rounded mb-2.5" />
+          <div className="h-[18px] w-20 bg-[#e0e3e5] rounded-full" />
         </div>
       </div>
     </div>
@@ -196,10 +141,14 @@ export function ProfileTab() {
   const isPseudonymous = user?.isAnonymous === true
   const isRegistered = user && !user.isAnonymous
 
+  const verifiedCount = reports.filter((r) => r.status === 'verified').length
+  const initials =
+    isRegistered && user.displayName ? user.displayName.slice(0, 2).toUpperCase() : ''
+
   if (authLoading) {
     return (
-      <div style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+      <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="px-4 py-12 text-center">
           <SkeletonCard />
         </div>
       </div>
@@ -207,127 +156,102 @@ export function ProfileTab() {
   }
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      {/* Sticky header */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          background: 'rgba(247,249,251,0.96)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          padding: '12px 16px 10px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: '#001e40' }}>
-          {isRegistered ? (user.displayName ?? 'My Reports') : 'My Reports'}
-          <span
-            style={{
-              display: 'block',
-              fontSize: '0.6875rem',
-              fontWeight: 400,
-              color: '#7b8794',
-              marginTop: 2,
-            }}
-          >
-            Mga ulat na iyong isinumite
+    <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Teal hero header */}
+      <div className="bg-[#0f9488] px-4 pt-12 pb-8">
+        {/* Avatar */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+            {initials ? (
+              <span className="text-xl font-bold text-white">{initials}</span>
+            ) : (
+              <UserIcon size={32} className="text-white/80" />
+            )}
+          </div>
+          <div className="text-center">
+            <p className="m-0 text-lg font-bold text-white">
+              {isRegistered ? (user.displayName ?? 'My Reports') : 'Anonymous Reporter'}
+            </p>
+            <p className="m-0 text-sm text-white/70 mt-0.5">
+              {isRegistered ? 'Registered reporter' : 'Guest reporter'}
+            </p>
+          </div>
+          {/* Report count badge */}
+          <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+            {reports.length} {reports.length === 1 ? 'report' : 'reports'} submitted
           </span>
-        </h1>
-        {isRegistered && (
-          <button
-            type="button"
-            onClick={() => {
-              void navigate('/settings')
-            }}
-            style={{
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              fontSize: '1.25rem',
-              padding: 4,
-            }}
-            aria-label="Settings"
-          >
-            <Settings size={20} color="#52606d" />
-          </button>
-        )}
+        </div>
       </div>
 
       {/* Pseudonymous banner */}
       {isPseudonymous && (
-        <div
-          style={{
-            margin: '12px 16px',
-            padding: '12px 16px',
-            borderRadius: 10,
-            background: '#fff5ef',
-            border: '1px solid #fed7aa',
-          }}
-        >
-          <p
-            style={{ margin: '0 0 8px', fontSize: '0.8125rem', fontWeight: 600, color: '#001e40' }}
-          >
-            You&apos;re using Bantayog anonymously
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              void navigate('/register')
-            }}
-            style={{
-              border: 'none',
-              background: '#f26522',
-              color: '#fff',
-              padding: '8px 16px',
-              borderRadius: 8,
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Register to track your reports
-          </button>
+        <div className="bg-[#e8f6f3] border border-[#c4e8e2] rounded-xl mx-4 p-4 mt-4">
+          <div className="flex gap-3 items-start">
+            <EyeOff size={18} className="text-[#0f9488] shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="m-0 text-sm font-semibold text-[#001e40] mb-1">
+                You&apos;re using Bantayog anonymously
+              </p>
+              <p className="m-0 text-xs text-[#52606d] mb-3">
+                Register to track your reports across devices.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigate('/register')
+                }}
+                className="text-xs font-semibold text-[#0f9488] underline underline-offset-2 bg-transparent border-none cursor-pointer p-0"
+              >
+                Register to track your reports
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Report list */}
-      <div style={{ padding: '12px 16px 0' }}>
+      {/* Stats row */}
+      <div className="flex gap-3 mx-4 mt-4">
+        <div className="bg-white rounded-xl p-4 flex-1 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+          <p className="m-0 text-2xl font-bold text-[#001e40]">{reports.length}</p>
+          <p className="m-0 text-xs text-[#52606d] mt-0.5">Reports Submitted</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 flex-1 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+          <p className="m-0 text-2xl font-bold text-[#0f9488]">{verifiedCount}</p>
+          <p className="m-0 text-xs text-[#52606d] mt-0.5">Verified</p>
+        </div>
+      </div>
+
+      {/* Settings gear row */}
+      <div className="flex items-center justify-between mx-4 mt-4 bg-white rounded-xl px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+        <span className="text-sm font-semibold text-[#001e40]">Settings</span>
+        <button
+          type="button"
+          onClick={() => {
+            void navigate('/settings')
+          }}
+          aria-label="Settings"
+          className="border-none bg-transparent cursor-pointer p-1 flex items-center"
+        >
+          <Settings size={20} className="text-[#52606d]" />
+        </button>
+      </div>
+
+      {/* My Reports list */}
+      <div className="px-4 pt-4">
         {loading ? (
           <>
             <SkeletonCard />
             <SkeletonCard />
           </>
         ) : reports.length === 0 ? (
-          <div role="status" style={{ padding: '36px 0', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 8px', color: '#52606d' }}>
+          <div role="status" className="py-9 text-center">
+            <p className="m-0 mb-2 text-[#52606d]">
               <ClipboardList size={40} />
             </p>
-            <p
-              style={{
-                margin: '0 0 6px',
-                fontWeight: 700,
-                color: '#001e40',
-                fontSize: '0.9375rem',
-              }}
-            >
-              No reports yet
-            </p>
-            <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#52606d' }}>
+            <p className="m-0 mb-1.5 font-bold text-[#001e40] text-[0.9375rem]">No reports yet</p>
+            <p className="m-0 mb-5 text-[0.8125rem] text-[#52606d]">
               Your submitted reports will appear here.
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.6875rem',
-                  color: '#7b8794',
-                  marginTop: 4,
-                  fontStyle: 'italic',
-                }}
-              >
+              <span className="block text-[0.6875rem] text-[#7b8794] mt-1 italic">
                 Ang iyong mga ulat ay makikita dito.
               </span>
             </p>
@@ -355,30 +279,15 @@ export function ProfileTab() {
       </div>
 
       {/* Privacy section */}
-      <div
-        style={{
-          margin: '20px 16px 0',
-          paddingTop: '20px',
-          borderTop: '1px solid #e5e7eb',
-        }}
-      >
-        <h2
-          style={{
-            margin: '0 0 12px',
-            fontSize: '0.875rem',
-            fontWeight: 700,
-            color: '#52606d',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-          }}
-        >
+      <div className="mx-4 mt-5 pt-5 border-t border-[#e5e7eb]">
+        <h2 className="m-0 mb-3 text-sm font-bold text-[#52606d] uppercase tracking-[0.06em]">
           Privacy
         </h2>
         <DeleteAccountFlow onGoodbye={() => void navigate('/goodbye')} />
       </div>
 
       {/* Bottom padding for nav bar */}
-      <div style={{ height: 32 }} />
+      <div className="h-8" />
     </div>
   )
 }
