@@ -1,11 +1,13 @@
-import { useReducedMotion } from '../hooks/useReducedMotion'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { ToastType } from '../hooks/useToast'
 
 const BG_MAP: Record<ToastType, string> = {
-  success: '#1b5e20',
-  error: '#b71c1c',
-  info: '#001e40',
+  success: 'bg-[#10b981]',
+  error: 'bg-[#dc2626]',
+  info: 'bg-[#3b82f6]',
 }
+
+const EASE_REVEAL: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 export function Toast({
   show,
@@ -16,33 +18,21 @@ export function Toast({
   message: string
   type: ToastType
 }) {
-  const reducedMotion = useReducedMotion()
-
-  if (!show) return null
-
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
-        position: 'fixed',
-        bottom: 96,
-        left: 16,
-        right: 16,
-        zIndex: 60,
-        background: BG_MAP[type],
-        color: '#fff',
-        padding: '12px 16px',
-        borderRadius: 10,
-        fontSize: '0.875rem',
-        fontWeight: 600,
-        textAlign: 'center',
-        animation: reducedMotion ? 'none' : 'slideUp 300ms ease-out',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      }}
-    >
-      {message}
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
-    </div>
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-24 left-4 right-4 z-50 rounded-lg shadow-lg text-white text-sm font-medium text-center px-4 py-3 ${BG_MAP[type]}`}
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.3, ease: EASE_REVEAL }}
+        >
+          {message}
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
