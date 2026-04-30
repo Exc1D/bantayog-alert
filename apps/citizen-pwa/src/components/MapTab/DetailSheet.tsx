@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties, type TouchEvent } from 'react'
+import { useEffect, useRef, useState, type TouchEvent } from 'react'
+import { X } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
 import type { MyReport, PublicIncident } from './types.js'
 
@@ -104,29 +105,9 @@ export function DetailSheet(props: Props) {
     else if (delta > 30) props.onCollapse()
   }
 
-  const baseStyle: CSSProperties = {
-    position: 'fixed',
-    inset: 'auto 0 0',
-    zIndex: 60,
-    maxHeight: '80dvh',
-    overflowY: 'auto',
-    padding: '0 20px 32px',
-    background: 'var(--color-surface-container-low)',
-    borderRadius: '16px 16px 0 0',
-    boxShadow: '0 -4px 32px rgba(0,30,64,0.15)',
-  }
-
   const dragHandle = (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
-      <div
-        style={{
-          width: 32,
-          height: 4,
-          borderRadius: 9999,
-          background: 'var(--color-on-surface-variant)',
-          opacity: 0.35,
-        }}
-      />
+    <div className="flex justify-center pt-2 pb-4">
+      <div className="w-8 h-1 rounded-full bg-surface-200" />
     </div>
   )
 
@@ -134,43 +115,23 @@ export function DetailSheet(props: Props) {
     const incident = props.incident
     const badge = SEVERITY_BADGE[incident.severity]
     return (
-      <section style={baseStyle} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <section
+        className="fixed inset-x-0 bottom-0 z-modal bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {dragHandle}
 
         {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 12,
-          }}
-        >
+        <div className="flex justify-between items-start mb-3">
           <div>
-            <p
-              style={{
-                margin: 0,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontWeight: 800,
-                fontSize: '1.25rem',
-                color: '#001e40',
-              }}
-            >
+            <p className="text-xl font-extrabold text-surface-900">
               {LABELS[incident.reportType] ?? incident.reportType}
             </p>
             {badge ? (
               <span
-                style={{
-                  display: 'inline-block',
-                  marginTop: 6,
-                  padding: '3px 10px',
-                  borderRadius: 999,
-                  fontSize: '0.625rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  background: badge.bg,
-                  color: badge.color,
-                }}
+                className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
+                style={{ backgroundColor: badge.bg, color: badge.color }}
               >
                 {badge.label}
               </span>
@@ -180,61 +141,32 @@ export function DetailSheet(props: Props) {
             type="button"
             aria-label="Close"
             onClick={props.onClose}
-            style={{
-              border: 'none',
-              background: '#f2f4f6',
-              color: '#52606d',
-              width: 32,
-              height: 32,
-              borderRadius: '50%',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-surface-100 text-surface-500 flex items-center justify-center"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Location */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <span aria-hidden="true" style={{ fontSize: '0.875rem' }}>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span aria-hidden="true" className="text-sm">
             📍
           </span>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f' }}>
+          <p className="text-sm font-medium text-surface-900">
             {incident.barangayId ? `${incident.barangayId}, ` : ''}
             {incident.municipalityLabel}
           </p>
         </div>
 
         {/* Time */}
-        <p style={{ margin: '0 0 20px', fontSize: '0.75rem', color: '#7b8794' }}>
-          Reported {timeAgo(incident.submittedAt)}
-        </p>
+        <p className="text-xs text-surface-500 mb-5">Reported {timeAgo(incident.submittedAt)}</p>
 
         {/* Report similar CTA */}
         {props.onReportSimilar ? (
           <button
             type="button"
             onClick={props.onReportSimilar}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              borderRadius: 12,
-              border: '1.5px solid rgba(0,30,64,0.16)',
-              background: '#f5f7fa',
-              color: '#001e40',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
+            className="w-full py-3 px-4 rounded-xl border border-surface-200 bg-surface-100 text-surface-900 text-sm font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span aria-hidden="true">⚡</span>
             Report similar incident nearby
@@ -250,51 +182,25 @@ export function DetailSheet(props: Props) {
   const statusIndex = PROGRESS_STATUSES.indexOf(displayStatus)
 
   return (
-    <section style={baseStyle} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <section
+      className="fixed inset-x-0 bottom-0 z-modal bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {dragHandle}
-      <p style={{ margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}>
-        ★ Your Report
-      </p>
-      <p
-        style={{
-          margin: '4px 0 16px',
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontWeight: 700,
-          fontSize: '1.125rem',
-        }}
-      >
+      <p className="font-extrabold text-surface-900">★ Your Report</p>
+      <p className="mt-1 mb-4 font-bold text-lg text-surface-900">
         {LABELS[report.reportType] ?? report.reportType}
         {report.status !== 'queued' && report.status !== 'new'
           ? ` · ${report.status.replace(/_/g, ' ')}`
           : ' · Awaiting Review'}
       </p>
-      <div
-        style={{
-          background: 'var(--color-surface-container-lowest)',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
+      <div className="bg-surface-100 rounded-lg px-4 py-3 mb-4 flex justify-between items-center">
         <div>
-          <p
-            style={{
-              margin: '0 0 4px',
-              fontSize: '0.625rem',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--color-on-surface-variant)',
-            }}
-          >
+          <p className="mb-1 text-[0.625rem] font-bold tracking-widest uppercase text-surface-500">
             Tracking Code
           </p>
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}>
-            {report.publicRef}
-          </span>
+          <span className="font-extrabold text-surface-900">{report.publicRef}</span>
         </div>
         <button
           type="button"
@@ -302,38 +208,32 @@ export function DetailSheet(props: Props) {
           onClick={() => {
             void handleCopy(report.publicRef)
           }}
+          className="text-brand-500 text-sm font-medium"
         >
           {copied ? 'Copied ✓' : 'Copy'}
         </button>
       </div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
+      <div className="flex gap-1 mb-5">
         {PROGRESS_STATUSES.map((step, index) => (
           <div
             key={step}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              flex: index < PROGRESS_STATUSES.length - 1 ? 1 : 'none',
-            }}
+            className={`flex items-center ${index < PROGRESS_STATUSES.length - 1 ? 'flex-1' : ''}`}
           >
             <div
+              className="w-2.5 h-2.5 rounded-full border-2"
               style={{
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background:
+                backgroundColor:
                   index <= statusIndex
                     ? 'var(--color-primary)'
                     : 'var(--color-surface-container-low)',
-                border: '2px solid var(--color-primary)',
+                borderColor: 'var(--color-primary)',
               }}
             />
             {index < PROGRESS_STATUSES.length - 1 ? (
               <div
+                className="flex-1 h-0.5"
                 style={{
-                  flex: 1,
-                  height: 2,
-                  background:
+                  backgroundColor:
                     index < statusIndex
                       ? 'var(--color-primary)'
                       : 'var(--color-surface-container-low)',
@@ -344,7 +244,7 @@ export function DetailSheet(props: Props) {
         ))}
       </div>
       {actions.includes('edit') ? (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <div className="flex gap-2 mb-2">
           <button type="button" aria-label="Edit">
             Edit
           </button>
@@ -354,7 +254,7 @@ export function DetailSheet(props: Props) {
         </div>
       ) : null}
       {actions.includes('request_correction') ? (
-        <button type="button" aria-label="Request correction" style={{ marginBottom: 8 }}>
+        <button type="button" aria-label="Request correction" className="mb-2">
           Request Correction
         </button>
       ) : null}
