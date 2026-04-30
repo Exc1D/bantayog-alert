@@ -16,11 +16,26 @@ interface RevealSheetProps {
   onClose?: () => void
 }
 
-export function RevealSheet({ state, referenceCode, secretCode, onClose }: RevealSheetProps) {
+export function RevealSheet({
+  state,
+  referenceCode,
+  secretCode,
+  reportCount,
+  onClose,
+}: RevealSheetProps) {
   const reducedMotion = useReducedMotion()
   const [displayedChars, setDisplayedChars] = useState(reducedMotion ? referenceCode.length : 0)
   const [typewriterComplete, setTypewriterComplete] = useState(reducedMotion)
   const [copied, setCopied] = useState(false)
+  const [secretVisible, setSecretVisible] = useState(false)
+  const [upgradeDismissed, setUpgradeDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('bantayog_upgrade_prompted') === '1'
+    } catch {
+      return false
+    }
+  })
+  const showUpgradePrompt = reportCount != null && reportCount > 0 && !upgradeDismissed
   const variants = {
     success: {
       icon: <Check size={16} />,
@@ -77,11 +92,6 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
         if (i >= referenceCode.length) {
           if (charInterval) clearInterval(charInterval)
           setTypewriterComplete(true)
-          try {
-            navigator.vibrate(200)
-          } catch {
-            // vibrate not available
-          }
         }
       }, 60)
     }, 400)
@@ -90,6 +100,30 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
       if (charInterval) clearInterval(charInterval)
     }
   }, [referenceCode, reducedMotion])
+
+  useEffect(() => {
+    if (state === 'success' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([15, 80, 25])
+      } catch {
+        // vibrate not available
+      }
+    }
+  }, [state])
+
+  useEffect(() => {
+    if (typewriterComplete && secretCode) {
+      const t = setTimeout(
+        () => {
+          setSecretVisible(true)
+        },
+        reducedMotion ? 0 : 300,
+      )
+      return () => {
+        clearTimeout(t)
+      }
+    }
+  }, [typewriterComplete, secretCode, reducedMotion])
 
   const handleCopySecret = useCallback(async () => {
     if (!secretCode) return
@@ -109,6 +143,15 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
     hour: '2-digit',
     minute: '2-digit',
   })
+
+  const handleDismissUpgrade = () => {
+    try {
+      localStorage.setItem('bantayog_upgrade_prompted', '1')
+    } catch {
+      /* */
+    }
+    setUpgradeDismissed(true)
+  }
 
   const handleTrackReport = () => {
     window.location.href = `/reports/${referenceCode}`
@@ -236,22 +279,38 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
           <div
             style={{
               margin: '12px 0',
-              padding: '12px',
-              borderRadius: 10,
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
+              borderTop: '1px solid rgba(167,52,0,0.15)',
+              paddingTop: 12,
+              opacity: secretVisible ? 1 : 0,
+              transition: reducedMotion ? 'none' : 'opacity 300ms ease-in',
             }}
           >
-            <p
-              style={{
-                margin: '0 0 8px',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                color: '#001e40',
-              }}
-            >
-              Save your secret code to track this report
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: '#a73400',
+                }}
+              >
+                Secret Code
+              </span>
+              <span
+                style={{
+                  fontSize: '0.625rem',
+                  fontWeight: 700,
+                  background: '#001e40',
+                  color: '#fff',
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                SHOWN ONCE
+              </span>
+            </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <code
                 style={{
@@ -260,7 +319,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
                   background: '#fff',
                   borderRadius: 6,
                   fontSize: '0.875rem',
-                  fontFamily: 'monospace',
+                  fontFamily: "'JetBrains Mono', monospace",
                   letterSpacing: '0.05em',
                 }}
               >
@@ -275,7 +334,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
                   padding: '8px',
                   border: 'none',
                   background: '#001e40',
-                  borderRadius: 6,
+                  borderRadius: 8,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -288,6 +347,12 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
             {copied && (
               <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#16a34a' }}>Copied!</p>
             )}
+            <p style={{ margin: '8px 0 0', fontSize: '0.6875rem', color: '#7b8794' }}>
+              Save this to check your report without an account.
+              <span style={{ display: 'block', fontStyle: 'italic' }}>
+                I-save ito para macheck ang ulat nang walang account.
+              </span>
+            </p>
           </div>
         )}
 
@@ -313,6 +378,57 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
             </Button>
           </div>
         ) : null}
+
+        {showUpgradePrompt && state === 'success' && (
+          <div
+            style={{
+              margin: '12px 0',
+              padding: '12px',
+              borderRadius: 8,
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 8px',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: '#001e40',
+              }}
+            >
+              {reportCount === 1
+                ? 'Save your report history — create an account.'
+                : `You have ${String(reportCount)} reports. Create an account to keep them all.`}
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <a
+                href="/register"
+                style={{
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  color: '#f26522',
+                  textDecoration: 'none',
+                }}
+              >
+                Create account
+              </a>
+              <button
+                type="button"
+                onClick={handleDismissUpgrade}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '0.75rem',
+                  color: '#7b8794',
+                  cursor: 'pointer',
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         <p className="reveal-footer">{variant.permissionText}</p>
       </div>

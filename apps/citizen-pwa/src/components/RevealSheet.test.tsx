@@ -39,28 +39,27 @@ describe('RevealSheet', () => {
     vi.useRealTimers()
   })
 
-  it('renders with secretCode showing upgrade prompt after typewriter', async () => {
+  it('renders secret code section after typewriter', async () => {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" secretCode="SECRET123" />)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1200)
     })
-    expect(screen.getByText('Save your secret code to track this report')).toBeInTheDocument()
+    expect(screen.getByText('Secret Code')).toBeInTheDocument()
+    expect(screen.getByText('SHOWN ONCE')).toBeInTheDocument()
+    expect(screen.getByText('SECRET123')).toBeInTheDocument()
   })
 
-  it('does not show upgrade prompt without secretCode', async () => {
+  it('does not show secret code section without secretCode', async () => {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1200)
     })
-    expect(screen.queryByText('Save your secret code to track this report')).not.toBeInTheDocument()
+    expect(screen.queryByText('Secret Code')).not.toBeInTheDocument()
   })
 
-  it('calls navigator.vibrate on typewriter complete', async () => {
+  it('calls navigator.vibrate with correct pattern on success mount', () => {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1200)
-    })
-    expect(navigator.vibrate).toHaveBeenCalledWith(200)
+    expect(navigator.vibrate).toHaveBeenCalledWith([15, 80, 25])
   })
 
   it('shows afterglow footer on success after typewriter', async () => {
@@ -69,5 +68,15 @@ describe('RevealSheet', () => {
       await vi.advanceTimersByTimeAsync(1200)
     })
     expect(screen.getByText(/Daet MDRRMO is on it/)).toBeInTheDocument()
+  })
+
+  it('shows session upgrade prompt with reportCount > 0 on success', async () => {
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" reportCount={3} />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200)
+    })
+    expect(
+      screen.getByText('You have 3 reports. Create an account to keep them all.'),
+    ).toBeInTheDocument()
   })
 })
