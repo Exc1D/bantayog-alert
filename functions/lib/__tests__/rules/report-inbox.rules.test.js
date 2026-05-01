@@ -56,14 +56,13 @@ describe('report_inbox rules', () => {
     });
     it('rejects inbox writes missing required keys', async () => {
         const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }));
+        // Missing secretHash and correlationId — hasAll will reject
         await assertFails(addDoc(collection(db, 'report_inbox'), {
             reporterUid: 'citizen-1',
             clientCreatedAt: ts,
             idempotencyKey: 'k2',
             publicRef: 'c3d4e5f6',
-            secretHash: 'b'.repeat(64),
-            correlationId: '33333333-3333-4333-8333-333333333333',
-            payload: { reportType: 'flood' },
+            payload: { reportType: 'flood', description: 'x', source: 'web' },
         }));
     });
     it('allows responder inbox submissions (any authenticated user)', async () => {

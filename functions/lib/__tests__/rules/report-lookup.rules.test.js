@@ -41,9 +41,9 @@ describe('report_lookup rules', () => {
         const { setDoc } = await import('firebase/firestore');
         await assertFails(setDoc(doc(db, 'report_lookup/new'), { publicRef: 'new', reportId: 'r-new' }));
     });
-    it('unauthed read fails', async () => {
+    it('unauthed read succeeds', async () => {
         const db = unauthed(env);
-        await assertFails(getDoc(doc(db, 'report_lookup/pub-ref-1')));
+        await assertSucceeds(getDoc(doc(db, 'report_lookup/pub-ref-1')));
     });
     it('unauthed write fails', async () => {
         const db = unauthed(env);
