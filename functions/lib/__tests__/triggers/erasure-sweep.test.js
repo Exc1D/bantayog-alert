@@ -72,6 +72,8 @@ beforeEach(async () => {
             'reports',
             'report_private',
             'report_contacts',
+            'sms_sessions',
+            'sms_inbox',
         ]) {
             const snap = await db.collection(col).get();
             await Promise.all(snap.docs.map((d) => d.ref.delete()));
