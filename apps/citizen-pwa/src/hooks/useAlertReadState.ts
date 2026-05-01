@@ -4,12 +4,24 @@ const STORAGE_KEY = 'bantayog_alert_reads'
 
 type ReadAlerts = Record<string, true>
 
+function isValidReadAlerts(value: unknown): value is ReadAlerts {
+  if (typeof value !== 'object' || value === null) return false
+  return Object.entries(value).every(([key, val]) => typeof key === 'string' && val === true)
+}
+
 export function useAlertReadState() {
   const [readAlerts, setReadAlerts] = useState<ReadAlerts>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
-      return stored ? (JSON.parse(stored) as ReadAlerts) : {}
-    } catch {
+      if (!stored) return {}
+      const parsed = JSON.parse(stored) as unknown
+      if (!isValidReadAlerts(parsed)) {
+        console.error('Invalid alert read state in localStorage, resetting')
+        return {}
+      }
+      return parsed
+    } catch (error) {
+      console.error('Failed to parse alert read state from localStorage:', error)
       return {}
     }
   })

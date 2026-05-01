@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { getMessaging, getToken, onMessage } from 'firebase/messaging'
+import { useState, useCallback, useEffect } from 'react'
+import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
 
 interface FcmState {
@@ -9,11 +9,34 @@ interface FcmState {
 }
 
 export function useFcmToken() {
-  const [state, setState] = useState<FcmState>({
-    permission: 'default',
-    token: null,
-    enabled: false,
+  const [state, setState] = useState<FcmState>(() => {
+    if (!('Notification' in window)) {
+      return { permission: 'denied', token: null, enabled: false }
+    }
+    return { permission: Notification.permission, token: null, enabled: false }
   })
+
+  // Rehydrate token on mount
+  useEffect(() => {
+    if (
+      !('Notification' in window) ||
+      Notification.permission !== 'granted' ||
+      !hasFirebaseConfig()
+    ) {
+      return
+    }
+
+    const messaging = getMessaging()
+    getToken(messaging, {
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+    })
+      .then((token) => {
+        setState({ permission: 'granted', token: token || null, enabled: Boolean(token) })
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to rehydrate FCM token:', error)
+      })
+  }, [])
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!('Notification' in window)) {
@@ -83,11 +106,28 @@ export function useFcmToken() {
   }, [])
 
   const disable = useCallback(async () => {
+    const tokenToRevoke = state.token
     setState((prev) => ({ ...prev, enabled: false, token: null }))
+
+    if (!tokenToRevoke) return
+
+    try {
+      // Revoke the browser FCM token
+      const messaging = getMessaging()
+      await deleteToken(messaging)
+
+      // Call backend to remove topic subscription
+      const { getFunctions, httpsCallable } = await import('firebase/functions')
+      const functions = getFunctions()
+      const unsubscribeFromAlerts = httpsCallable(functions, 'unsubscribeFromAlerts')
+      await unsubscribeFromAlerts({ token: tokenToRevoke })
+    } catch (error) {
+      console.error('Failed to revoke FCM token or unsubscribe:', error)
+    }
 
     // Clear token from user document
     const user = auth().currentUser
-    if (user && !user.isAnonymous && state.token) {
+    if (user && !user.isAnonymous) {
       try {
         const { updateDoc, doc, getDoc } = await import('firebase/firestore')
         const { db } = await import('../services/firebase.js')
@@ -98,7 +138,7 @@ export function useFcmToken() {
           await updateDoc(userRef, { fcmToken: null })
         }
       } catch (error) {
-        console.error('Failed to clear FCM token:', error)
+        console.error('Failed to clear FCM token from Firestore:', error)
       }
     }
   }, [state.token])
