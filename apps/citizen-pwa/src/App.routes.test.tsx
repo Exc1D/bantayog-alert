@@ -81,7 +81,7 @@ describe('App routes', () => {
 
   it('shows the report form at /report', async () => {
     await renderAppAt('/report')
-    expect(screen.getByText('Report form')).toBeInTheDocument()
+    expect(await screen.findByText('Report form')).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
   })
 
@@ -95,17 +95,17 @@ describe('App routes', () => {
 
   it('shows incident detail without shell chrome at /incidents/:id', async () => {
     await renderAppAt('/incidents/test-id')
-    expect(screen.getByText('Incident detail')).toBeInTheDocument()
+    expect(await screen.findByText('Incident detail')).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
   })
 
   it('shows register page at /register', async () => {
     await renderAppAt('/register')
-    expect(screen.getByText('Register page')).toBeInTheDocument()
+    expect(await screen.findByText('Register page')).toBeInTheDocument()
   })
 
   it('shows settings page at /settings', async () => {
     await renderAppAt('/settings')
-    expect(screen.getByText('Settings page')).toBeInTheDocument()
+    expect(await screen.findByText('Settings page')).toBeInTheDocument()
   })
 })

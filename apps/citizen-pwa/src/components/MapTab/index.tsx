@@ -35,6 +35,7 @@ interface SelectedPin {
 }
 
 function severityLabel(severity: Filters['severity'] | MyReport['severity']): string {
+  if (severity === 'all') return 'All'
   return severity.charAt(0).toUpperCase() + severity.slice(1)
 }
 

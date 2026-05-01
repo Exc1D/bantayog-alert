@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ClipboardList,
@@ -18,50 +18,14 @@ import {
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
-import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
+import {
+  incidentIcon,
+  incidentLabel,
+  statusMeta,
+  severityDotColor,
+} from '../utils/incident-meta.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
 import type { MyReport } from './MapTab/types.js'
-
-function statusMeta(status: string): { label: string; bg: string; color: string } {
-  switch (status) {
-    case 'queued':
-    case 'draft_inbox':
-      return { label: 'Sending…', bg: 'bg-surface-200', color: 'text-surface-600' }
-    case 'new':
-      return { label: 'Received', bg: 'bg-brand-100', color: 'text-brand-600' }
-    case 'awaiting_verify':
-      return { label: 'Under review', bg: 'bg-warning-400/20', color: 'text-warning-500' }
-    case 'verified':
-      return { label: 'Verified', bg: 'bg-brand-100', color: 'text-brand-600' }
-    case 'assigned':
-    case 'acknowledged':
-      return { label: 'Help on the way', bg: 'bg-success-400/20', color: 'text-success-500' }
-    case 'en_route':
-      return { label: 'Responder en route', bg: 'bg-success-400/20', color: 'text-success-500' }
-    case 'on_scene':
-      return { label: 'On scene', bg: 'bg-success-400/20', color: 'text-success-500' }
-    case 'resolved':
-    case 'closed':
-      return { label: 'Resolved', bg: 'bg-success-400/20', color: 'text-success-500' }
-    case 'reopened':
-      return { label: 'Re-opened', bg: 'bg-brand-100', color: 'text-brand-600' }
-    case 'rejected':
-      return { label: 'Not accepted', bg: 'bg-danger-400/20', color: 'text-danger-500' }
-    case 'cancelled':
-    case 'cancelled_false_report':
-      return { label: 'Cancelled', bg: 'bg-surface-200', color: 'text-surface-600' }
-    case 'merged_as_duplicate':
-      return { label: 'Merged', bg: 'bg-surface-200', color: 'text-surface-600' }
-    default:
-      return { label: status.replace(/_/g, ' '), bg: 'bg-surface-200', color: 'text-surface-600' }
-  }
-}
-
-function severityDot(severity: string): string {
-  if (severity === 'high') return '#dc2626'
-  if (severity === 'medium') return '#d97706'
-  return '#334155'
-}
 
 function timeAgo(ts: number): string {
   const minutes = Math.floor((Date.now() - ts) / 60000)
@@ -106,17 +70,21 @@ const BADGE_DEFS: Omit<BadgeDef, 'earned'>[] = [
 function useBadges(reports: MyReport[]): BadgeDef[] {
   const count = reports.length
   const verifiedCount = reports.filter((r) => r.status === 'verified').length
-  return BADGE_DEFS.map((def) => ({
-    ...def,
-    earned:
-      def.id === 'first-report'
-        ? count >= 1
-        : def.id === 'verified-reporter'
-          ? verifiedCount >= 1
-          : def.id === 'community-helper'
-            ? count >= 3
-            : count >= 5,
-  }))
+  return useMemo(
+    () =>
+      BADGE_DEFS.map((def) => ({
+        ...def,
+        earned:
+          def.id === 'first-report'
+            ? count >= 1
+            : def.id === 'verified-reporter'
+              ? verifiedCount >= 1
+              : def.id === 'community-helper'
+                ? count >= 3
+                : count >= 5,
+      })),
+    [count, verifiedCount],
+  )
 }
 
 /* ── Guardian pitch card ── */
@@ -216,7 +184,7 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
   const icon = incidentIcon(report.reportType)
   const label = incidentLabel(report.reportType)
   const { label: statusLabel, bg, color } = statusMeta(report.status)
-  const dot = severityDot(report.severity)
+  const dot = severityDotColor(report.severity)
 
   return (
     <button
@@ -318,12 +286,15 @@ export function ProfileTab() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [reports])
 
+  const [signOutError, setSignOutError] = useState(false)
+
   const handleSignOut = async () => {
+    setSignOutError(false)
     try {
       await signOut(auth())
       void navigate('/', { replace: true })
     } catch {
-      // sign out failure is non-critical; page will still function
+      setSignOutError(true)
     }
   }
 
@@ -627,6 +598,11 @@ export function ProfileTab() {
 
       {/* Sign out */}
       <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2">
+        {signOutError && (
+          <p role="alert" className="m-0 mb-2 text-xs text-danger-500">
+            Sign out failed. Please try again.
+          </p>
+        )}
         <button
           type="button"
           onClick={() => {

@@ -69,3 +69,48 @@ export function incidentLabel(type: string): string {
   if (type in LABEL_MAP) return LABEL_MAP[type as IncidentType]
   return type.replace(/_/g, ' ')
 }
+
+export function statusMeta(status: string): { label: string; bg: string; color: string } {
+  switch (status) {
+    case 'queued':
+    case 'draft_inbox':
+      return { label: 'Sending…', bg: 'bg-surface-200', color: 'text-surface-600' }
+    case 'new':
+      return { label: 'Received', bg: 'bg-brand-100', color: 'text-brand-600' }
+    case 'awaiting_verify':
+      return { label: 'Under review', bg: 'bg-warning-400/20', color: 'text-warning-500' }
+    case 'verified':
+      return { label: 'Verified', bg: 'bg-brand-100', color: 'text-brand-600' }
+    case 'assigned':
+    case 'acknowledged':
+      return { label: 'Help on the way', bg: 'bg-success-400/20', color: 'text-success-500' }
+    case 'en_route':
+      return { label: 'Responder en route', bg: 'bg-success-400/20', color: 'text-success-500' }
+    case 'on_scene':
+      return { label: 'On scene', bg: 'bg-success-400/20', color: 'text-success-500' }
+    case 'resolved':
+    case 'closed':
+      return { label: 'Resolved', bg: 'bg-success-400/20', color: 'text-success-500' }
+    case 'reopened':
+      return { label: 'Re-opened', bg: 'bg-brand-100', color: 'text-brand-600' }
+    case 'rejected':
+      return { label: 'Not accepted', bg: 'bg-danger-400/20', color: 'text-danger-500' }
+    case 'cancelled':
+    case 'cancelled_false_report':
+      return { label: 'Cancelled', bg: 'bg-surface-200', color: 'text-surface-600' }
+    case 'merged_as_duplicate':
+      return { label: 'Merged', bg: 'bg-surface-200', color: 'text-surface-600' }
+    default:
+      return { label: status.replace(/_/g, ' '), bg: 'bg-surface-200', color: 'text-surface-600' }
+  }
+}
+
+const SEVERITY_COLORS: Record<string, string> = {
+  high: '#dc2626',
+  medium: '#d97706',
+  low: '#334155',
+}
+
+export function severityDotColor(severity: string): string {
+  return SEVERITY_COLORS[severity] ?? '#334155'
+}
