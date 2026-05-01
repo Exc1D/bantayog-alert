@@ -35,12 +35,14 @@ export function LoginPage() {
     }
   }, [])
 
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  const handlePhoneSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const PH_MOBILE_REGEX = /^\+63[89]\d{9}$/
+
+  const handlePhoneSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!phone || phone === '+63' || phone.length < 12) {
-      toast('Please enter a valid phone number', 'error')
+    const normalizedPhone = phone.replace(/\s/g, '')
+    if (!PH_MOBILE_REGEX.test(normalizedPhone)) {
+      toast('Please enter a valid Philippine mobile number', 'error')
       return
     }
 
@@ -49,12 +51,13 @@ export function LoginPage() {
       return
     }
 
+    if (!recaptchaVerifierRef.current) {
+      toast('Failed to initialize reCAPTCHA', 'error')
+      return
+    }
+
     setLoading(true)
     try {
-      if (!recaptchaVerifierRef.current) {
-        toast('Failed to initialize reCAPTCHA', 'error')
-        return
-      }
       const confirmationResult = await signInWithPhoneNumber(
         auth(),
         phone,
@@ -70,8 +73,7 @@ export function LoginPage() {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  const handleOtpSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleOtpSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!verificationId || otp.length !== 6) {
@@ -118,8 +120,7 @@ export function LoginPage() {
                 Enter your phone number to sign in to your account.
               </p>
             </div>
-            {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-            <form onSubmit={handlePhoneSubmit}>
+            <form onSubmit={(e) => void handlePhoneSubmit(e)}>
               <label htmlFor="login-phone" className="sr-only">
                 Phone number
               </label>
@@ -158,8 +159,7 @@ export function LoginPage() {
               </p>
               <p className="text-xs text-surface-500">{phone}</p>
             </div>
-            {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-            <form onSubmit={handleOtpSubmit}>
+            <form onSubmit={(e) => void handleOtpSubmit(e)}>
               <label htmlFor="login-otp" className="sr-only">
                 Verification code
               </label>
