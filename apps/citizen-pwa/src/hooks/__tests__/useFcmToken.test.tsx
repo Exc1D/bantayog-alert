@@ -10,11 +10,9 @@ const mockDeleteToken = vi.fn()
 vi.mock('firebase/messaging', () => {
   return {
     getMessaging: vi.fn(() => ({ app: {} })),
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    getToken: (...args: unknown[]) => mockGetToken(...args),
-    onMessage: (...args: unknown[]) => mockOnMessage(...args),
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    deleteToken: (...args: unknown[]) => mockDeleteToken(...args),
+    getToken: mockGetToken,
+    onMessage: mockOnMessage,
+    deleteToken: mockDeleteToken,
   }
 })
 
@@ -39,12 +37,9 @@ vi.mock('firebase/firestore', async () => {
   const actual = await vi.importActual<typeof import('firebase/firestore')>('firebase/firestore')
   return {
     ...actual,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    updateDoc: (...args: unknown[]) => mockUpdateDoc(...args),
-
-    doc: (...args: unknown[]) => mockDoc(...args),
-
-    getDoc: (...args: unknown[]) => mockGetDoc(...args),
+    updateDoc: mockUpdateDoc,
+    doc: mockDoc,
+    getDoc: mockGetDoc,
   }
 })
 
@@ -56,7 +51,7 @@ vi.mock('firebase/functions', async () => {
   return {
     ...actual,
     getFunctions: vi.fn(() => ({ app: {} })),
-    httpsCallable: (...args: unknown[]) => mockHttpsCallable(...args),
+    httpsCallable: mockHttpsCallable,
   }
 })
 
