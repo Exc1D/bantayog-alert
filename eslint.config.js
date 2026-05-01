@@ -18,6 +18,7 @@ export default tseslint.config(
       '**/node_modules/**',
       'infra/terraform/**',
       '**/.firebase/**',
+      'test-staging.mjs',
       'functions/scripts/**',
       'scripts/**',
       // Plain-JS service workers — excluded from TypeScript project service.
