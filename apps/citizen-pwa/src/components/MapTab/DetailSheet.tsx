@@ -116,7 +116,7 @@ export function DetailSheet(props: Props) {
     const badge = SEVERITY_BADGE[incident.severity]
     return (
       <section
-        className="fixed inset-x-0 bottom-0 z-modal bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
+        className="absolute inset-x-0 bottom-0 z-[1001] bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -183,7 +183,7 @@ export function DetailSheet(props: Props) {
 
   return (
     <section
-      className="fixed inset-x-0 bottom-0 z-modal bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
+      className="absolute inset-x-0 bottom-0 z-[1001] bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >

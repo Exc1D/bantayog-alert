@@ -43,7 +43,7 @@ describe('ProfileTab', () => {
     })
     renderProfileTab()
     expect(screen.getByText('Become a Guardian')).toBeInTheDocument()
-    expect(screen.getByText('Join the Guardian Network →')).toBeInTheDocument()
+    expect(screen.getByText('Create account')).toBeInTheDocument()
   })
 
   it('shows settings gear for registered user', () => {

@@ -54,7 +54,7 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
       data-testid="peek-sheet"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="fixed bottom-20 left-3 right-3 z-float bg-white rounded-2xl shadow-lg overflow-hidden"
+      className="absolute bottom-4 left-3 right-3 z-[1001] bg-white rounded-2xl shadow-lg overflow-hidden"
     >
       <div className="w-8 h-1 rounded-full bg-surface-200 mx-auto mt-2 mb-1" />
       <div className="px-4 pb-3">

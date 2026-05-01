@@ -151,7 +151,7 @@ function GuardianPitchCard({ onRegister }: { onRegister: () => void }) {
         onClick={onRegister}
         className="w-full py-3 rounded-xl bg-white text-brand-600 font-bold text-sm active:bg-brand-50 transition-colors cursor-pointer border-none"
       >
-        Join the Guardian Network →
+        Create account
       </button>
     </div>
   )
