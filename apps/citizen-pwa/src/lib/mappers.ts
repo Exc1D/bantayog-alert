@@ -9,12 +9,21 @@ export function mapReportFromFirestore(data: Record<string, unknown>): ReportDat
   const result: ReportData = {
     id: data.id as string,
     status: data.status as ReportStatus,
-    timeline: (data.timeline as Array<Record<string, unknown>>).map((evt) => ({
-      event: evt.event as string,
-      timestamp: evt.timestamp as number,
-      ...(evt.actor !== undefined && { actor: evt.actor as string }),
-      ...(evt.note !== undefined && { note: evt.note as string }),
-    })),
+    timeline: (data.timeline as unknown[]).map((rawEvt, index) => {
+      if (!rawEvt || typeof rawEvt !== 'object' || Array.isArray(rawEvt)) {
+        throw new Error(`Invalid timeline event at index ${index}`)
+      }
+      const evt = rawEvt as Record<string, unknown>
+      if (typeof evt.event !== 'string' || typeof evt.timestamp !== 'number') {
+        throw new Error(`Invalid timeline event fields at index ${index}`)
+      }
+      return {
+        event: evt.event,
+        timestamp: evt.timestamp,
+        ...(typeof evt.actor === 'string' && { actor: evt.actor }),
+        ...(typeof evt.note === 'string' && { note: evt.note }),
+      }
+    }),
   };
 
   if (data.type !== undefined) {

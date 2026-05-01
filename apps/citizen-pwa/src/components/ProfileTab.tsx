@@ -289,6 +289,7 @@ export function ProfileTab() {
   const [signOutError, setSignOutError] = useState(false)
 
   const handleSignOut = async () => {
+    setSignOutError(false)
     try {
       await signOut(auth())
       void navigate('/', { replace: true })
@@ -598,7 +599,9 @@ export function ProfileTab() {
       {/* Sign out */}
       <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2">
         {signOutError && (
-          <p className="m-0 mb-2 text-xs text-danger-500">Sign out failed. Please try again.</p>
+          <p role="alert" className="m-0 mb-2 text-xs text-danger-500">
+            Sign out failed. Please try again.
+          </p>
         )}
         <button
           type="button"

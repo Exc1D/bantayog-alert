@@ -103,7 +103,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
   const displayedCode = reducedMotion ? referenceCode : slotDisplay
   const typewriterComplete = reducedMotion ? true : slotDone
   const [copied, setCopied] = useState(false)
-  const [copyError, setCopyError] = useState(false)
+  const [hasCopyError, setHasCopyError] = useState(false)
   const [secretVisible, setSecretVisible] = useState(false)
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // null = loading (firebase present), true = guest (no account), false = registered
@@ -152,16 +152,17 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
     try {
       await navigator.clipboard.writeText(secretCode)
       setCopied(true)
-      setCopyError(false)
+      setHasCopyError(false)
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
       copyTimerRef.current = setTimeout(() => {
         setCopied(false)
       }, 2000)
     } catch {
-      setCopyError(true)
+      setCopied(false)
+      setHasCopyError(true)
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
       copyTimerRef.current = setTimeout(() => {
-        setCopyError(false)
+        setHasCopyError(false)
       }, 3000)
     }
   }, [secretCode])
@@ -427,7 +428,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
             {copied && (
               <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#16a34a' }}>Copied!</p>
             )}
-            {copyError && (
+            {hasCopyError && (
               <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#dc2626' }}>
                 Copy failed — please write it down
               </p>

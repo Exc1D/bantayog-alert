@@ -21,7 +21,15 @@ export async function registerCitizen(): Promise<{
   const callable = httpsCallable(fns(), 'registerCitizen')
   try {
     const result = await callable()
-    return result.data as { uid: string; role: string; accountStatus: string }
+    const data = result.data as Record<string, unknown>
+    if (
+      typeof data.uid !== 'string' ||
+      typeof data.role !== 'string' ||
+      typeof data.accountStatus !== 'string'
+    ) {
+      throw new Error('invalid server response')
+    }
+    return { uid: data.uid, role: data.role, accountStatus: data.accountStatus }
   } catch (err) {
     throw new Error(
       `Citizen registration failed: ${err instanceof Error ? err.message : String(err)}`,
