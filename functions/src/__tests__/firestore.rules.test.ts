@@ -68,6 +68,14 @@ beforeAll(async () => {
       revokedAt: 1713350400000,
       reason: 'claims_updated',
     })
+
+    await db.collection('reports').doc('RPT-123').set({
+      reporterUid: 'anon-citizen-1',
+      visibilityClass: 'pending_review',
+      municipalityId: 'daet',
+      status: 'received',
+      submittedAt: 1713350400000,
+    })
   })
 })
 
@@ -130,6 +138,28 @@ describe('phase 1 firestore rules', () => {
         updatedAt: 1713350401000,
       }),
     )
+  })
+
+  it('allows reporter (including anonymous) to read their own report', async () => {
+    const db = testEnv.authenticatedContext('anon-citizen-1', {}).firestore()
+
+    await assertSucceeds(db.collection('reports').doc('RPT-123').get())
+  })
+
+  it('blocks a different authenticated user from reading a non-public report', async () => {
+    const db = testEnv
+      .authenticatedContext('other-citizen', {
+        role: 'citizen',
+        accountStatus: 'active',
+      })
+      .firestore()
+
+    await assertFails(db.collection('reports').doc('RPT-123').get())
+  })
+
+  it('blocks unauthenticated reads on non-public reports', async () => {
+    const db = testEnv.unauthenticatedContext().firestore()
+    await assertFails(db.collection('reports').doc('RPT-123').get())
   })
 
   it('allows active superadmin writes to system_config', async () => {

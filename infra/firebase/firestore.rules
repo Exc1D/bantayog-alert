@@ -94,7 +94,8 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if canReadReportDoc(resource.data);
+      allow read: if canReadReportDoc(resource.data)
+                  || (request.auth != null && resource.data.reporterUid == request.auth.uid);
       allow create: if false;
 
       // reports.status is written by:
