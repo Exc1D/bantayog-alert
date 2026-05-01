@@ -65,7 +65,7 @@ export function TrackingScreen() {
 
   const timelineEvents = report.timeline.map((e) => ({
     label: e.event,
-    meta: `${e.actor} · ${new Date(e.timestamp).toLocaleString()}`,
+    meta: `${e.actor ?? 'system'} · ${new Date(e.timestamp).toLocaleString()}`,
     state: 'complete' as const,
   }))
 
