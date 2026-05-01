@@ -43,6 +43,7 @@ function WizardContainer() {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [formData, setFormData] = useState<FormData>({ step1: null, step2: null })
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [secret, setSecret] = useState<string | null>(null)
   const [isCreatingDraft, setIsCreatingDraft] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
 
@@ -81,7 +82,7 @@ function WizardContainer() {
           })
         : undefined
 
-      const created = await createDraft({
+      const { draft: created, secret: draftSecret } = await createDraft({
         reportType: formData.step1.reportType as ReportType,
         // barangayId holds the barangay name when selected; fall back to municipality label
         barangay: formData.step2.barangayId ?? formData.step2.municipalityLabel ?? '',
@@ -92,6 +93,7 @@ function WizardContainer() {
         reporterName: formData.step2.reporterName,
         ...(msisdnHash ? { reporterMsisdnHash: msisdnHash } : {}),
         clientDraftRef: crypto.randomUUID(),
+        ...(formData.step2.municipalityId ? { municipalityId: formData.step2.municipalityId } : {}),
         ...(formData.step2.barangayId ? { barangayId: formData.step2.barangayId } : {}),
         ...(formData.step2.nearestLandmark
           ? { nearestLandmark: formData.step2.nearestLandmark }
@@ -100,6 +102,7 @@ function WizardContainer() {
       })
 
       setDraft(created)
+      setSecret(draftSecret)
     } catch (err: unknown) {
       setDraftError(err instanceof Error ? err.message : 'Failed to create draft')
     } finally {
@@ -115,6 +118,7 @@ function WizardContainer() {
     return (
       <SubmissionPanel
         draft={draft}
+        secret={secret}
         onSuccess={(publicRef) => {
           void nav(`/reports/${publicRef}`)
         }}
@@ -175,9 +179,11 @@ function WizardContainer() {
 
 function SubmissionPanel({
   draft,
+  secret,
   onSuccess,
 }: {
   draft: Draft
+  secret: string | null
   onSuccess: (publicRef: string) => void
 }) {
   const nav = useNavigate()
@@ -201,7 +207,13 @@ function SubmissionPanel({
   }, [])
 
   if (machine.state === 'server_confirmed') {
-    return <RevealSheet state="success" referenceCode={draft.id} />
+    return (
+      <RevealSheet
+        state="success"
+        referenceCode={draft.publicRef}
+        {...(secret ? { secretCode: secret } : {})}
+      />
+    )
   }
 
   if (machine.state === 'queued') {
@@ -209,7 +221,7 @@ function SubmissionPanel({
       <div aria-label="Submission status">
         <RevealSheet
           state="queued"
-          referenceCode={draft.id}
+          referenceCode={draft.publicRef}
           onClose={() => {
             void nav('/')
           }}
@@ -223,7 +235,7 @@ function SubmissionPanel({
       <div aria-label="Submission status">
         <RevealSheet
           state="failed_retryable"
-          referenceCode={draft.id}
+          referenceCode={draft.publicRef}
           onClose={() => {
             void nav('/')
           }}
@@ -238,7 +250,7 @@ function SubmissionPanel({
     return (
       <RevealSheet
         state="failed_retryable"
-        referenceCode={draft.id}
+        referenceCode={draft.publicRef}
         onClose={() => {
           void nav('/')
         }}

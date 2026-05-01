@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { doc, setDoc } from 'firebase/firestore'
 import type { Draft } from '../services/draft-store'
 import { draftStore } from '../services/draft-store'
-import { db } from '../services/firebase'
+import { db, ensureSignedIn } from '../services/firebase'
 import { useOnlineStatus } from './useOnlineStatus'
 
 export type SubmissionState =
@@ -78,6 +78,8 @@ export function useSubmissionMachine({
       const attemptCount = currentRetryCount + 1
 
       try {
+        const reporterUid = await ensureSignedIn()
+
         await draftStore.save({
           ...d,
           syncState: 'syncing',
@@ -85,7 +87,7 @@ export function useSubmissionMachine({
           updatedAt: Date.now(),
         })
 
-        const ref = await writeWithTimeout(d, SUBMIT_TIMEOUT_MS)
+        const ref = await writeWithTimeout(d, reporterUid, SUBMIT_TIMEOUT_MS)
         await draftStore
           .save({ ...d, syncState: 'synced', retryCount: attemptCount })
           .catch((e: unknown) => {
@@ -196,13 +198,34 @@ export function useSubmissionMachine({
   }
 }
 
-async function writeWithTimeout(draft: Draft, ms: number): Promise<string> {
+async function writeWithTimeout(draft: Draft, reporterUid: string, ms: number): Promise<string> {
   const docId = draft.clientDraftRef
+  const inboxDoc = {
+    reporterUid,
+    clientCreatedAt: draft.clientCreatedAt,
+    idempotencyKey: draft.idempotencyKey,
+    publicRef: draft.publicRef,
+    secretHash: draft.secretHash,
+    correlationId: draft.correlationId,
+    payload: {
+      reportType: draft.reportType,
+      description: draft.description,
+      severity: draft.severity,
+      source: 'web',
+      clientDraftRef: draft.clientDraftRef,
+      ...(draft.location ? { publicLocation: draft.location } : {}),
+      ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
+      ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),
+      ...(draft.nearestLandmark ? { nearestLandmark: draft.nearestLandmark } : {}),
+      ...(draft.reporterName ? { reporterName: draft.reporterName } : {}),
+      ...(draft.reporterMsisdnHash ? { reporterMsisdnHash: draft.reporterMsisdnHash } : {}),
+    },
+  }
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('timeout'))
     }, ms)
-    setDoc(doc(db(), 'report_inbox', docId), draft)
+    setDoc(doc(db(), 'report_inbox', docId), inboxDoc)
       .then(() => {
         clearTimeout(timer)
         resolve(docId)

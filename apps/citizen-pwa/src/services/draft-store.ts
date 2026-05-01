@@ -17,6 +17,15 @@ export interface Draft {
   reporterMsisdnHash?: string
   /** Stable ID generated once at creation, used for deduplication */
   clientDraftRef: string
+  /** 8-char lowercase alphanumeric public tracking reference */
+  publicRef: string
+  /** SHA-256 hash of the one-time secret shown to the reporter */
+  secretHash: string
+  /** UUID for end-to-end tracing */
+  correlationId: string
+  /** UUID for idempotency guard in backend processor */
+  idempotencyKey: string
+  municipalityId?: string
   syncState: SyncState
   retryCount: number
   smsFallbackSentAt?: number

@@ -47,11 +47,46 @@ export interface CreateDraftInput {
   reporterName?: string
   reporterMsisdnHash?: string
   clientDraftRef: string
+  municipalityId?: string
   photo?: Blob
 }
 
-export async function createDraft(input: CreateDraftInput): Promise<Draft> {
+function randomPublicRef(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  const buf = new Uint8Array(8)
+  crypto.getRandomValues(buf)
+  return Array.from(buf)
+    .map((b) => chars[b % chars.length])
+    .join('')
+}
+
+function randomSecret(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const buf = new Uint8Array(16)
+  crypto.getRandomValues(buf)
+  return Array.from(buf)
+    .map((b) => chars[b % chars.length])
+    .join('')
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = new TextEncoder().encode(input)
+  const digest = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+export async function createDraft(
+  input: CreateDraftInput,
+): Promise<{ draft: Draft; secret: string }> {
   const now = Date.now()
+  const publicRef = randomPublicRef()
+  const secret = randomSecret()
+  const secretHash = await sha256Hex(secret)
+  const correlationId = crypto.randomUUID()
+  const idempotencyKey = crypto.randomUUID()
+
   const draft: Draft = {
     id: `BA-DA-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
     reportType: input.reportType,
@@ -59,12 +94,17 @@ export async function createDraft(input: CreateDraftInput): Promise<Draft> {
     description: input.description,
     severity: input.severity,
     clientDraftRef: input.clientDraftRef,
+    publicRef,
+    secretHash,
+    correlationId,
+    idempotencyKey,
     syncState: 'local_only',
     retryCount: 0,
     clientCreatedAt: now,
     createdAt: now,
     updatedAt: now,
     ...(input.barangayId ? { barangayId: input.barangayId } : {}),
+    ...(input.municipalityId ? { municipalityId: input.municipalityId } : {}),
     ...(input.location ? { location: input.location } : {}),
     ...(input.nearestLandmark ? { nearestLandmark: input.nearestLandmark } : {}),
     ...(input.reporterName ? { reporterName: input.reporterName } : {}),
@@ -77,7 +117,7 @@ export async function createDraft(input: CreateDraftInput): Promise<Draft> {
     await draftStore.save(draft)
   }
 
-  return draft
+  return { draft, secret }
 }
 
 export async function submitReport(

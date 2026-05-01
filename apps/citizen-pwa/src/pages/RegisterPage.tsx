@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { linkWithPhoneNumber, RecaptchaVerifier, updateProfile } from 'firebase/auth'
 import { auth } from '../services/firebase.js'
+import { registerCitizen } from '../services/callables.js'
 import { useToast } from '../hooks/useToast.js'
 import { Toast } from '../components/Toast.js'
 
@@ -97,10 +98,18 @@ export function RegisterPage() {
     }
   }, [displayName, toast])
 
-  const handleConsent = useCallback(() => {
+  const handleConsent = useCallback(async () => {
     if (!consentGiven) return
-    toast('Welcome to Bantayog Alert', 'success')
-    void navigate('/', { replace: true })
+    setLoading(true)
+    try {
+      await registerCitizen()
+      toast('Welcome to Bantayog Alert', 'success')
+      void navigate('/', { replace: true })
+    } catch (e: unknown) {
+      toast(e instanceof Error ? e.message : 'Registration failed', 'error')
+    } finally {
+      setLoading(false)
+    }
   }, [consentGiven, navigate, toast])
 
   const ctaGradient = { background: 'linear-gradient(135deg, #0f9488, #0d7377)' }
@@ -257,7 +266,7 @@ export function RegisterPage() {
             <button
               type="button"
               onClick={() => {
-                handleConsent()
+                void handleConsent()
               }}
               disabled={!consentGiven}
               style={ctaGradient}
