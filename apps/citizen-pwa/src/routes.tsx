@@ -5,6 +5,7 @@ import { CitizenShell } from './components/CitizenShell.js'
 import { MapTab } from './components/MapTab/index.js'
 import { SplashScreen } from './pages/SplashScreen.js'
 import { useUIStore } from './lib/store.js'
+import { ErrorBoundary } from './components/ErrorBoundary.js'
 
 /* ── Lazy-loaded route components ── */
 const Onboarding = lazy(() =>
@@ -40,6 +41,9 @@ const RegisterPage = lazy(() =>
 )
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage.js').then((m) => ({ default: m.SettingsPage })),
+)
+const NotFoundPage = lazy(() =>
+  import('./pages/NotFoundPage.js').then((m) => ({ default: m.NotFoundPage })),
 )
 
 function RouteFallback() {
@@ -191,10 +195,22 @@ const router = createBrowserRouter([
         ),
         handle: { hideBottomNav: true },
       },
+      {
+        path: '*',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <NotFoundPage />
+          </Suspense>
+        ),
+      },
     ],
   },
 ])
 
 export function AppRoutes() {
-  return <RouterProvider router={router} />
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  )
 }
