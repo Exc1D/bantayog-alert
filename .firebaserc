@@ -11,6 +11,12 @@
         "citizen": ["bantayog-citizen-dev"],
         "admin": ["bantayog-admin-dev"]
       }
+    },
+    "bantayog-alert-staging": {
+      "hosting": {
+        "citizen": ["bantayog-citizen-staging"],
+        "admin": ["bantayog-admin-staging"]
+      }
     }
   }
 }
