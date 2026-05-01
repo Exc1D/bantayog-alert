@@ -4,7 +4,7 @@ import { MapPin } from 'lucide-react'
 const SEVERITY_COLORS: Record<string, string> = {
   high: '#dc2626',
   medium: '#a73400',
-  low: '#001e40',
+  low: '#414849',
 }
 
 interface SelectedPin {

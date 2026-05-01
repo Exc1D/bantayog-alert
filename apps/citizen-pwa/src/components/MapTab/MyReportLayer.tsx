@@ -9,7 +9,7 @@ interface Props {
   onPinTap: (report: MyReport) => void
 }
 
-const COLORS = { high: '#dc2626', medium: '#a73400', low: '#001e40' } as const
+const COLORS = { high: '#dc2626', medium: '#a73400', low: '#414849' } as const
 
 function isValidCoordinate(lat: number, lng: number): boolean {
   return (
