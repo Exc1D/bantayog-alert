@@ -45,6 +45,7 @@ const SettingsPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('./pages/NotFoundPage.js').then((m) => ({ default: m.NotFoundPage })),
 )
+const LoginPage = lazy(() => import('./pages/LoginPage.js').then((m) => ({ default: m.LoginPage })))
 
 function RouteFallback() {
   return (
@@ -182,6 +183,15 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<RouteFallback />}>
             <RegisterPage />
+          </Suspense>
+        ),
+        handle: { hideBottomNav: true },
+      },
+      {
+        path: 'login',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <LoginPage />
           </Suspense>
         ),
         handle: { hideBottomNav: true },
