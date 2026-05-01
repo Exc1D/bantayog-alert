@@ -1,15 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  ArrowLeft,
-  Camera,
-  Droplets,
-  Flame,
-  Wind,
-  Mountain,
-  Waves,
-  AlertTriangle,
-  X,
-} from 'lucide-react'
+import { ArrowLeft, Camera, Car, Flame, HelpCircle, Wind, Waves, Wrench, X } from 'lucide-react'
 import { Button } from '../ui/Button'
 
 interface Step1EvidenceProps {
@@ -19,12 +9,60 @@ interface Step1EvidenceProps {
 }
 
 const INCIDENT_TYPES = [
-  { value: 'flood', label: 'Flood', Icon: Droplets, colorClass: 'text-info-500' },
-  { value: 'fire', label: 'Fire', Icon: Flame, colorClass: 'text-danger-500' },
-  { value: 'earthquake', label: 'Earthquake', Icon: AlertTriangle, colorClass: 'text-danger-500' },
-  { value: 'typhoon', label: 'Typhoon', Icon: Wind, colorClass: 'text-warning-500' },
-  { value: 'landslide', label: 'Landslide', Icon: Mountain, colorClass: 'text-danger-500' },
-  { value: 'storm_surge', label: 'Storm Surge', Icon: Waves, colorClass: 'text-danger-500' },
+  {
+    value: 'flood',
+    label: 'Flood',
+    Icon: Waves,
+    colorClass: 'text-info-500',
+    selBorder: 'border-info-500',
+    selBg: 'bg-info-500/10',
+    selText: 'text-info-500',
+  },
+  {
+    value: 'fire',
+    label: 'Fire',
+    Icon: Flame,
+    colorClass: 'text-danger-500',
+    selBorder: 'border-danger-500',
+    selBg: 'bg-danger-500/10',
+    selText: 'text-danger-500',
+  },
+  {
+    value: 'accident',
+    label: 'Accidents/Rescue',
+    Icon: Car,
+    colorClass: 'text-warning-500',
+    selBorder: 'border-warning-500',
+    selBg: 'bg-warning-500/10',
+    selText: 'text-warning-500',
+  },
+  {
+    value: 'typhoon',
+    label: 'Typhoon',
+    Icon: Wind,
+    colorClass: 'text-warning-500',
+    selBorder: 'border-warning-500',
+    selBg: 'bg-warning-500/10',
+    selText: 'text-warning-500',
+  },
+  {
+    value: 'structural',
+    label: 'Damages',
+    Icon: Wrench,
+    colorClass: 'text-danger-500',
+    selBorder: 'border-danger-500',
+    selBg: 'bg-danger-500/10',
+    selText: 'text-danger-500',
+  },
+  {
+    value: 'other',
+    label: 'Others',
+    Icon: HelpCircle,
+    colorClass: 'text-surface-500',
+    selBorder: 'border-surface-500',
+    selBg: 'bg-surface-500/10',
+    selText: 'text-surface-500',
+  },
 ] as const
 
 export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
@@ -183,7 +221,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
         <div>
           <p className="text-sm font-semibold text-surface-700 mb-3 block">Incident Type</p>
           <div className="grid grid-cols-2 gap-3">
-            {INCIDENT_TYPES.map(({ value, label, Icon, colorClass }) => {
+            {INCIDENT_TYPES.map(({ value, label, Icon, colorClass, selBorder, selBg, selText }) => {
               const isSelected = reportType === value
               return (
                 <button
@@ -194,13 +232,13 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
                   }}
                   className={`flex flex-col items-center justify-center gap-2 min-h-[80px] rounded-xl border-2 transition-all active:scale-95 ${
                     isSelected
-                      ? 'border-brand-500 bg-brand-50 shadow-sm'
+                      ? `${selBorder} ${selBg} shadow-sm`
                       : 'border-surface-200 bg-white hover:border-surface-300'
                   }`}
                 >
-                  <Icon size={28} className={isSelected ? 'text-brand-500' : colorClass} />
+                  <Icon size={28} className={isSelected ? selText : colorClass} />
                   <span
-                    className={`text-sm font-medium ${isSelected ? 'text-brand-500' : 'text-surface-600'}`}
+                    className={`text-sm font-medium ${isSelected ? selText : 'text-surface-600'}`}
                   >
                     {label}
                   </span>

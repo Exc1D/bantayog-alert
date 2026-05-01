@@ -2,11 +2,12 @@ import { useState } from 'react'
 import {
   ArrowLeft,
   Heart,
-  Droplets,
+  Car,
   Flame,
+  HelpCircle,
   Wind,
-  Mountain,
   Waves,
+  Wrench,
   AlertTriangle,
   MapPin,
   AlertCircle,
@@ -31,12 +32,12 @@ interface Step3ReviewProps {
 }
 
 const INCIDENT_TYPES = [
-  { value: 'flood', label: 'Flood', Icon: Droplets },
+  { value: 'flood', label: 'Flood', Icon: Waves },
   { value: 'fire', label: 'Fire', Icon: Flame },
-  { value: 'earthquake', label: 'Earthquake', Icon: AlertTriangle },
+  { value: 'accident', label: 'Accidents/Rescue', Icon: Car },
   { value: 'typhoon', label: 'Typhoon', Icon: Wind },
-  { value: 'landslide', label: 'Landslide', Icon: Mountain },
-  { value: 'storm_surge', label: 'Storm Surge', Icon: Waves },
+  { value: 'structural', label: 'Damages', Icon: Wrench },
+  { value: 'other', label: 'Others', Icon: HelpCircle },
 ] as const
 
 export function Step3Review({
@@ -195,7 +196,13 @@ export function Step3Review({
 
       {/* Bottom action */}
       <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
-        <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
+        <Button
+          variant="primary"
+          fullWidth
+          onClick={onSubmit}
+          disabled={!consent || isSubmitting}
+          className="!bg-danger-500 hover:!bg-danger-600 active:!bg-danger-600"
+        >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

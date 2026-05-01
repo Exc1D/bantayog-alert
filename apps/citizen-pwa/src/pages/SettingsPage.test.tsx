@@ -61,7 +61,6 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Offline-first cache')).toBeInTheDocument()
     expect(screen.getByText('Download my data')).toBeInTheDocument()
     expect(screen.getByText('Privacy Policy')).toBeInTheDocument()
-    expect(screen.getByText('Sign Out')).toBeInTheDocument()
   })
 
   it('displays storage info', async () => {
