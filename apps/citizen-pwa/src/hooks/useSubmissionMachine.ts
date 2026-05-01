@@ -47,6 +47,16 @@ function isNetworkError(err: unknown): boolean {
   return false
 }
 
+// Firebase auth errors (including App Check enforcement failures) will not
+// succeed on retry — go terminal immediately to avoid burning all retries.
+function isNonRetryableError(err: unknown): boolean {
+  if (err !== null && typeof err === 'object' && 'code' in err) {
+    const code = String(err.code)
+    return code.startsWith('auth/')
+  }
+  return false
+}
+
 export function useSubmissionMachine({
   draft,
   onSuccess,
@@ -112,6 +122,14 @@ export function useSubmissionMachine({
               logDraftError('save queued', e)
             })
           setState('queued')
+          return null
+        }
+
+        if (isNonRetryableError(err)) {
+          console.warn('[SubmissionPanel] Non-retryable error — going terminal immediately', err)
+          await persistRetryCount(MAX_RETRIES)
+          setState('failed_terminal')
+          onTerminal()
           return null
         }
 

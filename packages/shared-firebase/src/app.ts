@@ -18,7 +18,8 @@ export function createFirebaseWebApp(env: FirebaseWebEnv): FirebaseApp {
   })
 }
 
-export function createAppCheck(app: FirebaseApp, env: FirebaseWebEnv): AppCheck {
+export function createAppCheck(app: FirebaseApp, env: FirebaseWebEnv): AppCheck | null {
+  if (!env.appCheckSiteKey) return null
   return initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(env.appCheckSiteKey),
     isTokenAutoRefreshEnabled: true,

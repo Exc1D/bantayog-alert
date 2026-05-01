@@ -39,10 +39,25 @@ export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult
         return
       }
       const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: GPS_TIMEOUT_MS,
-        })
+        // Some in-app browsers (e.g. Facebook Messenger) never fire the error
+        // callback even when `timeout` is set, so we add our own hard deadline.
+        const hardDeadline = setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          reject({ code: 3, message: 'Location timed out' })
+        }, GPS_TIMEOUT_MS)
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(hardDeadline)
+            resolve(position)
+          },
+          (error) => {
+            clearTimeout(hardDeadline)
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            reject(error)
+          },
+          { enableHighAccuracy: true, timeout: GPS_TIMEOUT_MS },
+        )
       })
       setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
       setLocationMethod('gps')

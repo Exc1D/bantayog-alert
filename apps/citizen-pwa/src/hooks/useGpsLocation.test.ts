@@ -166,6 +166,25 @@ describe('useGpsLocation', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
+  it('falls back to manual when browser never fires error callback (hard timeout)', async () => {
+    vi.useFakeTimers()
+    mockGetCurrentPosition.mockImplementation(() => {
+      // browser hangs — never calls success or error callback
+    })
+    const { result } = renderHook(() => useGpsLocation())
+    const attemptPromise = result.current.attemptGps()
+    act(() => {
+      vi.advanceTimersByTime(10_000)
+    })
+    await act(async () => {
+      await attemptPromise
+    })
+    expect(result.current.locationError).toBe('Location timed out. Choose municipality manually.')
+    expect(result.current.locationMethod).toBe('manual')
+    expect(result.current.isLoading).toBe(false)
+    vi.useRealTimers()
+  })
+
   it('logs error to console on failure', async () => {
     const fakeErr = new Error('boom')
     mockGetCurrentPosition.mockImplementation(
