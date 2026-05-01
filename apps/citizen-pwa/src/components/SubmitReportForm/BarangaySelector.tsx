@@ -21,11 +21,13 @@ export function BarangaySelector({ municipalityId, value, onChange }: BarangaySe
 
   return (
     <div className="field-group">
-      <p className="field-label">
+      <label htmlFor="report-barangay" className="field-label">
         Barangay
         <span className="field-label-optional"> — optional</span>
-      </p>
+      </label>
       <select
+        id="report-barangay"
+        name="barangay"
         className="text-select"
         value={value}
         onChange={(e) => {

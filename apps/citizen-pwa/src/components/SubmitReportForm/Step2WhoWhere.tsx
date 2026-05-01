@@ -259,11 +259,16 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
 
           {locationMethod === 'manual' && selectedMunicipalityId ? (
             <div>
-              <p className="text-sm font-semibold text-surface-700 block mb-2">
+              <label
+                htmlFor="report-landmark"
+                className="text-sm font-semibold text-surface-700 block mb-2"
+              >
                 Nearest landmark
                 <span className="font-normal text-surface-400 ml-1">— optional</span>
-              </p>
+              </label>
               <input
+                id="report-landmark"
+                name="landmark"
                 type="text"
                 value={nearestLandmark}
                 onChange={(e) => {

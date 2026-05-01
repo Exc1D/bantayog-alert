@@ -167,9 +167,11 @@ export function Step3Review({
 
         {/* Consent */}
         <div className="bg-brand-50 rounded-xl border border-brand-200 p-4">
-          <label className="flex items-start gap-3 cursor-pointer">
+          <label htmlFor="consent-checkbox" className="flex items-start gap-3 cursor-pointer">
             <div className="mt-0.5">
               <input
+                id="consent-checkbox"
+                name="consent"
                 type="checkbox"
                 checked={consent}
                 onChange={(e) => {

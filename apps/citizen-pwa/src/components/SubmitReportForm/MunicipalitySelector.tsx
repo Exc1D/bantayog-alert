@@ -9,8 +9,12 @@ interface MunicipalitySelectorProps {
 export function MunicipalitySelector({ value, onChange, error }: MunicipalitySelectorProps) {
   return (
     <div className="field-group">
-      <p className="field-label">Municipality</p>
+      <label htmlFor="report-municipality" className="field-label">
+        Municipality
+      </label>
       <select
+        id="report-municipality"
+        name="municipality"
         className="text-select"
         value={value}
         onChange={(e) => {
