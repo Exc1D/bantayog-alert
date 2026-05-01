@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { Search } from 'lucide-react'
 
 type SeverityFilter = 'all' | 'high' | 'medium' | 'low'
 type WindowFilter = '24h' | '7d' | '30d'
@@ -18,7 +18,7 @@ const SEVERITIES: { value: SeverityFilter; label: string; dot?: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'high', label: 'High', dot: '#dc2626' },
   { value: 'medium', label: 'Medium', dot: '#a73400' },
-  { value: 'low', label: 'Low', dot: '#001e40' },
+  { value: 'low', label: 'Low', dot: '#414849' },
 ]
 
 const WINDOWS: { value: WindowFilter; label: string }[] = [
@@ -31,24 +31,15 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
   return (
     <div
       aria-label="Map filters"
-      style={{
-        position: 'absolute',
-        top: 12,
-        left: 12,
-        right: 12,
-        zIndex: 40,
-        padding: '8px 10px',
-        borderRadius: 16,
-        background: 'rgba(255,255,255,0.88)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        boxShadow: '0 4px 16px rgba(15,23,42,0.08)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-      }}
+      className="absolute top-3 left-3 right-3 z-40 p-2.5 rounded-2xl bg-white/90 backdrop-blur-md shadow-lg flex flex-col gap-1.5"
     >
-      <div role="group" aria-label="Severity" style={{ display: 'flex', gap: 4 }}>
+      {/* Search pill header */}
+      <div className="flex items-center gap-2 px-2 py-1">
+        <Search size={14} className="text-[#768081] flex-shrink-0" aria-hidden="true" />
+        <span className="text-sm text-[#768081] font-medium">Filter incidents</span>
+      </div>
+
+      <div role="group" aria-label="Severity" className="flex gap-1">
         {SEVERITIES.map(({ value, label, dot }) => (
           <button
             key={value}
@@ -59,27 +50,20 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
               if (disabled) return
               onChange({ ...filters, severity: value })
             }}
-            style={chipStyle(filters.severity === value, disabled)}
+            className={buildChipClass(filters.severity === value, disabled)}
           >
             {dot ? (
               <span
                 aria-hidden="true"
-                style={{
-                  display: 'inline-block',
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: dot,
-                  marginRight: 4,
-                  verticalAlign: 'middle',
-                }}
+                className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+                style={{ background: dot }}
               />
             ) : null}
             {label}
           </button>
         ))}
       </div>
-      <div role="group" aria-label="Time window" style={{ display: 'flex', gap: 4 }}>
+      <div role="group" aria-label="Time window" className="flex gap-1">
         {WINDOWS.map(({ value, label }) => (
           <button
             key={value}
@@ -90,7 +74,7 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
               if (disabled) return
               onChange({ ...filters, window: value })
             }}
-            style={chipStyle(filters.window === value, disabled)}
+            className={buildChipClass(filters.window === value, disabled)}
           >
             {label}
           </button>
@@ -100,19 +84,11 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
   )
 }
 
-function chipStyle(active?: boolean, disabled?: boolean): CSSProperties {
-  return {
-    flex: 1,
-    border: active ? '1.5px solid rgba(0,30,64,0.22)' : '1.5px solid rgba(15,23,42,0.08)',
-    borderRadius: 999,
-    background: active ? '#001e40' : 'rgba(255,255,255,0.9)',
-    color: active ? '#ffffff' : '#0f172a',
-    padding: '5px 8px',
-    fontSize: '0.75rem',
-    fontWeight: active ? 700 : 500,
-    lineHeight: 1.2,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.55 : 1,
-    textAlign: 'center',
-  }
+function buildChipClass(active?: boolean, disabled?: boolean): string {
+  const base = 'flex-1 rounded-full px-2 py-[5px] text-xs text-center transition-colors'
+  const visual = active
+    ? 'bg-surface-900 text-white font-bold border-[1.5px] border-surface-900/20'
+    : 'bg-white/90 text-[#0f172a] font-medium border-[1.5px] border-[#0f172a]/8'
+  const state = disabled ? ' opacity-55 cursor-not-allowed' : ' cursor-pointer'
+  return base + ' ' + visual + state
 }

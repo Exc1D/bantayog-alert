@@ -9,6 +9,10 @@ vi.mock('../services/draft-store', () => ({
   draftStore: { list: () => mockList() },
 }))
 
+vi.mock('./useOnlineStatus', () => ({
+  useOnlineStatus: () => ({ navigatorOnline: true }),
+}))
+
 import { useOfflineQueueCount } from './useOfflineQueueCount'
 
 describe('useOfflineQueueCount', () => {
@@ -17,16 +21,21 @@ describe('useOfflineQueueCount', () => {
     mockList.mockResolvedValue([])
   })
 
-  it('returns 0 when no pending drafts', async () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('returns queueCount 0 when all synced', async () => {
     mockList.mockResolvedValue([{ syncState: 'synced', id: '1' }])
     const { result } = renderHook(() => useOfflineQueueCount())
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0)
     })
-    expect(result.current).toBe(0)
+    expect(result.current.queueCount).toBe(0)
+    expect(result.current.isOnline).toBe(true)
   })
 
-  it('counts local_only and syncing drafts', async () => {
+  it('counts non-synced drafts', async () => {
     mockList.mockResolvedValue([
       { syncState: 'local_only', id: '1' },
       { syncState: 'syncing', id: '2' },
@@ -36,6 +45,6 @@ describe('useOfflineQueueCount', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0)
     })
-    expect(result.current).toBe(2)
+    expect(result.current.queueCount).toBe(2)
   })
 })

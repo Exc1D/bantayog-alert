@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+  <!-- Ground -->
+  <ellipse cx="120" cy="210" rx="70" ry="8" fill="#0D9488" opacity="0.2"/>
+  
+  <!-- Tower base -->
+  <rect x="95" y="100" width="50" height="100" rx="4" fill="#0D9488" opacity="0.9"/>
+  <rect x="100" y="105" width="40" height="90" rx="2" fill="#115E59" opacity="0.3"/>
+  
+  <!-- Tower windows -->
+  <rect x="110" y="130" width="20" height="12" rx="2" fill="#14B8A6" opacity="0.5"/>
+  <rect x="110" y="155" width="20" height="12" rx="2" fill="#14B8A6" opacity="0.5"/>
+  
+  <!-- Balcony/Deck -->
+  <rect x="85" y="95" width="70" height="8" rx="2" fill="#0D9488"/>
+  <rect x="88" y="90" width="64" height="8" rx="2" fill="#14B8A6" opacity="0.6"/>
+  
+  <!-- Railing -->
+  <line x1="88" y1="82" x2="88" y2="90" stroke="#0D9488" stroke-width="2"/>
+  <line x1="104" y1="82" x2="104" y2="90" stroke="#0D9488" stroke-width="2"/>
+  <line x1="120" y1="82" x2="120" y2="90" stroke="#0D9488" stroke-width="2"/>
+  <line x1="136" y1="82" x2="136" y2="90" stroke="#0D9488" stroke-width="2"/>
+  <line x1="152" y1="82" x2="152" y2="90" stroke="#0D9488" stroke-width="2"/>
+  <line x1="88" y1="85" x2="152" y2="85" stroke="#0D9488" stroke-width="1.5"/>
+  
+  <!-- Tower roof -->
+  <path d="M80 82 L120 45 L160 82 Z" fill="#0D9488"/>
+  <path d="M88 80 L120 52 L152 80 Z" fill="#14B8A6" opacity="0.4"/>
+  
+  <!-- Roof peak -->
+  <circle cx="120" cy="45" r="5" fill="#14B8A6"/>
+  
+  <!-- Light beam source -->
+  <circle cx="120" cy="45" r="8" fill="#5EEAD4" opacity="0.9">
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Light beams -->
+  <path d="M125 42 L200 15 L205 25 Z" fill="#5EEAD4" opacity="0.25">
+    <animate attributeName="opacity" values="0.15;0.35;0.15" dur="3s" repeatCount="indefinite"/>
+  </path>
+  <path d="M118 38 L160 5 L165 12 Z" fill="#5EEAD4" opacity="0.2">
+    <animate attributeName="opacity" values="0.1;0.3;0.1" dur="3s" begin="0.5s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Stars twinkling -->
+  <circle cx="50" cy="50" r="2" fill="#5EEAD4" opacity="0.6">
+    <animate attributeName="opacity" values="0.2;0.8;0.2" dur="2.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="190" cy="35" r="1.5" fill="#5EEAD4" opacity="0.5">
+    <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" begin="0.7s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="35" cy="90" r="1.5" fill="#5EEAD4" opacity="0.4">
+    <animate attributeName="opacity" values="0.1;0.6;0.1" dur="3s" begin="1.2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="205" cy="70" r="2" fill="#5EEAD4" opacity="0.5">
+    <animate attributeName="opacity" values="0.2;0.7;0.2" dur="2.8s" begin="0.3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- House silhouettes (community) -->
+  <rect x="45" y="185" width="22" height="20" rx="2" fill="#0D9488" opacity="0.35"/>
+  <path d="M42 185 L56 172 L70 185 Z" fill="#0D9488" opacity="0.4"/>
+  <rect x="50" y="192" width="6" height="13" rx="1" fill="#115E59" opacity="0.3"/>
+  <rect x="58" y="192" width="6" height="13" rx="1" fill="#115E59" opacity="0.3"/>
+  
+  <rect x="170" y="180" width="28" height="25" rx="2" fill="#0D9488" opacity="0.3"/>
+  <path d="M166 180 L184 165 L202 180 Z" fill="#0D9488" opacity="0.35"/>
+  <rect x="177" y="190" width="7" height="15" rx="1" fill="#115E59" opacity="0.25"/>
+  <rect x="187" y="190" width="7" height="15" rx="1" fill="#115E59" opacity="0.25"/>
+  
+  <rect x="72" y="192" width="18" height="15" rx="2" fill="#0D9488" opacity="0.25"/>
+  <path d="M70 192 L81 182 L92 192 Z" fill="#0D9488" opacity="0.3"/>
+</svg>

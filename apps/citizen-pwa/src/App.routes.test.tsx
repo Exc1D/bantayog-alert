@@ -34,6 +34,28 @@ vi.mock('./pages/SettingsPage.js', () => ({
   SettingsPage: () => <div>Settings page</div>,
 }))
 
+vi.mock('./pages/SplashScreen.js', () => ({
+  SplashScreen: ({ onDone }: { onDone?: () => void }) => {
+    // Call onDone immediately so the splash doesn't block route tests
+    onDone?.()
+    return null
+  },
+}))
+
+vi.mock('./pages/Onboarding.js', () => ({
+  Onboarding: () => <div>Onboarding</div>,
+}))
+
+vi.mock('./lib/store.js', () => ({
+  useUIStore: (
+    sel: (s: {
+      hasCompletedOnboarding: boolean
+      navDirection: string
+      setNavDirection: () => void
+    }) => unknown,
+  ) => sel({ hasCompletedOnboarding: true, navDirection: 'forward', setNavDirection: vi.fn() }),
+}))
+
 async function renderAppAt(pathname: string) {
   window.history.pushState({}, '', pathname)
   vi.resetModules()
@@ -52,7 +74,7 @@ afterEach(() => {
 describe('App routes', () => {
   it('shows the map tab shell at /', async () => {
     await renderAppAt('/')
-    expect(screen.getByRole('banner')).toHaveTextContent('BANTAYOG ALERT')
+    expect(screen.getByRole('navigation', { name: /main navigation/i })).toBeInTheDocument()
     expect(screen.getByText('Map tab')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /map/i })).toHaveAttribute('aria-current', 'page')
   })
@@ -60,7 +82,6 @@ describe('App routes', () => {
   it('shows the report form at /report', async () => {
     await renderAppAt('/report')
     expect(screen.getByText('Report form')).toBeInTheDocument()
-    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
   })
 
@@ -75,7 +96,6 @@ describe('App routes', () => {
   it('shows incident detail without shell chrome at /incidents/:id', async () => {
     await renderAppAt('/incidents/test-id')
     expect(screen.getByText('Incident detail')).toBeInTheDocument()
-    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: /main navigation/i })).not.toBeInTheDocument()
   })
 

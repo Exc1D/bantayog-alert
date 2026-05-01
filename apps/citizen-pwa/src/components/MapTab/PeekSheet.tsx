@@ -1,9 +1,10 @@
 import { useRef, type TouchEvent } from 'react'
+import { MapPin } from 'lucide-react'
 
 const SEVERITY_COLORS: Record<string, string> = {
   high: '#dc2626',
   medium: '#a73400',
-  low: '#001e40',
+  low: '#414849',
 }
 
 interface SelectedPin {
@@ -53,89 +54,38 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
       data-testid="peek-sheet"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      style={{
-        position: 'fixed',
-        inset: 'auto 0 88px',
-        zIndex: 55,
-        padding: '8px 16px 12px',
-        background: 'rgba(255,255,255,0.97)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        boxShadow: '0 -2px 16px rgba(0,30,64,0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
+      className="fixed bottom-20 left-3 right-3 z-float bg-white rounded-2xl shadow-lg overflow-hidden"
     >
-      <div
-        style={{
-          width: 32,
-          height: 4,
-          borderRadius: 9999,
-          background: '#d1d5db',
-          marginBottom: 10,
-        }}
-      />
-      <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
-        {dotColor ? (
-          <span
-            aria-hidden="true"
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: dotColor,
-              flexShrink: 0,
-            }}
-          />
-        ) : null}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            style={{
-              margin: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontSize: '0.9375rem',
-              fontWeight: 700,
-              color: '#001e40',
-            }}
-          >
-            {primaryText}
-          </p>
-          {secondaryText ? (
-            <p
-              style={{
-                margin: '2px 0 0',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontSize: '0.75rem',
-                color: '#52606d',
-              }}
-            >
-              {secondaryText}
-            </p>
+      <div className="w-8 h-1 rounded-full bg-surface-200 mx-auto mt-2 mb-1" />
+      <div className="px-4 pb-3">
+        <div className="flex items-center gap-2">
+          {dotColor ? (
+            <span
+              aria-hidden="true"
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: dotColor }}
+            />
           ) : null}
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold text-surface-900 truncate">{primaryText}</p>
+            {secondaryText ? (
+              <p className="text-sm text-surface-500 truncate flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3.5 h-3.5" />
+                {secondaryText}
+              </p>
+            ) : null}
+          </div>
         </div>
-        <button
-          type="button"
-          aria-label="Pull up for full detail"
-          onClick={onExpand}
-          style={{
-            border: 'none',
-            background: '#001e40',
-            color: '#fff',
-            padding: '6px 12px',
-            borderRadius: 999,
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-        >
-          Details ↑
-        </button>
+        <div className="flex gap-3 pt-3 border-t border-surface-100 mt-3">
+          <button
+            type="button"
+            aria-label="Track incident"
+            onClick={onExpand}
+            className="text-brand-500 text-sm font-medium"
+          >
+            Track
+          </button>
+        </div>
       </div>
     </div>
   )

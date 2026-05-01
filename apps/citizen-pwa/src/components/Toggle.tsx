@@ -17,8 +17,21 @@ export function Toggle({ checked, onChange, label, disabled = false }: TogglePro
     }
   }
 
+  const trackClasses = [
+    'relative w-10 h-6 rounded-full border-none p-0 flex-shrink-0 outline-offset-2',
+    checked ? 'bg-[#0f9488]' : 'bg-[#ccc]',
+    disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+    reducedMotion ? '' : 'transition-colors duration-200',
+  ].join(' ')
+
+  const thumbClasses = [
+    'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm',
+    checked ? 'translate-x-4' : 'translate-x-0',
+    reducedMotion ? '' : 'transition-transform duration-200',
+  ].join(' ')
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} role="group" aria-label={label}>
+    <div className="flex items-center gap-3" role="group" aria-label={label}>
       <button
         type="button"
         role="switch"
@@ -29,43 +42,10 @@ export function Toggle({ checked, onChange, label, disabled = false }: TogglePro
           if (!disabled) onChange(!checked)
         }}
         onKeyDown={handleKeyDown}
-        style={{
-          position: 'relative',
-          width: 40,
-          height: 24,
-          borderRadius: 12,
-          border: 'none',
-          padding: 0,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          background: checked ? '#f26522' : '#ccc',
-          transition: reducedMotion ? 'none' : 'background 200ms ease',
-          outlineOffset: 2,
-          flexShrink: 0,
-        }}
+        className={trackClasses}
       >
-        <span
-          style={{
-            position: 'absolute',
-            top: 2,
-            left: checked ? 18 : 2,
-            width: 20,
-            height: 20,
-            borderRadius: '50%',
-            background: '#fff',
-            transition: reducedMotion ? 'none' : 'left 200ms ease',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-          }}
-        />
+        <span className={thumbClasses} />
       </button>
-      <span
-        style={{
-          fontSize: '0.875rem',
-          color: disabled ? '#9ca3af' : '#001e40',
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </span>
     </div>
   )
 }

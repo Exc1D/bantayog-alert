@@ -27,7 +27,7 @@ describe('PeekSheet', () => {
   it('calls onExpand when tapped', () => {
     const onExpand = vi.fn()
     render(<PeekSheet sheetPhase="peek" pin={pin} onExpand={onExpand} onDismiss={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /pull up/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Track/i }))
     expect(onExpand).toHaveBeenCalledOnce()
   })
 

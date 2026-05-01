@@ -6,7 +6,7 @@ const BANNER_CONFIG: Partial<Record<SubmissionState, { message: string; bg: stri
     submitting: {
       message: 'Sending\u2026',
       bg: 'var(--color-surface)',
-      fg: 'var(--color-primary)',
+      fg: '#25292A',
     },
     server_confirmed: {
       message: 'Received!',

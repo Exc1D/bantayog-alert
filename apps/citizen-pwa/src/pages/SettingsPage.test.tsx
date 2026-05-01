@@ -21,10 +21,13 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('../services/firebase.js', () => ({
   auth: () => ({}),
+  hasFirebaseConfig: () => false,
 }))
 
 vi.mock('../components/Toggle.js', () => ({
-  Toggle: ({ label }: { label: string }) => <div>{label}</div>,
+  Toggle: ({ label }: { label: string }) => (
+    <div role="switch" aria-label={label} aria-checked="false" />
+  ),
 }))
 
 vi.mock('../components/DeleteAccountFlow.js', () => ({
@@ -33,6 +36,10 @@ vi.mock('../components/DeleteAccountFlow.js', () => ({
 
 vi.mock('../hooks/useToast.js', () => ({
   useToast: () => ({ show: false, message: '', type: 'info' as const, toast: vi.fn() }),
+}))
+
+vi.mock('../services/callables.js', () => ({
+  requestDataExport: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../components/Toast.js', () => ({
@@ -50,9 +57,12 @@ describe('SettingsPage', () => {
     )
     expect(screen.getByText('Settings')).toBeInTheDocument()
     expect(screen.getByText('Push notifications')).toBeInTheDocument()
+    expect(screen.getByText('Alert sounds')).toBeInTheDocument()
+    expect(screen.getByText('Auto-detect location')).toBeInTheDocument()
     expect(screen.getByText('Offline-first cache')).toBeInTheDocument()
-    expect(screen.getByText('Request Data Export')).toBeInTheDocument()
-    expect(screen.getByText('Sign Out')).toBeInTheDocument()
+    // Download my data is gated on authenticated user
+    expect(screen.queryByText('Download my data')).not.toBeInTheDocument()
+    expect(screen.getByText('Privacy Policy')).toBeInTheDocument()
   })
 
   it('displays storage info', async () => {

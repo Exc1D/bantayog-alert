@@ -12,6 +12,7 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('../services/firebase.js', () => ({
   auth: () => ({}),
+  hasFirebaseConfig: () => true,
 }))
 
 vi.mock('../hooks/useMyActiveReports.js', () => ({
@@ -35,14 +36,14 @@ function renderProfileTab() {
 }
 
 describe('ProfileTab', () => {
-  it('shows anonymous banner for pseudonymous user', () => {
+  it('shows Guardian pitch card for pseudonymous user', () => {
     mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
       cb({ isAnonymous: true, uid: 'anon123' })
       return () => {}
     })
     renderProfileTab()
-    expect(screen.getByText("You're using Bantayog anonymously")).toBeInTheDocument()
-    expect(screen.getByText('Register to track your reports')).toBeInTheDocument()
+    expect(screen.getByText('Become a Guardian')).toBeInTheDocument()
+    expect(screen.getByText('Join the Guardian Network →')).toBeInTheDocument()
   })
 
   it('shows settings gear for registered user', () => {
@@ -64,12 +65,12 @@ describe('ProfileTab', () => {
     expect(screen.getByText('No reports yet')).toBeInTheDocument()
   })
 
-  it('renders privacy section', () => {
+  it('shows sign out button for registered user', () => {
     mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
       cb({ isAnonymous: false, uid: 'reg123' })
       return () => {}
     })
     renderProfileTab()
-    expect(screen.getByText('Privacy')).toBeInTheDocument()
+    expect(screen.getByText('Sign out')).toBeInTheDocument()
   })
 })

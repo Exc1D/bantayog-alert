@@ -1,6 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Check, Clock, AlertTriangle, Copy } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Check, ShieldCheck, Copy, CheckCircle, LogIn, Save } from 'lucide-react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { motion } from 'framer-motion'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
+import { useSlotMachine } from '../hooks/useSlotMachine.js'
+import { auth, hasFirebaseConfig } from '../services/firebase.js'
 import { StatusBanner } from './ui/StatusBanner'
 import { Button } from './ui/Button'
 import { FallbackCards } from './ui/FallbackCards'
@@ -8,19 +13,55 @@ import { Timeline } from './ui/Timeline'
 
 const HOTLINE_NUMBER = '(054) 721-1216'
 
+function RadarRings({ rgb = '5,150,105' }: { rgb?: string }) {
+  const ringsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (ringsRef.current) ringsRef.current.style.display = 'none'
+    }, 6000)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [])
+  return (
+    <div
+      ref={ringsRef}
+      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+    >
+      {[0, 0.5, 1.0].map((delay, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-14 h-14 rounded-full border-2"
+          style={{ borderColor: `rgba(${rgb},${String(0.6 - i * 0.2)})` }}
+          animate={{ scale: [1, 2.5], opacity: [0.7, 0] }}
+          transition={{ duration: 2, repeat: Infinity, delay, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
+  )
+}
+
 interface RevealSheetProps {
   state: 'success' | 'queued' | 'failed_retryable'
   referenceCode: string
   secretCode?: string
-  reportCount?: number
   onClose?: () => void
 }
 
 export function RevealSheet({ state, referenceCode, secretCode, onClose }: RevealSheetProps) {
+  const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
-  const [displayedChars, setDisplayedChars] = useState(reducedMotion ? referenceCode.length : 0)
-  const [typewriterComplete, setTypewriterComplete] = useState(reducedMotion)
+  const { display: slotDisplay, done: slotDone } = useSlotMachine(
+    referenceCode,
+    reducedMotion ? 0 : 600,
+    reducedMotion ? 0 : 400,
+  )
+  const displayedCode = reducedMotion ? referenceCode : slotDisplay
+  const typewriterComplete = reducedMotion ? true : slotDone
   const [copied, setCopied] = useState(false)
+  const [secretVisible, setSecretVisible] = useState(false)
+  // null = loading (firebase present), true = guest (no account), false = registered
+  const [isGuest, setIsGuest] = useState<boolean | null>(() => (hasFirebaseConfig() ? null : true))
   const variants = {
     success: {
       icon: <Check size={16} />,
@@ -35,61 +76,65 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
       permissionText: "You can close this app. We'll text you.",
     },
     queued: {
-      icon: <Clock size={16} />,
-      headline: "We've saved your report.",
+      icon: <Save size={16} />,
+      headline: "Saved. We'll send it for you.",
       subline:
-        "You're offline right now. The moment your phone reconnects, we'll send this to Daet MDRRMO automatically. Walang mawawala. Safe ito sa phone mo.",
+        "Your report is safe on this phone. The moment signal returns, we'll automatically forward it to Daet MDRRMO — no action needed from you. Walang mawawala.",
       sublineTl: undefined,
       bannerVariant: 'queued' as const,
-      receiverText: 'Waiting for signal · auto-retry on',
+      receiverText: 'Saved to device · auto-send when online',
       primaryButton: 'Try sending now',
       primaryVariant: 'amber' as const,
       secondaryButton: 'Keep draft & close',
-      permissionText: "We'll keep trying in the background.",
+      permissionText: "We'll keep trying quietly in the background.",
     },
     failed_retryable: {
-      icon: <AlertTriangle size={16} />,
-      headline: "We couldn't send it yet.",
+      icon: <ShieldCheck size={16} />,
+      headline: 'Your report is safe. Still trying.',
       subline:
-        'Your report is safe on your phone. The network is having trouble reaching the Admins — this is not your fault. If this is life-threatening, please call now.',
-      sublineTl: 'Ligtas pa rin ang inyong ulat dito sa telepono. Kung emergency, tawagan kami.',
-      bannerVariant: 'failed' as const,
+        "We saved it securely on your phone and are retrying automatically. The network is having trouble — this is not your fault and nothing is lost. If it's a life-threatening emergency, call now.",
+      sublineTl: 'Ligtas ang inyong ulat. Nagre-retry kami. Kung emergency, tawagan kami ngayon.',
+      bannerVariant: 'queued' as const,
       receiverText: undefined,
-      primaryButton: 'Try again',
-      primaryVariant: 'red' as const,
+      primaryButton: 'Retry now',
+      primaryVariant: 'amber' as const,
       secondaryButton: 'Keep draft & close',
-      permissionText: "We'll hold this draft for 24 hours.",
+      permissionText: "We'll hold this draft for 24 hours and keep retrying.",
     },
   }
 
   const variant = variants[state]
 
-  const displayedCode = referenceCode.slice(0, displayedChars)
+  useEffect(() => {
+    if (!('vibrate' in navigator)) return
+    try {
+      if (state === 'success') navigator.vibrate([15, 80, 25])
+      else if (state === 'queued') navigator.vibrate([30])
+      else navigator.vibrate([30, 60, 30])
+    } catch {
+      // vibrate not available
+    }
+  }, [state])
 
   useEffect(() => {
-    if (reducedMotion) return
-    let charInterval: ReturnType<typeof setInterval> | null = null
-    const settleTimeout = setTimeout(() => {
-      let i = 0
-      charInterval = setInterval(() => {
-        i += 1
-        setDisplayedChars(i)
-        if (i >= referenceCode.length) {
-          if (charInterval) clearInterval(charInterval)
-          setTypewriterComplete(true)
-          try {
-            navigator.vibrate(200)
-          } catch {
-            // vibrate not available
-          }
-        }
-      }, 60)
-    }, 400)
+    if (!typewriterComplete || !secretCode) return
+    const t = setTimeout(
+      () => {
+        setSecretVisible(true)
+      },
+      reducedMotion ? 0 : 300,
+    )
     return () => {
-      clearTimeout(settleTimeout)
-      if (charInterval) clearInterval(charInterval)
+      clearTimeout(t)
     }
-  }, [referenceCode, reducedMotion])
+  }, [typewriterComplete, secretCode, reducedMotion])
+
+  useEffect(() => {
+    if (!hasFirebaseConfig()) return
+    return onAuthStateChanged(auth(), (u) => {
+      setIsGuest(u === null || u.isAnonymous)
+    })
+  }, [])
 
   const handleCopySecret = useCallback(async () => {
     if (!secretCode) return
@@ -111,7 +156,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
   })
 
   const handleTrackReport = () => {
-    window.location.href = `/reports/${referenceCode}`
+    void navigate(`/reports/${referenceCode}`)
   }
 
   const handlePrimaryAction = () => {
@@ -165,9 +210,9 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
   }
 
   return (
-    <div className="reveal-overlay">
+    <div className="fixed inset-0 z-50 pointer-events-none">
       <div
-        className="reveal-backdrop"
+        className="absolute inset-0 bg-[#171a1a]/60 backdrop-blur-sm pointer-events-auto"
         role="button"
         aria-label="Close"
         tabIndex={0}
@@ -183,8 +228,82 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
           }
         }}
       />
-      <div className="reveal-sheet">
-        <div className="reveal-handle" />
+      <div
+        className="absolute bottom-0 left-0 right-0 max-h-[90svh] overflow-y-auto bg-[#f8fafa] rounded-t-3xl p-5 pointer-events-auto shadow-2xl"
+        style={{
+          animation: 'reveal-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        }}
+      >
+        <div className="w-10 h-1 bg-[#a3adae] rounded-full mx-auto mt-3 mb-4" />
+
+        {!reducedMotion && (
+          <div className="relative flex items-center justify-center h-20 mb-3">
+            <RadarRings rgb={state === 'success' ? '5,150,105' : '217,119,6'} />
+            <div
+              className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center ${
+                state === 'success'
+                  ? 'bg-success-500 shadow-glow-success'
+                  : 'bg-warning-500 shadow-md'
+              }`}
+            >
+              {state === 'success' ? (
+                <motion.svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 48 48"
+                  fill="none"
+                  className="text-white"
+                >
+                  <motion.circle
+                    cx="24"
+                    cy="24"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{
+                      duration: 0.4,
+                      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+                    }}
+                  />
+                  <motion.path
+                    d="M14 24 L21 31 L34 17"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: 0.3,
+                      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+                    }}
+                  />
+                </motion.svg>
+              ) : state === 'queued' ? (
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  <Save size={24} className="text-white" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  <ShieldCheck size={24} className="text-white" />
+                </motion.div>
+              )}
+            </div>
+          </div>
+        )}
 
         <StatusBanner variant={variant.bannerVariant} icon={variant.icon}>
           {variant.headline}
@@ -236,34 +355,40 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
           <div
             style={{
               margin: '12px 0',
-              padding: '12px',
-              borderRadius: 10,
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
+              borderTop: '1px solid rgba(167,52,0,0.15)',
+              paddingTop: 12,
+              opacity: secretVisible ? 1 : 0,
+              transition: reducedMotion ? 'none' : 'opacity 300ms ease-in',
             }}
           >
-            <p
-              style={{
-                margin: '0 0 8px',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                color: '#001e40',
-              }}
-            >
-              Save your secret code to track this report
-            </p>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <code
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span
                 style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  background: '#fff',
-                  borderRadius: 6,
-                  fontSize: '0.875rem',
-                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
                   letterSpacing: '0.05em',
+                  color: '#a73400',
                 }}
               >
+                Secret Code
+              </span>
+              <span
+                style={{
+                  fontSize: '0.625rem',
+                  fontWeight: 700,
+                  background: '#001e40',
+                  color: '#fff',
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                SHOWN ONCE
+              </span>
+            </div>
+            <div className="flex gap-2 items-center">
+              <code className="flex-1 px-3 py-2 bg-white rounded-md text-sm font-mono tracking-wider">
                 {secretCode}
               </code>
               <button
@@ -271,23 +396,21 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
                 onClick={() => {
                   void handleCopySecret()
                 }}
-                style={{
-                  padding: '8px',
-                  border: 'none',
-                  background: '#001e40',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
+                className="p-2 border-0 bg-[#0f9488] rounded-lg cursor-pointer flex items-center"
                 aria-label="Copy secret code"
               >
-                <Copy size={16} color="#fff" />
+                <Copy size={16} className="text-white" />
               </button>
             </div>
             {copied && (
               <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#16a34a' }}>Copied!</p>
             )}
+            <p style={{ margin: '8px 0 0', fontSize: '0.6875rem', color: '#7b8794' }}>
+              Save this to check your report without an account.
+              <span style={{ display: 'block', fontStyle: 'italic' }}>
+                I-save ito para macheck ang ulat nang walang account.
+              </span>
+            </p>
           </div>
         )}
 
@@ -313,6 +436,40 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
             </Button>
           </div>
         ) : null}
+
+        {state === 'success' && isGuest && (
+          <div className="mt-4 mb-2 rounded-xl overflow-hidden bg-gradient-to-br from-brand-500 to-brand-600 p-4">
+            <p className="text-white font-bold text-base mb-1">
+              Maging Guardian. Samahan mo kaming magbantay.
+            </p>
+            <p className="text-brand-100 text-xs mb-3">
+              Create a free account to track your reports, earn badges, and help protect your
+              community.
+            </p>
+            <ul className="space-y-1 mb-3">
+              {[
+                'Track reports across devices',
+                'Earn Guardian badges',
+                'Get status updates via app',
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-center gap-2 text-white text-xs">
+                  <CheckCircle size={12} className="text-brand-200 shrink-0" />
+                  {benefit}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => {
+                void navigate('/register')
+              }}
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-white text-brand-600 font-semibold text-sm border-none cursor-pointer active:bg-brand-50 transition-colors"
+            >
+              <LogIn size={14} />
+              Join the Guardian Network →
+            </button>
+          </div>
+        )}
 
         <p className="reveal-footer">{variant.permissionText}</p>
       </div>

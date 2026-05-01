@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CheckCircle, MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { usePublicIncidents } from '../hooks/usePublicIncidents.js'
 import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
@@ -13,14 +14,17 @@ function timeAgo(timestamp: number): string {
   return `${String(Math.floor(hours / 24))}d ago`
 }
 
-function severityStyle(severity: string): { bg: string; color: string } {
-  if (severity === 'high') return { bg: '#fee2e2', color: '#991b1b' }
-  if (severity === 'medium') return { bg: '#fff5ef', color: '#a73400' }
-  return { bg: '#e0e7f0', color: '#001e40' }
+function severityBadgeClass(severity: string): string {
+  if (severity === 'high')
+    return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800'
+  if (severity === 'medium')
+    return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 text-orange-800'
+  if (severity === 'low')
+    return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-100 text-surface-700'
+  return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-900'
 }
 
 function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => void }) {
-  const { bg, color } = severityStyle(incident.severity)
   const icon = incidentIcon(incident.reportType)
   const label = incidentLabel(incident.reportType)
 
@@ -28,62 +32,41 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
     <button
       type="button"
       onClick={onTap}
-      className="card"
-      style={{
-        width: '100%',
-        textAlign: 'left',
-        cursor: 'pointer',
-        border: 'none',
-        display: 'block',
-        padding: '0.875rem',
-      }}
+      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)] text-left cursor-pointer block border-none"
     >
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      {/* Header row */}
+      <div className="flex items-start justify-between p-4 pb-2">
         <span
           aria-hidden="true"
-          style={{ flexShrink: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center' }}
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#f0f4f4] text-lg"
         >
           {icon}
         </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: 8,
-            }}
-          >
-            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9375rem', color: '#001e40' }}>
-              {label}
-            </p>
-            <span style={{ flexShrink: 0, fontSize: '0.6875rem', color: '#7b8794' }}>
+        <div className="ml-3 flex-1 min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <p className="m-0 font-semibold text-[#25292a] text-sm leading-snug">{label}</p>
+            <span className="flex-shrink-0 text-[10px] text-[#768081]">
               {timeAgo(incident.submittedAt)}
             </span>
           </div>
-          <p style={{ margin: '3px 0 8px', fontSize: '0.8125rem', color: '#52606d' }}>
-            📍 {incident.barangayId ? `${incident.barangayId}, ` : ''}
-            {incident.municipalityLabel}
+          <p className="mt-1 mb-0 text-xs text-[#768081] flex items-center gap-0.5">
+            <MapPin size={11} className="inline flex-shrink-0" />
+            <span>
+              {incident.barangayId ? `${incident.barangayId}, ` : ''}
+              {incident.municipalityLabel}
+            </span>
           </p>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span
-              style={{
-                padding: '2px 8px',
-                borderRadius: 999,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: '0.05em',
-                background: bg,
-                color,
-              }}
-            >
-              {incident.severity.toUpperCase()}
-            </span>
-            <span style={{ fontSize: '0.6875rem', color: '#7b8794', textTransform: 'capitalize' }}>
-              {incident.status.replace(/_/g, ' ')}
-            </span>
-          </div>
         </div>
+      </div>
+      {/* Footer action row */}
+      <div className="border-t border-[#f0f4f4] px-4 py-2 flex items-center gap-4">
+        <span className={severityBadgeClass(incident.severity)}>
+          {incident.severity.toUpperCase()}
+        </span>
+        <span className="text-xs text-[#768081] capitalize">
+          {incident.status.replace(/_/g, ' ')}
+        </span>
+        <span className="ml-auto text-xs font-medium text-[#0f9488]">Track</span>
       </div>
     </button>
   )
@@ -91,58 +74,17 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
 
 function SkeletonCard() {
   return (
-    <div
-      className="card"
-      style={{ animation: 'pulse 1.6s ease-in-out infinite', marginBottom: '0.5rem' }}
-    >
-      <div style={{ display: 'flex', gap: 10 }}>
-        <div
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            background: '#e0e3e5',
-            flexShrink: 0,
-          }}
-        />
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              height: 14,
-              width: '55%',
-              background: '#e0e3e5',
-              borderRadius: 4,
-              marginBottom: 8,
-            }}
-          />
-          <div
-            style={{
-              height: 12,
-              width: '40%',
-              background: '#e0e3e5',
-              borderRadius: 4,
-              marginBottom: 10,
-            }}
-          />
-          <div style={{ height: 18, width: 52, background: '#e0e3e5', borderRadius: 999 }} />
+    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)]">
+      <div className="p-4 flex gap-3">
+        <div className="w-10 h-10 rounded-full bg-[#d5dedd] animate-pulse flex-shrink-0" />
+        <div className="flex-1">
+          <div className="h-3.5 w-[55%] bg-[#d5dedd] rounded animate-pulse mb-2" />
+          <div className="h-3 w-[40%] bg-[#d5dedd] rounded animate-pulse mb-3" />
+          <div className="h-4 w-14 bg-[#d5dedd] rounded-full animate-pulse" />
         </div>
       </div>
     </div>
   )
-}
-
-function chipStyle(active: boolean): React.CSSProperties {
-  return {
-    flexShrink: 0,
-    border: 'none',
-    borderRadius: 999,
-    background: active ? '#001e40' : '#f2f4f6',
-    color: active ? 'white' : '#0f172a',
-    padding: '8px 12px',
-    fontSize: '0.75rem',
-    fontWeight: active ? 700 : 500,
-    cursor: 'pointer',
-  }
 }
 
 const SEVERITIES: { value: Filters['severity']; label: string }[] = [
@@ -164,43 +106,14 @@ export function FeedTab() {
   const { incidents, loading, error } = usePublicIncidents(filters)
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      {/* Sticky header + filter chips */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          background: 'rgba(247,249,251,0.96)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          padding: '12px 16px 10px',
-          borderBottom: '1px solid #e5e7eb',
-        }}
-      >
-        <h1 style={{ margin: '0 0 10px', fontSize: '1.125rem', fontWeight: 800, color: '#001e40' }}>
-          Incident Feed
-          <span
-            style={{
-              display: 'block',
-              fontSize: '0.6875rem',
-              fontWeight: 400,
-              color: '#7b8794',
-              marginTop: 2,
-            }}
-          >
-            Ulat ng mga insidente sa inyong lugar
-          </span>
-        </h1>
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            overflowX: 'auto',
-            paddingBottom: 4,
-            scrollbarWidth: 'none',
-          }}
-        >
+    <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Sticky top bar */}
+      <div className="sticky top-0 z-20 bg-[#f8fafa]/90 backdrop-blur-md px-4 py-3 flex flex-col border-b border-[#d5dedd]">
+        <div className="flex items-center justify-between">
+          <h1 className="text-[20px] font-bold text-[#25292a] m-0">Incident Feed</h1>
+        </div>
+        {/* Filter chips row */}
+        <div className="flex gap-2 overflow-x-auto pb-1 mt-3 no-scrollbar">
           {SEVERITIES.map(({ value, label }) => (
             <button
               key={value}
@@ -209,20 +122,18 @@ export function FeedTab() {
               onClick={() => {
                 setFilters((f) => ({ ...f, severity: value }))
               }}
-              style={chipStyle(filters.severity === value)}
+              className={
+                filters.severity === value
+                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+              }
             >
               {label}
             </button>
           ))}
           <span
             aria-hidden="true"
-            style={{
-              flexShrink: 0,
-              width: 1,
-              background: '#e5e7eb',
-              margin: '4px 2px',
-              alignSelf: 'stretch',
-            }}
+            className="flex-shrink-0 w-px bg-[#d5dedd] self-stretch mx-0.5"
           />
           {WINDOWS.map(({ value, label }) => (
             <button
@@ -232,7 +143,11 @@ export function FeedTab() {
               onClick={() => {
                 setFilters((f) => ({ ...f, window: value }))
               }}
-              style={chipStyle(filters.window === value)}
+              className={
+                filters.window === value
+                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+              }
             >
               {label}
             </button>
@@ -241,7 +156,7 @@ export function FeedTab() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '12px 16px 24px' }}>
+      <div className="py-3 pb-24">
         {loading ? (
           <>
             <SkeletonCard />
@@ -251,44 +166,23 @@ export function FeedTab() {
         ) : error ? (
           <div
             role="alert"
-            style={{
-              padding: '16px',
-              borderRadius: 12,
-              background: '#fee2e2',
-              color: '#991b1b',
-              textAlign: 'center',
-              fontSize: '0.875rem',
-            }}
+            className="mx-3 mt-2 p-4 rounded-xl bg-red-100 text-red-800 text-center text-sm"
           >
-            <p style={{ margin: '0 0 4px', fontWeight: 700 }}>Could not load incidents</p>
-            <p style={{ margin: 0, fontSize: '0.75rem' }}>
-              Hindi makuha ang mga ulat. Subukan ulit.
-            </p>
+            <p className="m-0 mb-1 font-bold">Could not load incidents</p>
+            <p className="m-0 text-xs">Hindi makuha ang mga ulat. Subukan ulit.</p>
           </div>
         ) : incidents.length === 0 ? (
-          <div role="status" style={{ padding: '48px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>🌿</p>
-            <p
-              style={{
-                margin: '0 0 6px',
-                fontWeight: 700,
-                color: '#001e40',
-                fontSize: '0.9375rem',
-              }}
-            >
-              All clear
-            </p>
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#52606d' }}>
+          <div
+            role="status"
+            className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4"
+          >
+            <span className="text-green-600 mb-3">
+              <CheckCircle size={40} />
+            </span>
+            <p className="m-0 mb-1 font-bold text-[#25292a] text-[15px]">All clear</p>
+            <p className="m-0 text-[13px] text-[#52606d] text-center">
               No incidents reported in the selected time window.
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.6875rem',
-                  color: '#7b8794',
-                  marginTop: 4,
-                  fontStyle: 'italic',
-                }}
-              >
+              <span className="block text-[11px] text-[#768081] mt-1 italic">
                 Walang naiulat na insidente sa panahong ito.
               </span>
             </p>

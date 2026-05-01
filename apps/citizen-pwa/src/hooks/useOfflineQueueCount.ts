@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useOnlineStatus } from './useOnlineStatus.js'
 import { draftStore } from '../services/draft-store'
 
-const POLL_INTERVAL_MS = 5000
+const POLL_INTERVAL_MS = 2000
 
-export function useOfflineQueueCount(): number {
+interface OfflineQueueStatus {
+  isOnline: boolean
+  queueCount: number
+}
+
+export function useOfflineQueueCount(): OfflineQueueStatus {
+  const { navigatorOnline } = useOnlineStatus()
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -11,9 +18,7 @@ export function useOfflineQueueCount(): number {
     const update = async () => {
       try {
         const drafts = await draftStore.list()
-        const pending = drafts.filter(
-          (d) => d.syncState === 'local_only' || d.syncState === 'syncing',
-        )
+        const pending = drafts.filter((d) => d.syncState !== 'synced')
         if (isMounted) setCount(pending.length)
       } catch (e) {
         console.error('Offline queue count failed:', e)
@@ -31,5 +36,5 @@ export function useOfflineQueueCount(): number {
     }
   }, [])
 
-  return count
+  return { isOnline: navigatorOnline, queueCount: count }
 }

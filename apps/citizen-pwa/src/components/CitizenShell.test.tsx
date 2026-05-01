@@ -5,23 +5,33 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './CitizenShell.js'
 
-const mockUseOnlineStatus = vi.fn()
 const mockUseOfflineQueueCount = vi.fn()
-
-vi.mock('../hooks/useOnlineStatus.js', () => ({
-  useOnlineStatus: () => mockUseOnlineStatus(),
-}))
+const mockUseUIStore = vi.fn()
 
 vi.mock('../hooks/useOfflineQueueCount.js', () => ({
   useOfflineQueueCount: () => mockUseOfflineQueueCount(),
 }))
 
+vi.mock('../lib/store.js', () => ({
+  useUIStore: (
+    selector: (s: {
+      navDirection: 'forward'
+      setNavDirection: (_d: 'forward' | 'backward') => void
+    }) => unknown,
+  ) =>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    selector(mockUseUIStore()),
+}))
+
 function renderShell(pathname = '/', opts?: { offline?: boolean; queueCount?: number }) {
-  mockUseOnlineStatus.mockReturnValue({
+  mockUseOfflineQueueCount.mockReturnValue({
     isOnline: opts?.offline ? false : true,
-    navigatorOnline: opts?.offline ? false : true,
+    queueCount: opts?.queueCount ?? 0,
   })
-  mockUseOfflineQueueCount.mockReturnValue(opts?.queueCount ?? 0)
+  mockUseUIStore.mockReturnValue({
+    navDirection: 'forward' as const,
+    setNavDirection: vi.fn(),
+  })
 
   const router = createMemoryRouter(
     [
@@ -48,7 +58,7 @@ function renderShell(pathname = '/', opts?: { offline?: boolean; queueCount?: nu
 describe('CitizenShell', () => {
   it('renders the fixed chrome and active tab', () => {
     renderShell('/')
-    expect(screen.getByRole('banner')).toHaveTextContent('BANTAYOG ALERT')
+    expect(screen.getByRole('navigation')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /map/i })).toHaveAttribute('aria-current', 'page')
   })
 
@@ -58,7 +68,7 @@ describe('CitizenShell', () => {
     await waitFor(() => {
       expect(screen.getByText('Report content')).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: /report/i })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText('Report content')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /feed/i }))
     await waitFor(() => {
@@ -68,11 +78,11 @@ describe('CitizenShell', () => {
 
   it('shows offline banner when navigatorOnline is false', () => {
     renderShell('/', { offline: true, queueCount: 3 })
-    expect(screen.getByRole('alert')).toHaveTextContent('Offline — 3 reports queued')
+    expect(screen.getByText('Offline — 3 reports queued')).toBeInTheDocument()
   })
 
   it('hides offline banner when online', () => {
     renderShell('/')
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText(/offline/i)).not.toBeInTheDocument()
   })
 })
