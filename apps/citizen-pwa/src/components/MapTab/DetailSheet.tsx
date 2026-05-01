@@ -6,7 +6,7 @@ import type { MyReport, PublicIncident } from './types.js'
 const SEVERITY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
   high: { bg: '#fee2e2', color: '#991b1b', label: 'HIGH' },
   medium: { bg: '#fff5ef', color: '#a73400', label: 'MEDIUM' },
-  low: { bg: '#e0e7f0', color: '#001e40', label: 'LOW' },
+  low: { bg: '#e0e7f0', color: '#414849', label: 'LOW' },
 }
 
 type Props =
@@ -34,10 +34,10 @@ const LABELS: Record<string, string> = {
   landslide: 'Landslide',
   storm_surge: 'Storm Surge',
   medical: 'Medical',
-  accident: 'Accident',
-  structural: 'Structural',
+  accident: 'Accidents/Rescue',
+  structural: 'Damages',
   security: 'Security',
-  other: 'Other',
+  other: 'Others',
 }
 
 const PROGRESS_STATUSES = ['new', 'awaiting_verify', 'verified', 'en_route', 'resolved'] as const

@@ -18,7 +18,7 @@ const SEVERITIES: { value: SeverityFilter; label: string; dot?: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'high', label: 'High', dot: '#dc2626' },
   { value: 'medium', label: 'Medium', dot: '#a73400' },
-  { value: 'low', label: 'Low', dot: '#001e40' },
+  { value: 'low', label: 'Low', dot: '#414849' },
 ]
 
 const WINDOWS: { value: WindowFilter; label: string }[] = [
@@ -87,7 +87,7 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
 function chipClass(active?: boolean, disabled?: boolean): string {
   const base = 'flex-1 rounded-full px-2 py-[5px] text-xs text-center transition-colors'
   const visual = active
-    ? 'bg-[#001e40] text-white font-bold border-[1.5px] border-[#001e40]/20'
+    ? 'bg-surface-900 text-white font-bold border-[1.5px] border-surface-900/20'
     : 'bg-white/90 text-[#0f172a] font-medium border-[1.5px] border-[#0f172a]/8'
   const state = disabled ? ' opacity-55 cursor-not-allowed' : ' cursor-pointer'
   return base + ' ' + visual + state
