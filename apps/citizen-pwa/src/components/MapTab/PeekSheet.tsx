@@ -79,7 +79,7 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
         <div className="flex gap-3 pt-3 border-t border-surface-100 mt-3">
           <button
             type="button"
-            aria-label="Pull up for full detail"
+            aria-label="Track incident"
             onClick={onExpand}
             className="text-brand-500 text-sm font-medium"
           >

@@ -458,13 +458,16 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
                 </li>
               ))}
             </ul>
-            <a
-              href="/register"
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-white text-brand-600 font-semibold text-sm no-underline active:bg-brand-50 transition-colors"
+            <button
+              type="button"
+              onClick={() => {
+                void navigate('/register')
+              }}
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-white text-brand-600 font-semibold text-sm border-none cursor-pointer active:bg-brand-50 transition-colors"
             >
               <LogIn size={14} />
               Join the Guardian Network →
-            </a>
+            </button>
           </div>
         )}
 

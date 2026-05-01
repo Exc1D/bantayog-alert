@@ -7,7 +7,6 @@ interface LookupResult {
   status: string
   lastStatusAt: number
   municipalityLabel: string
-  verifiedBy?: string
 }
 
 export function LookupScreen() {
@@ -148,7 +147,7 @@ export function LookupScreen() {
             <div className="flex justify-between">
               <span className="text-[0.8125rem] text-[#52606d]">Verified by</span>
               <span className="font-semibold text-[#001e40]">
-                {result.verifiedBy ?? `${result.municipalityLabel} MDRRMO`}
+                {`${result.municipalityLabel} MDRRMO`}
               </span>
             </div>
           </div>

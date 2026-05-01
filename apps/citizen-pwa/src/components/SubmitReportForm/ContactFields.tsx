@@ -87,7 +87,9 @@ export function ContactFields({
           type="tel"
           value={reporterMsisdn}
           aria-invalid={Boolean(phoneError)}
-          aria-describedby={phoneError ? 'reporter-msisdn-error' : undefined}
+          aria-describedby={
+            phoneError ? 'reporter-msisdn-hint reporter-msisdn-error' : 'reporter-msisdn-hint'
+          }
           onChange={(e) => {
             onReporterMsisdnChange(e.target.value)
             onPhoneErrorClear()
@@ -105,7 +107,7 @@ export function ContactFields({
             {phoneError}
           </p>
         )}
-        <p className="text-xs text-surface-500 mt-1.5 leading-relaxed">
+        <p id="reporter-msisdn-hint" className="text-xs text-surface-500 mt-1.5 leading-relaxed">
           <span className="font-semibold text-surface-700">Gives you faster help.</span> Admins call
           this number if they need more details.{' '}
           <em className="text-surface-400">Mas mabilis kang matutulungan.</em>
