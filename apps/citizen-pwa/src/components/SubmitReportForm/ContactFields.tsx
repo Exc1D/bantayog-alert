@@ -53,6 +53,8 @@ export function ContactFields({
           id="reporter-name"
           type="text"
           value={reporterName}
+          aria-invalid={Boolean(nameError)}
+          aria-describedby={nameError ? 'reporter-name-error' : undefined}
           onChange={(e) => {
             onReporterNameChange(e.target.value)
             onNameErrorClear()
@@ -62,7 +64,11 @@ export function ContactFields({
           required
         />
         {nameError && (
-          <p className="field-error text-xs text-danger-500 mt-1.5" data-testid="name-error">
+          <p
+            id="reporter-name-error"
+            className="field-error text-xs text-danger-500 mt-1.5"
+            data-testid="name-error"
+          >
             {nameError}
           </p>
         )}
@@ -80,6 +86,8 @@ export function ContactFields({
           id="reporter-msisdn"
           type="tel"
           value={reporterMsisdn}
+          aria-invalid={Boolean(phoneError)}
+          aria-describedby={phoneError ? 'reporter-msisdn-error' : undefined}
           onChange={(e) => {
             onReporterMsisdnChange(e.target.value)
             onPhoneErrorClear()
@@ -89,7 +97,11 @@ export function ContactFields({
           required
         />
         {phoneError && (
-          <p className="field-error text-xs text-danger-500 mt-1.5" data-testid="phone-error">
+          <p
+            id="reporter-msisdn-error"
+            className="field-error text-xs text-danger-500 mt-1.5"
+            data-testid="phone-error"
+          >
             {phoneError}
           </p>
         )}

@@ -12,8 +12,8 @@ interface UIState {
   closeSheet: () => void
   setToast: (toast: UIState['toast']) => void
   clearToast: () => void
-  setNavDirection: (d: 'forward' | 'backward') => void
-  setHasCompletedOnboarding: (v: boolean) => void
+  setNavDirection: (direction: 'forward' | 'backward') => void
+  setHasCompletedOnboarding: (completed: boolean) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -43,14 +43,14 @@ export const useUIStore = create<UIState>((set) => ({
 
   setNavDirection: (navDirection) => set({ navDirection }),
 
-  setHasCompletedOnboarding: (v) => {
+  setHasCompletedOnboarding: (completed) => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('bantayog_onboarding_complete', v ? 'true' : 'false')
-      } catch {
-        // ignore
+        localStorage.setItem('bantayog_onboarding_complete', completed ? 'true' : 'false')
+      } catch (err) {
+        console.error('Failed to persist onboarding state:', err)
       }
     }
-    set({ hasCompletedOnboarding: v })
+    set({ hasCompletedOnboarding: completed })
   },
 }))

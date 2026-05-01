@@ -19,6 +19,8 @@ function severityBadgeClass(severity: string): string {
     return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800'
   if (severity === 'medium')
     return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 text-orange-800'
+  if (severity === 'low')
+    return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-100 text-surface-700'
   return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-900'
 }
 

@@ -13,6 +13,10 @@ vi.mock('firebase/auth', () => ({
   onAuthStateChanged: vi.fn(),
 }))
 
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+}))
+
 vi.mock('../hooks/useReducedMotion', () => ({
   useReducedMotion: () => false,
 }))

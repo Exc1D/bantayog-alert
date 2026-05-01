@@ -21,12 +21,24 @@ export function LookupScreen() {
     e.preventDefault()
     setError(null)
     setResult(null)
+    const trimmedRef = publicRef.trim()
+    const trimmedSecret = secret.trim()
+    if (!trimmedRef || !trimmedSecret) {
+      setError('Please enter both codes.')
+      return
+    }
     setLoading(true)
     try {
       if (!hasFirebaseConfig()) {
         throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
       }
-      const res = await httpsCallable(fns(), 'requestLookup')({ publicRef, secret })
+      const res = await httpsCallable(
+        fns(),
+        'requestLookup',
+      )({
+        publicRef: trimmedRef,
+        secret: trimmedSecret,
+      })
       setResult(res.data as LookupResult)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'lookup failed')
@@ -135,9 +147,7 @@ export function LookupScreen() {
             </div>
             <div className="flex justify-between">
               <span className="text-[0.8125rem] text-[#52606d]">Verified by</span>
-              <span className="font-semibold text-[#001e40]">
-                {result.verifiedBy ?? 'Daet MDRRMO'}
-              </span>
+              <span className="font-semibold text-[#001e40]">{result.verifiedBy ?? 'MDRRMO'}</span>
             </div>
           </div>
         )}

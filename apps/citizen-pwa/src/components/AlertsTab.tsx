@@ -32,7 +32,10 @@ function severityBorderClass(severity: string): string {
       return 'border-l-[#dc2626]'
     case 'high':
     case 'warning':
+    case 'medium':
       return 'border-l-[#d97706]'
+    case 'low':
+      return 'border-l-[#64748b]'
     case 'info':
       return 'border-l-[#2563eb]'
     default:
@@ -46,7 +49,10 @@ function severityIconColor(severity: string): string {
       return '#dc2626'
     case 'high':
     case 'warning':
+    case 'medium':
       return '#d97706'
+    case 'low':
+      return '#64748b'
     case 'info':
       return '#2563eb'
     default:

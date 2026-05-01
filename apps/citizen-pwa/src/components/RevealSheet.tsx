@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Check, ShieldCheck, Copy, CheckCircle, LogIn, Save } from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { motion } from 'framer-motion'
@@ -48,6 +49,7 @@ interface RevealSheetProps {
 }
 
 export function RevealSheet({ state, referenceCode, secretCode, onClose }: RevealSheetProps) {
+  const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
   const { display: slotDisplay, done: slotDone } = useSlotMachine(
     referenceCode,
@@ -154,7 +156,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
   })
 
   const handleTrackReport = () => {
-    window.location.href = `/reports/${referenceCode}`
+    void navigate(`/reports/${referenceCode}`)
   }
 
   const handlePrimaryAction = () => {

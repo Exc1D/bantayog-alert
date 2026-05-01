@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useUIStore } from '../lib/store.js'
 
+let storage: Record<string, string> = {}
+
 beforeEach(() => {
   useUIStore.setState({
     navDirection: 'forward',
@@ -9,11 +11,22 @@ beforeEach(() => {
     currentSheet: 'none',
     toast: null,
   })
-  try {
-    localStorage.clear()
-  } catch {
-    // happy-dom localStorage may not support clear()
-  }
+  storage = {}
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: (key: string) => storage[key] ?? null,
+      setItem: (key: string, value: string) => {
+        storage[key] = value
+      },
+      removeItem: (key: string) => {
+        storage[key] = undefined as unknown as string
+      },
+      clear: () => {
+        storage = {}
+      },
+    },
+    configurable: true,
+  })
 })
 
 describe('useUIStore', () => {
@@ -30,9 +43,9 @@ describe('useUIStore', () => {
     expect(useUIStore.getState().hasCompletedOnboarding).toBe(false)
   })
 
-  it('setHasCompletedOnboarding updates state', () => {
+  it('setHasCompletedOnboarding updates state and persists', () => {
     useUIStore.getState().setHasCompletedOnboarding(true)
     expect(useUIStore.getState().hasCompletedOnboarding).toBe(true)
-    // localStorage persistence is best-effort and may not be available in test environment
+    expect(storage.bantayog_onboarding_complete).toBe('true')
   })
 })

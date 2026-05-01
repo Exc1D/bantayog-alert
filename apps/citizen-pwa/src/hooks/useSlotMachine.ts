@@ -11,6 +11,8 @@ export function useSlotMachine(
   const [done, setDone] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- must reset done synchronously when target changes
+    setDone(false)
     let frame: number
     const startTime = performance.now() + startDelayMs
     const endTime = startTime + durationMs

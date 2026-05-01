@@ -1,16 +1,43 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle } from 'lucide-react'
+import { onAuthStateChanged } from 'firebase/auth'
+import type { User } from 'firebase/auth'
 import { Toggle } from '../components/Toggle.js'
 import { DeleteAccountFlow } from '../components/DeleteAccountFlow.js'
 import { useToast } from '../hooks/useToast.js'
 import { Toast } from '../components/Toast.js'
+import { auth, hasFirebaseConfig } from '../services/firebase.js'
 
 const INITIAL_STORAGE_INFO = 'Loading…'
+const EXPORT_COOLDOWN_MS = 60_000
+
+function isExportCooldownActive(): boolean {
+  try {
+    const raw = sessionStorage.getItem('bantayog_export_until')
+    if (!raw) return false
+    return Date.now() < Number(raw)
+  } catch {
+    return false
+  }
+}
+
+function setExportCooldown(until: number | null): void {
+  try {
+    if (until === null) {
+      sessionStorage.removeItem('bantayog_export_until')
+    } else {
+      sessionStorage.setItem('bantayog_export_until', String(until))
+    }
+  } catch {
+    // ignore
+  }
+}
 
 export function SettingsPage() {
   const navigate = useNavigate()
   const { show, message, type, toast } = useToast()
+  const [user, setUser] = useState<User | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [offlineMode, setOfflineMode] = useState(() => {
     try {
@@ -34,13 +61,14 @@ export function SettingsPage() {
       return true
     }
   })
-  const [exportDisabled, setExportDisabled] = useState(() => {
-    try {
-      return sessionStorage.getItem('bantayog_export_requested') === '1'
-    } catch {
-      return false
-    }
-  })
+  const [exportDisabled, setExportDisabled] = useState(isExportCooldownActive)
+
+  useEffect(() => {
+    if (!hasFirebaseConfig()) return
+    return onAuthStateChanged(auth(), (u) => {
+      setUser(u)
+    })
+  }, [])
 
   useEffect(() => {
     const hasStorage =
@@ -72,42 +100,44 @@ export function SettingsPage() {
     }
   }
 
-  const handleAlertSoundsToggle = (v: boolean) => {
-    setAlertSounds(v)
+  const handleAlertSoundsToggle = (next: boolean) => {
+    setAlertSounds(next)
     try {
-      localStorage.setItem('bantayog_alert_sounds', String(v))
-    } catch {
-      /* */
+      localStorage.setItem('bantayog_alert_sounds', String(next))
+    } catch (err) {
+      console.error('Failed to persist alert sounds setting:', err)
+      setAlertSounds((prev) => !prev)
     }
   }
 
-  const handleAutoLocationToggle = (v: boolean) => {
-    setAutoLocation(v)
+  const handleAutoLocationToggle = (next: boolean) => {
+    setAutoLocation(next)
     try {
-      localStorage.setItem('bantayog_location_auto', String(v))
-    } catch {
-      /* */
+      localStorage.setItem('bantayog_location_auto', String(next))
+    } catch (err) {
+      console.error('Failed to persist auto-location setting:', err)
+      setAutoLocation((prev) => !prev)
     }
   }
 
   const handleDataExport = async () => {
+    const until = Date.now() + EXPORT_COOLDOWN_MS
+    setExportCooldown(until)
+    setExportDisabled(true)
     try {
-      sessionStorage.setItem('bantayog_export_requested', '1')
-      setExportDisabled(true)
       const { requestDataExport } = await import('../services/callables.js')
       await requestDataExport()
       toast("We'll email your data within 24 hours.", 'success')
     } catch {
       toast('Data export failed. Please try again.', 'error')
+      setExportCooldown(null)
+      setExportDisabled(false)
+      return
     }
     setTimeout(() => {
-      try {
-        sessionStorage.removeItem('bantayog_export_requested')
-      } catch {
-        /* */
-      }
+      setExportCooldown(null)
       setExportDisabled(false)
-    }, 60000)
+    }, EXPORT_COOLDOWN_MS)
   }
 
   return (
@@ -187,18 +217,20 @@ export function SettingsPage() {
         Account
       </p>
       <div className="bg-white divide-y divide-[#f0f4f4]">
-        <div className="flex items-center justify-between px-4 py-4">
-          <button
-            type="button"
-            onClick={() => {
-              void handleDataExport()
-            }}
-            disabled={exportDisabled}
-            className={`text-sm font-medium bg-transparent border-none p-0 cursor-pointer disabled:cursor-not-allowed ${exportDisabled ? 'text-[#768081]' : 'text-[#25292a]'}`}
-          >
-            {exportDisabled ? 'Coming soon' : 'Download my data'}
-          </button>
-        </div>
+        {user && !user.isAnonymous && (
+          <div className="flex items-center justify-between px-4 py-4">
+            <button
+              type="button"
+              onClick={() => {
+                void handleDataExport()
+              }}
+              disabled={exportDisabled}
+              className={`text-sm font-medium bg-transparent border-none p-0 cursor-pointer disabled:cursor-not-allowed ${exportDisabled ? 'text-[#768081]' : 'text-[#25292a]'}`}
+            >
+              {exportDisabled ? 'Coming soon' : 'Download my data'}
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-between px-4 py-4">
           <a
             href="https://bantayog.alert/privacy"

@@ -21,6 +21,7 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('../services/firebase.js', () => ({
   auth: () => ({}),
+  hasFirebaseConfig: () => false,
 }))
 
 vi.mock('../components/Toggle.js', () => ({
@@ -59,7 +60,8 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Alert sounds')).toBeInTheDocument()
     expect(screen.getByText('Auto-detect location')).toBeInTheDocument()
     expect(screen.getByText('Offline-first cache')).toBeInTheDocument()
-    expect(screen.getByText('Download my data')).toBeInTheDocument()
+    // Download my data is gated on authenticated user
+    expect(screen.queryByText('Download my data')).not.toBeInTheDocument()
     expect(screen.getByText('Privacy Policy')).toBeInTheDocument()
   })
 

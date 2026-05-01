@@ -50,7 +50,7 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
               if (disabled) return
               onChange({ ...filters, severity: value })
             }}
-            className={chipClass(filters.severity === value, disabled)}
+            className={buildChipClass(filters.severity === value, disabled)}
           >
             {dot ? (
               <span
@@ -74,7 +74,7 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
               if (disabled) return
               onChange({ ...filters, window: value })
             }}
-            className={chipClass(filters.window === value, disabled)}
+            className={buildChipClass(filters.window === value, disabled)}
           >
             {label}
           </button>
@@ -84,7 +84,7 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
   )
 }
 
-function chipClass(active?: boolean, disabled?: boolean): string {
+function buildChipClass(active?: boolean, disabled?: boolean): string {
   const base = 'flex-1 rounded-full px-2 py-[5px] text-xs text-center transition-colors'
   const visual = active
     ? 'bg-surface-900 text-white font-bold border-[1.5px] border-surface-900/20'

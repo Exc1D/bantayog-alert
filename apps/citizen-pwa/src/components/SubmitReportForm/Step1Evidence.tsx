@@ -68,6 +68,7 @@ const INCIDENT_TYPES = [
 export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
   const [reportType, setReportType] = useState('flood')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canRenderCanvasPreview = typeof createImageBitmap === 'function'
 
@@ -169,6 +170,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
             aria-label="Upload photo"
             className="hidden"
             id="photo-input"
+            ref={fileInputRef}
           />
           {!photoFile ? (
             <button
@@ -198,6 +200,9 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
                 type="button"
                 onClick={() => {
                   setPhotoFile(null)
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = ''
+                  }
                 }}
                 className="absolute top-2 right-2 w-8 h-8 rounded-full bg-surface-900/60 flex items-center justify-center active:bg-surface-900/80 transition-colors"
                 aria-label="Remove photo"
@@ -209,7 +214,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
           {!photoFile && (
             <button
               type="button"
-              onClick={() => document.getElementById('photo-input')?.click()}
+              onClick={handleNext}
               className="w-full text-center text-sm text-brand-500 font-medium mt-2 bg-transparent border-none cursor-pointer"
             >
               Skip photo for now
