@@ -215,6 +215,8 @@ export function AlertsTab() {
         ) : error ? (
           <div
             role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
             className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
           >
             <AlertTriangle size={40} className="text-[#dc2626] mb-2" />
@@ -226,6 +228,8 @@ export function AlertsTab() {
         ) : sorted.length === 0 ? (
           <div
             role="status"
+            aria-live="polite"
+            aria-atomic="true"
             className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
           >
             <Bell size={40} className="mb-2" />
