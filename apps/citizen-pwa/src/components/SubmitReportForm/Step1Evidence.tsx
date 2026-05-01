@@ -215,7 +215,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
             <button
               type="button"
               onClick={handleNext}
-              className="w-full text-center text-sm text-brand-500 font-medium mt-2 bg-transparent border-none cursor-pointer"
+              className="w-full text-center text-sm text-brand-500 font-medium mt-2 bg-transparent border-none cursor-pointer min-h-[44px] flex items-center justify-center"
             >
               Skip photo for now
             </button>
