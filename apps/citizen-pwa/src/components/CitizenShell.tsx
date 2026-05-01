@@ -92,10 +92,14 @@ export function CitizenShell({ children }: { children: ReactNode }) {
             <motion.div
               key={pathname}
               custom={navDirection}
-              variants={prefersReducedMotion ? undefined : PAGE_VARIANTS}
-              initial={prefersReducedMotion ? undefined : 'initial'}
+              {...(prefersReducedMotion
+                ? {}
+                : {
+                    variants: PAGE_VARIANTS,
+                    initial: 'initial' as const,
+                    exit: 'exit' as const,
+                  })}
               animate={prefersReducedMotion ? { opacity: 1 } : 'animate'}
-              exit={prefersReducedMotion ? undefined : 'exit'}
               transition={
                 prefersReducedMotion
                   ? { duration: 0 }

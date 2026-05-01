@@ -43,7 +43,7 @@ describe('useFcmToken', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock Notification API
-    Object.defineProperty(global, 'Notification', {
+    Object.defineProperty(globalThis, 'Notification', {
       value: {
         permission: 'default' as NotificationPermission,
         requestPermission: vi.fn(),

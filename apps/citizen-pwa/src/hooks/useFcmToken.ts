@@ -52,7 +52,7 @@ export function useFcmToken() {
       if (user && !user.isAnonymous) {
         const { updateDoc, doc, getDoc } = await import('firebase/firestore')
         const { db } = await import('../services/firebase.js')
-        const userRef = doc(db, 'users', user.uid)
+        const userRef = doc(db(), 'users', user.uid)
 
         // Check if user doc exists
         const snap = await getDoc(userRef)
@@ -91,7 +91,7 @@ export function useFcmToken() {
       try {
         const { updateDoc, doc, getDoc } = await import('firebase/firestore')
         const { db } = await import('../services/firebase.js')
-        const userRef = doc(db, 'users', user.uid)
+        const userRef = doc(db(), 'users', user.uid)
         const snap = await getDoc(userRef)
 
         if (snap.exists()) {

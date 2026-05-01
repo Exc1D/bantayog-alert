@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Component, ErrorInfo } from 'react'
+import { Component, type ErrorInfo } from 'react'
 import { AlertTriangle } from 'lucide-react'
 
 interface Props {
@@ -21,11 +21,11 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('ErrorBoundary caught:', error, errorInfo)
   }
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-surface-100 px-4 text-center">
