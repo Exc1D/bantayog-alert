@@ -33,25 +33,12 @@ describe('Onboarding', () => {
     expect(screen.getByText(/welcome to bantayog/i)).toBeInTheDocument()
   })
 
-  it('cannot advance from step 1 without consent', async () => {
-    await renderOnboarding()
-    fireEvent.click(screen.getByRole('button', { name: /get started/i }))
-    expect(screen.getByText(/your privacy matters/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-    // still on step 1
-    expect(screen.getByText(/your privacy matters/i)).toBeInTheDocument()
-  })
-
   it('completes onboarding and navigates to /', async () => {
     await renderOnboarding()
     // Step 0 → 1
     fireEvent.click(screen.getByRole('button', { name: /get started/i }))
-    // Give consent
-    fireEvent.click(screen.getByRole('checkbox', { name: /agree/i }))
-    // Step 1 → 2
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
     expect(screen.getByText(/three steps/i)).toBeInTheDocument()
-    // Step 2 → done
+    // Step 1 → done
     fireEvent.click(screen.getByRole('button', { name: /start reporting/i }))
     expect(setDoneSpy).toHaveBeenCalledWith(true)
     expect(navigateSpy).toHaveBeenCalledWith('/', { replace: true })

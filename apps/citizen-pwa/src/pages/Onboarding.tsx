@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue } from 'framer-motion'
-import { EyeOff, Shield, Scale, AlertTriangle, Send, ShieldCheck, ArrowRight } from 'lucide-react'
+import { AlertTriangle, Send, ShieldCheck, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useUIStore } from '../lib/store.js'
 
@@ -61,131 +61,7 @@ function StepWelcome() {
   )
 }
 
-/* ── Step 1: Privacy ── */
-const PRIVACY_CARDS = [
-  {
-    Icon: EyeOff,
-    title: 'Report without an account',
-    body: 'No registration needed. Start reporting immediately with a temporary ID.',
-    color: '#0F9488',
-  },
-  {
-    Icon: Shield,
-    title: 'Your data is protected',
-    body: 'Photos have location data removed. Contact info is only visible to emergency staff.',
-    color: '#059669',
-  },
-  {
-    Icon: Scale,
-    title: 'Transparency first',
-    body: 'We cannot guarantee complete anonymity under court orders. This is stated honestly.',
-    color: '#D97706',
-  },
-]
-
-function StepPrivacy({
-  onConsentChange,
-  consentError,
-}: {
-  onConsentChange: (v: boolean) => void
-  consentError: boolean
-}) {
-  const [checked, setChecked] = useState(false)
-
-  const toggle = useCallback(() => {
-    const next = !checked
-    setChecked(next)
-    onConsentChange(next)
-  }, [checked, onConsentChange])
-
-  return (
-    <div className="flex flex-col px-6 pt-8 pb-4">
-      <motion.h2
-        className="text-[28px] font-bold text-surface-900 text-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE_SMOOTH }}
-      >
-        Your privacy matters
-      </motion.h2>
-
-      <div className="mt-8 space-y-4">
-        {PRIVACY_CARDS.map(({ Icon, title, body, color }, i) => (
-          <motion.div
-            key={title}
-            className="bg-white rounded-lg p-4 shadow-md"
-            style={{ borderLeft: `3px solid ${color}` }}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.1, ease: EASE_SMOOTH }}
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: `${color}15` }}
-              >
-                <Icon size={20} style={{ color }} />
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-surface-900">{title}</h3>
-                <p className="text-xs text-surface-500 mt-1 leading-relaxed">{body}</p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <motion.div
-        className="mt-8"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.4, ease: EASE_SMOOTH }}
-      >
-        <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            aria-label="I agree to the Terms of Use and Privacy Notice"
-            checked={checked}
-            onChange={toggle}
-            className="sr-only"
-          />
-          <div
-            className={`relative w-6 h-6 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors duration-200 ${
-              checked
-                ? 'bg-brand-500 border-brand-500'
-                : consentError
-                  ? 'border-danger-500'
-                  : 'border-surface-200'
-            }`}
-          >
-            <motion.svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <motion.path
-                d="M2.5 7.5L5.5 10.5L11.5 3.5"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: checked ? 1 : 0 }}
-                transition={{ duration: 0.2, ease: EASE_SMOOTH }}
-              />
-            </motion.svg>
-          </div>
-          <span className="text-base text-surface-900 leading-relaxed">
-            I have read and agree to the{' '}
-            <span className="text-brand-500 font-medium">Terms of Use</span> and{' '}
-            <span className="text-brand-500 font-medium">Privacy Notice</span>
-          </span>
-        </label>
-        {consentError && (
-          <p className="text-xs text-danger-500 mt-2 ml-9">Please agree to continue</p>
-        )}
-      </motion.div>
-    </div>
-  )
-}
-
-/* ── Step 2: How It Works ── */
+/* ── Step 1: How It Works ── */
 const HOW_STEPS = [
   {
     Icon: AlertTriangle,
@@ -245,31 +121,24 @@ function StepHowItWorks() {
 }
 
 /* ── Main ── */
-const BUTTON_LABELS = ['Get Started', 'Continue', 'Start Reporting']
+const BUTTON_LABELS = ['Get Started', 'Start Reporting']
 
 export function Onboarding() {
   const navigate = useNavigate()
   const setHasCompletedOnboarding = useUIStore((s) => s.setHasCompletedOnboarding)
   const [step, setStep] = useState(0)
-  const [consent, setConsent] = useState(false)
-  const [consentError, setConsentError] = useState(false)
   const [direction, setDirection] = useState(1)
   const dragX = useMotionValue(0)
 
   const goNext = useCallback(() => {
-    if (step === 1 && !consent) {
-      setConsentError(true)
-      return
-    }
-    setConsentError(false)
-    if (step < 2) {
+    if (step < 1) {
       setDirection(1)
       setStep((s) => s + 1)
     } else {
       setHasCompletedOnboarding(true)
       void navigate('/', { replace: true })
     }
-  }, [step, consent, setHasCompletedOnboarding, navigate])
+  }, [step, setHasCompletedOnboarding, navigate])
 
   const goPrev = useCallback(() => {
     if (step > 0) {
@@ -285,7 +154,7 @@ export function Onboarding() {
 
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number } }) => {
-      if (info.offset.x < -50 && step < 2) goNext()
+      if (info.offset.x < -50 && step < 1) goNext()
       else if (info.offset.x > 50 && step > 0) goPrev()
     },
     [step, goNext, goPrev],
@@ -333,16 +202,7 @@ export function Onboarding() {
               className="flex-1 flex flex-col"
             >
               {step === 0 && <StepWelcome />}
-              {step === 1 && (
-                <StepPrivacy
-                  onConsentChange={(v) => {
-                    setConsent(v)
-                    if (v) setConsentError(false)
-                  }}
-                  consentError={consentError}
-                />
-              )}
-              {step === 2 && <StepHowItWorks />}
+              {step === 1 && <StepHowItWorks />}
             </motion.div>
           </AnimatePresence>
         </motion.div>
@@ -355,7 +215,7 @@ export function Onboarding() {
       >
         {/* Pagination dots */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          {[0, 1, 2].map((i) => (
+          {[0, 1].map((i) => (
             <motion.div
               key={i}
               className="rounded-full"
@@ -369,12 +229,12 @@ export function Onboarding() {
         <motion.button
           type="button"
           onClick={goNext}
-          className={`w-full rounded-xl font-semibold text-base text-white flex items-center justify-center gap-2 bg-gradient-to-br from-brand-500 to-brand-600 active:scale-[0.98] transition-transform ${step === 2 ? 'h-16' : 'h-14'}`}
+          className={`w-full rounded-xl font-semibold text-base text-white flex items-center justify-center gap-2 bg-gradient-to-br from-brand-500 to-brand-600 active:scale-[0.98] transition-transform ${step === 1 ? 'h-16' : 'h-14'}`}
           whileTap={{ scale: 0.98 }}
           aria-label={BUTTON_LABELS[step]}
         >
           {BUTTON_LABELS[step]}
-          {step === 2 && <ArrowRight size={20} />}
+          {step === 1 && <ArrowRight size={20} />}
         </motion.button>
       </div>
     </div>
