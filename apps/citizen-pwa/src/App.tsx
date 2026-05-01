@@ -1,23 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { collection, query, where, getDocs, limit } from 'firebase/firestore'
-import { onAuthStateChanged } from 'firebase/auth'
 import { AppRoutes } from './routes.js'
 import { draftStore } from './services/draft-store.js'
-import { db, auth, hasFirebaseConfig } from './services/firebase.js'
+import { db } from './services/firebase.js'
 import { VersionGate } from './components/VersionGate.js'
-import { PrivacyNoticeModal } from './components/PrivacyNoticeModal.js'
 
 export function App() {
-  const [uid, setUid] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!hasFirebaseConfig()) return
-    const unsub = onAuthStateChanged(auth(), (user) => {
-      setUid(user?.uid ?? null)
-    })
-    return unsub
-  }, [])
-
   useEffect(() => {
     const recover = async () => {
       try {
@@ -41,7 +29,6 @@ export function App() {
 
   return (
     <VersionGate>
-      <PrivacyNoticeModal uid={uid} />
       <AppRoutes />
     </VersionGate>
   )
