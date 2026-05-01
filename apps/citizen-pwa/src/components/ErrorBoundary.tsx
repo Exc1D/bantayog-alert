@@ -8,7 +8,6 @@ interface Props {
 
 interface State {
   hasError: boolean
-  error?: Error
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -17,8 +16,9 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static getDerivedStateFromError(_error: Error): State {
+    return { hasError: true }
   }
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {

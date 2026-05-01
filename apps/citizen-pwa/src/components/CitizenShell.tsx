@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Map, Rss, CirclePlus, Bell, User, WifiOff } from 'lucide-react'
@@ -38,7 +39,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const prefersReducedMotion = useReducedMotion()
 
   // Calculate unread alerts count
-  const alertIds = alerts.map((a) => a.id)
+  const alertIds = useMemo(() => alerts.map((a) => a.id), [alerts])
   const unreadAlerts = unreadCount(alertIds)
 
   const handleNav = (path: string) => {
