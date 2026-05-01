@@ -9,7 +9,12 @@ export function mapReportFromFirestore(data: Record<string, unknown>): ReportDat
   const result: ReportData = {
     id: data.id as string,
     status: data.status as ReportStatus,
-    timeline: data.timeline as ReportData['timeline'],
+    timeline: (data.timeline as Array<Record<string, unknown>>).map((evt) => ({
+      event: evt.event as string,
+      timestamp: evt.timestamp as number,
+      ...(evt.actor !== undefined && { actor: evt.actor as string }),
+      ...(evt.note !== undefined && { note: evt.note as string }),
+    })),
   };
 
   if (data.type !== undefined) {

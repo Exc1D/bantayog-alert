@@ -9,7 +9,7 @@ import type { ReportStatus } from '@bantayog/shared-types'
 export interface ReportTimelineEvent {
   event: string
   timestamp: number
-  actor: string
+  actor?: string
   note?: string
 }
 
