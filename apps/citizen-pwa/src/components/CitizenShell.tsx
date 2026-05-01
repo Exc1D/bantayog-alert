@@ -106,7 +106,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                     onClick={() => {
                       handleNav(path)
                     }}
-                    className="absolute -top-10 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform"
+                    className="absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform"
                   >
                     <Icon size={30} strokeWidth={1.5} className="text-white" />
                   </button>

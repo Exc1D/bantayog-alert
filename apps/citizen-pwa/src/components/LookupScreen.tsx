@@ -147,7 +147,9 @@ export function LookupScreen() {
             </div>
             <div className="flex justify-between">
               <span className="text-[0.8125rem] text-[#52606d]">Verified by</span>
-              <span className="font-semibold text-[#001e40]">{result.verifiedBy ?? 'MDRRMO'}</span>
+              <span className="font-semibold text-[#001e40]">
+                {result.verifiedBy ?? `${result.municipalityLabel} MDRRMO`}
+              </span>
             </div>
           </div>
         )}
