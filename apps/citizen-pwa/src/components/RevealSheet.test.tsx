@@ -4,6 +4,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import { RevealSheet } from './RevealSheet'
 
+vi.mock('../services/firebase.js', () => ({
+  auth: vi.fn(),
+  hasFirebaseConfig: () => false,
+}))
+
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: vi.fn(),
+}))
+
 vi.mock('../hooks/useReducedMotion', () => ({
   useReducedMotion: () => false,
 }))
@@ -70,13 +79,12 @@ describe('RevealSheet', () => {
     expect(screen.getByText(/Daet MDRRMO is on it/)).toBeInTheDocument()
   })
 
-  it('shows session upgrade prompt with reportCount > 0 on success', async () => {
-    render(<RevealSheet state="success" referenceCode="BA-2026-001" reportCount={3} />)
+  it('shows Guardian invitation for unregistered users on success', async () => {
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1200)
     })
-    expect(
-      screen.getByText('You have 3 reports. Create an account to keep them all.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Maging Guardian/)).toBeInTheDocument()
+    expect(screen.getByText(/Join the Guardian Network/)).toBeInTheDocument()
   })
 })

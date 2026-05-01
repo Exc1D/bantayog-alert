@@ -43,16 +43,7 @@ export function SmsFallbackButton({ draft, reporterMsisdn, onSent }: SmsFallback
     <button
       type="button"
       onClick={handleClick}
-      style={{
-        backgroundColor: 'var(--color-primary)',
-        color: '#fff',
-        padding: 'var(--spacing-md) var(--spacing-lg)',
-        borderRadius: 'var(--radius-sm)',
-        border: 'none',
-        cursor: 'pointer',
-        fontWeight: 600,
-        width: '100%',
-      }}
+      className="w-full py-3 px-4 rounded-lg bg-surface-900 text-white font-semibold cursor-pointer border-none"
     >
       Send as SMS
     </button>
