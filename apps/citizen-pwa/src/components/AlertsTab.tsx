@@ -239,7 +239,7 @@ export function AlertsTab() {
       {/* Alert detail sheet */}
       <AlertDetailSheet
         alert={selectedAlert}
-        open={!!selectedAlert}
+        open={selectedAlert !== null}
         onClose={() => {
           setSelectedAlert(null)
         }}
