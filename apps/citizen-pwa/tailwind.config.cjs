@@ -69,11 +69,16 @@ module.exports = {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.02)' },
         },
+        'radar-ring': {
+          '0%': { transform: 'scale(0.5)', opacity: '0.6' },
+          '100%': { transform: 'scale(1.5)', opacity: '0' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.5s infinite linear',
         'pulse-glow': 'pulse-glow 1.5s ease-in-out 3',
         'pulse-scale': 'pulse-scale 1.5s ease-in-out 3',
+        'radar-ring': 'radar-ring 1.5s ease-out infinite',
       },
     },
   },

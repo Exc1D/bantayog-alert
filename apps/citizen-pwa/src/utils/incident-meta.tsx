@@ -53,11 +53,11 @@ const LABEL_MAP: Record<IncidentType, string> = {
   landslide: 'Landslide',
   storm_surge: 'Storm Surge',
   medical: 'Medical',
-  accident: 'Accident',
-  structural: 'Structural',
+  accident: 'Accidents/Rescue',
+  structural: 'Damages',
   security: 'Security',
   power_outage: 'Power Outage',
-  other: 'Other',
+  other: 'Others',
 }
 
 export function incidentIcon(type: string, size = 16): ReactNode {
