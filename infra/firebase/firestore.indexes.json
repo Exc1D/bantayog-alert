@@ -27,6 +27,14 @@
       ]
     },
     {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "visibilityClass", "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "report_ops",
       "queryScope": "COLLECTION",
       "fields": [
