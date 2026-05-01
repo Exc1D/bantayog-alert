@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue } from 'framer-motion'
-import { AlertTriangle, Send, ShieldCheck, ArrowRight } from 'lucide-react'
+import { AlertTriangle, Send, ShieldCheck, ArrowRight, TowerControl } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useUIStore } from '../lib/store.js'
 
@@ -17,11 +17,9 @@ function StepWelcome() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: EASE_ANTICIPATE }}
       >
-        <img
-          src="/watchtower.svg"
-          alt="Watchtower illustration"
-          className="w-full h-full object-contain"
-        />
+        <div className="w-full h-full flex items-center justify-center">
+          <TowerControl size={120} strokeWidth={1.2} className="text-brand-500" />
+        </div>
       </motion.div>
 
       <motion.h2

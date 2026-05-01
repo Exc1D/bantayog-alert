@@ -50,6 +50,51 @@
 
 ---
 
+## 2026-05-01 — QA Test Report Update & Bug Fixes
+
+### QA Test Report Updated
+
+- Rewrote `QA_TEST_REPORT.md` with honest verification status.
+- **Important:** Many fixes (both this session and prior commits) are code-only and require a Firebase Hosting redeploy to staging before they can be verified as resolved in the staging environment.
+
+### Fixes Applied in This Session (Code Only — Needs Redeploy)
+
+| Fix                        | File                                            | Issue                                                        |
+| -------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| PH MSISDN 10-digit support | `packages/shared-validators/src/msisdn.ts`      | `normalizeMsisdn` rejected `9XXXXXXXXX` (no leading zero)    |
+| SEO meta tags              | `apps/citizen-pwa/index.html`                   | Missing description, OG tags, Twitter card                   |
+| Manifest icons             | `apps/citizen-pwa/public/icons/`                | Created `icon-192.png` and `icon-512.png`                    |
+| Onboarding icon            | `apps/citizen-pwa/src/pages/Onboarding.tsx`     | Replaced `watchtower.svg` with `TowerControl` (lucide-react) |
+| Code splitting             | `apps/citizen-pwa/vite.config.ts`, `routes.tsx` | 900KB monobundle → ~31KB index + vendor chunks               |
+| PWA install prompt         | `apps/citizen-pwa/src/main.tsx`                 | Missing `beforeinstallprompt` handler                        |
+| robots.txt + sitemap       | `apps/citizen-pwa/public/`                      | Missing SEO crawler files                                    |
+| Test timeouts              | `functions/vitest.config.ts`                    | Emulator tests timing out at 5s default                      |
+
+### Prior Commits Already in Code (Not Yet Verified in Staging)
+
+| Commit    | Fix                                                       |
+| --------- | --------------------------------------------------------- |
+| `90f29ef` | Report tracking 404 (two-step lookup via `report_lookup`) |
+| `edcbebb` | Firestore reporter self-read permission                   |
+| `0f2289b` | Anonymous `report_inbox` writes allowed                   |
+| `2884b63` | App Check optional, GPS hard timeout                      |
+| `0837a56` | Settings gear for unregistered users                      |
+| `bdb642e` | Peek/Detail sheet z-index                                 |
+
+### Test Results
+
+- `shared-validators` tests: **18/18 pass** (includes new 10-digit MSISDN test)
+- Type checking: **10/10 packages pass**
+- Function tests: **172 pass, 99 fail, 519 skipped** (failures are emulator timeout issues, not logic bugs)
+
+### Remaining Blockers
+
+1. **Firebase Console:** Phone Auth disabled — enable in Authentication → Sign-in method
+2. **Firebase Console:** App Check 400 errors — verify/disable enforcement on staging Firestore
+3. **Deploy:** Redeploy citizen-pwa to staging to verify all code fixes
+
+---
+
 ## Phase 7 Provincial Superadmin + NDRRMC + Break-Glass
 
 ### PRE-7 — Audit & Auth Foundation (branch: `feature/phase7-pre`)

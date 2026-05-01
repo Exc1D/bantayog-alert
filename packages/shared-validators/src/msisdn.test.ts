@@ -14,6 +14,10 @@ describe('normalizeMsisdn', () => {
     expect(normalizeMsisdn('639171234567')).toBe('+639171234567')
   })
 
+  it('accepts 9XXXXXXXXX form (10 digits, no prefix) and rewrites to +63', () => {
+    expect(normalizeMsisdn('9171234567')).toBe('+639171234567')
+  })
+
   it('rejects non-PH country code', () => {
     expect(() => normalizeMsisdn('+14155552671')).toThrow(MsisdnInvalidError)
   })

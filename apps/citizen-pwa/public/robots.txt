@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /report
+Disallow: /reports/
+Disallow: /receipt
+Disallow: /register
+Disallow: /settings
+Disallow: /lookup
+Disallow: /goodbye
+
+Sitemap: https://bantayog-citizen-staging.web.app/sitemap.xml

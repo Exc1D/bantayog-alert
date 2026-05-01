@@ -37,6 +37,10 @@ export function normalizeMsisdn(input: string): string {
     const candidate = `+63${cleaned.slice(2)}`
     if (PH_NORMALIZED_RE.test(candidate)) return candidate
   }
+  if (/^9\d{9}$/.test(cleaned)) {
+    const candidate = `+63${cleaned}`
+    if (PH_NORMALIZED_RE.test(candidate)) return candidate
+  }
   throw new MsisdnInvalidError(input)
 }
 

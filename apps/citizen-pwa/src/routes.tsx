@@ -1,22 +1,54 @@
 import { createBrowserRouter, RouterProvider, Outlet, useNavigate } from 'react-router-dom'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { CitizenShell } from './components/CitizenShell.js'
 import { MapTab } from './components/MapTab/index.js'
-import { FeedTab } from './components/FeedTab.js'
-import { IncidentDetailPage } from './components/IncidentDetailPage.js'
-import { ProfileTab } from './components/ProfileTab.js'
-import { AlertsTab } from './components/AlertsTab.js'
-import { SubmitReportForm } from './components/SubmitReportForm/index.js'
-import { ReceiptScreen } from './components/ReceiptScreen.js'
-import { LookupScreen } from './components/LookupScreen.js'
-import { TrackingScreen } from './components/TrackingScreen.js'
-import { GoodbyeScreen } from './components/GoodbyeScreen.js'
-import { RegisterPage } from './pages/RegisterPage.js'
-import { SettingsPage } from './pages/SettingsPage.js'
 import { SplashScreen } from './pages/SplashScreen.js'
-import { Onboarding } from './pages/Onboarding.js'
 import { useUIStore } from './lib/store.js'
+
+/* ── Lazy-loaded route components ── */
+const Onboarding = lazy(() =>
+  import('./pages/Onboarding.js').then((m) => ({ default: m.Onboarding })),
+)
+const FeedTab = lazy(() => import('./components/FeedTab.js').then((m) => ({ default: m.FeedTab })))
+const IncidentDetailPage = lazy(() =>
+  import('./components/IncidentDetailPage.js').then((m) => ({ default: m.IncidentDetailPage })),
+)
+const ProfileTab = lazy(() =>
+  import('./components/ProfileTab.js').then((m) => ({ default: m.ProfileTab })),
+)
+const AlertsTab = lazy(() =>
+  import('./components/AlertsTab.js').then((m) => ({ default: m.AlertsTab })),
+)
+const SubmitReportForm = lazy(() =>
+  import('./components/SubmitReportForm/index.js').then((m) => ({ default: m.SubmitReportForm })),
+)
+const ReceiptScreen = lazy(() =>
+  import('./components/ReceiptScreen.js').then((m) => ({ default: m.ReceiptScreen })),
+)
+const LookupScreen = lazy(() =>
+  import('./components/LookupScreen.js').then((m) => ({ default: m.LookupScreen })),
+)
+const TrackingScreen = lazy(() =>
+  import('./components/TrackingScreen.js').then((m) => ({ default: m.TrackingScreen })),
+)
+const GoodbyeScreen = lazy(() =>
+  import('./components/GoodbyeScreen.js').then((m) => ({ default: m.GoodbyeScreen })),
+)
+const RegisterPage = lazy(() =>
+  import('./pages/RegisterPage.js').then((m) => ({ default: m.RegisterPage })),
+)
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage.js').then((m) => ({ default: m.SettingsPage })),
+)
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[100dvh] flex items-center justify-center bg-surface-100">
+      <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+}
 
 function RootLayout() {
   const [showSplash, setShowSplash] = useState(true)
@@ -51,35 +83,58 @@ const router = createBrowserRouter([
           </CitizenShell>
         ),
       },
-      { path: 'onboarding', element: <Onboarding /> },
+      {
+        path: 'onboarding',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <Onboarding />
+          </Suspense>
+        ),
+      },
       {
         path: 'report',
-        element: <SubmitReportForm />,
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SubmitReportForm />
+          </Suspense>
+        ),
         handle: { hideBottomNav: true },
       },
       {
         path: 'reports/:reference',
-        element: <TrackingScreen />,
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <TrackingScreen />
+          </Suspense>
+        ),
         handle: { hideBottomNav: true },
       },
       {
         path: 'feed',
         element: (
           <CitizenShell>
-            <FeedTab />
+            <Suspense fallback={<RouteFallback />}>
+              <FeedTab />
+            </Suspense>
           </CitizenShell>
         ),
       },
       {
         path: 'incidents/:id',
-        element: <IncidentDetailPage />,
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <IncidentDetailPage />
+          </Suspense>
+        ),
         handle: { hideBottomNav: true },
       },
       {
         path: 'alerts',
         element: (
           <CitizenShell>
-            <AlertsTab />
+            <Suspense fallback={<RouteFallback />}>
+              <AlertsTab />
+            </Suspense>
           </CitizenShell>
         ),
       },
@@ -87,15 +142,55 @@ const router = createBrowserRouter([
         path: 'profile',
         element: (
           <CitizenShell>
-            <ProfileTab />
+            <Suspense fallback={<RouteFallback />}>
+              <ProfileTab />
+            </Suspense>
           </CitizenShell>
         ),
       },
-      { path: 'receipt', element: <ReceiptScreen /> },
-      { path: 'lookup', element: <LookupScreen /> },
-      { path: 'goodbye', element: <GoodbyeScreen />, handle: { hideBottomNav: true } },
-      { path: 'register', element: <RegisterPage />, handle: { hideBottomNav: true } },
-      { path: 'settings', element: <SettingsPage />, handle: { hideBottomNav: true } },
+      {
+        path: 'receipt',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <ReceiptScreen />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'lookup',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <LookupScreen />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'goodbye',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <GoodbyeScreen />
+          </Suspense>
+        ),
+        handle: { hideBottomNav: true },
+      },
+      {
+        path: 'register',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <RegisterPage />
+          </Suspense>
+        ),
+        handle: { hideBottomNav: true },
+      },
+      {
+        path: 'settings',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SettingsPage />
+          </Suspense>
+        ),
+        handle: { hideBottomNav: true },
+      },
     ],
   },
 ])
