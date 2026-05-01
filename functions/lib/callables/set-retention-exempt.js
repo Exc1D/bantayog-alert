@@ -20,6 +20,11 @@ export async function setRetentionExemptCore(db, input, actor) {
     if (!docSnap.exists) {
         throw new HttpsError('not-found', 'document_not_found');
     }
+    const docData = docSnap.data();
+    const docMunicipalityId = docData.municipalityId;
+    if (!docMunicipalityId || !actor.permittedMunicipalityIds.includes(docMunicipalityId)) {
+        throw new HttpsError('permission-denied', 'municipality_not_permitted');
+    }
     await docRef.update({
         retentionExempt: data.exempt,
         retentionExemptReason: data.reason,
@@ -36,8 +41,11 @@ export async function setRetentionExemptCore(db, input, actor) {
     });
 }
 export const setRetentionExempt = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['superadmin']);
+    const { uid, claims } = requireAuth(request, ['superadmin']);
     requireMfaAuth(request);
-    await setRetentionExemptCore(getFirestore(), request.data, { uid });
+    const permittedMunicipalityIds = Array.isArray(claims.permittedMunicipalityIds)
+        ? claims.permittedMunicipalityIds.filter((v) => typeof v === 'string')
+        : [];
+    await setRetentionExemptCore(getFirestore(), request.data, { uid, permittedMunicipalityIds });
 });
 //# sourceMappingURL=set-retention-exempt.js.map

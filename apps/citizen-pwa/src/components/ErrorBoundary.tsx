@@ -28,7 +28,12 @@ export class ErrorBoundary extends Component<Props, State> {
   override render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-surface-100 px-4 text-center">
+        <div
+          className="min-h-[100dvh] flex flex-col items-center justify-center bg-surface-100 px-4 text-center"
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
+        >
           <AlertTriangle size={48} className="text-error-500 mb-4" />
           <h1 className="text-xl font-bold text-surface-900 mb-2">Something went wrong</h1>
           <p className="text-sm text-surface-600 mb-6 max-w-md">

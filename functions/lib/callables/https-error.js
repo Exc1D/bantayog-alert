@@ -40,7 +40,9 @@ export function requireAuth(request, allowedRoles) {
 }
 export function requireMfaAuth(request) {
     const firebase = request.auth?.token.firebase;
-    if (typeof firebase?.sign_in_second_factor !== 'string') {
+    if (typeof firebase !== 'object' ||
+        firebase === null ||
+        typeof firebase.sign_in_second_factor !== 'string') {
         throw new HttpsError('unauthenticated', 'mfa_required');
     }
 }

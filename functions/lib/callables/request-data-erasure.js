@@ -25,14 +25,15 @@ export async function requestDataErasureCore(db, auth, actor) {
     try {
         await auth.updateUser(actor.uid, { disabled: true });
     }
-    catch {
+    catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
         const results = await Promise.allSettled([requestRef.delete(), sentinelRef.delete()]);
         for (const r of results) {
             if (r.status === 'rejected') {
                 console.error('CRITICAL: erasure rollback failed for', actor.uid, r.reason);
             }
         }
-        throw new HttpsError('internal', 'auth_disable_failed');
+        throw new HttpsError('internal', `auth_disable_failed: ${reason}`);
     }
     void streamAuditEvent({
         eventType: 'erasure_request_submitted',

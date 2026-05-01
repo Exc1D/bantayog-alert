@@ -2,67 +2,46 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useFcmToken } from '../useFcmToken'
 
-// Mock Firebase messaging
-const mockGetToken = vi.fn()
-const mockOnMessage = vi.fn(() => vi.fn())
-const mockDeleteToken = vi.fn()
-
-vi.mock('firebase/messaging', () => {
-  return {
-    getMessaging: vi.fn(() => ({ app: {} })),
-    getToken: mockGetToken,
-    onMessage: mockOnMessage,
-    deleteToken: mockDeleteToken,
-  }
-})
+// Mock Firebase messaging — hoisted, must not reference outer variables
+vi.mock('firebase/messaging', () => ({
+  getMessaging: vi.fn(() => ({ app: {} })),
+  getToken: vi.fn(),
+  onMessage: vi.fn(() => vi.fn()),
+  deleteToken: vi.fn(),
+}))
 
 // Mock Firebase auth and services
-vi.mock('../services/firebase.js', () => ({
+vi.mock('../../services/firebase.js', () => ({
   auth: vi.fn(() => ({
     currentUser: { uid: 'test-user', isAnonymous: false },
   })),
   hasFirebaseConfig: vi.fn(() => true),
+  fns: vi.fn(() => ({ app: {} })),
+  httpsCallable: vi.fn(() => vi.fn(() => Promise.resolve({ data: { success: true } }))),
+  db: vi.fn(() => ({ app: {} })),
 }))
 
 // Mock Firestore
-const mockUpdateDoc = vi.fn()
-const mockDoc = vi.fn(() => ({}))
-const mockGetDoc = vi.fn(() =>
-  Promise.resolve({
-    exists: () => true,
-  }),
-)
-
 vi.mock('firebase/firestore', async () => {
   const actual = await vi.importActual<typeof import('firebase/firestore')>('firebase/firestore')
   return {
     ...actual,
-    updateDoc: mockUpdateDoc,
-    doc: mockDoc,
-    getDoc: mockGetDoc,
+    updateDoc: vi.fn(),
+    doc: vi.fn(() => ({})),
+    getDoc: vi.fn(() =>
+      Promise.resolve({
+        exists: () => true,
+      }),
+    ),
   }
 })
 
-// Mock Functions
-const mockHttpsCallable = vi.fn(() => vi.fn(() => Promise.resolve({ data: { success: true } })))
-
-vi.mock('firebase/functions', async () => {
-  const actual = await vi.importActual<typeof import('firebase/functions')>('firebase/functions')
-  return {
-    ...actual,
-    getFunctions: vi.fn(() => ({ app: {} })),
-    httpsCallable: mockHttpsCallable,
-  }
-})
+import { getToken, deleteToken } from 'firebase/messaging'
+import { httpsCallable } from '../../services/firebase.js'
 
 describe('useFcmToken', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetToken.mockReset()
-    mockOnMessage.mockReset()
-    mockDeleteToken.mockReset()
-    mockHttpsCallable.mockReset()
-    mockHttpsCallable.mockReturnValue(vi.fn(() => Promise.resolve({ data: { success: true } })))
 
     // Mock Notification API
     Object.defineProperty(globalThis, 'Notification', {
@@ -96,7 +75,7 @@ describe('useFcmToken', () => {
       }
     }
     Notification.requestPermission.mockResolvedValue('granted')
-    mockGetToken.mockResolvedValue('test-fcm-token')
+    vi.mocked(getToken).mockResolvedValue('test-fcm-token')
 
     const { result } = renderHook(() => useFcmToken())
 
@@ -107,14 +86,14 @@ describe('useFcmToken', () => {
 
     expect(success).toBe(true)
     expect(Notification.requestPermission).toHaveBeenCalled()
-    expect(mockGetToken).toHaveBeenCalled()
+    expect(getToken).toHaveBeenCalled()
     expect(result.current.permission).toBe('granted')
     expect(result.current.token).toBe('test-fcm-token')
     expect(result.current.enabled).toBe(true)
   })
 
   it('should disable and clear token', async () => {
-    mockDeleteToken.mockResolvedValue(undefined)
+    vi.mocked(deleteToken).mockResolvedValue(undefined)
 
     const { result } = renderHook(() => useFcmToken())
 
@@ -126,7 +105,7 @@ describe('useFcmToken', () => {
       }
     }
     Notification.requestPermission.mockResolvedValue('granted')
-    mockGetToken.mockResolvedValue('test-fcm-token')
+    vi.mocked(getToken).mockResolvedValue('test-fcm-token')
 
     await act(async () => {
       await result.current.requestPermission()
@@ -140,8 +119,8 @@ describe('useFcmToken', () => {
       await result.current.disable()
     })
 
-    expect(mockDeleteToken).toHaveBeenCalled()
-    expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'unsubscribeFromAlerts')
+    expect(deleteToken).toHaveBeenCalled()
+    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), 'unsubscribeFromAlerts')
     expect(result.current.token).toBeNull()
     expect(result.current.enabled).toBe(false)
   })

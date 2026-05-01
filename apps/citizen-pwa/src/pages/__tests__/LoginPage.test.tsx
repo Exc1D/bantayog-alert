@@ -22,7 +22,7 @@ vi.mock('firebase/auth', async (importOriginal) => {
       credential: vi.fn((verificationId: string, code: string) => ({ verificationId, code })),
     },
     onAuthStateChanged: vi.fn(() => vi.fn()),
-    RecaptchaVerifier: vi.fn(() => mockRecaptchaVerifier),
+    RecaptchaVerifier: vi.fn(() => mockRecaptchaVerifier) as unknown as typeof RecaptchaVerifier,
   }
 })
 
@@ -39,7 +39,7 @@ vi.mock('../../hooks/useToast.js', () => ({
 }))
 
 // Mock firebase services
-vi.mock('../services/firebase.js', () => ({
+vi.mock('../../services/firebase.js', () => ({
   auth: () => ({
     currentUser: null,
   }),
@@ -99,6 +99,7 @@ describe('LoginPage', () => {
     const phoneInput = screen.getByLabelText(/phone number/i)
     const continueButton = screen.getByRole('button', { name: /continue/i })
 
+    await userEvent.clear(phoneInput)
     await userEvent.type(phoneInput, '+639171234567')
     await userEvent.click(continueButton)
 
@@ -127,6 +128,7 @@ describe('LoginPage', () => {
     const phoneInput = screen.getByLabelText(/phone number/i)
     const continueButton = screen.getByRole('button', { name: /continue/i })
 
+    await userEvent.clear(phoneInput)
     await userEvent.type(phoneInput, '+639171234567')
     await userEvent.click(continueButton)
 

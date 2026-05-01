@@ -176,7 +176,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                   {unreadAlerts > 0 && label === 'Alerts' && (
                     <span
                       className="absolute top-1 right-2 w-5 h-5 bg-error-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
-                      aria-label={`${String(unreadAlerts)} unread alert${unreadAlerts !== 1 ? 's' : ''}`}
+                      aria-hidden="true"
                     >
                       {unreadAlerts > 9 ? '9+' : String(unreadAlerts)}
                     </span>

@@ -60,7 +60,7 @@ export function LoginPage() {
     try {
       const confirmationResult = await signInWithPhoneNumber(
         auth(),
-        phone,
+        normalizedPhone,
         recaptchaVerifierRef.current,
       )
       setVerificationId(confirmationResult.verificationId)

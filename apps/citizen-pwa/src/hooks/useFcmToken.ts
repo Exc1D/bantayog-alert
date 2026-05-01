@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging'
-import { auth, hasFirebaseConfig } from '../services/firebase.js'
+import { auth, hasFirebaseConfig, fns, httpsCallable } from '../services/firebase.js'
 
 interface FcmState {
   permission: NotificationPermission
@@ -15,6 +15,7 @@ export function useFcmToken() {
     }
     return { permission: Notification.permission, token: null, enabled: false }
   })
+  const fcmUnsubscribeRef = useRef<(() => void) | null>(null)
 
   // Rehydrate token on mount
   useEffect(() => {
@@ -36,6 +37,16 @@ export function useFcmToken() {
       .catch((error: unknown) => {
         console.error('Failed to rehydrate FCM token:', error)
       })
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (fcmUnsubscribeRef.current) {
+        fcmUnsubscribeRef.current()
+        fcmUnsubscribeRef.current = null
+      }
+    }
   }, [])
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -85,13 +96,17 @@ export function useFcmToken() {
       }
 
       // Subscribe to alerts topic
-      const { getFunctions, httpsCallable } = await import('firebase/functions')
-      const functions = getFunctions()
-      const subscribeToAlerts = httpsCallable(functions, 'subscribeToAlerts')
+      const subscribeToAlerts = httpsCallable(fns(), 'subscribeToAlerts')
       await subscribeToAlerts({ token })
 
+      // Unsubscribe from previous listener before creating new one
+      if (fcmUnsubscribeRef.current) {
+        fcmUnsubscribeRef.current()
+        fcmUnsubscribeRef.current = null
+      }
+
       // Listen for incoming messages
-      onMessage(messaging, (payload) => {
+      fcmUnsubscribeRef.current = onMessage(messaging, (payload) => {
         // eslint-disable-next-line no-console
         console.log('Received FCM message:', payload)
         // Could trigger toast, sound, etc. here
@@ -107,9 +122,10 @@ export function useFcmToken() {
 
   const disable = useCallback(async () => {
     const tokenToRevoke = state.token
-    setState((prev) => ({ ...prev, enabled: false, token: null }))
-
-    if (!tokenToRevoke) return
+    if (!tokenToRevoke) {
+      setState((prev) => ({ ...prev, enabled: false, token: null }))
+      return
+    }
 
     try {
       // Revoke the browser FCM token
@@ -117,29 +133,37 @@ export function useFcmToken() {
       await deleteToken(messaging)
 
       // Call backend to remove topic subscription
-      const { getFunctions, httpsCallable } = await import('firebase/functions')
-      const functions = getFunctions()
-      const unsubscribeFromAlerts = httpsCallable(functions, 'unsubscribeFromAlerts')
+      const unsubscribeFromAlerts = httpsCallable(fns(), 'unsubscribeFromAlerts')
       await unsubscribeFromAlerts({ token: tokenToRevoke })
+
+      // Unsubscribe from foreground message listener
+      if (fcmUnsubscribeRef.current) {
+        fcmUnsubscribeRef.current()
+        fcmUnsubscribeRef.current = null
+      }
+
+      // Clear state only after successful revoke
+      setState((prev) => ({ ...prev, enabled: false, token: null }))
+
+      // Clear token from user document
+      const user = auth().currentUser
+      if (user && !user.isAnonymous) {
+        try {
+          const { updateDoc, doc, getDoc } = await import('firebase/firestore')
+          const { db } = await import('../services/firebase.js')
+          const userRef = doc(db(), 'users', user.uid)
+          const snap = await getDoc(userRef)
+
+          if (snap.exists()) {
+            await updateDoc(userRef, { fcmToken: null })
+          }
+        } catch (error) {
+          console.error('Failed to clear FCM token from Firestore:', error)
+        }
+      }
     } catch (error) {
       console.error('Failed to revoke FCM token or unsubscribe:', error)
-    }
-
-    // Clear token from user document
-    const user = auth().currentUser
-    if (user && !user.isAnonymous) {
-      try {
-        const { updateDoc, doc, getDoc } = await import('firebase/firestore')
-        const { db } = await import('../services/firebase.js')
-        const userRef = doc(db(), 'users', user.uid)
-        const snap = await getDoc(userRef)
-
-        if (snap.exists()) {
-          await updateDoc(userRef, { fcmToken: null })
-        }
-      } catch (error) {
-        console.error('Failed to clear FCM token from Firestore:', error)
-      }
+      // Keep state as-is so UI reflects the actual subscription status
     }
   }, [state.token])
 

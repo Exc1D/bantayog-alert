@@ -76,6 +76,7 @@ export async function erasureSweepCore(input) {
             await input.auth.updateUser(citizenUid, { disabled: false });
         }
         catch (reEnableErr) {
+            const reEnableReason = reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr);
             // CRITICAL: citizen is locked out and sweep failed — manual intervention required
             log({
                 severity: 'CRITICAL',
@@ -84,9 +85,15 @@ export async function erasureSweepCore(input) {
                 data: {
                     citizenUid,
                     originalError: reason,
-                    reEnableError: reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr),
+                    reEnableError: reEnableReason,
                 },
             });
+            await candidate.ref.update({
+                status: 'dead_lettered',
+                deadLetterReason: `erasure_failed_and_auth_reenable_failed: ${reason}; re-enable: ${reEnableReason}`,
+                deadLetteredAt: now(),
+            });
+            throw new Error(`Auth re-enable failed after erasure failure for ${citizenUid}: ${reEnableReason}`);
         }
         await candidate.ref.update({
             status: 'dead_lettered',
@@ -169,7 +176,7 @@ async function executeErasure(input, citizenUid, requestId) {
     // Step 9: Hard-delete Firebase Auth account — LAST, non-reversible
     await input.auth.deleteUser(citizenUid);
     // Sentinel deletion happens in the caller after this function returns (step 10)
-    void log({
+    log({
         severity: 'INFO',
         code: 'ERASURE_EXECUTED',
         message: `erasure executed for ${citizenUid}`,
