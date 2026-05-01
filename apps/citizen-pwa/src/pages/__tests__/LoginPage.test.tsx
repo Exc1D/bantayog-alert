@@ -22,7 +22,7 @@ vi.mock('firebase/auth', async (importOriginal) => {
       credential: vi.fn((verificationId: string, code: string) => ({ verificationId, code })),
     },
     onAuthStateChanged: vi.fn(() => vi.fn()),
-    RecaptchaVerifier: vi.fn(() => mockRecaptchaVerifier) as unknown as typeof RecaptchaVerifier,
+    RecaptchaVerifier: vi.fn(() => mockRecaptchaVerifier),
   }
 })
 

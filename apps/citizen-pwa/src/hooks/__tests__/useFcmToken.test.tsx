@@ -93,7 +93,7 @@ describe('useFcmToken', () => {
   })
 
   it('should disable and clear token', async () => {
-    vi.mocked(deleteToken).mockResolvedValue(undefined)
+    vi.mocked(deleteToken).mockResolvedValue(true)
 
     const { result } = renderHook(() => useFcmToken())
 
