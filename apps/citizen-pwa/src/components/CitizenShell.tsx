@@ -6,6 +6,7 @@ import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
 import { useAlerts } from '../hooks/useAlerts.js'
 import { useUIStore } from '../lib/store.js'
+import { useReducedMotion } from '../hooks/useReducedMotion.js'
 import '../styles/design-tokens.css'
 
 const TAB_PATHS = ['/', '/feed', '/alerts', '/profile'] as const
@@ -34,6 +35,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const navDirection = useUIStore((s) => s.navDirection)
   const setNavDirection = useUIStore((s) => s.setNavDirection)
   const showOfflineBanner = !isOnline
+  const prefersReducedMotion = useReducedMotion()
 
   // Calculate unread alerts count
   const alertIds = alerts.map((a) => a.id)
@@ -87,14 +89,18 @@ export function CitizenShell({ children }: { children: ReactNode }) {
             <motion.div
               key={pathname}
               custom={navDirection}
-              variants={PAGE_VARIANTS}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{
-                duration: 0.3,
-                ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
-              }}
+              variants={prefersReducedMotion ? undefined : PAGE_VARIANTS}
+              initial={prefersReducedMotion ? undefined : 'initial'}
+              animate={prefersReducedMotion ? { opacity: 1 } : 'animate'}
+              exit={prefersReducedMotion ? undefined : 'exit'}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : {
+                      duration: 0.3,
+                      ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
+                    }
+              }
               className="absolute inset-0"
             >
               {children}
