@@ -402,6 +402,29 @@ export function ProfileTab() {
           </div>
         </div>
 
+        {/* Settings — accessible before registration */}
+        <div className="mx-4 mt-4 bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/settings')
+            }}
+            aria-label="Settings"
+            className="w-full flex items-center justify-between px-4 py-3.5 bg-transparent border-none cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center">
+                <Settings size={16} className="text-surface-600" />
+              </div>
+              <div>
+                <p className="m-0 text-sm font-semibold text-surface-900">Settings</p>
+                <p className="m-0 text-xs text-surface-400">Notifications, privacy, storage</p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-surface-400" />
+          </button>
+        </div>
+
         <div className="h-8" />
       </div>
     )
