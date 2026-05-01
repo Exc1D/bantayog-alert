@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Check, Clock, AlertTriangle, Copy } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Check, ShieldCheck, Copy, CheckCircle, LogIn, Save } from 'lucide-react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { motion } from 'framer-motion'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
+import { useSlotMachine } from '../hooks/useSlotMachine.js'
+import { auth, hasFirebaseConfig } from '../services/firebase.js'
 import { StatusBanner } from './ui/StatusBanner'
 import { Button } from './ui/Button'
 import { FallbackCards } from './ui/FallbackCards'
@@ -8,34 +12,54 @@ import { Timeline } from './ui/Timeline'
 
 const HOTLINE_NUMBER = '(054) 721-1216'
 
+function RadarRings({ rgb = '5,150,105' }: { rgb?: string }) {
+  const ringsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (ringsRef.current) ringsRef.current.style.display = 'none'
+    }, 6000)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [])
+  return (
+    <div
+      ref={ringsRef}
+      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+    >
+      {[0, 0.5, 1.0].map((delay, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-14 h-14 rounded-full border-2"
+          style={{ borderColor: `rgba(${rgb},${String(0.6 - i * 0.2)})` }}
+          animate={{ scale: [1, 2.5], opacity: [0.7, 0] }}
+          transition={{ duration: 2, repeat: Infinity, delay, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
+  )
+}
+
 interface RevealSheetProps {
   state: 'success' | 'queued' | 'failed_retryable'
   referenceCode: string
   secretCode?: string
-  reportCount?: number
   onClose?: () => void
 }
 
-export function RevealSheet({
-  state,
-  referenceCode,
-  secretCode,
-  reportCount,
-  onClose,
-}: RevealSheetProps) {
+export function RevealSheet({ state, referenceCode, secretCode, onClose }: RevealSheetProps) {
   const reducedMotion = useReducedMotion()
-  const [displayedChars, setDisplayedChars] = useState(reducedMotion ? referenceCode.length : 0)
-  const [typewriterComplete, setTypewriterComplete] = useState(reducedMotion)
+  const { display: slotDisplay, done: slotDone } = useSlotMachine(
+    referenceCode,
+    reducedMotion ? 0 : 600,
+    reducedMotion ? 0 : 400,
+  )
+  const displayedCode = reducedMotion ? referenceCode : slotDisplay
+  const typewriterComplete = reducedMotion ? true : slotDone
   const [copied, setCopied] = useState(false)
   const [secretVisible, setSecretVisible] = useState(false)
-  const [upgradeDismissed, setUpgradeDismissed] = useState(() => {
-    try {
-      return localStorage.getItem('bantayog_upgrade_prompted') === '1'
-    } catch {
-      return false
-    }
-  })
-  const showUpgradePrompt = reportCount != null && reportCount > 0 && !upgradeDismissed
+  // null = loading (firebase present), true = guest (no account), false = registered
+  const [isGuest, setIsGuest] = useState<boolean | null>(() => (hasFirebaseConfig() ? null : true))
   const variants = {
     success: {
       icon: <Check size={16} />,
@@ -50,64 +74,43 @@ export function RevealSheet({
       permissionText: "You can close this app. We'll text you.",
     },
     queued: {
-      icon: <Clock size={16} />,
-      headline: "We've saved your report.",
+      icon: <Save size={16} />,
+      headline: "Saved. We'll send it for you.",
       subline:
-        "You're offline right now. The moment your phone reconnects, we'll send this to Daet MDRRMO automatically. Walang mawawala. Safe ito sa phone mo.",
+        "Your report is safe on this phone. The moment signal returns, we'll automatically forward it to Daet MDRRMO — no action needed from you. Walang mawawala.",
       sublineTl: undefined,
       bannerVariant: 'queued' as const,
-      receiverText: 'Waiting for signal · auto-retry on',
+      receiverText: 'Saved to device · auto-send when online',
       primaryButton: 'Try sending now',
       primaryVariant: 'amber' as const,
       secondaryButton: 'Keep draft & close',
-      permissionText: "We'll keep trying in the background.",
+      permissionText: "We'll keep trying quietly in the background.",
     },
     failed_retryable: {
-      icon: <AlertTriangle size={16} />,
-      headline: "We couldn't send it yet.",
+      icon: <ShieldCheck size={16} />,
+      headline: 'Your report is safe. Still trying.',
       subline:
-        'Your report is safe on your phone. The network is having trouble reaching the Admins — this is not your fault. If this is life-threatening, please call now.',
-      sublineTl: 'Ligtas pa rin ang inyong ulat dito sa telepono. Kung emergency, tawagan kami.',
-      bannerVariant: 'failed' as const,
+        "We saved it securely on your phone and are retrying automatically. The network is having trouble — this is not your fault and nothing is lost. If it's a life-threatening emergency, call now.",
+      sublineTl: 'Ligtas ang inyong ulat. Nagre-retry kami. Kung emergency, tawagan kami ngayon.',
+      bannerVariant: 'queued' as const,
       receiverText: undefined,
-      primaryButton: 'Try again',
-      primaryVariant: 'red' as const,
+      primaryButton: 'Retry now',
+      primaryVariant: 'amber' as const,
       secondaryButton: 'Keep draft & close',
-      permissionText: "We'll hold this draft for 24 hours.",
+      permissionText: "We'll hold this draft for 24 hours and keep retrying.",
     },
   }
 
   const variant = variants[state]
 
-  const displayedCode = referenceCode.slice(0, displayedChars)
-
   useEffect(() => {
-    if (reducedMotion) return
-    let charInterval: ReturnType<typeof setInterval> | null = null
-    const settleTimeout = setTimeout(() => {
-      let i = 0
-      charInterval = setInterval(() => {
-        i += 1
-        setDisplayedChars(i)
-        if (i >= referenceCode.length) {
-          if (charInterval) clearInterval(charInterval)
-          setTypewriterComplete(true)
-        }
-      }, 60)
-    }, 400)
-    return () => {
-      clearTimeout(settleTimeout)
-      if (charInterval) clearInterval(charInterval)
-    }
-  }, [referenceCode, reducedMotion])
-
-  useEffect(() => {
-    if (state === 'success' && 'vibrate' in navigator) {
-      try {
-        navigator.vibrate([15, 80, 25])
-      } catch {
-        // vibrate not available
-      }
+    if (!('vibrate' in navigator)) return
+    try {
+      if (state === 'success') navigator.vibrate([15, 80, 25])
+      else if (state === 'queued') navigator.vibrate([30])
+      else navigator.vibrate([30, 60, 30])
+    } catch {
+      // vibrate not available
     }
   }, [state])
 
@@ -123,6 +126,13 @@ export function RevealSheet({
       clearTimeout(t)
     }
   }, [typewriterComplete, secretCode, reducedMotion])
+
+  useEffect(() => {
+    if (!hasFirebaseConfig()) return
+    return onAuthStateChanged(auth(), (u) => {
+      setIsGuest(u === null || u.isAnonymous)
+    })
+  }, [])
 
   const handleCopySecret = useCallback(async () => {
     if (!secretCode) return
@@ -142,15 +152,6 @@ export function RevealSheet({
     hour: '2-digit',
     minute: '2-digit',
   })
-
-  const handleDismissUpgrade = () => {
-    try {
-      localStorage.setItem('bantayog_upgrade_prompted', '1')
-    } catch {
-      /* */
-    }
-    setUpgradeDismissed(true)
-  }
 
   const handleTrackReport = () => {
     window.location.href = `/reports/${referenceCode}`
@@ -232,6 +233,75 @@ export function RevealSheet({
         }}
       >
         <div className="w-10 h-1 bg-[#a3adae] rounded-full mx-auto mt-3 mb-4" />
+
+        {!reducedMotion && (
+          <div className="relative flex items-center justify-center h-20 mb-3">
+            <RadarRings rgb={state === 'success' ? '5,150,105' : '217,119,6'} />
+            <div
+              className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center ${
+                state === 'success'
+                  ? 'bg-success-500 shadow-glow-success'
+                  : 'bg-warning-500 shadow-md'
+              }`}
+            >
+              {state === 'success' ? (
+                <motion.svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 48 48"
+                  fill="none"
+                  className="text-white"
+                >
+                  <motion.circle
+                    cx="24"
+                    cy="24"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{
+                      duration: 0.4,
+                      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+                    }}
+                  />
+                  <motion.path
+                    d="M14 24 L21 31 L34 17"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: 0.3,
+                      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+                    }}
+                  />
+                </motion.svg>
+              ) : state === 'queued' ? (
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  <Save size={24} className="text-white" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  <ShieldCheck size={24} className="text-white" />
+                </motion.div>
+              )}
+            </div>
+          </div>
+        )}
 
         <StatusBanner variant={variant.bannerVariant} icon={variant.icon}>
           {variant.headline}
@@ -365,54 +435,34 @@ export function RevealSheet({
           </div>
         ) : null}
 
-        {showUpgradePrompt && state === 'success' && (
-          <div
-            style={{
-              margin: '12px 0',
-              padding: '12px',
-              borderRadius: 8,
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
-            }}
-          >
-            <p
-              style={{
-                margin: '0 0 8px',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                color: '#001e40',
-              }}
-            >
-              {reportCount === 1
-                ? 'Save your report history — create an account.'
-                : `You have ${String(reportCount)} reports. Create an account to keep them all.`}
+        {state === 'success' && isGuest && (
+          <div className="mt-4 mb-2 rounded-xl overflow-hidden bg-gradient-to-br from-brand-500 to-brand-600 p-4">
+            <p className="text-white font-bold text-base mb-1">
+              Maging Guardian. Samahan mo kaming magbantay.
             </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <a
-                href="/register"
-                style={{
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  color: '#f26522',
-                  textDecoration: 'none',
-                }}
-              >
-                Create account
-              </a>
-              <button
-                type="button"
-                onClick={handleDismissUpgrade}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  fontSize: '0.75rem',
-                  color: '#7b8794',
-                  cursor: 'pointer',
-                }}
-              >
-                Dismiss
-              </button>
-            </div>
+            <p className="text-brand-100 text-xs mb-3">
+              Create a free account to track your reports, earn badges, and help protect your
+              community.
+            </p>
+            <ul className="space-y-1 mb-3">
+              {[
+                'Track reports across devices',
+                'Earn Guardian badges',
+                'Get status updates via app',
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-center gap-2 text-white text-xs">
+                  <CheckCircle size={12} className="text-brand-200 shrink-0" />
+                  {benefit}
+                </li>
+              ))}
+            </ul>
+            <a
+              href="/register"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-white text-brand-600 font-semibold text-sm no-underline active:bg-brand-50 transition-colors"
+            >
+              <LogIn size={14} />
+              Join the Guardian Network →
+            </a>
           </div>
         )}
 

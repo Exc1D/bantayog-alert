@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ClipboardList,
-  EyeOff,
   MapPin,
   Settings,
   User as UserIcon,
@@ -12,13 +11,15 @@ import {
   Flame,
   TrendingUp,
   ChevronRight,
+  Lock,
+  LogOut,
+  CheckCircle,
 } from 'lucide-react'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
 import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
-import { DeleteAccountFlow } from './DeleteAccountFlow.js'
 import type { MyReport } from './MapTab/types.js'
 
 function statusMeta(status: string): { label: string; bg: string; color: string } {
@@ -80,40 +81,80 @@ interface BadgeDef {
   earned: boolean
 }
 
+const BADGE_DEFS: Omit<BadgeDef, 'earned'>[] = [
+  {
+    id: 'first-report',
+    label: 'First Report',
+    description: 'You started helping your community',
+    Icon: Award,
+  },
+  {
+    id: 'verified-reporter',
+    label: 'Verified Reporter',
+    description: 'A report you filed was verified',
+    Icon: ShieldCheck,
+  },
+  {
+    id: 'community-helper',
+    label: 'Community Helper',
+    description: 'Filed 3+ reports',
+    Icon: HeartHandshake,
+  },
+  { id: 'active-citizen', label: 'Active Citizen', description: 'Filed 5+ reports', Icon: Flame },
+]
+
 function useBadges(reports: MyReport[]): BadgeDef[] {
   const count = reports.length
   const verifiedCount = reports.filter((r) => r.status === 'verified').length
+  return BADGE_DEFS.map((def) => ({
+    ...def,
+    earned:
+      def.id === 'first-report'
+        ? count >= 1
+        : def.id === 'verified-reporter'
+          ? verifiedCount >= 1
+          : def.id === 'community-helper'
+            ? count >= 3
+            : count >= 5,
+  }))
+}
 
-  return [
-    {
-      id: 'first-report',
-      label: 'First Report',
-      description: 'You started helping your community',
-      Icon: Award,
-      earned: count >= 1,
-    },
-    {
-      id: 'verified-reporter',
-      label: 'Verified Reporter',
-      description: 'A report you filed was verified',
-      Icon: ShieldCheck,
-      earned: verifiedCount >= 1,
-    },
-    {
-      id: 'community-helper',
-      label: 'Community Helper',
-      description: 'Filed 3+ reports',
-      Icon: HeartHandshake,
-      earned: count >= 3,
-    },
-    {
-      id: 'active-citizen',
-      label: 'Active Citizen',
-      description: 'Filed 5+ reports',
-      Icon: Flame,
-      earned: count >= 5,
-    },
-  ]
+/* ── Guardian pitch card ── */
+function GuardianPitchCard({ onRegister }: { onRegister: () => void }) {
+  return (
+    <div className="mx-4 mt-4 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl p-5 shadow-lg">
+      <div className="flex items-center gap-2 mb-2">
+        <ShieldCheck size={16} className="text-white/90" />
+        <span className="text-white/90 text-xs font-bold uppercase tracking-wider">
+          Guardian Network
+        </span>
+      </div>
+      <h2 className="m-0 text-white text-xl font-bold leading-tight mb-1">Become a Guardian</h2>
+      <p className="m-0 text-white/80 text-sm mb-4 leading-relaxed">
+        Samahan mo kaming magbantay. Register to track your impact, earn recognition, and help your
+        community when it matters most.
+      </p>
+      <div className="flex flex-col gap-2 mb-4">
+        {[
+          'Track your reports across devices',
+          'Earn Guardian badges',
+          'Get recognized by your community',
+        ].map((item) => (
+          <div key={item} className="flex items-center gap-2">
+            <CheckCircle size={14} className="text-white/80 shrink-0" />
+            <span className="text-white/90 text-xs">{item}</span>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onRegister}
+        className="w-full py-3 rounded-xl bg-white text-brand-600 font-bold text-sm active:bg-brand-50 transition-colors cursor-pointer border-none"
+      >
+        Join the Guardian Network →
+      </button>
+    </div>
+  )
 }
 
 /* ── Report milestone tracker ── */
@@ -260,7 +301,44 @@ export function ProfileTab() {
     isRegistered && user.displayName ? user.displayName.slice(0, 2).toUpperCase() : ''
 
   const badges = useBadges(reports)
-  const earnedBadges = badges.filter((b) => b.earned)
+  const resolvedCount = reports.filter(
+    (r) => r.status === 'resolved' || r.status === 'closed',
+  ).length
+  const uniqueAreas = new Set(reports.map((r) => r.municipalityLabel).filter(Boolean)).size
+  const [daysAsGuardian, setDaysAsGuardian] = useState(0)
+  useEffect(() => {
+    /* Derived from reports + current time; must compute synchronously on mount. */
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (reports.length === 0) {
+      setDaysAsGuardian(0)
+      return
+    }
+    const minTs = reports.reduce((min, r) => Math.min(min, r.submittedAt), Infinity)
+    setDaysAsGuardian(Math.max(1, Math.floor((Date.now() - minTs) / 86400000)))
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [reports])
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth())
+      void navigate('/', { replace: true })
+    } catch {
+      // sign out failure is non-critical; page will still function
+    }
+  }
+
+  const handleShare = async () => {
+    const text = `I've helped keep my community safe by filing ${String(reports.length)} ${reports.length === 1 ? 'report' : 'reports'} on Bantayog Alert.`
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ text, url: window.location.origin })
+      } else {
+        await navigator.clipboard.writeText(text)
+      }
+    } catch {
+      // user cancelled or API unavailable
+    }
+  }
 
   if (authLoading) {
     return (
@@ -268,6 +346,63 @@ export function ProfileTab() {
         <div className="px-4 py-12 text-center">
           <SkeletonCard />
         </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div
+        className="h-full overflow-y-auto bg-surface-100"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {/* Hero */}
+        <div className="bg-brand-500 px-4 pt-12 pb-8">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+              <ShieldCheck size={32} className="text-white/70" />
+            </div>
+            <div className="text-center">
+              <p className="m-0 text-lg font-bold text-white">Community Guardian</p>
+              <p className="m-0 text-sm text-white/70 mt-0.5">Not yet registered</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Main pitch */}
+        <GuardianPitchCard
+          onRegister={() => {
+            void navigate('/register')
+          }}
+        />
+
+        {/* Locked badge previews — what you'll earn */}
+        <div className="mx-4 mt-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Award size={16} className="text-surface-400" />
+            <h2 className="m-0 text-sm font-semibold text-surface-500">Guardian Badges</h2>
+            <span className="text-[10px] text-surface-400 ml-auto">Register to unlock</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {BADGE_DEFS.map((badge) => (
+              <div
+                key={badge.id}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border bg-surface-100 border-surface-200 opacity-60"
+              >
+                <div className="w-8 h-8 rounded-full bg-surface-200 flex items-center justify-center relative">
+                  <badge.Icon size={16} className="text-surface-400" />
+                  <Lock size={8} className="absolute -bottom-0.5 -right-0.5 text-surface-500" />
+                </div>
+                <div>
+                  <p className="m-0 text-xs font-semibold text-surface-400">{badge.label}</p>
+                  <p className="m-0 text-[10px] text-surface-400">{badge.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="h-8" />
       </div>
     )
   }
@@ -295,93 +430,111 @@ export function ProfileTab() {
               {isRegistered ? 'Registered reporter' : 'Guest reporter'}
             </p>
           </div>
-          <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
-            {reports.length} {reports.length === 1 ? 'report' : 'reports'} submitted
-          </span>
+          <div className="flex gap-2 flex-wrap justify-center">
+            <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+              {reports.length} {reports.length === 1 ? 'report' : 'reports'} submitted
+            </span>
+            {daysAsGuardian > 0 && (
+              <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                {daysAsGuardian}d as guardian
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Pseudonymous banner */}
+      {/* Guardian pitch for anonymous (pseudonymous) users */}
       {isPseudonymous && (
-        <div className="bg-brand-50 border border-brand-200 rounded-xl mx-4 p-4 mt-4">
-          <div className="flex gap-3 items-start">
-            <EyeOff size={18} className="text-brand-500 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="m-0 text-sm font-semibold text-surface-900 mb-1">
-                You&apos;re using Bantayog anonymously
-              </p>
-              <p className="m-0 text-xs text-surface-500 mb-3">
-                Register to track your reports across devices.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate('/register')
-                }}
-                className="text-xs font-semibold text-brand-500 underline underline-offset-2 bg-transparent border-none cursor-pointer p-0"
-              >
-                Register to track your reports
-              </button>
-            </div>
-          </div>
-        </div>
+        <GuardianPitchCard
+          onRegister={() => {
+            void navigate('/register')
+          }}
+        />
       )}
 
-      {/* Stats row */}
-      <div className="flex gap-3 mx-4 mt-4">
-        <div className="bg-white rounded-xl p-4 flex-1 border border-surface-200 shadow-sm">
+      {/* Stats grid — Your Impact */}
+      <div className="grid grid-cols-2 gap-3 mx-4 mt-4">
+        <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm">
           <p className="m-0 text-2xl font-bold text-surface-900">{reports.length}</p>
           <p className="m-0 text-xs text-surface-500 mt-0.5">Reports Submitted</p>
         </div>
-        <div className="bg-white rounded-xl p-4 flex-1 border border-surface-200 shadow-sm">
+        <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm">
           <p className="m-0 text-2xl font-bold text-brand-500">{verifiedCount}</p>
           <p className="m-0 text-xs text-surface-500 mt-0.5">Verified</p>
         </div>
+        <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm">
+          <p className="m-0 text-2xl font-bold text-success-500">{resolvedCount}</p>
+          <p className="m-0 text-xs text-surface-500 mt-0.5">Resolved</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm">
+          <p className="m-0 text-2xl font-bold text-surface-900">
+            {uniqueAreas > 0 ? uniqueAreas : '—'}
+          </p>
+          <p className="m-0 text-xs text-surface-500 mt-0.5">Areas Helped</p>
+        </div>
       </div>
 
-      {/* Badges */}
-      {earnedBadges.length > 0 && (
-        <div className="mx-4 mt-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Award size={16} className="text-brand-500" />
-            <h2 className="text-sm font-semibold text-surface-700">Achievements</h2>
-          </div>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {badges.map((badge) => (
+      {/* Badges — always visible for motivational progress */}
+      <div className="mx-4 mt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Award size={16} className="text-brand-500" />
+          <h2 className="text-sm font-semibold text-surface-700">Achievements</h2>
+        </div>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          {badges.map((badge) => (
+            <div
+              key={badge.id}
+              className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-opacity ${
+                badge.earned
+                  ? 'bg-white border-surface-200 shadow-sm'
+                  : 'bg-surface-100 border-surface-200 opacity-40'
+              }`}
+            >
               <div
-                key={badge.id}
-                className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-opacity ${
-                  badge.earned
-                    ? 'bg-white border-surface-200 shadow-sm'
-                    : 'bg-surface-100 border-surface-200 opacity-40'
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  badge.earned ? 'bg-brand-100' : 'bg-surface-200'
                 }`}
               >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    badge.earned ? 'bg-brand-100' : 'bg-surface-200'
-                  }`}
-                >
-                  <badge.Icon
-                    size={16}
-                    className={badge.earned ? 'text-brand-500' : 'text-surface-400'}
-                  />
-                </div>
-                <div>
-                  <p
-                    className={`text-xs font-semibold ${badge.earned ? 'text-surface-900' : 'text-surface-400'}`}
-                  >
-                    {badge.label}
-                  </p>
-                  <p className="text-[10px] text-surface-400">{badge.description}</p>
-                </div>
+                <badge.Icon
+                  size={16}
+                  className={badge.earned ? 'text-brand-500' : 'text-surface-400'}
+                />
               </div>
-            ))}
-          </div>
+              <div>
+                <p
+                  className={`text-xs font-semibold ${badge.earned ? 'text-surface-900' : 'text-surface-400'}`}
+                >
+                  {badge.label}
+                </p>
+                <p className="text-[10px] text-surface-400">{badge.description}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Milestones */}
       {reports.length > 0 && <MilestoneTracker reports={reports} />}
+
+      {/* Share prompt */}
+      {reports.length > 0 && (
+        <div className="mx-4 mt-4 bg-brand-50 rounded-xl border border-brand-200 p-4">
+          <p className="m-0 text-sm font-semibold text-surface-900 mb-1">
+            You&apos;ve helped your community {reports.length}{' '}
+            {reports.length === 1 ? 'time' : 'times'}
+          </p>
+          <p className="m-0 text-xs text-surface-500 mb-3">
+            Share that you&apos;re making a difference. Ibahagi ang iyong kontribusyon.
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            className="text-xs font-semibold text-brand-500 border border-brand-300 bg-white rounded-lg px-3 py-2 active:bg-brand-50 transition-colors cursor-pointer"
+          >
+            Share your impact
+          </button>
+        </div>
+      )}
 
       {/* Settings card */}
       <div className="mx-4 mt-4 bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
@@ -449,10 +602,18 @@ export function ProfileTab() {
         )}
       </div>
 
-      {/* Privacy section */}
-      <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-8">
-        <h2 className="m-0 mb-3 text-sm font-semibold text-surface-700">Privacy</h2>
-        <DeleteAccountFlow onGoodbye={() => void navigate('/goodbye')} />
+      {/* Sign out */}
+      <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2">
+        <button
+          type="button"
+          onClick={() => {
+            void handleSignOut()
+          }}
+          className="flex items-center gap-2 text-sm font-medium text-danger-500 bg-transparent border-none cursor-pointer p-0"
+        >
+          <LogOut size={16} />
+          Sign out
+        </button>
       </div>
 
       {/* Bottom padding for nav bar */}
