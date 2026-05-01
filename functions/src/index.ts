@@ -1,5 +1,6 @@
 // Cloud Functions v2 entry point.
 export { setStaffClaims, suspendStaffAccount } from './auth/account-lifecycle.js'
+export { registerCitizen } from './callables/register-citizen.js'
 export {
   withIdempotency,
   IdempotencyMismatchError,

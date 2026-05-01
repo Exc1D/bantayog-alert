@@ -1,4 +1,5 @@
 export { setStaffClaims, suspendStaffAccount } from './auth/account-lifecycle.js';
+export { registerCitizen } from './callables/register-citizen.js';
 export { withIdempotency, IdempotencyMismatchError, IdempotencyInProgressError, } from './idempotency/guard.js';
 export { requestUploadUrl } from './callables/request-upload-url.js';
 export { verifyReport } from './callables/verify-report.js';
@@ -55,6 +56,7 @@ export { recordIncidentResponseEvent } from './callables/record-incident-respons
 export { setRetentionExempt } from './callables/set-retention-exempt.js';
 export { approveErasureRequest } from './callables/approve-erasure-request.js';
 export { requestDataErasure } from './callables/request-data-erasure.js';
+export { requestDataExport } from './callables/request-data-export.js';
 export { setErasureLegalHold } from './callables/set-erasure-legal-hold.js';
 export { erasureSweep } from './triggers/erasure-sweep.js';
 export { retentionSweep } from './triggers/retention-sweep.js';
