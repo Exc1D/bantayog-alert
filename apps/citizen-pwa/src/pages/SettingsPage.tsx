@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, LogOut, AlertTriangle } from 'lucide-react'
-import { signOut } from 'firebase/auth'
-import { auth } from '../services/firebase.js'
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
 import { Toggle } from '../components/Toggle.js'
 import { DeleteAccountFlow } from '../components/DeleteAccountFlow.js'
 import { useToast } from '../hooks/useToast.js'
@@ -110,16 +108,6 @@ export function SettingsPage() {
       }
       setExportDisabled(false)
     }, 60000)
-  }
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth())
-      void navigate('/', { replace: true })
-    } catch (e) {
-      toast('Sign out failed', 'error')
-      console.error('Sign out failed:', e)
-    }
   }
 
   return (
@@ -231,18 +219,6 @@ export function SettingsPage() {
         <div className="flex items-center gap-2 px-4 py-4">
           <AlertTriangle size={16} className="text-[#dc2626]" />
           <DeleteAccountFlow onGoodbye={() => void navigate('/goodbye')} />
-        </div>
-        <div className="flex items-center justify-between px-4 py-4">
-          <button
-            type="button"
-            onClick={() => {
-              void handleSignOut()
-            }}
-            className="flex items-center gap-2 text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-[#dc2626]"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
         </div>
       </div>
 

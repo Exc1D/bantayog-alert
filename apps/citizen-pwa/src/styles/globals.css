@@ -1,11 +1,11 @@
 @import './design-tokens.css';
 
 :root {
-  --color-primary: #001e40;
+  --color-primary: #25292a;
   --color-surface: #f5f7fa;
   --color-card: #ffffff;
   --color-border: #e5e7eb;
-  --color-border-strong: #001e40;
+  --color-border-strong: #25292a;
   --color-text-primary: #1d1d1f;
   --color-text-secondary: #52606d;
   --color-text-muted: #7b8794;
@@ -1000,7 +1000,7 @@ body {
   font-size: 0.875rem;
   color: #191c1e;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23001e40' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2325292A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.625rem center;
   padding-right: 2rem;

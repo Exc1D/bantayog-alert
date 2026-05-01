@@ -67,6 +67,16 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+  /* Leaflet tile guard — any global border rule (e.g. * { border-color }) shifts
+     tile box-model and breaks the tile mosaic. Reset borders on all internal elements. */
+  .leaflet-tile,
+  .leaflet-tile img,
+  .leaflet-tile-pane *,
+  .leaflet-container canvas {
+    border: 0 !important;
+    outline: none !important;
+  }
 }
 
 .no-scrollbar::-webkit-scrollbar {
