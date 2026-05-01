@@ -38,7 +38,7 @@ service cloud.firestore {
           || (isSuperadmin() && muniId in permittedMunis());
     }
     function canReadReportDoc(data) {
-      return (data.visibilityClass == 'public_alertable' && isAuthed())
+      return (data.visibilityClass == 'public_alertable')
           || adminOf(data.municipalityId);
     }
     function canReadEventDoc(data) {
@@ -179,7 +179,7 @@ service cloud.firestore {
     }
 
     match /report_lookup/{publicRef} {
-      allow read: if isAuthed();
+      allow read: if true;
       allow write: if false;
     }
 
@@ -256,7 +256,7 @@ service cloud.firestore {
     // ================================================================
 
     match /system_config/{configId} {
-      allow read: if isAuthed();
+      allow read: if true;
       allow write: if isSuperadmin() && isActivePrivileged();
     }
 
@@ -279,7 +279,7 @@ service cloud.firestore {
     // ================================================================
 
     match /alerts/{a} {
-      allow read: if isAuthed();
+      allow read: if true;
       allow write: if false;
     }
 
