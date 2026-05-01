@@ -128,7 +128,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
           type="button"
           onClick={onBack}
           aria-label="Go back"
-          className="w-10 h-10 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
+          className="w-11 h-11 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
         >
           <ArrowLeft size={24} className="text-surface-700" />
         </button>

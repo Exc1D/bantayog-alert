@@ -454,7 +454,7 @@ export function ProfileTab() {
             onClick={() => {
               void navigate('/login')
             }}
-            className="inline-block w-full px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors border-none cursor-pointer"
+            className="inline-block w-full px-4 py-2 h-11 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors border-none cursor-pointer"
           >
             Already have an account? Sign In
           </button>
