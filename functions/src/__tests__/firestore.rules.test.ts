@@ -70,11 +70,20 @@ beforeAll(async () => {
     })
 
     await db.collection('reports').doc('RPT-123').set({
-      reporterUid: 'anon-citizen-1',
-      visibilityClass: 'pending_review',
+      visibilityClass: 'internal',
       municipalityId: 'daet',
-      status: 'received',
+      status: 'new',
       submittedAt: 1713350400000,
+      schemaVersion: 1,
+    })
+
+    await db.collection('report_private').doc('RPT-123').set({
+      reporterUid: 'anon-citizen-1',
+      municipalityId: 'daet',
+      isPseudonymous: false,
+      publicTrackingRef: 'ABC-123',
+      createdAt: 1713350400000,
+      schemaVersion: 1,
     })
   })
 })
