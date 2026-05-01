@@ -1,14 +1,24 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useFcmToken } from '../useFcmToken'
 
-// Mock Firebase messaging and auth
+// Mock Firebase messaging
 const mockGetToken = vi.fn()
 const mockOnMessage = vi.fn(() => vi.fn())
-vi.mock('firebase/messaging/sw', () => ({
-  getToken: mockGetToken,
-  onMessage: mockOnMessage,
-}))
+const mockDeleteToken = vi.fn()
+
+vi.mock('firebase/messaging', () => {
+  return {
+    getMessaging: vi.fn(() => ({ app: {} })),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    getToken: (...args: unknown[]) => mockGetToken(...args),
+    onMessage: (...args: unknown[]) => mockOnMessage(...args),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    deleteToken: (...args: unknown[]) => mockDeleteToken(...args),
+  }
+})
+
+// Mock Firebase auth and services
 vi.mock('../services/firebase.js', () => ({
   auth: vi.fn(() => ({
     currentUser: { uid: 'test-user', isAnonymous: false },
@@ -16,32 +26,49 @@ vi.mock('../services/firebase.js', () => ({
   hasFirebaseConfig: vi.fn(() => true),
 }))
 
-// Mock Firestore and Functions
+// Mock Firestore
+const mockUpdateDoc = vi.fn()
+const mockDoc = vi.fn(() => ({}))
+const mockGetDoc = vi.fn(() =>
+  Promise.resolve({
+    exists: () => true,
+  }),
+)
+
 vi.mock('firebase/firestore', async () => {
-  const actual = await vi.importActual('firebase/firestore')
+  const actual = await vi.importActual<typeof import('firebase/firestore')>('firebase/firestore')
   return {
     ...actual,
-    updateDoc: vi.fn(),
-    doc: vi.fn(),
-    getDoc: vi.fn(() =>
-      Promise.resolve({
-        exists: () => true,
-      }),
-    ),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    updateDoc: (...args: unknown[]) => mockUpdateDoc(...args),
+
+    doc: (...args: unknown[]) => mockDoc(...args),
+
+    getDoc: (...args: unknown[]) => mockGetDoc(...args),
   }
 })
+
+// Mock Functions
+const mockHttpsCallable = vi.fn(() => vi.fn(() => Promise.resolve({ data: { success: true } })))
+
 vi.mock('firebase/functions', async () => {
-  const actual = await vi.importActual('firebase/functions')
+  const actual = await vi.importActual<typeof import('firebase/functions')>('firebase/functions')
   return {
     ...actual,
-    getFunctions: vi.fn(),
-    httpsCallable: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    getFunctions: vi.fn(() => ({ app: {} })),
+    httpsCallable: (...args: unknown[]) => mockHttpsCallable(...args),
   }
 })
 
 describe('useFcmToken', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetToken.mockReset()
+    mockOnMessage.mockReset()
+    mockDeleteToken.mockReset()
+    mockHttpsCallable.mockReset()
+    mockHttpsCallable.mockReturnValue(vi.fn(() => Promise.resolve({ data: { success: true } })))
+
     // Mock Notification API
     Object.defineProperty(globalThis, 'Notification', {
       value: {
@@ -64,5 +91,63 @@ describe('useFcmToken', () => {
     const { result } = renderHook(() => useFcmToken())
     expect(typeof result.current.requestPermission).toBe('function')
     expect(typeof result.current.disable).toBe('function')
+  })
+
+  it('should request permission and get token', async () => {
+    const { Notification } = globalThis as unknown as {
+      Notification: {
+        permission: NotificationPermission
+        requestPermission: ReturnType<typeof vi.fn>
+      }
+    }
+    Notification.requestPermission.mockResolvedValue('granted')
+    mockGetToken.mockResolvedValue('test-fcm-token')
+
+    const { result } = renderHook(() => useFcmToken())
+
+    let success = false
+    await act(async () => {
+      success = await result.current.requestPermission()
+    })
+
+    expect(success).toBe(true)
+    expect(Notification.requestPermission).toHaveBeenCalled()
+    expect(mockGetToken).toHaveBeenCalled()
+    expect(result.current.permission).toBe('granted')
+    expect(result.current.token).toBe('test-fcm-token')
+    expect(result.current.enabled).toBe(true)
+  })
+
+  it('should disable and clear token', async () => {
+    mockDeleteToken.mockResolvedValue(undefined)
+
+    const { result } = renderHook(() => useFcmToken())
+
+    // First set a token
+    const { Notification } = globalThis as unknown as {
+      Notification: {
+        permission: NotificationPermission
+        requestPermission: ReturnType<typeof vi.fn>
+      }
+    }
+    Notification.requestPermission.mockResolvedValue('granted')
+    mockGetToken.mockResolvedValue('test-fcm-token')
+
+    await act(async () => {
+      await result.current.requestPermission()
+    })
+
+    expect(result.current.token).toBe('test-fcm-token')
+    expect(result.current.enabled).toBe(true)
+
+    // Now disable
+    await act(async () => {
+      await result.current.disable()
+    })
+
+    expect(mockDeleteToken).toHaveBeenCalled()
+    expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'unsubscribeFromAlerts')
+    expect(result.current.token).toBeNull()
+    expect(result.current.enabled).toBe(false)
   })
 })
