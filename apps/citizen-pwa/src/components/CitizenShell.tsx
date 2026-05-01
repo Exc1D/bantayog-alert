@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Map, Rss, CirclePlus, Bell, User, WifiOff } from 'lucide-react'
 import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
+import { useAlertReadState } from '../hooks/useAlertReadState.js'
+import { useAlerts } from '../hooks/useAlerts.js'
 import { useUIStore } from '../lib/store.js'
 import '../styles/design-tokens.css'
 
@@ -27,9 +29,15 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { isOnline, queueCount } = useOfflineQueueCount()
+  const { alerts } = useAlerts()
+  const { unreadCount } = useAlertReadState()
   const navDirection = useUIStore((s) => s.navDirection)
   const setNavDirection = useUIStore((s) => s.setNavDirection)
   const showOfflineBanner = !isOnline
+
+  // Calculate unread alerts count
+  const alertIds = alerts.map((a) => a.id)
+  const unreadAlerts = unreadCount(alertIds)
 
   const handleNav = (path: string) => {
     const currentIndex = TAB_PATHS.indexOf(pathname as TabPath)
@@ -142,6 +150,14 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                 >
                   {label}
                 </span>
+                {unreadAlerts > 0 && label === 'Alerts' && (
+                  <span
+                    className="absolute top-1 right-2 w-5 h-5 bg-error-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                    aria-label={`${String(unreadAlerts)} unread alert${unreadAlerts !== 1 ? 's' : ''}`}
+                  >
+                    {unreadAlerts > 9 ? '9+' : String(unreadAlerts)}
+                  </span>
+                )}
                 {isActive && (
                   <motion.div
                     layoutId="navbar-indicator"
