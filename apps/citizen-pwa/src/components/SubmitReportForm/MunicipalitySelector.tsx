@@ -7,6 +7,7 @@ interface MunicipalitySelectorProps {
 }
 
 export function MunicipalitySelector({ value, onChange, error }: MunicipalitySelectorProps) {
+  const municipalityErrorId = error ? 'report-municipality-error' : undefined
   return (
     <div className="field-group">
       <label htmlFor="report-municipality" className="field-label">
@@ -15,6 +16,8 @@ export function MunicipalitySelector({ value, onChange, error }: MunicipalitySel
       <select
         id="report-municipality"
         name="municipality"
+        aria-invalid={Boolean(error)}
+        aria-describedby={municipalityErrorId}
         className="text-select"
         value={value}
         onChange={(e) => {
@@ -28,7 +31,11 @@ export function MunicipalitySelector({ value, onChange, error }: MunicipalitySel
           </option>
         ))}
       </select>
-      {error ? <p className="field-error">{error}</p> : null}
+      {error ? (
+        <p id="report-municipality-error" className="field-error">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

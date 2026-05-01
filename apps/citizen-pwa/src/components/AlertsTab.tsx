@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { useAlerts } from '../hooks/useAlerts.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
 import { AlertDetailSheet } from './AlertDetailSheet.js'
+import { severityMeta } from '../utils/alertUtils.js'
 import type { AlertDoc } from '@bantayog/shared-types'
 
 const SEVERITY_ORDER: Record<string, number> = {
@@ -12,21 +13,6 @@ const SEVERITY_ORDER: Record<string, number> = {
   medium: 2,
   low: 3,
   info: 4,
-}
-
-function severityMeta(severity: string): { label: string; bg: string; color: string } {
-  switch (severity) {
-    case 'critical':
-      return { label: 'CRITICAL', bg: '#fecaca', color: '#7f1d1d' }
-    case 'high':
-      return { label: 'HIGH', bg: '#fee2e2', color: '#991b1b' }
-    case 'medium':
-      return { label: 'MEDIUM', bg: '#fff5ef', color: '#a73400' }
-    case 'low':
-      return { label: 'LOW', bg: '#e0e7f0', color: '#001e40' }
-    default:
-      return { label: 'INFO', bg: '#dbeafe', color: '#1e40af' }
-  }
 }
 
 function severityBorderClass(severity: string): string {
@@ -101,7 +87,7 @@ function AlertCard({
       {isUnread && (
         <span
           className="absolute top-4 right-4 w-2 h-2 rounded-full bg-brand-500"
-          aria-label="Unread"
+          aria-hidden="true"
         />
       )}
 
@@ -251,15 +237,13 @@ export function AlertsTab() {
       </div>
 
       {/* Alert detail sheet */}
-      {selectedAlert && (
-        <AlertDetailSheet
-          alert={selectedAlert}
-          open={!!selectedAlert}
-          onClose={() => {
-            setSelectedAlert(null)
-          }}
-        />
-      )}
+      <AlertDetailSheet
+        alert={selectedAlert}
+        open={!!selectedAlert}
+        onClose={() => {
+          setSelectedAlert(null)
+        }}
+      />
     </div>
   )
 }

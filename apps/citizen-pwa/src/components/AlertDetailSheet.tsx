@@ -1,25 +1,11 @@
 import { Building2, Clock, X } from 'lucide-react'
 import type { AlertDoc } from '@bantayog/shared-types'
+import { severityMeta } from '../utils/alertUtils.js'
 
 interface AlertDetailSheetProps {
-  alert: AlertDoc & { issuedBy?: string }
+  alert: (AlertDoc & { issuedBy?: string }) | null
   open: boolean
   onClose: () => void
-}
-
-function severityMeta(severity: string): { label: string; bg: string; color: string } {
-  switch (severity) {
-    case 'critical':
-      return { label: 'CRITICAL', bg: '#fecaca', color: '#7f1d1d' }
-    case 'high':
-      return { label: 'HIGH', bg: '#fee2e2', color: '#991b1b' }
-    case 'medium':
-      return { label: 'MEDIUM', bg: '#fff5ef', color: '#a73400' }
-    case 'low':
-      return { label: 'LOW', bg: '#e0e7f0', color: '#001e40' }
-    default:
-      return { label: 'INFO', bg: '#dbeafe', color: '#1e40af' }
-  }
 }
 
 function formatTimestamp(ts: number): string {
@@ -31,9 +17,9 @@ function formatTimestamp(ts: number): string {
 }
 
 export function AlertDetailSheet({ alert, open, onClose }: AlertDetailSheetProps) {
-  const { label, bg, color } = severityMeta(alert.severity)
+  if (!open || !alert) return null
 
-  if (!open) return null
+  const { label, bg, color } = severityMeta(alert.severity)
 
   return (
     <div className="fixed inset-0 z-50">
