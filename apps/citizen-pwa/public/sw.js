@@ -112,8 +112,17 @@ function readRequest(req) {
 }
 
 async function submitDraft(draft) {
+  const reporterUid =
+    typeof draft.reporter?.uid === 'string'
+      ? draft.reporter.uid
+      : typeof draft.reporterUid === 'string'
+        ? draft.reporterUid
+        : typeof draft.reporterId === 'string'
+          ? draft.reporterId
+          : undefined
+
   const inboxDoc = {
-    reporterUid: draft.reporterUid ?? draft.reporterId ?? '',
+    ...(reporterUid ? { reporterUid } : {}),
     clientCreatedAt: draft.clientCreatedAt,
     idempotencyKey: draft.idempotencyKey,
     publicRef: draft.publicRef,
@@ -145,7 +154,9 @@ async function submitDraft(draft) {
   function toFirestoreValue(value) {
     if (value === null || value === undefined) return { nullValue: 'NULL_VALUE' }
     if (typeof value === 'string') return { stringValue: value }
-    if (typeof value === 'number') return { integerValue: String(value) }
+    if (typeof value === 'number') {
+      return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value }
+    }
     if (typeof value === 'boolean') return { booleanValue: value }
     if (Array.isArray(value)) return { arrayValue: { values: value.map(toFirestoreValue) } }
     if (typeof value === 'object') {

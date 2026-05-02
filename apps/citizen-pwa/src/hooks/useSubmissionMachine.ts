@@ -139,8 +139,8 @@ export function useSubmissionMachine({
                 reg as unknown as { sync: { register: (tag: string) => Promise<void> } }
               ).sync.register('submit-report')
             }
-          } catch {
-            // Background Sync API unavailable or not supported.
+          } catch (err: unknown) {
+            console.warn('[useSubmissionMachine] Background Sync registration failed:', err)
           }
           return null
         }

@@ -35,6 +35,16 @@ describe('callables', () => {
       mediaCount: 3,
     })
   })
+
+  it('throws on invalid server response from requestDataExport', async () => {
+    const mockCall = vi.fn().mockResolvedValue({
+      data: { downloadUrl: null, expiresAt: 'not-a-number' },
+    })
+    mockHttpsCallable.mockReturnValue(mockCall)
+    await expect(requestDataExport()).rejects.toThrow('invalid server response')
+    expect(mockHttpsCallable).toHaveBeenCalledWith('mocked-functions', 'requestDataExport')
+    expect(mockCall).toHaveBeenCalled()
+  })
 })
 
 describe('registerCitizen', () => {

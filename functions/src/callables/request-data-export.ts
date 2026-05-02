@@ -163,8 +163,9 @@ export async function requestDataExportImpl(
           )
           item.downloadUrl = url
           item.expiresAt = expiresAt
-        } catch {
-          // Storage path may not exist yet; omit URL.
+        } catch (err: unknown) {
+          console.error(`[requestDataExport] Failed to sign URL for ${m.storagePath}:`, err)
+          // Storage path may not exist yet; omit URL and continue.
         }
         mediaItems.push(item)
       }

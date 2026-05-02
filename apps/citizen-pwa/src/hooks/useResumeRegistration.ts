@@ -26,10 +26,10 @@ export function useResumeRegistration(): void {
     let latestUid: string | null = null
     const unsubscribe = onAuthStateChanged(auth(), (user) => {
       if (!active) return
+      latestUid = user?.uid ?? null
       if (!user || user.isAnonymous) return
       if (!user.phoneNumber) return
 
-      latestUid = user.uid
       const currentUid = user.uid
 
       // User completed phone verification at some point. Check if the citizen
@@ -41,7 +41,7 @@ export function useResumeRegistration(): void {
           void navigate(`/register?${RESUME_QUERY}`, { replace: true })
         })
         .catch((err: unknown) => {
-          if (currentUid !== latestUid) return
+          if (!active || currentUid !== latestUid) return
           console.warn('[useResumeRegistration] users/{uid} read failed:', err)
         })
     })

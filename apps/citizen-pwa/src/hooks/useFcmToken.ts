@@ -8,11 +8,11 @@ function playAlertSound(): void {
   try {
     const audio = new Audio('/notification.wav')
     audio.volume = 0.6
-    void audio.play().catch(() => {
-      // Autoplay may be blocked without user gesture; silently no-op
+    void audio.play().catch((err: unknown) => {
+      console.warn('[useFcmToken] Alert sound playback blocked:', err)
     })
-  } catch {
-    // Audio constructor not available
+  } catch (err: unknown) {
+    console.warn('[useFcmToken] Audio constructor not available:', err)
   }
 }
 

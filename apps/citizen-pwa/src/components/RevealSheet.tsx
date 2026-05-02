@@ -208,6 +208,10 @@ export function RevealSheet({
   const handleCallHotline = () => {
     // tel: links require digits only
     const telDigits = contact.hotline.replace(/[^\d+]/g, '')
+    if (!telDigits || !/\d/.test(telDigits)) {
+      console.warn('[RevealSheet] Invalid hotline number:', contact.hotline)
+      return
+    }
     window.location.href = `tel:${telDigits}`
   }
 
