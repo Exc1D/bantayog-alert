@@ -307,9 +307,19 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         )}
       </div>
 
-      {/* Bottom action */}
-      {locationMethod !== null && (
-        <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
+      {/* Bottom action — always rendered so users always see what to do next.
+          Before a location method is picked, show a polite hint instead of
+          hiding the entire region (which previously felt like silent failure). */}
+      <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
+        {locationMethod === null ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className="text-center text-sm font-medium text-surface-700"
+          >
+            Pick a location method above (GPS or Manual) to continue.
+          </p>
+        ) : (
           <Button
             variant="primary"
             fullWidth
@@ -318,8 +328,8 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
           >
             {isSubmitting ? 'Please wait...' : 'Review Report'}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

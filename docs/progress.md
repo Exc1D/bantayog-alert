@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-05-02 — Citizen PWA QA Follow-ups (branch: `fix/citizen-pwa-qa-followups`)
+
+Addressed 4 issues from the 10-subagent staging QA pass. Scope intentionally
+narrow (3 files) — broader a11y `<main>` sweep across non-shell pages booked
+as a follow-up.
+
+| #   | Issue                                                   | Fix                                                                                                                                                                                  | Files                                                                |
+| --- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| 1   | Offline mode showed Chrome dinosaur                     | Precache `/`, `/index.html`, `/manifest.webmanifest`, both icons on `install`; navigation fetches fall back to cached `/index.html`; cache version bumped `bantayog_shell_v1` → `v2` | `apps/citizen-pwa/public/sw.js`                                      |
+| 2   | Settings labels failed WCAG AA contrast (3.1:1 / 4.0:1) | Replaced 6× `text-[#768081]` → `text-surface-600` (~7.4:1) and 1× `text-[#a3adae]` → `text-surface-500` (~5.8:1) using existing Tailwind tokens                                      | `apps/citizen-pwa/src/pages/SettingsPage.tsx`                        |
+| 3   | Missing `<main>` landmark on Settings                   | Outer `<div>` → `<main id="main-content">` (matches the skip-link target ID used by `CitizenShell`)                                                                                  | same file as #2                                                      |
+| 4   | Wizard Step 2 silently swallowed empty submit           | Bottom action region is now always rendered: shows a `role="status"`/`aria-live="polite"` hint while `locationMethod === null`; renders the existing Button once a method is picked  | `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx` |
+
+**Gate:** `pnpm --filter @bantayog/citizen-pwa lint typecheck` clean,
+`npx vitest run` 319/319 pass, `pnpm build` emits all 5 precache URLs.
+
+**Pending follow-up sweep (NOT in this PR):** `<main>` landmarks for the other
+non-shell screens — RegisterPage, LoginPage, NotFoundPage, GoodbyeScreen,
+SubmitReportForm root, LookupScreen, TrackingScreen, ReceiptScreen,
+IncidentDetailPage, Onboarding. Defer until QA flags them or the next a11y
+sweep — bundling them now would have blown the 3-file scope budget.
+
+**Verification still required (manual, after staging redeploy):**
+
+1. Chrome DevTools → Network → Offline → reload `/` → app shell renders (not dino)
+2. Lighthouse a11y on `/settings` → score ≥ 95, no contrast violations
+3. `/report` → Step 2 → confirm "Pick a location method above…" hint visible before tapping GPS/Manual
+
+---
+
 ## 2026-05-02 — Citizen PWA Hardening Sweep (branch: feat/per-jurisdiction-config)
 
 ### All 7 Clusters — COMPLETE
