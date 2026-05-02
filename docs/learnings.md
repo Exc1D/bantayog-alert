@@ -72,6 +72,9 @@
 - In `onAuthStateChanged`, guard `.then`/`.catch` with an `active` flag + uid check to prevent stale promises overwriting state.
 - `awaitFreshAuthToken` must start `getIdToken(true)` inside the Promise constructor so rejection can unsubscribe and reject.
 - Null-check `awaitFreshAuthToken` before invoking `httpsCallable`; missing user = opaque failure.
+- `linkWithPhoneNumber` requires a non-null `currentUser`. If a `/register` route uses it without an upstream `signInAnonymously()` or prior `signInWithPhoneNumber()`, fresh users get "Not signed in" with no recovery path. Either guard the route, sign in anonymously on mount, or use `signInWithPhoneNumber` and link later.
+- For surviving phone numbers across adjacent auth flows (login → register), prefer `sessionStorage["bantayog.last-phone"]` over React Router navigation state. State is dropped on reload; sessionStorage isn't, and survives the full-page reCAPTCHA round-trips that phone auth needs.
+- `useState(() => sessionStorage.getItem(...))` lazy initializer is safer than `useEffect` + `setState` for storage seeds — no flash of default value, no `react-hooks/set-state-in-effect` warning, and any throw inside the initializer is caught by React (just guard with try/catch for private-mode/security errors).
 
 ## Phase 6 Responder App
 
@@ -144,3 +147,11 @@
 - Service Worker cannot use Firebase JS SDK (requires bundling); use Firestore REST API (`firestore.googleapis.com/v1/projects/...`) for SW background sync writes.
 - Idempotency key on the SW write ensures dedup if both SW and in-app machine both succeed for the same draft.
 - Image compression in the browser: canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser path (avoids `createImageBitmap` + `OffscreenCanvas` compatibility issues).
+
+## Wizard / Multi-step Forms
+
+- "In-progress wizard state" and "finalized draft awaiting submission" are different concerns — keep them in separate stores. `draft-store` requires `publicRef`, `secretHash`, `correlationId`, `idempotencyKey` (all populated at submit); shoehorning partial wizard state into it forces placeholder values that pollute the queued-draft list. A small dedicated `wizard-snapshot` store (localforage instance, 24h TTL, single-record `wizard-in-progress` key) is cleaner.
+- Default a required selector to `''`, not a "first" value. A seeded default like `useState('flood')` looks harmless but it lets bypass paths (a "Skip" button calling the same `handleNext`) silently submit the seeded value. Combine with handleNext-level validation + inline `role="alert"` error.
+- Do not persist `File`/`Blob` in IDB at per-keystroke cadence. Snapshot writes happen on every step transition; a 5 MB photo encoded into the snapshot bloats every write. Persist scalar form data only; let the user re-attach photos on resume (acceptable since photos are usually optional).
+- Mid-form persistence requires accepting initial-value props on each step component. Without `initialReportType` etc., a back-navigation from Step 2 to Step 1 (or a refresh that resumes mid-wizard) re-mounts the step with fresh defaults and silently loses the user's input.
+- Snapshot save effect must be gated on a `hasLoadedSnapshot` boolean, otherwise the initial empty `formData` clobbers the just-loaded snapshot before the resume effect commits. Two-effect pattern: load on mount, then enable saves.

@@ -18,7 +18,17 @@ export function RegisterPage() {
   const isResume = searchParams.get('resume') === 'registration'
 
   const [step, setStep] = useState<Step>(isResume ? 'consent' : 'phone')
-  const [phone, setPhone] = useState('+63')
+  // Seed from sessionStorage so users who bounce here from /login (or back)
+  // do not have to retype the +63 prefix. The resume effect below still
+  // overrides this with `currentUser.phoneNumber` when applicable.
+  const [phone, setPhone] = useState(() => {
+    if (isResume) return '+63'
+    try {
+      return sessionStorage.getItem('bantayog.last-phone') ?? '+63'
+    } catch {
+      return '+63'
+    }
+  })
   const [otp, setOtp] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [consentGiven, setConsentGiven] = useState(false)
@@ -165,14 +175,26 @@ export function RegisterPage() {
 
         {step === 'phone' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <label
+              htmlFor="register-phone"
+              className="mb-4 text-[0.9375rem] font-semibold text-[#001e40] block"
+            >
               Enter your phone number
-            </p>
+            </label>
             <input
+              id="register-phone"
+              name="phone"
+              autoComplete="tel"
               type="tel"
               value={phone}
               onChange={(e) => {
-                setPhone(e.target.value)
+                const next = e.target.value
+                setPhone(next)
+                try {
+                  sessionStorage.setItem('bantayog.last-phone', next)
+                } catch {
+                  // Private mode / quota / security errors — best effort persistence.
+                }
               }}
               placeholder="+63XXXXXXXXXX"
               className="w-full h-14 rounded-xl border border-[#d5dedd] px-4 text-base focus:border-[#0f9488] focus:outline-none mb-4"
