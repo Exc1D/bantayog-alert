@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 
 const NOTICE_VERSION = '1.0'
@@ -10,28 +10,34 @@ interface Props {
 
 export function PrivacyNoticeModal({ uid }: Props) {
   const [visible, setVisible] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    void getDoc(doc(db, 'users', uid))
+    void getDoc(doc(db, 'user_consents', uid))
       .then((snap) => {
-        const version = snap.data()?.privacyNoticeVersion as string | undefined
+        const version = snap.data()?.consentVersion as string | undefined
         if (version !== NOTICE_VERSION) setVisible(true)
       })
       .catch((err: unknown) => {
-        console.error('[PrivacyNotice] Failed to read user doc:', err)
+        console.error('[PrivacyNotice] Failed to read consent doc:', err)
         setVisible(true)
       })
   }, [uid])
 
-  function handleDismiss() {
-    setVisible(false)
-    void setDoc(
-      doc(db, 'users', uid),
-      { privacyNoticeVersion: NOTICE_VERSION },
-      { merge: true },
-    ).catch((err: unknown) => {
+  async function handleDismiss() {
+    setIsSubmitting(true)
+    try {
+      await setDoc(doc(db, 'user_consents', uid), {
+        consentVersion: NOTICE_VERSION,
+        consentGivenAt: serverTimestamp(),
+        method: 'in_app_modal',
+      })
+      setVisible(false)
+    } catch (err: unknown) {
       console.error('[PrivacyNotice] Failed to persist consent:', err)
-    })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (!visible) return null
@@ -76,7 +82,8 @@ export function PrivacyNoticeModal({ uid }: Props) {
           coordinate disaster response. Your data is protected under Republic Act 10173.
         </p>
         <button
-          onClick={handleDismiss}
+          onClick={() => void handleDismiss()}
+          disabled={isSubmitting}
           style={{
             width: '100%',
             padding: '0.75rem',
@@ -85,10 +92,11 @@ export function PrivacyNoticeModal({ uid }: Props) {
             border: 'none',
             borderRadius: '0.5rem',
             fontWeight: 600,
-            cursor: 'pointer',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            opacity: isSubmitting ? 0.7 : 1,
           }}
         >
-          Sang-ayon / I Agree
+          {isSubmitting ? 'Saving…' : 'Sang-ayon / I Agree'}
         </button>
       </div>
     </div>

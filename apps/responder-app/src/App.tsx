@@ -1,4 +1,3 @@
-import './App.module.css'
 import { useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { AppRouter } from './routes'
@@ -10,7 +9,7 @@ import { useResponderTelemetry } from './hooks/useResponderTelemetry'
 import { VersionGate } from './components/VersionGate'
 import { PrivacyNoticeModal } from './components/PrivacyNoticeModal'
 
-function FcmSetup() {
+export function FcmSetup() {
   const { user } = useAuth()
   const { register } = useRegisterFcmToken({
     responderDocPath: user ? `responders/${user.uid}` : '',
@@ -29,7 +28,78 @@ function FcmSetup() {
     if (!('serviceWorker' in navigator)) return
     navigator.serviceWorker
       .register('/firebase-messaging-sw.js')
-      .then(() => register())
+      .then((registration) => {
+        const config = {
+          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+          appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        }
+
+        const requiredFields = [
+          'apiKey',
+          'authDomain',
+          'projectId',
+          'storageBucket',
+          'messagingSenderId',
+          'appId',
+        ] as const
+        for (const field of requiredFields) {
+          if (!config[field]) {
+            console.warn(`[FcmSetup] Missing Firebase config field: ${field}`)
+            return
+          }
+        }
+
+        let configSentPromise: Promise<void>
+
+        if (registration.active) {
+          registration.active.postMessage({
+            type: 'FIREBASE_CONFIG',
+            config,
+          })
+          configSentPromise = Promise.resolve()
+        } else if (registration.installing) {
+          const installingWorker = registration.installing
+          configSentPromise = new Promise<void>((resolve) => {
+            installingWorker.addEventListener('statechange', (event) => {
+              const worker = event.target as ServiceWorker
+              if (worker.state === 'activated') {
+                worker.postMessage({ type: 'FIREBASE_CONFIG', config })
+                resolve()
+              }
+            })
+          })
+        } else if (registration.waiting) {
+          const waitingWorker = registration.waiting
+          configSentPromise = new Promise<void>((resolve) => {
+            waitingWorker.addEventListener('statechange', (event) => {
+              const worker = event.target as ServiceWorker
+              if (worker.state === 'activated') {
+                worker.postMessage({ type: 'FIREBASE_CONFIG', config })
+                resolve()
+              }
+            })
+          })
+        } else {
+          configSentPromise = new Promise<void>((resolve) => {
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing
+              newWorker?.addEventListener('statechange', (event) => {
+                const worker = event.target as ServiceWorker
+                if (worker.state === 'activated') {
+                  worker.postMessage({ type: 'FIREBASE_CONFIG', config })
+                  resolve()
+                }
+              })
+            })
+          })
+        }
+
+        return configSentPromise.then(() => register())
+      })
       .catch((err: unknown) => {
         console.warn('SW registration failed:', err)
       })

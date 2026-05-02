@@ -37,8 +37,9 @@ service cloud.firestore {
           || (isSuperadmin() && muniId in permittedMunis());
     }
     function canReadReportDoc(data) {
-      return (data.visibilityClass == 'public_alertable')
-          || adminOf(data.municipalityId);
+      return ('visibilityClass' in data && data.visibilityClass == 'public_alertable')
+          || adminOf(data.municipalityId)
+          || (isResponder() && isActivePrivileged() && exists(/databases/$(database)/documents/dispatches/$(data.reportId + '_' + uid())));
     }
     function canReadEventDoc(data) {
       return isActivePrivileged()
@@ -122,7 +123,9 @@ service cloud.firestore {
                     && (adminOf(get(/databases/$(database)/documents/reports/$(reportId)).data.municipalityId)
                         || (isAgencyAdmin()
                             && exists(/databases/$(database)/documents/report_ops/$(reportId))
-                            && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds));
+                            && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds)
+                        || (isResponder()
+                            && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))));
         allow create: if isActivePrivileged()
                       && request.auth.uid == request.resource.data.authorUid
                       && (
@@ -131,6 +134,10 @@ service cloud.firestore {
                           isAgencyAdmin()
                           && exists(/databases/$(database)/documents/report_ops/$(reportId))
                           && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds
+                        )
+                        || (
+                          isResponder()
+                          && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))
                         )
                       );
         allow update, delete: if false;
@@ -289,6 +296,20 @@ service cloud.firestore {
     match /active_accounts/{accountUid} {
       allow read: if isAuthed() && uid() == accountUid;
       allow write: if false;
+    }
+
+    match /user_consents/{consentUid} {
+      allow read: if isAuthed() && uid() == consentUid;
+      allow create: if isAuthed() && uid() == consentUid
+                  && request.resource.data.keys().hasAll(['consentVersion', 'consentGivenAt', 'method'])
+                  && request.resource.data.keys().hasOnly(['consentVersion', 'consentGivenAt', 'method'])
+                  && request.resource.data.consentVersion is string
+                  && request.resource.data.consentVersion.size() >= 1
+                  && request.resource.data.consentGivenAt is timestamp
+                  && request.resource.data.method is string
+                  && request.resource.data.method in ['in_app_modal', 'web_form', 'sms'];
+      allow update: if false;
+      allow delete: if false;
     }
 
     match /claim_revocations/{accountUid} {
