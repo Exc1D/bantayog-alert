@@ -1,4 +1,3 @@
-import './App.module.css'
 import { useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { AppRouter } from './routes'
@@ -29,7 +28,36 @@ function FcmSetup() {
     if (!('serviceWorker' in navigator)) return
     navigator.serviceWorker
       .register('/firebase-messaging-sw.js')
-      .then(() => register())
+      .then((registration) => {
+        const config = {
+          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+          appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        }
+
+        const sendConfig = () => {
+          registration.active?.postMessage({
+            type: 'FIREBASE_CONFIG',
+            config,
+          })
+        }
+
+        if (registration.active) {
+          sendConfig()
+        } else {
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing
+            newWorker?.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated') sendConfig()
+            })
+          })
+        }
+
+        return register()
+      })
       .catch((err: unknown) => {
         console.warn('SW registration failed:', err)
       })
