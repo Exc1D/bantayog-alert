@@ -9,6 +9,7 @@ import { useToast } from '../hooks/useToast.js'
 import { useFcmToken } from '../hooks/useFcmToken.js'
 import { Toast } from '../components/Toast.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
+import { requestDataExport } from '../services/callables.js'
 import {
   getAlertSoundsEnabled,
   getAutoLocationEnabled,
@@ -86,10 +87,24 @@ export function SettingsPage() {
     }
   }
 
-  // Data export backend is being rebuilt — see plan Cluster 6.
-  // Until that ships, surface the limitation honestly instead of pretending success.
-  const handleDataExportComingSoon = () => {
-    toast('Data export is being rebuilt — available in the next release.', 'info')
+  const handleDataExport = async () => {
+    try {
+      const { downloadUrl } = await requestDataExport()
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = 'bantayog-export.json'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      toast('Your data is downloading.', 'success')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('resource-exhausted')) {
+        toast('You requested an export recently. Try again in a minute.', 'info')
+      } else {
+        toast('Export failed. Please try again.', 'error')
+      }
+    }
   }
 
   return (
@@ -191,13 +206,13 @@ export function SettingsPage() {
           <div className="flex flex-col gap-1 px-4 py-4">
             <button
               type="button"
-              onClick={handleDataExportComingSoon}
-              className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-left text-[#768081]"
+              onClick={() => void handleDataExport()}
+              className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-left text-[#25292a]"
             >
-              Download my data — Coming soon
+              Download my data
             </button>
             <span className="text-xs text-[#a3adae]">
-              Data export is being rebuilt and will return in the next release.
+              Receive a JSON export of your profile, reports, and media.
             </span>
           </div>
         )}

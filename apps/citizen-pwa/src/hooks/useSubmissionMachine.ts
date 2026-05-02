@@ -168,6 +168,22 @@ export function useSubmissionMachine({
     if (publicRef) {
       setState('server_confirmed')
       onSuccess(publicRef)
+    } else {
+      // SW background sync — complementary to in-app retry (Chrome/Edge only).
+      try {
+        const reg = (
+          self as unknown as {
+            registration?: { sync?: { register: (tag: string) => Promise<void> } }
+          }
+        ).registration
+        if (reg?.sync) {
+          reg.sync.register('submit-report').catch(() => {
+            // SW may not be ready yet; best-effort.
+          })
+        }
+      } catch {
+        // Background Sync API unavailable or not supported.
+      }
     }
   }, [state, doSubmit, onSuccess])
 

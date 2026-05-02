@@ -134,3 +134,13 @@
 - `@typescript-eslint/no-unnecessary-condition` flags `navigator.storage?.estimate` when the type says `storage` always exists — use runtime `.catch()` instead of optional chain for happy-dom safety.
 - `react-hooks/set-state-in-effect` rejects synchronous `setState` in `useEffect` body, even inside `catch` — move to `.catch()` callback on the Promise instead.
 - Risky backend changes need emulator verification first; never prod-deploy in the same session.
+- Post-impl-review catch: IndexedDB database names must match exactly between SW and app. localforage wraps IndexedDB with its own internal schema, so raw IDB access from SW to a localforage-managed DB is fragile and may require a dedicated sync-metadata store.
+- Storage rules default-deny means any new path needs an explicit allow rule before SDK access works. Signed URLs bypass rules, but defense-in-depth requires the explicit rule anyway.
+- `@typescript-eslint/no-confusing-void-expression` rejects `renderHook(() => useHook())` when the hook returns void — wrap in braces: `renderHook(() => { useHook() })`.
+
+## PWA / Service Worker
+
+- Background Sync API is Chromium-only; iOS Safari falls back to in-app retry machine — no feature detection needed at call site since `register('sync')` is a no-op on unsupported browsers.
+- Service Worker cannot use Firebase JS SDK (requires bundling); use Firestore REST API (`firestore.googleapis.com/v1/projects/...`) for SW background sync writes.
+- Idempotency key on the SW write ensures dedup if both SW and in-app machine both succeed for the same draft.
+- Image compression in the browser: canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser path (avoids `createImageBitmap` + `OffscreenCanvas` compatibility issues).

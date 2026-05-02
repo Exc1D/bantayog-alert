@@ -12,6 +12,18 @@ export const municipalityDocSchema = z
       })
       .strict(),
     defaultSmsLocale: z.enum(['tl', 'en']).optional(),
+    // Per-jurisdiction MDRRMO contact info shown to citizens after submission.
+    // Optional so legacy seed docs validate; consumers must fall back to a
+    // project-wide default when absent.
+    mdrrmoLabel: z.string().min(1).max(80).optional(),
+    mdrrmoHotline: z
+      .string()
+      .regex(/^\+?\d[\d\s\-()]{6,20}$/)
+      .optional(),
+    mdrrmoSmsShortCode: z
+      .string()
+      .regex(/^\d{3,6}$/)
+      .optional(),
     schemaVersion: z.number().int().positive(),
   })
   .strict()
@@ -26,6 +38,9 @@ export const CAMARINES_NORTE_MUNICIPALITIES: readonly Omit<MunicipalityDoc, 'sch
     provinceId: 'camarines-norte',
     centroid: { lat: 14.1121, lng: 122.9554 },
     defaultSmsLocale: 'tl',
+    mdrrmoLabel: 'Daet MDRRMO',
+    mdrrmoHotline: '(054) 721-1216',
+    mdrrmoSmsShortCode: '2933',
   },
   {
     id: 'basud',

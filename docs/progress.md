@@ -1,5 +1,40 @@
 # Progress
 
+## 2026-05-02 — Citizen PWA Hardening Sweep (branch: feat/per-jurisdiction-config)
+
+### All 7 Clusters — COMPLETE
+
+| Cluster | Theme                                                                                                       | PR                                | Status  |
+| ------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------- | ------- |
+| 1       | 6 critical correctness fixes (PWA install, dead toggles, terminal RevealSheet, photo validation)            | `fix/citizen-pwa-correctness`     | ✅ DONE |
+| 2       | Reliability (exponential backoff, error sanitization, FCM rollback + setDoc merge)                          | `fix/citizen-pwa-reliability`     | ✅ DONE |
+| 3       | Per-jurisdiction config (municipalityDocSchema ext, useMunicipalityContact hook, parameterized RevealSheet) | `feat/per-jurisdiction-config`    | ✅ DONE |
+| 4       | Performance + cleanup (lazy RevealSheet, deleted dead lib files)                                            | `chore/citizen-pwa-cleanup`       | ✅ DONE |
+| 5a      | Service Worker background sync (submit-report tag, Firestore REST write)                                    | `feat/citizen-pwa-bg-sync`        | ✅ DONE |
+| 5b      | Client image compression (canvas downscale, 200KB skip threshold)                                           | `feat/citizen-pwa-image-compress` | ✅ DONE |
+| 6       | Real data export backend (profile + reports + media URLs, GCS envelope + signed URL)                        | `feat/data-export-callable`       | ✅ DONE |
+
+**Gate:** `pnpm lint && pnpm typecheck && npx vitest run` — all green (318 tests pass, 53 files)
+
+**New files:** `useMunicipalityContact.ts`, `RevealSheet.lazy.tsx`, `imageCompress.ts`, `imageCompress.test.ts`, `useMunicipalityContact.test.ts`, `useResumeRegistration.test.ts`
+
+**Deleted:** `lib/photoUpload.ts`, `lib/draftManager.ts`, `lib/localforage.ts`, `lib/__tests__/draftManager.test.ts`
+
+**Pre-approved items deployed:**
+
+- Schema change to `municipalities.ts` — re-run `scripts/bootstrap-municipalities.ts` on emulator before staging promotion
+- Storage rules update for `data_exports/` — owner-read rule added with tests (requires emulator verification)
+
+**Post-impl-review fixes applied:**
+
+- SW IndexedDB name fixed from `bantayog_drafts` → `bantayog-drafts` to match localforage instance (with architecture warning comment)
+- SW cache cleanup expanded to delete legacy `bantayog-shell-*` caches alongside `bantayog_shell_*`
+- `storage.rules`: added `data_exports/{uid}/{file}` owner-only read + write-deny (defense-in-depth)
+- Added 3 new test files covering imageCompress, useMunicipalityContact, useResumeRegistration
+- `REPORT_INBOX_PATH` dead constant removed from sw.js
+
+---
+
 ## Current — Phase 9 Citizen PWA Redesign (branch: feat/citizen-pwa-redesign) — COMPLETE
 
 ### Citizen PWA — All 18 Tasks — COMPLETE
