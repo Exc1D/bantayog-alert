@@ -98,7 +98,6 @@ export async function dispatchResponderCore(
 
         const dispatchId = deps.reportId + '_' + deps.responderUid
         const dispatchRef = db.collection('dispatches').doc(dispatchId)
-        const dispatchId = dispatchRef.id
 
         const reportEvRef = db.collection('report_events').doc()
         const dispatchEvRef = db.collection('dispatch_events').doc()
