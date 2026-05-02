@@ -24,9 +24,24 @@ interface Step2WhoWhereProps {
   }) => void
   onBack: () => void
   isSubmitting?: boolean
+  initialValues?: {
+    location?: { lat: number; lng: number }
+    reporterName?: string
+    reporterMsisdn?: string
+    patientCount?: number
+    locationMethod?: 'gps' | 'manual'
+    municipalityId?: string
+    barangayId?: string
+    nearestLandmark?: string
+  }
 }
 
-export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2WhoWhereProps) {
+export function Step2WhoWhere({
+  onNext,
+  onBack,
+  isSubmitting = false,
+  initialValues,
+}: Step2WhoWhereProps) {
   const {
     location,
     locationMethod,
@@ -53,6 +68,28 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [hasMemory, setHasMemory] = useState(false)
   const [municipalityError, setMunicipalityError] = useState<string | null>(null)
+
+  // Hydrate from snapshot when resuming or navigating back to Step 2.
+  useEffect(() => {
+    if (!initialValues) return
+
+    if (initialValues.locationMethod) setLocationMethod(initialValues.locationMethod)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialValues.reporterName) setReporterName(initialValues.reporterName)
+
+    if (initialValues.reporterMsisdn) setReporterMsisdn(initialValues.reporterMsisdn)
+    if (initialValues.patientCount) {
+      setPatientCount(initialValues.patientCount)
+
+      setAnyoneHurt(initialValues.patientCount > 0)
+    }
+
+    if (initialValues.nearestLandmark) setNearestLandmark(initialValues.nearestLandmark)
+    // Municipality / barangay are handled via useMunicipalityBarangays; those
+    // hooks don't expose setters, so we rely on localStorage/sessionStorage
+    // pre-fill below for reporter fields, and the user re-selects location.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     try {
@@ -307,9 +344,15 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
         )}
       </div>
 
-      {/* Bottom action */}
-      {locationMethod !== null && (
-        <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
+      {/* Bottom action — always rendered so users always see what to do next.
+          Before a location method is picked, show a polite hint instead of
+          hiding the entire region (which previously felt like silent failure). */}
+      <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
+        {locationMethod === null ? (
+          <p role="status" className="text-center text-sm font-medium text-surface-700">
+            Pick a location method above (GPS or Manual) to continue.
+          </p>
+        ) : (
           <Button
             variant="primary"
             fullWidth
@@ -318,8 +361,8 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
           >
             {isSubmitting ? 'Please wait...' : 'Review Report'}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

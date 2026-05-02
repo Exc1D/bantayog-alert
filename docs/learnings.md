@@ -7,6 +7,11 @@
 - Passing navigation callbacks as props (e.g., `onReportSimilar={() => void navigate(...)}`) avoids `useNavigate` being called in components tested without a Router context — the pattern is cleaner than wrapping every test with a MemoryRouter.
 - `subscribeAlerts` from `@bantayog/shared-firebase` takes a raw `Firestore` instance; the citizen-pwa's `db()` helper satisfies this directly.
 - RevealSheet: spring-eased slide-up (`cubic-bezier(0.34, 1.56, 0.64, 1)`) + `max-height: 90svh` scroll guard are the minimum polish required on any bottom-sheet component.
+- `role="status"` implicitly carries `aria-live="polite"` + `aria-atomic="true"` per WAI-ARIA spec; adding explicit `aria-live` is redundant noise.
+- Async state gates in React (e.g. `hasLoadedSnapshot`) must always resolve — both `.then()` and `.catch()` paths must flip the gate flag, or the component freezes on rejection.
+- `cache.addAll()` rejects the entire install if any URL fails; use `Promise.allSettled(cache.add(url).catch(...))` for resilient SW precaching.
+- When two files share the same `sessionStorage` key + try/catch + default pattern, extract a shared helper before the pattern drifts.
+- TTL tests that write directly to mock stores bypass the code under test. Use `vi.useFakeTimers()` + the public `save()` API + `vi.setSystemTime()` to actually exercise the TTL branch.
 
 ## Process
 
@@ -72,6 +77,9 @@
 - In `onAuthStateChanged`, guard `.then`/`.catch` with an `active` flag + uid check to prevent stale promises overwriting state.
 - `awaitFreshAuthToken` must start `getIdToken(true)` inside the Promise constructor so rejection can unsubscribe and reject.
 - Null-check `awaitFreshAuthToken` before invoking `httpsCallable`; missing user = opaque failure.
+- `linkWithPhoneNumber` requires a non-null `currentUser`. If a `/register` route uses it without an upstream `signInAnonymously()` or prior `signInWithPhoneNumber()`, fresh users get "Not signed in" with no recovery path. Either guard the route, sign in anonymously on mount, or use `signInWithPhoneNumber` and link later.
+- For surviving phone numbers across adjacent auth flows (login → register), prefer `sessionStorage["bantayog.last-phone"]` over React Router navigation state. State is dropped on reload; sessionStorage isn't, and survives the full-page reCAPTCHA round-trips that phone auth needs.
+- `useState(() => sessionStorage.getItem(...))` lazy initializer is safer than `useEffect` + `setState` for storage seeds — no flash of default value, no `react-hooks/set-state-in-effect` warning, and any throw inside the initializer is caught by React (just guard with try/catch for private-mode/security errors).
 
 ## Phase 6 Responder App
 
@@ -144,3 +152,19 @@
 - Service Worker cannot use Firebase JS SDK (requires bundling); use Firestore REST API (`firestore.googleapis.com/v1/projects/...`) for SW background sync writes.
 - Idempotency key on the SW write ensures dedup if both SW and in-app machine both succeed for the same draft.
 - Image compression in the browser: canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser path (avoids `createImageBitmap` + `OffscreenCanvas` compatibility issues).
+- Opportunistic dynamic caching alone is not enough for an offline-first PWA — a cold offline boot has nothing to fall back to. Precache the app shell (`/`, `/index.html`, manifest, key icons) on `install` and serve cached `/index.html` for any navigation request that fails the network. SPA shell + React Router then handle per-route offline UI.
+- When bumping a SW cache version, the existing `activate` cleanup must already filter for the cache prefix (`bantayog_shell_*` here); otherwise the old cache lingers and precache never re-runs.
+
+## UX / A11y
+
+- Conditional rendering of primary action buttons (`{state !== null && <Button…/>}`) reads as "silent failure" — users see no button and no instruction. Prefer always-rendering the action region with one of two states: a `role="status"` hint when the precondition is unmet, or the action button when it is. Pattern matches the offline-banner pattern in `CitizenShell`.
+- For WCAG-AA contrast, prefer Tailwind theme tokens (`text-surface-600`, `text-surface-500`) over arbitrary `text-[#hex]` so contrast becomes part of the design-system contract instead of a per-page coincidence. The `surface-400` / `surface-300` tokens (3.1:1 / 4.0:1) are decorative-only — never use them for body text on light backgrounds.
+- Routes that bypass the shell (`/settings`, `/register`, `/login`, full-page wizards) need their own `<main id="main-content">` element; the skip link inside `CitizenShell` already targets `#main-content`, so reusing the same ID keeps that link consistent across shell and non-shell pages.
+
+## Wizard / Multi-step Forms
+
+- "In-progress wizard state" and "finalized draft awaiting submission" are different concerns — keep them in separate stores. `draft-store` requires `publicRef`, `secretHash`, `correlationId`, `idempotencyKey` (all populated at submit); shoehorning partial wizard state into it forces placeholder values that pollute the queued-draft list. A small dedicated `wizard-snapshot` store (localforage instance, 24h TTL, single-record `wizard-in-progress` key) is cleaner.
+- Default a required selector to `''`, not a "first" value. A seeded default like `useState('flood')` looks harmless but it lets bypass paths (a "Skip" button calling the same `handleNext`) silently submit the seeded value. Combine with handleNext-level validation + inline `role="alert"` error.
+- Do not persist `File`/`Blob` in IDB at per-keystroke cadence. Snapshot writes happen on every step transition; a 5 MB photo encoded into the snapshot bloats every write. Persist scalar form data only; let the user re-attach photos on resume (acceptable since photos are usually optional).
+- Mid-form persistence requires accepting initial-value props on each step component. Without `initialReportType` etc., a back-navigation from Step 2 to Step 1 (or a refresh that resumes mid-wizard) re-mounts the step with fresh defaults and silently loses the user's input.
+- Snapshot save effect must be gated on a `hasLoadedSnapshot` boolean, otherwise the initial empty `formData` clobbers the just-loaded snapshot before the resume effect commits. Two-effect pattern: load on mount, then enable saves.

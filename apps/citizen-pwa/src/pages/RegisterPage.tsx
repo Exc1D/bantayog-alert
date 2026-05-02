@@ -6,6 +6,7 @@ import { auth } from '../services/firebase.js'
 import { registerCitizen } from '../services/callables.js'
 import { useToast } from '../hooks/useToast.js'
 import { Toast } from '../components/Toast.js'
+import { getStoredPhone, setStoredPhone } from '../services/phone-session-storage.js'
 
 type Step = 'phone' | 'otp' | 'name' | 'consent'
 
@@ -18,7 +19,13 @@ export function RegisterPage() {
   const isResume = searchParams.get('resume') === 'registration'
 
   const [step, setStep] = useState<Step>(isResume ? 'consent' : 'phone')
-  const [phone, setPhone] = useState('+63')
+  // Seed from sessionStorage so users who bounce here from /login (or back)
+  // do not have to retype the +63 prefix. The resume effect below still
+  // overrides this with `currentUser.phoneNumber` when applicable.
+  const [phone, setPhone] = useState(() => {
+    if (isResume) return '+63'
+    return getStoredPhone()
+  })
   const [otp, setOtp] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [consentGiven, setConsentGiven] = useState(false)
@@ -165,14 +172,30 @@ export function RegisterPage() {
 
         {step === 'phone' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <label
+              htmlFor="register-phone"
+              className="mb-4 text-[0.9375rem] font-semibold text-[#001e40] block"
+            >
               Enter your phone number
-            </p>
+            </label>
             <input
+              id="register-phone"
+              name="phone"
+              autoComplete="tel"
               type="tel"
               value={phone}
               onChange={(e) => {
-                setPhone(e.target.value)
+                const raw = e.target.value
+                // Strip non-digits except the leading +, trim whitespace,
+                // enforce a sensible max length to avoid junk in storage.
+                const normalized = raw
+                  .trim()
+                  .replace(/[^+\d]/g, '')
+                  .slice(0, 16)
+                setPhone(normalized)
+                if (normalized.length <= 16) {
+                  setStoredPhone(normalized)
+                }
               }}
               placeholder="+63XXXXXXXXXX"
               className="w-full h-14 rounded-xl border border-[#d5dedd] px-4 text-base focus:border-[#0f9488] focus:outline-none mb-4"

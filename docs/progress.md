@@ -1,5 +1,86 @@
 # Progress
 
+## 2026-05-03 — PR #91 Review Follow-ups (branch: `fix/citizen-pwa-auth-and-wizard-followups`)
+
+Addressed all Sourcery-ai and CodeRabbit review comments on PR #91.
+
+| Source     | Issue                                                                                 | Fix                                                                                                                | Files                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Sourcery   | SW install blocked if any precache URL fails                                          | `cache.addAll` → `Promise.allSettled(cache.add(url).catch(...))` — individual failures logged, SW still activates  | `apps/citizen-pwa/public/sw.js`                                                              |
+| Sourcery   | `hasLoadedSnapshot` gate rendered empty `aria-hidden` div                             | Replaced with spinner + `role="status"` + `aria-label="Loading report wizard"`                                     | `components/SubmitReportForm/index.tsx`                                                      |
+| Sourcery   | `sessionStorage["bantayog.last-phone"]` duplicated in LoginPage + RegisterPage        | Extracted `services/phone-session-storage.ts` (`getStoredPhone` / `setStoredPhone`); both pages use shared helper  | `services/phone-session-storage.ts` (NEW) + `pages/LoginPage.tsx` + `pages/RegisterPage.tsx` |
+| CodeRabbit | Missing `.catch()` on `wizardSnapshot.load()` — rejection freezes wizard forever      | Added `.catch(() => { if (!cancelled) setHasLoadedSnapshot(true) })`                                               | `components/SubmitReportForm/index.tsx`                                                      |
+| CodeRabbit | `aria-live="polite"` redundant alongside `role="status"` (implicit per WAI-ARIA spec) | Removed explicit `aria-live` attribute                                                                             | `components/SubmitReportForm/Step2WhoWhere.tsx`                                              |
+| CodeRabbit | TTL test false-positive if `STORAGE_KEY` constant drifts from production              | Test now uses `vi.useFakeTimers` + public `save()` API + `vi.setSystemTime()` instead of direct store manipulation | `services/wizard-snapshot.test.ts`                                                           |
+
+**Gate:** `pnpm --filter @bantayog/citizen-pwa lint typecheck` clean,
+`npx vitest run` 243/243 pass.
+
+---
+
+## 2026-05-02 — Citizen PWA Auth + Wizard Resumability (branch: `fix/citizen-pwa-auth-and-wizard-followups`)
+
+Round 2 of the QA staging pass. 5 real code bugs from a 9-issue list — the
+remaining 4 are either Firebase Console config (Phone Auth disabled) or
+already-fixed-in-code waiting on a staging redeploy (commit `90f29ef`
+two-step `report_lookup` for tracking 404).
+
+| #          | Issue                                                                                          | Fix                                                                                                                                                                                                                                                                                                                                                                                                                                         | Files                                                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| A-2        | RegisterPage phone input lacked `id`/`name`/`autocomplete="tel"` (a11y warning)                | Added all three + a real `<label htmlFor="register-phone">`                                                                                                                                                                                                                                                                                                                                                                                 | `pages/RegisterPage.tsx`                                                                                                                 |
+| A-3        | Phone number lost when bouncing between `/login` and `/register`                               | Both pages now seed and write `sessionStorage["bantayog.last-phone"]` on every keystroke; resume effect on RegisterPage still wins when `currentUser.phoneNumber` exists                                                                                                                                                                                                                                                                    | `pages/LoginPage.tsx` + `pages/RegisterPage.tsx`                                                                                         |
+| B-5        | Step 1 "Skip photo for now" silently advanced with the seeded `'flood'` default                | `useState(initialReportType)` defaults to `''`; `handleNext` validates and shows inline `role="alert"` error when missing; the 8 type buttons clear the error on click                                                                                                                                                                                                                                                                      | `components/SubmitReportForm/Step1Evidence.tsx`                                                                                          |
+| B-9 + B-10 | No mid-form persistence and no step restoration on refresh — wizard always restarted at Step 1 | New `wizard-snapshot` service (localforage, 24h TTL, single-snapshot model). `WizardContainer` loads on mount, saves on every `step`/`formData` change, clears on submit success and on Step-1 back-to-home. Photo files intentionally not persisted (File serialization to IDB bloats per-keystroke writes); user re-attaches if needed. `Step1Evidence` accepts `initialReportType` so back-to-Step-1 from Step 2/3 keeps the picked type | `components/SubmitReportForm/index.tsx` (wire) + `services/wizard-snapshot.ts` (NEW) + `services/wizard-snapshot.test.ts` (NEW, 8 tests) |
+
+**Gate:** `pnpm --filter @bantayog/citizen-pwa lint typecheck` clean,
+`npx vitest run` 327/327 pass (54 files, +8 from snapshot tests),
+`pnpm build` clean (SubmitReportForm chunk +1 KB for snapshot wiring).
+
+**Booked / not in this PR:**
+
+- **A-5 RegisterPage architecture** — `linkWithPhoneNumber` requires `currentUser`, but the codebase has no `signInAnonymously` call anywhere. Fresh users hitting `/register` directly get "Not signed in" toast instead of a usable flow. This is a design question (link vs. fresh sign-in vs. anon-then-link) that needs a dedicated decision, not a 5-line patch.
+- **Step 2 back-from-Step-3 field loss** — `Step2WhoWhere` mounts fresh on back navigation; reporter name + msisdn survive via existing localStorage, but location/anyoneHurt/patientCount don't. Snapshot stores them in `formData.step2`, but `Step2WhoWhere` doesn't accept `initialValues` props — adding that would expand scope. Defer until QA flags it.
+- **Photo persistence in snapshot** — keep deferred; canvas re-encoding pre-write is a route-level optimization, not a per-keystroke one.
+
+**Verification still required (manual, after staging redeploy):**
+
+1. `/login` → enter phone → navigate `/register` → confirm `+63XXXXXXXXXX` is preserved in the input.
+2. `/report` → pick "Flood" → tap Continue (advances to Step 2). Refresh. Confirm wizard resumes at Step 2 with reportType still "Flood" if you tap Back.
+3. `/report` → tap "Skip photo for now" without picking a type → confirm "Please select an incident type to continue." appears below the grid (red, `role="alert"`).
+4. `/report` → complete Step 1 + Step 2 → tap Submit → confirm receipt screen renders. Refresh while on receipt → confirm snapshot was cleared (visiting `/report` starts fresh).
+
+---
+
+## 2026-05-02 — Citizen PWA QA Follow-ups (branch: `fix/citizen-pwa-qa-followups`)
+
+Round 1 of the QA staging pass. Addressed 4 issues from the 10-subagent
+staging QA pass. Scope intentionally narrow (3 files) — broader a11y
+`<main>` sweep across non-shell pages booked as a follow-up.
+
+| #   | Issue                                                   | Fix                                                                                                                                                                                  | Files                                                                |
+| --- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| 1   | Offline mode showed Chrome dinosaur                     | Precache `/`, `/index.html`, `/manifest.webmanifest`, both icons on `install`; navigation fetches fall back to cached `/index.html`; cache version bumped `bantayog_shell_v1` → `v2` | `apps/citizen-pwa/public/sw.js`                                      |
+| 2   | Settings labels failed WCAG AA contrast (3.1:1 / 4.0:1) | Replaced 6× `text-[#768081]` → `text-surface-600` (~7.4:1) and 1× `text-[#a3adae]` → `text-surface-500` (~5.8:1) using existing Tailwind tokens                                      | `apps/citizen-pwa/src/pages/SettingsPage.tsx`                        |
+| 3   | Missing `<main>` landmark on Settings                   | Outer `<div>` → `<main id="main-content">` (matches the skip-link target ID used by `CitizenShell`)                                                                                  | same file as #2                                                      |
+| 4   | Wizard Step 2 silently swallowed empty submit           | Bottom action region is now always rendered: shows a `role="status"` hint while `locationMethod === null`; renders the existing Button once a method is picked                       | `apps/citizen-pwa/src/components/SubmitReportForm/Step2WhoWhere.tsx` |
+
+**Gate:** `pnpm --filter @bantayog/citizen-pwa lint typecheck` clean,
+`npx vitest run` 319/319 pass, `pnpm build` emits all 5 precache URLs.
+
+**Pending follow-up sweep (NOT in this PR):** `<main>` landmarks for the other
+non-shell screens — RegisterPage, LoginPage, NotFoundPage, GoodbyeScreen,
+SubmitReportForm root, LookupScreen, TrackingScreen, ReceiptScreen,
+IncidentDetailPage, Onboarding. Defer until QA flags them or the next a11y
+sweep — bundling them now would have blown the 3-file scope budget.
+
+**Verification still required (manual, after staging redeploy):**
+
+1. Chrome DevTools → Network → Offline → reload `/` → app shell renders (not dino)
+2. Lighthouse a11y on `/settings` → score ≥ 95, no contrast violations
+3. `/report` → Step 2 → confirm "Pick a location method above…" hint visible before tapping GPS/Manual
+
+---
+
 ## 2026-05-02 — Citizen PWA Hardening Sweep (branch: feat/per-jurisdiction-config)
 
 ### All 7 Clusters — COMPLETE

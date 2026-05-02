@@ -10,12 +10,15 @@ import {
 import { useToast } from '../hooks/useToast.js'
 import { Toast } from '../components/Toast.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
+import { getStoredPhone, setStoredPhone } from '../services/phone-session-storage.js'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const { show, message, type, toast } = useToast()
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
-  const [phone, setPhone] = useState('+63')
+  // Seed from sessionStorage so users who bounce between /login and /register
+  // (e.g. wrong-account → register flow) keep the phone they already typed.
+  const [phone, setPhone] = useState(() => getStoredPhone())
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [verificationId, setVerificationId] = useState<string | null>(null)
@@ -151,7 +154,9 @@ export function LoginPage() {
                   type="tel"
                   value={phone}
                   onChange={(e) => {
-                    setPhone(e.target.value)
+                    const next = e.target.value
+                    setPhone(next)
+                    setStoredPhone(next)
                   }}
                   placeholder="+63 XXX XXX XXXX"
                   className="w-full pl-10 pr-4 py-3 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"

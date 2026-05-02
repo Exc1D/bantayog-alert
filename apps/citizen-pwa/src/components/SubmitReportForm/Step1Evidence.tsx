@@ -21,6 +21,7 @@ interface Step1EvidenceProps {
   onNext: (data: { reportType: string; photoFile: File | null }) => void
   onBack: () => void
   isSubmitting?: boolean
+  initialReportType?: string
 }
 
 const INCIDENT_TYPES = [
@@ -98,8 +99,17 @@ const INCIDENT_TYPES = [
   },
 ] as const
 
-export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
-  const [reportType, setReportType] = useState('flood')
+export function Step1Evidence({
+  onNext,
+  onBack,
+  isSubmitting = false,
+  initialReportType = '',
+}: Step1EvidenceProps) {
+  // Default to empty so the user must actively pick a type. This is what
+  // gates the "Skip photo for now" path — without it, Skip silently
+  // submitted whatever the seeded default was.
+  const [reportType, setReportType] = useState(initialReportType)
+  const [reportTypeError, setReportTypeError] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -170,6 +180,11 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
   }
 
   const handleNext = () => {
+    if (!reportType) {
+      setReportTypeError('Please select an incident type to continue.')
+      return
+    }
+    setReportTypeError(null)
     onNext({ reportType, photoFile })
   }
 
@@ -293,6 +308,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
                   type="button"
                   onClick={() => {
                     setReportType(value)
+                    setReportTypeError(null)
                   }}
                   className={`flex flex-col items-center justify-center gap-2 min-h-[80px] rounded-xl border-2 transition-all active:scale-95 ${
                     isSelected
@@ -310,6 +326,11 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
               )
             })}
           </div>
+          {reportTypeError && (
+            <p role="alert" className="mt-2 text-xs text-danger-500 font-medium">
+              {reportTypeError}
+            </p>
+          )}
         </div>
       </div>
 

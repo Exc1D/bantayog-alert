@@ -4,6 +4,7 @@ import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType } from '@bantayog/shared-types'
 import { createDraft } from '../../services/submit-report.js'
 import type { Draft } from '../../services/draft-store.js'
+import { wizardSnapshot } from '../../services/wizard-snapshot.js'
 import { useSubmissionMachine } from '../../hooks/useSubmissionMachine.js'
 import { Step1Evidence } from './Step1Evidence.js'
 import { Step2WhoWhere } from './Step2WhoWhere.js'
@@ -41,12 +42,50 @@ export function SubmitReportForm() {
 
 function WizardContainer() {
   const nav = useNavigate()
+  const [hasLoadedSnapshot, setHasLoadedSnapshot] = useState(false)
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [formData, setFormData] = useState<FormData>({ step1: null, step2: null })
   const [draft, setDraft] = useState<Draft | null>(null)
   const [secret, setSecret] = useState<string | null>(null)
   const [isCreatingDraft, setIsCreatingDraft] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
+
+  // Resume an in-progress wizard from a prior session (refresh, accidental close).
+  // photoFile is intentionally not persisted — File can't be reliably serialized;
+  // the user re-attaches if needed by going back to Step 1.
+  useEffect(() => {
+    let cancelled = false
+    void wizardSnapshot
+      .load()
+      .then((snap) => {
+        if (cancelled) return
+        if (snap) {
+          setStep(snap.step)
+          setFormData({
+            step1: snap.step1 ? { reportType: snap.step1.reportType, photoFile: null } : null,
+            step2: snap.step2 ?? null,
+          })
+        }
+        setHasLoadedSnapshot(true)
+      })
+      .catch(() => {
+        if (!cancelled) setHasLoadedSnapshot(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Persist after load + on every step/formData change. The hasLoadedSnapshot
+  // gate prevents the initial empty state from clobbering a fresh resume.
+  useEffect(() => {
+    if (!hasLoadedSnapshot) return
+    void wizardSnapshot.save({
+      step,
+      step1: formData.step1 ? { reportType: formData.step1.reportType } : null,
+      step2: formData.step2,
+    })
+  }, [hasLoadedSnapshot, step, formData])
 
   const handleStep1Next = (data: Step1Data) => {
     setFormData((prev) => ({ ...prev, step1: data }))
@@ -108,6 +147,8 @@ function WizardContainer() {
 
       setDraft(created)
       setSecret(draftSecret)
+      // Prevent stale snapshot from causing a second draft on refresh.
+      await wizardSnapshot.clear()
     } catch (err: unknown) {
       setDraftError(err instanceof Error ? err.message : 'Failed to create draft')
     } finally {
@@ -116,7 +157,22 @@ function WizardContainer() {
   }
 
   const handleStep1Back = () => {
+    // User abandoned the wizard from Step 1 — drop the snapshot so a fresh
+    // /report visit starts clean rather than resuming the old draft.
+    void wizardSnapshot.clear()
     void nav('/')
+  }
+
+  if (!hasLoadedSnapshot) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading report wizard"
+        className="min-h-[100dvh] bg-surface-100 flex items-center justify-center"
+      >
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-surface-300 border-t-brand-600" />
+      </div>
+    )
   }
 
   if (draft) {
@@ -125,6 +181,7 @@ function WizardContainer() {
         draft={draft}
         secret={secret}
         onSuccess={(publicRef) => {
+          void wizardSnapshot.clear()
           void nav(`/reports/${publicRef}`)
         }}
       />
@@ -137,6 +194,7 @@ function WizardContainer() {
         onNext={handleStep1Next}
         onBack={handleStep1Back}
         isSubmitting={isCreatingDraft}
+        initialReportType={formData.step1?.reportType ?? ''}
       />
     )
   }
@@ -147,6 +205,7 @@ function WizardContainer() {
         onNext={handleStep2Next}
         onBack={handleStep2Back}
         isSubmitting={isCreatingDraft}
+        {...(formData.step2 ? { initialValues: formData.step2 } : {})}
       />
     )
   }
