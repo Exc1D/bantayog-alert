@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Camera, Car, Flame, HelpCircle, Wind, Waves, Wrench, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  Camera,
+  Car,
+  Flame,
+  HelpCircle,
+  Wind,
+  Waves,
+  BrickWall,
+  MountainSnow,
+  Megaphone,
+  X,
+} from 'lucide-react'
 import { Button } from '../ui/Button'
 
 interface Step1EvidenceProps {
@@ -46,13 +58,31 @@ const INCIDENT_TYPES = [
     selText: 'text-warning-500',
   },
   {
+    value: 'landslide',
+    label: 'Landslide',
+    Icon: MountainSnow,
+    colorClass: 'text-surface-600',
+    selBorder: 'border-surface-600',
+    selBg: 'bg-surface-600/10',
+    selText: 'text-surface-600',
+  },
+  {
     value: 'structural',
     label: 'Damages',
-    Icon: Wrench,
+    Icon: BrickWall,
     colorClass: 'text-danger-500',
     selBorder: 'border-danger-500',
     selBg: 'bg-danger-500/10',
     selText: 'text-danger-500',
+  },
+  {
+    value: 'public_disturbance',
+    label: 'Public Disturbance',
+    Icon: Megaphone,
+    colorClass: 'text-warning-500',
+    selBorder: 'border-warning-500',
+    selBg: 'bg-warning-500/10',
+    selText: 'text-warning-500',
   },
   {
     value: 'other',

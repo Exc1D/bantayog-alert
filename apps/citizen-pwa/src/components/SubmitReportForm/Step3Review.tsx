@@ -7,7 +7,9 @@ import {
   HelpCircle,
   Wind,
   Waves,
-  Wrench,
+  BrickWall,
+  MountainSnow,
+  Megaphone,
   AlertTriangle,
   MapPin,
   AlertCircle,
@@ -36,7 +38,9 @@ const INCIDENT_TYPES = [
   { value: 'fire', label: 'Fire', Icon: Flame },
   { value: 'accident', label: 'Accidents/Rescue', Icon: Car },
   { value: 'typhoon', label: 'Typhoon', Icon: Wind },
-  { value: 'structural', label: 'Damages', Icon: Wrench },
+  { value: 'landslide', label: 'Landslide', Icon: MountainSnow },
+  { value: 'structural', label: 'Damages', Icon: BrickWall },
+  { value: 'public_disturbance', label: 'Public Disturbance', Icon: Megaphone },
   { value: 'other', label: 'Others', Icon: HelpCircle },
 ] as const
 
