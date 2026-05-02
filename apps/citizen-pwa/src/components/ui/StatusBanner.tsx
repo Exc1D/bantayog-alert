@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface StatusBannerProps {
-  variant: 'success' | 'queued' | 'failed'
+  variant: 'success' | 'queued' | 'failed' | 'danger'
   icon: React.ReactNode
   children: React.ReactNode
 }

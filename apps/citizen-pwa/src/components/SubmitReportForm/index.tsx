@@ -244,12 +244,10 @@ function SubmissionPanel({
     )
   }
 
-  // RevealSheet has no failed_terminal variant; reuse failed_retryable messaging
-  // ("We couldn't send it yet") which is accurate for both retryable and terminal failures.
   if (machine.state === 'failed_terminal') {
     return (
       <RevealSheet
-        state="failed_retryable"
+        state="failed_terminal"
         referenceCode={draft.publicRef}
         onClose={() => {
           void nav('/')

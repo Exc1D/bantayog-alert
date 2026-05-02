@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { linkWithPhoneNumber, RecaptchaVerifier, updateProfile } from 'firebase/auth'
 import { auth } from '../services/firebase.js'
@@ -13,9 +13,11 @@ const STEPS: Step[] = ['phone', 'otp', 'name', 'consent']
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { show, message, type, toast } = useToast()
+  const isResume = searchParams.get('resume') === 'registration'
 
-  const [step, setStep] = useState<Step>('phone')
+  const [step, setStep] = useState<Step>(isResume ? 'consent' : 'phone')
   const [phone, setPhone] = useState('+63')
   const [otp, setOtp] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -31,6 +33,21 @@ export function RegisterPage() {
       verifier?.clear()
     }
   }, [verifier])
+
+  // Pre-populate the displayName if the user already has one (e.g. they
+  // completed `updateProfile` but not `registerCitizen` last time).
+  useEffect(() => {
+    if (!isResume) return
+    let u
+    try {
+      u = auth().currentUser
+    } catch {
+      return
+    }
+    if (!u) return
+    if (u.displayName) setDisplayName(u.displayName) // eslint-disable-line react-hooks/set-state-in-effect
+    if (u.phoneNumber) setPhone(u.phoneNumber)
+  }, [isResume])
 
   const handleSendOtp = useCallback(async () => {
     let firebaseAuth

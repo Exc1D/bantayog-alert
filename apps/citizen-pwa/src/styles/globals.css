@@ -200,6 +200,11 @@ body {
   color: var(--color-failed-fg);
 }
 
+.status-banner--danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
 .status-icon {
   width: 2rem;
   height: 2rem;

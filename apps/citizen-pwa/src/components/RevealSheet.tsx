@@ -49,6 +49,19 @@ const REVEAL_VARIANTS = {
     secondaryButton: 'Keep draft & close',
     permissionText: "We'll hold this draft for 24 hours and keep retrying.",
   },
+  failed_terminal: {
+    headline: "We couldn't send. Please call now.",
+    subline:
+      'Your draft is saved on this phone, but we have stopped retrying after several attempts. If this is an emergency, call the hotline right now — it is faster than the app right now.',
+    sublineTl:
+      'Hindi naipasa ang ulat. Kung emergency, tumawag agad sa hotline o magpadala ng SMS.',
+    bannerVariant: 'danger' as const,
+    receiverText: undefined as string | undefined,
+    primaryButton: 'Call hotline now',
+    primaryVariant: 'amber' as const,
+    secondaryButton: 'Keep draft & close',
+    permissionText: 'We will keep your draft on this device for 24 hours.',
+  },
 }
 
 const GUARDIAN_BENEFITS = [
@@ -86,13 +99,20 @@ function RadarRings({ rgb = '5,150,105' }: { rgb?: string }) {
 }
 
 interface RevealSheetProps {
-  state: 'success' | 'queued' | 'failed_retryable'
+  state: 'success' | 'queued' | 'failed_retryable' | 'failed_terminal'
   referenceCode: string
   secretCode?: string
   onClose?: () => void
+  onPrimaryAction?: () => void
 }
 
-export function RevealSheet({ state, referenceCode, secretCode, onClose }: RevealSheetProps) {
+export function RevealSheet({
+  state,
+  referenceCode,
+  secretCode,
+  onClose,
+  onPrimaryAction,
+}: RevealSheetProps) {
   const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
   const { display: slotDisplay, done: slotDone } = useSlotMachine(
@@ -182,14 +202,6 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
     void navigate(`/reports/${referenceCode}`)
   }
 
-  const handlePrimaryAction = () => {
-    if (state === 'success') {
-      handleTrackReport()
-    } else {
-      onClose?.()
-    }
-  }
-
   const handleCallHotline = () => {
     window.location.href = 'tel:0547211216'
   }
@@ -198,9 +210,24 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
     window.location.href = `sms:2933?body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
   }
 
+  const handlePrimaryAction = () => {
+    if (onPrimaryAction) {
+      onPrimaryAction()
+      return
+    }
+    if (state === 'success') {
+      handleTrackReport()
+    } else if (state === 'failed_terminal') {
+      handleCallHotline()
+    } else {
+      onClose?.()
+    }
+  }
+
+  const nowLabel = afterglowTime
   const timelineEvents = {
     success: [
-      { label: 'Report received', meta: '2:14 PM', state: 'complete' as const },
+      { label: 'Report received', meta: nowLabel, state: 'complete' as const },
       { label: 'First review', meta: 'Expected within 15 min', state: 'pending' as const },
       {
         label: 'Responder dispatched',
@@ -209,7 +236,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
       },
     ],
     queued: [
-      { label: 'Saved on this phone', meta: '2:14 PM', state: 'queued' as const },
+      { label: 'Saved on this phone', meta: nowLabel, state: 'queued' as const },
       {
         label: 'Send when online',
         meta: 'Automatic · no action needed',
@@ -222,13 +249,26 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
       },
     ],
     failed_retryable: [
-      { label: 'Report drafted', meta: '2:14 PM', state: 'complete' as const },
+      { label: 'Report drafted', meta: nowLabel, state: 'complete' as const },
       {
         label: 'Send attempt failed',
         meta: 'Network error · you can retry',
         state: 'failed' as const,
       },
       { label: 'Retry send', meta: 'Try again or call the hotline', state: 'pending' as const },
+    ],
+    failed_terminal: [
+      { label: 'Report drafted', meta: nowLabel, state: 'complete' as const },
+      {
+        label: 'Sending stopped',
+        meta: 'Multiple attempts failed',
+        state: 'failed' as const,
+      },
+      {
+        label: 'Call the hotline',
+        meta: 'Faster than retrying the app',
+        state: 'pending' as const,
+      },
     ],
   }
 
@@ -261,12 +301,22 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
 
         {!reducedMotion && (
           <div className="relative flex items-center justify-center h-20 mb-3">
-            <RadarRings rgb={state === 'success' ? '5,150,105' : '217,119,6'} />
+            <RadarRings
+              rgb={
+                state === 'success'
+                  ? '5,150,105'
+                  : state === 'failed_terminal'
+                    ? '220,38,38'
+                    : '217,119,6'
+              }
+            />
             <div
               className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center ${
                 state === 'success'
                   ? 'bg-success-500 shadow-glow-success'
-                  : 'bg-warning-500 shadow-md'
+                  : state === 'failed_terminal'
+                    ? 'bg-[#dc2626] shadow-md'
+                    : 'bg-warning-500 shadow-md'
               }`}
             >
               {state === 'success' ? (

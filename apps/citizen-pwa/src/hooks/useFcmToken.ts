@@ -1,6 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging'
 import { auth, hasFirebaseConfig, fns, httpsCallable } from '../services/firebase.js'
+import { getAlertSoundsEnabled } from '../lib/userSettings.js'
+
+function playAlertSound(): void {
+  if (!getAlertSoundsEnabled()) return
+  try {
+    const audio = new Audio('/notification.wav')
+    audio.volume = 0.6
+    void audio.play().catch(() => {
+      // Autoplay may be blocked without user gesture; silently no-op
+    })
+  } catch {
+    // Audio constructor not available
+  }
+}
 
 interface FcmState {
   permission: NotificationPermission
@@ -109,7 +123,7 @@ export function useFcmToken() {
       fcmUnsubscribeRef.current = onMessage(messaging, (payload) => {
         // eslint-disable-next-line no-console
         console.log('Received FCM message:', payload)
-        // Could trigger toast, sound, etc. here
+        playAlertSound()
       })
 
       return true
