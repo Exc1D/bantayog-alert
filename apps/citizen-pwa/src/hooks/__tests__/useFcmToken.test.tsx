@@ -26,18 +26,13 @@ vi.mock('firebase/firestore', async () => {
   const actual = await vi.importActual<typeof import('firebase/firestore')>('firebase/firestore')
   return {
     ...actual,
-    updateDoc: vi.fn(),
+    setDoc: vi.fn(() => Promise.resolve()),
     doc: vi.fn(() => ({})),
-    getDoc: vi.fn(() =>
-      Promise.resolve({
-        exists: () => true,
-      }),
-    ),
   }
 })
 
 import { getToken, deleteToken } from 'firebase/messaging'
-import { updateDoc } from 'firebase/firestore'
+import { setDoc } from 'firebase/firestore'
 import { httpsCallable } from '../../services/firebase.js'
 
 describe('useFcmToken', () => {
@@ -91,9 +86,10 @@ describe('useFcmToken', () => {
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), 'subscribeToAlerts')
     const subscribeCallable = vi.mocked(httpsCallable).mock.results[0]?.value
     expect(subscribeCallable).toHaveBeenCalledWith({ token: 'test-fcm-token' })
-    expect(updateDoc).toHaveBeenCalledWith(
+    expect(setDoc).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ fcmToken: 'test-fcm-token' }),
+      { merge: true },
     )
     expect(result.current.permission).toBe('granted')
     expect(result.current.token).toBe('test-fcm-token')
@@ -132,9 +128,10 @@ describe('useFcmToken', () => {
     // Verify the callable was actually invoked with the token
     const unsubscribeFromAlerts = vi.mocked(httpsCallable).mock.results[1]?.value
     expect(unsubscribeFromAlerts).toHaveBeenCalledWith({ token: 'test-fcm-token' })
-    expect(updateDoc).toHaveBeenCalledWith(
+    expect(setDoc).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ fcmToken: null }),
+      { merge: true },
     )
     expect(result.current.token).toBeNull()
     expect(result.current.enabled).toBe(false)
