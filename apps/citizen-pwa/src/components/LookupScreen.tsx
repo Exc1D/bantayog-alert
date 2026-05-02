@@ -9,6 +9,25 @@ interface LookupResult {
   municipalityLabel: string
 }
 
+const FRIENDLY_ERROR = "We couldn't find that report. Check your codes and try again."
+
+// Map server-side callable errors to friendly strings. Never surface raw error
+// messages — they may leak internal state and confuse non-technical users.
+function friendlyLookupError(err: unknown): string {
+  if (!hasFirebaseConfig()) return FIREBASE_ENV_ERROR_MESSAGE
+  const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
+  // Treat permission-denied like not-found to avoid leaking existence.
+  if (code === 'functions/not-found' || code === 'not-found') return FRIENDLY_ERROR
+  if (code === 'functions/permission-denied' || code === 'permission-denied') return FRIENDLY_ERROR
+  if (code === 'functions/unauthenticated' || code === 'unauthenticated') {
+    return 'Please refresh and try again.'
+  }
+  if (code === 'functions/resource-exhausted' || code === 'resource-exhausted') {
+    return 'Too many attempts. Please wait a minute and try again.'
+  }
+  return 'Something went wrong. Please try again or call the hotline.'
+}
+
 export function LookupScreen() {
   const [publicRef, setPublicRef] = useState('')
   const [secret, setSecret] = useState('')
@@ -40,7 +59,8 @@ export function LookupScreen() {
       })
       setResult(res.data as LookupResult)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'lookup failed')
+      console.error('[LookupScreen] requestLookup failed:', e)
+      setError(friendlyLookupError(e))
     } finally {
       setLoading(false)
     }

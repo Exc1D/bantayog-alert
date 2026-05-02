@@ -30,6 +30,15 @@ export interface UseSubmissionMachineReturn {
 const SUBMIT_TIMEOUT_MS = 10_000
 export const MAX_RETRIES = 3
 
+// Exponential backoff between retries when the network was the problem.
+// Capped at 30s so a long flaky window doesn't push retries hours apart.
+const BACKOFF_BASE_MS = 2_000
+const BACKOFF_CAP_MS = 30_000
+
+export function backoffDelay(retryCount: number): number {
+  return Math.min(BACKOFF_BASE_MS * 2 ** retryCount, BACKOFF_CAP_MS)
+}
+
 const logDraftError = (context: string, err: unknown) => {
   console.warn(`[draft-store] ${context}:`, err)
 }
@@ -122,6 +131,17 @@ export function useSubmissionMachine({
               logDraftError('save queued', e)
             })
           setState('queued')
+          // Register SW background sync for queued drafts (best-effort).
+          try {
+            const reg = await navigator.serviceWorker.ready
+            if ((reg as unknown as { sync?: { register: (tag: string) => Promise<void> } }).sync) {
+              await (
+                reg as unknown as { sync: { register: (tag: string) => Promise<void> } }
+              ).sync.register('submit-report')
+            }
+          } catch (err: unknown) {
+            console.warn('[useSubmissionMachine] Background Sync registration failed:', err)
+          }
           return null
         }
 
@@ -195,7 +215,8 @@ export function useSubmissionMachine({
     if (state !== 'queued' && state !== 'failed_retryable') {
       return
     }
-    const triggerRetry = () => {
+    const delay = backoffDelay(Math.max(0, retryCountRef.current - 1))
+    const timer = setTimeout(() => {
       setState('submitting')
       void doSubmit(retryCountRef.current).then((publicRef) => {
         if (publicRef) {
@@ -203,8 +224,10 @@ export function useSubmissionMachine({
           onSuccessRef.current(publicRef)
         }
       })
+    }, delay)
+    return () => {
+      clearTimeout(timer)
     }
-    triggerRetry()
   }, [isOnline, state, doSubmit])
 
   return {

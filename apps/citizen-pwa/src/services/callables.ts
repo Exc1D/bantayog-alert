@@ -1,15 +1,28 @@
 import { httpsCallable } from 'firebase/functions'
 import { fns } from './firebase.js'
 
-export async function requestDataExport(): Promise<void> {
+export async function requestDataExport(): Promise<{
+  downloadUrl: string
+  expiresAt: number
+  reportCount: number
+  mediaCount: number
+}> {
   const callable = httpsCallable(fns(), 'requestDataExport')
-  try {
-    await callable()
-  } catch (err) {
-    throw new Error(
-      `Data export request failed: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    )
+  const result = await callable()
+  const data = result.data as Record<string, unknown>
+  if (
+    typeof data.downloadUrl !== 'string' ||
+    typeof data.expiresAt !== 'number' ||
+    typeof data.reportCount !== 'number' ||
+    typeof data.mediaCount !== 'number'
+  ) {
+    throw new Error('invalid server response')
+  }
+  return {
+    downloadUrl: data.downloadUrl,
+    expiresAt: data.expiresAt,
+    reportCount: data.reportCount,
+    mediaCount: data.mediaCount,
   }
 }
 

@@ -6,6 +6,7 @@ import { MapTab } from './components/MapTab/index.js'
 import { SplashScreen } from './pages/SplashScreen.js'
 import { useUIStore } from './lib/store.js'
 import { ErrorBoundary } from './components/ErrorBoundary.js'
+import { useResumeRegistration } from './hooks/useResumeRegistration.js'
 
 /* ── Lazy-loaded route components ── */
 const Onboarding = lazy(() =>
@@ -59,6 +60,7 @@ function RootLayout() {
   const [showSplash, setShowSplash] = useState(true)
   const navigate = useNavigate()
   const hasCompletedOnboarding = useUIStore((s) => s.hasCompletedOnboarding)
+  useResumeRegistration()
 
   const onSplashDone = useCallback(() => {
     setShowSplash(false)

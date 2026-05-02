@@ -27,14 +27,13 @@ if ('serviceWorker' in navigator) {
 }
 
 /* ── PWA install prompt ── */
-let deferredInstallPrompt: Event | null = null
+window.deferredInstallPrompt = null
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault()
-  deferredInstallPrompt = e
-  // Consumers can check window.deferredInstallPrompt to show custom install UI
+  window.deferredInstallPrompt = e as BeforeInstallPromptEvent
 })
 
-// Expose for app code (e.g., SettingsPage)
-// @ts-expect-error — attaching to window for cross-module access
-window.deferredInstallPrompt = deferredInstallPrompt
+window.addEventListener('appinstalled', () => {
+  window.deferredInstallPrompt = null
+})

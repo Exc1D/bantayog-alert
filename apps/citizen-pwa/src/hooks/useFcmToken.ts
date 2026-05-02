@@ -1,6 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging'
 import { auth, hasFirebaseConfig, fns, httpsCallable } from '../services/firebase.js'
+import { getAlertSoundsEnabled } from '../lib/userSettings.js'
+
+function playAlertSound(): void {
+  if (!getAlertSoundsEnabled()) return
+  try {
+    const audio = new Audio('/notification.wav')
+    audio.volume = 0.6
+    void audio.play().catch((err: unknown) => {
+      console.warn('[useFcmToken] Alert sound playback blocked:', err)
+    })
+  } catch (err: unknown) {
+    console.warn('[useFcmToken] Audio constructor not available:', err)
+  }
+}
 
 interface FcmState {
   permission: NotificationPermission
@@ -60,6 +74,7 @@ export function useFcmToken() {
     }
 
     let issuedToken = false
+    let issuedTokenValue: string | null = null
     try {
       const permission = await Notification.requestPermission()
       setState((prev) => ({ ...prev, permission }))
@@ -79,20 +94,20 @@ export function useFcmToken() {
       }
 
       issuedToken = true
+      issuedTokenValue = token
       setState((prev) => ({ ...prev, token, enabled: true }))
 
-      // Save token to user document in Firestore
+      // Save token to user document in Firestore — single merge write avoids
+      // the read-then-write race and removes the silent "doc missing" branch.
       const user = auth().currentUser
       if (user && !user.isAnonymous) {
-        const { updateDoc, doc, getDoc } = await import('firebase/firestore')
+        const { setDoc, doc } = await import('firebase/firestore')
         const { db } = await import('../services/firebase.js')
-        const userRef = doc(db(), 'users', user.uid)
-
-        // Check if user doc exists
-        const snap = await getDoc(userRef)
-        if (snap.exists()) {
-          await updateDoc(userRef, { fcmToken: token, fcmTokenUpdatedAt: Date.now() })
-        }
+        await setDoc(
+          doc(db(), 'users', user.uid),
+          { fcmToken: token, fcmTokenUpdatedAt: Date.now() },
+          { merge: true },
+        )
       }
 
       // Subscribe to alerts topic
@@ -109,7 +124,7 @@ export function useFcmToken() {
       fcmUnsubscribeRef.current = onMessage(messaging, (payload) => {
         // eslint-disable-next-line no-console
         console.log('Received FCM message:', payload)
-        // Could trigger toast, sound, etc. here
+        playAlertSound()
       })
 
       return true
@@ -122,6 +137,35 @@ export function useFcmToken() {
         } catch (rollbackError) {
           console.error('Failed to roll back FCM token:', rollbackError)
         }
+        // Best-effort topic + Firestore cleanup so we don't leak a half-subscribed
+        // token when registration fails partway through.
+        if (issuedTokenValue) {
+          try {
+            const unsubscribeFromAlerts = httpsCallable(fns(), 'unsubscribeFromAlerts')
+            await unsubscribeFromAlerts({ token: issuedTokenValue })
+          } catch (unsubErr) {
+            console.error('Failed to unsubscribe from topic during rollback:', unsubErr)
+          }
+        }
+        try {
+          const user = auth().currentUser
+          if (user && !user.isAnonymous) {
+            const { setDoc, doc } = await import('firebase/firestore')
+            const { db } = await import('../services/firebase.js')
+            await setDoc(
+              doc(db(), 'users', user.uid),
+              { fcmToken: null, fcmTokenUpdatedAt: null },
+              { merge: true },
+            )
+          }
+        } catch (firestoreErr) {
+          console.error('Failed to clear Firestore fcmToken during rollback:', firestoreErr)
+        }
+      }
+      // Cleanup the foreground message listener if it was attached before failure.
+      if (fcmUnsubscribeRef.current) {
+        fcmUnsubscribeRef.current()
+        fcmUnsubscribeRef.current = null
       }
       setState((prev) => ({ ...prev, enabled: false, token: null }))
       return false
@@ -151,18 +195,17 @@ export function useFcmToken() {
       const unsubscribeFromAlerts = httpsCallable(fns(), 'unsubscribeFromAlerts')
       await unsubscribeFromAlerts({ token: tokenToRevoke })
 
-      // Clear token from user document
+      // Clear token from user document via merge — single write, no probe.
       const user = auth().currentUser
       if (user && !user.isAnonymous) {
         try {
-          const { updateDoc, doc, getDoc } = await import('firebase/firestore')
+          const { setDoc, doc } = await import('firebase/firestore')
           const { db } = await import('../services/firebase.js')
-          const userRef = doc(db(), 'users', user.uid)
-          const snap = await getDoc(userRef)
-
-          if (snap.exists()) {
-            await updateDoc(userRef, { fcmToken: null })
-          }
+          await setDoc(
+            doc(db(), 'users', user.uid),
+            { fcmToken: null, fcmTokenUpdatedAt: null },
+            { merge: true },
+          )
         } catch (error) {
           console.error('Failed to clear FCM token from Firestore:', error)
         }

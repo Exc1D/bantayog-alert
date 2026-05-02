@@ -5,50 +5,62 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { motion } from 'framer-motion'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
 import { useSlotMachine } from '../hooks/useSlotMachine.js'
+import { useMunicipalityContact } from '../hooks/useMunicipalityContact.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
 import { StatusBanner } from './ui/StatusBanner'
 import { Button } from './ui/Button'
 import { FallbackCards } from './ui/FallbackCards'
 import { Timeline } from './ui/Timeline'
 
-const HOTLINE_NUMBER = '(054) 721-1216'
-
-const REVEAL_VARIANTS = {
-  success: {
-    headline: 'We heard you. We are here.',
-    subline: 'Your report is with Daet MDRRMO. Keep your line open.',
-    sublineTl: 'Narinig namin kayo. Hawak na ng MDRRMO ang inyong ulat.',
-    bannerVariant: 'success' as const,
-    receiverText: 'Received by Daet MDRRMO',
-    primaryButton: 'Track this report',
-    primaryVariant: 'primary' as const,
-    secondaryButton: undefined as string | undefined,
-    permissionText: "You can close this app. We'll text you.",
-  },
-  queued: {
-    headline: "Saved. We'll send it for you.",
-    subline:
-      "Your report is safe on this phone. The moment signal returns, we'll automatically forward it to Daet MDRRMO — no action needed from you. Walang mawawala.",
-    sublineTl: undefined as string | undefined,
-    bannerVariant: 'queued' as const,
-    receiverText: 'Saved to device · auto-send when online',
-    primaryButton: 'Try sending now',
-    primaryVariant: 'amber' as const,
-    secondaryButton: 'Keep draft & close',
-    permissionText: "We'll keep trying quietly in the background.",
-  },
-  failed_retryable: {
-    headline: 'Your report is safe. Still trying.',
-    subline:
-      "We saved it securely on your phone and are retrying automatically. The network is having trouble — this is not your fault and nothing is lost. If it's a life-threatening emergency, call now.",
-    sublineTl: 'Ligtas ang inyong ulat. Nagre-retry kami. Kung emergency, tawagan kami ngayon.',
-    bannerVariant: 'queued' as const,
-    receiverText: undefined as string | undefined,
-    primaryButton: 'Retry now',
-    primaryVariant: 'amber' as const,
-    secondaryButton: 'Keep draft & close',
-    permissionText: "We'll hold this draft for 24 hours and keep retrying.",
-  },
+function buildVariants(mdrrmoLabel: string) {
+  return {
+    success: {
+      headline: 'We heard you. We are here.',
+      subline: `Your report is with ${mdrrmoLabel}. Keep your line open.`,
+      sublineTl: 'Narinig namin kayo. Hawak na ng MDRRMO ang inyong ulat.',
+      bannerVariant: 'success' as const,
+      receiverText: `Received by ${mdrrmoLabel}`,
+      primaryButton: 'Track this report',
+      primaryVariant: 'primary' as const,
+      secondaryButton: undefined as string | undefined,
+      permissionText: "You can close this app. We'll text you.",
+    },
+    queued: {
+      headline: "Saved. We'll send it for you.",
+      subline: `Your report is safe on this phone. The moment signal returns, we'll automatically forward it to ${mdrrmoLabel} — no action needed from you. Walang mawawala.`,
+      sublineTl: undefined as string | undefined,
+      bannerVariant: 'queued' as const,
+      receiverText: 'Saved to device · auto-send when online',
+      primaryButton: 'Try sending now',
+      primaryVariant: 'amber' as const,
+      secondaryButton: 'Keep draft & close',
+      permissionText: "We'll keep trying quietly in the background.",
+    },
+    failed_retryable: {
+      headline: 'Your report is safe. Still trying.',
+      subline:
+        "We saved it securely on your phone and are retrying automatically. The network is having trouble — this is not your fault and nothing is lost. If it's a life-threatening emergency, call now.",
+      sublineTl: 'Ligtas ang inyong ulat. Nagre-retry kami. Kung emergency, tawagan kami ngayon.',
+      bannerVariant: 'queued' as const,
+      receiverText: undefined as string | undefined,
+      primaryButton: 'Retry now',
+      primaryVariant: 'amber' as const,
+      secondaryButton: 'Keep draft & close',
+      permissionText: "We'll hold this draft for 24 hours and keep retrying.",
+    },
+    failed_terminal: {
+      headline: "We couldn't send. Please call now.",
+      subline: `Your draft is saved on this phone, but we have stopped retrying after several attempts. If this is an emergency, call ${mdrrmoLabel} right now — it is faster than the app right now.`,
+      sublineTl:
+        'Hindi naipasa ang ulat. Kung emergency, tumawag agad sa hotline o magpadala ng SMS.',
+      bannerVariant: 'danger' as const,
+      receiverText: undefined as string | undefined,
+      primaryButton: 'Call hotline now',
+      primaryVariant: 'amber' as const,
+      secondaryButton: 'Keep draft & close',
+      permissionText: 'We will keep your draft on this device for 24 hours.',
+    },
+  }
 }
 
 const GUARDIAN_BENEFITS = [
@@ -86,15 +98,26 @@ function RadarRings({ rgb = '5,150,105' }: { rgb?: string }) {
 }
 
 interface RevealSheetProps {
-  state: 'success' | 'queued' | 'failed_retryable'
+  state: 'success' | 'queued' | 'failed_retryable' | 'failed_terminal'
   referenceCode: string
   secretCode?: string
+  municipalityId?: string
   onClose?: () => void
+  onPrimaryAction?: () => void
 }
 
-export function RevealSheet({ state, referenceCode, secretCode, onClose }: RevealSheetProps) {
+export function RevealSheet({
+  state,
+  referenceCode,
+  secretCode,
+  municipalityId,
+  onClose,
+  onPrimaryAction,
+}: RevealSheetProps) {
   const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
+  const contact = useMunicipalityContact(municipalityId)
+  const variants = useMemo(() => buildVariants(contact.label), [contact.label])
   const { display: slotDisplay, done: slotDone } = useSlotMachine(
     referenceCode,
     reducedMotion ? 0 : 600,
@@ -108,7 +131,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // null = loading (firebase present), true = guest (no account), false = registered
   const [isGuest, setIsGuest] = useState<boolean | null>(() => (hasFirebaseConfig() ? null : true))
-  const variant = REVEAL_VARIANTS[state]
+  const variant = variants[state]
 
   const guardianIcon = useMemo(() => {
     if (state === 'success') return <Check size={16} />
@@ -182,25 +205,43 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
     void navigate(`/reports/${referenceCode}`)
   }
 
+  const handleCallHotline = () => {
+    // tel: links require digits only
+    const telDigits = contact.hotline.replace(/[^\d+]/g, '')
+    if (!telDigits || !/\d/.test(telDigits)) {
+      console.warn('[RevealSheet] Invalid hotline number:', contact.hotline)
+      return
+    }
+    window.location.href = `tel:${telDigits}`
+  }
+
+  const handleSmsFallback = () => {
+    const normalizedShortCode = contact.smsShortCode.replace(/[^\d+]/g, '')
+    if (!normalizedShortCode) {
+      console.warn('[RevealSheet] Invalid SMS shortcode:', contact.smsShortCode)
+      return
+    }
+    window.location.href = `sms:${normalizedShortCode}?body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
+  }
+
   const handlePrimaryAction = () => {
+    if (onPrimaryAction) {
+      onPrimaryAction()
+      return
+    }
     if (state === 'success') {
       handleTrackReport()
+    } else if (state === 'failed_terminal') {
+      handleCallHotline()
     } else {
       onClose?.()
     }
   }
 
-  const handleCallHotline = () => {
-    window.location.href = 'tel:0547211216'
-  }
-
-  const handleSmsFallback = () => {
-    window.location.href = `sms:2933?body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
-  }
-
+  const nowLabel = afterglowTime
   const timelineEvents = {
     success: [
-      { label: 'Report received', meta: '2:14 PM', state: 'complete' as const },
+      { label: 'Report received', meta: nowLabel, state: 'complete' as const },
       { label: 'First review', meta: 'Expected within 15 min', state: 'pending' as const },
       {
         label: 'Responder dispatched',
@@ -209,7 +250,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
       },
     ],
     queued: [
-      { label: 'Saved on this phone', meta: '2:14 PM', state: 'queued' as const },
+      { label: 'Saved on this phone', meta: nowLabel, state: 'queued' as const },
       {
         label: 'Send when online',
         meta: 'Automatic · no action needed',
@@ -222,13 +263,26 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
       },
     ],
     failed_retryable: [
-      { label: 'Report drafted', meta: '2:14 PM', state: 'complete' as const },
+      { label: 'Report drafted', meta: nowLabel, state: 'complete' as const },
       {
         label: 'Send attempt failed',
         meta: 'Network error · you can retry',
         state: 'failed' as const,
       },
       { label: 'Retry send', meta: 'Try again or call the hotline', state: 'pending' as const },
+    ],
+    failed_terminal: [
+      { label: 'Report drafted', meta: nowLabel, state: 'complete' as const },
+      {
+        label: 'Sending stopped',
+        meta: 'Multiple attempts failed',
+        state: 'failed' as const,
+      },
+      {
+        label: 'Call the hotline',
+        meta: 'Faster than retrying the app',
+        state: 'pending' as const,
+      },
     ],
   }
 
@@ -261,12 +315,22 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
 
         {!reducedMotion && (
           <div className="relative flex items-center justify-center h-20 mb-3">
-            <RadarRings rgb={state === 'success' ? '5,150,105' : '217,119,6'} />
+            <RadarRings
+              rgb={
+                state === 'success'
+                  ? '5,150,105'
+                  : state === 'failed_terminal'
+                    ? '220,38,38'
+                    : '217,119,6'
+              }
+            />
             <div
               className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center ${
                 state === 'success'
                   ? 'bg-success-500 shadow-glow-success'
-                  : 'bg-warning-500 shadow-md'
+                  : state === 'failed_terminal'
+                    ? 'bg-[#dc2626] shadow-md'
+                    : 'bg-warning-500 shadow-md'
               }`}
             >
               {state === 'success' ? (
@@ -370,7 +434,7 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
 
         {state === 'success' && typewriterComplete && (
           <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#52606d', marginTop: 8 }}>
-            Sent at {afterglowTime} · Daet MDRRMO is on it
+            Sent at {afterglowTime} · {contact.label} is on it
           </div>
         )}
 
@@ -444,13 +508,13 @@ export function RevealSheet({ state, referenceCode, secretCode, onClose }: Revea
 
         {state !== 'success' ? (
           <FallbackCards
-            hotlineNumber={HOTLINE_NUMBER}
+            hotlineNumber={contact.hotline}
             emphasized={state === 'failed_retryable'}
             onCallClick={handleCallHotline}
             onSmsClick={handleSmsFallback}
           />
         ) : (
-          <FallbackCards hotlineNumber={HOTLINE_NUMBER} onCallClick={handleCallHotline} />
+          <FallbackCards hotlineNumber={contact.hotline} onCallClick={handleCallHotline} />
         )}
 
         <Button variant={variant.primaryVariant} fullWidth onClick={handlePrimaryAction}>

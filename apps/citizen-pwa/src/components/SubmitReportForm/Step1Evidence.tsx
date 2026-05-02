@@ -14,6 +14,9 @@ import {
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024 // 5 MB
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
 interface Step1EvidenceProps {
   onNext: (data: { reportType: string; photoFile: File | null }) => void
   onBack: () => void
@@ -98,6 +101,7 @@ const INCIDENT_TYPES = [
 export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1EvidenceProps) {
   const [reportType, setReportType] = useState('flood')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canRenderCanvasPreview = typeof createImageBitmap === 'function'
@@ -143,6 +147,25 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null
+    if (!file) {
+      setPhotoFile(null)
+      setPhotoError(null)
+      return
+    }
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      setPhotoError('Please choose a JPG, PNG, or WebP photo.')
+      setPhotoFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1)
+      setPhotoError(`Photo is ${sizeMb} MB. Maximum size is 5 MB.`)
+      setPhotoFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    setPhotoError(null)
     setPhotoFile(file)
   }
 
@@ -230,6 +253,7 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
                 type="button"
                 onClick={() => {
                   setPhotoFile(null)
+                  setPhotoError(null)
                   if (fileInputRef.current) {
                     fileInputRef.current.value = ''
                   }
@@ -240,6 +264,11 @@ export function Step1Evidence({ onNext, onBack, isSubmitting = false }: Step1Evi
                 <X size={16} className="text-white" />
               </button>
             </div>
+          )}
+          {photoError && (
+            <p role="alert" className="mt-2 text-xs text-danger-500 font-medium">
+              {photoError}
+            </p>
           )}
           {!photoFile && (
             <button

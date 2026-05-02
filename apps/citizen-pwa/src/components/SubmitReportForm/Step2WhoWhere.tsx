@@ -5,6 +5,7 @@ import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { isQuotaExceededError, isSecurityError } from '../../utils/storage-errors'
 import { useGpsLocation } from '../../hooks/useGpsLocation'
 import { useMunicipalityBarangays } from '../../hooks/useMunicipalityBarangays'
+import { getAutoLocationEnabled } from '../../lib/userSettings'
 import { MunicipalitySelector } from './MunicipalitySelector'
 import { BarangaySelector } from './BarangaySelector'
 import { ContactFields } from './ContactFields'
@@ -34,7 +35,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
     attemptGps,
     resetGps,
     setLocationMethod,
-  } = useGpsLocation(true)
+  } = useGpsLocation(getAutoLocationEnabled())
 
   const {
     selectedMunicipalityId,

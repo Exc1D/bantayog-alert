@@ -16,9 +16,32 @@ import { requestDataExport, registerCitizen } from './callables'
 
 describe('callables', () => {
   it('requestDataExport calls correct callable', async () => {
-    const mockCall = vi.fn().mockResolvedValue({})
+    const mockCall = vi.fn().mockResolvedValue({
+      data: {
+        downloadUrl: 'https://example.com/export.json',
+        expiresAt: 1234567890,
+        reportCount: 5,
+        mediaCount: 3,
+      },
+    })
     mockHttpsCallable.mockReturnValue(mockCall)
-    await requestDataExport()
+    const result = await requestDataExport()
+    expect(mockHttpsCallable).toHaveBeenCalledWith('mocked-functions', 'requestDataExport')
+    expect(mockCall).toHaveBeenCalled()
+    expect(result).toEqual({
+      downloadUrl: 'https://example.com/export.json',
+      expiresAt: 1234567890,
+      reportCount: 5,
+      mediaCount: 3,
+    })
+  })
+
+  it('throws on invalid server response from requestDataExport', async () => {
+    const mockCall = vi.fn().mockResolvedValue({
+      data: { downloadUrl: null, expiresAt: 'not-a-number' },
+    })
+    mockHttpsCallable.mockReturnValue(mockCall)
+    await expect(requestDataExport()).rejects.toThrow('invalid server response')
     expect(mockHttpsCallable).toHaveBeenCalledWith('mocked-functions', 'requestDataExport')
     expect(mockCall).toHaveBeenCalled()
   })

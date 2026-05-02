@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType } from '@bantayog/shared-types'
@@ -8,9 +8,10 @@ import { useSubmissionMachine } from '../../hooks/useSubmissionMachine.js'
 import { Step1Evidence } from './Step1Evidence.js'
 import { Step2WhoWhere } from './Step2WhoWhere.js'
 import { Step3Review } from './Step3Review.js'
-import { RevealSheet } from '../RevealSheet.js'
+import { RevealSheet } from '../RevealSheet.lazy.js'
 import { OfflineBanner } from './OfflineBanner.js'
 import { StaleDraftBanner } from './StaleDraftBanner.js'
+import { compressImage } from '../../lib/imageCompress.js'
 
 interface Step1Data {
   reportType: string
@@ -76,11 +77,15 @@ function WizardContainer() {
       const msisdnHash = formData.step2.reporterMsisdn
         ? await hashPhone(formData.step2.reporterMsisdn)
         : undefined
-      const photo = formData.step1.photoFile
-        ? new Blob([await formData.step1.photoFile.arrayBuffer()], {
-            type: formData.step1.photoFile.type,
-          })
-        : undefined
+      let photo: Blob | undefined
+      if (formData.step1.photoFile) {
+        try {
+          photo = await compressImage(formData.step1.photoFile)
+        } catch (compressErr) {
+          console.warn('Image compression failed, using original:', compressErr)
+          photo = formData.step1.photoFile
+        }
+      }
 
       const { draft: created, secret: draftSecret } = await createDraft({
         reportType: formData.step1.reportType as ReportType,
@@ -208,24 +213,30 @@ function SubmissionPanel({
 
   if (machine.state === 'server_confirmed') {
     return (
-      <RevealSheet
-        state="success"
-        referenceCode={draft.publicRef}
-        {...(secret ? { secretCode: secret } : {})}
-      />
+      <Suspense fallback={null}>
+        <RevealSheet
+          state="success"
+          referenceCode={draft.publicRef}
+          {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
+          {...(secret ? { secretCode: secret } : {})}
+        />
+      </Suspense>
     )
   }
 
   if (machine.state === 'queued') {
     return (
       <div aria-label="Submission status">
-        <RevealSheet
-          state="queued"
-          referenceCode={draft.publicRef}
-          onClose={() => {
-            void nav('/')
-          }}
-        />
+        <Suspense fallback={null}>
+          <RevealSheet
+            state="queued"
+            referenceCode={draft.publicRef}
+            {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
+            onClose={() => {
+              void nav('/')
+            }}
+          />
+        </Suspense>
       </div>
     )
   }
@@ -233,28 +244,32 @@ function SubmissionPanel({
   if (machine.state === 'failed_retryable') {
     return (
       <div aria-label="Submission status">
-        <RevealSheet
-          state="failed_retryable"
-          referenceCode={draft.publicRef}
-          onClose={() => {
-            void nav('/')
-          }}
-        />
+        <Suspense fallback={null}>
+          <RevealSheet
+            state="failed_retryable"
+            referenceCode={draft.publicRef}
+            {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
+            onClose={() => {
+              void nav('/')
+            }}
+          />
+        </Suspense>
       </div>
     )
   }
 
-  // RevealSheet has no failed_terminal variant; reuse failed_retryable messaging
-  // ("We couldn't send it yet") which is accurate for both retryable and terminal failures.
   if (machine.state === 'failed_terminal') {
     return (
-      <RevealSheet
-        state="failed_retryable"
-        referenceCode={draft.publicRef}
-        onClose={() => {
-          void nav('/')
-        }}
-      />
+      <Suspense fallback={null}>
+        <RevealSheet
+          state="failed_terminal"
+          referenceCode={draft.publicRef}
+          {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
+          onClose={() => {
+            void nav('/')
+          }}
+        />
+      </Suspense>
     )
   }
 

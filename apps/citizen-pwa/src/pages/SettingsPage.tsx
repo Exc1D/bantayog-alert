@@ -9,60 +9,25 @@ import { useToast } from '../hooks/useToast.js'
 import { useFcmToken } from '../hooks/useFcmToken.js'
 import { Toast } from '../components/Toast.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
+import { requestDataExport } from '../services/callables.js'
+import {
+  getAlertSoundsEnabled,
+  getAutoLocationEnabled,
+  getOfflineModeEnabled,
+  SETTINGS_KEYS,
+} from '../lib/userSettings.js'
 
 const INITIAL_STORAGE_INFO = 'Loading…'
-const EXPORT_COOLDOWN_MS = 60_000
-
-function isExportCooldownActive(): boolean {
-  try {
-    const raw = sessionStorage.getItem('bantayog_export_until')
-    if (!raw) return false
-    return Date.now() < Number(raw)
-  } catch {
-    return false
-  }
-}
-
-function setExportCooldown(until: number | null): void {
-  try {
-    if (until === null) {
-      sessionStorage.removeItem('bantayog_export_until')
-    } else {
-      sessionStorage.setItem('bantayog_export_until', String(until))
-    }
-  } catch {
-    // ignore
-  }
-}
 
 export function SettingsPage() {
   const navigate = useNavigate()
   const { show, message, type, toast } = useToast()
   const { enabled, requestPermission, disable } = useFcmToken()
   const [user, setUser] = useState<User | null>(null)
-  const [offlineMode, setOfflineMode] = useState(() => {
-    try {
-      return localStorage.getItem('bantayog_offline_mode') === 'true'
-    } catch {
-      return false
-    }
-  })
+  const [offlineMode, setOfflineMode] = useState(getOfflineModeEnabled)
   const [storageInfo, setStorageInfo] = useState<string>(INITIAL_STORAGE_INFO)
-  const [alertSounds, setAlertSounds] = useState(() => {
-    try {
-      return localStorage.getItem('bantayog_alert_sounds') === 'true'
-    } catch {
-      return true
-    }
-  })
-  const [autoLocation, setAutoLocation] = useState(() => {
-    try {
-      return localStorage.getItem('bantayog_location_auto') !== 'false'
-    } catch {
-      return true
-    }
-  })
-  const [exportDisabled, setExportDisabled] = useState(isExportCooldownActive)
+  const [alertSounds, setAlertSounds] = useState(getAlertSoundsEnabled)
+  const [autoLocation, setAutoLocation] = useState(getAutoLocationEnabled)
 
   useEffect(() => {
     if (!hasFirebaseConfig()) return
@@ -95,16 +60,17 @@ export function SettingsPage() {
   const handleOfflineToggle = (v: boolean) => {
     setOfflineMode(v)
     try {
-      localStorage.setItem('bantayog_offline_mode', String(v))
+      localStorage.setItem(SETTINGS_KEYS.offlineMode, String(v))
     } catch (e) {
       console.error('Failed to set bantayog_offline_mode:', v, e)
+      setOfflineMode((prev) => !prev)
     }
   }
 
   const handleAlertSoundsToggle = (next: boolean) => {
     setAlertSounds(next)
     try {
-      localStorage.setItem('bantayog_alert_sounds', String(next))
+      localStorage.setItem(SETTINGS_KEYS.alertSounds, String(next))
     } catch (err) {
       console.error('Failed to persist alert sounds setting:', err)
       setAlertSounds((prev) => !prev)
@@ -114,7 +80,7 @@ export function SettingsPage() {
   const handleAutoLocationToggle = (next: boolean) => {
     setAutoLocation(next)
     try {
-      localStorage.setItem('bantayog_location_auto', String(next))
+      localStorage.setItem(SETTINGS_KEYS.autoLocation, String(next))
     } catch (err) {
       console.error('Failed to persist auto-location setting:', err)
       setAutoLocation((prev) => !prev)
@@ -122,23 +88,30 @@ export function SettingsPage() {
   }
 
   const handleDataExport = async () => {
-    const until = Date.now() + EXPORT_COOLDOWN_MS
-    setExportCooldown(until)
-    setExportDisabled(true)
     try {
-      const { requestDataExport } = await import('../services/callables.js')
-      await requestDataExport()
-      toast("We'll email your data within 24 hours.", 'success')
-    } catch {
-      toast('Data export failed. Please try again.', 'error')
-      setExportCooldown(null)
-      setExportDisabled(false)
-      return
+      const { downloadUrl } = await requestDataExport()
+      const response = await fetch(downloadUrl)
+      if (!response.ok) {
+        throw new Error(`Download failed: ${String(response.status)}`)
+      }
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = 'bantayog-export.json'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+      toast('Your data is downloading.', 'success')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('resource-exhausted')) {
+        toast('You requested an export recently. Try again in a minute.', 'info')
+      } else {
+        toast('Export failed. Please try again.', 'error')
+      }
     }
-    setTimeout(() => {
-      setExportCooldown(null)
-      setExportDisabled(false)
-    }, EXPORT_COOLDOWN_MS)
   }
 
   return (
@@ -237,17 +210,17 @@ export function SettingsPage() {
       </p>
       <div className="bg-white divide-y divide-[#f0f4f4]">
         {user && !user.isAnonymous && (
-          <div className="flex items-center justify-between px-4 py-4">
+          <div className="flex flex-col gap-1 px-4 py-4">
             <button
               type="button"
-              onClick={() => {
-                void handleDataExport()
-              }}
-              disabled={exportDisabled}
-              className={`text-sm font-medium bg-transparent border-none p-0 cursor-pointer disabled:cursor-not-allowed ${exportDisabled ? 'text-[#768081]' : 'text-[#25292a]'}`}
+              onClick={() => void handleDataExport()}
+              className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-left text-[#25292a]"
             >
-              {exportDisabled ? 'Coming soon' : 'Download my data'}
+              Download my data
             </button>
+            <span className="text-xs text-[#a3adae]">
+              Receive a JSON export of your profile, reports, and media.
+            </span>
           </div>
         )}
         <div className="flex items-center justify-between px-4 py-4">
