@@ -50,7 +50,6 @@ describe('ErrorBoundary', () => {
     const originalLocation = window.location
     // @ts-expect-error test override
     delete window.location
-    // @ts-expect-error test override
     window.location = Object.create(originalLocation, {
       href: { value: '', writable: true, configurable: true },
     })
@@ -64,6 +63,7 @@ describe('ErrorBoundary', () => {
     fireEvent.click(homeButton)
     expect(window.location.href).toBe('/')
 
+    // @ts-expect-error test override
     window.location = originalLocation
   })
 })

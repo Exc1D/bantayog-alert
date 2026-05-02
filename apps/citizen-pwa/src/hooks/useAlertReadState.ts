@@ -31,7 +31,7 @@ export function useAlertReadState() {
 
   const markAsRead = useCallback((alertId: string) => {
     setReadAlerts((prev) => {
-      const next = { ...prev, [alertId]: true }
+      const next: ReadAlerts = { ...prev, [alertId]: true }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       } catch (error) {
