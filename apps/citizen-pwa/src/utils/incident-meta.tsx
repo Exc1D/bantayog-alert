@@ -3,12 +3,13 @@ import {
   MountainSnow,
   Flame,
   Wind,
-  Building2,
+  BrickWall,
   Car,
   HeartPulse,
   ShieldAlert,
   AlertTriangle,
   Zap,
+  Megaphone,
   HelpCircle,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -24,6 +25,7 @@ export const INCIDENT_TYPES = [
   'accident',
   'structural',
   'security',
+  'public_disturbance',
   'power_outage',
   'other',
 ] as const
@@ -36,11 +38,12 @@ const ICON_MAP: Record<IncidentType, (size: number) => ReactNode> = {
   fire: (s) => <Flame size={s} />,
   typhoon: (s) => <Wind size={s} />,
   storm_surge: (s) => <Waves size={s} />,
-  structural: (s) => <Building2 size={s} />,
+  structural: (s) => <BrickWall size={s} />,
   accident: (s) => <Car size={s} />,
   medical: (s) => <HeartPulse size={s} />,
   security: (s) => <ShieldAlert size={s} />,
   earthquake: (s) => <AlertTriangle size={s} />,
+  public_disturbance: (s) => <Megaphone size={s} />,
   power_outage: (s) => <Zap size={s} />,
   other: (s) => <HelpCircle size={s} />,
 }
@@ -56,6 +59,7 @@ const LABEL_MAP: Record<IncidentType, string> = {
   accident: 'Accidents/Rescue',
   structural: 'Damages',
   security: 'Security',
+  public_disturbance: 'Public Disturbance',
   power_outage: 'Power Outage',
   other: 'Others',
 }

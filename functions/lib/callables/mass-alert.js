@@ -125,11 +125,8 @@ export async function sendMassAlertCore(db, input, actor) {
                 .get();
             const salt = process.env.SMS_MSISDN_HASH_SALT;
             if (!salt) {
-                if (process.env.NODE_ENV === 'production') {
-                    throw new Error('SMS_MSISDN_HASH_SALT required in production');
-                }
                 log({
-                    severity: 'WARNING',
+                    severity: 'ERROR',
                     code: 'mass.sms.no_salt',
                     message: 'SMS_MSISDN_HASH_SALT not configured, hashes may be weak',
                 });

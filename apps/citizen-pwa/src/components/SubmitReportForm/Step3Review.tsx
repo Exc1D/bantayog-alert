@@ -7,7 +7,9 @@ import {
   HelpCircle,
   Wind,
   Waves,
-  Wrench,
+  BrickWall,
+  MountainSnow,
+  Megaphone,
   AlertTriangle,
   MapPin,
   AlertCircle,
@@ -36,7 +38,9 @@ const INCIDENT_TYPES = [
   { value: 'fire', label: 'Fire', Icon: Flame },
   { value: 'accident', label: 'Accidents/Rescue', Icon: Car },
   { value: 'typhoon', label: 'Typhoon', Icon: Wind },
-  { value: 'structural', label: 'Damages', Icon: Wrench },
+  { value: 'landslide', label: 'Landslide', Icon: MountainSnow },
+  { value: 'structural', label: 'Damages', Icon: BrickWall },
+  { value: 'public_disturbance', label: 'Public Disturbance', Icon: Megaphone },
   { value: 'other', label: 'Others', Icon: HelpCircle },
 ] as const
 
@@ -59,7 +63,7 @@ export function Step3Review({
           type="button"
           onClick={onBack}
           aria-label="Go back"
-          className="w-10 h-10 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
+          className="w-11 h-11 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
         >
           <ArrowLeft size={24} className="text-surface-700" />
         </button>
@@ -167,9 +171,11 @@ export function Step3Review({
 
         {/* Consent */}
         <div className="bg-brand-50 rounded-xl border border-brand-200 p-4">
-          <label className="flex items-start gap-3 cursor-pointer">
+          <label htmlFor="consent-checkbox" className="flex items-start gap-3 cursor-pointer">
             <div className="mt-0.5">
               <input
+                id="consent-checkbox"
+                name="consent"
                 type="checkbox"
                 checked={consent}
                 onChange={(e) => {

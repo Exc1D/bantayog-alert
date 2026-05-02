@@ -446,6 +446,21 @@ export function ProfileTab() {
         />
       )}
 
+      {/* Login link for anonymous users */}
+      {isPseudonymous && (
+        <div className="mx-4 mt-3">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/login')
+            }}
+            className="inline-block w-full px-4 py-2 h-11 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors border-none cursor-pointer"
+          >
+            Already have an account? Sign In
+          </button>
+        </div>
+      )}
+
       {/* Stats grid — Your Impact */}
       <div className="grid grid-cols-2 gap-3 mx-4 mt-4">
         <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm">

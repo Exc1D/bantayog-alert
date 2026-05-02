@@ -48,6 +48,8 @@ export {
   requestMassAlertEscalation,
   forwardMassAlertToNDRRMC,
 } from './callables/mass-alert.js'
+export { subscribeToAlerts } from './callables/subscribe-to-alerts.js'
+export { unsubscribeFromAlerts } from './callables/unsubscribe-from-alerts.js'
 
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.

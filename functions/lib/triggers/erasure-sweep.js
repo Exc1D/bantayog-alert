@@ -1,4 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
@@ -76,6 +77,7 @@ export async function erasureSweepCore(input) {
             await input.auth.updateUser(citizenUid, { disabled: false });
         }
         catch (reEnableErr) {
+            const reEnableReason = reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr);
             // CRITICAL: citizen is locked out and sweep failed — manual intervention required
             log({
                 severity: 'CRITICAL',
@@ -84,15 +86,39 @@ export async function erasureSweepCore(input) {
                 data: {
                     citizenUid,
                     originalError: reason,
-                    reEnableError: reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr),
+                    reEnableError: reEnableReason,
                 },
             });
+            try {
+                await candidate.ref.update({
+                    status: 'dead_lettered',
+                    deadLetterReason: `erasure_failed_and_auth_reenable_failed: ${reason}; re-enable: ${reEnableReason}`,
+                    deadLetteredAt: now(),
+                });
+            } catch (deadLetterErr) {
+                log({
+                    severity: 'CRITICAL',
+                    code: 'ERASURE_SWEEP_DEAD_LETTER_WRITE_FAILED',
+                    message: `Failed to persist dead-letter state for ${citizenUid}`,
+                    data: { citizenUid, deadLetterError: deadLetterErr instanceof Error ? deadLetterErr.message : String(deadLetterErr) },
+                });
+            }
+            throw new HttpsError('internal', 'auth_reenable_failed_after_erasure_failure');
         }
-        await candidate.ref.update({
-            status: 'dead_lettered',
-            deadLetterReason: reason,
-            deadLetteredAt: now(),
-        });
+        try {
+            await candidate.ref.update({
+                status: 'dead_lettered',
+                deadLetterReason: reason,
+                deadLetteredAt: now(),
+            });
+        } catch (deadLetterErr) {
+            log({
+                severity: 'CRITICAL',
+                code: 'ERASURE_SWEEP_DEAD_LETTER_WRITE_FAILED',
+                message: `Failed to persist dead-letter state for ${citizenUid}`,
+                data: { citizenUid, deadLetterError: deadLetterErr instanceof Error ? deadLetterErr.message : String(deadLetterErr) },
+            });
+        }
         void streamAuditEvent({
             eventType: 'erasure_request_dead_lettered_with_auth_unblocked',
             actorUid: 'system',
@@ -169,7 +195,7 @@ async function executeErasure(input, citizenUid, requestId) {
     // Step 9: Hard-delete Firebase Auth account — LAST, non-reversible
     await input.auth.deleteUser(citizenUid);
     // Sentinel deletion happens in the caller after this function returns (step 10)
-    void log({
+    log({
         severity: 'INFO',
         code: 'ERASURE_EXECUTED',
         message: `erasure executed for ${citizenUid}`,

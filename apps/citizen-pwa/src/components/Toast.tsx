@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import type { ToastType } from '../hooks/useToast'
+import { useReducedMotion } from '../hooks/useReducedMotion.js'
 
 const BG_MAP: Record<ToastType, string> = {
   success: 'bg-[#10b981]',
@@ -18,6 +19,8 @@ export function Toast({
   message: string
   type: ToastType
 }) {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <AnimatePresence>
       {show && (
@@ -28,7 +31,7 @@ export function Toast({
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
-          transition={{ duration: 0.3, ease: EASE_REVEAL }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3, ease: EASE_REVEAL }}
         >
           {message}
         </motion.div>

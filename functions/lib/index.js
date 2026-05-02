@@ -28,6 +28,8 @@ export { mergeDuplicates } from './callables/merge-duplicates.js';
 export { initiateShiftHandoff, acceptShiftHandoff } from './callables/shift-handoff.js';
 export { initiateResponderHandoff, acceptResponderHandoff, } from './callables/responder-shift-handoff.js';
 export { massAlertReachPlanPreview, sendMassAlert, requestMassAlertEscalation, forwardMassAlertToNDRRMC, } from './callables/mass-alert.js';
+export { subscribeToAlerts } from './callables/subscribe-to-alerts.js';
+export { unsubscribeFromAlerts } from './callables/unsubscribe-from-alerts.js';
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2
 // storage import-time env checks (FIREBASE_CONFIG) during unit testing.
 import { onObjectFinalized } from 'firebase-functions/v2/storage';

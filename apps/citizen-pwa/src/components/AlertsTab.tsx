@@ -1,6 +1,10 @@
+import { useState } from 'react'
 import { Siren, Bell, AlertTriangle, Building2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useAlerts } from '../hooks/useAlerts.js'
+import { useAlertReadState } from '../hooks/useAlertReadState.js'
+import { AlertDetailSheet } from './AlertDetailSheet.js'
+import { severityMeta } from '../utils/alertUtils.js'
 import type { AlertDoc } from '@bantayog/shared-types'
 
 const SEVERITY_ORDER: Record<string, number> = {
@@ -9,21 +13,6 @@ const SEVERITY_ORDER: Record<string, number> = {
   medium: 2,
   low: 3,
   info: 4,
-}
-
-function severityMeta(severity: string): { label: string; bg: string; color: string } {
-  switch (severity) {
-    case 'critical':
-      return { label: 'CRITICAL', bg: '#fecaca', color: '#7f1d1d' }
-    case 'high':
-      return { label: 'HIGH', bg: '#fee2e2', color: '#991b1b' }
-    case 'medium':
-      return { label: 'MEDIUM', bg: '#fff5ef', color: '#a73400' }
-    case 'low':
-      return { label: 'LOW', bg: '#e0e7f0', color: '#001e40' }
-    default:
-      return { label: 'INFO', bg: '#dbeafe', color: '#1e40af' }
-  }
 }
 
 function severityBorderClass(severity: string): string {
@@ -74,14 +63,34 @@ function timeAgo(ts: number): string {
   return `${String(Math.floor(hours / 24))}d ago`
 }
 
-function AlertCard({ alert }: { alert: AlertDoc & { issuedBy?: string } }) {
+function AlertCard({
+  alert,
+  onClick,
+  isUnread,
+}: {
+  alert: AlertDoc & { issuedBy?: string }
+  onClick: () => void
+  isUnread: boolean
+}) {
   const { label, bg, color } = severityMeta(alert.severity)
   const icon = severityIcon(alert.severity)
   const borderClass = severityBorderClass(alert.severity)
   const iconColor = severityIconColor(alert.severity)
 
   return (
-    <div className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 ${borderClass}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
+    >
+      {/* Unread indicator dot */}
+      {isUnread && (
+        <span
+          className="absolute top-4 right-4 w-2 h-2 rounded-full bg-brand-500"
+          aria-hidden="true"
+        />
+      )}
+
       <div className="p-4">
         <div className="flex items-start justify-between">
           <span
@@ -120,7 +129,7 @@ function AlertCard({ alert }: { alert: AlertDoc & { issuedBy?: string } }) {
           </span>
         </p>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -142,6 +151,10 @@ function SkeletonCard() {
 
 export function AlertsTab() {
   const { alerts, loading, error } = useAlerts()
+  const { markAsRead, isUnread, unreadCount } = useAlertReadState()
+  const [selectedAlert, setSelectedAlert] = useState<(AlertDoc & { issuedBy?: string }) | null>(
+    null,
+  )
 
   const sorted = [...alerts].sort(
     (a, b) =>
@@ -150,12 +163,24 @@ export function AlertsTab() {
   )
 
   const hasCritical = sorted.some((a) => a.severity === 'critical')
+  const alertIds = sorted.map((a) => a.id)
+  const unread = unreadCount(alertIds)
+
+  const handleAlertClick = (alert: AlertDoc & { issuedBy?: string }) => {
+    setSelectedAlert(alert)
+    markAsRead(alert.id)
+  }
 
   return (
     <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 py-4 border-b border-[#d5dedd]">
         <h1 className="text-[20px] font-bold text-[#25292a]">Alerts</h1>
+        {unread > 0 && (
+          <p className="text-xs text-[#768081] mt-1">
+            {unread} unread alert{unread !== 1 ? 's' : ''}
+          </p>
+        )}
       </div>
 
       {/* Active emergency strip */}
@@ -176,6 +201,8 @@ export function AlertsTab() {
         ) : error ? (
           <div
             role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
             className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
           >
             <AlertTriangle size={40} className="text-[#dc2626] mb-2" />
@@ -187,6 +214,8 @@ export function AlertsTab() {
         ) : sorted.length === 0 ? (
           <div
             role="status"
+            aria-live="polite"
+            aria-atomic="true"
             className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
           >
             <Bell size={40} className="mb-2" />
@@ -194,9 +223,27 @@ export function AlertsTab() {
             <p className="text-xs">You will be notified when new alerts are issued.</p>
           </div>
         ) : (
-          sorted.map((alert) => <AlertCard key={alert.id} alert={alert} />)
+          sorted.map((alert) => (
+            <AlertCard
+              key={alert.id}
+              alert={alert}
+              onClick={() => {
+                handleAlertClick(alert)
+              }}
+              isUnread={isUnread(alert.id)}
+            />
+          ))
         )}
       </div>
+
+      {/* Alert detail sheet */}
+      <AlertDetailSheet
+        alert={selectedAlert}
+        open={selectedAlert !== null}
+        onClose={() => {
+          setSelectedAlert(null)
+        }}
+      />
     </div>
   )
 }

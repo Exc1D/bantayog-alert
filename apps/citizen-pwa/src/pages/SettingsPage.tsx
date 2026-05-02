@@ -6,6 +6,7 @@ import type { User } from 'firebase/auth'
 import { Toggle } from '../components/Toggle.js'
 import { DeleteAccountFlow } from '../components/DeleteAccountFlow.js'
 import { useToast } from '../hooks/useToast.js'
+import { useFcmToken } from '../hooks/useFcmToken.js'
 import { Toast } from '../components/Toast.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
 
@@ -37,8 +38,8 @@ function setExportCooldown(until: number | null): void {
 export function SettingsPage() {
   const navigate = useNavigate()
   const { show, message, type, toast } = useToast()
+  const { enabled, requestPermission, disable } = useFcmToken()
   const [user, setUser] = useState<User | null>(null)
-  const [pushEnabled, setPushEnabled] = useState(false)
   const [offlineMode, setOfflineMode] = useState(() => {
     try {
       return localStorage.getItem('bantayog_offline_mode') === 'true'
@@ -164,7 +165,25 @@ export function SettingsPage() {
       <div className="bg-white divide-y divide-[#f0f4f4]">
         <div className="flex items-center justify-between px-4 py-4">
           <span className="text-sm font-medium text-[#25292a]">Push notifications</span>
-          <Toggle checked={pushEnabled} onChange={setPushEnabled} label="Push notifications" />
+          <Toggle
+            checked={enabled}
+            onChange={(next) => {
+              void (async () => {
+                if (next) {
+                  const success = await requestPermission()
+                  if (!success) {
+                    toast(
+                      'Failed to enable notifications. Please check browser permissions.',
+                      'error',
+                    )
+                  }
+                } else {
+                  await disable()
+                }
+              })()
+            }}
+            label="Push notifications"
+          />
         </div>
         <div className="flex items-center justify-between px-4 py-4">
           <span className="text-sm font-medium text-[#25292a]">Alert sounds</span>

@@ -8,7 +8,11 @@ const logging = new Logging()
 export async function auditExportBatchCore(opts: {
   bqTable: { insert(rows: unknown[]): Promise<unknown> }
   loggingLog: {
-    getEntries(options: { pageSize: number; filter?: string }): Promise<[unknown[], ...unknown[]]>
+    getEntries(options: {
+      pageSize: number
+      filter?: string
+      autoPaginate?: boolean
+    }): Promise<[unknown[], ...unknown[]]>
   }
   now?: () => number
 }): Promise<{ exported: number }> {
@@ -16,14 +20,21 @@ export async function auditExportBatchCore(opts: {
   const sixMinutesAgo = new Date(now - 6 * 60 * 1000).toISOString()
   const [entries] = await opts.loggingLog.getEntries({
     pageSize: 500,
+    autoPaginate: true,
     filter: `timestamp >= "${sixMinutesAgo}"`,
   })
   if (entries.length === 0) return { exported: 0 }
   interface LogEntry {
-    metadata?: { logName?: unknown; resource?: unknown; timestamp?: unknown }
+    metadata?: {
+      insertId?: string
+      logName?: unknown
+      resource?: unknown
+      timestamp?: string
+    }
     data?: unknown
   }
-  const rows = (entries as LogEntry[]).map((e) => ({
+  const rows = (entries as LogEntry[]).map((e, i) => ({
+    insertId: e.metadata?.insertId ?? `${e.metadata?.timestamp ?? String(Date.now())}-${String(i)}`,
     logName: e.metadata?.logName,
     resource: JSON.stringify(e.metadata?.resource),
     payload: JSON.stringify(e.data),

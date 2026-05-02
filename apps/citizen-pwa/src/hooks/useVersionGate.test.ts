@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { semverLt } from '@bantayog/shared-validators'
 
-describe('semverLt', () => {
+describe('semverLt (shared-validators dependency of useVersionGate)', () => {
   it('returns true when a is older than b', () => {
     expect(semverLt('0.9.0', '1.0.0')).toBe(true)
     expect(semverLt('1.0.0', '1.0.1')).toBe(true)

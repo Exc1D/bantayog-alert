@@ -174,6 +174,8 @@ export function FeedTab() {
         ) : incidents.length === 0 ? (
           <div
             role="status"
+            aria-live="polite"
+            aria-atomic="true"
             className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4"
           >
             <span className="text-green-600 mb-3">

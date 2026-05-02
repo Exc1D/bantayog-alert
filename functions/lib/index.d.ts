@@ -27,6 +27,8 @@ export { mergeDuplicates } from './callables/merge-duplicates.js';
 export { initiateShiftHandoff, acceptShiftHandoff } from './callables/shift-handoff.js';
 export { initiateResponderHandoff, acceptResponderHandoff, } from './callables/responder-shift-handoff.js';
 export { massAlertReachPlanPreview, sendMassAlert, requestMassAlertEscalation, forwardMassAlertToNDRRMC, } from './callables/mass-alert.js';
+export { subscribeToAlerts } from './callables/subscribe-to-alerts.js';
+export { unsubscribeFromAlerts } from './callables/unsubscribe-from-alerts.js';
 export declare const processInboxItem: import("firebase-functions").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").QueryDocumentSnapshot | undefined, {
     inboxId: string;
 }>>;
