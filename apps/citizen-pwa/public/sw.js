@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bantayog_shell_v1'
+const CACHE_NAME = 'bantayog_shell_v2'
 // WARNING: This must match the localforage instance name in
 // apps/citizen-pwa/src/services/draft-store.ts ('bantayog-drafts').
 // The SW uses raw IndexedDB; localforage wraps IndexedDB with its own
@@ -8,8 +8,24 @@ const CACHE_NAME = 'bantayog_shell_v1'
 const DB_NAME = 'bantayog-drafts'
 const DB_STORE = 'drafts'
 
+// Precache the app shell so a cold offline navigation falls back to
+// index.html instead of the browser's default offline page. Vite's hashed
+// JS/CSS chunks are still cached opportunistically by the fetch handler.
+const PRECACHE_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+]
+
 self.addEventListener('install', (event) => {
-  self.skipWaiting()
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting()),
+  )
 })
 
 self.addEventListener('activate', (event) => {
@@ -41,9 +57,17 @@ self.addEventListener('fetch', (event) => {
         }
         return response
       })
-      .catch(() => {
+      .catch(async () => {
+        // Navigation requests (SPA routes) fall back to the cached shell so
+        // React Router can render the right view instead of the browser
+        // showing its default offline page.
+        if (event.request.mode === 'navigate') {
+          const shell = await caches.match('/index.html')
+          if (shell) return shell
+        }
         if (event.request.method === 'GET') {
-          return caches.match(event.request)
+          const cached = await caches.match(event.request)
+          if (cached) return cached
         }
         throw new Error('not found')
       }),

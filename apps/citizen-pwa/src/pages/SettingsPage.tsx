@@ -115,7 +115,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#f0f4f4]">
+    <main id="main-content" className="min-h-[100dvh] bg-[#f0f4f4]">
       {/* Back header */}
       <div className="flex items-center gap-3 px-4 py-4 border-b bg-white border-[#d5dedd]">
         <button
@@ -132,7 +132,7 @@ export function SettingsPage() {
       </div>
 
       {/* Notifications section */}
-      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-surface-600">
         Notifications
       </p>
       <div className="bg-white divide-y divide-[#f0f4f4]">
@@ -165,7 +165,7 @@ export function SettingsPage() {
       </div>
 
       {/* Location section */}
-      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-surface-600">
         Location
       </p>
       <div className="bg-white">
@@ -180,7 +180,7 @@ export function SettingsPage() {
       </div>
 
       {/* Offline Mode section */}
-      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-surface-600">
         Offline Mode
       </p>
       <div className="bg-white">
@@ -195,7 +195,7 @@ export function SettingsPage() {
       </div>
 
       {/* Storage section */}
-      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-surface-600">
         Storage
       </p>
       <div className="bg-white">
@@ -205,7 +205,7 @@ export function SettingsPage() {
       </div>
 
       {/* Account section */}
-      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-surface-600">
         Account
       </p>
       <div className="bg-white divide-y divide-[#f0f4f4]">
@@ -218,7 +218,7 @@ export function SettingsPage() {
             >
               Download my data
             </button>
-            <span className="text-xs text-[#a3adae]">
+            <span className="text-xs text-surface-500">
               Receive a JSON export of your profile, reports, and media.
             </span>
           </div>
@@ -236,7 +236,7 @@ export function SettingsPage() {
       </div>
 
       {/* Danger Zone section */}
-      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-[#768081]">
+      <p className="text-xs font-semibold uppercase tracking-wider px-4 pt-6 pb-2 text-surface-600">
         Danger Zone
       </p>
       <div className="bg-white divide-y divide-[#f0f4f4]">
@@ -249,6 +249,6 @@ export function SettingsPage() {
       <div className="pb-8" />
 
       <Toast show={show} message={message} type={type} />
-    </div>
+    </main>
   )
 }

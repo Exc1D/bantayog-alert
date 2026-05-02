@@ -147,6 +147,14 @@
 - Service Worker cannot use Firebase JS SDK (requires bundling); use Firestore REST API (`firestore.googleapis.com/v1/projects/...`) for SW background sync writes.
 - Idempotency key on the SW write ensures dedup if both SW and in-app machine both succeed for the same draft.
 - Image compression in the browser: canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser path (avoids `createImageBitmap` + `OffscreenCanvas` compatibility issues).
+- Opportunistic dynamic caching alone is not enough for an offline-first PWA — a cold offline boot has nothing to fall back to. Precache the app shell (`/`, `/index.html`, manifest, key icons) on `install` and serve cached `/index.html` for any navigation request that fails the network. SPA shell + React Router then handle per-route offline UI.
+- When bumping a SW cache version, the existing `activate` cleanup must already filter for the cache prefix (`bantayog_shell_*` here); otherwise the old cache lingers and precache never re-runs.
+
+## UX / A11y
+
+- Conditional rendering of primary action buttons (`{state !== null && <Button…/>}`) reads as "silent failure" — users see no button and no instruction. Prefer always-rendering the action region with one of two states: a `role="status"` hint when the precondition is unmet, or the action button when it is. Pattern matches the offline-banner pattern in `CitizenShell`.
+- For WCAG-AA contrast, prefer Tailwind theme tokens (`text-surface-600`, `text-surface-500`) over arbitrary `text-[#hex]` so contrast becomes part of the design-system contract instead of a per-page coincidence. The `surface-400` / `surface-300` tokens (3.1:1 / 4.0:1) are decorative-only — never use them for body text on light backgrounds.
+- Routes that bypass the shell (`/settings`, `/register`, `/login`, full-page wizards) need their own `<main id="main-content">` element; the skip link inside `CitizenShell` already targets `#main-content`, so reusing the same ID keeps that link consistent across shell and non-shell pages.
 
 ## Wizard / Multi-step Forms
 
