@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 
 const NOTICE_VERSION = '1.0'
@@ -12,24 +12,24 @@ export function PrivacyNoticeModal({ uid }: Props) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    void getDoc(doc(db, 'users', uid))
+    void getDoc(doc(db, 'user_consents', uid))
       .then((snap) => {
-        const version = snap.data()?.privacyNoticeVersion as string | undefined
+        const version = snap.data()?.consentVersion as string | undefined
         if (version !== NOTICE_VERSION) setVisible(true)
       })
       .catch((err: unknown) => {
-        console.error('[PrivacyNotice] Failed to read user doc:', err)
+        console.error('[PrivacyNotice] Failed to read consent doc:', err)
         setVisible(true)
       })
   }, [uid])
 
   function handleDismiss() {
     setVisible(false)
-    void setDoc(
-      doc(db, 'users', uid),
-      { privacyNoticeVersion: NOTICE_VERSION },
-      { merge: true },
-    ).catch((err: unknown) => {
+    void setDoc(doc(db, 'user_consents', uid), {
+      consentVersion: NOTICE_VERSION,
+      consentGivenAt: serverTimestamp(),
+      method: 'in_app_modal',
+    }).catch((err: unknown) => {
       console.error('[PrivacyNotice] Failed to persist consent:', err)
     })
   }
