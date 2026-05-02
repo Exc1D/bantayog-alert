@@ -9,26 +9,14 @@
 const FIREBASE_APP_SCRIPT = 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js'
 const FIREBASE_MESSAGING_SCRIPT =
   'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js'
-const CACHE_NAME = 'firebase-messaging-v1'
 
 importScripts(FIREBASE_APP_SCRIPT)
 importScripts(FIREBASE_MESSAGING_SCRIPT)
 
 let messaging = null
 
-// Cache Firebase scripts for offline resilience
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll([FIREBASE_APP_SCRIPT, FIREBASE_MESSAGING_SCRIPT])
-      })
-      .catch((err) => {
-        console.warn('[FCM SW] Failed to cache Firebase scripts:', err)
-      }),
-  )
-  self.skipWaiting()
+  event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', (event) => {

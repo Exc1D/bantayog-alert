@@ -278,7 +278,13 @@ service cloud.firestore {
     match /user_consents/{consentUid} {
       allow read: if isAuthed() && uid() == consentUid;
       allow create: if isAuthed() && uid() == consentUid
-                  && request.resource.data.keys().hasOnly(['consentVersion', 'consentGivenAt', 'method']);
+                  && request.resource.data.keys().hasAll(['consentVersion', 'consentGivenAt', 'method'])
+                  && request.resource.data.keys().hasOnly(['consentVersion', 'consentGivenAt', 'method'])
+                  && request.resource.data.consentVersion is string
+                  && request.resource.data.consentVersion.size() >= 1
+                  && request.resource.data.consentGivenAt is timestamp
+                  && request.resource.data.method is string
+                  && request.resource.data.method in ['in_app_modal', 'web_form', 'sms'];
       allow update: if false;
       allow delete: if false;
     }

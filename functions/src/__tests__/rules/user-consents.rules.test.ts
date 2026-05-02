@@ -7,7 +7,7 @@ import {
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore'
 
 const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/firestore.rules')
 
@@ -35,8 +35,8 @@ describe('user_consents rules', () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-owner'), {
         consentVersion: '1.0',
-        consentGivenAt: Date.now(),
-        method: 'in-app',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
       })
     })
     const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
@@ -48,8 +48,8 @@ describe('user_consents rules', () => {
     await assertSucceeds(
       setDoc(doc(db, 'user_consents', 'uid-owner'), {
         consentVersion: '1.0',
-        consentGivenAt: Date.now(),
-        method: 'in-app',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
       }),
     )
   })
@@ -58,8 +58,8 @@ describe('user_consents rules', () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-other'), {
         consentVersion: '1.0',
-        consentGivenAt: Date.now(),
-        method: 'in-app',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
       })
     })
     const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
@@ -76,8 +76,8 @@ describe('user_consents rules', () => {
     await assertFails(
       setDoc(doc(db, 'user_consents', 'uid-owner'), {
         consentVersion: '1.0',
-        consentGivenAt: Date.now(),
-        method: 'in-app',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
         extra: 'not-allowed',
       }),
     )
@@ -88,8 +88,8 @@ describe('user_consents rules', () => {
     await assertFails(
       setDoc(doc(db, 'user_consents', 'uid-other'), {
         consentVersion: '1.0',
-        consentGivenAt: Date.now(),
-        method: 'in-app',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
       }),
     )
   })
@@ -98,8 +98,8 @@ describe('user_consents rules', () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-owner'), {
         consentVersion: '1.0',
-        consentGivenAt: Date.now(),
-        method: 'in-app',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
       })
     })
     const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
@@ -110,8 +110,8 @@ describe('user_consents rules', () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-owner'), {
         consentVersion: '1.0',
-        consentGivenAt: Date.now(),
-        method: 'in-app',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
       })
     })
     const db = env!.authenticatedContext('uid-owner', activeToken).firestore()

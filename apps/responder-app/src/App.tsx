@@ -9,7 +9,7 @@ import { useResponderTelemetry } from './hooks/useResponderTelemetry'
 import { VersionGate } from './components/VersionGate'
 import { PrivacyNoticeModal } from './components/PrivacyNoticeModal'
 
-function FcmSetup() {
+export function FcmSetup() {
   const { user } = useAuth()
   const { register } = useRegisterFcmToken({
     responderDocPath: user ? `responders/${user.uid}` : '',
@@ -38,6 +38,21 @@ function FcmSetup() {
           appId: import.meta.env.VITE_FIREBASE_APP_ID,
         }
 
+        const requiredFields = [
+          'apiKey',
+          'authDomain',
+          'projectId',
+          'storageBucket',
+          'messagingSenderId',
+          'appId',
+        ] as const
+        for (const field of requiredFields) {
+          if (!config[field]) {
+            console.warn(`[FcmSetup] Missing Firebase config field: ${field}`)
+            return
+          }
+        }
+
         const sendConfig = () => {
           registration.active?.postMessage({
             type: 'FIREBASE_CONFIG',
@@ -47,6 +62,14 @@ function FcmSetup() {
 
         if (registration.active) {
           sendConfig()
+        } else if (registration.installing) {
+          registration.installing.addEventListener('statechange', () => {
+            if (registration.installing?.state === 'activated') sendConfig()
+          })
+        } else if (registration.waiting) {
+          registration.waiting.addEventListener('statechange', () => {
+            if (registration.waiting?.state === 'activated') sendConfig()
+          })
         } else {
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing
