@@ -72,8 +72,8 @@ The `bantayog_offline_mode` toggle stays as documentation-only since the SW alre
 **File:** `apps/citizen-pwa/src/components/SubmitReportForm/Step1Evidence.tsx` (line 144 `handlePhotoChange`)
 **Fix:** Add limits as constants at top of file:
 
-```
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024  // 5 MB
+```js
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 ```
 
@@ -273,7 +273,7 @@ Sweep `apps/citizen-pwa/src/` for the same anti-pattern. Already covered in R3 f
 
 **Design (mirrors `requestDataErasure` shape, includes media URLs per locked scope):**
 
-```
+```text
 1. Auth gate: requireAuth(request, ['citizen']) + enforceAppCheck (already there)
 2. Rate limit: check `data_exports` for any doc by this uid with status 'pending'/'ready'
    created in last 60s — reject with 'resource-exhausted'
@@ -393,7 +393,7 @@ Add new entries for the rules learned during this sweep:
 
 ## End-to-end verification (after all clusters land)
 
-1. `pnpm lint && pnpm typecheck && npx vitest run` from `apps/citizen-pwa/` — all green, all 313 tests pass
+1. `pnpm lint && pnpm typecheck && npx vitest run` from `apps/citizen-pwa/` — all green, all 318 tests pass
 2. `pnpm exec turbo run lint typecheck` from repo root — passes across all packages
 3. Manual smoke test in dev emulator:
    - Submit report online → verify RevealSheet shows correct municipality contact + real timestamp

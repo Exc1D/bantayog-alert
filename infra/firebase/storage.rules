@@ -35,7 +35,7 @@ service firebase.storage {
     // Signed URLs are the functional access path and bypass rules,
     // but this explicit deny-by-default + owner-allow is defense-in-depth.
     match /data_exports/{uid}/{file} {
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if isAuthed() && request.auth.uid == uid;
       allow write: if false;
     }
 

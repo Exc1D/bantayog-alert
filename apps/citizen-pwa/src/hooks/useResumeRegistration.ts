@@ -23,20 +23,25 @@ export function useResumeRegistration(): void {
     if (search.includes(RESUME_QUERY)) return
 
     let active = true
+    let latestUid: string | null = null
     const unsubscribe = onAuthStateChanged(auth(), (user) => {
       if (!active) return
       if (!user || user.isAnonymous) return
       if (!user.phoneNumber) return
 
+      latestUid = user.uid
+      const currentUid = user.uid
+
       // User completed phone verification at some point. Check if the citizen
       // document exists; if not, registration was interrupted.
-      void getDoc(doc(db(), 'users', user.uid))
+      void getDoc(doc(db(), 'users', currentUid))
         .then((snap) => {
-          if (!active) return
+          if (!active || currentUid !== latestUid) return
           if (snap.exists()) return
           void navigate(`/register?${RESUME_QUERY}`, { replace: true })
         })
         .catch((err: unknown) => {
+          if (currentUid !== latestUid) return
           console.warn('[useResumeRegistration] users/{uid} read failed:', err)
         })
     })

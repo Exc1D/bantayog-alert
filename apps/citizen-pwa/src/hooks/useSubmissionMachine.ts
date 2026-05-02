@@ -131,6 +131,17 @@ export function useSubmissionMachine({
               logDraftError('save queued', e)
             })
           setState('queued')
+          // Register SW background sync for queued drafts (best-effort).
+          try {
+            const reg = await navigator.serviceWorker.ready
+            if ((reg as unknown as { sync?: { register: (tag: string) => Promise<void> } }).sync) {
+              await (
+                reg as unknown as { sync: { register: (tag: string) => Promise<void> } }
+              ).sync.register('submit-report')
+            }
+          } catch {
+            // Background Sync API unavailable or not supported.
+          }
           return null
         }
 
@@ -168,22 +179,6 @@ export function useSubmissionMachine({
     if (publicRef) {
       setState('server_confirmed')
       onSuccess(publicRef)
-    } else {
-      // SW background sync — complementary to in-app retry (Chrome/Edge only).
-      try {
-        const reg = (
-          self as unknown as {
-            registration?: { sync?: { register: (tag: string) => Promise<void> } }
-          }
-        ).registration
-        if (reg?.sync) {
-          reg.sync.register('submit-report').catch(() => {
-            // SW may not be ready yet; best-effort.
-          })
-        }
-      } catch {
-        // Background Sync API unavailable or not supported.
-      }
     }
   }, [state, doSubmit, onSuccess])
 
@@ -220,7 +215,7 @@ export function useSubmissionMachine({
     if (state !== 'queued' && state !== 'failed_retryable') {
       return
     }
-    const delay = backoffDelay(retryCountRef.current)
+    const delay = backoffDelay(Math.max(0, retryCountRef.current - 1))
     const timer = setTimeout(() => {
       setState('submitting')
       void doSubmit(retryCountRef.current).then((publicRef) => {

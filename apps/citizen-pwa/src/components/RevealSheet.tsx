@@ -212,7 +212,12 @@ export function RevealSheet({
   }
 
   const handleSmsFallback = () => {
-    window.location.href = `sms:${contact.smsShortCode}?body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
+    const normalizedShortCode = contact.smsShortCode.replace(/[^\d+]/g, '')
+    if (!normalizedShortCode) {
+      console.warn('[RevealSheet] Invalid SMS shortcode:', contact.smsShortCode)
+      return
+    }
+    window.location.href = `sms:${normalizedShortCode}?body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
   }
 
   const handlePrimaryAction = () => {

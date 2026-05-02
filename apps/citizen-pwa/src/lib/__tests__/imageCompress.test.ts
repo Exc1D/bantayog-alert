@@ -10,13 +10,12 @@ describe('compressImage', () => {
     expect(result).toBe(smallFile)
   })
 
-  it('returns a Blob for files larger than 200KB', async () => {
+  it('returns a Promise for files larger than 200KB', () => {
     const largeContent = new Uint8Array(300_000).fill(0xff)
     const largeFile = new File([largeContent], 'large.jpg', { type: 'image/jpeg' })
 
-    // This will attempt image loading which may fail in happy-dom,
-    // but the function contract is: it returns a Promise<Blob>.
-    // We just verify it doesn't throw synchronously and returns a Promise.
+    // In test environments (happy-dom), canvas/image operations may hang.
+    // We only verify the function returns a Promise for large files.
     const result = compressImage(largeFile)
     expect(result).toBeInstanceOf(Promise)
   })

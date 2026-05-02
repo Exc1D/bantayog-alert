@@ -90,12 +90,19 @@ export function SettingsPage() {
   const handleDataExport = async () => {
     try {
       const { downloadUrl } = await requestDataExport()
+      const response = await fetch(downloadUrl)
+      if (!response.ok) {
+        throw new Error(`Download failed: ${String(response.status)}`)
+      }
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = downloadUrl
+      a.href = objectUrl
       a.download = 'bantayog-export.json'
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
       toast('Your data is downloading.', 'success')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)

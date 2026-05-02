@@ -18,7 +18,7 @@ export const municipalityDocSchema = z
     mdrrmoLabel: z.string().min(1).max(80).optional(),
     mdrrmoHotline: z
       .string()
-      .regex(/^\+?\d[\d\s\-()]{6,20}$/)
+      .regex(/^[+\d(][\d\s\-()]{6,20}$/)
       .optional(),
     mdrrmoSmsShortCode: z
       .string()

@@ -10,11 +10,17 @@ async function compressImage(file: File, opts?: { maxEdge?: number; quality?: nu
   // Already small — skip compression.
   if (file.size < 200_000) return file
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image()
-    img.onerror = () => reject(new Error('Failed to load image'))
+    let objectUrl: string | null = null
+
+    img.onerror = () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+      resolve(file)
+    }
+
     img.onload = () => {
-      URL.revokeObjectURL(img.src)
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
 
       let { width, height } = img
       if (width > maxEdge || height > maxEdge) {
@@ -28,14 +34,14 @@ async function compressImage(file: File, opts?: { maxEdge?: number; quality?: nu
       canvas.height = height
       const ctx = canvas.getContext('2d')
       if (!ctx) {
-        reject(new Error('Canvas 2D context unavailable'))
+        resolve(file)
         return
       }
       ctx.drawImage(img, 0, 0, width, height)
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            reject(new Error('Canvas toBlob returned null'))
+            resolve(file)
           } else {
             resolve(blob)
           }
@@ -44,7 +50,8 @@ async function compressImage(file: File, opts?: { maxEdge?: number; quality?: nu
         quality,
       )
     }
-    img.src = URL.createObjectURL(file)
+    objectUrl = URL.createObjectURL(file)
+    img.src = objectUrl
   })
 }
 

@@ -73,17 +73,23 @@ export async function requestDataExportImpl(
 ): Promise<{ downloadUrl: string; expiresAt: number; reportCount: number; mediaCount: number }> {
   const now = Date.now()
 
-  // Rate limit: reject if a pending/ready export exists from the last RATE_LIMIT_MS.
-  const existingQuery = await db
-    .collection('data_exports')
-    .where('citizenUid', '==', actor.uid)
-    .where('status', 'in', ['pending', 'ready'])
-    .where('createdAt', '>', now - RATE_LIMIT_MS)
-    .limit(1)
-    .get()
-
-  if (!existingQuery.empty) {
-    throw new HttpsError('resource-exhausted', 'Export already requested recently. Please wait.')
+  // Atomic rate limit: use a transaction to reserve a pending slot.
+  const limiterRef = db.collection('data_export_limiters').doc(actor.uid)
+  try {
+    await db.runTransaction(async (tx) => {
+      const limiterDoc = await tx.get(limiterRef)
+      const lastExportAt = limiterDoc.data()?.lastExportAt ?? 0
+      if (lastExportAt > now - RATE_LIMIT_MS) {
+        throw new HttpsError(
+          'resource-exhausted',
+          'Export already requested recently. Please wait.',
+        )
+      }
+      tx.set(limiterRef, { lastExportAt: now, status: 'pending' }, { merge: true })
+    })
+  } catch (err) {
+    if (err instanceof HttpsError) throw err
+    throw new HttpsError('internal', 'Failed to check rate limit.')
   }
 
   // Aggregate profile.
@@ -123,30 +129,45 @@ export async function requestDataExportImpl(
   const mediaItems: ExportedMedia[] = []
 
   if (reportIds.length > 0) {
-    const mediaSnap = await db.collection('report_media').where('reportId', 'in', reportIds).get()
+    // Firestore `in` queries are capped at 30 values per clause.
+    const BATCH_SIZE = 30
+    const batches: string[][] = []
+    for (let i = 0; i < reportIds.length; i += BATCH_SIZE) {
+      batches.push(reportIds.slice(i, i + BATCH_SIZE))
+    }
 
-    for (const mediaDoc of mediaSnap.docs) {
-      const m = mediaDoc.data() as {
-        reportId: string
-        storagePath: string
-        contentType?: string
-        sizeBytes?: number
+    const mediaSnaps = await Promise.all(
+      batches.map((batch) => db.collection('report_media').where('reportId', 'in', batch).get()),
+    )
+
+    for (const mediaSnap of mediaSnaps) {
+      for (const mediaDoc of mediaSnap.docs) {
+        const m = mediaDoc.data() as {
+          reportId: string
+          storagePath: string
+          contentType?: string
+          sizeBytes?: number
+        }
+        const item: ExportedMedia = {
+          reportId: m.reportId,
+          storagePath: m.storagePath,
+          contentType: m.contentType ?? 'application/octet-stream',
+          sizeBytes: m.sizeBytes ?? 0,
+        }
+        // Add signed download URL.
+        try {
+          const { url, expiresAt } = await getSignedStorageUrl(
+            storage,
+            STORAGE_BUCKET,
+            m.storagePath,
+          )
+          item.downloadUrl = url
+          item.expiresAt = expiresAt
+        } catch {
+          // Storage path may not exist yet; omit URL.
+        }
+        mediaItems.push(item)
       }
-      const item: ExportedMedia = {
-        reportId: m.reportId,
-        storagePath: m.storagePath,
-        contentType: m.contentType ?? 'application/octet-stream',
-        sizeBytes: m.sizeBytes ?? 0,
-      }
-      // Add signed download URL.
-      try {
-        const { url, expiresAt } = await getSignedStorageUrl(storage, STORAGE_BUCKET, m.storagePath)
-        item.downloadUrl = url
-        item.expiresAt = expiresAt
-      } catch {
-        // Storage path may not exist yet; omit URL.
-      }
-      mediaItems.push(item)
     }
   }
 
@@ -211,7 +232,8 @@ export const requestDataExport = onCall(
       return await requestDataExportImpl(getFirestore(), getAuth(), getStorage(), { uid })
     } catch (err: unknown) {
       if (err instanceof HttpsError) throw err
-      throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error')
+      console.error('requestDataExport failed:', err)
+      throw new HttpsError('internal', 'Failed to generate data export.')
     }
   },
 )

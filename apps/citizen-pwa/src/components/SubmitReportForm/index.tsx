@@ -77,9 +77,15 @@ function WizardContainer() {
       const msisdnHash = formData.step2.reporterMsisdn
         ? await hashPhone(formData.step2.reporterMsisdn)
         : undefined
-      const photo = formData.step1.photoFile
-        ? await compressImage(formData.step1.photoFile)
-        : undefined
+      let photo: Blob | undefined
+      if (formData.step1.photoFile) {
+        try {
+          photo = await compressImage(formData.step1.photoFile)
+        } catch (compressErr) {
+          console.warn('Image compression failed, using original:', compressErr)
+          photo = formData.step1.photoFile
+        }
+      }
 
       const { draft: created, secret: draftSecret } = await createDraft({
         reportType: formData.step1.reportType as ReportType,

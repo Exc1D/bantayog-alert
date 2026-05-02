@@ -152,7 +152,11 @@ export function useFcmToken() {
           if (user && !user.isAnonymous) {
             const { setDoc, doc } = await import('firebase/firestore')
             const { db } = await import('../services/firebase.js')
-            await setDoc(doc(db(), 'users', user.uid), { fcmToken: null }, { merge: true })
+            await setDoc(
+              doc(db(), 'users', user.uid),
+              { fcmToken: null, fcmTokenUpdatedAt: null },
+              { merge: true },
+            )
           }
         } catch (firestoreErr) {
           console.error('Failed to clear Firestore fcmToken during rollback:', firestoreErr)
@@ -197,7 +201,11 @@ export function useFcmToken() {
         try {
           const { setDoc, doc } = await import('firebase/firestore')
           const { db } = await import('../services/firebase.js')
-          await setDoc(doc(db(), 'users', user.uid), { fcmToken: null }, { merge: true })
+          await setDoc(
+            doc(db(), 'users', user.uid),
+            { fcmToken: null, fcmTokenUpdatedAt: null },
+            { merge: true },
+          )
         } catch (error) {
           console.error('Failed to clear FCM token from Firestore:', error)
         }

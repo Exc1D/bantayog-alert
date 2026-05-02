@@ -8,19 +8,21 @@ export async function requestDataExport(): Promise<{
   mediaCount: number
 }> {
   const callable = httpsCallable(fns(), 'requestDataExport')
-  try {
-    const result = await callable()
-    return result.data as {
-      downloadUrl: string
-      expiresAt: number
-      reportCount: number
-      mediaCount: number
-    }
-  } catch (err) {
-    throw new Error(
-      `Data export request failed: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    )
+  const result = await callable()
+  const data = result.data as Record<string, unknown>
+  if (
+    typeof data.downloadUrl !== 'string' ||
+    typeof data.expiresAt !== 'number' ||
+    typeof data.reportCount !== 'number' ||
+    typeof data.mediaCount !== 'number'
+  ) {
+    throw new Error('invalid server response')
+  }
+  return {
+    downloadUrl: data.downloadUrl,
+    expiresAt: data.expiresAt,
+    reportCount: data.reportCount,
+    mediaCount: data.mediaCount,
   }
 }
 

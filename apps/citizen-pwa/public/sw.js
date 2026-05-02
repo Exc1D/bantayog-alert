@@ -61,10 +61,18 @@ self.addEventListener('sync', (event) => {
 
 async function openDraftsDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
+    const req = indexedDB.open(DB_NAME, 2)
     req.onupgradeneeded = () => {
-      const store = req.result.createObjectStore(DB_STORE, { keyPath: 'id' })
-      store.createIndex('syncState', 'syncState', { unique: false })
+      const db = req.result
+      let store
+      if (!db.objectStoreNames.contains(DB_STORE)) {
+        store = db.createObjectStore(DB_STORE, { keyPath: 'id' })
+      } else {
+        store = req.transaction.objectStore(DB_STORE)
+      }
+      if (!store.indexNames.contains('syncState')) {
+        store.createIndex('syncState', 'syncState', { unique: false })
+      }
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -75,8 +83,13 @@ async function submitQueuedDrafts() {
   const db = await openDraftsDB()
   const tx = db.transaction(DB_STORE, 'readonly')
   const store = tx.objectStore(DB_STORE)
-  const index = store.index('syncState')
 
+  if (!store.indexNames.contains('syncState')) {
+    console.warn('[SW] syncState index missing — skipping background sync')
+    return
+  }
+
+  const index = store.index('syncState')
   const syncingReq = index.getAll('syncing')
   const localOnlyReq = index.getAll('local_only')
 
@@ -100,7 +113,7 @@ function readRequest(req) {
 
 async function submitDraft(draft) {
   const inboxDoc = {
-    reporterUid: draft.reporterUid ?? '',
+    reporterUid: draft.reporterUid ?? draft.reporterId ?? '',
     clientCreatedAt: draft.clientCreatedAt,
     idempotencyKey: draft.idempotencyKey,
     publicRef: draft.publicRef,
@@ -112,7 +125,7 @@ async function submitDraft(draft) {
       severity: draft.severity,
       source: 'web',
       clientDraftRef: draft.clientDraftRef,
-      ...(draft.publicLocation ? { publicLocation: draft.publicLocation } : {}),
+      ...(draft.location ? { publicLocation: draft.location } : {}),
       ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
       ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),
       ...(draft.nearestLandmark ? { nearestLandmark: draft.nearestLandmark } : {}),
@@ -128,12 +141,35 @@ async function submitDraft(draft) {
       ? 'bantayog-staging'
       : 'bantayog-alert'
 
+  // Convert inboxDoc to Firestore Document format.
+  function toFirestoreValue(value) {
+    if (value === null || value === undefined) return { nullValue: 'NULL_VALUE' }
+    if (typeof value === 'string') return { stringValue: value }
+    if (typeof value === 'number') return { integerValue: String(value) }
+    if (typeof value === 'boolean') return { booleanValue: value }
+    if (Array.isArray(value)) return { arrayValue: { values: value.map(toFirestoreValue) } }
+    if (typeof value === 'object') {
+      return {
+        mapValue: {
+          fields: Object.fromEntries(
+            Object.entries(value).map(([k, v]) => [k, toFirestoreValue(v)]),
+          ),
+        },
+      }
+    }
+    return { stringValue: String(value) }
+  }
+
+  const firestoreDoc = {
+    fields: Object.fromEntries(Object.entries(inboxDoc).map(([k, v]) => [k, toFirestoreValue(v)])),
+  }
+
   const response = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/report_inbox/${draft.id}?documentId=${draft.id}`,
+    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/report_inbox?documentId=${draft.id}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(inboxDoc),
+      body: JSON.stringify(firestoreDoc),
     },
   )
 
