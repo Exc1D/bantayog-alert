@@ -5,7 +5,13 @@ const unsubscribeSchema = z.object({
 });
 export async function unsubscribeFromAlertsCore(deps) {
     const { messaging } = await import('firebase-admin');
-    await messaging().unsubscribeFromTopic([deps.token], 'alerts');
+    const response = await messaging().unsubscribeFromTopic([deps.token], 'alerts');
+    if (response.failureCount > 0 && response.errors.length > 0) {
+        const errors = response.errors
+            .map((e) => (typeof e.error === 'string' ? e.error : JSON.stringify(e.error)))
+            .join(', ');
+        throw new Error(`Failed to unsubscribe from alerts topic: ${errors}`);
+    }
     return { success: true };
 }
 export const unsubscribeFromAlerts = onCall({ region: 'asia-southeast1' }, async (request) => {

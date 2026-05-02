@@ -1,4 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
@@ -93,7 +94,7 @@ export async function erasureSweepCore(input) {
                 deadLetterReason: `erasure_failed_and_auth_reenable_failed: ${reason}; re-enable: ${reEnableReason}`,
                 deadLetteredAt: now(),
             });
-            throw new Error(`Auth re-enable failed after erasure failure for ${citizenUid}: ${reEnableReason}`);
+            throw new HttpsError('internal', `auth_reenable_failed_after_erasure_failure: ${reEnableReason}`);
         }
         await candidate.ref.update({
             status: 'dead_lettered',

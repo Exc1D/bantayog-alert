@@ -19,11 +19,7 @@ export function useFcmToken() {
 
   // Rehydrate token on mount
   useEffect(() => {
-    if (
-      !('Notification' in window) ||
-      Notification.permission !== 'granted' ||
-      !hasFirebaseConfig()
-    ) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
       return
     }
 
@@ -36,6 +32,8 @@ export function useFcmToken() {
       })
       .catch((error: unknown) => {
         console.error('Failed to rehydrate FCM token:', error)
+        // Clear token on rehydration failure to avoid stale state
+        setState((prev) => ({ ...prev, token: null, enabled: false }))
       })
   }, [])
 
@@ -115,7 +113,7 @@ export function useFcmToken() {
       return true
     } catch (error) {
       console.error('FCM setup error:', error)
-      setState((prev) => ({ ...prev, enabled: false }))
+      setState((prev) => ({ ...prev, enabled: false, token: null }))
       return false
     }
   }, [])

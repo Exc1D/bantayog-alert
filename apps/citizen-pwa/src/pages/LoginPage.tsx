@@ -16,6 +16,7 @@ export function LoginPage() {
   const [verificationId, setVerificationId] = useState<string | null>(null)
   const recaptchaContainerRef = useRef<HTMLDivElement>(null)
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Initialize invisible reCAPTCHA
   useEffect(() => {
@@ -32,6 +33,9 @@ export function LoginPage() {
 
     return () => {
       recaptchaVerifierRef.current?.clear()
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
     }
   }, [])
 
@@ -53,6 +57,7 @@ export function LoginPage() {
 
     if (!recaptchaVerifierRef.current) {
       toast('Failed to initialize reCAPTCHA', 'error')
+      setLoading(false)
       return
     }
 
@@ -88,7 +93,7 @@ export function LoginPage() {
       const credential = PhoneAuthProviderClass.credential(verificationId, otp)
       await signInWithCredential(auth(), credential)
       toast('Signed in successfully', 'success')
-      setTimeout(() => void navigate('/profile'), 500)
+      timeoutRef.current = setTimeout(() => void navigate('/profile'), 500)
     } catch (error) {
       console.error('OTP verification error:', error)
       toast(error instanceof Error ? error.message : 'Invalid verification code', 'error')

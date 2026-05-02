@@ -121,6 +121,9 @@ describe('useFcmToken', () => {
 
     expect(deleteToken).toHaveBeenCalled()
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), 'unsubscribeFromAlerts')
+    // Verify the callable was actually invoked with the token
+    const unsubscribeFromAlerts = vi.mocked(httpsCallable).mock.results[1]?.value
+    expect(unsubscribeFromAlerts).toHaveBeenCalledWith({ token: 'test-fcm-token' })
     expect(result.current.token).toBeNull()
     expect(result.current.enabled).toBe(false)
   })
