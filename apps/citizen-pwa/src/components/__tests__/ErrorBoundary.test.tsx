@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ErrorBoundary } from '../ErrorBoundary.js'
 
@@ -46,8 +46,17 @@ describe('ErrorBoundary', () => {
     expect(homeButton).toBeInTheDocument()
   })
 
+  let originalLocation: Location | undefined
+
+  afterEach(() => {
+    if (!originalLocation) return
+    // @ts-expect-error test override
+    window.location = originalLocation
+    originalLocation = undefined
+  })
+
   it('should navigate to home when recovery button is clicked', () => {
-    const originalLocation = window.location
+    originalLocation = window.location
     // @ts-expect-error test override
     delete window.location
     window.location = Object.create(originalLocation, {
@@ -62,8 +71,5 @@ describe('ErrorBoundary', () => {
     const homeButton = screen.getByRole('button', { name: /go to home/i })
     fireEvent.click(homeButton)
     expect(window.location.href).toBe('/')
-
-    // @ts-expect-error test override
-    window.location = originalLocation
   })
 })

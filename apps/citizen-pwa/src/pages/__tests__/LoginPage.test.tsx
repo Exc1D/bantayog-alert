@@ -111,7 +111,9 @@ describe('LoginPage', () => {
       )
     })
 
-    expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument()
+    })
   })
 
   it('should verify OTP and sign in', async () => {

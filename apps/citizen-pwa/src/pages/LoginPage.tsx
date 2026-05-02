@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Phone } from 'lucide-react'
-import { signInWithPhoneNumber, RecaptchaVerifier, signInWithCredential } from 'firebase/auth'
+import {
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  PhoneAuthProvider,
+  signInWithCredential,
+} from 'firebase/auth'
 import { useToast } from '../hooks/useToast.js'
 import { Toast } from '../components/Toast.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
@@ -73,6 +78,8 @@ export function LoginPage() {
     } catch (error) {
       console.error('SMS send error:', error)
       toast(error instanceof Error ? error.message : 'Failed to send verification code', 'error')
+      recaptchaVerifierRef.current.clear()
+      recaptchaVerifierRef.current = null
     } finally {
       setLoading(false)
     }
@@ -88,9 +95,7 @@ export function LoginPage() {
 
     setLoading(true)
     try {
-      // Dynamic import to avoid loading PhoneAuthProvider until needed
-      const { PhoneAuthProvider: PhoneAuthProviderClass } = await import('firebase/auth')
-      const credential = PhoneAuthProviderClass.credential(verificationId, otp)
+      const credential = PhoneAuthProvider.credential(verificationId, otp)
       await signInWithCredential(auth(), credential)
       toast('Signed in successfully', 'success')
       timeoutRef.current = setTimeout(() => void navigate('/profile'), 500)

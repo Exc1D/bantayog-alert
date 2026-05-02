@@ -9,7 +9,7 @@ type ReadAlerts = Record<string, true>
 
 function isValidReadAlerts(value: unknown): value is ReadAlerts {
   if (typeof value !== 'object' || value === null) return false
-  return Object.entries(value).every(([key, val]) => typeof key === 'string' && val === true)
+  return Object.entries(value as Record<string, unknown>).every(([, val]) => val === true)
 }
 
 export function useAlertReadState() {
@@ -31,15 +31,17 @@ export function useAlertReadState() {
 
   const markAsRead = useCallback((alertId: string) => {
     setReadAlerts((prev) => {
-      const next: ReadAlerts = { ...prev, [alertId]: true }
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      } catch (error) {
-        console.error('Failed to persist alert read state:', error)
-      }
-      _changeEmitter?.dispatchEvent(new Event(STORAGE_EVENT))
-      return next
+      if (prev[alertId]) return prev
+      return { ...prev, [alertId]: true }
     })
+    try {
+      const current = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as ReadAlerts
+      current[alertId] = true
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
+    } catch (error) {
+      console.error('Failed to persist alert read state:', error)
+    }
+    _changeEmitter?.dispatchEvent(new Event(STORAGE_EVENT))
   }, [])
 
   useEffect(() => {
@@ -53,8 +55,8 @@ export function useAlertReadState() {
             setReadAlerts(parsed)
           }
         }
-      } catch {
-        // ignore sync errors
+      } catch (error) {
+        console.error('Failed to sync alert read state:', error)
       }
     }
     _changeEmitter.addEventListener(STORAGE_EVENT, handler)

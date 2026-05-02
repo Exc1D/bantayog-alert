@@ -12,7 +12,7 @@ vi.mock('./firebase.js', () => ({
   fns: () => 'mocked-functions',
 }))
 
-import { requestDataExport } from './callables'
+import { requestDataExport, registerCitizen } from './callables'
 
 describe('callables', () => {
   it('requestDataExport calls correct callable', async () => {
@@ -21,5 +21,29 @@ describe('callables', () => {
     await requestDataExport()
     expect(mockHttpsCallable).toHaveBeenCalledWith('mocked-functions', 'requestDataExport')
     expect(mockCall).toHaveBeenCalled()
+  })
+})
+
+describe('registerCitizen', () => {
+  it('calls registerCitizen callable and returns uid, role, accountStatus', async () => {
+    const mockCall = vi.fn().mockResolvedValue({
+      data: { uid: 'user-1', role: 'citizen', accountStatus: 'active' },
+    })
+    mockHttpsCallable.mockReturnValue(mockCall)
+    const result = await registerCitizen()
+    expect(mockHttpsCallable).toHaveBeenCalledWith('mocked-functions', 'registerCitizen')
+    expect(result).toEqual({ uid: 'user-1', role: 'citizen', accountStatus: 'active' })
+  })
+
+  it('throws on invalid server response (missing fields)', async () => {
+    const mockCall = vi.fn().mockResolvedValue({ data: { uid: 123 } })
+    mockHttpsCallable.mockReturnValue(mockCall)
+    await expect(registerCitizen()).rejects.toThrow('invalid server response')
+  })
+
+  it('wraps server error with cause', async () => {
+    const mockCall = vi.fn().mockRejectedValue(new Error('unavailable'))
+    mockHttpsCallable.mockReturnValue(mockCall)
+    await expect(registerCitizen()).rejects.toThrow('Citizen registration failed')
   })
 })
