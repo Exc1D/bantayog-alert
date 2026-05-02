@@ -53,33 +53,52 @@ export function FcmSetup() {
           }
         }
 
-        const sendConfig = () => {
-          registration.active?.postMessage({
+        let configSentPromise: Promise<void>
+
+        if (registration.active) {
+          registration.active.postMessage({
             type: 'FIREBASE_CONFIG',
             config,
           })
-        }
-
-        if (registration.active) {
-          sendConfig()
+          configSentPromise = Promise.resolve()
         } else if (registration.installing) {
-          registration.installing.addEventListener('statechange', () => {
-            if (registration.installing?.state === 'activated') sendConfig()
+          const installingWorker = registration.installing
+          configSentPromise = new Promise<void>((resolve) => {
+            installingWorker.addEventListener('statechange', (event) => {
+              const worker = event.target as ServiceWorker
+              if (worker.state === 'activated') {
+                worker.postMessage({ type: 'FIREBASE_CONFIG', config })
+                resolve()
+              }
+            })
           })
         } else if (registration.waiting) {
-          registration.waiting.addEventListener('statechange', () => {
-            if (registration.waiting?.state === 'activated') sendConfig()
+          const waitingWorker = registration.waiting
+          configSentPromise = new Promise<void>((resolve) => {
+            waitingWorker.addEventListener('statechange', (event) => {
+              const worker = event.target as ServiceWorker
+              if (worker.state === 'activated') {
+                worker.postMessage({ type: 'FIREBASE_CONFIG', config })
+                resolve()
+              }
+            })
           })
         } else {
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing
-            newWorker?.addEventListener('statechange', () => {
-              if (newWorker.state === 'activated') sendConfig()
+          configSentPromise = new Promise<void>((resolve) => {
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing
+              newWorker?.addEventListener('statechange', (event) => {
+                const worker = event.target as ServiceWorker
+                if (worker.state === 'activated') {
+                  worker.postMessage({ type: 'FIREBASE_CONFIG', config })
+                  resolve()
+                }
+              })
             })
           })
         }
 
-        return register()
+        return configSentPromise.then(() => register())
       })
       .catch((err: unknown) => {
         console.warn('SW registration failed:', err)

@@ -90,13 +90,14 @@ describe('FcmSetup', () => {
     })
   })
 
-  it('waits for installing worker to activate before posting config', async () => {
+  it('waits for installing worker to activate before posting config and calling register', async () => {
     const postMessage = vi.fn()
-    let stateChangeHandler: (() => void) | null = null
+    let stateChangeHandler: ((event: Event) => void) | null = null
     const mockWorker = {
-      addEventListener: (_event: string, handler: () => void) => {
+      addEventListener: (_event: string, handler: (event: Event) => void) => {
         stateChangeHandler = handler
       },
+      postMessage,
       state: 'installing',
     } as unknown as ServiceWorker
 
@@ -115,20 +116,91 @@ describe('FcmSetup', () => {
       expect(stateChangeHandler).not.toBeNull()
     })
 
+    // Before activation, register should NOT be called
+    expect(mockRegister).not.toHaveBeenCalled()
+
     // Simulate activation
     Object.defineProperty(mockWorker, 'state', { value: 'activated', writable: true })
     Object.defineProperty(mockRegistration, 'active', {
       value: { postMessage },
       writable: true,
     })
-    // TypeScript doesn't track the mutation through vi.waitFor, so cast explicitly
-    const handler = stateChangeHandler as (() => void) | null
+    const handler = stateChangeHandler as ((event: Event) => void) | null
     if (handler != null) {
-      handler()
+      handler({ target: mockWorker } as unknown as Event)
     }
 
     await vi.waitFor(() => {
       expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'FIREBASE_CONFIG' }))
+      expect(mockRegister).toHaveBeenCalled()
+    })
+  })
+
+  it('waits for updatefound worker to activate before calling register', async () => {
+    const postMessage = vi.fn()
+    let updatefoundHandler: (() => void) | null = null
+    let stateChangeHandler: ((event: Event) => void) | null = null
+
+    const mockWorker = {
+      addEventListener: (_event: string, handler: (event: Event) => void) => {
+        stateChangeHandler = handler
+      },
+      postMessage,
+      state: 'installing',
+    } as unknown as ServiceWorker
+
+    const mockRegistration = {
+      active: null,
+      installing: null,
+      waiting: null,
+      addEventListener: (_event: string, handler: () => void) => {
+        updatefoundHandler = handler
+      },
+    } as unknown as ServiceWorkerRegistration
+
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false)
+    vi.mocked(navigator.serviceWorker.register).mockResolvedValue(mockRegistration)
+
+    render(<FcmSetup />)
+
+    await vi.waitFor(() => {
+      expect(updatefoundHandler).not.toBeNull()
+    })
+
+    // Before updatefound, register should NOT be called
+    expect(mockRegister).not.toHaveBeenCalled()
+
+    // Simulate updatefound
+    const ufHandler = updatefoundHandler as (() => void) | null
+    if (ufHandler != null) {
+      Object.defineProperty(mockRegistration, 'installing', {
+        value: mockWorker,
+        writable: true,
+      })
+      ufHandler()
+    }
+
+    await vi.waitFor(() => {
+      expect(stateChangeHandler).not.toBeNull()
+    })
+
+    // Before activation, register should NOT be called
+    expect(mockRegister).not.toHaveBeenCalled()
+
+    // Simulate activation
+    Object.defineProperty(mockWorker, 'state', { value: 'activated', writable: true })
+    Object.defineProperty(mockRegistration, 'active', {
+      value: { postMessage },
+      writable: true,
+    })
+    const scHandler = stateChangeHandler as ((event: Event) => void) | null
+    if (scHandler != null) {
+      scHandler({ target: mockWorker } as unknown as Event)
+    }
+
+    await vi.waitFor(() => {
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'FIREBASE_CONFIG' }))
+      expect(mockRegister).toHaveBeenCalled()
     })
   })
 

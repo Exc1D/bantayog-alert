@@ -24,6 +24,9 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('message', (event) => {
+  // Only accept messages from our own origin to prevent cross-origin config injection
+  if (event.origin !== self.location.origin) return
+
   if (event.data?.type === 'FIREBASE_CONFIG' && !messaging) {
     try {
       const app = firebase.initializeApp(event.data.config)

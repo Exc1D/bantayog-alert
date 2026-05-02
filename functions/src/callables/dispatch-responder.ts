@@ -96,7 +96,8 @@ export async function dispatchResponderCore(
           smsPublicRef = smsPayload.publicRef
         }
 
-        const dispatchRef = db.collection('dispatches').doc()
+        const dispatchId = deps.reportId + '_' + deps.responderUid
+        const dispatchRef = db.collection('dispatches').doc(dispatchId)
         const dispatchId = dispatchRef.id
 
         const reportEvRef = db.collection('report_events').doc()
