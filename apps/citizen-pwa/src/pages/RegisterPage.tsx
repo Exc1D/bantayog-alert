@@ -185,9 +185,17 @@ export function RegisterPage() {
               type="tel"
               value={phone}
               onChange={(e) => {
-                const next = e.target.value
-                setPhone(next)
-                setStoredPhone(next)
+                const raw = e.target.value
+                // Strip non-digits except the leading +, trim whitespace,
+                // enforce a sensible max length to avoid junk in storage.
+                const normalized = raw
+                  .trim()
+                  .replace(/[^+\d]/g, '')
+                  .slice(0, 16)
+                setPhone(normalized)
+                if (normalized.length <= 16) {
+                  setStoredPhone(normalized)
+                }
               }}
               placeholder="+63XXXXXXXXXX"
               className="w-full h-14 rounded-xl border border-[#d5dedd] px-4 text-base focus:border-[#0f9488] focus:outline-none mb-4"

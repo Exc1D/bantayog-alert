@@ -147,6 +147,8 @@ function WizardContainer() {
 
       setDraft(created)
       setSecret(draftSecret)
+      // Prevent stale snapshot from causing a second draft on refresh.
+      await wizardSnapshot.clear()
     } catch (err: unknown) {
       setDraftError(err instanceof Error ? err.message : 'Failed to create draft')
     } finally {
@@ -203,6 +205,7 @@ function WizardContainer() {
         onNext={handleStep2Next}
         onBack={handleStep2Back}
         isSubmitting={isCreatingDraft}
+        {...(formData.step2 ? { initialValues: formData.step2 } : {})}
       />
     )
   }

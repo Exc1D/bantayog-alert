@@ -11,27 +11,30 @@ const DB_STORE = 'drafts'
 // Precache the app shell so a cold offline navigation falls back to
 // index.html instead of the browser's default offline page. Vite's hashed
 // JS/CSS chunks are still cached opportunistically by the fetch handler.
-const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-]
+//
+// REQUIRED: core shell files — install fails if any of these can't be cached
+// so the old worker stays active rather than serving a broken shell.
+const REQUIRED_URLS = ['/', '/index.html']
+// OPTIONAL: manifest + icons — best-effort; a transient 404 here should not
+// block the entire install.
+const OPTIONAL_URLS = ['/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) =>
-        Promise.allSettled(
-          PRECACHE_URLS.map((url) =>
+      .then(async (cache) => {
+        // Required URLs must all succeed; let any failure reject install.
+        await cache.addAll(REQUIRED_URLS)
+        // Optional URLs are best-effort; log and continue on individual failure.
+        await Promise.allSettled(
+          OPTIONAL_URLS.map((url) =>
             cache.add(url).catch((err) => {
-              console.warn('[SW] precache failed for', url, err)
+              console.warn('[SW] optional precache failed for', url, err)
             }),
           ),
-        ),
-      )
+        )
+      })
       .then(() => self.skipWaiting()),
   )
 })

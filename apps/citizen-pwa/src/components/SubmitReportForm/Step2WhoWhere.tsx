@@ -24,9 +24,24 @@ interface Step2WhoWhereProps {
   }) => void
   onBack: () => void
   isSubmitting?: boolean
+  initialValues?: {
+    location?: { lat: number; lng: number }
+    reporterName?: string
+    reporterMsisdn?: string
+    patientCount?: number
+    locationMethod?: 'gps' | 'manual'
+    municipalityId?: string
+    barangayId?: string
+    nearestLandmark?: string
+  }
 }
 
-export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2WhoWhereProps) {
+export function Step2WhoWhere({
+  onNext,
+  onBack,
+  isSubmitting = false,
+  initialValues,
+}: Step2WhoWhereProps) {
   const {
     location,
     locationMethod,
@@ -53,6 +68,28 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [hasMemory, setHasMemory] = useState(false)
   const [municipalityError, setMunicipalityError] = useState<string | null>(null)
+
+  // Hydrate from snapshot when resuming or navigating back to Step 2.
+  useEffect(() => {
+    if (!initialValues) return
+
+    if (initialValues.locationMethod) setLocationMethod(initialValues.locationMethod)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialValues.reporterName) setReporterName(initialValues.reporterName)
+
+    if (initialValues.reporterMsisdn) setReporterMsisdn(initialValues.reporterMsisdn)
+    if (initialValues.patientCount) {
+      setPatientCount(initialValues.patientCount)
+
+      setAnyoneHurt(initialValues.patientCount > 0)
+    }
+
+    if (initialValues.nearestLandmark) setNearestLandmark(initialValues.nearestLandmark)
+    // Municipality / barangay are handled via useMunicipalityBarangays; those
+    // hooks don't expose setters, so we rely on localStorage/sessionStorage
+    // pre-fill below for reporter fields, and the user re-selects location.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     try {
