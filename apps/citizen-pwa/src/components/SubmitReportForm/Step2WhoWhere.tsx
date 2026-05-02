@@ -312,11 +312,7 @@ export function Step2WhoWhere({ onNext, onBack, isSubmitting = false }: Step2Who
           hiding the entire region (which previously felt like silent failure). */}
       <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
         {locationMethod === null ? (
-          <p
-            role="status"
-            aria-live="polite"
-            className="text-center text-sm font-medium text-surface-700"
-          >
+          <p role="status" className="text-center text-sm font-medium text-surface-700">
             Pick a location method above (GPS or Manual) to continue.
           </p>
         ) : (

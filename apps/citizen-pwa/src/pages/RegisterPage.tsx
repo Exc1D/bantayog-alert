@@ -6,6 +6,7 @@ import { auth } from '../services/firebase.js'
 import { registerCitizen } from '../services/callables.js'
 import { useToast } from '../hooks/useToast.js'
 import { Toast } from '../components/Toast.js'
+import { getStoredPhone, setStoredPhone } from '../services/phone-session-storage.js'
 
 type Step = 'phone' | 'otp' | 'name' | 'consent'
 
@@ -23,11 +24,7 @@ export function RegisterPage() {
   // overrides this with `currentUser.phoneNumber` when applicable.
   const [phone, setPhone] = useState(() => {
     if (isResume) return '+63'
-    try {
-      return sessionStorage.getItem('bantayog.last-phone') ?? '+63'
-    } catch {
-      return '+63'
-    }
+    return getStoredPhone()
   })
   const [otp, setOtp] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -190,11 +187,7 @@ export function RegisterPage() {
               onChange={(e) => {
                 const next = e.target.value
                 setPhone(next)
-                try {
-                  sessionStorage.setItem('bantayog.last-phone', next)
-                } catch {
-                  // Private mode / quota / security errors — best effort persistence.
-                }
+                setStoredPhone(next)
               }}
               placeholder="+63XXXXXXXXXX"
               className="w-full h-14 rounded-xl border border-[#d5dedd] px-4 text-base focus:border-[#0f9488] focus:outline-none mb-4"

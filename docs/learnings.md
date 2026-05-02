@@ -7,6 +7,11 @@
 - Passing navigation callbacks as props (e.g., `onReportSimilar={() => void navigate(...)}`) avoids `useNavigate` being called in components tested without a Router context — the pattern is cleaner than wrapping every test with a MemoryRouter.
 - `subscribeAlerts` from `@bantayog/shared-firebase` takes a raw `Firestore` instance; the citizen-pwa's `db()` helper satisfies this directly.
 - RevealSheet: spring-eased slide-up (`cubic-bezier(0.34, 1.56, 0.64, 1)`) + `max-height: 90svh` scroll guard are the minimum polish required on any bottom-sheet component.
+- `role="status"` implicitly carries `aria-live="polite"` + `aria-atomic="true"` per WAI-ARIA spec; adding explicit `aria-live` is redundant noise.
+- Async state gates in React (e.g. `hasLoadedSnapshot`) must always resolve — both `.then()` and `.catch()` paths must flip the gate flag, or the component freezes on rejection.
+- `cache.addAll()` rejects the entire install if any URL fails; use `Promise.allSettled(cache.add(url).catch(...))` for resilient SW precaching.
+- When two files share the same `sessionStorage` key + try/catch + default pattern, extract a shared helper before the pattern drifts.
+- TTL tests that write directly to mock stores bypass the code under test. Use `vi.useFakeTimers()` + the public `save()` API + `vi.setSystemTime()` to actually exercise the TTL branch.
 
 ## Process
 

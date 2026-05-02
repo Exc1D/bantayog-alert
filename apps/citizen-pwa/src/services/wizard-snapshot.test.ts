@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const { mockInstance } = vi.hoisted(() => {
   const store = new Map<string, unknown>()
@@ -33,6 +33,11 @@ beforeEach(() => {
   mockInstance._store.clear()
   vi.clearAllMocks()
   _resetWizardSnapshotCache()
+  vi.useFakeTimers({ now: Date.now() })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('wizardSnapshot.load', () => {
@@ -53,15 +58,10 @@ describe('wizardSnapshot.load', () => {
   })
 
   it('returns null when snapshot exceeds 24h TTL and clears stale data', async () => {
-    const stale: WizardSnapshot = {
-      step: 1,
-      step1: null,
-      step2: null,
-      updatedAt: Date.now() - 25 * 60 * 60 * 1000,
-    }
-    mockInstance._store.set(STORAGE_KEY, stale)
+    await wizardSnapshot.save({ step: 1, step1: null, step2: null })
+    vi.setSystemTime(Date.now() + 25 * 60 * 60 * 1000)
     expect(await wizardSnapshot.load()).toBeNull()
-    expect(mockInstance._store.has(STORAGE_KEY)).toBe(false)
+    expect(mockInstance.removeItem).toHaveBeenCalledOnce()
   })
 
   it('returns null when localforage rejects on read', async () => {

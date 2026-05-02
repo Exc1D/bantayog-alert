@@ -55,17 +55,22 @@ function WizardContainer() {
   // the user re-attaches if needed by going back to Step 1.
   useEffect(() => {
     let cancelled = false
-    void wizardSnapshot.load().then((snap) => {
-      if (cancelled) return
-      if (snap) {
-        setStep(snap.step)
-        setFormData({
-          step1: snap.step1 ? { reportType: snap.step1.reportType, photoFile: null } : null,
-          step2: snap.step2 ?? null,
-        })
-      }
-      setHasLoadedSnapshot(true)
-    })
+    void wizardSnapshot
+      .load()
+      .then((snap) => {
+        if (cancelled) return
+        if (snap) {
+          setStep(snap.step)
+          setFormData({
+            step1: snap.step1 ? { reportType: snap.step1.reportType, photoFile: null } : null,
+            step2: snap.step2 ?? null,
+          })
+        }
+        setHasLoadedSnapshot(true)
+      })
+      .catch(() => {
+        if (!cancelled) setHasLoadedSnapshot(true)
+      })
     return () => {
       cancelled = true
     }
@@ -157,7 +162,15 @@ function WizardContainer() {
   }
 
   if (!hasLoadedSnapshot) {
-    return <div className="min-h-[100dvh] bg-surface-100" aria-hidden="true" />
+    return (
+      <div
+        role="status"
+        aria-label="Loading report wizard"
+        className="min-h-[100dvh] bg-surface-100 flex items-center justify-center"
+      >
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-surface-300 border-t-brand-600" />
+      </div>
+    )
   }
 
   if (draft) {

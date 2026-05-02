@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-05-03 — PR #91 Review Follow-ups (branch: `fix/citizen-pwa-auth-and-wizard-followups`)
+
+Addressed all Sourcery-ai and CodeRabbit review comments on PR #91.
+
+| Source     | Issue                                                                                 | Fix                                                                                                                | Files                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Sourcery   | SW install blocked if any precache URL fails                                          | `cache.addAll` → `Promise.allSettled(cache.add(url).catch(...))` — individual failures logged, SW still activates  | `apps/citizen-pwa/public/sw.js`                                                              |
+| Sourcery   | `hasLoadedSnapshot` gate rendered empty `aria-hidden` div                             | Replaced with spinner + `role="status"` + `aria-label="Loading report wizard"`                                     | `components/SubmitReportForm/index.tsx`                                                      |
+| Sourcery   | `sessionStorage["bantayog.last-phone"]` duplicated in LoginPage + RegisterPage        | Extracted `services/phone-session-storage.ts` (`getStoredPhone` / `setStoredPhone`); both pages use shared helper  | `services/phone-session-storage.ts` (NEW) + `pages/LoginPage.tsx` + `pages/RegisterPage.tsx` |
+| CodeRabbit | Missing `.catch()` on `wizardSnapshot.load()` — rejection freezes wizard forever      | Added `.catch(() => { if (!cancelled) setHasLoadedSnapshot(true) })`                                               | `components/SubmitReportForm/index.tsx`                                                      |
+| CodeRabbit | `aria-live="polite"` redundant alongside `role="status"` (implicit per WAI-ARIA spec) | Removed explicit `aria-live` attribute                                                                             | `components/SubmitReportForm/Step2WhoWhere.tsx`                                              |
+| CodeRabbit | TTL test false-positive if `STORAGE_KEY` constant drifts from production              | Test now uses `vi.useFakeTimers` + public `save()` API + `vi.setSystemTime()` instead of direct store manipulation | `services/wizard-snapshot.test.ts`                                                           |
+
+**Gate:** `pnpm --filter @bantayog/citizen-pwa lint typecheck` clean,
+`npx vitest run` 243/243 pass.
+
+---
+
 ## 2026-05-02 — Citizen PWA Auth + Wizard Resumability (branch: `fix/citizen-pwa-auth-and-wizard-followups`)
 
 Round 2 of the QA staging pass. 5 real code bugs from a 9-issue list — the

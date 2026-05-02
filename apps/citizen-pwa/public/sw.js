@@ -23,7 +23,15 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) =>
+        Promise.allSettled(
+          PRECACHE_URLS.map((url) =>
+            cache.add(url).catch((err) => {
+              console.warn('[SW] precache failed for', url, err)
+            }),
+          ),
+        ),
+      )
       .then(() => self.skipWaiting()),
   )
 })
