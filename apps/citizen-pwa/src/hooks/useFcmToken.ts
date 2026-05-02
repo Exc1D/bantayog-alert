@@ -59,6 +59,7 @@ export function useFcmToken() {
       return false
     }
 
+    let issuedToken = false
     try {
       const permission = await Notification.requestPermission()
       setState((prev) => ({ ...prev, permission }))
@@ -77,6 +78,7 @@ export function useFcmToken() {
         return false
       }
 
+      issuedToken = true
       setState((prev) => ({ ...prev, token, enabled: true }))
 
       // Save token to user document in Firestore
@@ -113,6 +115,14 @@ export function useFcmToken() {
       return true
     } catch (error) {
       console.error('FCM setup error:', error)
+      if (issuedToken) {
+        try {
+          const messaging = getMessaging()
+          await deleteToken(messaging)
+        } catch (rollbackError) {
+          console.error('Failed to roll back FCM token:', rollbackError)
+        }
+      }
       setState((prev) => ({ ...prev, enabled: false, token: null }))
       return false
     }
@@ -130,18 +140,16 @@ export function useFcmToken() {
       const messaging = getMessaging()
       await deleteToken(messaging)
 
-      // Call backend to remove topic subscription
-      const unsubscribeFromAlerts = httpsCallable(fns(), 'unsubscribeFromAlerts')
-      await unsubscribeFromAlerts({ token: tokenToRevoke })
-
-      // Unsubscribe from foreground message listener
+      // Unsubscribe from foreground message listener and update state immediately
       if (fcmUnsubscribeRef.current) {
         fcmUnsubscribeRef.current()
         fcmUnsubscribeRef.current = null
       }
-
-      // Clear state only after successful revoke
       setState((prev) => ({ ...prev, enabled: false, token: null }))
+
+      // Call backend to remove topic subscription
+      const unsubscribeFromAlerts = httpsCallable(fns(), 'unsubscribeFromAlerts')
+      await unsubscribeFromAlerts({ token: tokenToRevoke })
 
       // Clear token from user document
       const user = auth().currentUser

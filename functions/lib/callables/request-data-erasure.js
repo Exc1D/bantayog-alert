@@ -33,7 +33,7 @@ export async function requestDataErasureCore(db, auth, actor) {
                 console.error('CRITICAL: erasure rollback failed for', actor.uid, r.reason);
             }
         }
-        throw new HttpsError('internal', `auth_disable_failed: ${reason}`);
+        throw new HttpsError('internal', 'auth_disable_failed');
     }
     void streamAuditEvent({
         eventType: 'erasure_request_submitted',

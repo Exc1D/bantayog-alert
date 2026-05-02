@@ -12,7 +12,8 @@ export async function auditExportBatchCore(opts) {
     });
     if (entries.length === 0)
         return { exported: 0 };
-    const rows = entries.map((e) => ({
+    const rows = entries.map((e, i) => ({
+        insertId: e.metadata?.insertId || `${e.metadata?.timestamp}-${i}`,
         logName: e.metadata?.logName,
         resource: JSON.stringify(e.metadata?.resource),
         payload: JSON.stringify(e.data),

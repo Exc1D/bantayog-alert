@@ -43,12 +43,12 @@ describe('auditExportHealthCheckCore', () => {
             now: () => now,
         });
         expect(result.healthy).toBe(false);
+        expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ healthy: false }));
         expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
             topic: 'superadmin-alerts',
             notification: expect.objectContaining({ title: 'Audit pipeline health alert' }),
         }));
     });
-    // Gap 6: Batch gap threshold (900s) not tested
     it('marks unhealthy when batch gap exceeds 900s threshold', async () => {
         const now = 1713350400000;
         mockQuery
@@ -60,6 +60,7 @@ describe('auditExportHealthCheckCore', () => {
             now: () => now,
         });
         expect(result.healthy).toBe(false);
+        expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ healthy: false }));
         expect(result.batchGapSeconds).toBeGreaterThanOrEqual(900);
         expect(mockSend).toHaveBeenCalled();
     });

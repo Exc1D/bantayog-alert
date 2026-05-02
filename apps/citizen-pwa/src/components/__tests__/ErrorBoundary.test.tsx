@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ErrorBoundary } from '../ErrorBoundary.js'
 
 // Component that throws an error
@@ -44,5 +44,26 @@ describe('ErrorBoundary', () => {
     )
     const homeButton = screen.getByRole('button', { name: /go to home/i })
     expect(homeButton).toBeInTheDocument()
+  })
+
+  it('should navigate to home when recovery button is clicked', () => {
+    const originalLocation = window.location
+    // @ts-expect-error test override
+    delete window.location
+    // @ts-expect-error test override
+    window.location = Object.create(originalLocation, {
+      href: { value: '', writable: true, configurable: true },
+    })
+
+    render(
+      <ErrorBoundary>
+        <ThrowError shouldThrow={true} />
+      </ErrorBoundary>,
+    )
+    const homeButton = screen.getByRole('button', { name: /go to home/i })
+    fireEvent.click(homeButton)
+    expect(window.location.href).toBe('/')
+
+    window.location = originalLocation
   })
 })

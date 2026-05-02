@@ -67,10 +67,10 @@ export function CitizenShell({ children }: { children: ReactNode }) {
         <AnimatePresence>
           {showOfflineBanner && (
             <motion.div
-              initial={{ y: -40, opacity: 0 }}
+              initial={prefersReducedMotion ? false : { y: -40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -40, opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              exit={prefersReducedMotion ? { y: 0, opacity: 0 } : { y: -40, opacity: 0 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
               className="shrink-0 z-toast bg-warning-400/10 border-b border-warning-400/30 px-4 py-2 flex items-center justify-center gap-2"
               role="status"
               aria-live="polite"
@@ -159,8 +159,8 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                   className="relative flex flex-col items-center justify-center w-16 h-16 gap-1 min-w-[44px] min-h-[44px] border-none bg-transparent cursor-pointer"
                 >
                   <motion.div
-                    animate={isActive ? { scale: 1.1 } : { scale: 1 }}
-                    transition={{ duration: 0.15 }}
+                    animate={isActive ? { scale: prefersReducedMotion ? 1 : 1.1 } : { scale: 1 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
                   >
                     <Icon
                       size={22}
@@ -185,7 +185,11 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                     <motion.div
                       layoutId="navbar-indicator"
                       className="absolute top-0 w-8 h-0.5 bg-brand-500 rounded-full"
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      transition={
+                        prefersReducedMotion
+                          ? { duration: 0 }
+                          : { type: 'spring', stiffness: 500, damping: 30 }
+                      }
                     />
                   )}
                 </button>

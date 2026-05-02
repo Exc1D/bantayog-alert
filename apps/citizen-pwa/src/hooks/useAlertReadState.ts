@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
 
+const _changeEmitter = typeof window !== 'undefined' ? new EventTarget() : null
+const STORAGE_EVENT = 'alert-read-state-changed'
+
 const STORAGE_KEY = 'bantayog_alert_reads'
 
 type ReadAlerts = Record<string, true>
@@ -26,17 +29,38 @@ export function useAlertReadState() {
     }
   })
 
-  // Persist to localStorage whenever state changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(readAlerts))
-    } catch (error) {
-      console.error('Failed to persist alert read state:', error)
-    }
-  }, [readAlerts])
-
   const markAsRead = useCallback((alertId: string) => {
-    setReadAlerts((prev) => ({ ...prev, [alertId]: true }))
+    setReadAlerts((prev) => {
+      const next = { ...prev, [alertId]: true }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      } catch (error) {
+        console.error('Failed to persist alert read state:', error)
+      }
+      _changeEmitter?.dispatchEvent(new Event(STORAGE_EVENT))
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!_changeEmitter) return
+    const handler = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        if (stored) {
+          const parsed: unknown = JSON.parse(stored)
+          if (isValidReadAlerts(parsed)) {
+            setReadAlerts(parsed)
+          }
+        }
+      } catch {
+        // ignore sync errors
+      }
+    }
+    _changeEmitter.addEventListener(STORAGE_EVENT, handler)
+    return () => {
+      _changeEmitter.removeEventListener(STORAGE_EVENT, handler)
+    }
   }, [])
 
   const isUnread = useCallback((alertId: string) => !readAlerts[alertId], [readAlerts])

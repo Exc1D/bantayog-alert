@@ -109,7 +109,7 @@ export function LoginPage() {
         <button
           type="button"
           onClick={() => void navigate(-1)}
-          className="p-0 border-none bg-transparent cursor-pointer"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border-none bg-transparent cursor-pointer"
           aria-label="Go back"
         >
           <ArrowLeft size={20} className="text-surface-900" />
@@ -125,7 +125,11 @@ export function LoginPage() {
                 Enter your phone number to sign in to your account.
               </p>
             </div>
-            <form onSubmit={(e) => void handlePhoneSubmit(e)}>
+            <form
+              id="login-phone-form"
+              name="login-phone-form"
+              onSubmit={(e) => void handlePhoneSubmit(e)}
+            >
               <label htmlFor="login-phone" className="sr-only">
                 Phone number
               </label>
@@ -137,6 +141,8 @@ export function LoginPage() {
                 />
                 <input
                   id="login-phone"
+                  name="phone"
+                  autoComplete="tel"
                   type="tel"
                   value={phone}
                   onChange={(e) => {
@@ -164,12 +170,18 @@ export function LoginPage() {
               </p>
               <p className="text-xs text-surface-500">{phone}</p>
             </div>
-            <form onSubmit={(e) => void handleOtpSubmit(e)}>
+            <form
+              id="login-otp-form"
+              name="login-otp-form"
+              onSubmit={(e) => void handleOtpSubmit(e)}
+            >
               <label htmlFor="login-otp" className="sr-only">
                 Verification code
               </label>
               <input
                 id="login-otp"
+                name="otp"
+                autoComplete="one-time-code"
                 type="text"
                 inputMode="numeric"
                 value={otp}

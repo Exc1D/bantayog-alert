@@ -16,7 +16,13 @@ export async function subscribeToAlertsCore(db, deps) {
         // Import messaging dynamically to avoid loading unless needed
         const { messaging } = await import('firebase-admin');
         // Subscribe to the alerts topic
-        await messaging().subscribeToTopic([token], 'alerts');
+        const response = await messaging().subscribeToTopic([token], 'alerts');
+        if (response.failureCount > 0) {
+            const errorDetails = response.errors
+                .map((e) => (typeof e.error === 'string' ? e.error : JSON.stringify(e.error)))
+                .join(', ');
+            throw new Error(`Failed to subscribe to alerts topic${errorDetails ? `: ${errorDetails}` : ''} (failures: ${response.failureCount})`);
+        }
         return { success: true };
     });
     return result;
