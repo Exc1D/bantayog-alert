@@ -180,9 +180,8 @@ function WizardContainer() {
       <SubmissionPanel
         draft={draft}
         secret={secret}
-        onSuccess={(publicRef) => {
+        onSuccess={() => {
           void wizardSnapshot.clear()
-          void nav(`/reports/${publicRef}`)
         }}
       />
     )
@@ -278,6 +277,9 @@ function SubmissionPanel({
           referenceCode={draft.publicRef}
           {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
           {...(secret ? { secretCode: secret } : {})}
+          onClose={() => {
+            void nav('/')
+          }}
         />
       </Suspense>
     )
