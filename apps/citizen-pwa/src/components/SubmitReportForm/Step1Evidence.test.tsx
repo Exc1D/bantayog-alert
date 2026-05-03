@@ -29,14 +29,14 @@ describe('Step1Evidence — photo validation', () => {
     expect(input.value).toBe('')
   })
 
-  it('rejects images larger than 5 MB', () => {
+  it('rejects images larger than 20 MB', () => {
     renderStep1()
     const input = screen.getByLabelText<HTMLInputElement>(/upload photo/i)
-    const tooBig = makeFile('huge.jpg', 'image/jpeg', 6 * 1024 * 1024)
+    const tooBig = makeFile('huge.jpg', 'image/jpeg', 21 * 1024 * 1024)
 
     fireEvent.change(input, { target: { files: [tooBig] } })
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/Maximum size is 5 MB/i)
+    expect(screen.getByRole('alert')).toHaveTextContent(/Maximum size is 20 MB/i)
     expect(input.value).toBe('')
   })
 
@@ -49,5 +49,27 @@ describe('Step1Evidence — photo validation', () => {
 
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.getByText('photo.jpg')).toBeInTheDocument()
+  })
+})
+
+describe('Step1Evidence — incident type validation', () => {
+  it('disables Continue button when no type selected on mount', () => {
+    renderStep1()
+    expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled()
+  })
+
+  it('Skip photo button shows error when no type selected', () => {
+    renderStep1()
+    fireEvent.click(screen.getByRole('button', { name: /skip photo/i }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/select an incident type/i)
+  })
+
+  it('Skip photo advances when type is explicitly selected', () => {
+    const { onNext } = renderStep1()
+    fireEvent.click(screen.getByRole('button', { name: /^flood$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /skip photo/i }))
+    expect(onNext).toHaveBeenCalledWith(
+      expect.objectContaining({ reportType: 'flood', photoFile: null }),
+    )
   })
 })

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024 // 5 MB
+const MAX_PHOTO_BYTES = 20 * 1024 * 1024 // 20 MB
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 interface Step1EvidenceProps {
@@ -170,7 +170,7 @@ export function Step1Evidence({
     }
     if (file.size > MAX_PHOTO_BYTES) {
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1)
-      setPhotoError(`Photo is ${sizeMb} MB. Maximum size is 5 MB.`)
+      setPhotoError(`Photo is ${sizeMb} MB. Maximum size is 20 MB.`)
       setPhotoFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       return
