@@ -1,65 +1,55 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { KeyRound } from 'lucide-react'
 import { useSlotMachine } from '../hooks/useSlotMachine.js'
+import { RadarRings, AnimatedCheck } from './ui/RadarRings.js'
 
 const SHEET_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1]
 const CONTENT_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1]
 
-function AnimatedCheck() {
-  return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="text-white">
-      <motion.circle
-        cx="24"
-        cy="24"
-        r="22"
-        stroke="currentColor"
-        strokeWidth="3"
-        fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 0.4, ease: SHEET_EASE }}
-      />
-      <motion.path
-        d="M14 24 L21 31 L34 17"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ duration: 0.3, delay: 0.3, ease: SHEET_EASE }}
-      />
-    </svg>
-  )
-}
-
-function RadarRings() {
-  const ringsRef = useRef<HTMLDivElement>(null)
+function CopyButton({ secret }: { secret: string }) {
+  const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // Stop rings after 3 pulses (2s × 3 = 6s)
-    const timer = setTimeout(() => {
-      if (ringsRef.current) ringsRef.current.style.display = 'none'
-    }, 6000)
     return () => {
-      clearTimeout(timer)
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current)
     }
   }, [])
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(secret)
+      setCopied(true)
+      setCopyError(false)
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current)
+      copiedTimerRef.current = setTimeout(() => {
+        setCopied(false)
+        copiedTimerRef.current = null
+      }, 1500)
+    } catch (err) {
+      console.error('[CopyButton] clipboard write failed:', err)
+      setCopyError(true)
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current)
+      copiedTimerRef.current = setTimeout(() => {
+        setCopyError(false)
+        copiedTimerRef.current = null
+      }, 3000)
+    }
+  }
   return (
-    <div ref={ringsRef} className="absolute inset-0 flex items-center justify-center">
-      {[0, 0.5, 1.0].map((delay, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-20 h-20 rounded-full border-2"
-          style={{ borderColor: `rgba(5,150,105,${String(0.6 - i * 0.2)})` }}
-          animate={{ scale: [1, 2.5], opacity: [0.7, 0] }}
-          transition={{ duration: 2, repeat: Infinity, delay, ease: 'easeOut' }}
-        />
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={() => {
+        void handleCopy()
+      }}
+      className="text-xs text-brand-600 font-medium hover:text-brand-700 active:text-brand-800"
+      aria-label="Copy secret code"
+    >
+      {copyError ? 'Copy failed — select and copy manually' : copied ? 'Copied!' : 'Copy'}
+    </button>
   )
 }
 
@@ -114,7 +104,7 @@ export function ReceiptScreen() {
         >
           {/* Icon + radar rings */}
           <div className="relative flex items-center justify-center mb-6">
-            <RadarRings />
+            <RadarRings color="rgb(5,150,105)" autoHideMs={6000} />
             <div className="relative z-10 w-20 h-20 rounded-full bg-success-500 flex items-center justify-center shadow-glow-success">
               <AnimatedCheck />
             </div>
@@ -136,19 +126,27 @@ export function ReceiptScreen() {
           </div>
 
           {/* Secret code */}
-          <div className="bg-surface-100 rounded-xl border border-surface-200 px-6 py-4 mb-8 w-full">
-            <p className="text-xs text-surface-400 uppercase tracking-wider mb-1">Secret Code</p>
+          <div className="bg-brand-50 rounded-xl border border-brand-400 px-6 py-4 mb-8 w-full">
+            <div className="flex items-center gap-1.5 mb-1">
+              <KeyRound className="w-3.5 h-3.5 text-brand-600" />
+              <p className="text-xs text-brand-700 uppercase tracking-wider font-semibold">
+                Your Secret Code
+              </p>
+            </div>
             <p className="text-2xl font-bold tracking-widest text-surface-900 font-mono">
               {state.secret}
             </p>
-            <p className="text-xs text-surface-400 mt-1">
-              Save this — you&apos;ll need it to check status
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-surface-400">
+                Save this — you&apos;ll need it to check status
+              </p>
+              <CopyButton secret={state.secret} />
+            </div>
           </div>
 
           <button
             type="button"
-            onClick={() => void navigate('/lookup')}
+            onClick={() => void navigate(`/reports/${state.publicRef}`)}
             className="w-full min-h-[56px] rounded-xl bg-brand-500 text-white font-semibold text-base flex items-center justify-center mb-3 active:bg-brand-600 transition-colors"
           >
             Track My Report

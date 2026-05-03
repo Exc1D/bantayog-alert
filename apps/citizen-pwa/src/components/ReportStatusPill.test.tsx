@@ -14,6 +14,12 @@ vi.mock('../hooks/useMyActiveReports.js', () => ({
   useMyActiveReports: () => mockUseMyActiveReports(),
 }))
 
+vi.mock('../utils/incident-meta.js', () => ({
+  incidentLabel: (type: string) => type,
+  statusMeta: () => ({ label: 'Pending', bg: 'bg-brand-100', color: 'text-brand-700' }),
+  severityDotColor: () => '#0F9488',
+}))
+
 vi.mock('../hooks/useReducedMotion.js', () => ({
   useReducedMotion: () => false,
 }))
@@ -50,7 +56,10 @@ function renderPill() {
   )
 }
 
-beforeEach(() => mockNavigate.mockReset())
+beforeEach(() => {
+  mockNavigate.mockReset()
+  mockUseMyActiveReports.mockReset()
+})
 
 const baseReport = {
   publicRef: 'a1b2c3d4',
@@ -64,12 +73,18 @@ const baseReport = {
 }
 
 describe('ReportStatusPill', () => {
-  it('renders pill when there is an active report', () => {
+  it('renders nothing when no active reports', () => {
+    mockUseMyActiveReports.mockReturnValue({ reports: [], loading: false })
+    renderPill()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('renders pill with report type and status for single active report', () => {
     mockUseMyActiveReports.mockReturnValue({ reports: [baseReport], loading: false })
     renderPill()
     expect(screen.getByRole('button')).toBeInTheDocument()
-    expect(screen.getByText(/Flood/)).toBeInTheDocument()
-    expect(screen.getByText(/Daet/)).toBeInTheDocument()
+    expect(screen.getByText(/flood/i)).toBeInTheDocument()
+    expect(screen.getByText('Pending')).toBeInTheDocument()
   })
 
   it('renders nothing when all reports are terminal', () => {
@@ -117,11 +132,5 @@ describe('ReportStatusPill', () => {
     renderPill()
     fireEvent.click(screen.getByRole('button'))
     expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
-  })
-
-  it('renders nothing when reports list is empty', () => {
-    mockUseMyActiveReports.mockReturnValue({ reports: [], loading: false })
-    renderPill()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })
