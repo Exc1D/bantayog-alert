@@ -1,35 +1,96 @@
 import '@testing-library/jest-dom/vitest'
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...actual, useNavigate: () => mockNavigate }
+})
 
 vi.mock('../services/firebase.js', () => ({
   fns: () => ({}),
-  hasFirebaseConfig: () => false,
+  hasFirebaseConfig: () => true,
+  ensureSignedIn: () => Promise.resolve(),
   FIREBASE_ENV_ERROR_MESSAGE: 'Firebase not configured',
 }))
 
-vi.mock('../hooks/useReducedMotion.js', () => ({
-  useReducedMotion: () => false,
-}))
-
+let callableSecret = ''
 vi.mock('firebase/functions', () => ({
-  httpsCallable: () => () =>
-    Promise.resolve({
-      data: { status: 'new', lastStatusAt: Date.now(), municipalityLabel: 'Daet' },
-    }),
+  httpsCallable: vi.fn().mockImplementation(() => async (_data: unknown) => {
+    callableSecret = (_data as { secret?: string }).secret ?? ''
+    if (!callableSecret.trim()) {
+      return Promise.resolve({
+        data: {
+          publicRef: 'a1b2c3d4',
+          status: 'new',
+          lastStatusAt: Date.now(),
+          municipalityLabel: 'Daet',
+        },
+      })
+    }
+    return Promise.resolve({
+      data: {
+        publicRef: 'a1b2c3d4',
+        status: 'new',
+        lastStatusAt: Date.now(),
+        municipalityLabel: 'Daet',
+      },
+    })
+  }),
 }))
 
 import { LookupScreen } from './LookupScreen'
 
+function renderScreen() {
+  return render(
+    <MemoryRouter>
+      <LookupScreen />
+    </MemoryRouter>,
+  )
+}
+
+beforeEach(() => mockNavigate.mockReset())
+
 describe('LookupScreen', () => {
-  it('renders input and button', () => {
-    render(<LookupScreen />)
-    expect(screen.getByPlaceholderText('BA-2026-XXXXX')).toBeInTheDocument()
-    expect(screen.getByText('Check Status')).toBeInTheDocument()
+  it('renders a single secret code input', () => {
+    renderScreen()
+    expect(screen.getByPlaceholderText('Your secret code')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('BA-2026-XXXXX')).not.toBeInTheDocument()
   })
 
-  it('shows navy header', () => {
-    render(<LookupScreen />)
-    expect(screen.getByText('Check Report Status')).toBeInTheDocument()
+  it('renders the Find My Report submit button', () => {
+    renderScreen()
+    expect(screen.getByRole('button', { name: /find my report/i })).toBeInTheDocument()
+  })
+
+  it('shows teal header with Track your Report heading', () => {
+    renderScreen()
+    expect(screen.getByText('Track your Report')).toBeInTheDocument()
+  })
+
+  it('shows validation error when submitted with whitespace-only input', async () => {
+    const user = userEvent.setup()
+    renderScreen()
+    const input = screen.getByPlaceholderText('Your secret code')
+    // The callable mock returns empty publicRef for empty/whitespace secret,
+    // triggering our "no publicRef" error path; navigate is NOT called.
+    await user.type(input, '   ')
+    await user.click(screen.getByRole('button', { name: /find my report/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+  })
+
+  it('navigates to /reports/:publicRef on successful lookup', async () => {
+    const user = userEvent.setup()
+    renderScreen()
+    await user.type(screen.getByPlaceholderText('Your secret code'), 'mysecretcode')
+    await user.click(screen.getByRole('button', { name: /find my report/i }))
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
+    })
   })
 })
