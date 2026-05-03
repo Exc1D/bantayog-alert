@@ -12,7 +12,7 @@ function db() {
 
 beforeEach(() => mockGet.mockReset())
 
-describe('requestLookupImpl', () => {
+describe('requestLookupImpl — both-codes path', () => {
   const secret = 'abc'
   const tokenHash = createHash('sha256').update(secret).digest('hex')
 
@@ -43,7 +43,7 @@ describe('requestLookupImpl', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
-  it('returns sanitized status on success', async () => {
+  it('returns status + publicRef on success', async () => {
     mockGet
       .mockResolvedValueOnce({
         exists: true,
@@ -63,7 +63,63 @@ describe('requestLookupImpl', () => {
       data: { publicRef: 'a1b2c3d4', secret },
     })
     expect(result).toEqual({
+      publicRef: 'a1b2c3d4',
       status: 'verified',
+      lastStatusAt: 1713350401000,
+      municipalityLabel: 'Daet',
+    })
+  })
+})
+
+describe('requestLookupImpl — secret-only path', () => {
+  const secret = 'abc'
+
+  it('returns UNAUTHORIZED when auth is absent', async () => {
+    await expect(
+      requestLookupImpl({ db: db() as never, data: { secret }, auth: undefined }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+  })
+
+  it('returns NOT_FOUND when secret_lookup doc does not exist', async () => {
+    mockGet.mockResolvedValue({ exists: false })
+    await expect(
+      requestLookupImpl({ db: db() as never, data: { secret }, auth: { uid: 'u1' } }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('returns NOT_FOUND when secret_lookup entry is expired', async () => {
+    mockGet.mockResolvedValue({
+      exists: true,
+      data: () => ({ publicRef: 'a1b2c3d4', reportId: 'r1', expiresAt: Date.now() - 1 }),
+    })
+    await expect(
+      requestLookupImpl({ db: db() as never, data: { secret }, auth: { uid: 'u1' } }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('returns status + publicRef on success', async () => {
+    mockGet
+      .mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ publicRef: 'a1b2c3d4', reportId: 'r1', expiresAt: Date.now() + 1e6 }),
+      })
+      .mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          status: 'awaiting_verify',
+          municipalityLabel: 'Daet',
+          submittedAt: 1713350400000,
+          updatedAt: 1713350401000,
+        }),
+      })
+    const result = await requestLookupImpl({
+      db: db() as never,
+      data: { secret },
+      auth: { uid: 'u1' },
+    })
+    expect(result).toEqual({
+      publicRef: 'a1b2c3d4',
+      status: 'awaiting_verify',
       lastStatusAt: 1713350401000,
       municipalityLabel: 'Daet',
     })
