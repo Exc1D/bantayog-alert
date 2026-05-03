@@ -199,7 +199,7 @@ export function Step2WhoWhere({
               <div
                 className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
                   isCompleted || isCurrent ? 'bg-brand-500' : 'bg-surface-200'
-                } ${isCurrent ? 'animate-pulse' : ''}`}
+                } ${isCurrent ? 'motion-safe:animate-pulse' : ''}`}
               />
             </div>
           )
@@ -245,6 +245,25 @@ export function Step2WhoWhere({
             <div className="flex flex-col items-center gap-3 py-8 bg-white rounded-xl border border-surface-200">
               <div className="w-6 h-6 border-2 border-surface-200 border-t-brand-500 rounded-full animate-spin" />
               <p className="text-sm text-surface-600">Getting your location...</p>
+            </div>
+          ) : null}
+
+          {locationMethod === 'gps' && !gpsLoading && !location ? (
+            <div className="space-y-2">
+              {locationError && <p className="text-xs text-danger-500">{locationError}</p>}
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-4 py-3.5 bg-white border border-surface-200 rounded-xl cursor-pointer text-sm font-semibold text-surface-900 active:bg-surface-50 transition-colors text-left"
+                onClick={() => {
+                  resetGps()
+                  setLocationMethod('manual')
+                }}
+              >
+                <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center">
+                  <MapPin size={16} className="text-surface-600" />
+                </div>
+                Switch to manual location
+              </button>
             </div>
           ) : null}
 

@@ -4,6 +4,7 @@ import { Crosshair } from 'lucide-react'
 import L from 'leaflet'
 import { PeekSheet } from './PeekSheet.js'
 import { DetailSheet } from './DetailSheet.js'
+import { FilterBar } from './FilterBar.js'
 import { IncidentLayer } from './IncidentLayer.js'
 import { MyReportLayer } from './MyReportLayer.js'
 import { usePublicIncidents } from '../../hooks/usePublicIncidents.js'
@@ -25,6 +26,12 @@ const INCIDENT_LABELS: Record<string, string> = {
   structural: 'Damages',
   security: 'Security',
   other: 'Others',
+}
+
+const WINDOW_LABELS: Record<Filters['window'], string> = {
+  '24h': '24 hours',
+  '7d': '7 days',
+  '30d': '30 days',
 }
 
 interface SelectedPin {
@@ -54,7 +61,7 @@ export function MapTab() {
   const mapRef = useRef<L.Map | null>(null)
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine)
-  const filters = { severity: 'all', window: '24h' } as const
+  const [filters, setFilters] = useState<Filters>({ severity: 'all', window: '24h' })
   const [selectedPin, setSelectedPin] = useState<SelectedPin | null>(null)
   const [sheetPhase, setSheetPhase] = useState<'hidden' | 'peek' | 'expanded'>('hidden')
 
@@ -191,9 +198,21 @@ export function MapTab() {
     visibleIncidents.length === 0 &&
     myReports.length === 0
 
+  const showFilterHint =
+    !incidentsLoading &&
+    !incidentsError &&
+    visibleIncidents.length === 0 &&
+    (myReports.length > 0 || filters.severity !== 'all')
+
   return (
     <div className="absolute inset-0 isolate">
       <div ref={mapElRef} className="w-full h-full" />
+
+      <div className="absolute top-0 left-0 right-0 z-30 px-3 pt-3 pointer-events-none">
+        <div className="pointer-events-auto">
+          <FilterBar filters={filters} onChange={setFilters} disabled={isOffline} />
+        </div>
+      </div>
 
       {mapInstance ? (
         <>
@@ -217,13 +236,17 @@ export function MapTab() {
         <Crosshair size={20} />
       </button>
 
-      {showEmpty ? (
+      {showEmpty || showFilterHint ? (
         <div
           role="status"
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
         >
           <p className="m-0 text-[#52606d] text-sm">
-            No reported incidents in this area in the last {filters.window}.
+            {filters.severity !== 'all'
+              ? `No ${filters.severity} incidents reported in this area in the last ${WINDOW_LABELS[filters.window]}. Try clearing the severity filter.`
+              : showFilterHint
+                ? `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`
+                : `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`}
           </p>
         </div>
       ) : null}

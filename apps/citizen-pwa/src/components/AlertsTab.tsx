@@ -81,7 +81,7 @@ function AlertCard({
     <button
       type="button"
       onClick={onClick}
-      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
+      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-2 ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
     >
       {/* Unread indicator dot */}
       {isUnread && (
@@ -135,7 +135,7 @@ function AlertCard({
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 border-l-[#d5dedd] animate-pulse">
+    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 border-l-[#d5dedd] motion-safe:animate-pulse">
       <div className="p-4 flex gap-2">
         <div className="w-6 h-6 rounded-full bg-[#e0e3e5] flex-shrink-0" />
         <div className="flex-1">

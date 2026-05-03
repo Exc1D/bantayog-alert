@@ -136,27 +136,35 @@ export function SettingsPage() {
         Notifications
       </p>
       <div className="bg-white divide-y divide-[#f0f4f4]">
-        <div className="flex items-center justify-between px-4 py-4">
-          <span className="text-sm font-medium text-[#25292a]">Push notifications</span>
-          <Toggle
-            checked={enabled}
-            onChange={(next) => {
-              void (async () => {
-                if (next) {
-                  const success = await requestPermission()
-                  if (!success) {
-                    toast(
-                      'Failed to enable notifications. Please check browser permissions.',
-                      'error',
-                    )
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-[#25292a]">Push notifications</span>
+            <Toggle
+              checked={enabled}
+              onChange={(next) => {
+                void (async () => {
+                  if (next) {
+                    const success = await requestPermission()
+                    if (!success) {
+                      toast(
+                        'Failed to enable notifications. Please check browser permissions.',
+                        'error',
+                      )
+                    }
+                  } else {
+                    await disable()
                   }
-                } else {
-                  await disable()
-                }
-              })()
-            }}
-            label="Push notifications"
-          />
+                })()
+              }}
+              label="Push notifications"
+              disabled={typeof Notification !== 'undefined' && Notification.permission === 'denied'}
+            />
+          </div>
+          {typeof Notification !== 'undefined' && Notification.permission === 'denied' && (
+            <p className="text-xs text-surface-500 mt-1">
+              Notifications blocked in browser — enable in site settings.
+            </p>
+          )}
         </div>
         <div className="flex items-center justify-between px-4 py-4">
           <span className="text-sm font-medium text-[#25292a]">Alert sounds</span>
@@ -223,6 +231,19 @@ export function SettingsPage() {
             </span>
           </div>
         )}
+        {window.deferredInstallPrompt && (
+          <div className="flex items-center justify-between px-4 py-4">
+            <button
+              type="button"
+              onClick={() => {
+                void window.deferredInstallPrompt?.prompt()
+              }}
+              className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-left text-[#25292a]"
+            >
+              Add to Home Screen
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-between px-4 py-4">
           <a
             href="https://bantayog.alert/privacy"
@@ -233,6 +254,21 @@ export function SettingsPage() {
             Privacy Policy
           </a>
         </div>
+        {user && (
+          <div className="flex items-center justify-between px-4 py-4">
+            <button
+              type="button"
+              onClick={() => {
+                void auth()
+                  .signOut()
+                  .then(() => void navigate('/'))
+              }}
+              className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-left text-[#25292a]"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Danger Zone section */}

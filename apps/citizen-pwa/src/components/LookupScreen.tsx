@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft } from 'lucide-react'
-import { fns, hasFirebaseConfig, FIREBASE_ENV_ERROR_MESSAGE } from '../services/firebase.js'
+import {
+  fns,
+  hasFirebaseConfig,
+  ensureSignedIn,
+  FIREBASE_ENV_ERROR_MESSAGE,
+} from '../services/firebase.js'
 
 interface LookupResult {
   status: string
@@ -50,6 +55,7 @@ export function LookupScreen() {
       if (!hasFirebaseConfig()) {
         throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
       }
+      await ensureSignedIn()
       const res = await httpsCallable(
         fns(),
         'requestLookup',
@@ -170,6 +176,15 @@ export function LookupScreen() {
                 {`${result.municipalityLabel} MDRRMO`}
               </span>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setResult(null)
+              }}
+              className="mt-4 w-full h-10 rounded-xl bg-surface-100 text-surface-700 text-sm font-medium border-none cursor-pointer"
+            >
+              Check another report
+            </button>
           </div>
         )}
       </div>
