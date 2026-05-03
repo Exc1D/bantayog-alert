@@ -209,6 +209,16 @@ export async function processInboxItemCore(
           schemaVersion: 1,
         })
 
+        // Write secret_lookup only for web submissions — SMS uses a random tokenHash
+        // the user never sees, so a secret-only lookup makes no sense for those.
+        if (payload.source === 'web') {
+          tx.set(db.collection('secret_lookup').doc(inbox.secretHash), {
+            publicRef: inbox.publicRef,
+            reportId,
+            expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
+          })
+        }
+
         // The inboxPayloadSchema enforces contact.smsConsent as z.literal(true), so
         // presence of contact.phone here means the payload schema already validated consent.
         // This code path does not re-validate — it relies on upstream schema enforcement.
