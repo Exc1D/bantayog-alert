@@ -76,11 +76,11 @@ function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)]">
       <div className="p-4 flex gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#d5dedd] animate-pulse flex-shrink-0" />
+        <div className="w-10 h-10 rounded-full bg-[#d5dedd] motion-safe:animate-pulse flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-3.5 w-[55%] bg-[#d5dedd] rounded animate-pulse mb-2" />
-          <div className="h-3 w-[40%] bg-[#d5dedd] rounded animate-pulse mb-3" />
-          <div className="h-4 w-14 bg-[#d5dedd] rounded-full animate-pulse" />
+          <div className="h-3.5 w-[55%] bg-[#d5dedd] rounded motion-safe:animate-pulse mb-2" />
+          <div className="h-3 w-[40%] bg-[#d5dedd] rounded motion-safe:animate-pulse mb-3" />
+          <div className="h-4 w-14 bg-[#d5dedd] rounded-full motion-safe:animate-pulse" />
         </div>
       </div>
     </div>

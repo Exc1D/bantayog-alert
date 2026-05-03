@@ -31,7 +31,7 @@ export function Toggle({ checked, onChange, label, disabled = false }: TogglePro
   ].join(' ')
 
   return (
-    <div className="flex items-center gap-3" role="group" aria-label={label}>
+    <div className="flex items-center gap-3">
       <button
         type="button"
         role="switch"

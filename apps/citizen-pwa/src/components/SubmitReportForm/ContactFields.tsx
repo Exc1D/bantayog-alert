@@ -47,7 +47,7 @@ export function ContactFields({
           htmlFor="reporter-name"
           className="text-sm font-semibold text-surface-700 block mb-2"
         >
-          Your name
+          Your name <span className="font-normal text-surface-400 text-xs ml-1">/ Pangalan</span>
         </label>
         <input
           id="reporter-name"
@@ -80,7 +80,8 @@ export function ContactFields({
           htmlFor="reporter-msisdn"
           className="text-sm font-semibold text-surface-700 block mb-2"
         >
-          Phone number
+          Phone number{' '}
+          <span className="font-normal text-surface-400 text-xs ml-1">/ Numero ng telepono</span>
         </label>
         <input
           id="reporter-msisdn"

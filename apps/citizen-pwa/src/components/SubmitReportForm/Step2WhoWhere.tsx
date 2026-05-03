@@ -199,7 +199,7 @@ export function Step2WhoWhere({
               <div
                 className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
                   isCompleted || isCurrent ? 'bg-brand-500' : 'bg-surface-200'
-                } ${isCurrent ? 'animate-pulse' : ''}`}
+                } ${isCurrent ? 'motion-safe:animate-pulse' : ''}`}
               />
             </div>
           )

@@ -84,7 +84,7 @@ export function Step3Review({
               <div
                 className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
                   isCompleted || isCurrent ? 'bg-brand-500' : 'bg-surface-200'
-                } ${isCurrent ? 'animate-pulse' : ''}`}
+                } ${isCurrent ? 'motion-safe:animate-pulse' : ''}`}
               />
             </div>
           )
@@ -125,7 +125,7 @@ export function Step3Review({
 
           <div className="divide-y divide-surface-100">
             {/* Type row */}
-            <div className="px-4 py-3 flex items-center justify-between">
+            <div className="px-4 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Icon size={20} className="text-surface-400" />
                 <div>
@@ -139,7 +139,7 @@ export function Step3Review({
 
             {/* Patient count row */}
             {reportData.patientCount > 0 && (
-              <div className="px-4 py-3 flex items-center justify-between">
+              <div className="px-4 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Users size={20} className="text-surface-400" />
                   <div>
@@ -153,7 +153,7 @@ export function Step3Review({
             )}
 
             {/* Location row */}
-            <div className="px-4 py-3 flex items-start justify-between">
+            <div className="px-4 py-4 flex items-start justify-between">
               <div className="flex items-start gap-3">
                 <MapPin size={20} className="text-surface-400 mt-0.5" />
                 <div>
@@ -174,7 +174,7 @@ export function Step3Review({
             </div>
 
             {/* Contact row */}
-            <div className="px-4 py-3 flex items-center justify-between">
+            <div className="px-4 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <User size={20} className="text-surface-400" />
                 <div>
@@ -190,7 +190,7 @@ export function Step3Review({
         </div>
 
         {/* Consent */}
-        <div className="bg-brand-50 rounded-xl border border-brand-200 p-4">
+        <div className="bg-brand-50 rounded-xl border border-brand-200 p-4 mb-3">
           <label htmlFor="consent-checkbox" className="flex items-start gap-3 cursor-pointer">
             <div className="mt-0.5">
               <input

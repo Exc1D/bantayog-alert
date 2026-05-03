@@ -232,7 +232,7 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
 /* ── Skeleton card ── */
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl p-3.5 mb-2 border border-surface-200 animate-pulse">
+    <div className="bg-white rounded-xl p-3.5 mb-2 border border-surface-200 motion-safe:animate-pulse">
       <div className="flex gap-2.5">
         <div className="w-6 h-6 rounded-full bg-surface-200 shrink-0" />
         <div className="flex-1">

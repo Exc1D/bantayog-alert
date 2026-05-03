@@ -214,7 +214,7 @@ export function Step1Evidence({
               <div
                 className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
                   isCompleted || isCurrent ? 'bg-brand-500' : 'bg-surface-200'
-                } ${isCurrent ? 'animate-pulse' : ''}`}
+                } ${isCurrent ? 'motion-safe:animate-pulse' : ''}`}
               />
             </div>
           )
@@ -310,7 +310,7 @@ export function Step1Evidence({
                     setReportType(value)
                     setReportTypeError(null)
                   }}
-                  className={`flex flex-col items-center justify-center gap-2 min-h-[80px] rounded-xl border-2 transition-all active:scale-95 ${
+                  className={`flex flex-col items-center justify-center gap-2 min-h-[80px] px-3 py-3 rounded-xl border-2 transition-all active:scale-95 ${
                     isSelected
                       ? `${selBorder} ${selBg} shadow-sm`
                       : 'border-surface-200 bg-white hover:border-surface-300'
