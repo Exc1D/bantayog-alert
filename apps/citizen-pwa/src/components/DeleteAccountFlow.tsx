@@ -32,9 +32,9 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
     setError(null)
   }, [])
 
-  // Escape key closes dialog
+  // Escape key closes dialog (but not while submitting)
   useEffect(() => {
-    if (step === 'idle') return
+    if (step === 'idle' || step === 'submitting') return
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') goIdle()
     }
@@ -66,7 +66,7 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
       role="presentation"
       onClick={(e) => {
-        if (e.target === e.currentTarget) goIdle()
+        if (step !== 'submitting' && e.target === e.currentTarget) goIdle()
       }}
     >
       {step === 'warn' ? (

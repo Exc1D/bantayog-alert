@@ -49,7 +49,7 @@ Addressed all P0 + P1 + actionable P2/P3 items from `docs/qa-findings-2026-05-03
 
 ## 2026-05-03 — PR #91 Review Follow-ups (branch: `fix/citizen-pwa-auth-and-wizard-followups`)
 
-Addressed all Sourcery-ai and CodeRabbit review comments on PR #91.
+Addressed all Sourcery AI and CodeRabbit review comments on PR #91.
 
 | Source     | Issue                                                                                 | Fix                                                                                                                | Files                                                                                        |
 | ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
