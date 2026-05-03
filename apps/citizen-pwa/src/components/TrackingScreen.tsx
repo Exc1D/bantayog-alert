@@ -38,8 +38,8 @@ export function TrackingScreen() {
   if (error || !report) {
     return (
       <div className="page-container">
-        <StatusBanner variant="failed" icon={<AlertTriangle size={16} />}>
-          Report not found
+        <StatusBanner variant="queued" icon={<RefreshCw size={16} className="animate-spin" />}>
+          Your report is being processed — this page updates automatically.
         </StatusBanner>
       </div>
     )
