@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MapPin, Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { usePublicIncidents } from '../hooks/usePublicIncidents.js'
 import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
 import type { PublicIncident, Filters } from './MapTab/types.js'
@@ -87,22 +88,16 @@ function SkeletonCard() {
   )
 }
 
-const SEVERITIES: { value: Filters['severity']; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-]
-
-const WINDOWS: { value: Filters['window']; label: string }[] = [
-  { value: '24h', label: '24h' },
-  { value: '7d', label: '7 days' },
-  { value: '30d', label: '30 days' },
+const MUNICIPALITY_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'All' },
+  ...[...CAMARINES_NORTE_MUNICIPALITIES]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .map((m) => ({ value: m.label, label: m.label })),
 ]
 
 export function FeedTab() {
   const navigate = useNavigate()
-  const [filters, setFilters] = useState<Filters>({ severity: 'all', window: '24h' })
+  const [filters, setFilters] = useState<Filters>({ municipality: '' })
   const { incidents, loading, error } = usePublicIncidents(filters)
 
   return (
@@ -112,41 +107,24 @@ export function FeedTab() {
         <div className="flex items-center justify-between">
           <h1 className="text-[20px] font-bold text-[#25292a] m-0">Incident Feed</h1>
         </div>
-        {/* Filter chips row */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mt-3 no-scrollbar">
-          {SEVERITIES.map(({ value, label }) => (
+        {/* Municipality filter chips */}
+        <div
+          role="group"
+          aria-label="Filter by municipality"
+          className="flex gap-2 overflow-x-auto pb-1 mt-3 no-scrollbar"
+        >
+          {MUNICIPALITY_OPTIONS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
-              aria-pressed={filters.severity === value}
+              aria-pressed={filters.municipality === value}
               onClick={() => {
-                setFilters((f) => ({ ...f, severity: value }))
+                setFilters({ municipality: value })
               }}
               className={
-                filters.severity === value
-                  ? 'bg-[#001e40] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
-                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
-              }
-            >
-              {label}
-            </button>
-          ))}
-          <span
-            aria-hidden="true"
-            className="flex-shrink-0 w-px bg-[#d5dedd] self-stretch mx-0.5"
-          />
-          {WINDOWS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filters.window === value}
-              onClick={() => {
-                setFilters((f) => ({ ...f, window: value }))
-              }}
-              className={
-                filters.window === value
-                  ? 'bg-[#001e40] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
-                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+                filters.municipality === value
+                  ? 'bg-[#001e40] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
+                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
               }
             >
               {label}

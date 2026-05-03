@@ -3,11 +3,8 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { PublicIncident, Filters } from '../components/MapTab/types.js'
 
-function getWindowMs(w: Filters['window']): number {
-  if (w === '24h') return 24 * 60 * 60 * 1000
-  if (w === '7d') return 7 * 24 * 60 * 60 * 1000
-  return 30 * 24 * 60 * 60 * 1000
-}
+// Always load the last 30 days — municipality filter is applied client-side.
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 function isPublicIncidentData(value: unknown): value is Omit<PublicIncident, 'id'> {
   if (!value || typeof value !== 'object') return false
@@ -51,7 +48,7 @@ export function usePublicIncidents(filters: Filters): {
       return undefined
     }
 
-    const cutoff = Date.now() - getWindowMs(filters.window)
+    const cutoff = Date.now() - THIRTY_DAYS_MS
     const q = query(
       collection(db(), 'reports'),
       where('visibilityClass', '==', 'public_alertable'),
@@ -70,8 +67,9 @@ export function usePublicIncidents(filters: Filters): {
           }
           return [{ id: d.id, ...data }]
         })
-        const filtered =
-          filters.severity === 'all' ? all : all.filter((doc) => doc.severity === filters.severity)
+        const filtered = filters.municipality
+          ? all.filter((i) => i.municipalityLabel === filters.municipality)
+          : all
         setError(null)
         setIncidents(filtered)
         setLoading(false)
@@ -84,7 +82,7 @@ export function usePublicIncidents(filters: Filters): {
     return () => {
       unsub()
     }
-  }, [firebaseConfigured, filters.severity, filters.window])
+  }, [firebaseConfigured, filters.municipality])
 
   return { incidents, loading, error }
 }

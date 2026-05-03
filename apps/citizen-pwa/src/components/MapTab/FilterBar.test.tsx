@@ -1,46 +1,44 @@
 import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { FilterBar, type Filters } from './FilterBar.js'
+import { FilterBar } from './FilterBar.js'
+import type { Filters } from './types.js'
 
-const filters: Filters = { severity: 'all', window: '24h' }
+const defaultFilters: Filters = { municipality: '' }
 
 describe('FilterBar', () => {
-  it('shows all severity and window options simultaneously', () => {
-    render(<FilterBar filters={filters} onChange={vi.fn()} />)
-    for (const label of ['All', 'High', 'Medium', 'Low', '24h', '7d', '30d']) {
-      expect(
-        screen.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }),
-      ).toBeInTheDocument()
-    }
+  it('shows All chip and municipality chips', () => {
+    render(<FilterBar filters={defaultFilters} onChange={vi.fn()} />)
+    expect(screen.getByRole('button', { name: /^All$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Daet$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Basud$/i })).toBeInTheDocument()
   })
 
-  it('selects severity directly on click', () => {
+  it('calls onChange with selected municipality on click', () => {
     const onChange = vi.fn()
-    render(<FilterBar filters={filters} onChange={onChange} />)
-    fireEvent.click(screen.getByRole('button', { name: /^high$/i }))
-    expect(onChange).toHaveBeenCalledWith({ severity: 'high', window: '24h' })
+    render(<FilterBar filters={defaultFilters} onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Daet$/i }))
+    expect(onChange).toHaveBeenCalledWith({ municipality: 'Daet' })
   })
 
-  it('selects window directly on click', () => {
+  it('calls onChange with empty string when All is clicked', () => {
     const onChange = vi.fn()
-    render(<FilterBar filters={filters} onChange={onChange} />)
-    fireEvent.click(screen.getByRole('button', { name: /^7d$/i }))
-    expect(onChange).toHaveBeenCalledWith({ severity: 'all', window: '7d' })
+    render(<FilterBar filters={{ municipality: 'Daet' }} onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: /^All$/i }))
+    expect(onChange).toHaveBeenCalledWith({ municipality: '' })
   })
 
-  it('marks the active severity chip as pressed', () => {
-    render(<FilterBar filters={{ severity: 'high', window: '24h' }} onChange={vi.fn()} />)
-    expect(screen.getByRole('button', { name: /^high$/i })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /^all$/i })).toHaveAttribute('aria-pressed', 'false')
+  it('marks the active municipality chip as pressed', () => {
+    render(<FilterBar filters={{ municipality: 'Daet' }} onChange={vi.fn()} />)
+    expect(screen.getByRole('button', { name: /^Daet$/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /^All$/i })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('disables all chips and blocks onChange when requested', () => {
+  it('disables all chips and blocks onChange when disabled', () => {
     const onChange = vi.fn()
-    render(<FilterBar filters={filters} onChange={onChange} disabled />)
-    for (const label of ['All', 'High', 'Medium', 'Low', '24h', '7d', '30d']) {
-      expect(screen.getByRole('button', { name: new RegExp(`^${label}$`, 'i') })).toBeDisabled()
-    }
-    fireEvent.click(screen.getByRole('button', { name: /^high$/i }))
+    render(<FilterBar filters={defaultFilters} onChange={onChange} disabled />)
+    expect(screen.getByRole('button', { name: /^All$/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Daet$/i })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /^Daet$/i }))
     expect(onChange).not.toHaveBeenCalled()
   })
 })

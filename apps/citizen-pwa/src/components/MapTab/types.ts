@@ -26,6 +26,5 @@ export interface MyReport {
 }
 
 export interface Filters {
-  severity: 'all' | 'high' | 'medium' | 'low'
-  window: '24h' | '7d' | '30d'
+  municipality: string // '' = show all municipalities
 }

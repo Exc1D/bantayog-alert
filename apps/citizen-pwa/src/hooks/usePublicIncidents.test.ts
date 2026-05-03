@@ -35,7 +35,7 @@ function makeSnap(docs: object[]) {
   }
 }
 
-const defaultFilters: Filters = { severity: 'all', window: '24h' }
+const defaultFilters: Filters = { municipality: '' }
 
 beforeEach(() => {
   mockHasFirebaseConfig.mockReset().mockReturnValue(true)
@@ -77,7 +77,7 @@ describe('usePublicIncidents', () => {
     expect(result.current.incidents[0]!.id).toBe('id-0')
   })
 
-  it('filters by severity when not all', () => {
+  it('filters by municipality when set', () => {
     const docs = [
       {
         reportType: 'flood',
@@ -93,7 +93,7 @@ describe('usePublicIncidents', () => {
         severity: 'low',
         status: 'verified',
         barangayId: 'b',
-        municipalityLabel: 'Daet',
+        municipalityLabel: 'Basud',
         publicLocation: { lat: 14, lng: 122 },
         submittedAt: 900,
       },
@@ -104,7 +104,7 @@ describe('usePublicIncidents', () => {
         return void 0
       }
     })
-    const filters: Filters = { severity: 'high', window: '24h' }
+    const filters: Filters = { municipality: 'Daet' }
     const { result } = renderHook(() => usePublicIncidents(filters))
     expect(result.current.incidents).toHaveLength(1)
     expect(result.current.incidents[0]!.reportType).toBe('flood')
@@ -162,7 +162,7 @@ describe('usePublicIncidents', () => {
       expect(result.current.error).toBe(fakeErr)
     })
 
-    rerender({ filters: { severity: 'high', window: '24h' } })
+    rerender({ filters: { municipality: 'Daet' } })
 
     await waitFor(() => {
       expect(result.current.error).toBeNull()

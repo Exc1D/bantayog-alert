@@ -28,22 +28,11 @@ const INCIDENT_LABELS: Record<string, string> = {
   other: 'Others',
 }
 
-const WINDOW_LABELS: Record<Filters['window'], string> = {
-  '24h': '24 hours',
-  '7d': '7 days',
-  '30d': '30 days',
-}
-
 interface SelectedPin {
   id: string
   type: 'incident' | 'myReport'
   label: string
   severity?: 'high' | 'medium' | 'low'
-}
-
-function severityLabel(severity: Filters['severity'] | MyReport['severity']): string {
-  if (severity === 'all') return 'All'
-  return severity.charAt(0).toUpperCase() + severity.slice(1)
 }
 
 function statusLabel(status: string): string {
@@ -61,7 +50,7 @@ export function MapTab() {
   const mapRef = useRef<L.Map | null>(null)
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine)
-  const [filters, setFilters] = useState<Filters>({ severity: 'all', window: '24h' })
+  const [filters, setFilters] = useState<Filters>({ municipality: '' })
   const [selectedPin, setSelectedPin] = useState<SelectedPin | null>(null)
   const [sheetPhase, setSheetPhase] = useState<'hidden' | 'peek' | 'expanded'>('hidden')
 
@@ -173,7 +162,7 @@ export function MapTab() {
       id: incident.id,
       type: 'incident',
       severity: incident.severity,
-      label: `${INCIDENT_LABELS[incident.reportType] ?? incident.reportType} · ${severityLabel(incident.severity)} · ${incident.barangayId}, ${incident.municipalityLabel}`,
+      label: `${INCIDENT_LABELS[incident.reportType] ?? incident.reportType} · ${incident.severity} · ${incident.barangayId}, ${incident.municipalityLabel}`,
     })
     setSheetPhase('peek')
   }, [])
@@ -202,7 +191,7 @@ export function MapTab() {
     !incidentsLoading &&
     !incidentsError &&
     visibleIncidents.length === 0 &&
-    (myReports.length > 0 || filters.severity !== 'all')
+    (myReports.length > 0 || filters.municipality !== '')
 
   return (
     <div className="absolute inset-0 isolate">
@@ -242,11 +231,9 @@ export function MapTab() {
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[800] max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
         >
           <p className="m-0 text-[#52606d] text-sm">
-            {filters.severity !== 'all'
-              ? `No ${filters.severity} incidents reported in this area in the last ${WINDOW_LABELS[filters.window]}. Try clearing the severity filter.`
-              : showFilterHint
-                ? `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`
-                : `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`}
+            {filters.municipality
+              ? `No reported incidents in ${filters.municipality} in the last 30 days. Try selecting All.`
+              : `No reported incidents in this area in the last 30 days.`}
           </p>
         </div>
       ) : null}
