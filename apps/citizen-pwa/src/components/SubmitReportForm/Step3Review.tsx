@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   MapPin,
   AlertCircle,
+  Users,
+  User,
+  Pencil,
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
@@ -109,6 +112,15 @@ export function Step3Review({
         <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-surface-200 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-surface-700">Report Summary</h2>
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-xs font-medium text-brand-500 min-h-[44px] px-1"
+              aria-label="Edit report"
+            >
+              <Pencil size={12} />
+              Edit
+            </button>
           </div>
 
           <div className="divide-y divide-surface-100">
@@ -128,11 +140,14 @@ export function Step3Review({
             {/* Patient count row */}
             {reportData.patientCount > 0 && (
               <div className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-surface-400">Patients</p>
-                  <p className="text-sm font-semibold text-surface-900">
-                    {reportData.patientCount}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <Users size={20} className="text-surface-400" />
+                  <div>
+                    <p className="text-xs text-surface-400">Patients</p>
+                    <p className="text-sm font-semibold text-surface-900">
+                      {reportData.patientCount}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -160,10 +175,15 @@ export function Step3Review({
 
             {/* Contact row */}
             <div className="px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-surface-400">Contact</p>
-                <p className="text-sm font-semibold text-surface-900">{reportData.reporterName}</p>
-                <p className="text-xs text-surface-500">{reportData.reporterMsisdn}</p>
+              <div className="flex items-center gap-3">
+                <User size={20} className="text-surface-400" />
+                <div>
+                  <p className="text-xs text-surface-400">Contact</p>
+                  <p className="text-sm font-semibold text-surface-900">
+                    {reportData.reporterName}
+                  </p>
+                  <p className="text-xs text-surface-500">{reportData.reporterMsisdn}</p>
+                </div>
               </div>
             </div>
           </div>
