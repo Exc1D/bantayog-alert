@@ -28,7 +28,7 @@ function makeIcon(color: string, queued: boolean): L.DivIcon {
     iconSize: [44, 44],
     iconAnchor: [22, 22],
     html: `
-      <div style="position:relative;width:44px;height:44px;display:grid;place-items:center;">
+      <div style="position:relative;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;">
         <div style="width:18px;height:18px;border-radius:50%;border:3px solid ${color};background:transparent;${queued ? '' : 'animation:ringPulse 2s ease-in-out infinite;'}"></div>
         ${
           queued

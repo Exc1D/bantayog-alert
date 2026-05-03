@@ -4,6 +4,7 @@ import { Crosshair } from 'lucide-react'
 import L from 'leaflet'
 import { PeekSheet } from './PeekSheet.js'
 import { DetailSheet } from './DetailSheet.js'
+import { FilterBar } from './FilterBar.js'
 import { IncidentLayer } from './IncidentLayer.js'
 import { MyReportLayer } from './MyReportLayer.js'
 import { usePublicIncidents } from '../../hooks/usePublicIncidents.js'
@@ -54,7 +55,7 @@ export function MapTab() {
   const mapRef = useRef<L.Map | null>(null)
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine)
-  const filters = { severity: 'all', window: '24h' } as const
+  const [filters, setFilters] = useState<Filters>({ severity: 'all', window: '24h' })
   const [selectedPin, setSelectedPin] = useState<SelectedPin | null>(null)
   const [sheetPhase, setSheetPhase] = useState<'hidden' | 'peek' | 'expanded'>('hidden')
 
@@ -194,6 +195,12 @@ export function MapTab() {
   return (
     <div className="absolute inset-0 isolate">
       <div ref={mapElRef} className="w-full h-full" />
+
+      <div className="absolute top-0 left-0 right-0 z-30 px-3 pt-3 pointer-events-none">
+        <div className="pointer-events-auto">
+          <FilterBar filters={filters} onChange={setFilters} disabled={isOffline} />
+        </div>
+      </div>
 
       {mapInstance ? (
         <>

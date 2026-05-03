@@ -29,7 +29,7 @@ function makeIcon(color: string, pulse: boolean): L.DivIcon {
     iconSize: [44, 44],
     iconAnchor: [22, 22],
     html: `
-      <div style="position:relative;width:44px;height:44px;display:grid;place-items:center;">
+      <div style="position:relative;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;">
         ${
           pulse
             ? `<div style="position:absolute;width:18px;height:18px;border-radius:50%;background:${color};opacity:0.24;animation:ripple 2s cubic-bezier(0.4,0,0.6,1) infinite;"></div>`
