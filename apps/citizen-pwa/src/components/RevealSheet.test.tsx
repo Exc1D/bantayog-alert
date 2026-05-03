@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
@@ -89,6 +88,6 @@ describe('RevealSheet', () => {
       await vi.advanceTimersByTimeAsync(1200)
     })
     expect(screen.getByText(/Maging Guardian/)).toBeInTheDocument()
-    expect(screen.getByText(/Join the Guardian Network/)).toBeInTheDocument()
+    expect(screen.getByText(/Create Account/)).toBeInTheDocument()
   })
 })

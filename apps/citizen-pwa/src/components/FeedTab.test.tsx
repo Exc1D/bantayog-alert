@@ -34,7 +34,7 @@ describe('FeedTab', () => {
 
   it('shows empty state when no incidents', () => {
     renderFeedTab()
-    expect(screen.getByText('All clear')).toBeInTheDocument()
+    expect(screen.getByText('No incidents')).toBeInTheDocument()
   })
 
   it('renders filter chips without border', () => {
@@ -51,7 +51,7 @@ describe('FeedTab', () => {
     mockUsePublicIncidents.mockReturnValue({ incidents: [], loading: true, error: null })
     renderFeedTab()
     expect(screen.getByText('Incident Feed')).toBeInTheDocument()
-    expect(screen.queryByText('All clear')).not.toBeInTheDocument()
+    expect(screen.queryByText('No incidents')).not.toBeInTheDocument()
   })
 
   it('shows error state when error is set', () => {
