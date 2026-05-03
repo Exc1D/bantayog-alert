@@ -17,6 +17,17 @@ export function useMyActiveReports(): {
 } {
   const [reports, setReports] = useState<MyReport[]>([])
   const [loading, setLoading] = useState(true)
+  const [revision, setRevision] = useState(0)
+
+  useEffect(() => {
+    function onReportSaved() {
+      setRevision((r) => r + 1)
+    }
+    window.addEventListener('bantayog:report-saved', onReportSaved)
+    return () => {
+      window.removeEventListener('bantayog:report-saved', onReportSaved)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -130,7 +141,7 @@ export function useMyActiveReports(): {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [revision])
 
   return { reports, loading }
 }

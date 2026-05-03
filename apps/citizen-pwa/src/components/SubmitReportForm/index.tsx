@@ -5,6 +5,7 @@ import type { ReportType } from '@bantayog/shared-types'
 import { createDraft } from '../../services/submit-report.js'
 import type { Draft } from '../../services/draft-store.js'
 import { wizardSnapshot } from '../../services/wizard-snapshot.js'
+import { saveReport } from '../../services/localForageReports.js'
 import { useSubmissionMachine } from '../../hooks/useSubmissionMachine.js'
 import { Step1Evidence } from './Step1Evidence.js'
 import { Step2WhoWhere } from './Step2WhoWhere.js'
@@ -182,6 +183,23 @@ function WizardContainer() {
         secret={secret}
         onSuccess={() => {
           void wizardSnapshot.clear()
+          if (draft.location && secret) {
+            void saveReport({
+              publicRef: draft.publicRef,
+              secret,
+              reportType: draft.reportType,
+              severity: draft.severity,
+              lat: draft.location.lat,
+              lng: draft.location.lng,
+              submittedAt: Date.now(),
+            })
+              .then(() => {
+                window.dispatchEvent(new Event('bantayog:report-saved'))
+              })
+              .catch((err: unknown) => {
+                console.error('[SubmissionPanel] failed to persist report locally', err)
+              })
+          }
         }}
       />
     )
