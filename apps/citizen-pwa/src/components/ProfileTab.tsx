@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   ClipboardList,
   MapPin,
+  Search,
   Settings,
   User as UserIcon,
   Award,
@@ -373,6 +374,25 @@ export function ProfileTab() {
           </div>
         </div>
 
+        {/* Track existing report */}
+        <div className="mx-4 mt-4">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/lookup')
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-xl border border-surface-200 shadow-sm active:bg-surface-50 transition-colors cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center shrink-0">
+              <Search size={16} className="text-surface-600" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="m-0 text-sm font-semibold text-surface-900">Check report status</p>
+              <p className="m-0 text-xs text-surface-400">Enter reference &amp; secret code</p>
+            </div>
+          </button>
+        </div>
+
         {/* Settings — accessible before registration */}
         <div className="mx-4 mt-4 bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
           <button
@@ -565,6 +585,25 @@ export function ProfileTab() {
             </div>
           </div>
           <ChevronRight size={16} className="text-surface-400" />
+        </button>
+      </div>
+
+      {/* Track existing report */}
+      <div className="mx-4 mt-4">
+        <button
+          type="button"
+          onClick={() => {
+            void navigate('/lookup')
+          }}
+          className="w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-xl border border-surface-200 shadow-sm active:bg-surface-50 transition-colors cursor-pointer"
+        >
+          <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center shrink-0">
+            <Search size={16} className="text-surface-600" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="m-0 text-sm font-semibold text-surface-900">Check report status</p>
+            <p className="m-0 text-xs text-surface-400">Enter reference &amp; secret code</p>
+          </div>
         </button>
       </div>
 
