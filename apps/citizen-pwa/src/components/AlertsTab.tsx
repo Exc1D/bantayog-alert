@@ -81,7 +81,7 @@ function AlertCard({
     <button
       type="button"
       onClick={onClick}
-      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
+      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-2 ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
     >
       {/* Unread indicator dot */}
       {isUnread && (

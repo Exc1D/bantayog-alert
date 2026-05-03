@@ -17,7 +17,7 @@ interface Props {
 const SEVERITIES: { value: SeverityFilter; label: string; dot?: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'high', label: 'High', dot: '#dc2626' },
-  { value: 'medium', label: 'Medium', dot: '#a73400' },
+  { value: 'medium', label: 'Medium', dot: '#7c3500' },
   { value: 'low', label: 'Low', dot: '#414849' },
 ]
 

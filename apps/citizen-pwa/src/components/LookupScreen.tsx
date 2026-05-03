@@ -176,6 +176,15 @@ export function LookupScreen() {
                 {`${result.municipalityLabel} MDRRMO`}
               </span>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setResult(null)
+              }}
+              className="mt-4 w-full h-10 rounded-xl bg-surface-100 text-surface-700 text-sm font-medium border-none cursor-pointer"
+            >
+              Check another report
+            </button>
           </div>
         )}
       </div>
