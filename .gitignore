@@ -64,3 +64,4 @@ worktrees/
 .superpowers/
 .worktrees/
 functions-dist/
+packages/shared-data/lib/

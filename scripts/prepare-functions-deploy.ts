@@ -14,7 +14,7 @@
  */
 
 import { spawnSync } from 'child_process'
-import { readFileSync, writeFileSync, rmSync, existsSync, mkdirSync, cpSync } from 'fs'
+import { readFileSync, writeFileSync, rmSync, existsSync, mkdirSync } from 'fs'
 import { resolve } from 'path'
 
 const ROOT = resolve(import.meta.dirname, '..')
@@ -27,36 +27,13 @@ function run(file: string, args: string[], cwd = ROOT) {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
-// Build workspace packages that only ship TS source (shared-data has no lib/)
-run(
-  'pnpm',
-  [
-    'exec',
-    'tsc',
-    '--outDir',
-    'lib',
-    '--declaration',
-    '--esModuleInterop',
-    '--module',
-    'NodeNext',
-    '--moduleResolution',
-    'NodeNext',
-    '--target',
-    'ES2022',
-    '--rootDir',
-    'src',
-  ],
-  resolve(ROOT, 'packages/shared-data'),
-)
-
-// Build functions TypeScript
+// Build functions TypeScript (esbuild handles @bantayog/* TS source natively)
 run('pnpm', ['--filter', '@bantayog/functions', 'build'])
 
 // Prepare clean dist dir
 if (existsSync(DIST)) rmSync(DIST, { recursive: true, force: true })
 mkdirSync(DIST)
 mkdirSync(resolve(DIST, 'lib'))
-mkdirSync(resolve(DIST, 'scripts'))
 
 // Bundle with esbuild: inline @bantayog/* workspace deps, keep published deps external
 // This avoids the workspace:* protocol problem entirely.
