@@ -58,10 +58,15 @@ export async function requestLookupImpl(input: RequestLookupInput): Promise<Requ
       throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Unknown secret.')
     }
 
-    const secretDoc = secretSnap.data() as {
-      publicRef: string
-      reportId: string
-      expiresAt: number
+    const secretDoc = secretSnap.data()
+    if (
+      !secretDoc ||
+      typeof secretDoc.publicRef !== 'string' ||
+      typeof secretDoc.reportId !== 'string' ||
+      typeof secretDoc.expiresAt !== 'number'
+    ) {
+      console.error('[requestLookup] secret_lookup doc malformed:', { secretHash, secretDoc })
+      throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Invalid secret record.')
     }
     if (secretDoc.expiresAt < Date.now()) {
       throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Secret expired.')

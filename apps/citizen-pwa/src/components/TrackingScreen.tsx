@@ -74,12 +74,26 @@ function heroConfig(status: string): {
         text: 'Situation resolved. Thank you.',
         icon: <CheckCircle size={24} className="text-white" />,
       }
+    case 'cancelled':
+      return {
+        bg: 'bg-surface-600',
+        color: '#4F5859',
+        text: 'This report was cancelled.',
+        icon: <XCircle size={24} className="text-white" />,
+      }
     case 'cancelled_false_report':
       return {
         bg: 'bg-surface-600',
         color: '#4F5859',
         text: 'This report was closed after review.',
         icon: <XCircle size={24} className="text-white" />,
+      }
+    case 'merged_as_duplicate':
+      return {
+        bg: 'bg-surface-600',
+        color: '#4F5859',
+        text: 'This report was merged into another incident.',
+        icon: <RefreshCw size={24} className="text-white" />,
       }
     default:
       return {
@@ -99,6 +113,7 @@ const TIMELINE_LABELS: Record<string, string> = {
   acknowledged: 'Responder acknowledged',
   en_route: 'Responder en route',
   on_scene: 'Responder on scene',
+  reopened: 'Report reopened',
   resolved: 'Situation resolved',
   closed: 'Report closed',
   rejected: 'Report rejected',

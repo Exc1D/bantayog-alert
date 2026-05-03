@@ -10,6 +10,7 @@ const CONTENT_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1]
 
 function CopyButton({ secret }: { secret: string }) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -22,13 +23,20 @@ function CopyButton({ secret }: { secret: string }) {
     try {
       await navigator.clipboard.writeText(secret)
       setCopied(true)
+      setCopyError(false)
       if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current)
       copiedTimerRef.current = setTimeout(() => {
         setCopied(false)
         copiedTimerRef.current = null
       }, 1500)
-    } catch {
-      // clipboard unavailable
+    } catch (err) {
+      console.error('[CopyButton] clipboard write failed:', err)
+      setCopyError(true)
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current)
+      copiedTimerRef.current = setTimeout(() => {
+        setCopyError(false)
+        copiedTimerRef.current = null
+      }, 3000)
     }
   }
   return (
@@ -40,7 +48,7 @@ function CopyButton({ secret }: { secret: string }) {
       className="text-xs text-brand-600 font-medium hover:text-brand-700 active:text-brand-800"
       aria-label="Copy secret code"
     >
-      {copied ? 'Copied!' : 'Copy'}
+      {copyError ? 'Copy failed — select and copy manually' : copied ? 'Copied!' : 'Copy'}
     </button>
   )
 }

@@ -61,9 +61,13 @@ export function LookupScreen() {
         throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
       }
       await ensureSignedIn()
-      isMountedRef.current = true
       const res = await httpsCallable(fns(), 'requestLookup')({ secret: trimmedSecret })
       const result = res.data as LookupResult
+      if (!result.publicRef || typeof result.publicRef !== 'string') {
+        console.error('[LookupScreen] Invalid lookup response:', result)
+        throw new Error('Invalid server response.')
+      }
+      if (!isMountedRef.current) return
       void navigate(`/reports/${result.publicRef}`)
     } catch (e: unknown) {
       console.error('[LookupScreen] requestLookup failed:', e)
