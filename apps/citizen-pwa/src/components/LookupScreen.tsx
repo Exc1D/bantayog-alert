@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft } from 'lucide-react'
-import { fns, hasFirebaseConfig, FIREBASE_ENV_ERROR_MESSAGE } from '../services/firebase.js'
+import {
+  fns,
+  hasFirebaseConfig,
+  ensureSignedIn,
+  FIREBASE_ENV_ERROR_MESSAGE,
+} from '../services/firebase.js'
 
 interface LookupResult {
   status: string
@@ -50,6 +55,7 @@ export function LookupScreen() {
       if (!hasFirebaseConfig()) {
         throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
       }
+      await ensureSignedIn()
       const res = await httpsCallable(
         fns(),
         'requestLookup',

@@ -222,13 +222,7 @@ export function Step3Review({
 
       {/* Bottom action */}
       <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
-        <Button
-          variant="primary"
-          fullWidth
-          onClick={onSubmit}
-          disabled={!consent || isSubmitting}
-          className="!bg-danger-500 hover:!bg-danger-600 active:!bg-danger-600"
-        >
+        <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
