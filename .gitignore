@@ -65,3 +65,6 @@ worktrees/
 .worktrees/
 functions-dist/
 packages/shared-data/lib/
+
+# Graphify knowledge graphs (generated output — not source)
+graphify-out/
