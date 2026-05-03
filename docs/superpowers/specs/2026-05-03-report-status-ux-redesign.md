@@ -41,6 +41,7 @@ Option A (approved): Thin `LookupScreen` entry → enhanced `TrackingScreen` des
 | `apps/citizen-pwa/src/components/ReportStatusPill.tsx` | **New** — persistent active-report chip                                                                         |
 | `functions/src/callables/request-lookup.ts`            | Accept `{ secret }` alone (new path); extend return type to include `publicRef`; update Zod schema              |
 | `functions/src/triggers/process-inbox-item.ts`         | Write `secret_lookup/{tokenHash}` for `source: 'web'` submissions only                                          |
+| `infra/firebase/firestore.rules`                       | Add `secret_lookup/{tokenHash}` match block: `allow read: if request.auth != null; allow write: if false;`      |
 
 ### Backend Data Flow — Secret-Only Path
 
@@ -73,13 +74,17 @@ Replace the current strict single-shape schema with a discriminated union:
 
 ```typescript
 const payloadSchema = z.union([
-  z.object({
-    publicRef: z.string().regex(/^[a-z0-9]{8}$/),
-    secret: z.string().min(1).max(64),
-  }),
-  z.object({
-    secret: z.string().min(1).max(64),
-  }),
+  z
+    .object({
+      publicRef: z.string().regex(/^[a-z0-9]{8}$/),
+      secret: z.string().min(1).max(64),
+    })
+    .strict(),
+  z
+    .object({
+      secret: z.string().min(1).max(64),
+    })
+    .strict(),
 ])
 ```
 
@@ -112,7 +117,15 @@ The existing both-codes path (`{ publicRef, secret }`) retains its current auth 
 
 - Document ID: `tokenHash` (= `sha256(secretPlaintext)` hex — the same value stored as `report_lookup.tokenHash`)
 - Fields: `{ publicRef: string, reportId: string, expiresAt: number }`
-- Security rules: `allow read: if request.auth != null`
+- Security rules — full diff to show user before applying (`infra/firebase/firestore.rules`, add adjacent to the `report_lookup` block):
+
+```
++   match /secret_lookup/{tokenHash} {
++     allow read: if request.auth != null;
++     allow write: if false;
++   }
+```
+
 - Written alongside `report_lookup` in `process-inbox-item.ts` **for `source: 'web'` submissions only** (SMS submissions generate a random `secretHash` never shown to the user — no `secret_lookup` entry is created for them)
 - Lifecycle: expires via `expiresAt` (same 90-day window as `report_lookup`). `close-report.ts` does NOT delete `report_lookup` documents — entries expire naturally. `secret_lookup` follows the same pattern.
 
@@ -181,20 +194,22 @@ Full-width hero replacing the current `bg-surface-100` header. Color and copy ke
 
 **Note on color divergence from `statusMeta`:** The hero uses urgency-signaling colors (amber = active responders) rather than the passive status-tracking palette used in ProfileTab (`statusMeta` shows green for `assigned`/`acknowledged`). This is intentional — TrackingScreen is the emotional focal point where "something is actively happening" needs to register immediately.
 
-| Status group                                                                | Color token      | Hero copy                                    |
-| --------------------------------------------------------------------------- | ---------------- | -------------------------------------------- |
-| `new` / `awaiting_verify`                                                   | `bg-brand-500`   | "Your report is in the queue. We've got it." |
-| `verified` / `assigned` / `acknowledged`                                    | `bg-warning-500` | "Responders have been notified."             |
-| `en_route` / `on_scene`                                                     | `bg-warning-600` | "Help is on the way."                        |
-| `resolved` / `closed`                                                       | `bg-success-500` | "Situation resolved. Thank you."             |
-| `rejected` / `cancelled` / `cancelled_false_report` / `merged_as_duplicate` | `bg-surface-600` | "This report was closed."                    |
+| Status group                                     | Color token      | Hero copy                                           |
+| ------------------------------------------------ | ---------------- | --------------------------------------------------- |
+| `new` / `awaiting_verify`                        | `bg-brand-500`   | "Your report is in the queue. We've got it."        |
+| `verified` / `assigned` / `acknowledged`         | `bg-warning-500` | "Responders have been notified."                    |
+| `en_route` / `on_scene`                          | `bg-warning-600` | "Help is on the way."                               |
+| `reopened`                                       | `bg-warning-500` | "Report re-opened. Responders will be re-assigned." |
+| `resolved` / `closed`                            | `bg-success-500` | "Situation resolved. Thank you."                    |
+| `rejected` / `cancelled` / `merged_as_duplicate` | `bg-surface-600` | "This report was not accepted for review."          |
+| `cancelled_false_report`                         | `bg-surface-600` | "This report was closed after review."              |
 
 ### Radar Animation
 
 - Import `RadarRings` from `components/ui/RadarRings.tsx` (extracted from `ReceiptScreen`; see Section 5).
 - Rendered inside the hero banner, centered behind the status icon.
 - **Persistent** (no timeout) while status is non-terminal.
-- **Hidden** when status is terminal (`resolved`, `closed`, `rejected`, `cancelled`, `cancelled_false_report`, `merged_as_duplicate`).
+- **Hidden** when status is terminal (`resolved`, `closed`, `rejected`, `cancelled`, `cancelled_false_report`, `merged_as_duplicate`). `reopened` is non-terminal — radar stays active.
 - Ring color: `brand-500` for queued states, `warning-500` for active-responder states — passed via `color` prop (see RadarRings API in Section 5).
 - Respects reduced motion: rings rendered but `animate` prop omitted — rings visible at resting opacity, no pulse.
 
@@ -321,6 +336,8 @@ interface RadarRingsProps {
 
 Change navigate target from `/lookup` to `/reports/:publicRef` using `state.publicRef` (already available in `ReceiptScreen`'s location state). User should never need to re-enter their secret code immediately after submission.
 
+**Auth edge case:** On very slow devices, Firebase Auth session persistence (IndexedDB) may not complete before the user taps "Track." `TrackingScreen`'s existing error state already handles this — it shows "Your report is being processed — this page updates automatically." No additional recovery action required.
+
 ### Unchanged
 
 - Sheet/backdrop layout, slot machine reference display, haptic feedback, back-to-map button.
@@ -332,7 +349,9 @@ Change navigate target from `/lookup` to `/reports/:publicRef` using `state.publ
 - Reverse geocoding for report location.
 - Push notification on status change.
 - Re-open report flow.
+- "Update report" and "Re-open if situation changed" button functionality — both exist in `TrackingScreen` without `onClick` handlers and are left non-functional (no regression introduced).
 - Bilingual copy on hero/pill/timeline labels (deferred to a localization pass).
+- Lifting `useMyActiveReports` to a shared context to eliminate double callable invocations from `ReportStatusPill` + `ProfileTab` mounting simultaneously — deferred, acceptable at current volume.
 - Any changes to `report_lookup` collection or the existing both-codes callable path.
 
 ---
