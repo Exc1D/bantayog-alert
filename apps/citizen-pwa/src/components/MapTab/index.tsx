@@ -208,7 +208,7 @@ export function MapTab() {
     <div className="absolute inset-0 isolate">
       <div ref={mapElRef} className="w-full h-full" />
 
-      <div className="absolute top-0 left-0 right-0 z-30 px-3 pt-3 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 z-[800] px-3 pt-3 pointer-events-none">
         <div className="pointer-events-auto">
           <FilterBar filters={filters} onChange={setFilters} disabled={isOffline} />
         </div>
@@ -230,7 +230,7 @@ export function MapTab() {
       <button
         type="button"
         onClick={handleRecenter}
-        className="absolute bottom-4 right-3 z-40 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-surface-900 active:scale-95 transition-transform"
+        className="absolute bottom-4 right-3 z-[800] w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-surface-900 active:scale-95 transition-transform"
         aria-label="Recenter map"
       >
         <Crosshair size={20} />
@@ -239,7 +239,7 @@ export function MapTab() {
       {showEmpty || showFilterHint ? (
         <div
           role="status"
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[800] max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
         >
           <p className="m-0 text-[#52606d] text-sm">
             {filters.severity !== 'all'
@@ -254,7 +254,7 @@ export function MapTab() {
       {isOffline ? (
         <div
           role="alert"
-          className="absolute left-0 right-0 bottom-0 z-30 px-4 py-2 bg-surface-900/90 text-white text-center text-[0.8rem]"
+          className="absolute left-0 right-0 bottom-0 z-[800] px-4 py-2 bg-surface-900/90 text-white text-center text-[0.8rem]"
         >
           Offline — map data may be outdated
         </div>
