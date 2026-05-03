@@ -27,7 +27,7 @@ describe('compressImage', () => {
     expect(result).toBeInstanceOf(Promise)
   })
 
-  it('defaults maxEdge to 1080 and quality to 0.8', async () => {
+  it('passes through files smaller than 200KB unchanged', async () => {
     const smallFile = new File(['tiny'], 'small.jpg', { type: 'image/jpeg' })
     // For small files, defaults don't matter — it passes through unchanged
     const result = await compressImage(smallFile)

@@ -1,58 +1,59 @@
-/**
- * Client-side image compression using canvas downscaling.
- * Skips compression for files under 200KB to avoid unnecessary re-encoding.
- * Falls back to the original file if canvas operations fail.
- */
+const TARGET_COMPRESSED_SIZE = 500_000
+const SKIP_THRESHOLD = 200_000
+const QUALITY_STEPS = [0.8, 0.65, 0.5] as const
 
-async function compressImage(file: File, opts?: { maxEdge?: number; quality?: number }): Promise<Blob> {
-  const { maxEdge = 1080, quality = 0.8 } = opts ?? {}
+export async function compressImage(
+  file: File,
+  opts?: { maxEdge?: number; quality?: number },
+): Promise<Blob> {
+  const { maxEdge = 1080 } = opts ?? {}
 
-  // Already small — skip compression.
-  if (file.size < 200_000) return file
+  if (file.size < SKIP_THRESHOLD) return file
 
+  const img = await loadImage(file)
+  if (!img) return file
+
+  let { width, height } = img
+  if (width > maxEdge || height > maxEdge) {
+    const ratio = Math.min(maxEdge / width, maxEdge / height)
+    width = Math.round(width * ratio)
+    height = Math.round(height * ratio)
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return file
+  ctx.drawImage(img, 0, 0, width, height)
+
+  const qualities = opts?.quality != null ? [opts.quality] : QUALITY_STEPS
+
+  for (const q of qualities) {
+    const blob = await canvasToBlob(canvas, q)
+    if (!blob) continue
+    if (blob.size <= TARGET_COMPRESSED_SIZE) return blob
+  }
+
+  return (await canvasToBlob(canvas, 0.5)) ?? file
+}
+
+function loadImage(file: File): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image()
-    let objectUrl: string | null = null
-
-    img.onerror = () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-      resolve(file)
-    }
-
+    const url = URL.createObjectURL(file)
     img.onload = () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-
-      let { width, height } = img
-      if (width > maxEdge || height > maxEdge) {
-        const ratio = Math.min(maxEdge / width, maxEdge / height)
-        width = Math.round(width * ratio)
-        height = Math.round(height * ratio)
-      }
-
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        resolve(file)
-        return
-      }
-      ctx.drawImage(img, 0, 0, width, height)
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            resolve(file)
-          } else {
-            resolve(blob)
-          }
-        },
-        'image/jpeg',
-        quality,
-      )
+      URL.revokeObjectURL(url)
+      resolve(img)
     }
-    objectUrl = URL.createObjectURL(file)
-    img.src = objectUrl
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(null)
+    }
+    img.src = url
   })
 }
 
-export { compressImage }
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+}
