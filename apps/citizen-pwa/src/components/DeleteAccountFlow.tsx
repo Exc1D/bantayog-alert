@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { requestDataErasureAndSignOut } from '../services/erasure.js'
 
 interface Props {
@@ -11,6 +11,7 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
   const [step, setStep] = useState<Step>('idle')
   const [typed, setTyped] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const confirmInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleConfirm = useCallback(() => {
     void (async () => {
@@ -43,6 +44,13 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
       document.removeEventListener('keydown', onKey)
     }
   }, [step, goIdle])
+
+  // Focus the confirmation input when entering confirm step
+  useEffect(() => {
+    if (step === 'confirm') {
+      confirmInputRef.current?.focus()
+    }
+  }, [step])
 
   if (step === 'idle') {
     return (
@@ -129,15 +137,15 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
           </label>
           <input
             id="delete-confirm"
-            // eslint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
+            ref={confirmInputRef}
             placeholder="Type DELETE"
             value={typed}
+            disabled={step === 'submitting'}
             onChange={(e) => {
               setTyped(e.target.value)
             }}
             autoComplete="off"
-            className="w-full h-12 rounded-xl border-2 border-surface-200 px-4 text-sm font-mono focus:border-danger-500 focus:outline-none mb-4"
+            className="w-full h-12 rounded-xl border-2 border-surface-200 px-4 text-sm font-mono focus:border-danger-500 focus:outline-none mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           {error && (
             <p role="alert" className="text-xs text-danger-600 mb-4">

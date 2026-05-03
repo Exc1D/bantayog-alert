@@ -198,6 +198,12 @@ export function MapTab() {
     visibleIncidents.length === 0 &&
     myReports.length === 0
 
+  const showFilterHint =
+    !incidentsLoading &&
+    !incidentsError &&
+    visibleIncidents.length === 0 &&
+    (myReports.length > 0 || filters.severity !== 'all')
+
   return (
     <div className="absolute inset-0 isolate">
       <div ref={mapElRef} className="w-full h-full" />
@@ -230,7 +236,7 @@ export function MapTab() {
         <Crosshair size={20} />
       </button>
 
-      {showEmpty ? (
+      {showEmpty || showFilterHint ? (
         <div
           role="status"
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
@@ -238,7 +244,9 @@ export function MapTab() {
           <p className="m-0 text-[#52606d] text-sm">
             {filters.severity !== 'all'
               ? `No ${filters.severity} incidents reported in this area in the last ${WINDOW_LABELS[filters.window]}. Try clearing the severity filter.`
-              : `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`}
+              : showFilterHint
+                ? `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`
+                : `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`}
           </p>
         </div>
       ) : null}
