@@ -123,6 +123,7 @@ export function LookupScreen() {
                 setSecret(e.target.value)
               }}
               required
+              maxLength={64}
               className="font-mono tracking-widest w-full h-12 rounded-xl px-4 text-base bg-white border border-[#d5dedd] outline-none focus:border-[#0f9488] motion-safe:transition-colors motion-safe:duration-200"
               placeholder="Your secret code"
             />

@@ -39,7 +39,7 @@ vi.mock('firebase/functions', () => ({
         municipalityLabel: 'Daet',
       },
     })
-  }),
+  }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
 }))
 
 import { LookupScreen } from './LookupScreen'
@@ -97,9 +97,12 @@ describe('LookupScreen', () => {
 
   it('shows friendly error when lookup returns not-found', async () => {
     vi.mocked(httpsCallable).mockImplementationOnce(
-      () => () =>
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-        Promise.reject({ code: 'functions/not-found' }),
+      () =>
+        (() => {
+          const err = new Error('not-found')
+          ;(err as unknown as { code: string }).code = 'functions/not-found'
+          return Promise.reject(err)
+        }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
     )
     const user = userEvent.setup()
     renderScreen()

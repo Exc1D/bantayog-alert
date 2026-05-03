@@ -12,7 +12,7 @@ beforeAll(async () => {
   process.env.SMS_MSISDN_HASH_SALT = TEST_SALT
   env = await initializeTestEnvironment({
     projectId: 'demo-phase-3a-inbox',
-    firestore: { rules: PERMISSIVE_RULES },
+    firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
   })
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
