@@ -221,7 +221,9 @@ export function RevealSheet({
       console.warn('[RevealSheet] Invalid SMS shortcode:', contact.smsShortCode)
       return
     }
-    window.location.href = `sms:${normalizedShortCode}?body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const sep = isIOS ? '&' : '?'
+    window.location.href = `sms:${normalizedShortCode}${sep}body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
   }
 
   const handlePrimaryAction = () => {
@@ -514,10 +516,19 @@ export function RevealSheet({
             onSmsClick={handleSmsFallback}
           />
         ) : (
-          <FallbackCards hotlineNumber={contact.hotline} onCallClick={handleCallHotline} />
+          <FallbackCards
+            hotlineNumber={contact.hotline}
+            onCallClick={handleCallHotline}
+            onSmsClick={handleSmsFallback}
+          />
         )}
 
-        <Button variant={variant.primaryVariant} fullWidth onClick={handlePrimaryAction}>
+        <Button
+          variant={variant.primaryVariant}
+          fullWidth
+          onClick={handlePrimaryAction}
+          className="mt-4"
+        >
           {variant.primaryButton}
         </Button>
 
@@ -554,7 +565,7 @@ export function RevealSheet({
               className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-white text-brand-600 font-semibold text-sm border-none cursor-pointer active:bg-brand-50 transition-colors"
             >
               <LogIn size={14} />
-              Join the Guardian Network →
+              Create Account
             </button>
           </div>
         )}
