@@ -127,6 +127,7 @@ export function RegisterPage() {
     setLoading(true)
     try {
       await registerCitizen()
+      sessionStorage.removeItem('bantayog_reg_phone')
       toast('Welcome to Bantayog Alert', 'success')
       void navigate('/', { replace: true })
     } catch (e: unknown) {
@@ -171,7 +172,12 @@ export function RegisterPage() {
         </div>
 
         {step === 'phone' && (
-          <div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSendOtp()
+            }}
+          >
             <label
               htmlFor="register-phone"
               className="mb-4 text-[0.9375rem] font-semibold text-[#001e40] block"
@@ -181,8 +187,9 @@ export function RegisterPage() {
             <input
               id="register-phone"
               name="phone"
-              autoComplete="tel"
               type="tel"
+              autoComplete="tel"
+              aria-label="Phone number"
               value={phone}
               onChange={(e) => {
                 const raw = e.target.value
@@ -201,17 +208,14 @@ export function RegisterPage() {
               className="w-full h-14 rounded-xl border border-[#d5dedd] px-4 text-base focus:border-[#0f9488] focus:outline-none mb-4"
             />
             <button
-              type="button"
-              onClick={() => {
-                void handleSendOtp()
-              }}
+              type="submit"
               disabled={loading}
               style={ctaGradient}
               className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70"
             >
               {loading ? 'Sending…' : 'Send OTP'}
             </button>
-          </div>
+          </form>
         )}
 
         {step === 'otp' && (
