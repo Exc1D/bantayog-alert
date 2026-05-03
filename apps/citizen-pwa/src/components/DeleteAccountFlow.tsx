@@ -90,8 +90,6 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
           </p>
           <div className="flex flex-col gap-2">
             <button
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
               type="button"
               onClick={() => {
                 setStep('confirm')
@@ -103,6 +101,8 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
               Yes, delete my account →
             </button>
             <button
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
               type="button"
               onClick={goIdle}
               className="w-full h-12 rounded-xl bg-surface-100 text-surface-700 font-semibold text-sm border-none cursor-pointer"
@@ -155,8 +155,12 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
             </button>
             <button
               type="button"
-              onClick={goIdle}
-              className="w-full h-12 rounded-xl bg-surface-100 text-surface-700 font-semibold text-sm border-none cursor-pointer"
+              disabled={step === 'submitting'}
+              aria-busy={step === 'submitting'}
+              onClick={() => {
+                if (step !== 'submitting') goIdle()
+              }}
+              className="w-full h-12 rounded-xl bg-surface-100 text-surface-700 font-semibold text-sm border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>

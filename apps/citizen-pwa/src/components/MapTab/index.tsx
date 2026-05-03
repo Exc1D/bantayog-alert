@@ -236,7 +236,9 @@ export function MapTab() {
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
         >
           <p className="m-0 text-[#52606d] text-sm">
-            No reported incidents in this area in the last {WINDOW_LABELS[filters.window]}.
+            {filters.severity !== 'all'
+              ? `No ${filters.severity} incidents reported in this area in the last ${WINDOW_LABELS[filters.window]}. Try clearing the severity filter.`
+              : `No reported incidents in this area in the last ${WINDOW_LABELS[filters.window]}.`}
           </p>
         </div>
       ) : null}
