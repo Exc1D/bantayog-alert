@@ -18,6 +18,12 @@ All 10 tasks complete. Residual risks: E2E dispatch progression, native push tok
 
 ## Recent Merged Work
 
+### UX Bug Fixes — 10 Issues (2026-05-03)
+
+- **10 issues fixed:** TrackingScreen nav header (back + home), RevealSheet SMS iOS fix, button text → "Create Account", mt-4 spacing, FilterBar z-[800] above Leaflet, municipality chips filter (replaces severity/window), saveReport() wiring so reports appear on map + Profile, bantayog:report-saved event for live refresh, ProfileTab "Check report status" CTA
+- **FeedTab** also updated to municipality filter for consistency
+- **Gate:** `lint typecheck` clean, vitest 330/330 pass
+
 ### QA Findings Sweep (2026-05-03)
 
 - **45 findings addressed:** 7 P0, 8 P1, 10 P2/P3
