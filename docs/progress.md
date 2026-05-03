@@ -1,5 +1,52 @@
 # Progress
 
+## 2026-05-03 — QA Findings Sweep (branch: `main`)
+
+Addressed all P0 + P1 + actionable P2/P3 items from `docs/qa-findings-2026-05-03.md` (45 total findings).
+
+| Finding                             | Fix                                                                          | Commit         |
+| ----------------------------------- | ---------------------------------------------------------------------------- | -------------- |
+| P0-1 RevealSheet never shown        | Removed nav from `onSuccess`; added `onClose` to RevealSheet success state   | `fix/commit-1` |
+| P0-2 CORS/auth on requestLookup     | Added `ensureSignedIn()` before httpsCallable in LookupScreen                | commit 1       |
+| P0-3 SW no retry                    | SW registration with 3-attempt backoff + `sw-registration-failed` event      | commit 3       |
+| P0-4 iOS PWA meta tags              | Added `apple-mobile-web-app-*` meta tags + apple-touch-icon to index.html    | commit 3       |
+| P0-5 Push toggle state              | Toggle disabled when `Notification.permission === 'denied'`; hint text added | commit 1       |
+| P0-6 GPS auto-start strands user    | "Switch to manual location" button shown when GPS fails                      | commit 5       |
+| P0-7 Sign out button missing        | Sign out button added to SettingsPage Account section                        | commit 1       |
+| P1-1 Submit button danger color     | Removed `!bg-danger-500` override from Step3Review submit button             | commit 1       |
+| P1-2 FilterBar not wired            | FilterBar imported + `useState<Filters>` + rendered over map in MapTab       | commit 4       |
+| P1-3 Marker cursor                  | `cursor:pointer` added to IncidentLayer + MyReportLayer makeIcon             | commit 4       |
+| P1-5/P3-16 DeleteAccountFlow        | Full modal overlay rewrite: backdrop, Escape key, autoFocus, aria-modal      | afb0670        |
+| P1-8 Add to Home Screen             | Install prompt button in SettingsPage (conditional on deferredInstallPrompt) | commit 1       |
+| P2-1 Type button padding            | Added `px-3 py-3` to incident type buttons in Step1Evidence                  | 2f0bf5b        |
+| P2-4 Review rows bunched            | `py-3` → `py-4` on all Step3Review summary rows                              | 2f0bf5b        |
+| P2-5 Consent margin                 | Added `mb-3` to consent div in Step3Review                                   | 2f0bf5b        |
+| P2-12 Medium severity contrast      | `#a73400` → `#7c3500` (meets WCAG AA) in IncidentLayer + FilterBar           | 746b4ac        |
+| P2-14 No reset after lookup         | "Check another report" button added below LookupScreen result                | 746b4ac        |
+| P3-3 animate-pulse no motion guard  | `animate-pulse` → `motion-safe:animate-pulse` across 6 components            | 2f0bf5b        |
+| P3-6 Teal filter chips              | Selected chips changed to authority-navy `#001e40` in FeedTab                | afb0670        |
+| P3-7 Green empty state              | CheckCircle → Info icon, "All clear" → "No incidents", neutral color         | afb0670        |
+| P3-9 4px border stripes             | `border-l-4` → `border-l-2` on AlertsTab cards                               | 746b4ac        |
+| P3-12 Badge font size               | `text-[10px]` → `text-xs` in FeedTab severity badges                         | afb0670        |
+| P3-13 Filipino caption size         | `text-[11px]` → `text-xs` in FeedTab empty-state caption                     | afb0670        |
+| P3-14 Toggle aria-label dup         | Removed redundant `role="group"` wrapper from Toggle                         | 2f0bf5b        |
+| P3-15 Tagalog absent on core fields | `/ Pangalan` + `/ Numero ng telepono` added to ContactFields labels          | 2f0bf5b        |
+
+**Skipped (non-code or out-of-scope):**
+
+- P1-4, P2-7, P2-8: Firestore staging data population issues
+- P2-6: MyReportLayer distinct markers (visual design work, deferred)
+- P2-9: Home tagline margin (home page not identified in scope)
+- P2-10: DetailSheet remount on pin-type switch (structural refactor)
+- P2-11: GPS coordinates human-readable (reverse geocoding feature)
+- P2-13: Wizard back nav exits app (browser back behavior, needs nav stack work)
+- P3-1/P3-2: GuardianPitchCard not found in src tree
+- P3-4/P3-5: Scroll indicator + ProfileTab hierarchy (UX design decisions)
+- P3-8: Severity badge icons (design system expansion)
+- P3-10/P3-11: Off-palette color tokens (wide-scope token migration)
+
+**Gate:** `pnpm --filter @bantayog/citizen-pwa lint` — 0 errors (14 pre-existing warnings in test files)
+
 ## 2026-05-03 — PR #91 Review Follow-ups (branch: `fix/citizen-pwa-auth-and-wizard-followups`)
 
 Addressed all Sourcery-ai and CodeRabbit review comments on PR #91.
