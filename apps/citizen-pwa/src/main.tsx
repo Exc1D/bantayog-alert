@@ -19,10 +19,23 @@ createRoot(rootEl).render(
 )
 
 if ('serviceWorker' in navigator) {
+  async function registerSW(attemptsLeft = 3): Promise<void> {
+    try {
+      await navigator.serviceWorker.register('/sw.js')
+    } catch (err: unknown) {
+      const attempt = 4 - attemptsLeft
+      console.error(`SW registration failed (attempt ${String(attempt)}/3):`, err)
+      if (attemptsLeft > 1) {
+        await new Promise<void>((r) => {
+          setTimeout(r, attempt * 1000)
+        })
+        return registerSW(attemptsLeft - 1)
+      }
+      window.dispatchEvent(new CustomEvent('sw-registration-failed'))
+    }
+  }
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err: unknown) => {
-      console.error('Service worker registration failed:', err)
-    })
+    void registerSW()
   })
 }
 
