@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   Phone,
   User,
@@ -9,6 +9,8 @@ import {
   Zap,
   RefreshCw,
   PhoneCall,
+  ArrowLeft,
+  Home,
 } from 'lucide-react'
 import { useReport } from '../hooks/useReport'
 import { StatusBanner } from './ui/StatusBanner'
@@ -18,29 +20,65 @@ import { Timeline } from './ui/Timeline'
 const RESPONDER_PHONE_NUMBER = '0547211216'
 
 export function TrackingScreen() {
+  const navigate = useNavigate()
   const { reference } = useParams<{ reference: string }>()
   const { data: report, isPending, error } = useReport(reference ?? '')
 
+  const header = (
+    <div className="sticky top-0 z-nav bg-surface-100/90 backdrop-blur-md border-b border-surface-200 px-4 py-3 flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => void navigate(-1)}
+        aria-label="Go back"
+        className="w-11 h-11 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
+      >
+        <ArrowLeft size={24} className="text-surface-700" />
+      </button>
+      <h1 className="text-lg font-semibold text-surface-900 flex-1">Report Status</h1>
+      <button
+        type="button"
+        onClick={() => void navigate('/')}
+        aria-label="Go to home"
+        className="w-11 h-11 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
+      >
+        <Home size={20} className="text-surface-700" />
+      </button>
+    </div>
+  )
+
   if (!reference) {
     return (
-      <div className="page-container">
-        <StatusBanner variant="failed" icon={<AlertTriangle size={16} />}>
-          Invalid tracking link
-        </StatusBanner>
+      <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+        {header}
+        <div className="page-container">
+          <StatusBanner variant="failed" icon={<AlertTriangle size={16} />}>
+            Invalid tracking link
+          </StatusBanner>
+        </div>
       </div>
     )
   }
 
   if (isPending) {
-    return <div className="page-container">Loading...</div>
+    return (
+      <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+        {header}
+        <div className="page-container flex items-center justify-center py-16">
+          <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
   }
 
   if (error || !report) {
     return (
-      <div className="page-container">
-        <StatusBanner variant="queued" icon={<RefreshCw size={16} className="animate-spin" />}>
-          Your report is being processed — this page updates automatically.
-        </StatusBanner>
+      <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+        {header}
+        <div className="page-container">
+          <StatusBanner variant="queued" icon={<RefreshCw size={16} className="animate-spin" />}>
+            Your report is being processed — this page updates automatically.
+          </StatusBanner>
+        </div>
       </div>
     )
   }
@@ -70,99 +108,102 @@ export function TrackingScreen() {
   }))
 
   return (
-    <div className="page-container">
-      <h1 className="tracking-header tracking-ref">{reference.toUpperCase()}</h1>
-      <p className="tracking-meta">
-        Reported {report.createdAt ? new Date(report.createdAt).toLocaleString() : 'Loading...'} ·{' '}
-        {report.reportType}
-      </p>
+    <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+      {header}
+      <div className="page-container">
+        <h2 className="tracking-header tracking-ref">{reference.toUpperCase()}</h2>
+        <p className="tracking-meta">
+          Reported {report.createdAt ? new Date(report.createdAt).toLocaleString() : 'Loading...'} ·{' '}
+          {report.reportType}
+        </p>
 
-      <StatusBanner variant={statusVariant} icon={config.icon}>
-        <strong>{config.text}</strong>
-      </StatusBanner>
+        <StatusBanner variant={statusVariant} icon={config.icon}>
+          <strong>{config.text}</strong>
+        </StatusBanner>
 
-      <div className="card tracking-section">
-        <h3 className="card-header">Location</h3>
-        <div className="card-row">
-          <span className="card-label">Address</span>
-          <span className="card-value">{report.location?.address ?? 'N/A'}</span>
-        </div>
-        <div className="card-row">
-          <span className="card-label">Coords</span>
-          <span className="card-value">
-            {report.location?.lat?.toFixed(5)}, {report.location?.lng?.toFixed(5)}
-          </span>
-        </div>
-      </div>
-
-      <div className="card tracking-section">
-        <h3 className="card-header">Your contact</h3>
-        <div className="card-row">
-          <span className="card-label">Name</span>
-          <span className="card-value">
-            <User
-              size={12}
-              style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}
-            />
-            {report.reporterName}
-          </span>
-        </div>
-        <div className="card-row">
-          <span className="card-label">Phone</span>
-          <span className="card-value">
-            <Phone
-              size={12}
-              style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}
-            />
-            {report.reporterPhone && report.reporterPhone.length >= 4
-              ? `****-***-${report.reporterPhone.slice(-4)}`
-              : 'N/A'}
-          </span>
-        </div>
-      </div>
-
-      {report.resolutionNote ? (
         <div className="card tracking-section">
-          <h3 className="card-header">Resolution</h3>
-          <div className="card-label mb-1">{report.resolutionNote}</div>
+          <h3 className="card-header">Location</h3>
           <div className="card-row">
-            <span className="card-label">Closed by</span>
-            <span className="card-value">{report.closedBy}</span>
+            <span className="card-label">Address</span>
+            <span className="card-value">{report.location?.address ?? 'N/A'}</span>
+          </div>
+          <div className="card-row">
+            <span className="card-label">Coords</span>
+            <span className="card-value">
+              {report.location?.lat?.toFixed(5)}, {report.location?.lng?.toFixed(5)}
+            </span>
           </div>
         </div>
-      ) : null}
 
-      {timelineEvents.length === 0 ? (
-        <div className="tracking-empty">No updates yet</div>
-      ) : (
-        <Timeline events={timelineEvents} />
-      )}
+        <div className="card tracking-section">
+          <h3 className="card-header">Your contact</h3>
+          <div className="card-row">
+            <span className="card-label">Name</span>
+            <span className="card-value">
+              <User
+                size={12}
+                style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}
+              />
+              {report.reporterName}
+            </span>
+          </div>
+          <div className="card-row">
+            <span className="card-label">Phone</span>
+            <span className="card-value">
+              <Phone
+                size={12}
+                style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}
+              />
+              {report.reporterPhone && report.reporterPhone.length >= 4
+                ? `****-***-${report.reporterPhone.slice(-4)}`
+                : 'N/A'}
+            </span>
+          </div>
+        </div>
 
-      <div className="tracking-actions">
-        <Button variant="secondary" fullWidth>
-          <RefreshCw size={14} style={{ marginRight: '4px' }} />
-          Update report
-        </Button>
-        <a
-          href={`tel:${RESPONDER_PHONE_NUMBER}`}
-          className="btn btn--primary btn--full"
-          style={{
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <PhoneCall size={14} style={{ marginRight: '4px' }} />
-          Call responders
-        </a>
+        {report.resolutionNote ? (
+          <div className="card tracking-section">
+            <h3 className="card-header">Resolution</h3>
+            <div className="card-label mb-1">{report.resolutionNote}</div>
+            <div className="card-row">
+              <span className="card-label">Closed by</span>
+              <span className="card-value">{report.closedBy}</span>
+            </div>
+          </div>
+        ) : null}
+
+        {timelineEvents.length === 0 ? (
+          <div className="tracking-empty">No updates yet</div>
+        ) : (
+          <Timeline events={timelineEvents} />
+        )}
+
+        <div className="tracking-actions">
+          <Button variant="secondary" fullWidth>
+            <RefreshCw size={14} style={{ marginRight: '4px' }} />
+            Update report
+          </Button>
+          <a
+            href={`tel:${RESPONDER_PHONE_NUMBER}`}
+            className="btn btn--primary btn--full"
+            style={{
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <PhoneCall size={14} style={{ marginRight: '4px' }} />
+            Call responders
+          </a>
+        </div>
+
+        {report.status === 'resolved' ? (
+          <Button variant="secondary" fullWidth className="mt-2">
+            Re-open if situation changed
+          </Button>
+        ) : null}
       </div>
-
-      {report.status === 'resolved' ? (
-        <Button variant="secondary" fullWidth className="mt-2">
-          Re-open if situation changed
-        </Button>
-      ) : null}
     </div>
   )
 }
