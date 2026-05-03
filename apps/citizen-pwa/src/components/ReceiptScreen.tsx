@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { KeyRound } from 'lucide-react'
@@ -10,12 +10,22 @@ const CONTENT_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1]
 
 function CopyButton({ secret }: { secret: string }) {
   const [copied, setCopied] = useState(false)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current)
+    }
+  }, [])
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(secret)
       setCopied(true)
-      setTimeout(() => {
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current)
+      copiedTimerRef.current = setTimeout(() => {
         setCopied(false)
+        copiedTimerRef.current = null
       }, 1500)
     } catch {
       // clipboard unavailable

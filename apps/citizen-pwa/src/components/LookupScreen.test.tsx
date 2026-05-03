@@ -43,6 +43,7 @@ vi.mock('firebase/functions', () => ({
 }))
 
 import { LookupScreen } from './LookupScreen'
+import { httpsCallable } from 'firebase/functions'
 
 function renderScreen() {
   return render(
@@ -91,6 +92,21 @@ describe('LookupScreen', () => {
     await user.click(screen.getByRole('button', { name: /find my report/i }))
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
+    })
+  })
+
+  it('shows friendly error when lookup returns not-found', async () => {
+    vi.mocked(httpsCallable).mockImplementationOnce(
+      () => () =>
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        Promise.reject({ code: 'functions/not-found' }),
+    )
+    const user = userEvent.setup()
+    renderScreen()
+    await user.type(screen.getByPlaceholderText('Your secret code'), 'badsecret')
+    await user.click(screen.getByRole('button', { name: /find my report/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find/)
     })
   })
 })

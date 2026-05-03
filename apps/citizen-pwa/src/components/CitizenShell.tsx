@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Map, Rss, CirclePlus, Bell, User, WifiOff } from 'lucide-react'
 import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
+import { ReportStatusPill } from './ReportStatusPill.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
 import { useAlerts } from '../hooks/useAlerts.js'
 import { useUIStore } from '../lib/store.js'
@@ -115,6 +116,8 @@ export function CitizenShell({ children }: { children: ReactNode }) {
             </motion.div>
           </AnimatePresence>
         </main>
+
+        <ReportStatusPill />
 
         {/* Bottom nav — in flex flow so its height is subtracted from main.
           The FAB's -mt-6 intentionally overlaps into main; that's fine since

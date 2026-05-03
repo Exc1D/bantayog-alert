@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -7,6 +6,7 @@ import { CitizenShell } from './CitizenShell.js'
 
 const mockUseOfflineQueueCount = vi.fn()
 const mockUseUIStore = vi.fn()
+const mockUseMyActiveReports = vi.fn()
 
 vi.mock('../hooks/useOfflineQueueCount.js', () => ({
   useOfflineQueueCount: () => mockUseOfflineQueueCount(),
@@ -23,7 +23,35 @@ vi.mock('../lib/store.js', () => ({
     selector(mockUseUIStore()),
 }))
 
-function renderShell(pathname = '/', opts?: { offline?: boolean; queueCount?: number }) {
+vi.mock('../hooks/useMyActiveReports.js', () => ({
+  useMyActiveReports: () => mockUseMyActiveReports(),
+}))
+
+vi.mock('framer-motion', async () => {
+  const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion')
+  return {
+    ...actual,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  }
+})
+
+function renderShell(
+  pathname = '/',
+  opts?: {
+    offline?: boolean
+    queueCount?: number
+    activeReports?: {
+      publicRef: string
+      reportType: string
+      severity: string
+      lat: number
+      lng: number
+      submittedAt: number
+      status: string
+      municipalityLabel: string
+    }[]
+  },
+) {
   mockUseOfflineQueueCount.mockReturnValue({
     isOnline: opts?.offline ? false : true,
     queueCount: opts?.queueCount ?? 0,
@@ -32,6 +60,7 @@ function renderShell(pathname = '/', opts?: { offline?: boolean; queueCount?: nu
     navDirection: 'forward' as const,
     setNavDirection: vi.fn(),
   })
+  mockUseMyActiveReports.mockReturnValue({ reports: opts?.activeReports ?? [], loading: false })
 
   const router = createMemoryRouter(
     [
@@ -84,5 +113,30 @@ describe('CitizenShell', () => {
   it('hides offline banner when online', () => {
     renderShell('/')
     expect(screen.queryByText(/offline/i)).not.toBeInTheDocument()
+  })
+
+  it('renders the report status pill when there is an active report', () => {
+    renderShell('/', {
+      activeReports: [
+        {
+          publicRef: 'a1b2c3d4',
+          reportType: 'flood',
+          severity: 'high',
+          lat: 14.11,
+          lng: 122.95,
+          submittedAt: 1713350400000,
+          status: 'awaiting_verify',
+          municipalityLabel: 'Daet',
+        },
+      ],
+    })
+    expect(screen.getByRole('button', { name: /view your active report/i })).toBeInTheDocument()
+  })
+
+  it('does not render the status pill when no active reports', () => {
+    renderShell('/')
+    expect(
+      screen.queryByRole('button', { name: /view your active report/i }),
+    ).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft, KeyRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -38,6 +38,14 @@ export function LookupScreen() {
   const [secret, setSecret] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   async function handleSubmit(e: React.SyntheticEvent): Promise<void> {
     e.preventDefault()
@@ -53,14 +61,19 @@ export function LookupScreen() {
         throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
       }
       await ensureSignedIn()
+      isMountedRef.current = true
       const res = await httpsCallable(fns(), 'requestLookup')({ secret: trimmedSecret })
       const result = res.data as LookupResult
       void navigate(`/reports/${result.publicRef}`)
     } catch (e: unknown) {
       console.error('[LookupScreen] requestLookup failed:', e)
-      setError(friendlyLookupError(e))
+      if (isMountedRef.current) {
+        setError(friendlyLookupError(e))
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
   }
 
