@@ -63,3 +63,4 @@ worktrees/
 # Misc
 .superpowers/
 .worktrees/
+functions-dist/
