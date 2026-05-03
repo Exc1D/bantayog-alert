@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle, MapPin } from 'lucide-react'
+import { MapPin, Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { usePublicIncidents } from '../hooks/usePublicIncidents.js'
 import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
@@ -16,12 +16,12 @@ function timeAgo(timestamp: number): string {
 
 function severityBadgeClass(severity: string): string {
   if (severity === 'high')
-    return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800'
+    return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800'
   if (severity === 'medium')
-    return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 text-orange-800'
+    return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-800'
   if (severity === 'low')
-    return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-100 text-surface-700'
-  return 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-900'
+    return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-100 text-surface-700'
+  return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-900'
 }
 
 function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => void }) {
@@ -45,7 +45,7 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex justify-between items-start gap-2">
             <p className="m-0 font-semibold text-[#25292a] text-sm leading-snug">{label}</p>
-            <span className="flex-shrink-0 text-[10px] text-[#768081]">
+            <span className="flex-shrink-0 text-xs text-[#768081]">
               {timeAgo(incident.submittedAt)}
             </span>
           </div>
@@ -124,7 +124,7 @@ export function FeedTab() {
               }}
               className={
                 filters.severity === value
-                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+                  ? 'bg-[#001e40] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
                   : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
               }
             >
@@ -145,7 +145,7 @@ export function FeedTab() {
               }}
               className={
                 filters.window === value
-                  ? 'bg-[#0f9488] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
+                  ? 'bg-[#001e40] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
                   : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer'
               }
             >
@@ -178,13 +178,13 @@ export function FeedTab() {
             aria-atomic="true"
             className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4"
           >
-            <span className="text-green-600 mb-3">
-              <CheckCircle size={40} />
+            <span className="text-surface-400 mb-3">
+              <Info size={40} />
             </span>
-            <p className="m-0 mb-1 font-bold text-[#25292a] text-[15px]">All clear</p>
+            <p className="m-0 mb-1 font-bold text-[#25292a] text-[15px]">No incidents</p>
             <p className="m-0 text-[13px] text-[#52606d] text-center">
               No incidents reported in the selected time window.
-              <span className="block text-[11px] text-[#768081] mt-1 italic">
+              <span className="block text-xs text-[#768081] mt-1 italic">
                 Walang naiulat na insidente sa panahong ito.
               </span>
             </p>
