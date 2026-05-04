@@ -2,6 +2,16 @@
 
 ## Current Status (2026-05-04)
 
+**Citizen PWA -- Cancel Own Report + Draggable Status Pill (2026-05-04)**
+Citizens can now cancel their own early-stage reports (`new`, `awaiting_verify`). The `ReportStatusPill` at the bottom of the screen is now a draggable floating widget.
+
+- ✅ `cancelReportByCitizen` callable in functions (hard-deletes report + associated docs, writes `report_events` audit trail, rate-limited)
+- ✅ `cancelReport(reportId)` client wrapper in `callables.ts`
+- ✅ `deleteReport(publicRef)` in `localForageReports.ts` to clear local cache on cancel
+- ✅ Cancel button in `DetailSheet` wired to callable via `onCancelReport` prop chain
+- ✅ `ReportStatusPill` now draggable via pointer events (session-only position, clamped to viewport)
+- ✅ All 243 vitest tests pass, citizen-pwa typecheck clean
+
 **Citizen PWA -- Report Tracking + Profile Stats Fixes (2026-05-04)**
 Three root-cause bugs fixed:
 
