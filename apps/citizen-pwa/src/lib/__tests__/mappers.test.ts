@@ -42,10 +42,10 @@ describe('mapReportFromFirestore', () => {
     expect(result.location).toEqual({ address: '123 St', lat: 14.5, lng: 121.0 })
   })
 
-  it('throws when id is missing', () => {
+  it('uses a fallback id when the live report doc omits one', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id: _id, ...noId } = minimal
-    expect(() => mapReportFromFirestore(noId)).toThrow('missing required fields')
+    expect(mapReportFromFirestore(noId).id).toBe('unknown')
   })
 
   it('throws when status is missing', () => {
@@ -117,5 +117,40 @@ describe('mapReportFromFirestore', () => {
     expect(result.location).toEqual({ lat: 14.5 })
     expect(result.location).not.toHaveProperty('address')
     expect(result.location).not.toHaveProperty('lng')
+  })
+
+  it('maps the live report doc shape without requiring id or timeline', () => {
+    const result = mapReportFromFirestore({
+      status: 'verified',
+      reportType: 'flood',
+      severity: 'medium',
+      publicLocation: { lat: 14.11, lng: 122.95 },
+      submittedAt: 1713350400000,
+      updatedAt: 1713350401000,
+    })
+
+    expect(result.id).toBe('unknown')
+    expect(result.createdAt).toBe(1713350400000)
+    expect(result.location).toEqual({ lat: 14.11, lng: 122.95 })
+    expect(result.timeline).toEqual([
+      { event: 'new', timestamp: 1713350400000 },
+      { event: 'verified', timestamp: 1713350401000 },
+    ])
+  })
+
+  it('uses lastStatusAt timestamps from live Firestore docs to build the citizen timeline', () => {
+    const result = mapReportFromFirestore({
+      status: 'resolved',
+      reportType: 'flood',
+      publicLocation: { lat: 14.11, lng: 122.95 },
+      submittedAt: 1713350400000,
+      lastStatusAt: { toMillis: () => 1713350500000 },
+    })
+
+    expect(result.updatedAt).toBe(1713350500000)
+    expect(result.timeline).toEqual([
+      { event: 'new', timestamp: 1713350400000 },
+      { event: 'resolved', timestamp: 1713350500000 },
+    ])
   })
 })
