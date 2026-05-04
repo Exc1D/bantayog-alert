@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type TouchEvent } from 'react'
 import { X } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
+import { statusMeta } from '../../utils/incident-meta.js'
 import type { MyReport, PublicIncident } from './types.js'
 
 const SEVERITY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
@@ -114,6 +115,7 @@ export function DetailSheet(props: Props) {
   if (props.mode === 'public') {
     const incident = props.incident
     const badge = SEVERITY_BADGE[incident.severity]
+    const sm = statusMeta(incident.status)
     return (
       <section
         className="absolute inset-x-0 bottom-0 z-[1001] bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
@@ -128,14 +130,21 @@ export function DetailSheet(props: Props) {
             <p className="text-xl font-extrabold text-surface-900">
               {LABELS[incident.reportType] ?? incident.reportType}
             </p>
-            {badge ? (
+            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+              {badge ? (
+                <span
+                  className="inline-block px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
+                  style={{ backgroundColor: badge.bg, color: badge.color }}
+                >
+                  {badge.label}
+                </span>
+              ) : null}
               <span
-                className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
-                style={{ backgroundColor: badge.bg, color: badge.color }}
+                className={`inline-block px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase ${sm.bg} ${sm.color}`}
               >
-                {badge.label}
+                {sm.label}
               </span>
-            ) : null}
+            </div>
           </div>
           <button
             type="button"
@@ -189,12 +198,31 @@ export function DetailSheet(props: Props) {
     >
       {dragHandle}
       <p className="font-extrabold text-surface-900">★ Your Report</p>
-      <p className="mt-1 mb-4 font-bold text-lg text-surface-900">
+      <p className="mt-1 mb-2 font-bold text-lg text-surface-900">
         {LABELS[report.reportType] ?? report.reportType}
         {report.status !== 'queued' && report.status !== 'new'
           ? ` · ${report.status.replace(/_/g, ' ')}`
           : ' · Awaiting Review'}
       </p>
+      {(() => {
+        const b = SEVERITY_BADGE[report.severity]
+        return b ? (
+          <span
+            className="inline-block mb-2 px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
+            style={{ backgroundColor: b.bg, color: b.color }}
+          >
+            {b.label}
+          </span>
+        ) : null
+      })()}
+      {report.municipalityLabel ? (
+        <div className="flex items-center gap-1.5 mb-3">
+          <span aria-hidden="true" className="text-sm">
+            📍
+          </span>
+          <p className="text-sm text-surface-500">{report.municipalityLabel}</p>
+        </div>
+      ) : null}
       <div className="bg-surface-100 rounded-lg px-4 py-3 mb-4 flex justify-between items-center">
         <div>
           <p className="mb-1 text-[0.625rem] font-bold tracking-widest uppercase text-surface-500">
