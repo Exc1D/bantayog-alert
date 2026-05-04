@@ -72,6 +72,7 @@ const validInput = {
 describe('declareEmergencyCore', () => {
   let mockDb: ReturnType<typeof createMockDb>
   const originalNodeEnv = process.env.NODE_ENV
+  const originalSmsSalt = process.env.SMS_MSISDN_HASH_SALT
 
   beforeEach(() => {
     mockDb = createMockDb()
@@ -84,6 +85,7 @@ describe('declareEmergencyCore', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     process.env.NODE_ENV = originalNodeEnv
+    process.env.SMS_MSISDN_HASH_SALT = originalSmsSalt
   })
 
   it('writes alert doc with correct fields', async () => {
@@ -142,7 +144,7 @@ describe('declareEmergencyCore', () => {
         eventType: 'emergency_declared',
         actorUid: 'admin-1',
         targetDocumentId: result.alertId,
-        metadata: { hazardType: 'typhoon' },
+        metadata: expect.objectContaining({ hazardType: 'typhoon' }),
       }),
     )
     const calls = mockStreamAuditEvent.mock.calls

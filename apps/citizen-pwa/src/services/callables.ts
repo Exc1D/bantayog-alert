@@ -51,7 +51,18 @@ export async function registerCitizen(): Promise<{
   }
 }
 
+const idempotencyKeys = new Map<string, string>()
+
 export async function cancelReport(reportId: string): Promise<void> {
+  let key = idempotencyKeys.get(reportId)
+  if (!key) {
+    key = crypto.randomUUID()
+    idempotencyKeys.set(reportId, key)
+  }
   const callable = httpsCallable(fns(), 'cancelReportByCitizen')
-  await callable({ reportId, idempotencyKey: crypto.randomUUID() })
+  try {
+    await callable({ reportId, idempotencyKey: key })
+  } finally {
+    idempotencyKeys.delete(reportId)
+  }
 }

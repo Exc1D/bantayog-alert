@@ -67,19 +67,19 @@ export async function cancelReportByCitizenCore(
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'You do not own this report')
         }
 
-        tx.delete(reportRef)
-
-        tx.delete(privateRef)
-
-        const contactsRef = db.collection('report_contacts').doc(deps.reportId)
-        tx.delete(contactsRef)
-
         const lookupQ = db
           .collection('report_lookup')
           .where('reportId', '==', deps.reportId)
           .limit(1)
         const lookupSnap = await tx.get(lookupQ)
         const lookupDoc = lookupSnap.docs[0]
+
+        tx.delete(reportRef)
+        tx.delete(privateRef)
+
+        const contactsRef = db.collection('report_contacts').doc(deps.reportId)
+        tx.delete(contactsRef)
+
         if (lookupDoc) {
           tx.delete(lookupDoc.ref)
         }

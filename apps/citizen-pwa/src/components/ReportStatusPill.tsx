@@ -13,7 +13,9 @@ function isNonTerminal(status: string): boolean {
   return status === 'queued' || NON_TERMINAL.has(status)
 }
 
-type DragStart = {
+const DRAG_THRESHOLD = 4
+
+interface DragStart {
   x: number
   y: number
   offsetX: number
@@ -26,18 +28,32 @@ export function ReportStatusPill() {
   const prefersReducedMotion = useReducedMotion()
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const startRef = useRef<DragStart | null>(null)
+  const movedRef = useRef(false)
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId)
+    movedRef.current = false
     startRef.current = { x: e.clientX, y: e.clientY, offsetX: dragOffset.x, offsetY: dragOffset.y }
   }
 
   const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (startRef.current === null) return
-    const newX = startRef.current.offsetX + (e.clientX - startRef.current.x)
-    const newY = startRef.current.offsetY + (e.clientY - startRef.current.y)
+    const dx = e.clientX - startRef.current.x
+    const dy = e.clientY - startRef.current.y
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      movedRef.current = true
+    }
+    const newX = startRef.current.offsetX + dx
+    const newY = startRef.current.offsetY + dy
     const maxX = window.innerWidth / 2 - 50
-    const maxY = window.innerHeight - 100
+    const buttonHeight = buttonRef.current?.clientHeight ?? 44
+    const bottomOffset =
+      64 /* 4rem */ +
+      (parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom'),
+      ) || 0)
+    const maxY = window.innerHeight - bottomOffset - buttonHeight
     setDragOffset({
       x: Math.max(-maxX, Math.min(maxX, newX)),
       y: Math.max(-maxY, Math.min(maxY, newY)),
@@ -63,6 +79,7 @@ export function ReportStatusPill() {
 
           return (
             <motion.button
+              ref={buttonRef}
               key="report-status-pill"
               type="button"
               initial={prefersReducedMotion ? false : { y: 40, opacity: 0 }}
@@ -72,6 +89,10 @@ export function ReportStatusPill() {
                 prefersReducedMotion ? { duration: 0 } : { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
               }
               onClick={() => {
+                if (movedRef.current) {
+                  movedRef.current = false
+                  return
+                }
                 void navigate(`/reports/${primary.publicRef}`)
               }}
               onPointerDown={handlePointerDown}

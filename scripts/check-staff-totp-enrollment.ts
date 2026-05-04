@@ -45,11 +45,7 @@ function isStaffTestAccount(user: AuthUser): boolean {
 }
 
 export function hasTotpEnrollment(user: AuthUser): boolean {
-  return (
-    user.multiFactor?.enrolledFactors?.some(
-      (factor) => factor.factorId === 'totp' || factor.providerId === 'totp',
-    ) ?? false
-  )
+  return user.multiFactor?.enrolledFactors?.some((factor) => factor.factorId === 'totp') ?? false
 }
 
 async function listAllUsers(): Promise<AuthUser[]> {

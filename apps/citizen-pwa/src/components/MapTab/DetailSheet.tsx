@@ -266,7 +266,7 @@ export function DetailSheet(props: Props) {
           </div>
         ))}
       </div>
-      {actions.includes('edit') ? (
+      {actions.includes('edit') && report.id ? (
         <div className="flex gap-2 mb-2">
           <button type="button" aria-label="Edit">
             Edit
@@ -275,7 +275,8 @@ export function DetailSheet(props: Props) {
             type="button"
             aria-label="Cancel report"
             onClick={() => {
-              if (report.id) props.onCancelReport?.(report.publicRef, report.id)
+              const reportId = report.id
+              if (reportId) props.onCancelReport?.(report.publicRef, reportId)
             }}
           >
             Cancel
