@@ -31,6 +31,24 @@ describe('loadReports', () => {
     mockDb._store.set('bantayog:reports:v1', [{ publicRef: 123 }])
     expect(await loadReports()).toEqual([])
   })
+
+  it('returns valid entries and skips invalid ones instead of discarding all', async () => {
+    mockDb._store.set('bantayog:reports:v1', [
+      { publicRef: 123 }, // invalid — bad publicRef type
+      {
+        publicRef: 'goodref',
+        secret: 'sec',
+        reportType: 'flood',
+        severity: 'high',
+        lat: 14.1,
+        lng: 122.9,
+        submittedAt: 1000,
+      },
+    ])
+    const reports = await loadReports()
+    expect(reports).toHaveLength(1)
+    expect(reports[0]!.publicRef).toBe('goodref')
+  })
 })
 
 describe('saveReport', () => {
