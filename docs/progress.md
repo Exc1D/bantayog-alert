@@ -1,9 +1,31 @@
 # Progress
 
-## Current Status (2026-05-03)
+## Current Status (2026-05-04)
 
-**Citizen PWA -- All major redesign and hardening work COMPLETE.**
-7 hardening clusters done, 18 redesign tasks done, auth + wizard resumability merged.
+**Citizen PWA -- Report Tracking + Profile Stats Fixes (2026-05-04)**
+Three root-cause bugs fixed:
+
+- ✅ TrackingScreen now shows RadarRings + Timeline + reference header while CF is still processing (seeds from localForage instead of bare text banner)
+- ✅ `loadReports` nuclear option removed — invalid legacy entries are now filtered individually; one bad entry no longer wipes all stored reports (fixes map pins and profile stats disappearing)
+- ✅ `municipalityLabel` now saved to localForage on successful submission (enables "Areas Helped" stat to populate from local data)
+- **Gate:** vitest 364/364 pass, `pnpm typecheck`, `pnpm lint` clean
+- **Still open:** `useMyActiveReports.baseFromStored` doesn't read `municipalityLabel` from localForage yet — "Areas Helped" still populates only after Firestore subscription resolves
+
+**Citizen PWA -- Report Flow QA Complete (2026-05-04)**
+10 QA subagents tested staging PWA. Key findings:
+
+- ✅ MilestoneTracker correctly increments "Report sent" count (1→2 after submissions)
+- ✅ Anonymous users see Guardian pitch in ProfileTab (by design)
+- ✅ Offline detection works (banner + status message)
+- ✅ Milestone counts update correctly per submission
+- ✅ MyReportLayer ★ pin appears immediately after submission
+- ⚠️ **BUG: Consent checkbox in Step 3 doesn't enable Submit via chrome-devtools click** -- React onChange may need `dispatchEvent` or checkbox state isn't being set correctly
+- ⚠️ **BUG: Medium severity has 3 different colors** across IncidentLayer (#7c3500), MyReportLayer (#a73400), and incident-meta (#d97706)
+- ⚠️ **BUG: LOW severity has 2 different colors** -- #414849 vs #334155
+- ⚠️ **BUG: Offline submission blocked** -- wizard requires auth which fails when offline
+- ❌ RevealSheet lazy loading fails when offline (error boundary instead of queued UI)
+- ❌ Detail sheet for myReport mode missing: severity badge, municipality/location
+- ❌ Detail sheet for public mode missing: reference code, status
 
 **Phase 7 -- Provincial Superadmin + NDRRMC**
 7.A (Security Callables) DONE | 7.B (Superadmin UI) DONE | 7.C (Drill & Verification) IN PROGRESS (TOTP enrollment audit in progress)
