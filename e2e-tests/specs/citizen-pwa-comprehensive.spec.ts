@@ -74,7 +74,7 @@ async function completeOnboardingIfNeeded(page: Page) {
       await getStartedButton.click()
       await page.waitForTimeout(500)
     }
-    
+
     // Step 1: Click "Start Reporting" to finish onboarding
     const startReportingButton = page.locator('button:has-text("Start Reporting")')
     if (await startReportingButton.isVisible().catch(() => false)) {
@@ -114,7 +114,7 @@ test.describe('Citizen PWA - Comprehensive E2E', () => {
       }
     })
 
-page.on('pageerror', (error) => {
+    page.on('pageerror', (error) => {
       consoleErrors.push(
         Object.defineProperties(Object.create(null), {
           type: { value: () => 'error' },
@@ -195,7 +195,9 @@ page.on('pageerror', (error) => {
   // ── 2. Report submission flow tests ────────────────────────────────────
 
   test.describe('Report submission flow', () => {
-    test('should complete full wizard and show receipt with tracking reference', async ({ page }) => {
+    test('should complete full wizard and show receipt with tracking reference', async ({
+      page,
+    }) => {
       await setupPage(page)
 
       // Navigate to report page
@@ -235,12 +237,26 @@ page.on('pageerror', (error) => {
       await page.waitForTimeout(3000)
 
       // Verify receipt or success state appears
-      const receiptVisible = await page.locator('text=Report Received').isVisible().catch(() => false)
-      const revealSheetVisible = await page.locator('[aria-label="Submission status"]').isVisible().catch(() => false)
-      const trackingRefVisible = await page.locator('text=BA-').isVisible().catch(() => false)
-      const successVisible = await page.locator('text=success', { hasText: /success/i }).isVisible().catch(() => false)
+      const receiptVisible = await page
+        .locator('text=Report Received')
+        .isVisible()
+        .catch(() => false)
+      const revealSheetVisible = await page
+        .locator('[aria-label="Submission status"]')
+        .isVisible()
+        .catch(() => false)
+      const trackingRefVisible = await page
+        .locator('text=BA-')
+        .isVisible()
+        .catch(() => false)
+      const successVisible = await page
+        .locator('text=success', { hasText: /success/i })
+        .isVisible()
+        .catch(() => false)
 
-      expect(receiptVisible || revealSheetVisible || trackingRefVisible || successVisible).toBe(true)
+      expect(receiptVisible || revealSheetVisible || trackingRefVisible || successVisible).toBe(
+        true,
+      )
     })
 
     test('should verify close button works on receipt screen', async ({ page }) => {
@@ -309,7 +325,7 @@ page.on('pageerror', (error) => {
         return
       }
 
-      page.on('dialog', dialog => dialog.dismiss())
+      page.on('dialog', (dialog) => dialog.dismiss())
       const initialState = await toggle.getAttribute('aria-checked')
       await toggle.click()
       await page.waitForTimeout(500)
@@ -369,7 +385,9 @@ page.on('pageerror', (error) => {
       expect(newState).not.toBe(initialState)
     })
 
-    test('should show confirmation dialog on delete account, not immediate logout', async ({ page }) => {
+    test('should show confirmation dialog on delete account, not immediate logout', async ({
+      page,
+    }) => {
       // Click delete account button
       await page.click('button:has-text("Delete my account")')
       await page.waitForTimeout(300)
@@ -427,7 +445,9 @@ page.on('pageerror', (error) => {
       }
     })
 
-    test('should render without horizontal scroll on Samsung Galaxy S21 viewport', async ({ page }) => {
+    test('should render without horizontal scroll on Samsung Galaxy S21 viewport', async ({
+      page,
+    }) => {
       await page.setViewportSize({ width: 412, height: 915 })
       await setupPage(page)
 
@@ -534,7 +554,9 @@ page.on('pageerror', (error) => {
 
       const tabLabels = ['Map', 'Feed', 'Report', 'Alerts', 'Profile']
       for (const label of tabLabels) {
-        await expect(page.locator(`nav[aria-label="Main navigation"] button:has-text("${label}")`)).toBeVisible()
+        await expect(
+          page.locator(`nav[aria-label="Main navigation"] button:has-text("${label}")`),
+        ).toBeVisible()
       }
     })
 
@@ -581,7 +603,9 @@ page.on('pageerror', (error) => {
     test('should highlight active tab with indicator', async ({ page }) => {
       const activeIndicator = page.locator('.absolute.top-0.w-8.h-0\\.5.bg-brand-500.rounded-full')
       await page.waitForTimeout(500)
-      const isMapActiveInitially = await page.locator('nav button:has-text("Map")').getAttribute('aria-current')
+      const isMapActiveInitially = await page
+        .locator('nav button:has-text("Map")')
+        .getAttribute('aria-current')
       if (isMapActiveInitially === 'page') {
         await expect(activeIndicator).toBeVisible()
       }
@@ -590,7 +614,9 @@ page.on('pageerror', (error) => {
       await feedTab.click()
       await page.waitForTimeout(800)
 
-      const isFeedActiveNow = await page.locator('nav button:has-text("Feed")').getAttribute('aria-current')
+      const isFeedActiveNow = await page
+        .locator('nav button:has-text("Feed")')
+        .getAttribute('aria-current')
       expect(isFeedActiveNow).toBe('page')
     })
 

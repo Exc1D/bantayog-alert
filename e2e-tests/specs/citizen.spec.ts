@@ -62,27 +62,25 @@ test.describe('citizen PWA', () => {
     test('renders the lookup form', async ({ page }) => {
       await page.goto(`${CITIZEN_BASE}/lookup`)
 
-      await expect(page.getByRole('heading', { name: /check report status/i })).toBeVisible()
-      await expect(page.getByLabel(/reference/i)).toBeVisible()
-      await expect(page.getByLabel(/secret/i)).toBeVisible()
-      await expect(page.getByRole('button', { name: /look up/i })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /track your report/i })).toBeVisible()
+      await expect(page.getByLabel(/secret code/i)).toBeVisible()
+      await expect(page.getByRole('button', { name: /find my report/i })).toBeVisible()
     })
 
-    test('shows error for invalid ref/secret combination', async ({ page }) => {
+    test('shows error for invalid secret code', async ({ page }) => {
       await page.goto(`${CITIZEN_BASE}/lookup`)
 
-      await page.getByLabel(/reference/i).fill('abcdefgh')
-      await page.getByLabel(/secret/i).fill('wrong-secret-value')
-      await page.getByRole('button', { name: /look up/i }).click()
+      await page.getByLabel(/secret code/i).fill('INVALID-SECRET-CODE-XYZ')
+      await page.getByRole('button', { name: /find my report/i }).click()
 
       await expect(page.getByRole('alert')).toBeVisible()
     })
 
-    test('refuses empty ref or secret', async ({ page }) => {
+    test('refuses empty secret code', async ({ page }) => {
       await page.goto(`${CITIZEN_BASE}/lookup`)
 
-      await page.getByRole('button', { name: /look up/i }).click()
-      await expect(page.getByLabel(/reference/i)).toBeFocused()
+      await page.getByRole('button', { name: /find my report/i }).click()
+      await expect(page.getByLabel(/secret code/i)).toBeFocused()
     })
   })
 })
