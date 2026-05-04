@@ -57,7 +57,11 @@ export function RadarRings({ color, autoHideMs, animate = true }: RadarRingsProp
         <motion.div
           key={i}
           className="absolute w-20 h-20 rounded-full border-2"
-          style={{ borderColor: color, ...(animate ? {} : { opacity: 0.2 }) }}
+          style={{
+            borderColor: color,
+            transformOrigin: 'center',
+            ...(animate ? {} : { opacity: 0.2 }),
+          }}
           {...(animate
             ? {
                 animate: { scale: [1, 2.5], opacity: [0.7, 0] },
