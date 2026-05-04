@@ -43,6 +43,12 @@ beforeAll(async () => {
             .put(new TextEncoder().encode('fake-geojson-data'), {
             contentType: 'application/geo+json',
         });
+        // data_exports
+        await storage
+            .ref('data_exports/citizen-1/export.json')
+            .put(new TextEncoder().encode('{"test":true}'), {
+            contentType: 'application/json',
+        });
     });
 });
 afterAll(async () => {
@@ -96,6 +102,18 @@ describe('storage write — all roles blocked', () => {
             await assertFails((async () => {
                 const task = ref.put(new TextEncoder().encode('new-data'), {
                     contentType: 'application/geo+json',
+                });
+                await new Promise((resolve, reject) => {
+                    task.then(resolve, reject);
+                });
+            })());
+        });
+        it(`write to data_exports/${label} fails`, async () => {
+            const storage = testEnv.authenticatedContext(uid, token).storage();
+            const ref = storage.ref(`data_exports/${uid}/new.json`);
+            await assertFails((async () => {
+                const task = ref.put(new TextEncoder().encode('{"test":true}'), {
+                    contentType: 'application/json',
                 });
                 await new Promise((resolve, reject) => {
                     task.then(resolve, reject);
@@ -245,6 +263,33 @@ describe('hazard_layers read — non-superadmin', () => {
         })
             .storage();
         await assertFails(storage.ref('hazard_layers/v1/base.geojson').getMetadata());
+    });
+});
+// ================================================================
+// data_exports — owner read only
+// ================================================================
+describe('data_exports read — owner', () => {
+    it('owner reads their own data_exports/{uid}/{file} (positive)', async () => {
+        const storage = testEnv
+            .authenticatedContext('citizen-1', {
+            role: 'citizen',
+            accountStatus: 'active',
+        })
+            .storage();
+        await assertSucceeds(storage.ref('data_exports/citizen-1/export.json').getMetadata());
+    });
+    it('other user reads data_exports/{uid}/{file} fails', async () => {
+        const storage = testEnv
+            .authenticatedContext('citizen-2', {
+            role: 'citizen',
+            accountStatus: 'active',
+        })
+            .storage();
+        await assertFails(storage.ref('data_exports/citizen-1/export.json').getMetadata());
+    });
+    it('unauthenticated read data_exports/{uid}/{file} fails', async () => {
+        const storage = testEnv.unauthenticatedContext().storage();
+        await assertFails(storage.ref('data_exports/citizen-1/export.json').getMetadata());
     });
 });
 // ================================================================

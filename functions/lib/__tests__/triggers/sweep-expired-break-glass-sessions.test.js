@@ -2,10 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { sweepExpiredBreakGlassSessionsCore } from '../../triggers/sweep-expired-break-glass-sessions.js';
-const { mockGetUser, mockSetCustomUserClaims } = vi.hoisted(() => ({
-    mockGetUser: vi.fn(),
-    mockSetCustomUserClaims: vi.fn().mockResolvedValue(undefined),
-}));
+const mockGetUser = vi.fn();
+const mockSetCustomUserClaims = vi.fn().mockResolvedValue(undefined);
 vi.mock('firebase-admin/auth', () => ({
     getAuth: () => ({ getUser: mockGetUser, setCustomUserClaims: mockSetCustomUserClaims }),
 }));
@@ -163,14 +161,13 @@ describe('sweepExpiredBreakGlassSessionsCore', () => {
             const DocRefProto = Object.getPrototypeOf(docRef);
             const originalUpdate = DocRefProto.update;
             DocRefProto.update = vi.fn().mockRejectedValueOnce(new Error('doc update failed'));
-            try {
-                const result = await sweepExpiredBreakGlassSessionsCore({ db, auth: getAuth() });
-                expect(result.expired).toBe(0);
-                expect(result.failed).toBe(1);
-                expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user-7', { role: 'superadmin' });
-            } finally {
-                DocRefProto.update = originalUpdate;
-            }
+            const result = await sweepExpiredBreakGlassSessionsCore({ db, auth: getAuth() });
+            expect(result.expired).toBe(0);
+            expect(result.failed).toBe(1);
+            // Claims were still cleared even though doc update failed
+            expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user-7', { role: 'superadmin' });
+            // Restore original update for cleanup
+            DocRefProto.update = originalUpdate;
         });
     });
     // Gap 8: deactivated action state exclusion

@@ -52,7 +52,7 @@ export async function requestUploadUrlImpl(input) {
         expiresAt,
     };
 }
-export const requestUploadUrl = onCall(async (request) => {
+export const requestUploadUrl = onCall({ cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app', 'https://bantayog-citizen-dev.web.app'] }, async (request) => {
     try {
         return await requestUploadUrlImpl({
             auth: request.auth ?? undefined,

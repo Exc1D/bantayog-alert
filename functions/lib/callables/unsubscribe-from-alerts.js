@@ -6,11 +6,11 @@ const unsubscribeSchema = z.object({
 export async function unsubscribeFromAlertsCore(deps) {
     const { messaging } = await import('firebase-admin');
     const response = await messaging().unsubscribeFromTopic([deps.token], 'alerts');
-    if (response.failureCount > 0) {
-        const errorDetails = response.errors && response.errors.length > 0
-            ? ': ' + response.errors.map((e) => (typeof e.error === 'string' ? e.error : JSON.stringify(e.error))).join(', ')
-            : ` (${response.failureCount} failure(s))`;
-        throw new Error(`Failed to unsubscribe from alerts topic${errorDetails}`);
+    if (response.failureCount > 0 && response.errors.length > 0) {
+        const errors = response.errors
+            .map((e) => (typeof e.error === 'string' ? e.error : JSON.stringify(e.error)))
+            .join(', ');
+        throw new Error(`Failed to unsubscribe from alerts topic: ${errors}`);
     }
     return { success: true };
 }

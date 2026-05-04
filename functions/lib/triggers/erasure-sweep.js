@@ -89,36 +89,18 @@ export async function erasureSweepCore(input) {
                     reEnableError: reEnableReason,
                 },
             });
-            try {
-                await candidate.ref.update({
-                    status: 'dead_lettered',
-                    deadLetterReason: `erasure_failed_and_auth_reenable_failed: ${reason}; re-enable: ${reEnableReason}`,
-                    deadLetteredAt: now(),
-                });
-            } catch (deadLetterErr) {
-                log({
-                    severity: 'CRITICAL',
-                    code: 'ERASURE_SWEEP_DEAD_LETTER_WRITE_FAILED',
-                    message: `Failed to persist dead-letter state for ${citizenUid}`,
-                    data: { citizenUid, deadLetterError: deadLetterErr instanceof Error ? deadLetterErr.message : String(deadLetterErr) },
-                });
-            }
-            throw new HttpsError('internal', 'auth_reenable_failed_after_erasure_failure');
-        }
-        try {
             await candidate.ref.update({
                 status: 'dead_lettered',
-                deadLetterReason: reason,
+                deadLetterReason: `erasure_failed_and_auth_reenable_failed: ${reason}; re-enable: ${reEnableReason}`,
                 deadLetteredAt: now(),
             });
-        } catch (deadLetterErr) {
-            log({
-                severity: 'CRITICAL',
-                code: 'ERASURE_SWEEP_DEAD_LETTER_WRITE_FAILED',
-                message: `Failed to persist dead-letter state for ${citizenUid}`,
-                data: { citizenUid, deadLetterError: deadLetterErr instanceof Error ? deadLetterErr.message : String(deadLetterErr) },
-            });
+            throw new HttpsError('internal', `auth_reenable_failed_after_erasure_failure: ${reEnableReason}`);
         }
+        await candidate.ref.update({
+            status: 'dead_lettered',
+            deadLetterReason: reason,
+            deadLetteredAt: now(),
+        });
         void streamAuditEvent({
             eventType: 'erasure_request_dead_lettered_with_auth_unblocked',
             actorUid: 'system',

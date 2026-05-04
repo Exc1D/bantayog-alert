@@ -8,6 +8,7 @@ export interface VerifyReportInput {
 export interface VerifyReportResult {
     status: ReportStatus;
     reportId: string;
+    updatedAt: number;
 }
 export interface VerifyReportActor {
     uid: string;

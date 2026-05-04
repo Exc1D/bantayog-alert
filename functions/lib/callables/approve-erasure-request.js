@@ -70,8 +70,7 @@ export async function approveErasureRequestCore(db, auth, input, actor) {
         if (err instanceof HttpsError)
             throw err;
         const originalReason = err instanceof Error ? err.message : String(err);
-        console.error('deny_write_failed for erasure:', { citizenUid, originalReason });
-        throw new HttpsError('internal', 'deny_write_failed');
+        throw new HttpsError('internal', `deny_write_failed: ${originalReason}`);
     }
     // Re-enable Auth after successful denial.
     try {
@@ -80,16 +79,13 @@ export async function approveErasureRequestCore(db, auth, input, actor) {
     catch (reEnableErr) {
         const reason = reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr);
         console.error('CRITICAL: Auth re-enable failed after erasure denial for', citizenUid, reason);
-        try {
-            await requestRef.update({
-                status: 'denied_remediation_required',
-                remediationReason: `auth_reenable_failed: ${reason}`,
-                remediationRequiredAt: Date.now(),
-            });
-        } catch (updateErr) {
-            console.error('CRITICAL: Failed to persist denial remediation state:', updateErr instanceof Error ? updateErr.message : String(updateErr));
-        }
-        throw new HttpsError('internal', 'auth_reenable_failed_after_deny');
+        // Persist remediation state so ops can find and fix the locked-out citizen
+        await requestRef.update({
+            status: 'denied_remediation_required',
+            remediationReason: `auth_reenable_failed: ${reason}`,
+            remediationRequiredAt: Date.now(),
+        });
+        throw new HttpsError('internal', `auth_reenable_failed_after_deny: ${reason}`);
     }
     void streamAuditEvent({
         eventType: 'erasure_request_reviewed',

@@ -6,6 +6,7 @@ export declare function auditExportBatchCore(opts: {
         getEntries(options: {
             pageSize: number;
             filter?: string;
+            autoPaginate?: boolean;
         }): Promise<[unknown[], ...unknown[]]>;
     };
     now?: () => number;

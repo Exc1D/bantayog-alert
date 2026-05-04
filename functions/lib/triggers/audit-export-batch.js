@@ -8,12 +8,13 @@ export async function auditExportBatchCore(opts) {
     const sixMinutesAgo = new Date(now - 6 * 60 * 1000).toISOString();
     const [entries] = await opts.loggingLog.getEntries({
         pageSize: 500,
+        autoPaginate: true,
         filter: `timestamp >= "${sixMinutesAgo}"`,
     });
     if (entries.length === 0)
         return { exported: 0 };
     const rows = entries.map((e, i) => ({
-        insertId: e.metadata?.insertId || `${e.metadata?.timestamp}-${i}`,
+        insertId: e.metadata?.insertId ?? `${e.metadata?.timestamp ?? String(Date.now())}-${String(i)}`,
         logName: e.metadata?.logName,
         resource: JSON.stringify(e.metadata?.resource),
         payload: JSON.stringify(e.data),

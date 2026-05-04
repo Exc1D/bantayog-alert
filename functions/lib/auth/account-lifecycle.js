@@ -2,7 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { setStaffClaimsInputSchema, suspendStaffAccountInputSchema, } from '@bantayog/shared-validators';
 import { adminAuth, adminDb } from '../admin-init.js';
 import { buildActiveAccountDoc, buildClaimRevocationDoc, buildStaffClaims, } from './custom-claims.js';
-export const setStaffClaims = onCall(async (request) => {
+export const setStaffClaims = onCall({ cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app', 'https://bantayog-citizen-dev.web.app'] }, async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {
         throw new HttpsError('permission-denied', 'Only superadmins can set staff claims.');
     }
@@ -17,7 +17,7 @@ export const setStaffClaims = onCall(async (request) => {
     await batch.commit();
     return { uid, claims };
 });
-export const suspendStaffAccount = onCall(async (request) => {
+export const suspendStaffAccount = onCall({ cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app', 'https://bantayog-citizen-dev.web.app'] }, async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {
         throw new HttpsError('permission-denied', 'Only superadmins can suspend accounts.');
     }

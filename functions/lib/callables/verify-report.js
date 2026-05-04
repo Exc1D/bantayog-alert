@@ -85,6 +85,7 @@ export async function verifyReportCore(db, deps) {
                 status: to,
                 lastStatusAt: deps.now,
                 lastStatusBy: deps.actor.uid,
+                updatedAt: deps.now.toMillis(),
             };
             if (deps.scrubbedDescription) {
                 updates.description = deps.scrubbedDescription;
@@ -92,6 +93,7 @@ export async function verifyReportCore(db, deps) {
             if (to === 'verified') {
                 updates.verifiedBy = deps.actor.uid;
                 updates.verifiedAt = deps.now;
+                updates.visibilityClass = 'public_alertable';
             }
             tx.update(reportRef, updates);
             if (salt && smsRecipientPhone) {
@@ -125,7 +127,7 @@ export async function verifyReportCore(db, deps) {
                 message: `Report ${deps.reportId} transitioned ${from} → ${to}`,
                 data: { reportId: deps.reportId, from, to, actorUid: deps.actor.uid, correlationId },
             });
-            return { status: to, reportId: deps.reportId };
+            return { status: to, reportId: deps.reportId, updatedAt: deps.now.toMillis() };
         });
     });
     return result;

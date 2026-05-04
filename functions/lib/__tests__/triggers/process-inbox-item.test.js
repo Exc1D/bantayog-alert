@@ -9,7 +9,7 @@ beforeAll(async () => {
     process.env.SMS_MSISDN_HASH_SALT = TEST_SALT;
     env = await initializeTestEnvironment({
         projectId: 'demo-phase-3a-inbox',
-        firestore: { rules: PERMISSIVE_RULES },
+        firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
     });
     await env.withSecurityRulesDisabled(async (ctx) => {
         await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
@@ -36,6 +36,7 @@ beforeEach(async () => {
             'report_ops',
             'report_events',
             'report_lookup',
+            'secret_lookup',
             'moderation_incidents',
             'idempotency_keys',
             'pending_media',
@@ -429,6 +430,69 @@ describe('processInboxItemCore', () => {
                 },
             });
             await expect(processInboxItemCore({ db, inboxId: 'ibx-conflict', now: () => 1713350401000 })).rejects.toMatchObject({ code: 'CONFLICT' });
+        });
+    });
+    describe('secret_lookup on web submissions', () => {
+        it('writes secret_lookup doc for web submissions', async () => {
+            await env.withSecurityRulesDisabled(async (ctx) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const db = ctx.firestore();
+                await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-web-secret'), {
+                    reporterUid: 'citizen-web',
+                    clientCreatedAt: 1713350400000,
+                    idempotencyKey: 'idem-web-secret',
+                    publicRef: 'websec01',
+                    secretHash: 'abcd1234'.repeat(8), // 64-char hex
+                    correlationId: '11111111-1111-4111-8111-111111111111',
+                    payload: {
+                        reportType: 'flood',
+                        description: 'web submission for secret lookup test',
+                        severity: 'medium',
+                        source: 'web',
+                        publicLocation: { lat: 14.11, lng: 122.95 },
+                    },
+                });
+                const result = await processInboxItemCore({
+                    db,
+                    inboxId: 'ibx-web-secret',
+                    now: () => 1713350401000,
+                });
+                expect(result.materialized).toBe(true);
+                const secretSnap = await getDoc(doc(ctx.firestore(), 'secret_lookup', 'abcd1234'.repeat(8)));
+                expect(secretSnap.exists()).toBe(true);
+                expect(secretSnap.data()?.publicRef).toBe('websec01');
+                expect(secretSnap.data()?.reportId).toBe(result.reportId);
+                expect(secretSnap.data()?.expiresAt).toBe(1713350401000 + 90 * 24 * 60 * 60 * 1000);
+            });
+        });
+        it('does NOT write secret_lookup for sms submissions', async () => {
+            await env.withSecurityRulesDisabled(async (ctx) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const db = ctx.firestore();
+                await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-sms-secret'), {
+                    reporterUid: 'citizen-sms',
+                    clientCreatedAt: 1713350400000,
+                    idempotencyKey: 'idem-sms-secret',
+                    publicRef: 'smssec01',
+                    secretHash: '1234abcd'.repeat(8), // 64-char hex
+                    correlationId: '22222222-2222-4222-8222-222222222222',
+                    payload: {
+                        reportType: 'flood',
+                        description: 'sms submission for secret lookup test',
+                        severity: 'low',
+                        source: 'sms',
+                        publicLocation: { lat: 14.11, lng: 122.95 },
+                    },
+                });
+                const result = await processInboxItemCore({
+                    db,
+                    inboxId: 'ibx-sms-secret',
+                    now: () => 1713350401000,
+                });
+                expect(result.materialized).toBe(true);
+                const secretSnap = await getDoc(doc(ctx.firestore(), 'secret_lookup', '1234abcd'.repeat(8)));
+                expect(secretSnap.exists()).toBe(false);
+            });
         });
     });
     describe('SMS enqueue on consent', () => {

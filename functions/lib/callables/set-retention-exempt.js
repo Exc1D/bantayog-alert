@@ -16,22 +16,20 @@ export async function setRetentionExemptCore(db, input, actor) {
     }
     const data = parsed.data;
     const docRef = db.collection(data.collection).doc(data.documentId);
-    await db.runTransaction(async (transaction) => {
-        const docSnap = await transaction.get(docRef);
-        if (!docSnap.exists) {
-            throw new HttpsError('not-found', 'document_not_found');
-        }
-        const docData = docSnap.data();
-        const docMunicipalityId = docData.municipalityId;
-        if (!docMunicipalityId || !actor.permittedMunicipalityIds.includes(docMunicipalityId)) {
-            throw new HttpsError('permission-denied', 'municipality_not_permitted');
-        }
-        transaction.update(docRef, {
-            retentionExempt: data.exempt,
-            retentionExemptReason: data.reason,
-            retentionExemptSetBy: actor.uid,
-            retentionExemptSetAt: Date.now(),
-        });
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+        throw new HttpsError('not-found', 'document_not_found');
+    }
+    const docData = docSnap.data();
+    const docMunicipalityId = docData.municipalityId;
+    if (!docMunicipalityId || !actor.permittedMunicipalityIds.includes(docMunicipalityId)) {
+        throw new HttpsError('permission-denied', 'municipality_not_permitted');
+    }
+    await docRef.update({
+        retentionExempt: data.exempt,
+        retentionExemptReason: data.reason,
+        retentionExemptSetBy: actor.uid,
+        retentionExemptSetAt: Date.now(),
     });
     void streamAuditEvent({
         eventType: 'retention_exempt_set',

@@ -6,13 +6,21 @@ import { getDatabase } from 'firebase/database'
 import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check'
 
 const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true'
-const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'bantayog-alert-dev'
-const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyAK6DSYrFfqFAGelsn7ugAZP4ue1gWKudc'
+
+const FIREBASE_CONFIG = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+}
 
 let _app: FirebaseApp | undefined
 
 export function getFirebaseApp(): FirebaseApp {
-  _app ??= initializeApp({ apiKey: API_KEY, projectId: PROJECT_ID })
+  _app ??= initializeApp(FIREBASE_CONFIG)
   return _app
 }
 

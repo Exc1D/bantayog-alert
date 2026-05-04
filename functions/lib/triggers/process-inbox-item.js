@@ -46,22 +46,51 @@ export async function processInboxItemCore(input) {
     }
     const payload = payloadResult.data;
     const exactLocation = payload.exactLocation;
-    let geo = null;
-    if (payload.publicLocation) {
-        geo = await reverseGeocodeToMunicipality(db, payload.publicLocation);
-    }
-    if (!geo) {
-        const reason = payload.publicLocation ? 'out_of_jurisdiction' : 'location_missing';
+    if (!payload.publicLocation) {
         await db.collection('moderation_incidents').doc(inboxId).set({
             inboxId,
-            reason,
+            reason: 'location_missing',
             reportType: payload.reportType,
             description: payload.description,
             publicRef: inbox.publicRef,
             createdAt: now(),
             schemaVersion: 1,
         });
-        throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, reason === 'location_missing' ? 'location missing from payload' : 'out of jurisdiction');
+        throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'location missing from payload');
+    }
+    let municipalityId;
+    let municipalityLabel;
+    let barangayId;
+    let defaultSmsLocale;
+    if (payload.municipalityId) {
+        const muniSnap = await db.collection('municipalities').doc(payload.municipalityId).get();
+        if (!muniSnap.exists) {
+            throw new BantayogError(BantayogErrorCode.MUNICIPALITY_NOT_FOUND, `Municipality '${payload.municipalityId}' is not in jurisdiction.`);
+        }
+        const muniData = muniSnap.data();
+        municipalityId = payload.municipalityId;
+        municipalityLabel = muniData.label;
+        barangayId = payload.barangayId ?? 'unknown';
+        defaultSmsLocale = muniData.defaultSmsLocale;
+    }
+    else {
+        const geo = await reverseGeocodeToMunicipality(db, payload.publicLocation);
+        if (!geo) {
+            await db.collection('moderation_incidents').doc(inboxId).set({
+                inboxId,
+                reason: 'out_of_jurisdiction',
+                reportType: payload.reportType,
+                description: payload.description,
+                publicRef: inbox.publicRef,
+                createdAt: now(),
+                schemaVersion: 1,
+            });
+            throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'out of jurisdiction');
+        }
+        municipalityId = geo.municipalityId;
+        municipalityLabel = geo.municipalityLabel;
+        barangayId = geo.barangayId;
+        defaultSmsLocale = geo.defaultSmsLocale;
     }
     const createdAt = now();
     const pendingMediaIds = payload.pendingMediaIds ?? [];
@@ -91,9 +120,9 @@ export async function processInboxItemCore(input) {
                 throw new BantayogError(BantayogErrorCode.CONFLICT, 'publicRef already exists');
             }
             tx.set(db.collection('reports').doc(reportId), {
-                municipalityId: geo.municipalityId,
-                municipalityLabel: geo.municipalityLabel,
-                barangayId: geo.barangayId,
+                municipalityId,
+                municipalityLabel,
+                barangayId,
                 reporterRole: 'citizen',
                 reportType: payload.reportType,
                 severity: payload.severity,
@@ -111,7 +140,7 @@ export async function processInboxItemCore(input) {
                 correlationId: inbox.correlationId,
             });
             tx.set(db.collection('report_private').doc(reportId), {
-                municipalityId: geo.municipalityId,
+                municipalityId,
                 reporterUid: inbox.reporterUid,
                 isPseudonymous: false,
                 publicTrackingRef: inbox.publicRef,
@@ -119,7 +148,7 @@ export async function processInboxItemCore(input) {
                 schemaVersion: 1,
             });
             tx.set(db.collection('report_ops').doc(reportId), {
-                municipalityId: geo.municipalityId,
+                municipalityId,
                 status: 'new',
                 severity: payload.severity,
                 createdAt,
@@ -149,6 +178,15 @@ export async function processInboxItemCore(input) {
                 createdAt,
                 schemaVersion: 1,
             });
+            // Write secret_lookup only for web submissions — SMS uses a random tokenHash
+            // the user never sees, so a secret-only lookup makes no sense for those.
+            if (payload.source === 'web') {
+                tx.set(db.collection('secret_lookup').doc(inbox.secretHash), {
+                    publicRef: inbox.publicRef,
+                    reportId,
+                    expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
+                });
+            }
             // The inboxPayloadSchema enforces contact.smsConsent as z.literal(true), so
             // presence of contact.phone here means the payload schema already validated consent.
             // This code path does not re-validate — it relies on upstream schema enforcement.
@@ -162,7 +200,7 @@ export async function processInboxItemCore(input) {
                     });
                 }
                 else {
-                    const muniLocale = geo.defaultSmsLocale ?? 'tl';
+                    const muniLocale = defaultSmsLocale ?? 'tl';
                     enqueueSms(db, tx, {
                         reportId,
                         purpose: 'receipt_ack',
@@ -178,7 +216,7 @@ export async function processInboxItemCore(input) {
                         phone: payload.contact.phone,
                         locale: muniLocale,
                         smsConsent: true,
-                        municipalityId: geo.municipalityId,
+                        municipalityId,
                         followUpConsent: payload.followUpConsent === true,
                         createdAt,
                         schemaVersion: 1,
@@ -189,7 +227,7 @@ export async function processInboxItemCore(input) {
                 reportId,
                 correlationId: inbox.correlationId,
                 eventType: 'report_submitted',
-                municipalityId: geo.municipalityId,
+                municipalityId,
                 actor: 'system',
                 at: createdAt,
                 schemaVersion: 1,
@@ -214,7 +252,7 @@ export async function processInboxItemCore(input) {
             severity: 'INFO',
             code: 'INBOX_MATERIALIZED',
             message: `Report ${reportId} created from inbox ${inboxId}`,
-            data: { reportId, inboxId, municipalityId: geo.municipalityId },
+            data: { reportId, inboxId, municipalityId },
         });
         return { materialized: true, reportId, publicRef: inbox.publicRef };
     });
