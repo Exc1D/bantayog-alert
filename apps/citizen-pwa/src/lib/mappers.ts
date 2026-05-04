@@ -35,6 +35,52 @@ function toMillis(value: unknown): number | undefined {
   return undefined
 }
 
+// Per-step timestamp fields written by callables (verifyReport, dispatchResponder,
+// closeReport, rejectReport, etc.). Each maps to a corresponding ReportStatus
+// transition the citizen wants to see in the tracking timeline.
+const TIMESTAMP_TO_EVENT: ReadonlyArray<{ field: string; event: ReportStatus }> = [
+  { field: 'verifiedAt', event: 'verified' },
+  { field: 'assignedAt', event: 'assigned' },
+  { field: 'acknowledgedAt', event: 'acknowledged' },
+  { field: 'enRouteAt', event: 'en_route' },
+  { field: 'onSceneAt', event: 'on_scene' },
+  { field: 'resolvedAt', event: 'resolved' },
+  { field: 'closedAt', event: 'closed' },
+  { field: 'rejectedAt', event: 'rejected' },
+  { field: 'cancelledAt', event: 'cancelled' },
+  { field: 'reopenedAt', event: 'reopened' },
+]
+
+function synthesizeTimeline(
+  data: Record<string, unknown>,
+  status: ReportStatus,
+  createdAt: number | undefined,
+  updatedAt: number | undefined,
+): { event: string; timestamp: number }[] {
+  const events: { event: string; timestamp: number }[] = []
+  if (typeof createdAt === 'number') {
+    events.push({ event: 'new', timestamp: createdAt })
+  }
+
+  const seen = new Set<string>(['new'])
+  for (const { field, event } of TIMESTAMP_TO_EVENT) {
+    const ts = toMillis(data[field])
+    if (typeof ts === 'number' && !seen.has(event)) {
+      events.push({ event, timestamp: ts })
+      seen.add(event)
+    }
+  }
+
+  // Fallback: if the current status didn't get a dedicated timestamp, fall back
+  // to updatedAt so the user still sees their report has progressed.
+  if (status !== 'new' && !seen.has(status) && typeof updatedAt === 'number') {
+    events.push({ event: status, timestamp: updatedAt })
+  }
+
+  events.sort((a, b) => a.timestamp - b.timestamp)
+  return events
+}
+
 function mapTimelineEvent(rawEvt: unknown, index: number) {
   if (!rawEvt || typeof rawEvt !== 'object' || Array.isArray(rawEvt)) {
     throw new Error(`Invalid timeline event at index ${index}`)
@@ -69,12 +115,7 @@ export function mapReportFromFirestore(
   }
   const timeline = Array.isArray(data.timeline)
     ? data.timeline.map(mapTimelineEvent)
-    : [
-        ...(typeof createdAt === 'number' ? [{ event: 'new', timestamp: createdAt }] : []),
-        ...(data.status !== 'new' && typeof updatedAt === 'number'
-          ? [{ event: data.status, timestamp: updatedAt }]
-          : []),
-      ]
+    : synthesizeTimeline(data, status, createdAt, updatedAt)
 
   const result: ReportData = {
     id: typeof data.id === 'string' ? data.id : docId ?? 'unknown',

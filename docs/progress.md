@@ -18,6 +18,13 @@ All 10 tasks complete. Residual risks: E2E dispatch progression, native push tok
 
 ## Recent Merged Work
 
+### Citizen PWA -- Live Status Sync + Richer Timeline (2026-05-04)
+
+- `useMyActiveReports` now uses live Firestore subscriptions per stored report (`onSnapshot` on `report_lookup/{publicRef}` → `reports/{reportId}`), so the map MyReportLayer pin, Profile tab list, and ReportStatusPill update in real time as the admin advances status (verified, assigned, resolved, rejected, closed). The pill now correctly disappears the moment the report enters a terminal state.
+- Permission-denied fallback (covers anonymous→phone-link UID change) keeps the existing `requestLookup` callable wired so a registered user still sees their pre-registration reports.
+- `mapReportFromFirestore` synthesizes a multi-step timeline from the per-step timestamp fields callables already write (`verifiedAt`, `assignedAt`, `acknowledgedAt`, `enRouteAt`, `onSceneAt`, `resolvedAt`, `closedAt`, `rejectedAt`, `cancelledAt`, `reopenedAt`), giving the TrackingScreen a real progression instead of just "Report received → current status".
+- **Gate:** citizen-pwa vitest 363/363 pass (added 6 new tests across `useMyActiveReports.test.ts` and `mappers.test.ts`), `pnpm lint`, `pnpm typecheck` clean.
+
 ### Citizen PWA -- Public Verification Wiring + Live Timeline (2026-05-04)
 
 - Verified reports now flip from `visibilityClass: internal` to `public_alertable` during admin verification, so creators still see fresh submissions immediately while the public Map/Feed sees them only after verification
