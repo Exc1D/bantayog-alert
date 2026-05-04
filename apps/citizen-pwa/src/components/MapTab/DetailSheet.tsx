@@ -25,6 +25,7 @@ type Props =
       sheetPhase: 'hidden' | 'peek' | 'expanded'
       onClose: () => void
       onCollapse: () => void
+      onCancelReport?: (publicRef: string, reportId: string) => void
     }
 
 const LABELS: Record<string, string> = {
@@ -270,7 +271,13 @@ export function DetailSheet(props: Props) {
           <button type="button" aria-label="Edit">
             Edit
           </button>
-          <button type="button" aria-label="Cancel report">
+          <button
+            type="button"
+            aria-label="Cancel report"
+            onClick={() => {
+              if (report.id) props.onCancelReport?.(report.publicRef, report.id)
+            }}
+          >
             Cancel
           </button>
         </div>

@@ -50,3 +50,8 @@ export async function registerCitizen(): Promise<{
     )
   }
 }
+
+export async function cancelReport(reportId: string): Promise<void> {
+  const callable = httpsCallable(fns(), 'cancelReportByCitizen')
+  await callable({ reportId, idempotencyKey: crypto.randomUUID() })
+}

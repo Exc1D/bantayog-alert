@@ -100,3 +100,11 @@ export async function updateReportId(publicRef: string, reportId: string): Promi
     await localforage.setItem(KEY, all)
   })
 }
+
+export async function deleteReport(publicRef: string): Promise<void> {
+  await enqueueWrite(async () => {
+    const all = await loadReports()
+    const filtered = all.filter((r) => r.publicRef !== publicRef)
+    await localforage.setItem(KEY, filtered)
+  })
+}

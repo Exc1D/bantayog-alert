@@ -9,6 +9,9 @@ import { IncidentLayer } from './IncidentLayer.js'
 import { MyReportLayer } from './MyReportLayer.js'
 import { usePublicIncidents } from '../../hooks/usePublicIncidents.js'
 import { useMyActiveReports } from '../../hooks/useMyActiveReports.js'
+import { cancelReport } from '../../services/callables.js'
+import { deleteReport } from '../../services/localForageReports.js'
+import { useToast } from '../../hooks/useToast.js'
 import type { Filters, MyReport, PublicIncident } from './types.js'
 
 const DAET_CENTER: [number, number] = [14.1115, 122.9558]
@@ -60,6 +63,24 @@ export function MapTab() {
     error: incidentsError,
   } = usePublicIncidents(filters)
   const { reports: myReports, loading: myReportsLoading } = useMyActiveReports()
+  const { toast } = useToast()
+
+  const handleCancelReport = useCallback(
+    (publicRef: string, reportId: string) => {
+      void (async () => {
+        try {
+          await cancelReport(reportId)
+          await deleteReport(publicRef)
+          toast('Report cancelled', 'success')
+          setSheetPhase('hidden')
+          setSelectedPin(null)
+        } catch {
+          toast('Failed to cancel report', 'error')
+        }
+      })()
+    },
+    [toast],
+  )
 
   useEffect(() => {
     if (mapRef.current || !mapElRef.current) return
@@ -289,6 +310,7 @@ export function MapTab() {
           onCollapse={() => {
             setSheetPhase('peek')
           }}
+          onCancelReport={handleCancelReport}
         />
       ) : null}
     </div>
