@@ -13,25 +13,30 @@ export function MunicipalityLabels({ visible }: MunicipalityLabelsProps) {
   const { incidents } = useDataStore()
 
   const labels = useMemo(() => {
-    return camarinesNorteGeoJSON.features.map((f) => {
+    return camarinesNorteGeoJSON.features.flatMap((f) => {
       const name = String(f.properties?.name ?? '')
       const coords = (f.geometry as GeoJSON.Polygon).coordinates[0]
-      if (!coords) return { name, lat: 0, lng: 0, count: 0 }
+      if (!Array.isArray(coords) || coords.length === 0) return []
       let latSum = 0,
         lngSum = 0
       coords.forEach((c) => {
         lngSum += c[0] ?? 0
         latSum += c[1] ?? 0
       })
+      const lat = latSum / coords.length
+      const lng = lngSum / coords.length
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return []
       const count = incidents.filter(
         (i) => i.municipality === name && i.status !== 'RESOLVED',
       ).length
-      return {
-        name,
-        lat: latSum / coords.length,
-        lng: lngSum / coords.length,
-        count,
-      }
+      return [
+        {
+          name,
+          lat,
+          lng,
+          count,
+        },
+      ]
     })
   }, [incidents])
 

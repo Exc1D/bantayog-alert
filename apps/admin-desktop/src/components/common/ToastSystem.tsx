@@ -21,13 +21,7 @@ export function ToastSystem() {
   return (
     <div className="fixed top-[72px] right-4 z-[400] flex flex-col gap-2 max-w-sm">
       {toasts.map((toast) => (
-        <ToastItem
-          key={toast.id}
-          toast={toast}
-          onDismiss={() => {
-            removeToast(toast.id)
-          }}
-        />
+        <ToastItem key={toast.id} toast={toast} toastId={toast.id} removeToast={removeToast} />
       ))}
     </div>
   )
@@ -35,7 +29,8 @@ export function ToastSystem() {
 
 function ToastItem({
   toast,
-  onDismiss,
+  toastId,
+  removeToast,
 }: {
   toast: {
     id: string
@@ -43,16 +38,17 @@ function ToastItem({
     message: string
     type: 'success' | 'error' | 'warning' | 'info'
   }
-  onDismiss: () => void
+  toastId: string
+  removeToast: (id: string) => void
 }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      onDismiss()
+      removeToast(toastId)
     }, 5000)
     return () => {
       clearTimeout(timer)
     }
-  }, [onDismiss])
+  }, [removeToast, toastId])
   return (
     <div
       className={cn(
@@ -66,7 +62,9 @@ function ToastItem({
         <p className="text-xs text-muted-foreground mt-0.5">{toast.message}</p>
       </div>
       <button
-        onClick={onDismiss}
+        onClick={() => {
+          removeToast(toastId)
+        }}
         className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
       >
         <X className="w-4 h-4" />

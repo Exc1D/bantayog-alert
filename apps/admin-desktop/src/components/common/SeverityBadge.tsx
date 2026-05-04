@@ -14,8 +14,12 @@ interface SeverityBadgeProps {
 }
 
 export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
-  const styles =
-    severity in severityStyles ? severityStyles[severity as SeverityType] : severityStyles.LOW
+  const normalizedSeverity = severity.trim().toUpperCase()
+  const severityKey: SeverityType =
+    normalizedSeverity === 'HIGH' || normalizedSeverity === 'MEDIUM' || normalizedSeverity === 'LOW'
+      ? normalizedSeverity
+      : 'LOW'
+  const styles = severityStyles[severityKey]
   return (
     <span
       className={cn(
@@ -26,7 +30,7 @@ export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
         className,
       )}
     >
-      {severity}
+      {severityKey}
     </span>
   )
 }

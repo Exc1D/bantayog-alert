@@ -32,9 +32,12 @@ export function MapLayerToggles({ layers, onToggle }: MapLayerTogglesProps) {
         {layerConfig.map((layer) => {
           const checked = layers[layer.key as keyof typeof layers]
           return (
-            <label key={layer.key} className="flex items-center gap-2 cursor-pointer group">
+            <label
+              key={layer.key}
+              className="flex items-center gap-2 cursor-pointer group rounded focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1"
+            >
               <div
-                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors peer-checked:bg-accent peer-checked:border-accent ${
                   checked
                     ? 'bg-accent border-accent'
                     : 'bg-transparent border-border group-hover:border-foreground/20'
@@ -58,7 +61,7 @@ export function MapLayerToggles({ layers, onToggle }: MapLayerTogglesProps) {
                 onChange={() => {
                   onToggle(layer.key)
                 }}
-                className="sr-only"
+                className="sr-only peer"
               />
               <span
                 className={`text-xs ${checked ? 'text-foreground' : 'text-muted-foreground/70'} transition-colors`}

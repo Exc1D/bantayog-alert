@@ -16,7 +16,16 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const styles = status in statusStyles ? statusStyles[status as StatusType] : statusStyles.PENDING
+  const normalizedStatus = status.trim().toUpperCase()
+  const statusKey: StatusType =
+    normalizedStatus === 'ACTIVE' ||
+    normalizedStatus === 'PENDING' ||
+    normalizedStatus === 'CRITICAL' ||
+    normalizedStatus === 'RESOLVED' ||
+    normalizedStatus === 'ESCALATED'
+      ? normalizedStatus
+      : 'PENDING'
+  const styles = statusStyles[statusKey]
   return (
     <span
       className={cn(
@@ -27,7 +36,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         className,
       )}
     >
-      {status}
+      {statusKey}
     </span>
   )
 }

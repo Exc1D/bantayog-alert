@@ -7,6 +7,9 @@ export function MapLegend() {
   return (
     <div className="absolute bottom-6 right-6 z-[500] bg-white border border-border rounded-lg shadow-lg max-w-[200px] overflow-hidden">
       <button
+        type="button"
+        aria-expanded={!collapsed}
+        aria-controls="map-legend-content"
         onClick={() => {
           setCollapsed(!collapsed)
         }}
@@ -21,7 +24,7 @@ export function MapLegend() {
       </button>
 
       {!collapsed && (
-        <div className="px-4 pb-4 space-y-3">
+        <div id="map-legend-content" className="px-4 pb-4 space-y-3">
           <div>
             <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
               Incident Severity

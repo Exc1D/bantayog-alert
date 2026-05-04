@@ -20,6 +20,10 @@ export function MapControls() {
     map.setView([14.12, 122.85], 10, { animate: true, duration: 0.5 })
   }, [map])
   const myLocation = useCallback(() => {
+    if (!('geolocation' in navigator)) {
+      resetView()
+      return
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         map.setView([pos.coords.latitude, pos.coords.longitude], 14, { animate: true })
