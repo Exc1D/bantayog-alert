@@ -201,6 +201,9 @@ export function Step3Review({
                 onChange={(e) => {
                   setConsent(e.target.checked)
                 }}
+                onClick={(e) => {
+                  setConsent(e.currentTarget.checked)
+                }}
                 className="w-5 h-5 rounded border-2 border-brand-300 text-brand-500 focus:ring-brand-500 accent-brand-500"
               />
             </div>
