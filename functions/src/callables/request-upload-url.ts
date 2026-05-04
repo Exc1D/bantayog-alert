@@ -87,17 +87,26 @@ export async function requestUploadUrlImpl(
   }
 }
 
-export const requestUploadUrl = onCall(async (request) => {
-  try {
-    return await requestUploadUrlImpl({
-      auth: request.auth ?? undefined,
-      data: request.data,
-      bucket: process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com',
-    })
-  } catch (err: unknown) {
-    if (err instanceof BantayogError) {
-      throw bantayogErrorToHttps(err)
+export const requestUploadUrl = onCall(
+  {
+    cors: [
+      'http://localhost:5173',
+      'https://bantayog-citizen-staging.web.app',
+      'https://bantayog-citizen-dev.web.app',
+    ],
+  },
+  async (request) => {
+    try {
+      return await requestUploadUrlImpl({
+        auth: request.auth ?? undefined,
+        data: request.data,
+        bucket: process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com',
+      })
+    } catch (err: unknown) {
+      if (err instanceof BantayogError) {
+        throw bantayogErrorToHttps(err)
+      }
+      throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error')
     }
-    throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error')
-  }
-})
+  },
+)

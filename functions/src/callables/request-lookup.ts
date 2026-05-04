@@ -118,17 +118,20 @@ export async function requestLookupImpl(input: RequestLookupInput): Promise<Requ
   }
 }
 
-export const requestLookup = onCall(async (request) => {
-  try {
-    return await requestLookupImpl({
-      db: getFirestore(),
-      data: request.data,
-      auth: request.auth ?? undefined,
-    })
-  } catch (err: unknown) {
-    if (err instanceof BantayogError) {
-      throw bantayogErrorToHttps(err)
+export const requestLookup = onCall(
+  { cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app'] },
+  async (request) => {
+    try {
+      return await requestLookupImpl({
+        db: getFirestore(),
+        data: request.data,
+        auth: request.auth ?? undefined,
+      })
+    } catch (err: unknown) {
+      if (err instanceof BantayogError) {
+        throw bantayogErrorToHttps(err)
+      }
+      throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error')
     }
-    throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error')
-  }
-})
+  },
+)
