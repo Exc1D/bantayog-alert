@@ -56,7 +56,8 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
     return (
       <button
         type="button"
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation()
           setStep('warn')
           setTyped('')
           setError(null)
@@ -71,7 +72,7 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
       role="presentation"
       onClick={(e) => {
         if (step !== 'submitting' && e.target === e.currentTarget) goIdle()
