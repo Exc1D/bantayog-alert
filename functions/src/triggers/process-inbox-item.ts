@@ -90,10 +90,7 @@ export async function processInboxItemCore(
       createdAt: now(),
       schemaVersion: 1,
     })
-    throw new BantayogError(
-      BantayogErrorCode.INVALID_ARGUMENT,
-      'location missing from payload',
-    )
+    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'location missing from payload')
   }
 
   let municipalityId: string
