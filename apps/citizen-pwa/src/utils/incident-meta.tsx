@@ -111,10 +111,10 @@ export function statusMeta(status: string): { label: string; bg: string; color: 
 
 const SEVERITY_COLORS: Record<string, string> = {
   high: '#dc2626',
-  medium: '#d97706',
-  low: '#334155',
+  medium: '#a73400',
+  low: '#414849',
 }
 
 export function severityDotColor(severity: string): string {
-  return SEVERITY_COLORS[severity] ?? '#334155'
+  return SEVERITY_COLORS[severity] ?? '#414849'
 }

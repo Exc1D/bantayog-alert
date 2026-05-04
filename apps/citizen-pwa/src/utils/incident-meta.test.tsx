@@ -127,15 +127,15 @@ describe('severityDotColor', () => {
     expect(severityDotColor('high')).toBe('#dc2626')
   })
 
-  it('returns amber for medium severity', () => {
-    expect(severityDotColor('medium')).toBe('#d97706')
+  it('returns dark amber for medium severity', () => {
+    expect(severityDotColor('medium')).toBe('#a73400')
   })
 
-  it('returns slate for low severity', () => {
-    expect(severityDotColor('low')).toBe('#334155')
+  it('returns dark gray for low severity', () => {
+    expect(severityDotColor('low')).toBe('#414849')
   })
 
-  it('returns slate default for unknown severity', () => {
-    expect(severityDotColor('unknown')).toBe('#334155')
+  it('returns dark gray default for unknown severity', () => {
+    expect(severityDotColor('unknown')).toBe('#414849')
   })
 })
