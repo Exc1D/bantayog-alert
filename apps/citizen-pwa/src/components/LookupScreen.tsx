@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft, KeyRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { loadReports } from '../services/localForageReports.js'
 import {
   fns,
   hasFirebaseConfig,
@@ -18,6 +19,10 @@ interface LookupResult {
 
 const FRIENDLY_ERROR =
   "We couldn't find a report with that secret code. It may have expired (reports are tracked for 90 days)."
+
+function normalizeSecretCode(secret: string): string {
+  return secret.replace(/[^a-z0-9]/gi, '').toUpperCase()
+}
 
 function friendlyLookupError(err: unknown): string {
   if (!hasFirebaseConfig()) return FIREBASE_ENV_ERROR_MESSAGE
@@ -50,13 +55,20 @@ export function LookupScreen() {
   async function handleSubmit(e: React.SyntheticEvent): Promise<void> {
     e.preventDefault()
     setError(null)
-    const trimmedSecret = secret.trim()
+    const trimmedSecret = normalizeSecretCode(secret)
     if (!trimmedSecret) {
       setError('Please enter your secret code.')
       return
     }
     setLoading(true)
     try {
+      const localReports = await loadReports()
+      const localMatch = localReports.find((report) => report.secret === trimmedSecret)
+      if (localMatch) {
+        if (!isMountedRef.current) return
+        void navigate(`/reports/${localMatch.publicRef}`)
+        return
+      }
       if (!hasFirebaseConfig()) {
         throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
       }
