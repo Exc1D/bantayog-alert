@@ -13,6 +13,7 @@ import {
   HelpCircle,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { getSeverityStyle } from './useSeverityStyle.js'
 
 export const INCIDENT_TYPES = [
   'fire',
@@ -109,12 +110,6 @@ export function statusMeta(status: string): { label: string; bg: string; color: 
   }
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
-  high: '#dc2626',
-  medium: '#a73400',
-  low: '#414849',
-}
-
 export function severityDotColor(severity: string): string {
-  return SEVERITY_COLORS[severity] ?? '#414849'
+  return getSeverityStyle(severity).dotHex
 }
