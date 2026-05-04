@@ -102,8 +102,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.error(
         'Unable to query Firebase Auth. Set GOOGLE_APPLICATION_CREDENTIALS to a staging service-account key, or run in an environment with default Firebase credentials.',
       )
+    } else {
+      console.error(message)
     }
-    console.error(message)
     process.exit(1)
   })
 }

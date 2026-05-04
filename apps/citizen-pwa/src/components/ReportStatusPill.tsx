@@ -50,13 +50,13 @@ export function ReportStatusPill() {
     const buttonHeight = buttonRef.current?.clientHeight ?? 44
     const bottomOffset =
       64 /* 4rem */ +
-      (parseInt(
-        getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom'),
-      ) || 0)
-    const maxY = window.innerHeight - bottomOffset - buttonHeight
+      (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0)
+    const maxYUp = window.innerHeight - bottomOffset - buttonHeight
+    // Pill is anchored at the bottom; allow only minimal downward slack
+    const maxYDown = Math.round(buttonHeight * 0.25)
     setDragOffset({
       x: Math.max(-maxX, Math.min(maxX, newX)),
-      y: Math.max(-maxY, Math.min(maxY, newY)),
+      y: Math.max(-maxYUp, Math.min(maxYDown, newY)),
     })
   }
 

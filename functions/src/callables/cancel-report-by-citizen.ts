@@ -113,9 +113,18 @@ export async function cancelReportByCitizenCore(
   )
 
   const storage = getStorage()
-  const [files] = await storage.bucket().getFiles({ prefix: `report_media/${deps.reportId}/` })
-  for (const file of files) {
-    await file.delete()
+  try {
+    const [files] = await storage.bucket().getFiles({ prefix: `report_media/${deps.reportId}/` })
+    for (const file of files) {
+      await file.delete()
+    }
+  } catch (err: unknown) {
+    log({
+      severity: 'WARNING',
+      code: 'report.citizen_cancelled_media_cleanup_failed',
+      message: `Report ${deps.reportId} cancelled, but media cleanup failed`,
+      data: { correlationId, reportId: deps.reportId, err: String(err) },
+    })
   }
 
   return result

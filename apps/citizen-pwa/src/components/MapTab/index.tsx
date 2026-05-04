@@ -79,8 +79,11 @@ export function MapTab() {
         }
         try {
           await deleteReport(publicRef)
-        } catch {
-          // Best-effort local cache cleanup; ignore failure
+        } catch (err: unknown) {
+          console.warn('Failed to cleanup local report cache after successful cancel', {
+            publicRef,
+            err,
+          })
         }
       })()
     },
