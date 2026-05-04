@@ -168,4 +168,40 @@ describe('mapReportFromFirestore', () => {
       { event: 'resolved', timestamp: 1713350500000 },
     ])
   })
+
+  it('synthesizes a multi-step timeline from per-step Firestore timestamps', () => {
+    const result = mapReportFromFirestore({
+      status: 'on_scene',
+      reportType: 'fire',
+      submittedAt: 1000,
+      verifiedAt: { toMillis: () => 2000 },
+      assignedAt: { toMillis: () => 3000 },
+      enRouteAt: { toMillis: () => 4000 },
+      onSceneAt: { toMillis: () => 5000 },
+    })
+
+    expect(result.timeline).toEqual([
+      { event: 'new', timestamp: 1000 },
+      { event: 'verified', timestamp: 2000 },
+      { event: 'assigned', timestamp: 3000 },
+      { event: 'en_route', timestamp: 4000 },
+      { event: 'on_scene', timestamp: 5000 },
+    ])
+  })
+
+  it('synthesizes a terminal-status timeline for a closed report', () => {
+    const result = mapReportFromFirestore({
+      status: 'closed',
+      reportType: 'medical',
+      submittedAt: 1000,
+      verifiedAt: { toMillis: () => 2000 },
+      closedAt: { toMillis: () => 6000 },
+    })
+
+    expect(result.timeline).toEqual([
+      { event: 'new', timestamp: 1000 },
+      { event: 'verified', timestamp: 2000 },
+      { event: 'closed', timestamp: 6000 },
+    ])
+  })
 })
