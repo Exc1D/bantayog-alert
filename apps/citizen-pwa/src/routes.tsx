@@ -1,5 +1,11 @@
-import { createBrowserRouter, RouterProvider, Outlet, useNavigate } from 'react-router-dom'
-import { useState, useCallback, lazy, Suspense } from 'react'
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Outlet,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom'
+import { useState, useCallback, lazy, Suspense, type ComponentType } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { CitizenShell } from './components/CitizenShell.js'
 import { MapTab } from './components/MapTab/index.js'
@@ -8,45 +14,69 @@ import { useUIStore } from './lib/store.js'
 import { ErrorBoundary } from './components/ErrorBoundary.js'
 import { useResumeRegistration } from './hooks/useResumeRegistration.js'
 
+/* ── Retry helper for lazy-loaded chunks ── */
+function lazyWithRetry(
+  factory: () => Promise<{ default: ComponentType<unknown> }>,
+  retries = 3,
+  delay = 500,
+) {
+  return lazy(() => {
+    const attempt = (n: number): Promise<{ default: ComponentType<unknown> }> =>
+      factory().catch((err: unknown) => {
+        if (n <= 0) throw err
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(attempt(n - 1))
+          }, delay)
+        })
+      })
+    return attempt(retries)
+  })
+}
+
 /* ── Lazy-loaded route components ── */
-const Onboarding = lazy(() =>
+const Onboarding = lazyWithRetry(() =>
   import('./pages/Onboarding.js').then((m) => ({ default: m.Onboarding })),
 )
-const FeedTab = lazy(() => import('./components/FeedTab.js').then((m) => ({ default: m.FeedTab })))
-const IncidentDetailPage = lazy(() =>
+const FeedTab = lazyWithRetry(() =>
+  import('./components/FeedTab.js').then((m) => ({ default: m.FeedTab })),
+)
+const IncidentDetailPage = lazyWithRetry(() =>
   import('./components/IncidentDetailPage.js').then((m) => ({ default: m.IncidentDetailPage })),
 )
-const ProfileTab = lazy(() =>
+const ProfileTab = lazyWithRetry(() =>
   import('./components/ProfileTab.js').then((m) => ({ default: m.ProfileTab })),
 )
-const AlertsTab = lazy(() =>
+const AlertsTab = lazyWithRetry(() =>
   import('./components/AlertsTab.js').then((m) => ({ default: m.AlertsTab })),
 )
-const SubmitReportForm = lazy(() =>
+const SubmitReportForm = lazyWithRetry(() =>
   import('./components/SubmitReportForm/index.js').then((m) => ({ default: m.SubmitReportForm })),
 )
-const ReceiptScreen = lazy(() =>
+const ReceiptScreen = lazyWithRetry(() =>
   import('./components/ReceiptScreen.js').then((m) => ({ default: m.ReceiptScreen })),
 )
-const LookupScreen = lazy(() =>
+const LookupScreen = lazyWithRetry(() =>
   import('./components/LookupScreen.js').then((m) => ({ default: m.LookupScreen })),
 )
-const TrackingScreen = lazy(() =>
+const TrackingScreen = lazyWithRetry(() =>
   import('./components/TrackingScreen.js').then((m) => ({ default: m.TrackingScreen })),
 )
-const GoodbyeScreen = lazy(() =>
+const GoodbyeScreen = lazyWithRetry(() =>
   import('./components/GoodbyeScreen.js').then((m) => ({ default: m.GoodbyeScreen })),
 )
-const RegisterPage = lazy(() =>
+const RegisterPage = lazyWithRetry(() =>
   import('./pages/RegisterPage.js').then((m) => ({ default: m.RegisterPage })),
 )
-const SettingsPage = lazy(() =>
+const SettingsPage = lazyWithRetry(() =>
   import('./pages/SettingsPage.js').then((m) => ({ default: m.SettingsPage })),
 )
-const NotFoundPage = lazy(() =>
+const NotFoundPage = lazyWithRetry(() =>
   import('./pages/NotFoundPage.js').then((m) => ({ default: m.NotFoundPage })),
 )
-const LoginPage = lazy(() => import('./pages/LoginPage.js').then((m) => ({ default: m.LoginPage })))
+const LoginPage = lazyWithRetry(() =>
+  import('./pages/LoginPage.js').then((m) => ({ default: m.LoginPage })),
+)
 
 function RouteFallback() {
   return (
@@ -59,15 +89,17 @@ function RouteFallback() {
 function RootLayout() {
   const [showSplash, setShowSplash] = useState(true)
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const hasCompletedOnboarding = useUIStore((s) => s.hasCompletedOnboarding)
   useResumeRegistration()
 
   const onSplashDone = useCallback(() => {
     setShowSplash(false)
-    if (!hasCompletedOnboarding) {
+    const isAuthPage = pathname === '/login' || pathname === '/register'
+    if (!hasCompletedOnboarding && !isAuthPage) {
       void navigate('/onboarding', { replace: true })
     }
-  }, [hasCompletedOnboarding, navigate])
+  }, [hasCompletedOnboarding, navigate, pathname])
 
   return (
     <>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, X } from 'lucide-react'
 import { useSlotMachine } from '../hooks/useSlotMachine.js'
 import { RadarRings, AnimatedCheck } from './ui/RadarRings.js'
 
@@ -91,6 +91,16 @@ export function ReceiptScreen() {
         animate={{ y: 0 }}
         transition={{ duration: 0.4, ease: SHEET_EASE }}
       >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={() => void navigate('/')}
+          className="absolute top-4 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-surface-200 text-surface-600 hover:bg-surface-300 transition-colors"
+          aria-label="Close receipt"
+        >
+          <X size={18} />
+        </button>
+
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-surface-300" />
