@@ -5,48 +5,48 @@ describe('severityMeta', () => {
   it('returns CRITICAL for critical', () => {
     expect(severityMeta('critical')).toEqual({
       label: 'CRITICAL',
-      bg: '#fecaca',
-      color: '#7f1d1d',
+      bg: 'var(--color-severity-critical-bg)',
+      color: 'var(--color-severity-critical-fg)',
     })
   })
 
   it('returns HIGH for high', () => {
     expect(severityMeta('high')).toEqual({
       label: 'HIGH',
-      bg: '#fee2e2',
-      color: '#991b1b',
+      bg: 'var(--color-severity-high-bg)',
+      color: 'var(--color-severity-high-fg)',
     })
   })
 
   it('returns MEDIUM for medium', () => {
     expect(severityMeta('medium')).toEqual({
       label: 'MEDIUM',
-      bg: '#fff5ef',
-      color: '#a73400',
+      bg: 'var(--color-severity-medium-bg)',
+      color: 'var(--color-severity-medium-fg)',
     })
   })
 
   it('returns LOW for low', () => {
     expect(severityMeta('low')).toEqual({
       label: 'LOW',
-      bg: '#e0e7f0',
-      color: '#001e40',
+      bg: 'var(--color-severity-low-bg)',
+      color: 'var(--color-severity-low-fg)',
     })
   })
 
   it('returns INFO for unknown severity', () => {
     expect(severityMeta('unknown')).toEqual({
       label: 'INFO',
-      bg: '#dbeafe',
-      color: '#1e40af',
+      bg: 'var(--color-severity-low-bg)',
+      color: 'var(--color-severity-low-fg)',
     })
   })
 
   it('returns INFO for empty string', () => {
     expect(severityMeta('')).toEqual({
       label: 'INFO',
-      bg: '#dbeafe',
-      color: '#1e40af',
+      bg: 'var(--color-severity-low-bg)',
+      color: 'var(--color-severity-low-fg)',
     })
   })
 })

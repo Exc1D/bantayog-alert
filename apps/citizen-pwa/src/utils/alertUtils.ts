@@ -1,14 +1,15 @@
+import { getSeverityStyle } from './useSeverityStyle.js'
+
+const CRITICAL_STYLE = {
+  label: 'CRITICAL',
+  fg: 'var(--color-severity-critical-fg)',
+  bg: 'var(--color-severity-critical-bg)',
+}
+
 export function severityMeta(severity: string): { label: string; bg: string; color: string } {
-  switch (severity) {
-    case 'critical':
-      return { label: 'CRITICAL', bg: '#fecaca', color: '#7f1d1d' }
-    case 'high':
-      return { label: 'HIGH', bg: '#fee2e2', color: '#991b1b' }
-    case 'medium':
-      return { label: 'MEDIUM', bg: '#fff5ef', color: '#a73400' }
-    case 'low':
-      return { label: 'LOW', bg: '#e0e7f0', color: '#001e40' }
-    default:
-      return { label: 'INFO', bg: '#dbeafe', color: '#1e40af' }
+  if (severity === 'critical') {
+    return { label: CRITICAL_STYLE.label, bg: CRITICAL_STYLE.bg, color: CRITICAL_STYLE.fg }
   }
+  const style = getSeverityStyle(severity)
+  return { label: style.label, bg: style.bg, color: style.fg }
 }
