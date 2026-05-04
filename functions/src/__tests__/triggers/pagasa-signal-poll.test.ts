@@ -17,7 +17,7 @@ const SAMPLE_HTML_TCWS_3_DAET = `
 <html>
 <body>
 <h2>TCWS #3</h2>
-<p>Daet, Camarines Norte</p>
+<p>Daet, Basud</p>
 </body>
 </html>
 `
@@ -26,7 +26,7 @@ const SAMPLE_HTML_TCWS_2_PROVINCE = `
 <html>
 <body>
 <h2>TCWS #2</h2>
-<p>All municipalities in Camarines Norte</p>
+<p>Mercedes, Paracale, Labo, Capalonga, Jose Panganiban, Vinzons, Santa Elena, Daet, San Jose, Basud</p>
 </body>
 </html>
 `
@@ -45,6 +45,7 @@ const BROKEN_HTML = `<html><body>INVALID`
 function createMockDb() {
   const setFn = vi.fn().mockResolvedValue(undefined)
   const addFn = vi.fn().mockResolvedValue({ id: 'dl-1' })
+<<<<<<< Updated upstream
   const getFn = vi.fn().mockResolvedValue({
     exists: true,
     data: () => ({ degradedReasons: [] }),
@@ -122,36 +123,34 @@ vi.mock('../../triggers/pagasa-signal-poll.js', () => ({
   },
 }))
 
+=======
+  const docSnapshot = { data: () => ({ degradedReasons: [] }) }
+  const getFn = vi.fn().mockResolvedValue(docSnapshot)
+  const docFn = vi.fn(() => ({ set: setFn, get: getFn }))
+  const collectionFn = vi.fn(() => ({ doc: docFn, add: addFn }))
+  return {
+    db: { collection: collectionFn } as unknown as Firestore,
+    setFn,
+    addFn,
+    getFn,
+  }
+}
+
+>>>>>>> Stashed changes
 import { pagasaSignalPollCore } from '../../triggers/pagasa-signal-poll.js'
 
 beforeEach(() => {
   mockReplay.mockClear()
+<<<<<<< Updated upstream
   mockParsePagasaSignal.mockClear()
   mockIsTrustedParsedSignal.mockClear()
+=======
+>>>>>>> Stashed changes
 })
 
 describe('pagasaSignalPollCore', () => {
   it('writes a canonical scraper signal for valid parsed data', async () => {
-    const db = createMockDb()
-
-    mockParsePagasaSignal.mockReturnValue({
-      ok: true,
-      value: {
-        signalId: 'sig-tcws3-daet',
-        hazardType: 'tropical_cyclone',
-        signalLevel: 3,
-        source: 'scraper',
-        scopeType: 'municipalities',
-        affectedMunicipalityIds: ['daet'],
-        status: 'active',
-        validFrom: NOW,
-        validUntil: NOW + 3600000,
-        recordedAt: NOW,
-        rawSource: 'pagasa_scraper',
-        schemaVersion: 1,
-      },
-    })
-    mockIsTrustedParsedSignal.mockReturnValue(true)
+    const { db, setFn } = createMockDb()
 
     const result = await pagasaSignalPollCore({
       db,
@@ -161,31 +160,12 @@ describe('pagasaSignalPollCore', () => {
 
     expect(result.status).toBe('updated')
     expect(result.scraperDegraded).toBe(false)
-    expect(mockIsTrustedParsedSignal).toHaveBeenCalled()
+    expect(setFn).toHaveBeenCalled()
     expect(mockReplay).toHaveBeenCalledWith({ db, now: NOW })
   })
 
   it('quarantines suspicious but parseable output', async () => {
-    const db = createMockDb()
-
-    mockParsePagasaSignal.mockReturnValue({
-      ok: true,
-      value: {
-        signalId: 'sig-tcws3-daet',
-        hazardType: 'tropical_cyclone',
-        signalLevel: 3,
-        source: 'scraper',
-        scopeType: 'municipalities',
-        affectedMunicipalityIds: ['daet', 'unknown_town'],
-        status: 'active',
-        validFrom: NOW,
-        validUntil: NOW + 3600000,
-        recordedAt: NOW,
-        rawSource: 'pagasa_scraper',
-        schemaVersion: 1,
-      },
-    })
-    mockIsTrustedParsedSignal.mockReturnValue(false)
+    const { db, setFn } = createMockDb()
 
     const result = await pagasaSignalPollCore({
       db,
@@ -195,8 +175,13 @@ describe('pagasaSignalPollCore', () => {
 
     expect(result.status).toBe('quarantined')
     expect(result.scraperDegraded).toBe(true)
+    expect(setFn).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'quarantined' }),
+      undefined,
+    )
   })
 
+<<<<<<< Updated upstream
   it('returns scraperDegraded false after the next successful non-quarantined run', async () => {
     const db = createMockDb()
     let callCount = 0
@@ -226,6 +211,10 @@ describe('pagasaSignalPollCore', () => {
     })
 
     mockIsTrustedParsedSignal.mockReturnValue(true)
+=======
+  it('clears degraded state after the next successful run', async () => {
+    const { db, setFn, addFn } = createMockDb()
+>>>>>>> Stashed changes
 
     const failedResult = await pagasaSignalPollCore({
       db,
@@ -234,6 +223,7 @@ describe('pagasaSignalPollCore', () => {
     })
     expect(failedResult.status).toBe('failed')
     expect(failedResult.scraperDegraded).toBe(true)
+    expect(addFn).toHaveBeenCalled()
 
     const recovered = await pagasaSignalPollCore({
       db,
@@ -245,21 +235,16 @@ describe('pagasaSignalPollCore', () => {
   })
 
   it('writes dead letter and marks degraded when parse fails', async () => {
-    const db = createMockDb()
-
-    mockParsePagasaSignal.mockReturnValue({
-      ok: false,
-      reason: 'unrecognized format',
-    })
+    const { db, addFn } = createMockDb()
 
     const result = await pagasaSignalPollCore({
       db,
-      fetchHtml: () => Promise.resolve('<html>unknown</html>'),
+      fetchHtml: () => Promise.resolve(BROKEN_HTML),
       now: () => NOW,
     })
 
     expect(result.status).toBe('failed')
     expect(result.scraperDegraded).toBe(true)
-    expect(db._addFn).toHaveBeenCalled()
+    expect(addFn).toHaveBeenCalled()
   })
 })

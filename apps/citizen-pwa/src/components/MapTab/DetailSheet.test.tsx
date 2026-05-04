@@ -19,6 +19,7 @@ const publicProps = {
 const myReportProps = {
   mode: 'myReport' as const,
   report: {
+    id: 'report-id-5678',
     publicRef: 'abcd1234',
     reportType: 'flood' as const,
     severity: 'high' as const,
@@ -91,11 +92,43 @@ describe('DetailSheet — myReport mode', () => {
         sheetPhase="expanded"
         onClose={vi.fn()}
         onCollapse={vi.fn()}
+        onCancelReport={vi.fn()}
         {...myReportProps}
       />,
     )
     expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /cancel report/i })).toBeInTheDocument()
+  })
+
+  it('calls onCancelReport when Cancel is clicked', () => {
+    const onCancelReport = vi.fn()
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        onCancelReport={onCancelReport}
+        {...myReportProps}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /cancel report/i }))
+    expect(onCancelReport).toHaveBeenCalledOnce()
+    expect(onCancelReport).toHaveBeenCalledWith('abcd1234', expect.any(String))
+  })
+
+  it('does NOT call onCancelReport when Edit is clicked', () => {
+    const onCancelReport = vi.fn()
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        onCancelReport={onCancelReport}
+        {...myReportProps}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }))
+    expect(onCancelReport).not.toHaveBeenCalled()
   })
 
   it('shows request correction for verified', () => {
