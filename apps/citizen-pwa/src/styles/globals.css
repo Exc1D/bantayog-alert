@@ -23,6 +23,14 @@
   --color-border-warn: #f5d4bb;
   --color-border-warn-strong: #fca5a5;
   --color-amber-strong: #5e1f00;
+  --color-severity-high-fg: #991b1b;
+  --color-severity-high-bg: #fee2e2;
+  --color-severity-medium-fg: #a73400;
+  --color-severity-medium-bg: #fff5ef;
+  --color-severity-low-fg: #414849;
+  --color-severity-low-bg: #e0e7f0;
+  --color-severity-critical-fg: #7f1d1d;
+  --color-severity-critical-bg: #fecaca;
   --color-em-bg: #eaf4fb;
   --color-em-bg-warn: #fff5f5;
 
