@@ -3,7 +3,12 @@
   "compilerOptions": {
     "rootDir": "src",
     "types": ["vite/client", "vitest/globals"],
-    "noEmit": true
+    "noEmit": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*"]
 }

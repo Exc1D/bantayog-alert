@@ -15,7 +15,19 @@ import { ProvincialResourcesPage } from './pages/ProvincialResourcesPage'
 import { SystemHealthPage } from './pages/SystemHealthPage'
 import { BreakGlassPage } from './pages/BreakGlassPage'
 
-/** Shell that renders the sidebar alongside the current route. */
+import DashboardPage from './pages/DashboardPage'
+import MapPage from './pages/MapPage'
+import UsersPage from './pages/UsersPage'
+import EmergencyPage from './pages/EmergencyPage'
+import NdrrmcPage from './pages/NdrrmcPage'
+import ReportsPage from './pages/ReportsPage'
+import AuditPage from './pages/AuditPage'
+import HealthPage from './pages/HealthPage'
+import SmsPage from './pages/SmsPage'
+import HandoffPage from './pages/HandoffPage'
+import ErasurePage from './pages/ErasurePage'
+import SettingsPage from './pages/SettingsPage'
+
 function AppLayout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -33,10 +45,24 @@ const UNAUTHORIZED = (
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
-  // Unprotected — TOTP enrollment must be accessible before MFA is fully set up
   { path: '/totp-enroll', element: <TotpEnrollmentPage /> },
+
+  // Prototype pages — each renders its own AppShell with Header/Sidebar
+  { path: '/dashboard', element: <DashboardPage /> },
+  { path: '/map', element: <MapPage /> },
+  { path: '/users', element: <UsersPage /> },
+  { path: '/emergency', element: <EmergencyPage /> },
+  { path: '/ndrrmc', element: <NdrrmcPage /> },
+  { path: '/reports', element: <ReportsPage /> },
+  { path: '/audit', element: <AuditPage /> },
+  { path: '/health', element: <HealthPage /> },
+  { path: '/sms', element: <SmsPage /> },
+  { path: '/handoff', element: <HandoffPage /> },
+  { path: '/erasure', element: <ErasurePage /> },
+  { path: '/settings', element: <SettingsPage /> },
+
+  // Legacy pages — use AppLayout with shared Sidebar
   {
-    // Layout shell wraps all authenticated routes
     element: <AppLayout />,
     children: [
       {
@@ -89,7 +115,6 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      // Province routes — provincial_superadmin only
       {
         path: '/province',
         element: (
@@ -113,4 +138,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
+
+  { path: '*', element: <Navigate to="/dashboard" replace /> },
 ])

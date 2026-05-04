@@ -4,11 +4,23 @@ import type { MinAppVersionDoc, UpdateUrlsDoc } from '@bantayog/shared-types'
 import { semverLt } from '@bantayog/shared-validators'
 import { db } from '../app/firebase'
 
+function isFirebaseConfigured(): boolean {
+  return (
+    typeof import.meta.env.VITE_FIREBASE_PROJECT_ID === 'string' &&
+    import.meta.env.VITE_FIREBASE_PROJECT_ID.length > 0
+  )
+}
+
 export function useVersionGate() {
   const [blocked, setBlocked] = useState(false)
   const [updateUrl, setUpdateUrl] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!isFirebaseConfigured()) {
+      console.warn('[VersionGate] Firebase not configured — skipping version check')
+      return
+    }
+
     const unsubMin = onSnapshot(doc(db, 'system_config', 'min_app_version'), {
       next: (snap) => {
         if (!snap.exists()) return

@@ -7,6 +7,7 @@ export interface FirebaseWebEnv {
     messagingSenderId: string;
     storageBucket: string;
     databaseURL: string;
+    measurementId?: string;
     appCheckSiteKey?: string;
 }
 export declare function parseFirebaseWebEnv(source: Record<string, string | undefined>): FirebaseWebEnv;

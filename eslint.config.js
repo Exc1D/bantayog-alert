@@ -131,6 +131,8 @@ export default tseslint.config(
           allowDefaultProject: [
             'apps/citizen-pwa/postcss.config.js',
             'apps/citizen-pwa/tailwind.config.cjs',
+            'apps/admin-desktop/postcss.config.js',
+            'apps/admin-desktop/tailwind.config.js',
           ],
         },
         tsconfigRootDir: import.meta.dirname,

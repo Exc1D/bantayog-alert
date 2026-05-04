@@ -11,6 +11,9 @@ export declare const municipalityDocSchema: z.ZodObject<{
         tl: "tl";
         en: "en";
     }>>;
+    mdrrmoLabel: z.ZodOptional<z.ZodString>;
+    mdrrmoHotline: z.ZodOptional<z.ZodString>;
+    mdrrmoSmsShortCode: z.ZodOptional<z.ZodString>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export type MunicipalityDoc = z.infer<typeof municipalityDocSchema>;
