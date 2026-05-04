@@ -5,6 +5,7 @@ import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
 import { incidentLabel, statusMeta, severityDotColor } from '../utils/incident-meta.js'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
+import { useState, useRef } from 'react'
 
 const NON_TERMINAL: ReadonlySet<string> = new Set([...ACTIVE_REPORT_STATUSES, 'reopened'])
 
@@ -12,10 +13,41 @@ function isNonTerminal(status: string): boolean {
   return status === 'queued' || NON_TERMINAL.has(status)
 }
 
+type DragStart = {
+  x: number
+  y: number
+  offsetX: number
+  offsetY: number
+}
+
 export function ReportStatusPill() {
   const navigate = useNavigate()
   const { reports } = useMyActiveReports()
   const prefersReducedMotion = useReducedMotion()
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const startRef = useRef<DragStart | null>(null)
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    startRef.current = { x: e.clientX, y: e.clientY, offsetX: dragOffset.x, offsetY: dragOffset.y }
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (startRef.current === null) return
+    const newX = startRef.current.offsetX + (e.clientX - startRef.current.x)
+    const newY = startRef.current.offsetY + (e.clientY - startRef.current.y)
+    const maxX = window.innerWidth / 2 - 50
+    const maxY = window.innerHeight - 100
+    setDragOffset({
+      x: Math.max(-maxX, Math.min(maxX, newX)),
+      y: Math.max(-maxY, Math.min(maxY, newY)),
+    })
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    startRef.current = null
+  }
 
   const activeReports = reports.filter((r) => isNonTerminal(r.status))
 
@@ -42,8 +74,16 @@ export function ReportStatusPill() {
               onClick={() => {
                 void navigate(`/reports/${primary.publicRef}`)
               }}
-              className="fixed left-1/2 -translate-x-1/2 z-toast flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface-900/90 backdrop-blur-sm shadow-lg active:scale-95 transition-transform"
-              style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              className="fixed z-toast flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface-900/90 backdrop-blur-sm shadow-lg active:scale-95 transition-transform"
+              style={{
+                left: '50%',
+                bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))',
+                transform: `translateX(calc(-50% + ${String(dragOffset.x)}px)) translateY(${String(dragOffset.y)}px)`,
+                touchAction: 'none',
+              }}
               aria-label={`View your active report: ${incidentLabel(primary.reportType)}`}
             >
               <span

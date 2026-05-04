@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Firestore } from 'firebase-admin/firestore'
+import { logger } from 'firebase-functions'
 
 const mockStreamAuditEvent = vi.hoisted(() => vi.fn())
 const mockSendMassAlertFcm = vi.hoisted(() =>
@@ -70,11 +71,19 @@ const validInput = {
 
 describe('declareEmergencyCore', () => {
   let mockDb: ReturnType<typeof createMockDb>
+  const originalNodeEnv = process.env.NODE_ENV
 
   beforeEach(() => {
     mockDb = createMockDb()
     mockSendMassAlertFcm.mockClear()
     mockStreamAuditEvent.mockClear()
+    delete process.env.SMS_MSISDN_HASH_SALT
+    process.env.NODE_ENV = 'development'
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    process.env.NODE_ENV = originalNodeEnv
   })
 
   it('writes alert doc with correct fields', async () => {
@@ -141,5 +150,14 @@ describe('declareEmergencyCore', () => {
     const callArg = (calls[0] as [{ occurredAt: number }])[0]
     expect(callArg.occurredAt).toBeGreaterThanOrEqual(before)
     expect(callArg.occurredAt).toBeLessThanOrEqual(after)
+  })
+
+  it('warns when SMS salt is missing outside production', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => undefined)
+    await declareEmergencyCore(mockDb, validInput, { uid: 'admin-1' })
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'SMS_MSISDN_HASH_SALT is not configured; SMS hashes may be weak in non-production',
+    )
   })
 })

@@ -10,6 +10,7 @@
 
 import { getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+import { pathToFileURL } from 'node:url'
 
 const PROJECT_ID = 'bantayog-alert-staging'
 const TEST_EMAIL_SUFFIX = '@test.local'
@@ -43,8 +44,12 @@ function isStaffTestAccount(user: AuthUser): boolean {
   return getRole(user) !== undefined
 }
 
-function hasTotpEnrollment(user: AuthUser): boolean {
-  return (user.multiFactor?.enrolledFactors?.length ?? 0) > 0
+export function hasTotpEnrollment(user: AuthUser): boolean {
+  return (
+    user.multiFactor?.enrolledFactors?.some(
+      (factor) => factor.factorId === 'totp' || factor.providerId === 'totp',
+    ) ?? false
+  )
 }
 
 async function listAllUsers(): Promise<AuthUser[]> {
@@ -66,7 +71,7 @@ function formatUser(user: AuthUser): string {
   return `${user.uid} <${user.email ?? 'no-email'}> role=${role} mfa=${enrolled}`
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const allUsers = await listAllUsers()
   const staffUsers = allUsers.filter(isStaffTestAccount)
 
@@ -94,13 +99,15 @@ async function main(): Promise<void> {
   console.log('\nAll staff test accounts have TOTP enrollment.')
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  if (/credential|default credentials|service account|permission denied/i.test(message)) {
-    console.error(
-      'Unable to query Firebase Auth. Set GOOGLE_APPLICATION_CREDENTIALS to a staging service-account key, or run in an environment with default Firebase credentials.',
-    )
-  }
-  console.error(message)
-  process.exit(1)
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/credential|default credentials|service account|permission denied/i.test(message)) {
+      console.error(
+        'Unable to query Firebase Auth. Set GOOGLE_APPLICATION_CREDENTIALS to a staging service-account key, or run in an environment with default Firebase credentials.',
+      )
+    }
+    console.error(message)
+    process.exit(1)
+  })
+}
