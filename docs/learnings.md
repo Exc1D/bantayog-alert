@@ -15,6 +15,9 @@
 - `cache.addAll()` rejects the entire install if any URL fails; use `Promise.allSettled(cache.add(url).catch(...))` for resilient SW precaching.
 - When two files share the same `sessionStorage` key + try/catch + default pattern, extract a shared helper before the pattern drifts.
 - TTL tests that write directly to mock stores bypass the code under test. Use `vi.useFakeTimers()` + the public `save()` API + `vi.setSystemTime()` to actually exercise the TTL branch.
+- Citizen "my reports" view (map MyReportLayer, Profile list, ReportStatusPill) MUST subscribe to Firestore live (`onSnapshot` on `report_lookup/{publicRef}` → `reports/{reportId}`). One-shot `requestLookup` callable polling looks fine on submission but never picks up admin-driven status flips, so the pill stays "queued" forever and the map pin never adopts the verified pulse. Keep the callable as a fallback for permission-denied (UID mismatch after anonymous→phone link).
+- Tracking timeline synthesis must read every per-step timestamp written by callables (`verifiedAt`, `assignedAt`, `acknowledgedAt`, `enRouteAt`, `onSceneAt`, `resolvedAt`, `closedAt`, `rejectedAt`, `cancelledAt`, `reopenedAt`) — synthesizing only `new` + current `status` produces a 1- or 2-row timeline that feels broken to citizens. Sort the events by timestamp and dedupe by event name.
+- Subscription effects keyed on the array reference re-run on every refresh even when contents are stable. Derive a stable string key (sorted publicRefs joined) and depend on that instead, so localforage updates that don't change membership don't tear down all listeners.
 
 ## Process
 
