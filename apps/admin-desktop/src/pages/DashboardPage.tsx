@@ -166,7 +166,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white rounded-md text-sm font-medium hover:brightness-110 transition-all"
           >
             <AlertTriangle className="w-4 h-4" />
-            Declare Emergency
+            Declare Alerts
           </button>
           <button
             onClick={() => {

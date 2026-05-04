@@ -173,7 +173,7 @@ export function EmergencyDeclarationModal({ open, onClose }: EmergencyDeclaratio
   ).map((m) => m.label)
 
   return (
-    <div style={OVERLAY_STYLE} role="dialog" aria-modal="true" aria-label="Declare Emergency">
+    <div style={OVERLAY_STYLE} role="dialog" aria-modal="true" aria-label="Declare Alerts">
       <div style={MODAL_STYLE}>
         <div
           style={{
@@ -183,7 +183,7 @@ export function EmergencyDeclarationModal({ open, onClose }: EmergencyDeclaratio
             marginBottom: '20px',
           }}
         >
-          <h2 style={{ margin: 0, fontSize: '18px', color: '#dc2626' }}>⚡ Declare Emergency</h2>
+          <h2 style={{ margin: 0, fontSize: '18px', color: '#dc2626' }}>⚡ Declare Alerts</h2>
           <button
             onClick={handleClose}
             aria-label="Close dialog"
@@ -380,7 +380,7 @@ export function EmergencyDeclarationModal({ open, onClose }: EmergencyDeclaratio
                   opacity: loading || success ? 0.6 : 1,
                 }}
               >
-                {loading ? 'Declaring…' : 'Confirm & Declare Emergency'}
+                {loading ? 'Declaring…' : 'Confirm & Declare Alert'}
               </button>
             </div>
           </>

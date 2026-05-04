@@ -33,7 +33,7 @@ export function Header() {
         <span className="text-muted-foreground/40">·</span>
         <KeyHint keyName="U" label="Users" />
         <span className="text-muted-foreground/40">·</span>
-        <KeyHint keyName="A" label="Emergency" />
+        <KeyHint keyName="A" label="Declare Alerts" />
         <span className="text-muted-foreground/40">·</span>
         <KeyHint keyName="N" label="NDRRMC" />
         <span className="text-muted-foreground/40">·</span>

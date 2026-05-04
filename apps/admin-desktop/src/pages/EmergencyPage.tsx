@@ -320,7 +320,7 @@ export default function EmergencyPage() {
                     }}
                     className="mt-6 px-6 py-2.5 rounded-md bg-accent text-white text-body-sm font-medium hover:bg-accent-hover transition-all"
                   >
-                    Declare Another Emergency
+                    Declare Another Alert
                   </button>
                 </motion.div>
               ) : (

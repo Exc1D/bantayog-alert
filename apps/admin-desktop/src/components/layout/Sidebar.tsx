@@ -34,7 +34,7 @@ const navItems: NavItem[] = [
   { label: 'Map', path: '/map', icon: <Map className="w-5 h-5" />, shortcut: 'M' },
   { label: 'Users', path: '/users', icon: <Users className="w-5 h-5" />, shortcut: 'U' },
   {
-    label: 'Emergency',
+    label: 'Declare Alerts',
     path: '/emergency',
     icon: <AlertTriangle className="w-5 h-5" />,
     shortcut: 'A',

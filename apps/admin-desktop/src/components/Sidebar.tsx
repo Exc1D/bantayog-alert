@@ -134,7 +134,7 @@ export function Sidebar() {
               }}
             />
             <button
-              aria-label="Declare Emergency"
+              aria-label="Declare Alerts"
               onClick={() => {
                 setEmergencyModalOpen(true)
               }}
@@ -153,7 +153,7 @@ export function Sidebar() {
                 letterSpacing: '0.01em',
               }}
             >
-              ⚡ Declare Emergency
+              ⚡ Declare Alerts
             </button>
           </>
         )}
