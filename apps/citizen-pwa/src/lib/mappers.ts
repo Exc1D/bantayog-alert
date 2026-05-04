@@ -1,6 +1,24 @@
 import type { ReportStatus } from '@bantayog/shared-types'
 import type { ReportData } from '../hooks/useReport'
 
+const VALID_STATUSES: Set<string> = new Set([
+  'draft_inbox',
+  'new',
+  'awaiting_verify',
+  'verified',
+  'assigned',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+  'resolved',
+  'closed',
+  'reopened',
+  'rejected',
+  'cancelled',
+  'cancelled_false_report',
+  'merged_as_duplicate',
+])
+
 function toMillis(value: unknown): number | undefined {
   if (typeof value === 'number') {
     return value
@@ -34,10 +52,15 @@ function mapTimelineEvent(rawEvt: unknown, index: number) {
   }
 }
 
-export function mapReportFromFirestore(data: Record<string, unknown>): ReportData {
-  if (typeof data.status !== 'string') {
+export function mapReportFromFirestore(
+  data: Record<string, unknown>,
+  docId?: string,
+): ReportData {
+  if (typeof data.status !== 'string' || !VALID_STATUSES.has(data.status)) {
     throw new Error('Invalid report data: missing required fields')
   }
+
+  const status = data.status as ReportStatus
 
   const createdAt = toMillis(data.createdAt) ?? toMillis(data.submittedAt)
   const updatedAt = toMillis(data.updatedAt) ?? toMillis(data.lastStatusAt)
@@ -54,8 +77,8 @@ export function mapReportFromFirestore(data: Record<string, unknown>): ReportDat
       ]
 
   const result: ReportData = {
-    id: typeof data.id === 'string' ? data.id : 'unknown',
-    status: data.status as ReportStatus,
+    id: typeof data.id === 'string' ? data.id : docId ?? 'unknown',
+    status,
     timeline,
   }
 

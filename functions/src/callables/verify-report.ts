@@ -31,6 +31,7 @@ export interface VerifyReportInput {
 export interface VerifyReportResult {
   status: ReportStatus
   reportId: string
+  updatedAt: number
 }
 
 export interface VerifyReportActor {
@@ -185,7 +186,7 @@ export async function verifyReportCore(
           data: { reportId: deps.reportId, from, to, actorUid: deps.actor.uid, correlationId },
         })
 
-        return { status: to, reportId: deps.reportId }
+        return { status: to, reportId: deps.reportId, updatedAt: deps.now.toMillis() }
       })
     },
   )

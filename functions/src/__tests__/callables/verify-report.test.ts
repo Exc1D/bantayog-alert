@@ -59,9 +59,12 @@ describe('verifyReportCore', () => {
     })
 
     expect(result.status).toBe('awaiting_verify')
+    expect(result.updatedAt).toBeDefined()
     const report = (await db.collection('reports').doc(reportId).get()).data()
     expect(report.status).toBe('awaiting_verify')
     expect(report.visibilityClass).toBe('internal')
+    expect(report.updatedAt).toBeDefined()
+    expect(report.updatedAt).toBe(result.updatedAt)
 
     const events = await db.collection('report_events').where('reportId', '==', reportId).get()
     expect(events.docs).toHaveLength(1)
@@ -92,11 +95,14 @@ describe('verifyReportCore', () => {
     })
 
     expect(result.status).toBe('verified')
+    expect(result.updatedAt).toBeDefined()
     const report = (await db.collection('reports').doc(reportId).get()).data()
     expect(report.status).toBe('verified')
     expect(report.verifiedBy).toBe('admin-1')
     expect(report.verifiedAt).toBeDefined()
     expect(report.visibilityClass).toBe('public_alertable')
+    expect(report.updatedAt).toBeDefined()
+    expect(report.updatedAt).toBe(result.updatedAt)
   })
 
   it('is idempotent: same idempotencyKey returns cached result', async () => {

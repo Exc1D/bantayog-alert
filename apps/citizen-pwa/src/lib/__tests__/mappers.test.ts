@@ -48,10 +48,22 @@ describe('mapReportFromFirestore', () => {
     expect(mapReportFromFirestore(noId).id).toBe('unknown')
   })
 
+  it('uses docId as fallback when data.id is missing', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, ...noId } = minimal
+    expect(mapReportFromFirestore(noId, 'doc-123').id).toBe('doc-123')
+  })
+
   it('throws when status is missing', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { status: _status, ...noStatus } = minimal
     expect(() => mapReportFromFirestore(noStatus)).toThrow('missing required fields')
+  })
+
+  it('throws when status is invalid', () => {
+    expect(() =>
+      mapReportFromFirestore({ id: 'r1', status: 'bogus_status' }),
+    ).toThrow('missing required fields')
   })
 
   it('throws when timeline is not an array', () => {
@@ -120,16 +132,19 @@ describe('mapReportFromFirestore', () => {
   })
 
   it('maps the live report doc shape without requiring id or timeline', () => {
-    const result = mapReportFromFirestore({
-      status: 'verified',
-      reportType: 'flood',
-      severity: 'medium',
-      publicLocation: { lat: 14.11, lng: 122.95 },
-      submittedAt: 1713350400000,
-      updatedAt: 1713350401000,
-    })
+    const result = mapReportFromFirestore(
+      {
+        status: 'verified',
+        reportType: 'flood',
+        severity: 'medium',
+        publicLocation: { lat: 14.11, lng: 122.95 },
+        submittedAt: 1713350400000,
+        updatedAt: 1713350401000,
+      },
+      'live-doc-1',
+    )
 
-    expect(result.id).toBe('unknown')
+    expect(result.id).toBe('live-doc-1')
     expect(result.createdAt).toBe(1713350400000)
     expect(result.location).toEqual({ lat: 14.11, lng: 122.95 })
     expect(result.timeline).toEqual([

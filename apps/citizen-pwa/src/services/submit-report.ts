@@ -52,11 +52,28 @@ export interface CreateDraftInput {
   photo?: Blob
 }
 
+const VALID_REPORT_TYPES: readonly string[] = [
+  'flood',
+  'fire',
+  'earthquake',
+  'typhoon',
+  'landslide',
+  'storm_surge',
+  'medical',
+  'accident',
+  'structural',
+  'security',
+  'other',
+]
+
 function canonicalizeReportType(reportType: string): ReportType {
   // The citizen UI still carries a legacy "public_disturbance" alias, but the
   // shared report schemas only accept "security".
   if (reportType === 'public_disturbance') {
     return 'security'
+  }
+  if (!VALID_REPORT_TYPES.includes(reportType)) {
+    throw new Error(`Unsupported report type: ${reportType}`)
   }
   return reportType as ReportType
 }

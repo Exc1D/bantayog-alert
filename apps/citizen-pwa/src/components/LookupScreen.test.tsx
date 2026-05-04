@@ -63,6 +63,7 @@ function renderScreen() {
 beforeEach(() => {
   mockNavigate.mockReset()
   mockLoadReports.mockReset().mockResolvedValue([])
+  vi.mocked(httpsCallable).mockClear()
 })
 
 describe('LookupScreen', () => {
@@ -124,7 +125,7 @@ describe('LookupScreen', () => {
     })
   })
 
-  it('falls back to a locally saved report when the server lookup is not ready yet', async () => {
+  it('navigates to locally saved report when a local match exists', async () => {
     mockLoadReports.mockResolvedValue([
       {
         publicRef: 'loc12345',
@@ -136,14 +137,6 @@ describe('LookupScreen', () => {
         submittedAt: 1713350400000,
       },
     ])
-    vi.mocked(httpsCallable).mockImplementationOnce(
-      () =>
-        (() => {
-          const err = new Error('not-found')
-          ;(err as unknown as { code: string }).code = 'functions/not-found'
-          return Promise.reject(err)
-        }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
-    )
 
     const user = userEvent.setup()
     renderScreen()
@@ -153,5 +146,6 @@ describe('LookupScreen', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/reports/loc12345')
     })
+    expect(vi.mocked(httpsCallable)).not.toHaveBeenCalled()
   })
 })

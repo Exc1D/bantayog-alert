@@ -61,6 +61,32 @@ describe('submitReport', () => {
     expect(inboxDoc.payload.pendingMediaIds).toEqual(['upl-1'])
   })
 
+  it('normalizes public_disturbance to security before writing inbox', async () => {
+    const deps: SubmitReportDeps = {
+      ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
+      requestUploadUrl: vi.fn(),
+      putBlob: vi.fn(),
+      writeInbox: vi.fn().mockResolvedValue('ibx-5'),
+      randomUUID: vi.fn().mockReturnValue('uuid-e'),
+      randomPublicRef: vi.fn().mockReturnValue('ref9999'),
+      randomSecret: vi.fn().mockReturnValue('s5'),
+      sha256Hex: vi.fn().mockResolvedValue('k'.repeat(64)),
+      now: () => 1,
+    }
+    await submitReport(deps, {
+      reportType: 'public_disturbance',
+      severity: 'medium',
+      description: 'disturbance report',
+      publicLocation: { lat: 14.1, lng: 122.9 },
+    })
+    expect(deps.writeInbox).toHaveBeenCalledOnce()
+    const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0]![0]! as {
+      payload: { reportType: string }
+    }
+    expect(inboxDoc.payload.reportType).toBe('security')
+  })
+
   it('skips upload path when no photo is provided', async () => {
     const deps: SubmitReportDeps = {
       ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
