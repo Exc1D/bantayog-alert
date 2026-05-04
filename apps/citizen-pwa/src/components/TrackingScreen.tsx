@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
@@ -11,6 +12,8 @@ import {
   Home,
 } from 'lucide-react'
 import { useReport } from '../hooks/useReport.js'
+import { loadReports } from '../services/localForageReports.js'
+import type { StoredReport } from '../services/localForageReports.js'
 import { StatusBanner } from './ui/StatusBanner.js'
 import { Button } from './ui/Button.js'
 import { Timeline } from './ui/Timeline.js'
@@ -126,6 +129,16 @@ export function TrackingScreen() {
   const navigate = useNavigate()
   const { reference } = useParams<{ reference: string }>()
   const { data: report, isPending, error } = useReport(reference ?? '')
+  const [storedEntry, setStoredEntry] = useState<StoredReport | null>(null)
+
+  useEffect(() => {
+    if (!reference) return
+    loadReports()
+      .then((entries) => {
+        setStoredEntry(entries.find((e) => e.publicRef === reference) ?? null)
+      })
+      .catch(() => undefined)
+  }, [reference])
 
   const header = (
     <div className="sticky top-0 z-nav bg-surface-100/90 backdrop-blur-md border-b border-surface-200 px-4 py-3 flex items-center gap-3">
@@ -174,6 +187,63 @@ export function TrackingScreen() {
   }
 
   if (error || !report) {
+    // When the CF hasn't yet created report_lookup (still processing), show a
+    // proper queued UI seeded from localForage so citizens see RadarRings +
+    // a timeline instead of a bare text banner. The live onSnapshot in
+    // useReport will upgrade to full Firestore data automatically once the doc
+    // materialises — no polling needed.
+    if (storedEntry) {
+      const queuedHero = heroConfig('new')
+      return (
+        <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+          {header}
+          <div
+            className={`relative flex flex-col items-center justify-center py-8 px-4 text-center ${queuedHero.bg}`}
+          >
+            <div className="relative flex items-center justify-center mb-3">
+              <RadarRings color={queuedHero.color} />
+              <div className="relative z-10 w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                {queuedHero.icon}
+              </div>
+            </div>
+            <p className="text-white font-bold text-lg leading-snug max-w-xs">{queuedHero.text}</p>
+          </div>
+          <div className="page-container">
+            <h2 className="tracking-header tracking-ref">{reference.toUpperCase()}</h2>
+            <p className="tracking-meta">
+              Reported {new Date(storedEntry.submittedAt).toLocaleString()} ·{' '}
+              {storedEntry.reportType}
+            </p>
+            <Timeline
+              events={[
+                {
+                  label: 'Report received',
+                  meta: 'Your report is in the queue',
+                  state: 'complete' as const,
+                },
+                { label: 'Awaiting admin verification', meta: '', state: 'pending' as const },
+              ]}
+            />
+            <div className="tracking-actions">
+              <a
+                href={`tel:${RESPONDER_PHONE_NUMBER}`}
+                className="btn btn--primary btn--full"
+                style={{
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <PhoneCall size={14} style={{ marginRight: '4px' }} />
+                Call responders
+              </a>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
         {header}
