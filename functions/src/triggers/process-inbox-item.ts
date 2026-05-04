@@ -80,16 +80,10 @@ export async function processInboxItemCore(
   const payload = payloadResult.data
   const exactLocation = payload.exactLocation
 
-  let geo: Awaited<ReturnType<typeof reverseGeocodeToMunicipality>> | null = null
-  if (payload.publicLocation) {
-    geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
-  }
-
-  if (!geo) {
-    const reason = payload.publicLocation ? 'out_of_jurisdiction' : 'location_missing'
+  if (!payload.publicLocation) {
     await db.collection('moderation_incidents').doc(inboxId).set({
       inboxId,
-      reason,
+      reason: 'location_missing',
       reportType: payload.reportType,
       description: payload.description,
       publicRef: inbox.publicRef,
@@ -98,8 +92,46 @@ export async function processInboxItemCore(
     })
     throw new BantayogError(
       BantayogErrorCode.INVALID_ARGUMENT,
-      reason === 'location_missing' ? 'location missing from payload' : 'out of jurisdiction',
+      'location missing from payload',
     )
+  }
+
+  let municipalityId: string
+  let municipalityLabel: string
+  let barangayId: string
+  let defaultSmsLocale: 'tl' | 'en' | undefined
+
+  if (payload.municipalityId) {
+    const muniSnap = await db.collection('municipalities').doc(payload.municipalityId).get()
+    if (!muniSnap.exists) {
+      throw new BantayogError(
+        BantayogErrorCode.MUNICIPALITY_NOT_FOUND,
+        `Municipality '${payload.municipalityId}' is not in jurisdiction.`,
+      )
+    }
+    const muniData = muniSnap.data() as { label: string; defaultSmsLocale?: 'tl' | 'en' }
+    municipalityId = payload.municipalityId
+    municipalityLabel = muniData.label
+    barangayId = payload.barangayId ?? 'unknown'
+    defaultSmsLocale = muniData.defaultSmsLocale
+  } else {
+    const geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
+    if (!geo) {
+      await db.collection('moderation_incidents').doc(inboxId).set({
+        inboxId,
+        reason: 'out_of_jurisdiction',
+        reportType: payload.reportType,
+        description: payload.description,
+        publicRef: inbox.publicRef,
+        createdAt: now(),
+        schemaVersion: 1,
+      })
+      throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'out of jurisdiction')
+    }
+    municipalityId = geo.municipalityId
+    municipalityLabel = geo.municipalityLabel
+    barangayId = geo.barangayId
+    defaultSmsLocale = geo.defaultSmsLocale
   }
 
   const createdAt = now()
@@ -146,9 +178,9 @@ export async function processInboxItemCore(
         }
 
         tx.set(db.collection('reports').doc(reportId), {
-          municipalityId: geo.municipalityId,
-          municipalityLabel: geo.municipalityLabel,
-          barangayId: geo.barangayId,
+          municipalityId,
+          municipalityLabel,
+          barangayId,
           reporterRole: 'citizen',
           reportType: payload.reportType,
           severity: payload.severity,
@@ -167,7 +199,7 @@ export async function processInboxItemCore(
         })
 
         tx.set(db.collection('report_private').doc(reportId), {
-          municipalityId: geo.municipalityId,
+          municipalityId,
           reporterUid: inbox.reporterUid,
           isPseudonymous: false,
           publicTrackingRef: inbox.publicRef,
@@ -176,7 +208,7 @@ export async function processInboxItemCore(
         })
 
         tx.set(db.collection('report_ops').doc(reportId), {
-          municipalityId: geo.municipalityId,
+          municipalityId,
           status: 'new',
           severity: payload.severity,
           createdAt,
@@ -231,7 +263,7 @@ export async function processInboxItemCore(
               message: 'SMS_MSISDN_HASH_SALT env not set — skipping enqueue',
             })
           } else {
-            const muniLocale = geo.defaultSmsLocale ?? 'tl'
+            const muniLocale = defaultSmsLocale ?? 'tl'
             enqueueSms(db, tx, {
               reportId,
               purpose: 'receipt_ack',
@@ -247,7 +279,7 @@ export async function processInboxItemCore(
               phone: payload.contact.phone,
               locale: muniLocale,
               smsConsent: true,
-              municipalityId: geo.municipalityId,
+              municipalityId,
               followUpConsent: payload.followUpConsent === true,
               createdAt,
               schemaVersion: 1,
@@ -259,7 +291,7 @@ export async function processInboxItemCore(
           reportId,
           correlationId: inbox.correlationId,
           eventType: 'report_submitted',
-          municipalityId: geo.municipalityId,
+          municipalityId,
           actor: 'system',
           at: createdAt,
           schemaVersion: 1,
@@ -286,7 +318,7 @@ export async function processInboxItemCore(
         severity: 'INFO',
         code: 'INBOX_MATERIALIZED',
         message: `Report ${reportId} created from inbox ${inboxId}`,
-        data: { reportId, inboxId, municipalityId: geo.municipalityId },
+        data: { reportId, inboxId, municipalityId },
       })
 
       return { materialized: true, reportId, publicRef: inbox.publicRef }
