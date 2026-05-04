@@ -2,6 +2,9 @@
 
 ## Citizen PWA / React Hooks
 
+- Citizen PWA incident-type aliases must be normalized at the draft boundary. UI-only values like `public_disturbance` are rejected by shared report schemas and can make a report look "submitted" while disappearing from local active-report views.
+- Citizen tracking pages cannot assume `reports/{id}` contains `id`, `timeline`, `location`, or `createdAt`. The live citizen-readable doc currently exposes `publicLocation` + `submittedAt`; synthesize the citizen timeline view from those fields instead of treating it like an ops projection.
+- Secret-code lookup should normalize to uppercase alphanumeric before hashing/comparing, and same-device lookup should check locally saved reports before surfacing a server `not-found` while backend lookup docs are still catching up.
 - `react-hooks/set-state-in-effect` fires on synchronous `setState` inside `useEffect` early-return branches. Add `// eslint-disable-next-line react-hooks/set-state-in-effect` only where needed — `eslint --fix` (run by lint-staged) will remove unused disable directives automatically after running.
 - `vi.mock` at module top level does NOT cover newly routed components — add mocks for every new route's component in `App.routes.test.tsx` when replacing stub routes.
 - Passing navigation callbacks as props (e.g., `onReportSimilar={() => void navigate(...)}`) avoids `useNavigate` being called in components tested without a Router context — the pattern is cleaner than wrapping every test with a MemoryRouter.
@@ -65,6 +68,7 @@
 - `react-hooks/refs` flags `ref.current` reads during render; pass render-time values through state.
 - CodeQL `js/xss-through-dom` on blob previews: render via `createImageBitmap` + `canvas` instead of blob URL in JSX.
 - React Router v7 `useNavigate` returns `Promise<void>`; wrap with `void` or `await`.
+- Citizen report tracking maps live Firestore docs, not sanitized fixtures. Normalize timestamp-like values with `toMillis()` and treat `lastStatusAt` as the fallback status timestamp, or the timeline silently drops verified/resolved steps.
 
 ## TypeScript
 

@@ -5,10 +5,17 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockNavigate = vi.fn()
+const { mockLoadReports } = vi.hoisted(() => ({
+  mockLoadReports: vi.fn(),
+}))
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return { ...actual, useNavigate: () => mockNavigate }
 })
+
+vi.mock('../services/localForageReports.js', () => ({
+  loadReports: mockLoadReports,
+}))
 
 vi.mock('../services/firebase.js', () => ({
   fns: () => ({}),
@@ -53,7 +60,11 @@ function renderScreen() {
   )
 }
 
-beforeEach(() => mockNavigate.mockReset())
+beforeEach(() => {
+  mockNavigate.mockReset()
+  mockLoadReports.mockReset().mockResolvedValue([])
+  vi.mocked(httpsCallable).mockClear()
+})
 
 describe('LookupScreen', () => {
   it('renders a single secret code input', () => {
@@ -93,6 +104,7 @@ describe('LookupScreen', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
     })
+    expect(callableSecret).toBe('MYSECRETCODE')
   })
 
   it('shows friendly error when lookup returns not-found', async () => {
@@ -111,5 +123,29 @@ describe('LookupScreen', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find/)
     })
+  })
+
+  it('navigates to locally saved report when a local match exists', async () => {
+    mockLoadReports.mockResolvedValue([
+      {
+        publicRef: 'loc12345',
+        secret: 'LOCALSECRET',
+        reportType: 'flood',
+        severity: 'high',
+        lat: 14.1,
+        lng: 122.9,
+        submittedAt: 1713350400000,
+      },
+    ])
+
+    const user = userEvent.setup()
+    renderScreen()
+    await user.type(screen.getByPlaceholderText('Your secret code'), 'localsecret')
+    await user.click(screen.getByRole('button', { name: /find my report/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/reports/loc12345')
+    })
+    expect(vi.mocked(httpsCallable)).not.toHaveBeenCalled()
   })
 })

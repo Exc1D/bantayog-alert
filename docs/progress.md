@@ -18,6 +18,20 @@ All 10 tasks complete. Residual risks: E2E dispatch progression, native push tok
 
 ## Recent Merged Work
 
+### Citizen PWA -- Public Verification Wiring + Live Timeline (2026-05-04)
+
+- Verified reports now flip from `visibilityClass: internal` to `public_alertable` during admin verification, so creators still see fresh submissions immediately while the public Map/Feed sees them only after verification
+- Citizen tracking now normalizes Firestore timestamp objects and uses `lastStatusAt` to synthesize the live timeline page/radar status state from real `reports/{id}` docs
+- **Gate:** citizen-pwa focused vitest 49/49 pass, `pnpm lint`, `pnpm typecheck`; functions `pnpm typecheck` pass; functions verify-report emulator suite still blocked by pre-existing rules-unit-testing seed issues (Admin `Timestamp` writes / permission-denied harness path), functions lint still has 17 pre-existing warnings
+
+### Citizen PWA — Active Report + Tracking Fixes (2026-05-04)
+
+- Fixed 4 citizen-facing correctness bugs in the report-status flow
+- Normalized legacy `public_disturbance` submissions to the supported `security` report type so new reports persist and appear in Map/Profile/pill again
+- Tracking page now accepts the real live report doc shape (`publicLocation`, `submittedAt`, no inline `timeline`) and synthesizes a usable citizen timeline view instead of collapsing to the generic processing banner
+- Find My Report now normalizes secret-code input and resolves same-device freshly submitted reports from local storage before backend lookup docs exist
+- Gate: citizen-pwa focused vitest 43/43 pass, `pnpm lint`, `pnpm typecheck`
+
 ### UX Bug Fixes — 10 Issues (2026-05-03)
 
 - **10 issues fixed:** TrackingScreen nav header (back + home), RevealSheet SMS iOS fix, button text → "Create Account", mt-4 spacing, FilterBar z-[800] above Leaflet, municipality chips filter (replaces severity/window), saveReport() wiring so reports appear on map + Profile, bantayog:report-saved event for live refresh, ProfileTab "Check report status" CTA

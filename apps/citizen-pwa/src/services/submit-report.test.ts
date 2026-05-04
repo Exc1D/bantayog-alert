@@ -1,6 +1,23 @@
-import { describe, it, expect, vi } from 'vitest'
-import { submitReport, type SubmitReportDeps } from './submit-report.js'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+const { mockDraftStoreSave, mockDraftStoreSaveWithPhoto } = vi.hoisted(() => ({
+  mockDraftStoreSave: vi.fn().mockResolvedValue(undefined),
+  mockDraftStoreSaveWithPhoto: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('./draft-store', () => ({
+  draftStore: {
+    save: mockDraftStoreSave,
+    saveWithPhoto: mockDraftStoreSaveWithPhoto,
+  },
+}))
+
+import { createDraft, submitReport, type SubmitReportDeps } from './submit-report.js'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
+
+beforeEach(() => {
+  mockDraftStoreSave.mockClear()
+  mockDraftStoreSaveWithPhoto.mockClear()
+})
 
 describe('submitReport', () => {
   it('calls requestUploadUrl when a photo is provided, PUTs the photo, and writes inbox', async () => {
@@ -30,11 +47,8 @@ describe('submitReport', () => {
     })
     expect(result.publicRef).toBe('abcd1234')
     expect(result.secret).toBe('secret-plain')
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(deps.requestUploadUrl).toHaveBeenCalledOnce()
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(deps.putBlob).toHaveBeenCalledWith('https://put.example', photo)
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(deps.writeInbox).toHaveBeenCalledOnce()
     const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
       .calls[0]![0]! as {
@@ -45,6 +59,32 @@ describe('submitReport', () => {
     expect(inboxDoc.publicRef).toBe('abcd1234')
     expect(inboxDoc.secretHash).toBe('h'.repeat(64))
     expect(inboxDoc.payload.pendingMediaIds).toEqual(['upl-1'])
+  })
+
+  it('normalizes public_disturbance to security before writing inbox', async () => {
+    const deps: SubmitReportDeps = {
+      ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
+      requestUploadUrl: vi.fn(),
+      putBlob: vi.fn(),
+      writeInbox: vi.fn().mockResolvedValue('ibx-5'),
+      randomUUID: vi.fn().mockReturnValue('uuid-e'),
+      randomPublicRef: vi.fn().mockReturnValue('ref9999'),
+      randomSecret: vi.fn().mockReturnValue('s5'),
+      sha256Hex: vi.fn().mockResolvedValue('k'.repeat(64)),
+      now: () => 1,
+    }
+    await submitReport(deps, {
+      reportType: 'public_disturbance',
+      severity: 'medium',
+      description: 'disturbance report',
+      publicLocation: { lat: 14.1, lng: 122.9 },
+    })
+    expect(deps.writeInbox).toHaveBeenCalledOnce()
+    const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0]![0]! as {
+      payload: { reportType: string }
+    }
+    expect(inboxDoc.payload.reportType).toBe('security')
   })
 
   it('skips upload path when no photo is provided', async () => {
@@ -65,9 +105,7 @@ describe('submitReport', () => {
       description: 'y',
       publicLocation: { lat: 14.1, lng: 122.9 },
     })
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(deps.requestUploadUrl).not.toHaveBeenCalled()
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(deps.putBlob).not.toHaveBeenCalled()
   })
 
@@ -90,7 +128,6 @@ describe('submitReport', () => {
       publicLocation: { lat: 14.1, lng: 122.9 },
       contact: { phone: '09171234567', smsConsent: true },
     })
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(deps.writeInbox).toHaveBeenCalledOnce()
     const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
       .calls[0]![0]! as {
@@ -120,10 +157,29 @@ describe('submitReport', () => {
       description: 'z',
       publicLocation: { lat: 14.1, lng: 122.9 },
     })
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(deps.writeInbox).toHaveBeenCalledOnce()
     const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
       .calls[0]![0]! as { payload: Record<string, unknown> }
     expect(inboxDoc.payload.contact).toBeUndefined()
+  })
+})
+
+describe('createDraft', () => {
+  it('normalizes public_disturbance to security before persisting the draft', async () => {
+    const { draft } = await createDraft({
+      reportType: 'public_disturbance' as never,
+      barangay: 'Bagasbas',
+      description: 'loud disturbance',
+      severity: 'medium',
+      location: { lat: 14.12, lng: 122.95 },
+      clientDraftRef: 'client-ref-1',
+    })
+
+    expect(draft.reportType).toBe('security')
+    expect(mockDraftStoreSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reportType: 'security',
+      }),
+    )
   })
 })

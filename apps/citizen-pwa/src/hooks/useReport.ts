@@ -74,7 +74,10 @@ export function useReport(publicRef: string) {
         if (snapshot.exists()) {
           const data = snapshot.data()
           try {
-            queryClient.setQueryData(['reports', publicRef], mapReportFromFirestore(data))
+            queryClient.setQueryData(
+              ['reports', publicRef],
+              mapReportFromFirestore(data, snapshot.id),
+            )
           } catch (err: unknown) {
             console.error('Report mapping error:', err instanceof Error ? err.message : err)
             queryClient.setQueryData(['reports', publicRef], null)
@@ -118,7 +121,7 @@ export function useReport(publicRef: string) {
               return
             }
             try {
-              resolve(mapReportFromFirestore(snap.data()))
+              resolve(mapReportFromFirestore(snap.data(), snap.id))
             } catch (err: unknown) {
               console.error('Report mapping error:', err instanceof Error ? err.message : err)
               resolve(null)

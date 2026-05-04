@@ -1,4 +1,5 @@
 import { normalizeMsisdn } from '@bantayog/shared-validators'
+import type { ReportType } from '@bantayog/shared-types'
 import type { Draft } from './draft-store'
 import { draftStore } from './draft-store'
 
@@ -51,6 +52,32 @@ export interface CreateDraftInput {
   photo?: Blob
 }
 
+const VALID_REPORT_TYPES: readonly string[] = [
+  'flood',
+  'fire',
+  'earthquake',
+  'typhoon',
+  'landslide',
+  'storm_surge',
+  'medical',
+  'accident',
+  'structural',
+  'security',
+  'other',
+]
+
+function canonicalizeReportType(reportType: string): ReportType {
+  // The citizen UI still carries a legacy "public_disturbance" alias, but the
+  // shared report schemas only accept "security".
+  if (reportType === 'public_disturbance') {
+    return 'security'
+  }
+  if (!VALID_REPORT_TYPES.includes(reportType)) {
+    throw new Error(`Unsupported report type: ${reportType}`)
+  }
+  return reportType as ReportType
+}
+
 function randomPublicRef(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
   const buf = new Uint8Array(8)
@@ -81,6 +108,7 @@ export async function createDraft(
   input: CreateDraftInput,
 ): Promise<{ draft: Draft; secret: string }> {
   const now = Date.now()
+  const reportType = canonicalizeReportType(input.reportType)
   const publicRef = randomPublicRef()
   const secret = randomSecret()
   const secretHash = await sha256Hex(secret)
@@ -89,7 +117,7 @@ export async function createDraft(
 
   const draft: Draft = {
     id: `BA-DA-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-    reportType: input.reportType,
+    reportType,
     barangay: input.barangay,
     description: input.description,
     severity: input.severity,
@@ -125,6 +153,7 @@ export async function submitReport(
   input: SubmitReportInput,
 ): Promise<SubmitReportResult> {
   const reporterUid = await deps.ensureSignedIn()
+  const reportType = canonicalizeReportType(input.reportType)
   const correlationId = deps.randomUUID()
   const publicRef = deps.randomPublicRef()
   const secret = deps.randomSecret()
@@ -151,7 +180,7 @@ export async function submitReport(
     secretHash,
     correlationId,
     payload: {
-      reportType: input.reportType,
+      reportType,
       severity: input.severity,
       description: input.description,
       source: 'web',
