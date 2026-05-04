@@ -19,7 +19,7 @@ Three root-cause bugs fixed:
 - ✅ Offline detection works (banner + status message)
 - ✅ Milestone counts update correctly per submission
 - ✅ MyReportLayer ★ pin appears immediately after submission
-- ⚠️ **BUG: Consent checkbox in Step 3 doesn't enable Submit via chrome-devtools click** -- React onChange may need `dispatchEvent` or checkbox state isn't being set correctly
+- ⚠️ **BUG: Consent checkbox in Step 3 doesn't enable Submit via Chrome DevTools click** -- React onChange may need `dispatchEvent` or checkbox state isn't being set correctly
 - ⚠️ **BUG: Medium severity has 3 different colors** across IncidentLayer (#7c3500), MyReportLayer (#a73400), and incident-meta (#d97706)
 - ⚠️ **BUG: LOW severity has 2 different colors** -- #414849 vs #334155
 - ⚠️ **BUG: Offline submission blocked** -- wizard requires auth which fails when offline
