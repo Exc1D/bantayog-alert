@@ -139,6 +139,7 @@ export async function verifyReportCore(
           status: to,
           lastStatusAt: deps.now,
           lastStatusBy: deps.actor.uid,
+          updatedAt: deps.now.toMillis(),
         }
         if (deps.scrubbedDescription) {
           updates.description = deps.scrubbedDescription
@@ -146,6 +147,7 @@ export async function verifyReportCore(
         if (to === 'verified') {
           updates.verifiedBy = deps.actor.uid
           updates.verifiedAt = deps.now
+          updates.visibilityClass = 'public_alertable'
         }
         tx.update(reportRef, updates)
 
