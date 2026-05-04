@@ -155,6 +155,8 @@
 - Post-impl-review catch: IndexedDB database names must match exactly between SW and app. localforage wraps IndexedDB with its own internal schema, so raw IDB access from SW to a localforage-managed DB is fragile and may require a dedicated sync-metadata store.
 - Storage rules default-deny means any new path needs an explicit allow rule before SDK access works. Signed URLs bypass rules, but defense-in-depth requires the explicit rule anyway.
 - `@typescript-eslint/no-confusing-void-expression` rejects `renderHook(() => useHook())` when the hook returns void — wrap in braces: `renderHook(() => { useHook() })`.
+- Merge conflicts in long-unresolved worktrees (`pagasa-signal-poll.test.ts` was `UU` for multiple sessions) must be resolved before any new commit can be created. `git add <file>` accepts current-state resolution; `git commit` will block until all `UU` files are resolved.
+- Template literal expressions with `number` types in ESLint `@typescript-eslint/restrict-template-expressions` require explicit `String()` cast: `` `${String(dragOffset.x)}px` `` instead of `` `${dragOffset.x}px` ``.
 
 ## PWA / Service Worker
 
