@@ -10,6 +10,7 @@ export interface StoredReport {
   lng: number
   submittedAt: number
   reportId?: string
+  municipalityLabel?: string
 }
 
 const KEY = 'bantayog:reports:v1'
@@ -62,11 +63,12 @@ export async function loadReports(): Promise<StoredReport[]> {
   try {
     const raw = await localforage.getItem<unknown>(KEY)
     if (raw === null) return []
-    if (!Array.isArray(raw) || !raw.every(isStoredReport)) {
-      console.error('Ignoring invalid stored report payload from localforage')
-      return []
+    if (!Array.isArray(raw)) return []
+    const valid = raw.filter(isStoredReport)
+    if (valid.length < raw.length) {
+      console.warn(`[loadReports] skipped ${String(raw.length - valid.length)} invalid entr(ies)`)
     }
-    return raw
+    return valid
   } catch (err: unknown) {
     console.error('Failed to load reports from localforage', err)
     return []

@@ -10,7 +10,7 @@ interface Props {
   onPinTap: (incident: PublicIncident) => void
 }
 
-const COLORS = { high: '#dc2626', medium: '#7c3500', low: '#414849' } as const
+const COLORS = { high: '#dc2626', medium: '#a73400', low: '#414849' } as const
 
 function isValidCoordinate(lat: number, lng: number): boolean {
   return (

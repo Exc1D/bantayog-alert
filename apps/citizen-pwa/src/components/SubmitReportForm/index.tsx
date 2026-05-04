@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType } from '@bantayog/shared-types'
@@ -10,7 +10,7 @@ import { useSubmissionMachine } from '../../hooks/useSubmissionMachine.js'
 import { Step1Evidence } from './Step1Evidence.js'
 import { Step2WhoWhere } from './Step2WhoWhere.js'
 import { Step3Review } from './Step3Review.js'
-import { RevealSheet } from '../RevealSheet.lazy.js'
+import { RevealSheet } from '../RevealSheet.js'
 import { OfflineBanner } from './OfflineBanner.js'
 import { StaleDraftBanner } from './StaleDraftBanner.js'
 import { compressImage } from '../../lib/imageCompress.js'
@@ -192,6 +192,9 @@ function WizardContainer() {
               lat: draft.location.lat,
               lng: draft.location.lng,
               submittedAt: Date.now(),
+              ...(formData.step2?.municipalityLabel
+                ? { municipalityLabel: formData.step2.municipalityLabel }
+                : {}),
             })
               .then(() => {
                 window.dispatchEvent(new Event('bantayog:report-saved'))
@@ -289,33 +292,29 @@ function SubmissionPanel({
 
   if (machine.state === 'server_confirmed') {
     return (
-      <Suspense fallback={null}>
-        <RevealSheet
-          state="success"
-          referenceCode={draft.publicRef}
-          {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
-          {...(secret ? { secretCode: secret } : {})}
-          onClose={() => {
-            void nav('/')
-          }}
-        />
-      </Suspense>
+      <RevealSheet
+        state="success"
+        referenceCode={draft.publicRef}
+        {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
+        {...(secret ? { secretCode: secret } : {})}
+        onClose={() => {
+          void nav('/')
+        }}
+      />
     )
   }
 
   if (machine.state === 'queued') {
     return (
       <div aria-label="Submission status">
-        <Suspense fallback={null}>
-          <RevealSheet
-            state="queued"
-            referenceCode={draft.publicRef}
-            {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
-            onClose={() => {
-              void nav('/')
-            }}
-          />
-        </Suspense>
+        <RevealSheet
+          state="queued"
+          referenceCode={draft.publicRef}
+          {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
+          onClose={() => {
+            void nav('/')
+          }}
+        />
       </div>
     )
   }
@@ -323,32 +322,28 @@ function SubmissionPanel({
   if (machine.state === 'failed_retryable') {
     return (
       <div aria-label="Submission status">
-        <Suspense fallback={null}>
-          <RevealSheet
-            state="failed_retryable"
-            referenceCode={draft.publicRef}
-            {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
-            onClose={() => {
-              void nav('/')
-            }}
-          />
-        </Suspense>
-      </div>
-    )
-  }
-
-  if (machine.state === 'failed_terminal') {
-    return (
-      <Suspense fallback={null}>
         <RevealSheet
-          state="failed_terminal"
+          state="failed_retryable"
           referenceCode={draft.publicRef}
           {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
           onClose={() => {
             void nav('/')
           }}
         />
-      </Suspense>
+      </div>
+    )
+  }
+
+  if (machine.state === 'failed_terminal') {
+    return (
+      <RevealSheet
+        state="failed_terminal"
+        referenceCode={draft.publicRef}
+        {...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {})}
+        onClose={() => {
+          void nav('/')
+        }}
+      />
     )
   }
 

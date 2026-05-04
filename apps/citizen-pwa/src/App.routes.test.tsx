@@ -10,10 +10,6 @@ vi.mock('./components/SubmitReportForm/index.js', () => ({
   SubmitReportForm: () => <div>Report form</div>,
 }))
 
-vi.mock('./components/ReceiptScreen.js', () => ({
-  ReceiptScreen: () => <div>Receipt</div>,
-}))
-
 vi.mock('./components/LookupScreen.js', () => ({
   LookupScreen: () => <div>Lookup</div>,
 }))

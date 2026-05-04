@@ -53,9 +53,6 @@ const AlertsTab = lazyWithRetry(() =>
 const SubmitReportForm = lazyWithRetry(() =>
   import('./components/SubmitReportForm/index.js').then((m) => ({ default: m.SubmitReportForm })),
 )
-const ReceiptScreen = lazyWithRetry(() =>
-  import('./components/ReceiptScreen.js').then((m) => ({ default: m.ReceiptScreen })),
-)
 const LookupScreen = lazyWithRetry(() =>
   import('./components/LookupScreen.js').then((m) => ({ default: m.LookupScreen })),
 )
@@ -187,14 +184,7 @@ const router = createBrowserRouter([
           </CitizenShell>
         ),
       },
-      {
-        path: 'receipt',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <ReceiptScreen />
-          </Suspense>
-        ),
-      },
+
       {
         path: 'lookup',
         element: (

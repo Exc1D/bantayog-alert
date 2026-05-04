@@ -2,6 +2,9 @@
 
 ## Citizen PWA / React Hooks
 
+- `loadReports` must filter invalid entries individually (`raw.filter(isStoredReport)`) rather than discarding the whole array if any entry fails validation. The nuclear option (`!raw.every(isStoredReport) → return []`) silently wipes ALL stored reports when a single stale entry from an old schema exists — causing empty map pins, zero profile stats, and no TrackingScreen data. Fix: filter + warn, never discard all.
+- TrackingScreen should seed from localForage when `report_lookup` hasn't been created yet (CF still processing). The `useReport` hook's live `onSnapshot` subscription upgrades to real Firestore data automatically once it materialises — no polling needed. The `isPending` spinner covers the ~1-5ms localForage read, so there's no visible flash.
+- `saveReport` should include `municipalityLabel` so "Areas Helped" in ProfileTab can populate immediately without waiting for a Firestore subscription. The field is optional in `StoredReport`; `isStoredReport` ignores it so backwards-compatible.
 - Citizen PWA incident-type aliases must be normalized at the draft boundary. UI-only values like `public_disturbance` are rejected by shared report schemas and can make a report look "submitted" while disappearing from local active-report views.
 - Citizen tracking pages cannot assume `reports/{id}` contains `id`, `timeline`, `location`, or `createdAt`. The live citizen-readable doc currently exposes `publicLocation` + `submittedAt`; synthesize the citizen timeline view from those fields instead of treating it like an ops projection.
 - Secret-code lookup should normalize to uppercase alphanumeric before hashing/comparing, and same-device lookup should check locally saved reports before surfacing a server `not-found` while backend lookup docs are still catching up.
@@ -167,6 +170,8 @@
 - Conditional rendering of primary action buttons (`{state !== null && <Button…/>}`) reads as "silent failure" — users see no button and no instruction. Prefer always-rendering the action region with one of two states: a `role="status"` hint when the precondition is unmet, or the action button when it is. Pattern matches the offline-banner pattern in `CitizenShell`.
 - For WCAG-AA contrast, prefer Tailwind theme tokens (`text-surface-600`, `text-surface-500`) over arbitrary `text-[#hex]` so contrast becomes part of the design-system contract instead of a per-page coincidence. The `surface-400` / `surface-300` tokens (3.1:1 / 4.0:1) are decorative-only — never use them for body text on light backgrounds.
 - Routes that bypass the shell (`/settings`, `/register`, `/login`, full-page wizards) need their own `<main id="main-content">` element; the skip link inside `CitizenShell` already targets `#main-content`, so reusing the same ID keeps that link consistent across shell and non-shell pages.
+- Severity colors MUST be consistent across ALL views (IncidentLayer, MyReportLayer, PeekSheet, DetailSheet, ProfileCard, incident-meta). Currently MEDIUM has 3 different values: `#7c3500` (IncidentLayer), `#a73400` (MyReportLayer), `#d97706` (incident-meta). LOW has 2 values: `#414849` (IncidentLayer/MyReportLayer), `#334155` (incident-meta). Fix: centralize severity colors in one constant and import everywhere.
+- `React.lazy()` components FAIL when offline because they require fetching JS chunks. The RevealSheet uses lazy loading but is shown for `queued` state when offline, causing error boundary instead of proper queued UI. Fix: either eager import for states shown while offline, or inline fallback UI that doesn't require the lazy chunk.
 
 ## Wizard / Multi-step Forms
 
