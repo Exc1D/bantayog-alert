@@ -44,6 +44,10 @@ const logDraftError = (context: string, err: unknown) => {
 }
 
 function isNetworkError(err: unknown): boolean {
+  // Firebase auth/network-request-failed is transient and behaves like a network error
+  if (err !== null && typeof err === 'object' && 'code' in err) {
+    if (String(err.code) === 'auth/network-request-failed') return true
+  }
   if (err instanceof Error) {
     const msg = err.message.toLowerCase()
     return (
@@ -173,6 +177,22 @@ export function useSubmissionMachine({
       return
     }
 
+    // Skip the 10s Firestore timeout when we know we're already offline.
+    if (!isOnline) {
+      setState('queued')
+      try {
+        const reg = await navigator.serviceWorker.ready
+        if ((reg as unknown as { sync?: { register(tag: string): Promise<void> } }).sync) {
+          await (
+            reg as unknown as { sync: { register(tag: string): Promise<void> } }
+          ).sync.register('submit-report')
+        }
+      } catch {
+        // Background Sync is best-effort; ignore registration failures
+      }
+      return
+    }
+
     setState('submitting')
 
     const publicRef = await doSubmit(retryCountRef.current)
@@ -180,7 +200,7 @@ export function useSubmissionMachine({
       setState('server_confirmed')
       onSuccess(publicRef)
     }
-  }, [state, doSubmit, onSuccess])
+  }, [state, isOnline, doSubmit, onSuccess])
 
   const sendSmsFallback = useCallback(() => {
     const d = draftRef.current
