@@ -70,12 +70,20 @@ export function MapTab() {
       void (async () => {
         try {
           await cancelReport(reportId)
-          await deleteReport(publicRef)
           toast('Report cancelled', 'success')
           setSheetPhase('hidden')
           setSelectedPin(null)
         } catch {
           toast('Failed to cancel report', 'error')
+          return
+        }
+        try {
+          await deleteReport(publicRef)
+        } catch (err: unknown) {
+          console.warn('Failed to cleanup local report cache after successful cancel', {
+            publicRef,
+            err,
+          })
         }
       })()
     },

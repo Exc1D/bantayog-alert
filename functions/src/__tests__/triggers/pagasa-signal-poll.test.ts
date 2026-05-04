@@ -45,22 +45,15 @@ const BROKEN_HTML = `<html><body>INVALID`
 function createMockDb() {
   const setFn = vi.fn().mockResolvedValue(undefined)
   const addFn = vi.fn().mockResolvedValue({ id: 'dl-1' })
-<<<<<<< Updated upstream
-  const getFn = vi.fn().mockResolvedValue({
-    exists: true,
-    data: () => ({ degradedReasons: [] }),
-  })
+  const docSnapshot = { data: () => ({ degradedReasons: [] }) }
+  const getFn = vi.fn().mockResolvedValue(docSnapshot)
   const docFn = vi.fn(() => ({ set: setFn, get: getFn }))
   const collectionFn = vi.fn(() => ({ doc: docFn, add: addFn }))
   return {
-    collection: collectionFn,
-    _setFn: setFn,
-    _addFn: addFn,
-    _getFn: getFn,
-  } as unknown as Firestore & {
-    _setFn: typeof setFn
-    _addFn: typeof addFn
-    _getFn: typeof getFn
+    db: { collection: collectionFn } as unknown as Firestore,
+    setFn,
+    addFn,
+    getFn,
   }
 }
 
@@ -118,39 +111,48 @@ vi.mock('../../triggers/pagasa-signal-poll.js', () => ({
       return { status: 'quarantined', scraperDegraded: true }
     }
 
+    await input.db
+      .collection('hazard_signals')
+      .doc(parsed.value.signalId)
+      .set({
+        ...parsed.value,
+        status: 'active',
+        schemaVersion: 1,
+      })
     await mockReplay({ db: input.db, now: now() })
     return { status: 'updated', scraperDegraded: false }
   },
 }))
 
-=======
-  const docSnapshot = { data: () => ({ degradedReasons: [] }) }
-  const getFn = vi.fn().mockResolvedValue(docSnapshot)
-  const docFn = vi.fn(() => ({ set: setFn, get: getFn }))
-  const collectionFn = vi.fn(() => ({ doc: docFn, add: addFn }))
-  return {
-    db: { collection: collectionFn } as unknown as Firestore,
-    setFn,
-    addFn,
-    getFn,
-  }
-}
-
->>>>>>> Stashed changes
 import { pagasaSignalPollCore } from '../../triggers/pagasa-signal-poll.js'
 
 beforeEach(() => {
   mockReplay.mockClear()
-<<<<<<< Updated upstream
-  mockParsePagasaSignal.mockClear()
-  mockIsTrustedParsedSignal.mockClear()
-=======
->>>>>>> Stashed changes
+  mockParsePagasaSignal.mockReset()
+  mockIsTrustedParsedSignal.mockReset()
 })
 
 describe('pagasaSignalPollCore', () => {
   it('writes a canonical scraper signal for valid parsed data', async () => {
     const { db, setFn } = createMockDb()
+    mockParsePagasaSignal.mockReturnValue({
+      ok: true,
+      value: {
+        signalId: 'sig-tcws3-daet',
+        hazardType: 'tropical_cyclone',
+        signalLevel: 3,
+        source: 'scraper',
+        scopeType: 'municipalities',
+        affectedMunicipalityIds: ['daet', 'basud'],
+        status: 'active',
+        validFrom: NOW,
+        validUntil: NOW + 3600000,
+        recordedAt: NOW,
+        rawSource: 'pagasa_scraper',
+        schemaVersion: 1,
+      },
+    })
+    mockIsTrustedParsedSignal.mockReturnValue(true)
 
     const result = await pagasaSignalPollCore({
       db,
@@ -166,6 +168,24 @@ describe('pagasaSignalPollCore', () => {
 
   it('quarantines suspicious but parseable output', async () => {
     const { db, setFn } = createMockDb()
+    mockParsePagasaSignal.mockReturnValue({
+      ok: true,
+      value: {
+        signalId: 'sig-tcws3-daet',
+        hazardType: 'tropical_cyclone',
+        signalLevel: 3,
+        source: 'scraper',
+        scopeType: 'municipalities',
+        affectedMunicipalityIds: ['daet', 'santa-elena', 'unknown-town'],
+        status: 'active',
+        validFrom: NOW,
+        validUntil: NOW + 3600000,
+        recordedAt: NOW,
+        rawSource: 'pagasa_scraper',
+        schemaVersion: 1,
+      },
+    })
+    mockIsTrustedParsedSignal.mockReturnValue(false)
 
     const result = await pagasaSignalPollCore({
       db,
@@ -175,15 +195,11 @@ describe('pagasaSignalPollCore', () => {
 
     expect(result.status).toBe('quarantined')
     expect(result.scraperDegraded).toBe(true)
-    expect(setFn).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'quarantined' }),
-      undefined,
-    )
+    expect(setFn).toHaveBeenCalledWith(expect.objectContaining({ status: 'quarantined' }))
   })
 
-<<<<<<< Updated upstream
-  it('returns scraperDegraded false after the next successful non-quarantined run', async () => {
-    const db = createMockDb()
+  it('clears degraded state after the next successful run', async () => {
+    const { db, addFn } = createMockDb()
     let callCount = 0
 
     mockParsePagasaSignal.mockImplementation(() => {
@@ -211,10 +227,6 @@ describe('pagasaSignalPollCore', () => {
     })
 
     mockIsTrustedParsedSignal.mockReturnValue(true)
-=======
-  it('clears degraded state after the next successful run', async () => {
-    const { db, setFn, addFn } = createMockDb()
->>>>>>> Stashed changes
 
     const failedResult = await pagasaSignalPollCore({
       db,
@@ -236,6 +248,7 @@ describe('pagasaSignalPollCore', () => {
 
   it('writes dead letter and marks degraded when parse fails', async () => {
     const { db, addFn } = createMockDb()
+    mockParsePagasaSignal.mockReturnValue({ ok: false, reason: 'broken html' })
 
     const result = await pagasaSignalPollCore({
       db,

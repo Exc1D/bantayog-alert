@@ -259,5 +259,7 @@ describe('cancelReportByCitizenCore', () => {
 
     const contactsSnap = await db.collection('report_contacts').doc(reportId).get()
     expect(contactsSnap.exists).toBe(false)
+    const lookupSnap = await db.collection('report_lookup').doc(reportId).get()
+    expect(lookupSnap.exists).toBe(false)
   })
 })

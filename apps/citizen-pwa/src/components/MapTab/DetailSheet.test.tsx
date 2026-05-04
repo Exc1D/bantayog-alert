@@ -113,7 +113,7 @@ describe('DetailSheet — myReport mode', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /cancel report/i }))
     expect(onCancelReport).toHaveBeenCalledOnce()
-    expect(onCancelReport).toHaveBeenCalledWith('abcd1234', expect.any(String))
+    expect(onCancelReport).toHaveBeenCalledWith('abcd1234', 'report-id-5678')
   })
 
   it('does NOT call onCancelReport when Edit is clicked', () => {

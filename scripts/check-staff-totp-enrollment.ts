@@ -45,11 +45,7 @@ function isStaffTestAccount(user: AuthUser): boolean {
 }
 
 export function hasTotpEnrollment(user: AuthUser): boolean {
-  return (
-    user.multiFactor?.enrolledFactors?.some(
-      (factor) => factor.factorId === 'totp' || factor.providerId === 'totp',
-    ) ?? false
-  )
+  return user.multiFactor?.enrolledFactors?.some((factor) => factor.factorId === 'totp') ?? false
 }
 
 async function listAllUsers(): Promise<AuthUser[]> {
@@ -106,8 +102,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.error(
         'Unable to query Firebase Auth. Set GOOGLE_APPLICATION_CREDENTIALS to a staging service-account key, or run in an environment with default Firebase credentials.',
       )
+    } else {
+      console.error(message)
     }
-    console.error(message)
     process.exit(1)
   })
 }
