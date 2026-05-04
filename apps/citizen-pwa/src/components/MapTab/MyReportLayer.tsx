@@ -2,14 +2,13 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import type { Map as LeafletMap } from 'leaflet'
 import type { MyReport } from './types.js'
+import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
 
 interface Props {
   map: LeafletMap | null
   reports: MyReport[]
   onPinTap: (report: MyReport) => void
 }
-
-const COLORS = { high: '#dc2626', medium: '#a73400', low: '#414849' } as const
 
 function isValidCoordinate(lat: number, lng: number): boolean {
   return (
@@ -76,7 +75,7 @@ export function MyReportLayer({ map, reports, onPinTap }: Props) {
         continue
       }
       const marker = L.marker([lat, lng], {
-        icon: makeIcon(COLORS[report.severity], report.status === 'queued'),
+        icon: makeIcon(getSeverityStyle(report.severity).dotHex, report.status === 'queued'),
       })
       marker.on('click', () => {
         onPinTap(report)

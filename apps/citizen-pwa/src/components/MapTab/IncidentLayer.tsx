@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import type { Map as LeafletMap } from 'leaflet'
 import type { PublicIncident } from './types.js'
+import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
 
 interface Props {
   map: LeafletMap | null
@@ -9,8 +10,6 @@ interface Props {
   suppressedIds: Set<string>
   onPinTap: (incident: PublicIncident) => void
 }
-
-const COLORS = { high: '#dc2626', medium: '#a73400', low: '#414849' } as const
 
 function isValidCoordinate(lat: number, lng: number): boolean {
   return (
@@ -69,7 +68,7 @@ export function IncidentLayer({ map, incidents, suppressedIds, onPinTap }: Props
         continue
       }
       const marker = L.marker([lat, lng], {
-        icon: makeIcon(COLORS[incident.severity], incident.severity === 'high'),
+        icon: makeIcon(getSeverityStyle(incident.severity).dotHex, incident.severity === 'high'),
       })
       marker.on('click', () => {
         onPinTap(incident)

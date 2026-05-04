@@ -1,11 +1,6 @@
 import { useRef, type TouchEvent } from 'react'
 import { MapPin } from 'lucide-react'
-
-const SEVERITY_COLORS: Record<string, string> = {
-  high: '#dc2626',
-  medium: '#a73400',
-  low: '#414849',
-}
+import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
 
 interface SelectedPin {
   id: string
@@ -30,7 +25,7 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
   const parts = pin.label.split(' · ')
   const primaryText = parts[0] ?? pin.label
   const secondaryText = parts.slice(1).join(' · ')
-  const dotColor = pin.severity ? SEVERITY_COLORS[pin.severity] : undefined
+  const dotColor = pin.severity ? getSeverityStyle(pin.severity).dotHex : undefined
 
   function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
     startY.current = event.touches[0]?.clientY ?? null
