@@ -11,7 +11,7 @@ import { useUIStore } from '../lib/store.js'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
 import '../styles/design-tokens.css'
 
-const TAB_PATHS = ['/', '/feed', '/alerts', '/profile'] as const
+const TAB_PATHS = ['/', '/feed', '/report', '/alerts', '/profile'] as const
 type TabPath = (typeof TAB_PATHS)[number]
 
 const TABS = [
