@@ -308,8 +308,6 @@ body {
 .timeline-connector {
   flex: 1;
   height: 2px;
-  margin-left: -0.3125rem;
-  margin-right: -0.3125rem;
 }
 
 .timeline-connector--complete {
