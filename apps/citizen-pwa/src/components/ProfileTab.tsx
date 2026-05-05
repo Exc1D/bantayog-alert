@@ -91,7 +91,7 @@ function useBadges(reports: MyReport[]): BadgeDef[] {
 /* ── Guardian pitch card ── */
 function GuardianPitchCard({ onRegister }: { onRegister: () => void }) {
   return (
-    <div className="mx-4 mt-4 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl p-5 shadow-lg">
+    <div className="mx-4 mt-4 bg-brand-500 rounded-2xl p-5 shadow-lg">
       <div className="flex items-center gap-2 mb-2">
         <ShieldCheck size={16} className="text-white/90" />
         <span className="text-white/90 text-xs font-bold uppercase tracking-wider">
@@ -617,9 +617,9 @@ export function ProfileTab() {
           </>
         ) : reports.length === 0 ? (
           <div role="status" className="py-9 text-center">
-            <p className="m-0 mb-2 text-surface-400">
-              <ClipboardList size={40} />
-            </p>
+            <div className="mb-2 flex justify-center">
+              <ClipboardList size={40} className="text-surface-400" />
+            </div>
             <p className="m-0 mb-1.5 font-bold text-surface-900 text-[0.9375rem]">No reports yet</p>
             <p className="m-0 mb-5 text-[0.8125rem] text-surface-500">
               Your submitted reports will appear here.
@@ -643,7 +643,7 @@ export function ProfileTab() {
               key={report.publicRef}
               report={report}
               onTap={() => {
-                void navigate(`/reports/${report.publicRef}`)
+                void navigate('/')
               }}
             />
           ))
@@ -651,7 +651,7 @@ export function ProfileTab() {
       </div>
 
       {/* Sign out */}
-      <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2">
+      <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2 flex justify-center">
         {signOutError && (
           <p role="alert" className="m-0 mb-2 text-xs text-danger-500">
             Sign out failed. Please try again.

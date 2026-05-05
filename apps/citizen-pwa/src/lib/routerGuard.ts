@@ -4,12 +4,9 @@ import { useUIStore } from './store'
 export function useRevealGuard() {
   const { currentSheet } = useUIStore()
 
-  return useBlocker(({ currentLocation, historyAction }) => {
+  return useBlocker(({ historyAction }) => {
     if (currentSheet !== 'none' && historyAction === 'POP') {
-      const isTrackingScreen = currentLocation.pathname.startsWith('/reports/')
-      if (!isTrackingScreen) {
-        return true
-      }
+      return true
     }
     return false
   })

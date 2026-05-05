@@ -202,7 +202,7 @@ export function RevealSheet({
   })
 
   const handleTrackReport = () => {
-    void navigate(`/reports/${referenceCode}`)
+    void navigate('/')
   }
 
   const handleCallHotline = () => {
@@ -291,7 +291,7 @@ export function RevealSheet({
   return (
     <div className="fixed inset-0 z-50 pointer-events-none">
       <div
-        className="absolute inset-0 bg-[#171a1a]/60 backdrop-blur-sm pointer-events-auto"
+        className="absolute inset-0 bg-surface-900/60 pointer-events-auto"
         role="button"
         aria-label="Close"
         tabIndex={0}
@@ -308,12 +308,12 @@ export function RevealSheet({
         }}
       />
       <div
-        className="absolute bottom-0 left-0 right-0 max-h-[90svh] overflow-y-auto bg-[#f8fafa] rounded-t-3xl p-5 pointer-events-auto shadow-2xl"
+        className="absolute bottom-0 left-0 right-0 max-h-[90svh] overflow-y-auto bg-surface-50 rounded-t-3xl p-5 pointer-events-auto shadow-2xl"
         style={{
           animation: 'reveal-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         }}
       >
-        <div className="w-10 h-1 bg-[#a3adae] rounded-full mx-auto mt-3 mb-4" />
+        <div className="w-10 h-1 bg-surface-400 rounded-full mx-auto mt-3 mb-4" />
 
         {!reducedMotion && (
           <div className="relative flex items-center justify-center h-20 mb-3">
@@ -331,7 +331,7 @@ export function RevealSheet({
                 state === 'success'
                   ? 'bg-success-500 shadow-glow-success'
                   : state === 'failed_terminal'
-                    ? 'bg-[#dc2626] shadow-md'
+                    ? 'bg-danger-600 shadow-md'
                     : 'bg-warning-500 shadow-md'
               }`}
             >
@@ -435,43 +435,26 @@ export function RevealSheet({
         <Timeline events={timelineEvents[state]} />
 
         {state === 'success' && typewriterComplete && (
-          <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#52606d', marginTop: 8 }}>
+          <div className="text-center text-xs text-surface-600 mt-2">
             Sent at {afterglowTime} · {contact.label} is on it
           </div>
         )}
 
         {secretCode && state === 'success' && typewriterComplete && (
           <div
+            className="my-3 border-t border-danger-900/10 pt-3"
             style={{
-              margin: '12px 0',
-              borderTop: '1px solid rgba(167,52,0,0.15)',
-              paddingTop: 12,
               opacity: secretVisible ? 1 : 0,
               transition: reducedMotion ? 'none' : 'opacity 300ms ease-in',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: '#a73400',
-                }}
-              >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-warning-700">
                 Secret Code
               </span>
               <span
-                style={{
-                  fontSize: '0.625rem',
-                  fontWeight: 700,
-                  background: '#001e40',
-                  color: '#fff',
-                  padding: '1px 6px',
-                  borderRadius: 4,
-                  letterSpacing: '0.04em',
-                }}
+                className="text-[10px] font-bold bg-surface-900 text-white px-1.5 py-0.5 rounded"
+                style={{ letterSpacing: '0.04em' }}
               >
                 SHOWN ONCE
               </span>
@@ -485,23 +468,19 @@ export function RevealSheet({
                 onClick={() => {
                   void handleCopySecret()
                 }}
-                className="p-2 border-0 bg-[#0f9488] rounded-lg cursor-pointer flex items-center"
+                className="p-2 border-0 bg-brand-500 rounded-lg cursor-pointer flex items-center"
                 aria-label="Copy secret code"
               >
                 <Copy size={16} className="text-white" />
               </button>
             </div>
-            {copied && (
-              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#16a34a' }}>Copied!</p>
-            )}
+            {copied && <p className="mt-1 text-xs text-success-600">Copied!</p>}
             {hasCopyError && (
-              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#dc2626' }}>
-                Copy failed — please write it down
-              </p>
+              <p className="mt-1 text-xs text-danger-600">Copy failed — please write it down</p>
             )}
-            <p style={{ margin: '8px 0 0', fontSize: '0.6875rem', color: '#7b8794' }}>
+            <p className="mt-2 text-xs text-surface-500">
               Save this to check your report without an account.
-              <span style={{ display: 'block', fontStyle: 'italic' }}>
+              <span className="block italic">
                 I-save ito para macheck ang ulat nang walang account.
               </span>
             </p>

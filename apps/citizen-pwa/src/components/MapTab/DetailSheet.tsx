@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type TouchEvent } from 'react'
-import { MapPin, X, Zap } from 'lucide-react'
+import { MapPin, X, Zap, PhoneCall } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
 import { statusMeta } from '../../utils/incident-meta.js'
 import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
-import { DeleteSheet } from '../DeleteSheet.js'
 import type { MyReport, PublicIncident } from './types.js'
+
+const RESPONDER_PHONE_NUMBER = '0547211216'
 
 type Props =
   | {
@@ -60,7 +61,6 @@ function progressStatus(status: MyReport['status']): (typeof PROGRESS_STATUSES)[
 
 export function DetailSheet(props: Props) {
   const [copied, setCopied] = useState(false)
-  const [withdrawOpen, setWithdrawOpen] = useState(false)
   const timer = useRef<number | null>(null)
   const startY = useRef<number | null>(null)
 
@@ -250,18 +250,23 @@ export function DetailSheet(props: Props) {
       </div>
       <div className="flex gap-1 mb-5">
         {PROGRESS_STATUSES.map((step, index) => (
-          <div
-            key={step}
-            className={`flex items-center ${index < PROGRESS_STATUSES.length - 1 ? 'flex-1' : ''}`}
-          >
-            <div
-              className={`w-2.5 h-2.5 rounded-full border-2 ${index <= statusIndex ? 'bg-brand-500 border-brand-500' : 'bg-surface-200 border-brand-500'}`}
-            />
-            {index < PROGRESS_STATUSES.length - 1 ? (
-              <div
-                className={`flex-1 h-0.5 ${index < statusIndex ? 'bg-brand-500' : 'bg-surface-200'}`}
-              />
-            ) : null}
+          <div key={step} className="flex flex-col items-center gap-1 flex-1">
+            <div className="flex items-center w-full">
+              <div className="relative">
+                <div
+                  className={`w-2.5 h-2.5 rounded-full border-2 ${index <= statusIndex ? 'bg-brand-500 border-brand-500' : 'bg-surface-200 border-brand-500'}`}
+                />
+              </div>
+              {index < PROGRESS_STATUSES.length - 1 ? (
+                <div
+                  className={`flex-1 h-0.5 ${index < statusIndex ? 'bg-brand-500' : 'bg-surface-200'}`}
+                  style={{ marginTop: '-5px' }}
+                />
+              ) : null}
+            </div>
+            <span className="text-[10px] text-surface-600 text-center leading-tight w-full">
+              {step.replace(/_/g, ' ')}
+            </span>
           </div>
         ))}
       </div>
@@ -275,35 +280,23 @@ export function DetailSheet(props: Props) {
           Request Correction
         </button>
       ) : null}
-      {actions.includes('edit') ? (
-        <div className="mt-3 pt-3 border-t border-surface-200">
-          <button
-            type="button"
-            aria-label="Delete report"
-            className="w-full py-2.5 text-danger-500 text-sm font-medium text-center active:bg-danger-500/5 rounded-lg transition-colors"
-            onClick={() => {
-              setWithdrawOpen(true)
-            }}
-          >
-            Delete report
-          </button>
-        </div>
-      ) : null}
-      <button type="button" aria-label="Close" onClick={props.onClose}>
+      <div className="flex gap-2 mb-3">
+        <a
+          href={`tel:${RESPONDER_PHONE_NUMBER}`}
+          className="flex-1 py-3 px-4 rounded-xl bg-brand-500 text-white text-sm font-semibold flex items-center justify-center gap-2"
+        >
+          <PhoneCall size={14} />
+          Call responders
+        </a>
+      </div>
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={props.onClose}
+        className="w-full py-2.5 text-surface-900 text-sm font-medium text-center bg-surface-100 rounded-lg transition-colors"
+      >
         Close
       </button>
-      <DeleteSheet
-        open={withdrawOpen}
-        publicRef={report.publicRef}
-        reportType={LABELS[report.reportType] ?? report.reportType}
-        onConfirm={() => {
-          setWithdrawOpen(false)
-          if (report.id) props.onCancelReport?.(report.publicRef, report.id)
-        }}
-        onCancel={() => {
-          setWithdrawOpen(false)
-        }}
-      />
     </section>
   )
   /* eslint-enable jsx-a11y/no-noninteractive-element-interactions */

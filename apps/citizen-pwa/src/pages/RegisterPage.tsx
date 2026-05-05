@@ -137,8 +137,6 @@ export function RegisterPage() {
     }
   }, [consentGiven, navigate, toast])
 
-  const ctaGradient = { background: 'linear-gradient(135deg, #0f9488, #0d7377)' }
-
   return (
     <div className="min-h-[100dvh] bg-white flex flex-col relative">
       <button
@@ -149,10 +147,10 @@ export function RegisterPage() {
         className="absolute top-4 left-4 p-1"
         aria-label="Go back"
       >
-        <ArrowLeft size={20} className="text-[#001e40]" />
+        <ArrowLeft size={20} className="text-surface-900" />
       </button>
 
-      <h1 className="text-center text-2xl font-bold text-[#001e40] pt-14 pb-2">Register</h1>
+      <h1 className="text-center text-2xl font-bold text-surface-900 pt-14 pb-2">Register</h1>
 
       <div id="recaptcha-container" />
 
@@ -164,8 +162,8 @@ export function RegisterPage() {
               key={s}
               className={
                 step === s
-                  ? 'w-6 h-2 bg-[#0f9488] rounded-full'
-                  : 'w-2 h-2 bg-[#d5dedd] rounded-full'
+                  ? 'w-6 h-2 bg-brand-500 rounded-full'
+                  : 'w-2 h-2 bg-surface-200 rounded-full'
               }
             />
           ))}
@@ -180,7 +178,7 @@ export function RegisterPage() {
           >
             <label
               htmlFor="register-phone"
-              className="mb-4 text-[0.9375rem] font-semibold text-[#001e40] block"
+              className="mb-4 text-sm font-semibold text-surface-900 block"
             >
               Enter your phone number
             </label>
@@ -205,13 +203,12 @@ export function RegisterPage() {
                 }
               }}
               placeholder="+63XXXXXXXXXX"
-              className="w-full h-14 rounded-xl border border-[#d5dedd] px-4 text-base focus:border-[#0f9488] focus:outline-none mb-4"
+              className="w-full h-14 rounded-xl border border-surface-200 px-4 text-base focus:border-brand-500 focus:outline-none mb-4"
             />
             <button
               type="submit"
               disabled={loading}
-              style={ctaGradient}
-              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70"
+              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70 bg-brand-600 hover:bg-brand-700 transition-colors"
             >
               {loading ? 'Sending…' : 'Send OTP'}
             </button>
@@ -220,7 +217,7 @@ export function RegisterPage() {
 
         {step === 'otp' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <p className="mb-4 text-[0.9375rem] font-semibold text-surface-900">
               Enter the 6-digit code sent to {phone}
             </p>
             <input
@@ -230,7 +227,7 @@ export function RegisterPage() {
                 setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
               }}
               maxLength={6}
-              className="w-full text-center font-mono text-2xl tracking-[0.5em] h-14 rounded-xl border border-[#d5dedd] focus:border-[#0f9488] focus:outline-none mb-4"
+              className="w-full text-center font-mono text-2xl tracking-[0.5em] h-14 rounded-xl border border-surface-200 focus:border-brand-500 focus:outline-none mb-4"
             />
             <button
               type="button"
@@ -238,8 +235,7 @@ export function RegisterPage() {
                 void handleVerifyOtp()
               }}
               disabled={loading || otp.length < 6}
-              style={ctaGradient}
-              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70"
+              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70 bg-brand-600 hover:bg-brand-700 transition-colors"
             >
               {loading ? 'Verifying…' : 'Verify'}
             </button>
@@ -248,7 +244,7 @@ export function RegisterPage() {
 
         {step === 'name' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <p className="mb-4 text-[0.9375rem] font-semibold text-surface-900">
               What should we call you?
             </p>
             <input
@@ -258,7 +254,7 @@ export function RegisterPage() {
                 setDisplayName(e.target.value)
               }}
               placeholder="Your name"
-              className="w-full h-14 rounded-xl border border-[#d5dedd] px-4 text-base focus:border-[#0f9488] focus:outline-none mb-4"
+              className="w-full h-14 rounded-xl border border-surface-200 px-4 text-base focus:border-brand-500 focus:outline-none mb-4"
             />
             <button
               type="button"
@@ -266,8 +262,7 @@ export function RegisterPage() {
                 void handleSaveName()
               }}
               disabled={loading || !displayName.trim()}
-              style={ctaGradient}
-              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70"
+              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70 bg-brand-600 hover:bg-brand-700 transition-colors"
             >
               {loading ? 'Saving…' : 'Complete Registration'}
             </button>
@@ -276,20 +271,20 @@ export function RegisterPage() {
 
         {step === 'consent' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <p className="mb-4 text-[0.9375rem] font-semibold text-surface-900">
               Your previous reports are already linked to this account.
             </p>
-            <p className="mb-1 text-[0.6875rem] text-[#7b8794] italic">
+            <p className="mb-1 text-xs text-surface-500 italic">
               Nakakonekta na ang iyong mga naunang ulat sa account na ito.
             </p>
-            <div className="my-4 p-3 rounded-xl bg-[#f2f4f6]">
-              <p className="mb-2 text-[0.8125rem] font-semibold text-[#001e40]">Privacy Notice</p>
-              <p className="text-xs text-[#52606d] leading-relaxed">
+            <div className="my-4 p-3 rounded-xl bg-surface-100">
+              <p className="mb-2 text-xs font-semibold text-surface-900">Privacy Notice</p>
+              <p className="text-xs text-surface-600 leading-relaxed">
                 Your data is processed under RA 10173 (Data Privacy Act of 2012). We collect only
                 what is necessary to process your reports and keep you informed. You may request
                 data deletion at any time.
               </p>
-              <p className="mt-1 text-[0.6875rem] text-[#7b8794] italic">
+              <p className="mt-1 text-xs text-surface-500 italic">
                 Ang iyong datos ay pinoproseso ayon sa RA 10173. Kinokolekta lamang ang kailangan
                 para sa iyong mga ulat.
               </p>
@@ -303,7 +298,7 @@ export function RegisterPage() {
                 }}
                 className="mt-0.5"
               />
-              <span className="text-[0.8125rem] text-[#001e40]">
+              <span className="text-xs text-surface-900">
                 I have read and agree to the Terms of Use and Privacy Notice
               </span>
             </label>
@@ -313,8 +308,7 @@ export function RegisterPage() {
                 void handleConsent()
               }}
               disabled={!consentGiven}
-              style={ctaGradient}
-              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70"
+              className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70 bg-brand-600 hover:bg-brand-700 transition-colors"
             >
               Create Account
             </button>

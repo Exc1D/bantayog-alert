@@ -61,7 +61,7 @@ export function Step3Review({
   return (
     <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-nav bg-surface-100/90 backdrop-blur-md border-b border-surface-200 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-nav bg-surface-100/90 border-b border-surface-200 px-4 py-3 flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}
@@ -224,7 +224,7 @@ export function Step3Review({
       </div>
 
       {/* Bottom action */}
-      <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
+      <div className="sticky bottom-0 z-float bg-surface-100/90 border-t border-surface-200 px-5 py-4">
         <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
           {isSubmitting ? (
             <span className="flex items-center gap-2">

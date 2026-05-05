@@ -55,7 +55,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
       {/* Skip to main content link - visible on focus */}
       <a
         href="#main-content"
-        className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-4 focus-visible:left-4 focus-visible:z-[9999] focus-visible:px-4 focus-visible:py-2 focus-visible:rounded-lg focus-visible:font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#001e40] focus-visible:ring-2 focus-visible:ring-white"
+        className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-4 focus-visible:left-4 focus-visible:z-[9999] focus-visible:px-4 focus-visible:py-2 focus-visible:rounded-lg focus-visible:font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface-900 focus-visible:ring-2 focus-visible:ring-white"
       >
         Skip to main content
       </a>

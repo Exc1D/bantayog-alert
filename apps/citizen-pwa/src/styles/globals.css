@@ -275,32 +275,63 @@ body {
 
 /* === Timeline === */
 .timeline {
-  position: relative;
-  padding-left: 0.75rem;
-}
-
-.timeline-track {
-  position: absolute;
-  left: 3px;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  width: 2px;
-  background: var(--color-border);
+  display: flex;
+  gap: 0;
 }
 
 .timeline-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
   position: relative;
-  padding-bottom: 0.875rem;
+}
+
+.timeline-dots-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.timeline-dot-wrapper {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .timeline-dot {
-  position: absolute;
-  left: -0.75rem;
-  top: 0.125rem;
   width: 0.625rem;
   height: 0.625rem;
   border-radius: 9999px;
   border: 2px solid white;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.timeline-connector {
+  flex: 1;
+  height: 2px;
+  min-width: 0;
+}
+
+.timeline-connector--complete {
+  background: var(--color-success-fg);
+}
+
+.timeline-connector--queued {
+  background: #f59e0b;
+}
+
+.timeline-connector--failed {
+  background: #dc2626;
+}
+
+.timeline-connector--pending {
+  background: #d1d5db;
 }
 
 .timeline-dot--complete {
@@ -317,14 +348,20 @@ body {
 }
 
 .timeline-label {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--color-text-primary);
+  text-align: center;
+  line-height: 1.2;
+  width: 100%;
 }
 
 .timeline-meta {
   font-size: 0.6875rem;
   color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.2;
+  width: 100%;
 }
 
 .sr-only {

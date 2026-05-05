@@ -3,9 +3,9 @@ import type { ToastType } from '../hooks/useToast'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
 
 const BG_MAP: Record<ToastType, string> = {
-  success: 'bg-[#10b981]',
-  error: 'bg-[#dc2626]',
-  info: 'bg-[#3b82f6]',
+  success: 'bg-success-600',
+  error: 'bg-danger-600',
+  info: 'bg-info-600',
 }
 
 const EASE_REVEAL: [number, number, number, number] = [0.16, 1, 0.3, 1]

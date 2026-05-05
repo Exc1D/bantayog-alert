@@ -79,67 +79,46 @@ export function IncidentDetailPage() {
       {loading ? (
         <div style={{ padding: '48px 0', textAlign: 'center' }}>
           <div className="location-loading-spinner" style={{ margin: '0 auto 12px' }} />
-          <p style={{ fontSize: '0.875rem', color: '#7b8794' }}>
+          <p className="text-sm text-surface-500">
             Loading incident...
-            <span
-              style={{ display: 'block', fontStyle: 'italic', fontSize: '0.75rem', marginTop: 4 }}
-            >
-              Kinukuha ang ulat...
-            </span>
+            <span className="block italic text-xs mt-1">Kinukuha ang ulat...</span>
           </p>
         </div>
       ) : error ? (
-        <div role="alert" className="card" style={{ background: '#fee2e2', color: '#991b1b' }}>
-          <p style={{ margin: '0 0 4px', fontWeight: 700 }}>Could not load incident</p>
-          <p style={{ margin: 0, fontSize: '0.75rem' }}>Hindi makuha ang ulat na ito.</p>
+        <div role="alert" className="card bg-danger-100 text-danger-700">
+          <p className="mb-1 font-bold">Could not load incident</p>
+          <p className="m-0 text-xs">Hindi makuha ang ulat na ito.</p>
         </div>
       ) : !incident ? (
-        <div role="status" style={{ textAlign: 'center', padding: '48px 0' }}>
-          <p style={{ margin: '0 0 8px' }}>
+        <div role="status" className="text-center py-12">
+          <p className="mb-2">
             <SearchX size={40} className="text-surface-300 mx-auto" />
           </p>
-          <p style={{ fontWeight: 700, color: '#001e40', margin: '0 0 6px' }}>Incident not found</p>
-          <p style={{ fontSize: '0.8125rem', color: '#52606d', margin: 0 }}>
+          <p className="font-bold text-surface-900 mb-1.5">Incident not found</p>
+          <p className="text-xs text-surface-600 m-0">
             This report may have been removed or is no longer public.
           </p>
         </div>
       ) : (
         <>
           {/* Hero card */}
-          <div className="card" style={{ marginBottom: '0.75rem', padding: '1rem' }}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <span aria-hidden="true" style={{ lineHeight: 1, flexShrink: 0 }}>
+          <div className="card mb-3 p-4">
+            <div className="flex gap-3 items-start">
+              <span aria-hidden="true" className="leading-none flex-shrink-0">
                 {INCIDENT_ICONS[incident.reportType] ?? (
                   <AlertTriangle size={36} className="text-surface-400" />
                 )}
               </span>
-              <div style={{ flex: 1 }}>
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: '1.375rem',
-                    fontWeight: 800,
-                    color: '#001e40',
-                    lineHeight: 1.2,
-                  }}
-                >
+              <div className="flex-1">
+                <h2 className="m-0 text-[1.375rem] font-extrabold text-surface-900 leading-tight">
                   {INCIDENT_LABELS[incident.reportType] ?? incident.reportType}
                 </h2>
                 {(() => {
                   const s = getSeverityStyle(incident.severity)
                   return (
                     <span
-                      style={{
-                        display: 'inline-block',
-                        marginTop: 8,
-                        padding: '3px 10px',
-                        borderRadius: 999,
-                        fontSize: '0.625rem',
-                        fontWeight: 700,
-                        letterSpacing: '0.06em',
-                        background: s.bg,
-                        color: s.fg,
-                      }}
+                      className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider"
+                      style={{ background: s.bg, color: s.fg }}
                     >
                       {s.label}
                     </span>
@@ -179,11 +158,10 @@ export function IncidentDetailPage() {
           {/* CTA */}
           <button
             type="button"
-            className="btn btn--secondary btn--full"
+            className="btn btn--secondary btn--full mt-2"
             onClick={() => {
               void navigate('/report')
             }}
-            style={{ marginTop: '0.5rem' }}
           >
             <Zap size={14} className="inline" aria-hidden="true" /> Report similar incident nearby
           </button>

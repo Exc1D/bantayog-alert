@@ -262,9 +262,9 @@ export function MapTab() {
       {showEmpty || showFilterHint ? (
         <div
           role="status"
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[800] max-w-[280px] px-6 py-5 rounded-xl bg-[#f2f4f6] shadow-lg text-center"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[800] max-w-[280px] px-6 py-5 rounded-xl bg-surface-100 shadow-lg text-center"
         >
-          <p className="m-0 text-[#52606d] text-sm">
+          <p className="m-0 text-surface-600 text-sm">
             {filters.municipality
               ? `No reported incidents in ${filters.municipality} in the last 30 days. Try selecting All.`
               : `No reported incidents in this area in the last 30 days.`}

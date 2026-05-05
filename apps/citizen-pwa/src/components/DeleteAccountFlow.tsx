@@ -72,7 +72,7 @@ export function DeleteAccountFlow({ onGoodbye }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50"
       role="presentation"
       onClick={(e) => {
         if (step !== 'submitting' && e.target === e.currentTarget) goIdle()

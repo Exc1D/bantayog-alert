@@ -84,11 +84,11 @@ export function ReportStatusPill() {
       }
       return
     }
-    // Expanded + click = navigate to report
+    // Expanded + click = navigate to map
     const sorted = [...activeReports].sort((a, b) => b.submittedAt - a.submittedAt)
     const primary = sorted[0]
     if (primary) {
-      void navigate(`/reports/${primary.publicRef}`)
+      void navigate('/')
     }
   }, [isExpanded, showPulse, activeReports, navigate])
 
@@ -104,13 +104,7 @@ export function ReportStatusPill() {
   return (
     <div
       ref={wrapperRef}
-      className="fixed z-toast touch-none select-none"
-      style={{
-        right: '1rem',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        touchAction: 'none',
-      }}
+      className="fixed z-toast touch-none select-none right-4 top-1/2 -translate-y-1/2"
     >
       <button
         type="button"
@@ -120,11 +114,7 @@ export function ReportStatusPill() {
         onPointerUp={handlePointerUp}
         className={`relative flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-all duration-200 ${
           showPulse ? 'animate-pulse-glow' : ''
-        } ${
-          isExpanded
-            ? 'bg-surface-900/90 backdrop-blur-sm px-4 py-2.5 gap-2'
-            : 'w-12 h-12 bg-brand-600'
-        }`}
+        } ${isExpanded ? 'bg-surface-900/90 px-4 py-2.5 gap-2' : 'w-12 h-12 bg-brand-600'}`}
         aria-label={
           isExpanded
             ? `View your active report: ${incidentLabel(primary.reportType)}`

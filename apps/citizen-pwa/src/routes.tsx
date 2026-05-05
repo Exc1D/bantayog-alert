@@ -56,9 +56,6 @@ const SubmitReportForm = lazyWithRetry(() =>
 const LookupScreen = lazyWithRetry(() =>
   import('./components/LookupScreen.js').then((m) => ({ default: m.LookupScreen })),
 )
-const TrackingScreen = lazyWithRetry(() =>
-  import('./components/TrackingScreen.js').then((m) => ({ default: m.TrackingScreen })),
-)
 const GoodbyeScreen = lazyWithRetry(() =>
   import('./components/GoodbyeScreen.js').then((m) => ({ default: m.GoodbyeScreen })),
 )
@@ -132,15 +129,6 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<RouteFallback />}>
             <SubmitReportForm />
-          </Suspense>
-        ),
-        handle: { hideBottomNav: true },
-      },
-      {
-        path: 'reports/:reference',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <TrackingScreen />
           </Suspense>
         ),
         handle: { hideBottomNav: true },

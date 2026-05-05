@@ -176,7 +176,7 @@ export function Step2WhoWhere({
   return (
     <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-nav bg-surface-100/90 backdrop-blur-md border-b border-surface-200 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-nav bg-surface-100/90 border-b border-surface-200 px-4 py-3 flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}
@@ -366,7 +366,7 @@ export function Step2WhoWhere({
       {/* Bottom action — always rendered so users always see what to do next.
           Before a location method is picked, show a polite hint instead of
           hiding the entire region (which previously felt like silent failure). */}
-      <div className="sticky bottom-0 z-float bg-surface-100/90 backdrop-blur-md border-t border-surface-200 px-5 py-4">
+      <div className="sticky bottom-0 z-float bg-surface-100/90 border-t border-surface-200 px-5 py-4">
         {locationMethod === null ? (
           <p role="status" className="text-center text-sm font-medium text-surface-700">
             Pick a location method above (GPS or Manual) to continue.
