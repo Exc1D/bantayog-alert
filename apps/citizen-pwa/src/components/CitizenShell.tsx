@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Map, Rss, AlertTriangle, Bell, User, WifiOff } from 'lucide-react'
+import { Map, Rss, CirclePlus, Bell, User, WifiOff } from 'lucide-react'
 import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import { ReportStatusPill } from './ReportStatusPill.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
@@ -15,11 +15,11 @@ const TAB_PATHS = ['/', '/feed', '/report', '/alerts', '/profile'] as const
 type TabPath = (typeof TAB_PATHS)[number]
 
 const TABS = [
-  { label: 'Map', path: '/', Icon: Map },
-  { label: 'Feed', path: '/feed', Icon: Rss },
-  { label: 'Report', path: '/report', Icon: AlertTriangle },
-  { label: 'Alerts', path: '/alerts', Icon: Bell },
-  { label: 'Profile', path: '/profile', Icon: User },
+  { label: 'Map', path: '/', Icon: Map, isCenter: false },
+  { label: 'Feed', path: '/feed', Icon: Rss, isCenter: false },
+  { label: 'Report', path: '/report', Icon: CirclePlus, isCenter: true },
+  { label: 'Alerts', path: '/alerts', Icon: Bell, isCenter: false },
+  { label: 'Profile', path: '/profile', Icon: User, isCenter: false },
 ] as const
 
 const PAGE_VARIANTS = {
@@ -128,8 +128,28 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <div className="flex items-center justify-around h-16 max-w-lg mx-auto relative">
-            {TABS.map(({ path, label, Icon }) => {
+            {TABS.map(({ path, label, Icon, isCenter }) => {
               const isActive = pathname === path
+
+              if (isCenter) {
+                return (
+                  <div key={path} className="relative h-16 w-16 flex items-center justify-center">
+                    <button
+                      type="button"
+                      aria-label={label}
+                      onClick={() => {
+                        handleNav(path)
+                      }}
+                      className="absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
+                    >
+                      <Icon size={30} strokeWidth={1.5} className="text-white" />
+                    </button>
+                    <span className="absolute bottom-[14px] text-[10px] font-medium leading-none text-surface-300">
+                      {label}
+                    </span>
+                  </div>
+                )
+              }
 
               return (
                 <button
@@ -148,11 +168,11 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                     <Icon
                       size={22}
                       strokeWidth={isActive ? 2.5 : 1.5}
-                      className={isActive ? 'text-brand-500' : 'text-surface-400'}
+                      className={isActive ? 'text-brand-500' : 'text-surface-300'}
                     />
                   </motion.div>
                   <span
-                    className={`text-[10px] font-medium leading-none ${isActive ? 'text-brand-500' : 'text-surface-400'}`}
+                    className={`text-[10px] font-medium leading-none ${isActive ? 'text-brand-500' : 'text-surface-300'}`}
                   >
                     {label}
                   </span>

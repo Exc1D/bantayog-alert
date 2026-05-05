@@ -164,13 +164,11 @@ describe('CitizenShell', () => {
         },
       ],
     })
-    expect(screen.getByRole('button', { name: /view your active report/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /active report/i })).toBeInTheDocument()
   })
 
   it('does not render the status pill when no active reports', () => {
     renderShell('/')
-    expect(
-      screen.queryByRole('button', { name: /view your active report/i }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /active report/i })).not.toBeInTheDocument()
   })
 })
