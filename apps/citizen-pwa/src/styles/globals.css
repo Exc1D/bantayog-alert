@@ -288,10 +288,17 @@ body {
   position: relative;
 }
 
-.timeline-item > div:first-child {
+.timeline-dots-row {
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+.timeline-dot-wrapper {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  align-items: center;
   justify-content: center;
 }
 
@@ -308,6 +315,7 @@ body {
 .timeline-connector {
   flex: 1;
   height: 2px;
+  min-width: 0;
 }
 
 .timeline-connector--complete {
