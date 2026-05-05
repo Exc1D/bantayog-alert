@@ -24,28 +24,6 @@ vi.mock('../hooks/useReducedMotion.js', () => ({
   useReducedMotion: () => false,
 }))
 
-vi.mock('framer-motion', () => ({
-  motion: {
-    button: ({
-      children,
-      onClick,
-      className,
-      style,
-      'aria-label': ariaLabel,
-    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-      'aria-label'?: string
-      initial?: unknown
-      animate?: unknown
-      transition?: unknown
-    }) => (
-      <button onClick={onClick} className={className} style={style} aria-label={ariaLabel}>
-        {children}
-      </button>
-    ),
-  },
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
-
 import { ReportStatusPill } from './ReportStatusPill'
 
 function renderPill() {
@@ -56,18 +34,23 @@ function renderPill() {
   )
 }
 
+const storage = new Map<string, string>()
+
 beforeEach(() => {
   mockNavigate.mockReset()
   mockUseMyActiveReports.mockReset()
-  const storage = new Map<string, string>()
-  vi.stubGlobal('localStorage', {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      storage.set(key, value)
+  storage.clear()
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value)
+      },
+      removeItem: (key: string) => {
+        storage.delete(key)
+      },
     },
-    removeItem: (key: string) => {
-      storage.delete(key)
-    },
+    writable: true,
   })
 })
 
@@ -89,12 +72,32 @@ describe('ReportStatusPill', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('renders pill with report type and status for single active report', () => {
+  it('renders collapsed bell icon for single active report', () => {
     mockUseMyActiveReports.mockReturnValue({ reports: [baseReport], loading: false })
     renderPill()
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    const btn = screen.getByRole('button')
+    expect(btn).toBeInTheDocument()
+    // Initially collapsed — shows bell icon, not full text
+    expect(screen.queryByText(/flood/i)).not.toBeInTheDocument()
+  })
+
+  it('expands on first tap to show report details', () => {
+    mockUseMyActiveReports.mockReturnValue({ reports: [baseReport], loading: false })
+    renderPill()
+    const btn = screen.getByRole('button')
+    fireEvent.click(btn)
+    // After expand, should show report type
     expect(screen.getByText(/flood/i)).toBeInTheDocument()
     expect(screen.getByText('Pending')).toBeInTheDocument()
+  })
+
+  it('navigates on second tap when already expanded', () => {
+    mockUseMyActiveReports.mockReturnValue({ reports: [baseReport], loading: false })
+    renderPill()
+    const btn = screen.getByRole('button')
+    fireEvent.click(btn) // expand
+    fireEvent.click(btn) // navigate
+    expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
   })
 
   it('renders nothing when all reports are terminal', () => {
@@ -124,7 +127,7 @@ describe('ReportStatusPill', () => {
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('shows +N badge when multiple active reports', () => {
+  it('shows badge count when multiple active reports', () => {
     mockUseMyActiveReports.mockReturnValue({
       reports: [
         { ...baseReport, submittedAt: 1713350400000 },
@@ -134,13 +137,7 @@ describe('ReportStatusPill', () => {
       loading: false,
     })
     renderPill()
-    expect(screen.getByText('+2')).toBeInTheDocument()
-  })
-
-  it('navigates to TrackingScreen on tap', () => {
-    mockUseMyActiveReports.mockReturnValue({ reports: [baseReport], loading: false })
-    renderPill()
-    fireEvent.click(screen.getByRole('button'))
-    expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
+    // Collapsed state shows +3 badge
+    expect(screen.getByText('3')).toBeInTheDocument()
   })
 })
