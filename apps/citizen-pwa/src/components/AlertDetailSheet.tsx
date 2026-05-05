@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import { Building2, Clock, X } from 'lucide-react'
 import type { AlertDoc } from '@bantayog/shared-types'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { severityMeta } from '../utils/alertUtils.js'
 
 interface AlertDetailSheetProps {
@@ -17,6 +19,9 @@ function formatTimestamp(ts: number): string {
 }
 
 export function AlertDetailSheet({ alert, open, onClose }: AlertDetailSheetProps) {
+  const sheetRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(sheetRef, open)
+
   if (!open || !alert) return null
 
   const { label, bg, color } = severityMeta(alert.severity)
@@ -25,7 +30,7 @@ export function AlertDetailSheet({ alert, open, onClose }: AlertDetailSheetProps
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[#171a1a]/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-surface-900/60 backdrop-blur-sm"
         role="button"
         aria-label="Close"
         tabIndex={0}
@@ -38,13 +43,19 @@ export function AlertDetailSheet({ alert, open, onClose }: AlertDetailSheetProps
         }}
       />
       {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 max-h-[90svh] overflow-y-auto bg-[#f8fafa] rounded-t-3xl p-5 shadow-2xl animate-[reveal-slide-up_0.28s_cubic-bezier(0.34,1.56,0.64,1)_forwards]">
+      <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={alert.title}
+        className="absolute bottom-0 left-0 right-0 max-h-[90svh] overflow-y-auto bg-white rounded-t-3xl p-5 shadow-2xl animate-[reveal-slide-up_0.3s_cubic-bezier(0.32,0.72,0,1)_forwards] motion-reduce:animate-none motion-reduce:translate-y-0"
+      >
         <div className="flex items-center justify-between mb-4">
-          <div className="w-10 h-1 bg-[#a3adae] rounded-full mx-auto" />
+          <div className="w-10 h-1 bg-surface-300 rounded-full mx-auto" />
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-full hover:bg-surface-200 transition-colors"
+            className="p-2.5 rounded-full hover:bg-surface-200 transition-colors"
             aria-label="Close"
           >
             <X size={20} className="text-surface-600" />
@@ -93,6 +104,7 @@ export function AlertDetailSheet({ alert, open, onClose }: AlertDetailSheetProps
             <p className="whitespace-pre-wrap leading-relaxed">{alert.body}</p>
           </div>
         </div>
+        <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-white to-transparent" />
       </div>
     </div>
   )
