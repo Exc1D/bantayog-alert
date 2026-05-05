@@ -202,7 +202,7 @@ export function RevealSheet({
   })
 
   const handleTrackReport = () => {
-    void navigate(`/reports/${referenceCode}`)
+    void navigate('/')
   }
 
   const handleCallHotline = () => {

@@ -97,7 +97,7 @@ describe('ReportStatusPill', () => {
     const btn = screen.getByRole('button')
     fireEvent.click(btn) // expand
     fireEvent.click(btn) // navigate
-    expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
+    expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
   it('renders nothing when all reports are terminal', () => {

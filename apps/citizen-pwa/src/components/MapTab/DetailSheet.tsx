@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type TouchEvent } from 'react'
-import { MapPin, X, Zap } from 'lucide-react'
+import { MapPin, X, Zap, PhoneCall } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
 import { statusMeta } from '../../utils/incident-meta.js'
 import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
 import type { MyReport, PublicIncident } from './types.js'
+
+const RESPONDER_PHONE_NUMBER = '0547211216'
 
 type Props =
   | {
@@ -250,16 +252,19 @@ export function DetailSheet(props: Props) {
         {PROGRESS_STATUSES.map((step, index) => (
           <div key={step} className="flex flex-col items-center gap-1 flex-1">
             <div className="flex items-center w-full">
-              <div
-                className={`w-2.5 h-2.5 rounded-full border-2 ${index <= statusIndex ? 'bg-brand-500 border-brand-500' : 'bg-surface-200 border-brand-500'}`}
-              />
+              <div className="relative">
+                <div
+                  className={`w-2.5 h-2.5 rounded-full border-2 ${index <= statusIndex ? 'bg-brand-500 border-brand-500' : 'bg-surface-200 border-brand-500'}`}
+                />
+              </div>
               {index < PROGRESS_STATUSES.length - 1 ? (
                 <div
                   className={`flex-1 h-0.5 ${index < statusIndex ? 'bg-brand-500' : 'bg-surface-200'}`}
+                  style={{ marginTop: '-5px' }}
                 />
               ) : null}
             </div>
-            <span className="text-[10px] text-surface-600 text-center leading-tight">
+            <span className="text-[10px] text-surface-600 text-center leading-tight w-full">
               {step.replace(/_/g, ' ')}
             </span>
           </div>
@@ -275,6 +280,15 @@ export function DetailSheet(props: Props) {
           Request Correction
         </button>
       ) : null}
+      <div className="flex gap-2 mb-3">
+        <a
+          href={`tel:${RESPONDER_PHONE_NUMBER}`}
+          className="flex-1 py-3 px-4 rounded-xl bg-brand-500 text-white text-sm font-semibold flex items-center justify-center gap-2"
+        >
+          <PhoneCall size={14} />
+          Call responders
+        </a>
+      </div>
       <button
         type="button"
         aria-label="Close"

@@ -102,7 +102,7 @@ describe('LookupScreen', () => {
     await user.type(screen.getByPlaceholderText('Your secret code'), 'mysecretcode')
     await user.click(screen.getByRole('button', { name: /find my report/i }))
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/reports/a1b2c3d4')
+      expect(mockNavigate).toHaveBeenCalledWith('/')
     })
     expect(callableSecret).toBe('MYSECRETCODE')
   })
@@ -144,7 +144,7 @@ describe('LookupScreen', () => {
     await user.click(screen.getByRole('button', { name: /find my report/i }))
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/reports/loc12345')
+      expect(mockNavigate).toHaveBeenCalledWith('/')
     })
     expect(vi.mocked(httpsCallable)).not.toHaveBeenCalled()
   })

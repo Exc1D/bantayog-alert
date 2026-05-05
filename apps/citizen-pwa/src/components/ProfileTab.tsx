@@ -643,7 +643,7 @@ export function ProfileTab() {
               key={report.publicRef}
               report={report}
               onTap={() => {
-                void navigate(`/reports/${report.publicRef}`)
+                void navigate('/')
               }}
             />
           ))

@@ -84,11 +84,11 @@ export function ReportStatusPill() {
       }
       return
     }
-    // Expanded + click = navigate to report
+    // Expanded + click = navigate to map
     const sorted = [...activeReports].sort((a, b) => b.submittedAt - a.submittedAt)
     const primary = sorted[0]
     if (primary) {
-      void navigate(`/reports/${primary.publicRef}`)
+      void navigate('/')
     }
   }, [isExpanded, showPulse, activeReports, navigate])
 

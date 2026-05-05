@@ -66,7 +66,7 @@ export function LookupScreen() {
       const localMatch = localReports.find((report) => report.secret === trimmedSecret)
       if (localMatch) {
         if (!isMountedRef.current) return
-        void navigate(`/reports/${localMatch.publicRef}`)
+        void navigate('/')
         return
       }
       if (!hasFirebaseConfig()) {
@@ -80,7 +80,7 @@ export function LookupScreen() {
         throw new Error('Invalid server response.')
       }
       if (!isMountedRef.current) return
-      void navigate(`/reports/${result.publicRef}`)
+      void navigate('/')
     } catch (e: unknown) {
       console.error('[LookupScreen] requestLookup failed:', e)
       if (isMountedRef.current) {
