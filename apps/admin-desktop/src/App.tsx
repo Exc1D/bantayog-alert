@@ -4,6 +4,7 @@ import { auth } from './app/firebase'
 import { router } from './routes'
 import { VersionGate } from './components/VersionGate'
 import { PrivacyNoticeModal } from './components/PrivacyNoticeModal'
+import { DevAuthBypass } from './components/DevAuthBypass'
 
 function PrivacyGate() {
   const { user } = useAuth()
@@ -15,6 +16,7 @@ export default function App() {
   return (
     <VersionGate>
       <AuthProvider auth={auth}>
+        <DevAuthBypass />
         <PrivacyGate />
         <RouterProvider router={router} />
       </AuthProvider>
