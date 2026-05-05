@@ -19,7 +19,7 @@ import { StatusBanner } from './ui/StatusBanner.js'
 import { Button } from './ui/Button.js'
 import { Timeline } from './ui/Timeline.js'
 import { RadarRings } from './ui/RadarRings.js'
-import { WithdrawSheet } from './WithdrawSheet.js'
+import { DeleteSheet } from './DeleteSheet.js'
 
 const RESPONDER_PHONE_NUMBER = '0547211216'
 
@@ -368,22 +368,22 @@ export function TrackingScreen() {
           </Button>
         ) : null}
 
-        {['new', 'awaiting_verify'].includes(report.status) ? (
-          <div className="mt-4 pt-4 border-t border-surface-200 text-center">
+        {['queued', 'new', 'awaiting_verify'].includes(report.status) ? (
+          <div className="mt-4 pt-4 border-t border-surface-200">
             <button
               type="button"
               onClick={() => {
                 setWithdrawOpen(true)
               }}
-              className="text-sm font-medium text-danger-500"
+              className="w-full py-3 px-4 rounded-lg border border-danger-200 bg-danger-500/5 text-danger-500 text-sm font-medium active:bg-danger-500/10 transition-colors"
             >
-              Withdraw report
+              Delete Report
             </button>
           </div>
         ) : null}
       </div>
 
-      <WithdrawSheet
+      <DeleteSheet
         open={withdrawOpen}
         publicRef={reference}
         reportType={report.reportType ?? ''}
@@ -391,8 +391,8 @@ export function TrackingScreen() {
           setWithdrawOpen(false)
           if (report.id) {
             void cancelReport(report.id)
-            void deleteReport(reference)
           }
+          void deleteReport(reference)
         }}
         onCancel={() => {
           setWithdrawOpen(false)

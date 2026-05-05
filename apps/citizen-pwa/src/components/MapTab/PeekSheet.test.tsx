@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PeekSheet } from './PeekSheet.js'
 
-const pin = { id: 'r1', type: 'incident' as const, label: '🌊 Flood · High · Brgy San Jose, Daet' }
+const pin = { id: 'r1', type: 'incident' as const, label: 'Flood · High · Brgy San Jose, Daet' }
 
 describe('PeekSheet', () => {
   it('does not render when hidden', () => {
@@ -64,5 +64,32 @@ describe('PeekSheet', () => {
     fireEvent.touchEnd(sheet, { changedTouches: [] })
     expect(onDismiss).not.toHaveBeenCalled()
     expect(onExpand).not.toHaveBeenCalled()
+  })
+
+  it('shows Delete button for myReport pins', () => {
+    const myReportPin = {
+      id: 'r1',
+      type: 'myReport' as const,
+      label: 'Your report: Flood · Awaiting Review',
+    }
+    const onDelete = vi.fn()
+    render(
+      <PeekSheet
+        sheetPhase="peek"
+        pin={myReportPin}
+        onExpand={vi.fn()}
+        onDismiss={vi.fn()}
+        onDelete={onDelete}
+      />,
+    )
+    const deleteBtn = screen.getByRole('button', { name: /delete/i })
+    expect(deleteBtn).toBeInTheDocument()
+    fireEvent.click(deleteBtn)
+    expect(onDelete).toHaveBeenCalledOnce()
+  })
+
+  it('does not show Delete button for incident pins', () => {
+    render(<PeekSheet sheetPhase="peek" pin={pin} onExpand={vi.fn()} onDismiss={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 })

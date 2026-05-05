@@ -14,11 +14,12 @@ interface Props {
   pin: SelectedPin | null
   onExpand: () => void
   onDismiss: () => void
+  onDelete?: (() => void) | undefined
 }
 
 const SWIPE_THRESHOLD = 50
 
-export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
+export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss, onDelete }: Props) {
   const startY = useRef<number | null>(null)
   if (sheetPhase !== 'peek' || !pin) return null
 
@@ -88,6 +89,16 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
           >
             Track
           </button>
+          {pin.type === 'myReport' && onDelete ? (
+            <button
+              type="button"
+              aria-label="Delete report"
+              onClick={onDelete}
+              className="text-danger-500 text-sm font-medium ml-auto"
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
