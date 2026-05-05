@@ -1,23 +1,14 @@
-import { useState, useEffect, Fragment, useCallback } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { MetricCard } from '@/components/common/MetricCard'
-import { useDataStore } from '@/stores/dataStore'
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
+import { useAuth } from '@bantayog/shared-ui'
 import { useUIStore } from '@/stores/uiStore'
+import { useDashboardLiveData } from '@/hooks/useDashboardLiveData'
+import { useReportEvents } from '@/hooks/useReportEvents'
 import { cn } from '@/lib/utils'
-import {
-  RefreshCw,
-  AlertTriangle,
-  Download,
-  Users,
-  ArrowUpRight,
-  X,
-  CheckCircle,
-  Truck,
-  User,
-  Settings,
-  AlertCircle,
-} from 'lucide-react'
+import { AlertTriangle, Download, Users, ArrowUpRight, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LineChart,
@@ -36,11 +27,7 @@ import {
   dailyResponseTimeTrend,
   severityHeatmapData,
   incidentTypeDistribution,
-  municipalPerformances,
-  anomalyAlerts,
-  activityEvents,
 } from '@/data/mockData'
-import type { ActivityEvent } from '@/types'
 
 const CHART_TOOLTIP_STYLE = {
   backgroundColor: '#ffffff',
@@ -60,62 +47,45 @@ const INCIDENT_TYPE_COLORS: Record<string, string> = {
   OTHER: 'bg-muted-foreground',
 }
 
+function SampleDataChip() {
+  return (
+    <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground/70 border border-border rounded align-middle">
+      Sample data
+    </span>
+  )
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { lastUpdated, refreshData } = useDataStore()
+  const { claims } = useAuth()
   const { addToast } = useUIStore()
-  const [autoRefresh, setAutoRefresh] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [activityFilter, setActivityFilter] = useState<
-    'all' | 'incidents' | 'responders' | 'escalations' | 'system'
-  >('all')
+  const municipalityId =
+    typeof claims?.municipalityId === 'string' ? claims.municipalityId : undefined
+  const data = useDashboardLiveData(municipalityId)
+  const { events: activityEvents, error: activityError } = useReportEvents(municipalityId)
+
   const [dismissedAnomalies, setDismissedAnomalies] = useState<string[]>([])
   const [timeAgo, setTimeAgo] = useState(0)
 
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true)
-    refreshData()
-    setTimeAgo(0)
-    setTimeout(() => {
-      setRefreshing(false)
-    }, 800)
-  }, [refreshData])
-
   useEffect(() => {
-    if (!autoRefresh) return
+    if (data.lastUpdated === null) return
+    const ts = data.lastUpdated
     const interval = setInterval(() => {
-      handleRefresh()
-    }, 30000)
-    return () => {
-      clearInterval(interval)
-    }
-  }, [autoRefresh, handleRefresh])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeAgo((t) => t + 1)
+      setTimeAgo(Math.floor((Date.now() - ts) / 1000))
     }, 1000)
     return () => {
       clearInterval(interval)
     }
-  }, [lastUpdated])
+  }, [data.lastUpdated])
 
-  const activeIncidents = 47
-  const activeResponders = 128
-  const avgResponseTime = '14:32'
-  const unresolvedOver24h = 9
+  // No live source for NDRRMC pending yet — needs mass_alert_requests subscription
   const ndrrmcPending = 3
-  const municipalitiesAffected = 8
 
-  const visibleAnomalies = anomalyAlerts.filter((a) => !dismissedAnomalies.includes(a.id))
+  const visibleAnomalies = data.anomalies.filter((a) => !dismissedAnomalies.includes(a.id))
 
-  const filteredActivity = activityEvents.filter((e) => {
-    if (activityFilter === 'all') return true
-    if (activityFilter === 'incidents') return e.type === 'INCIDENT'
-    if (activityFilter === 'responders') return e.type === 'DISPATCH'
-    if (activityFilter === 'escalations') return e.type === 'ESCALATION'
-    return e.type === 'SYSTEM'
-  })
+  const activeNames = new Set(
+    data.municipalData.filter((m) => m.activeIncidents > 0).map((m) => m.municipality),
+  )
 
   const incidentTypeTotal = incidentTypeDistribution.reduce((s, i) => s + i.count, 0)
 
@@ -133,30 +103,14 @@ export default function DashboardPage() {
             </span>
           </div>
           <span className="text-sm text-muted-foreground">
-            Updated <span className="font-mono text-sm">{String(timeAgo)}s</span> ago
+            {data.lastUpdated === null ? (
+              'Connecting...'
+            ) : (
+              <>
+                Updated <span className="font-mono text-sm">{String(timeAgo)}s</span> ago
+              </>
+            )}
           </span>
-          <button
-            onClick={() => {
-              setAutoRefresh(!autoRefresh)
-            }}
-            className={cn(
-              'text-xs px-2 py-1 rounded border transition-colors',
-              autoRefresh
-                ? 'bg-green-50 border-green-200 text-green-700'
-                : 'bg-muted border-border text-muted-foreground/70',
-            )}
-          >
-            Auto
-          </button>
-          <button
-            onClick={handleRefresh}
-            className={cn(
-              'p-1.5 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-muted transition-colors',
-              refreshing && 'animate-spin',
-            )}
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -195,13 +149,10 @@ export default function DashboardPage() {
             onClick={() => {
               void navigate('/ndrrmc')
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-muted border border-border text-purple-700 rounded-md text-sm hover:bg-purple-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-muted border border-border text-muted-foreground rounded-md text-sm hover:bg-white transition-colors"
           >
             <ArrowUpRight className="w-4 h-4" />
             NDRRMC Queue
-            <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-medium rounded">
-              2
-            </span>
           </button>
         </div>
       </div>
@@ -209,9 +160,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <MetricCard
           title="ACTIVE INCIDENTS"
-          value={String(activeIncidents)}
+          value={String(data.activeIncidents)}
           subtitle="Province-wide"
-          trend={{ value: '+12 from yesterday', direction: 'up', positive: false }}
           live
           onClick={() => {
             addToast({
@@ -220,46 +170,23 @@ export default function DashboardPage() {
               type: 'info',
             })
           }}
-        >
-          <div className="flex items-center gap-2 mt-2 text-xs">
-            <span className="text-red-700">24 HIGH</span>
-            <span className="text-muted-foreground/70">·</span>
-            <span className="text-amber-700">15 MED</span>
-            <span className="text-muted-foreground/70">·</span>
-            <span className="text-green-700">8 LOW</span>
-          </div>
-        </MetricCard>
+        />
 
         <MetricCard
           title="ACTIVE RESPONDERS"
-          value={String(activeResponders)}
-          subtitle="On duty now"
-          trend={{ value: '+5 from 1h ago', direction: 'up', positive: true }}
+          value={String(data.respondersAvailable)}
+          subtitle="Available now"
           live
-        >
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <span>BFP:24</span>
-            <span>PNP:45</span>
-            <span>PCG:12</span>
-            <span>PRC:18</span>
-            <span>DPWH:29</span>
-          </div>
-        </MetricCard>
+        />
 
-        <MetricCard
-          title="AVG RESPONSE TIME"
-          value={avgResponseTime}
-          subtitle="Province-wide average"
-          trend={{ value: '-2:15 from last week', direction: 'down', positive: true }}
-        >
+        <MetricCard title="AVG RESPONSE TIME" value={data.avgResponseTime} subtitle="Province-wide">
           <div className="mt-2 text-xs text-green-700">Target: &lt;15:00</div>
         </MetricCard>
 
         <MetricCard
           title="UNRESOLVED >24H"
-          value={String(unresolvedOver24h)}
+          value={String(data.unresolvedOver24h)}
           subtitle="Require attention"
-          trend={{ value: '+3 from yesterday', direction: 'up', positive: false }}
           className="[&_.text-\\[36px\\]]:text-red-700"
         >
           <span className="mt-2 inline-block px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded border border-red-200">
@@ -273,7 +200,6 @@ export default function DashboardPage() {
           subtitle="Awaiting review"
           className="[&_.text-\\[36px\\]]:text-purple-700"
         >
-          <div className="mt-2 text-xs text-amber-700">Oldest: 4h 12m</div>
           <button
             onClick={() => {
               void navigate('/ndrrmc')
@@ -286,11 +212,12 @@ export default function DashboardPage() {
 
         <MetricCard
           title="MUNIS AFFECTED"
-          value={`${String(municipalitiesAffected)}/12`}
-          subtitle="Municipalities with active incidents"
+          value={`${String(data.municipalitiesAffected)}/12`}
+          subtitle="With active incidents"
         >
           <div className="mt-2 text-xs text-muted-foreground truncate">
-            Basud, Daet, Jose Panganiban, Labo, Mercedes, Paracale, Talisay, Vinzons
+            {[...activeNames].slice(0, 4).join(', ')}
+            {activeNames.size > 4 && ` +${String(activeNames.size - 4)} more`}
           </div>
           <div className="mt-2 grid grid-cols-4 gap-1">
             {[
@@ -306,25 +233,16 @@ export default function DashboardPage() {
               'Santa Elena',
               'Talisay',
               'Vinzons',
-            ].map((m) => {
-              const active = [
-                'Basud',
-                'Daet',
-                'Jose Panganiban',
-                'Labo',
-                'Mercedes',
-                'Paracale',
-                'Talisay',
-                'Vinzons',
-              ].includes(m)
-              return (
-                <div
-                  key={m}
-                  className={cn('w-2 h-2 rounded-full', active ? 'bg-accent' : 'bg-border')}
-                  title={m}
-                />
-              )
-            })}
+            ].map((m) => (
+              <div
+                key={m}
+                className={cn(
+                  'w-2 h-2 rounded-full',
+                  activeNames.has(m) ? 'bg-accent' : 'bg-border',
+                )}
+                title={m}
+              />
+            ))}
           </div>
         </MetricCard>
       </div>
@@ -340,7 +258,7 @@ export default function DashboardPage() {
               duration: 0.4,
               ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
             }}
-            className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg border-l-4 border-l-red-500"
+            className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg"
           >
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-700 shrink-0 mt-0.5" />
@@ -367,7 +285,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-white border border-border rounded-lg p-5">
-            <h3 className="text-lg font-semibold text-foreground mb-4">7-Day Incident Trends</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              7-Day Incident Trends
+              <SampleDataChip />
+            </h3>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={dailyIncidentTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
@@ -422,7 +343,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white border border-border rounded-lg p-5">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Response Time Trend</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Response Time Trend
+              <SampleDataChip />
+            </h3>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={dailyResponseTimeTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
@@ -455,7 +379,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white border border-border rounded-lg p-5">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Incident Types — 24h</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Incident Types — 24h
+              <SampleDataChip />
+            </h3>
             <div className="flex items-center gap-4">
               <div className="flex-1 h-10 flex rounded-md overflow-hidden">
                 {incidentTypeDistribution.map((item) => {
@@ -482,21 +409,19 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="flex flex-wrap gap-4 mt-3">
-              {incidentTypeDistribution.map((item) => {
-                return (
-                  <div
-                    key={item.type}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                  >
-                    <span className={cn('w-2 h-2 rounded-full', INCIDENT_TYPE_COLORS[item.type])} />
-                    <span>{item.label}</span>
-                    <span className="font-mono text-muted-foreground/70">{String(item.count)}</span>
-                    <span className="text-muted-foreground/70">
-                      ({((item.count / incidentTypeTotal) * 100).toFixed(0)}%)
-                    </span>
-                  </div>
-                )
-              })}
+              {incidentTypeDistribution.map((item) => (
+                <div
+                  key={item.type}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                >
+                  <span className={cn('w-2 h-2 rounded-full', INCIDENT_TYPE_COLORS[item.type])} />
+                  <span>{item.label}</span>
+                  <span className="font-mono text-muted-foreground/70">{String(item.count)}</span>
+                  <span className="text-muted-foreground/70">
+                    ({((item.count / incidentTypeTotal) * 100).toFixed(0)}%)
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -504,27 +429,31 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-border rounded-lg p-5">
             <h3 className="text-lg font-semibold text-foreground mb-1">Municipal Performance</h3>
-            <p className="text-xs text-muted-foreground/70 mb-4">Click a row to view details</p>
+            <p className="text-xs text-muted-foreground/70 mb-4">
+              Live — updates on each report change
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="data-table-header text-left">Municipality</th>
                     <th className="data-table-header text-right">Active</th>
-                    <th className="data-table-header text-right">Rspdr</th>
+                    <th className="data-table-header text-right">Res.</th>
                     <th className="data-table-header text-right">Avg</th>
                     <th className="data-table-header text-right">&gt;24h</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {municipalPerformances
+                  {data.municipalData
+                    .slice()
                     .sort((a, b) => b.activeIncidents - a.activeIncidents)
                     .map((m) => {
-                      const timeParts = m.avgResponseTime.split(':')
-                      const minutes =
-                        parseInt(timeParts[0] ?? '0') * 60 + parseInt(timeParts[1] ?? '0')
+                      const minutes = parseInt(m.avgResponseTime.split(':')[0] ?? '0', 10)
                       return (
-                        <tr key={m.municipality} className="data-table-row border-b border-border">
+                        <tr
+                          key={m.municipalityId}
+                          className="data-table-row border-b border-border"
+                        >
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <span
@@ -551,19 +480,19 @@ export default function DashboardPage() {
                             {String(m.activeIncidents)}
                           </td>
                           <td className="py-3 px-4 text-right font-mono text-sm text-muted-foreground">
-                            {String(m.activeResponders)}
+                            {String(m.resolvedToday)}
                           </td>
                           <td
                             className={cn(
                               'py-3 px-4 text-right font-mono text-sm',
-                              minutes > 1200
+                              minutes > 20
                                 ? 'text-red-700'
-                                : minutes > 900
+                                : minutes > 15
                                   ? 'text-amber-700'
                                   : 'text-green-700',
                             )}
                           >
-                            {m.avgResponseTime === '00:00' ? '—' : m.avgResponseTime}
+                            {m.avgResponseTime}
                           </td>
                           <td
                             className={cn(
@@ -584,6 +513,7 @@ export default function DashboardPage() {
           <div className="bg-white border border-border rounded-lg p-5">
             <h3 className="text-lg font-semibold text-foreground mb-4">
               Severity by Municipality — 7 Days
+              <SampleDataChip />
             </h3>
             <div className="overflow-x-auto">
               <div className="min-w-[400px]">
@@ -641,74 +571,13 @@ export default function DashboardPage() {
       </div>
 
       <div className="bg-white border border-border rounded-lg p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Real-Time Activity</h3>
-            <p className="text-xs text-muted-foreground/70">Latest province-wide events</p>
-          </div>
-          <div className="flex items-center gap-1">
-            {(['all', 'incidents', 'responders', 'escalations', 'system'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => {
-                  setActivityFilter(f)
-                }}
-                className={cn(
-                  'px-3 py-1.5 rounded-md text-xs capitalize transition-colors',
-                  activityFilter === f
-                    ? 'text-foreground border-b-2 border-accent'
-                    : 'text-muted-foreground/70 hover:text-muted-foreground',
-                )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-foreground">Real-Time Activity</h3>
+          <p className="text-xs text-muted-foreground/70">Latest province-wide events</p>
         </div>
-        <div className="max-h-[320px] overflow-y-auto space-y-2">
-          {filteredActivity.map((event) => (
-            <ActivityItem key={event.id} event={event} />
-          ))}
-        </div>
+        <ActivityFeed events={activityEvents} error={activityError} maxVisible={20} />
       </div>
     </AppShell>
-  )
-}
-
-function ActivityItem({ event }: { event: ActivityEvent }) {
-  const time = new Date(event.timestamp)
-  const hours = String(time.getHours()).padStart(2, '0')
-  const minutes = String(time.getMinutes()).padStart(2, '0')
-  const seconds = String(time.getSeconds()).padStart(2, '0')
-
-  const iconMap: Record<string, React.ReactNode> = {
-    INCIDENT: <AlertCircle className="w-4 h-4 text-red-700" />,
-    RESOLVED: <CheckCircle className="w-4 h-4 text-green-700" />,
-    DISPATCH: <Truck className="w-4 h-4 text-accent" />,
-    ESCALATION: <ArrowUpRight className="w-4 h-4 text-purple-700" />,
-    USER: <User className="w-4 h-4 text-muted-foreground" />,
-    SYSTEM: <Settings className="w-4 h-4 text-muted-foreground/70" />,
-  }
-
-  return (
-    <div className="flex items-start gap-3 py-2 border-b border-border last:border-0">
-      <div className="flex items-center gap-2 w-[100px] shrink-0">
-        <span className="text-xs font-mono text-muted-foreground/70">
-          {hours}:{minutes}:{seconds}
-        </span>
-      </div>
-      <div className="shrink-0 mt-0.5">{iconMap[event.type]}</div>
-      <div className="flex-1 min-w-0">
-        <span className="text-xs text-muted-foreground">{event.actor}</span>
-        <span className="text-sm text-foreground ml-1">{event.action}</span>
-        {event.target && <span className="text-xs font-mono text-accent ml-1">{event.target}</span>}
-      </div>
-      {event.municipality && (
-        <span className="text-xs text-muted-foreground/70 bg-muted px-2 py-0.5 rounded-full shrink-0">
-          {event.municipality}
-        </span>
-      )}
-    </div>
   )
 }
 

@@ -5,6 +5,7 @@ import { SlideInPanel } from './SlideInPanel'
 import { ConfirmModal } from '@/components/common/ConfirmModal'
 import { ToastSystem } from '@/components/common/ToastSystem'
 import { useUIStore } from '@/stores/uiStore'
+import { useKeyboardShortcuts } from '@/lib/keyboardShortcuts'
 import { cn } from '@/lib/utils'
 
 interface AppShellProps {
@@ -13,6 +14,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { sidebarCollapsed, panelOpen, activePanel, closePanel } = useUIStore()
+  useKeyboardShortcuts()
 
   const panelTitles: Record<string, string> = {
     municipal: 'Municipality Details',
