@@ -158,6 +158,14 @@
 - Merge conflicts in long-unresolved worktrees (`pagasa-signal-poll.test.ts` was `UU` for multiple sessions) must be resolved before any new commit can be created. `git add <file>` accepts current-state resolution; `git commit` will block until all `UU` files are resolved.
 - Template literal expressions with `number` types in ESLint `@typescript-eslint/restrict-template-expressions` require explicit `String()` cast: `` `${String(dragOffset.x)}px` `` instead of `` `${dragOffset.x}px` ``.
 
+## Phase 4 -- System Health Controls
+
+- Dead-letter replay callable should iterate sequentially, not `Promise.all`, so partial failures don't lose track of which items succeeded. Return `{ replayed: number }` and let the admin re-trigger for remaining items.
+- `streamAuditEvent` is fire-and-forget and never throws; the dead-letter write inside its catch block must also be fire-and-forget (nested try/catch) so a Firestore outage doesn't cascade into the caller.
+- Prewarm via HTTP GET to callable endpoints returns 405 Method Not Allowed, but the Cloud Functions instance still starts. Count any response object as success; only network errors (timeout, ECONNREFUSED) count as failure.
+- `fetch` in Node 20 is global; no `node-fetch` dependency needed. Use `AbortSignal.timeout(ms)` for request timeouts.
+- Reusing the existing `dead_letters` collection with a `category` field (`audit_stream`) is cleaner than creating a separate `audit_events` collection. The signal dead-letter replay pattern (filter by category, resolve in memory, update status) ports directly.
+
 ## PWA / Service Worker
 
 - Background Sync API is Chromium-only; iOS Safari falls back to in-app retry machine — no feature detection needed at call site since `register('sync')` is a no-op on unsupported browsers.
