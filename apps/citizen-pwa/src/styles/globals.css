@@ -277,7 +277,6 @@ body {
 .timeline {
   display: flex;
   gap: 0;
-  justify-content: space-between;
 }
 
 .timeline-item {
@@ -286,6 +285,14 @@ body {
   align-items: center;
   gap: 0.5rem;
   flex: 1;
+  position: relative;
+}
+
+.timeline-item > div:first-child {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: center;
 }
 
 .timeline-dot {
@@ -294,13 +301,15 @@ body {
   border-radius: 9999px;
   border: 2px solid white;
   flex-shrink: 0;
+  position: relative;
   z-index: 1;
 }
 
 .timeline-connector {
   flex: 1;
   height: 2px;
-  margin-top: -5px;
+  margin-left: -0.3125rem;
+  margin-right: -0.3125rem;
 }
 
 .timeline-connector--complete {
@@ -338,6 +347,7 @@ body {
   color: var(--color-text-primary);
   text-align: center;
   line-height: 1.2;
+  width: 100%;
 }
 
 .timeline-meta {
@@ -345,6 +355,7 @@ body {
   color: var(--color-text-muted);
   text-align: center;
   line-height: 1.2;
+  width: 100%;
 }
 
 .sr-only {
