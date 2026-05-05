@@ -107,4 +107,5 @@ export async function deleteReport(publicRef: string): Promise<void> {
     const filtered = all.filter((r) => r.publicRef !== publicRef)
     await localforage.setItem(KEY, filtered)
   })
+  window.dispatchEvent(new Event('bantayog:report-saved'))
 }

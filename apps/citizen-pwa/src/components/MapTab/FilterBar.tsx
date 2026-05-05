@@ -18,7 +18,7 @@ export function FilterBar({ filters, onChange, disabled }: Props) {
   return (
     <div
       aria-label="Map filters"
-      className="absolute top-3 left-3 right-3 z-40 px-3 py-2.5 rounded-2xl bg-white/90 backdrop-blur-md shadow-lg"
+      className="absolute top-3 left-3 right-3 z-40 px-3 py-2.5 rounded-2xl bg-white/90 shadow-lg"
     >
       <p className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">
         Municipality
@@ -54,7 +54,7 @@ function buildChipClass(active?: boolean, disabled?: boolean): string {
   const base = 'rounded-full px-3 py-[5px] text-xs text-center transition-colors whitespace-nowrap'
   const visual = active
     ? 'bg-surface-900 text-white font-bold border-[1.5px] border-surface-900/20'
-    : 'bg-white/90 text-[#0f172a] font-medium border-[1.5px] border-[#0f172a]/8'
+    : 'bg-white/90 text-surface-900 font-medium border-[1.5px] border-surface-900/20'
   const state = disabled ? ' opacity-55 cursor-not-allowed' : ' cursor-pointer'
   return base + ' ' + visual + state
 }

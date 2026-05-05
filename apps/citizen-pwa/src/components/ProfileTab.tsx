@@ -91,7 +91,7 @@ function useBadges(reports: MyReport[]): BadgeDef[] {
 /* ── Guardian pitch card ── */
 function GuardianPitchCard({ onRegister }: { onRegister: () => void }) {
   return (
-    <div className="mx-4 mt-4 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl p-5 shadow-lg">
+    <div className="mx-4 mt-4 bg-brand-500 rounded-2xl p-5 shadow-lg">
       <div className="flex items-center gap-2 mb-2">
         <ShieldCheck size={16} className="text-white/90" />
         <span className="text-white/90 text-xs font-bold uppercase tracking-wider">

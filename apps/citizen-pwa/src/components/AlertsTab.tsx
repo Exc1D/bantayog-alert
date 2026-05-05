@@ -15,21 +15,10 @@ const SEVERITY_ORDER: Record<string, number> = {
   info: 4,
 }
 
-function severityBorderClass(severity: string): string {
-  switch (severity) {
-    case 'critical':
-      return 'border-l-[#dc2626]'
-    case 'high':
-    case 'warning':
-    case 'medium':
-      return 'border-l-[#d97706]'
-    case 'low':
-      return 'border-l-[#64748b]'
-    case 'info':
-      return 'border-l-[#2563eb]'
-    default:
-      return 'border-l-[#059669]'
-  }
+function severityBorderClass(): string {
+  // Side-stripe borders removed (WCAG AAA violation)
+  // Severity is conveyed via icon + badge instead
+  return 'border-surface-200'
 }
 
 function severityIconColor(severity: string): string {
@@ -74,14 +63,14 @@ function AlertCard({
 }) {
   const { label, bg, color } = severityMeta(alert.severity)
   const icon = severityIcon(alert.severity)
-  const borderClass = severityBorderClass(alert.severity)
+  const borderClass = severityBorderClass()
   const iconColor = severityIconColor(alert.severity)
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-2 ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
+      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
     >
       {/* Unread indicator dot */}
       {isUnread && (
@@ -100,19 +89,19 @@ function AlertCard({
           >
             {icon}
           </span>
-          <p className="font-semibold text-[#25292a] text-sm flex-1">{alert.title}</p>
-          <span className="text-xs text-[#768081] ml-2 flex-shrink-0">
+          <p className="font-semibold text-surface-900 text-sm flex-1">{alert.title}</p>
+          <span className="text-xs text-surface-500 ml-2 flex-shrink-0">
             {timeAgo(alert.publishedAt)}
           </span>
         </div>
-        <p className="text-xs text-[#374151] mt-1 leading-relaxed">{alert.body}</p>
+        <p className="text-xs text-surface-700 mt-1 leading-relaxed">{alert.body}</p>
         {alert.issuedBy && (
-          <p className="text-xs text-[#768081] mt-1 flex items-center gap-1">
+          <p className="text-xs text-surface-500 mt-1 flex items-center gap-1">
             <Building2 size={12} aria-hidden="true" />
             {`Issued by: ${alert.issuedBy}`}
           </p>
         )}
-        <p className="text-xs text-[#768081] mt-2">
+        <p className="text-xs text-surface-500 mt-2">
           <span
             style={{
               display: 'inline-block',
@@ -135,14 +124,14 @@ function AlertCard({
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden border-l-4 border-l-[#d5dedd] motion-safe:animate-pulse">
+    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden border border-surface-200 motion-safe:animate-pulse">
       <div className="p-4 flex gap-2">
-        <div className="w-6 h-6 rounded-full bg-[#e0e3e5] flex-shrink-0" />
+        <div className="w-6 h-6 rounded-full bg-surface-300 flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-3.5 w-[65%] bg-[#e0e3e5] rounded mb-2" />
-          <div className="h-3 w-[90%] bg-[#e0e3e5] rounded mb-1.5" />
-          <div className="h-3 w-[70%] bg-[#e0e3e5] rounded mb-2.5" />
-          <div className="h-4 w-14 bg-[#e0e3e5] rounded-full" />
+          <div className="h-3.5 w-[65%] bg-surface-300 rounded mb-2" />
+          <div className="h-3 w-[90%] bg-surface-300 rounded mb-1.5" />
+          <div className="h-3 w-[70%] bg-surface-300 rounded mb-2.5" />
+          <div className="h-4 w-14 bg-surface-300 rounded-full" />
         </div>
       </div>
     </div>
@@ -174,10 +163,10 @@ export function AlertsTab() {
   return (
     <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 py-4 border-b border-[#d5dedd]">
-        <h1 className="text-[20px] font-bold text-[#25292a]">Alerts</h1>
+      <div className="sticky top-0 z-10 bg-white/95 px-4 py-4 border-b border-surface-200">
+        <h1 className="text-[20px] font-bold text-surface-900">Alerts</h1>
         {unread > 0 && (
-          <p className="text-xs text-[#768081] mt-1">
+          <p className="text-xs text-surface-500 mt-1">
             {unread} unread alert{unread !== 1 ? 's' : ''}
           </p>
         )}
@@ -185,9 +174,11 @@ export function AlertsTab() {
 
       {/* Active emergency strip */}
       {hasCritical && (
-        <div className="bg-[#dc2626]/10 border-b border-[#dc2626]/20 px-4 py-2 flex items-center gap-2">
-          <AlertTriangle size={16} className="text-[#dc2626] flex-shrink-0" />
-          <span className="text-sm font-bold text-[#dc2626]">Active emergency alert in effect</span>
+        <div className="bg-danger-600/10 border-b border-danger-600/20 px-4 py-2 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-danger-600 flex-shrink-0" />
+          <span className="text-sm font-bold text-danger-600">
+            Active emergency alert in effect
+          </span>
         </div>
       )}
 
@@ -203,10 +194,10 @@ export function AlertsTab() {
             role="alert"
             aria-live="assertive"
             aria-atomic="true"
-            className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
+            className="flex flex-col items-center justify-center min-h-[50vh] text-surface-500 px-4 text-center"
           >
-            <AlertTriangle size={40} className="text-[#dc2626] mb-2" />
-            <p className="font-bold text-[#25292a] text-sm mb-1">Could not load alerts</p>
+            <AlertTriangle size={40} className="text-danger-600 mb-2" />
+            <p className="font-bold text-surface-900 text-sm mb-1">Could not load alerts</p>
             <p className="text-xs">
               {error instanceof Error ? error.message : 'Please try again later.'}
             </p>
@@ -216,10 +207,10 @@ export function AlertsTab() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4 text-center"
+            className="flex flex-col items-center justify-center min-h-[50vh] text-surface-500 px-4 text-center"
           >
             <Bell size={40} className="mb-2" />
-            <p className="font-bold text-[#25292a] text-sm mb-1">No active alerts</p>
+            <p className="font-bold text-surface-900 text-sm mb-1">No active alerts</p>
             <p className="text-xs">You will be notified when new alerts are issued.</p>
           </div>
         ) : (

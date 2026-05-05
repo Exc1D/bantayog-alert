@@ -39,18 +39,18 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
       <div className="flex items-start justify-between p-4 pb-2">
         <span
           aria-hidden="true"
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#f0f4f4] text-lg"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-surface-100 text-lg"
         >
           {icon}
         </span>
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex justify-between items-start gap-2">
-            <p className="m-0 font-semibold text-[#25292a] text-sm leading-snug">{label}</p>
-            <span className="flex-shrink-0 text-xs text-[#768081]">
+            <p className="m-0 font-semibold text-surface-900 text-sm leading-snug">{label}</p>
+            <span className="flex-shrink-0 text-xs text-surface-500">
               {timeAgo(incident.submittedAt)}
             </span>
           </div>
-          <p className="mt-1 mb-0 text-xs text-[#768081] flex items-center gap-0.5">
+          <p className="mt-1 mb-0 text-xs text-surface-500 flex items-center gap-0.5">
             <MapPin size={11} className="inline flex-shrink-0" />
             <span>
               {incident.barangayId ? `${incident.barangayId}, ` : ''}
@@ -60,14 +60,14 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
         </div>
       </div>
       {/* Footer action row */}
-      <div className="border-t border-[#f0f4f4] px-4 py-2 flex items-center gap-4">
+      <div className="border-t border-surface-100 px-4 py-2 flex items-center gap-4">
         <span className={severityBadgeClass(incident.severity)}>
           {incident.severity.toUpperCase()}
         </span>
-        <span className="text-xs text-[#768081] capitalize">
+        <span className="text-xs text-surface-500 capitalize">
           {incident.status.replace(/_/g, ' ')}
         </span>
-        <span className="ml-auto text-xs font-medium text-[#0f9488]">Track</span>
+        <span className="ml-auto text-xs font-medium text-brand-500">Track</span>
       </div>
     </button>
   )
@@ -77,11 +77,11 @@ function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)]">
       <div className="p-4 flex gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#d5dedd] motion-safe:animate-pulse flex-shrink-0" />
+        <div className="w-10 h-10 rounded-full bg-surface-200 motion-safe:animate-pulse flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-3.5 w-[55%] bg-[#d5dedd] rounded motion-safe:animate-pulse mb-2" />
-          <div className="h-3 w-[40%] bg-[#d5dedd] rounded motion-safe:animate-pulse mb-3" />
-          <div className="h-4 w-14 bg-[#d5dedd] rounded-full motion-safe:animate-pulse" />
+          <div className="h-3.5 w-[55%] bg-surface-200 rounded motion-safe:animate-pulse mb-2" />
+          <div className="h-3 w-[40%] bg-surface-200 rounded motion-safe:animate-pulse mb-3" />
+          <div className="h-4 w-14 bg-surface-200 rounded-full motion-safe:animate-pulse" />
         </div>
       </div>
     </div>
@@ -103,9 +103,9 @@ export function FeedTab() {
   return (
     <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Sticky top bar */}
-      <div className="sticky top-0 z-20 bg-[#f8fafa]/90 backdrop-blur-md px-4 py-3 flex flex-col border-b border-[#d5dedd]">
+      <div className="sticky top-0 z-20 bg-surface-50/90 px-4 py-3 flex flex-col border-b border-surface-200">
         <div className="flex items-center justify-between">
-          <h1 className="text-[20px] font-bold text-[#25292a] m-0">Incident Feed</h1>
+          <h1 className="text-[20px] font-bold text-surface-900 m-0">Incident Feed</h1>
         </div>
         {/* Municipality filter chips */}
         <div
@@ -123,8 +123,8 @@ export function FeedTab() {
               }}
               className={
                 filters.municipality === value
-                  ? 'bg-[#001e40] text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
-                  : 'bg-[#f0f4f4] text-[#5e6667] rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
+                  ? 'bg-surface-900 text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
+                  : 'bg-surface-100 text-surface-600 rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
               }
             >
               {label}
@@ -154,15 +154,15 @@ export function FeedTab() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="flex flex-col items-center justify-center min-h-[50vh] text-[#768081] px-4"
+            className="flex flex-col items-center justify-center min-h-[50vh] text-surface-500 px-4"
           >
             <span className="text-surface-400 mb-3">
               <Info size={40} />
             </span>
-            <p className="m-0 mb-1 font-bold text-[#25292a] text-[15px]">No incidents</p>
-            <p className="m-0 text-[13px] text-[#52606d] text-center">
+            <p className="m-0 mb-1 font-bold text-surface-900 text-[15px]">No incidents</p>
+            <p className="m-0 text-[13px] text-surface-600 text-center">
               No incidents reported in the selected time window.
-              <span className="block text-xs text-[#768081] mt-1 italic">
+              <span className="block text-xs text-surface-500 mt-1 italic">
                 Walang naiulat na insidente sa panahong ito.
               </span>
             </p>

@@ -19,7 +19,7 @@ export function Toggle({ checked, onChange, label, disabled = false }: TogglePro
 
   const trackClasses = [
     'relative w-10 h-6 rounded-full border-none p-0 flex-shrink-0 outline-offset-2',
-    checked ? 'bg-[#0f9488]' : 'bg-[#ccc]',
+    checked ? 'bg-brand-500' : 'bg-surface-300',
     disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
     reducedMotion ? '' : 'transition-colors duration-200',
   ].join(' ')

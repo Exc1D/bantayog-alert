@@ -20,6 +20,8 @@ import { Button } from './ui/Button.js'
 import { Timeline } from './ui/Timeline.js'
 import { RadarRings } from './ui/RadarRings.js'
 import { DeleteSheet } from './DeleteSheet.js'
+import { useToast } from '../hooks/useToast.js'
+import { Toast } from './Toast.js'
 
 const RESPONDER_PHONE_NUMBER = '0547211216'
 
@@ -133,6 +135,7 @@ export function TrackingScreen() {
   const { data: report, isPending, error } = useReport(reference ?? '')
   const [storedEntry, setStoredEntry] = useState<StoredReport | null>(null)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
+  const { show, message, type, toast } = useToast()
 
   useEffect(() => {
     if (!reference) return
@@ -144,7 +147,7 @@ export function TrackingScreen() {
   }, [reference])
 
   const header = (
-    <div className="sticky top-0 z-nav bg-surface-100/90 backdrop-blur-md border-b border-surface-200 px-4 py-3 flex items-center gap-3">
+    <div className="sticky top-0 z-nav bg-surface-100/90 border-b border-surface-200 px-4 py-3 flex items-center gap-3">
       <button
         type="button"
         onClick={() => void navigate(-1)}
@@ -242,6 +245,35 @@ export function TrackingScreen() {
                 Call responders
               </a>
             </div>
+            <div className="mt-4 pt-4 border-t border-surface-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setWithdrawOpen(true)
+                }}
+                className="w-full py-3 px-4 rounded-lg border border-danger-200 bg-danger-500/5 text-danger-500 text-sm font-medium active:bg-danger-500/10 transition-colors"
+              >
+                Delete Report
+              </button>
+            </div>
+            <DeleteSheet
+              open={withdrawOpen}
+              publicRef={reference}
+              reportType={storedEntry.reportType}
+              onConfirm={() => {
+                setWithdrawOpen(false)
+                void deleteReport(reference)
+                  .then(() => {
+                    toast('Report deleted successfully', 'success')
+                  })
+                  .catch(() => {
+                    toast('Failed to delete report', 'error')
+                  })
+              }}
+              onCancel={() => {
+                setWithdrawOpen(false)
+              }}
+            />
           </div>
         </div>
       )
@@ -393,11 +425,18 @@ export function TrackingScreen() {
             void cancelReport(report.id)
           }
           void deleteReport(reference)
+            .then(() => {
+              toast('Report deleted successfully', 'success')
+            })
+            .catch(() => {
+              toast('Failed to delete report', 'error')
+            })
         }}
         onCancel={() => {
           setWithdrawOpen(false)
         }}
       />
+      <Toast show={show} message={message} type={type} />
     </div>
   )
 }

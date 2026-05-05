@@ -94,7 +94,7 @@ export function LookupScreen() {
   }
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#f0f4f4]">
+    <div className="flex flex-col min-h-[100dvh] bg-surface-100">
       <div className="flex items-center gap-3 px-4 pt-12 pb-6 bg-brand-500 text-white">
         <button
           type="button"
@@ -110,11 +110,11 @@ export function LookupScreen() {
       </div>
 
       <div className="flex-1 px-4 pt-6">
-        <h2 className="mb-1 text-xl font-extrabold text-[#001e40]">Find your report</h2>
-        <p className="mb-1 text-[0.8125rem] text-[#52606d]">
+        <h2 className="mb-1 text-xl font-extrabold text-surface-900">Find your report</h2>
+        <p className="mb-1 text-sm text-surface-600">
           Enter your secret code to check your report status.
         </p>
-        <p className="mb-6 text-[0.6875rem] text-[#7b8794] italic">
+        <p className="mb-6 text-xs text-surface-600 italic">
           Ang iyong secret code ang susi sa iyong ulat.
         </p>
 
@@ -140,7 +140,7 @@ export function LookupScreen() {
               }}
               required
               maxLength={64}
-              className="font-mono tracking-widest w-full h-12 rounded-xl px-4 text-base bg-white border border-[#d5dedd] outline-none focus:border-[#0f9488] motion-safe:transition-colors motion-safe:duration-200"
+              className="font-mono tracking-widest w-full h-12 rounded-xl px-4 text-base bg-white border border-surface-200 outline-none focus:border-brand-500 motion-safe:transition-colors motion-safe:duration-200"
               placeholder="Your secret code"
             />
           </label>
@@ -148,7 +148,7 @@ export function LookupScreen() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full h-14 rounded-xl text-white font-semibold text-base border-0 bg-gradient-to-br from-[#0f9488] to-[#0d7377] ${loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+            className={`w-full h-14 rounded-xl text-white font-semibold text-base border-0 bg-gradient-to-br from-brand-500 to-brand-700 ${loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {loading ? 'Searching…' : 'Find My Report'}
           </button>
@@ -156,7 +156,7 @@ export function LookupScreen() {
 
         {error && (
           <div role="alert" className="mt-4">
-            <p className="text-[#b71c1c] text-sm font-semibold">{error}</p>
+            <p className="text-danger-700 text-sm font-semibold">{error}</p>
           </div>
         )}
       </div>
