@@ -61,6 +61,12 @@ async function main() {
     active: true,
   })
 
+  // Provincial superadmin account
+  await createAccount('superadmin-test-01', 'superadmin@test.local', 'test123456', {
+    role: 'provincial_superadmin',
+    active: true,
+  })
+
   console.log('\n✓ Done! Test accounts ready.')
 }
 
