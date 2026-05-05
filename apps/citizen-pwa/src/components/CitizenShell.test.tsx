@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './CitizenShell.js'
@@ -7,6 +7,9 @@ import { CitizenShell } from './CitizenShell.js'
 const mockUseOfflineQueueCount = vi.fn()
 const mockUseUIStore = vi.fn()
 const mockUseMyActiveReports = vi.fn()
+const mockUseAlertReadState = vi.fn()
+const mockUseAlerts = vi.fn()
+const mockUseReducedMotion = vi.fn()
 
 vi.mock('../hooks/useOfflineQueueCount.js', () => ({
   useOfflineQueueCount: () => mockUseOfflineQueueCount(),
@@ -27,12 +30,38 @@ vi.mock('../hooks/useMyActiveReports.js', () => ({
   useMyActiveReports: () => mockUseMyActiveReports(),
 }))
 
+vi.mock('../hooks/useAlertReadState.js', () => ({
+  useAlertReadState: () => mockUseAlertReadState(),
+}))
+
+vi.mock('../hooks/useAlerts.js', () => ({
+  useAlerts: () => mockUseAlerts(),
+}))
+
+vi.mock('../hooks/useReducedMotion.js', () => ({
+  useReducedMotion: () => mockUseReducedMotion(),
+}))
+
 vi.mock('framer-motion', async () => {
   const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion')
   return {
     ...actual,
     AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   }
+})
+
+beforeEach(() => {
+  // Mock localStorage for ReportStatusPill
+  const storage = new Map<string, string>()
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      storage.set(key, value)
+    },
+    removeItem: (key: string) => {
+      storage.delete(key)
+    },
+  })
 })
 
 function renderShell(
@@ -61,6 +90,11 @@ function renderShell(
     setNavDirection: vi.fn(),
   })
   mockUseMyActiveReports.mockReturnValue({ reports: opts?.activeReports ?? [], loading: false })
+  mockUseAlertReadState.mockReturnValue({
+    unreadCount: () => 0,
+  })
+  mockUseAlerts.mockReturnValue({ alerts: [] })
+  mockUseReducedMotion.mockReturnValue(false)
 
   const router = createMemoryRouter(
     [

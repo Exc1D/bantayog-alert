@@ -60,7 +60,7 @@ describe('DetailSheet — public mode', () => {
       <DetailSheet sheetPhase="expanded" onClose={vi.fn()} onCollapse={vi.fn()} {...publicProps} />,
     )
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /withdraw/i })).toBeNull()
   })
 
   it('calls onClose when Close is clicked', () => {
@@ -96,11 +96,27 @@ describe('DetailSheet — myReport mode', () => {
         {...myReportProps}
       />,
     )
-    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /cancel report/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /edit report/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /withdraw report/i })).toBeInTheDocument()
   })
 
-  it('calls onCancelReport when Cancel is clicked', () => {
+  it('opens WithdrawSheet when Withdraw report is clicked', () => {
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        onCancelReport={vi.fn()}
+        {...myReportProps}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /withdraw report/i }))
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('Keep Report')).toBeInTheDocument()
+    expect(screen.getByText('Withdraw Report')).toBeInTheDocument()
+  })
+
+  it('calls onCancelReport when Withdraw Report is confirmed in sheet', () => {
     const onCancelReport = vi.fn()
     render(
       <DetailSheet
@@ -111,9 +127,27 @@ describe('DetailSheet — myReport mode', () => {
         {...myReportProps}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /cancel report/i }))
+    fireEvent.click(screen.getByRole('button', { name: /withdraw report/i }))
+    fireEvent.click(screen.getByText('Withdraw Report'))
     expect(onCancelReport).toHaveBeenCalledOnce()
     expect(onCancelReport).toHaveBeenCalledWith('abcd1234', 'report-id-5678')
+  })
+
+  it('closes sheet and does NOT call onCancelReport when Keep Report is clicked', () => {
+    const onCancelReport = vi.fn()
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        onCancelReport={onCancelReport}
+        {...myReportProps}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /withdraw report/i }))
+    fireEvent.click(screen.getByText('Keep Report'))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(onCancelReport).not.toHaveBeenCalled()
   })
 
   it('does NOT call onCancelReport when Edit is clicked', () => {
@@ -127,7 +161,7 @@ describe('DetailSheet — myReport mode', () => {
         {...myReportProps}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /edit/i }))
+    fireEvent.click(screen.getByRole('button', { name: /edit report/i }))
     expect(onCancelReport).not.toHaveBeenCalled()
   })
 
@@ -142,7 +176,7 @@ describe('DetailSheet — myReport mode', () => {
       />,
     )
     expect(screen.getByRole('button', { name: /request correction/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /edit report/i })).toBeNull()
   })
 
   it('changes copy label to Copied and resets after 2s', async () => {

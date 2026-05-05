@@ -44,6 +44,7 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
     if (delta < -SWIPE_THRESHOLD) onExpand()
   }
 
+  /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
   return (
     <div
       role="dialog"
@@ -91,4 +92,5 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
       </div>
     </div>
   )
+  /* eslint-enable jsx-a11y/no-noninteractive-element-interactions */
 }

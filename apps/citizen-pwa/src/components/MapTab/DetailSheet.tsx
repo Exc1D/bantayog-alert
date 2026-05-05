@@ -3,6 +3,7 @@ import { MapPin, X, Zap } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
 import { statusMeta } from '../../utils/incident-meta.js'
 import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
+import { WithdrawSheet } from '../WithdrawSheet.js'
 import type { MyReport, PublicIncident } from './types.js'
 
 type Props =
@@ -59,6 +60,7 @@ function progressStatus(status: MyReport['status']): (typeof PROGRESS_STATUSES)[
 
 export function DetailSheet(props: Props) {
   const [copied, setCopied] = useState(false)
+  const [withdrawOpen, setWithdrawOpen] = useState(false)
   const timer = useRef<number | null>(null)
   const startY = useRef<number | null>(null)
 
@@ -112,6 +114,7 @@ export function DetailSheet(props: Props) {
     const incident = props.incident
     const style = getSeverityStyle(incident.severity)
     const sm = statusMeta(incident.status)
+    /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
     return (
       <section
         role="dialog"
@@ -133,14 +136,12 @@ export function DetailSheet(props: Props) {
               {LABELS[incident.reportType] ?? incident.reportType}
             </p>
             <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-              {style ? (
-                <span
-                  className="inline-block px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
-                  style={{ backgroundColor: style.bg, color: style.fg }}
-                >
-                  {style.label}
-                </span>
-              ) : null}
+              <span
+                className="inline-block px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
+                style={{ backgroundColor: style.bg, color: style.fg }}
+              >
+                {style.label}
+              </span>
               <span
                 className={`inline-block px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase ${sm.bg} ${sm.color}`}
               >
@@ -183,6 +184,7 @@ export function DetailSheet(props: Props) {
         ) : null}
       </section>
     )
+    /* eslint-enable jsx-a11y/no-noninteractive-element-interactions */
   }
 
   const report = props.report
@@ -190,6 +192,7 @@ export function DetailSheet(props: Props) {
   const actions = actionsFor(displayStatus)
   const statusIndex = PROGRESS_STATUSES.indexOf(displayStatus)
 
+  /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
   return (
     <section
       role="dialog"
@@ -272,8 +275,7 @@ export function DetailSheet(props: Props) {
             aria-label="Withdraw report"
             className="text-danger-500 text-sm font-medium"
             onClick={() => {
-              const reportId = report.id
-              if (reportId) props.onCancelReport?.(report.publicRef, reportId)
+              setWithdrawOpen(true)
             }}
           >
             Withdraw report
@@ -288,6 +290,19 @@ export function DetailSheet(props: Props) {
       <button type="button" aria-label="Close" onClick={props.onClose}>
         Close
       </button>
+      <WithdrawSheet
+        open={withdrawOpen}
+        publicRef={report.publicRef}
+        reportType={LABELS[report.reportType] ?? report.reportType}
+        onConfirm={() => {
+          setWithdrawOpen(false)
+          if (report.id) props.onCancelReport?.(report.publicRef, report.id)
+        }}
+        onCancel={() => {
+          setWithdrawOpen(false)
+        }}
+      />
     </section>
   )
+  /* eslint-enable jsx-a11y/no-noninteractive-element-interactions */
 }
