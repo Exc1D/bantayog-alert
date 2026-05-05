@@ -1,14 +1,9 @@
 import { useEffect, useRef, useState, type TouchEvent } from 'react'
-import { X } from 'lucide-react'
+import { MapPin, X, Zap } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
 import { statusMeta } from '../../utils/incident-meta.js'
+import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
 import type { MyReport, PublicIncident } from './types.js'
-
-const SEVERITY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  high: { bg: '#fee2e2', color: '#991b1b', label: 'HIGH' },
-  medium: { bg: '#fff5ef', color: '#a73400', label: 'MEDIUM' },
-  low: { bg: '#e0e7f0', color: '#414849', label: 'LOW' },
-}
 
 type Props =
   | {
@@ -115,13 +110,19 @@ export function DetailSheet(props: Props) {
 
   if (props.mode === 'public') {
     const incident = props.incident
-    const badge = SEVERITY_BADGE[incident.severity]
+    const style = getSeverityStyle(incident.severity)
     const sm = statusMeta(incident.status)
     return (
       <section
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
         className="absolute inset-x-0 bottom-0 z-[1001] bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') props.onClose()
+        }}
       >
         {dragHandle}
 
@@ -132,12 +133,12 @@ export function DetailSheet(props: Props) {
               {LABELS[incident.reportType] ?? incident.reportType}
             </p>
             <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-              {badge ? (
+              {style ? (
                 <span
                   className="inline-block px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
-                  style={{ backgroundColor: badge.bg, color: badge.color }}
+                  style={{ backgroundColor: style.bg, color: style.fg }}
                 >
-                  {badge.label}
+                  {style.label}
                 </span>
               ) : null}
               <span
@@ -151,7 +152,7 @@ export function DetailSheet(props: Props) {
             type="button"
             aria-label="Close"
             onClick={props.onClose}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-surface-100 text-surface-500 flex items-center justify-center"
+            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-surface-100 text-surface-500 flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
@@ -159,9 +160,7 @@ export function DetailSheet(props: Props) {
 
         {/* Location */}
         <div className="flex items-center gap-1.5 mb-1.5">
-          <span aria-hidden="true" className="text-sm">
-            📍
-          </span>
+          <MapPin size={14} className="inline text-surface-500" aria-hidden="true" />
           <p className="text-sm font-medium text-surface-900">
             {incident.barangayId ? `${incident.barangayId}, ` : ''}
             {incident.municipalityLabel}
@@ -178,7 +177,7 @@ export function DetailSheet(props: Props) {
             onClick={props.onReportSimilar}
             className="w-full py-3 px-4 rounded-xl border border-surface-200 bg-surface-100 text-surface-900 text-sm font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <span aria-hidden="true">⚡</span>
+            <Zap size={14} className="inline" aria-hidden="true" />
             Report similar incident nearby
           </button>
         ) : null}
@@ -193,9 +192,15 @@ export function DetailSheet(props: Props) {
 
   return (
     <section
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
       className="absolute inset-x-0 bottom-0 z-[1001] bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto px-4 pb-8 pt-2"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') props.onClose()
+      }}
     >
       {dragHandle}
       <p className="font-extrabold text-surface-900">★ Your Report</p>
@@ -206,21 +211,19 @@ export function DetailSheet(props: Props) {
           : ' · Awaiting Review'}
       </p>
       {(() => {
-        const b = SEVERITY_BADGE[report.severity]
-        return b ? (
+        const s = getSeverityStyle(report.severity)
+        return (
           <span
             className="inline-block mb-2 px-2.5 py-0.5 rounded-full text-[0.625rem] font-bold tracking-widest uppercase"
-            style={{ backgroundColor: b.bg, color: b.color }}
+            style={{ backgroundColor: s.bg, color: s.fg }}
           >
-            {b.label}
+            {s.label}
           </span>
-        ) : null
+        )
       })()}
       {report.municipalityLabel ? (
         <div className="flex items-center gap-1.5 mb-3">
-          <span aria-hidden="true" className="text-sm">
-            📍
-          </span>
+          <MapPin size={14} className="inline text-surface-500" aria-hidden="true" />
           <p className="text-sm text-surface-500">{report.municipalityLabel}</p>
         </div>
       ) : null}
@@ -249,18 +252,11 @@ export function DetailSheet(props: Props) {
             className={`flex items-center ${index < PROGRESS_STATUSES.length - 1 ? 'flex-1' : ''}`}
           >
             <div
-              className="w-2.5 h-2.5 rounded-full border-2"
-              style={{
-                backgroundColor: index <= statusIndex ? '#0f9488' : '#d5dedd',
-                borderColor: '#0f9488',
-              }}
+              className={`w-2.5 h-2.5 rounded-full border-2 ${index <= statusIndex ? 'bg-brand-500 border-brand-500' : 'bg-surface-200 border-brand-500'}`}
             />
             {index < PROGRESS_STATUSES.length - 1 ? (
               <div
-                className="flex-1 h-0.5"
-                style={{
-                  backgroundColor: index < statusIndex ? '#0f9488' : '#d5dedd',
-                }}
+                className={`flex-1 h-0.5 ${index < statusIndex ? 'bg-brand-500' : 'bg-surface-200'}`}
               />
             ) : null}
           </div>
@@ -268,18 +264,19 @@ export function DetailSheet(props: Props) {
       </div>
       {actions.includes('edit') && report.id ? (
         <div className="flex gap-2 mb-2">
-          <button type="button" aria-label="Edit">
+          <button type="button" aria-label="Edit report">
             Edit
           </button>
           <button
             type="button"
-            aria-label="Cancel report"
+            aria-label="Withdraw report"
+            className="text-danger-500 text-sm font-medium"
             onClick={() => {
               const reportId = report.id
               if (reportId) props.onCancelReport?.(report.publicRef, reportId)
             }}
           >
-            Cancel
+            Withdraw report
           </button>
         </div>
       ) : null}

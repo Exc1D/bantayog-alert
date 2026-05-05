@@ -46,9 +46,16 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss }: Props) {
 
   return (
     <div
+      role="dialog"
+      aria-modal="false"
+      tabIndex={-1}
       data-testid="peek-sheet"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onDismiss()
+        if (e.key === 'Enter') onExpand()
+      }}
       className="absolute bottom-4 left-3 right-3 z-[1001] bg-white rounded-2xl shadow-lg overflow-hidden"
     >
       <div className="w-8 h-1 rounded-full bg-surface-200 mx-auto mt-2 mb-1" />
