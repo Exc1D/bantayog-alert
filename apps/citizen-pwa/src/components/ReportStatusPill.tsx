@@ -27,6 +27,7 @@ export function ReportStatusPill() {
   const { reports } = useMyActiveReports()
   const prefersReducedMotion = useReducedMotion()
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [showPulse, setShowPulse] = useState(() => !localStorage.getItem('pill-tapped'))
   const startRef = useRef<DragStart | null>(null)
   const movedRef = useRef(false)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
@@ -93,12 +94,16 @@ export function ReportStatusPill() {
                   movedRef.current = false
                   return
                 }
+                if (showPulse) {
+                  localStorage.setItem('pill-tapped', '1')
+                  setShowPulse(false)
+                }
                 void navigate(`/reports/${primary.publicRef}`)
               }}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
-              className="fixed z-toast flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface-900/90 backdrop-blur-sm shadow-lg active:scale-95 transition-transform"
+              className={`fixed z-toast flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface-900/90 backdrop-blur-sm shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900 hover:brightness-110 ${showPulse ? 'animate-pulse-glow' : ''}`}
               style={{
                 left: '50%',
                 bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))',
@@ -107,6 +112,10 @@ export function ReportStatusPill() {
               }}
               aria-label={`View your active report: ${incidentLabel(primary.reportType)}`}
             >
+              <span className="flex gap-0.5 mr-1">
+                <span className="w-1 h-1 rounded-full bg-surface-400" />
+                <span className="w-1 h-1 rounded-full bg-surface-400" />
+              </span>
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: severityDotColor(primary.severity) }}
