@@ -62,7 +62,11 @@ export default function DashboardPage() {
   const municipalityId =
     typeof claims?.municipalityId === 'string' ? claims.municipalityId : undefined
   const data = useDashboardLiveData(municipalityId)
-  const { events: activityEvents, error: activityError } = useReportEvents(municipalityId)
+  const {
+    events: activityEvents,
+    error: activityError,
+    loading: activityLoading,
+  } = useReportEvents(municipalityId)
 
   const [dismissedAnomalies, setDismissedAnomalies] = useState<string[]>([])
   const [timeAgo, setTimeAgo] = useState(0)
@@ -575,7 +579,12 @@ export default function DashboardPage() {
           <h3 className="text-lg font-semibold text-foreground">Real-Time Activity</h3>
           <p className="text-xs text-muted-foreground/70">Latest province-wide events</p>
         </div>
-        <ActivityFeed events={activityEvents} error={activityError} maxVisible={20} />
+        <ActivityFeed
+          events={activityEvents}
+          error={activityError}
+          loading={activityLoading}
+          maxVisible={20}
+        />
       </div>
     </AppShell>
   )

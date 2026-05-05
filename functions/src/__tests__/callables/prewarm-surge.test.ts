@@ -28,7 +28,7 @@ beforeEach(() => {
 
 describe('prewarmSurge', () => {
   it('returns count of warmed functions for light level', async () => {
-    mockFetch.mockResolvedValue({ status: 405, ok: false })
+    mockFetch.mockResolvedValue({ status: 200, ok: true })
 
     const invoke = prewarmSurge as unknown as (request: {
       auth: { uid: string; token: { role: string } }
@@ -49,7 +49,7 @@ describe('prewarmSurge', () => {
   })
 
   it('returns count of warmed functions for heavy level', async () => {
-    mockFetch.mockResolvedValue({ status: 405, ok: false })
+    mockFetch.mockResolvedValue({ status: 200, ok: true })
 
     const invoke = prewarmSurge as unknown as (request: {
       auth: { uid: string; token: { role: string } }
@@ -65,7 +65,7 @@ describe('prewarmSurge', () => {
     expect(mockFetch).toHaveBeenCalledTimes(10)
   })
 
-  it('counts responses even when they are not 2xx', async () => {
+  it('does not count non-2xx responses', async () => {
     mockFetch.mockResolvedValue({ status: 404, ok: false })
 
     const invoke = prewarmSurge as unknown as (request: {
@@ -78,7 +78,7 @@ describe('prewarmSurge', () => {
       data: { level: 'light' },
     })
 
-    expect(result.warmed).toBe(3)
+    expect(result.warmed).toBe(0)
   })
 
   it('does not count network failures', async () => {
@@ -139,7 +139,7 @@ describe('prewarmSurge', () => {
   })
 
   it('passes GET with timeout signal', async () => {
-    mockFetch.mockResolvedValue({ status: 405, ok: false })
+    mockFetch.mockResolvedValue({ status: 200, ok: true })
 
     const invoke = prewarmSurge as unknown as (request: {
       auth: { uid: string; token: { role: string } }

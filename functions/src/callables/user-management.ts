@@ -1,5 +1,5 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
-import { Firestore, Timestamp } from 'firebase-admin/firestore'
+import { Firestore, Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
@@ -50,13 +50,19 @@ function assertCanManageUser(
   }
 
   if (actorRole === 'municipal_admin') {
+    if (typeof targetUser.role !== 'string') {
+      throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'target user role is missing')
+    }
     if (targetUser.role === 'provincial_superadmin') {
       throw new BantayogError(
         BantayogErrorCode.FORBIDDEN,
         'insufficient privileges to manage provincial superadmin',
       )
     }
-    if (targetUser.municipalityId && targetUser.municipalityId !== actorMunicipalityId) {
+    if (
+      typeof targetUser.municipalityId !== 'string' ||
+      targetUser.municipalityId !== actorMunicipalityId
+    ) {
       throw new BantayogError(
         BantayogErrorCode.FORBIDDEN,
         'cannot manage users outside your municipality',
@@ -138,7 +144,7 @@ export async function suspendUserCore(
         assertCanManageUser(actor, user)
 
         if (user.status === 'suspended') {
-          return { uid, status: 'suspended' as const }
+          return { uid, status: 'suspended' as const, previousStatus: user.status ?? 'active' }
         }
 
         tx.update(userRef, {
@@ -155,21 +161,30 @@ export async function suspendUserCore(
           correlationId,
         })
 
-        log({
-          severity: 'INFO',
-          code: 'user.suspended',
-          message: `User ${uid} suspended`,
-          data: { uid, actorUid: actor.uid },
-        })
+        return { uid, status: 'suspended' as const, previousStatus: user.status ?? 'active' }
+      })
 
-        return { uid, status: 'suspended' as const }
+      log({
+        severity: 'INFO',
+        code: 'user.suspended',
+        message: `User ${uid} suspended`,
+        data: { uid, actorUid: actor.uid },
       })
 
       // Disable auth account outside the transaction to avoid holding the lock
-      // during an external API call.
-      await auth.updateUser(uid, { disabled: true })
+      // during an external API call. Rollback Firestore on auth failure.
+      try {
+        await auth.updateUser(uid, { disabled: true })
+      } catch (authErr) {
+        console.warn('[suspendUser] auth update failed, rolling back', authErr)
+        await db.collection('users').doc(uid).update({
+          status: txResult.previousStatus,
+          suspendedAt: FieldValue.delete(),
+        })
+        throw authErr
+      }
 
-      return txResult
+      return { uid, status: txResult.status }
     },
   )
 
@@ -228,7 +243,7 @@ export async function revokeUserCore(
         assertCanManageUser(actor, user)
 
         if (user.status === 'revoked') {
-          return { uid, status: 'revoked' as const }
+          return { uid, status: 'revoked' as const, previousStatus: user.status ?? 'active' }
         }
 
         tx.update(userRef, {
@@ -245,19 +260,28 @@ export async function revokeUserCore(
           correlationId,
         })
 
-        log({
-          severity: 'INFO',
-          code: 'user.revoked',
-          message: `User ${uid} revoked`,
-          data: { uid, actorUid: actor.uid },
-        })
-
-        return { uid, status: 'revoked' as const }
+        return { uid, status: 'revoked' as const, previousStatus: user.status ?? 'active' }
       })
 
-      await auth.updateUser(uid, { disabled: true })
+      log({
+        severity: 'INFO',
+        code: 'user.revoked',
+        message: `User ${uid} revoked`,
+        data: { uid, actorUid: actor.uid },
+      })
 
-      return txResult
+      try {
+        await auth.updateUser(uid, { disabled: true })
+      } catch (authErr) {
+        console.warn('[revokeUser] auth update failed, rolling back', authErr)
+        await db.collection('users').doc(uid).update({
+          status: txResult.previousStatus,
+          revokedAt: FieldValue.delete(),
+        })
+        throw authErr
+      }
+
+      return { uid, status: txResult.status }
     },
   )
 
@@ -317,7 +341,13 @@ export async function resetUserTotpCore(
         assertCanManageUser(actor, user)
 
         if (!user.totpSecret && !user.totpEnrolledAt) {
-          return { uid, reset: true as const, hadEnrollment: false as const }
+          return {
+            uid,
+            reset: true as const,
+            hadEnrollment: false as const,
+            previousTotpSecret: user.totpSecret ?? null,
+            previousTotpEnrolledAt: user.totpEnrolledAt ?? null,
+          }
         }
 
         tx.update(userRef, {
@@ -334,18 +364,33 @@ export async function resetUserTotpCore(
           correlationId,
         })
 
-        log({
-          severity: 'INFO',
-          code: 'user.totp_reset',
-          message: `User ${uid} TOTP reset`,
-          data: { uid, actorUid: actor.uid },
-        })
+        return {
+          uid,
+          reset: true as const,
+          hadEnrollment: true as const,
+          previousTotpSecret: user.totpSecret ?? null,
+          previousTotpEnrolledAt: user.totpEnrolledAt ?? null,
+        }
+      })
 
-        return { uid, reset: true as const, hadEnrollment: true as const }
+      log({
+        severity: 'INFO',
+        code: 'user.totp_reset',
+        message: `User ${uid} TOTP reset`,
+        data: { uid, actorUid: actor.uid },
       })
 
       if (txResult.hadEnrollment) {
-        await auth.updateUser(uid, { multiFactor: { enrolledFactors: [] } })
+        try {
+          await auth.updateUser(uid, { multiFactor: { enrolledFactors: [] } })
+        } catch (authErr) {
+          console.warn('[resetUserTotp] auth update failed, rolling back', authErr)
+          await db.collection('users').doc(uid).update({
+            totpSecret: txResult.previousTotpSecret,
+            totpEnrolledAt: txResult.previousTotpEnrolledAt,
+          })
+          throw authErr
+        }
       }
 
       return { uid, reset: txResult.reset }

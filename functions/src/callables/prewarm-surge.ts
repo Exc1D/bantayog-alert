@@ -49,11 +49,13 @@ export async function prewarmSurgeCore(
   // Sequential to avoid thundering herd against own infrastructure
   for (const name of functions) {
     try {
-      await fetch(getFunctionUrl(name), {
+      const response = await fetch(getFunctionUrl(name), {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       })
-      warmed++
+      if (response.ok) {
+        warmed++
+      }
     } catch {
       // Network error or timeout — function not warmed
     }
@@ -63,7 +65,7 @@ export async function prewarmSurgeCore(
 }
 
 export const prewarmSurge = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 10 },
+  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 10, timeoutSeconds: 120 },
   async (request: CallableRequest<unknown>) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const role = request.auth.token.role

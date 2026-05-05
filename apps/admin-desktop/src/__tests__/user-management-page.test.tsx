@@ -3,7 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserManagementPage } from '../pages/UserManagementPage'
 
-const mockOnSnapshot = vi.fn()
+const { mockOnSnapshot } = vi.hoisted(() => ({
+  mockOnSnapshot: vi.fn(),
+}))
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, path: string) => ({ _collectionPath: path })),

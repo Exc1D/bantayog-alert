@@ -62,10 +62,18 @@ async function main() {
   })
 
   // Provincial superadmin account
-  await createAccount('superadmin-test-01', 'superadmin@test.local', 'test123456', {
-    role: 'provincial_superadmin',
-    active: true,
-  })
+  const createdSuperadmin = await createAccount(
+    'superadmin-test-01',
+    'superadmin@test.local',
+    'test123456',
+    {
+      role: 'provincial_superadmin',
+      active: true,
+    },
+  )
+  if (!createdSuperadmin) {
+    throw new Error('Failed to provision superadmin-test-01')
+  }
 
   console.log('\n✓ Done! Test accounts ready.')
 }

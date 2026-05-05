@@ -5,12 +5,14 @@ import SmsPage from '../pages/SmsPage'
 
 vi.mock('@/app/firebase', () => ({ db: {} }))
 
-const mockUseSmsAudit = vi.fn(() => ({
-  outbox: [] as unknown[],
-  inbox: [] as unknown[],
-  providerHealth: [] as unknown[],
-  loading: false,
-  error: null as string | null,
+const { mockUseSmsAudit } = vi.hoisted(() => ({
+  mockUseSmsAudit: vi.fn(() => ({
+    outbox: [] as unknown[],
+    inbox: [] as unknown[],
+    providerHealth: [] as unknown[],
+    loading: false,
+    error: null as string | null,
+  })),
 }))
 
 vi.mock('@/hooks/useSmsAudit', () => ({

@@ -1,10 +1,8 @@
 import { CheckCircle, XCircle, AlertCircle, ArrowUpRight, User, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ReportEvent } from '@bantayog/shared-validators'
+import type { ReportEventWithId } from '@/hooks/useReportEvents'
 
-export interface ReportEventWithId extends ReportEvent {
-  id: string
-}
+export type { ReportEventWithId }
 
 interface ActivityFeedProps {
   events: ReportEventWithId[]

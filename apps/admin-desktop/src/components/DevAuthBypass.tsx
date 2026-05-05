@@ -10,7 +10,10 @@ export function DevAuthBypass() {
   const attempted = useRef(false)
 
   useEffect(() => {
-    if (!useEmulator || attempted.current) return
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    if (!useEmulator || !isLocalhost || attempted.current) return
     attempted.current = true
 
     if (auth.currentUser) return

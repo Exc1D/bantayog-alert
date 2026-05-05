@@ -85,8 +85,6 @@ describe('useReportEvents', () => {
     expect(result.current.events[0]!.reportId).toBe('report-1')
     expect(result.current.events[0]!.id).toBe('event-report-1')
     expect(result.current.events[1]!.toStatus).toBe('resolved')
-    expect(result.current.events[0]!.reportId).toBe('report-1')
-    expect(result.current.events[1]!.toStatus).toBe('resolved')
     expect(result.current.error).toBeNull()
   })
 

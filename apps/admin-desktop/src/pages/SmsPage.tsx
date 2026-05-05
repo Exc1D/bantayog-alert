@@ -102,7 +102,7 @@ export default function SmsPage() {
           <h1 className="text-2xl font-semibold">SMS Audit</h1>
         </div>
 
-        <div className="flex gap-1 mb-6 border-b border-border">
+        <div role="tablist" className="flex gap-1 mb-6 border-b border-border">
           <button
             type="button"
             role="tab"

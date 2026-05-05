@@ -1,6 +1,11 @@
 import { onCall, HttpsError, type CallableRequest } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
-import { streamAuditEvent, type AuditStreamEvent } from '../services/audit-stream.js'
+import {
+  streamAuditEventOrThrow,
+  DEAD_LETTER_CATEGORY_AUDIT_STREAM,
+  DEAD_LETTER_STATUS_STREAMED,
+  type AuditStreamEvent,
+} from '../services/audit-stream.js'
 
 interface ReplayAuditDeadLetterActor {
   uid: string
@@ -21,7 +26,7 @@ export async function replayAuditDeadLetterCore(
 
   const snap = await db
     .collection('dead_letters')
-    .where('category', '==', 'audit_stream')
+    .where('category', '==', DEAD_LETTER_CATEGORY_AUDIT_STREAM)
     .limit(20)
     .get()
 
@@ -34,9 +39,9 @@ export async function replayAuditDeadLetterCore(
   for (const doc of failed) {
     const data = doc.data()
     try {
-      await streamAuditEvent(data.payload as AuditStreamEvent)
+      await streamAuditEventOrThrow(data.payload as AuditStreamEvent)
       await doc.ref.update({
-        status: 'streamed',
+        status: DEAD_LETTER_STATUS_STREAMED,
         streamedAt: now,
         streamedBy: actor.uid,
       })

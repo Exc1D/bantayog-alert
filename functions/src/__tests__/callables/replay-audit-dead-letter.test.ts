@@ -3,7 +3,7 @@ import type { Firestore } from 'firebase-admin/firestore'
 
 let mockDb: Firestore
 
-const mockStreamAuditEvent = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockStreamAuditEventOrThrow = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 
 vi.mock('firebase-functions/v2/https', () => ({
   onCall: vi.fn((_opts: unknown, fn: unknown) => fn),
@@ -21,7 +21,9 @@ vi.mock('firebase-admin/firestore', () => ({
 }))
 
 vi.mock('../../services/audit-stream.js', () => ({
-  streamAuditEvent: mockStreamAuditEvent,
+  streamAuditEventOrThrow: mockStreamAuditEventOrThrow,
+  DEAD_LETTER_CATEGORY_AUDIT_STREAM: 'audit_stream',
+  DEAD_LETTER_STATUS_STREAMED: 'streamed',
 }))
 
 function createMockDb(deadLetters: { category: string; status: string; payload: unknown }[]) {
@@ -59,8 +61,8 @@ function createMockDb(deadLetters: { category: string; status: string; payload: 
 import { replayAuditDeadLetter } from '../../callables/replay-audit-dead-letter.js'
 
 beforeEach(() => {
-  mockStreamAuditEvent.mockClear()
-  mockStreamAuditEvent.mockResolvedValue(undefined)
+  mockStreamAuditEventOrThrow.mockClear()
+  mockStreamAuditEventOrThrow.mockResolvedValue(undefined)
 })
 
 describe('replayAuditDeadLetter', () => {
@@ -93,13 +95,13 @@ describe('replayAuditDeadLetter', () => {
     })
 
     expect(result).toEqual({ replayed: 2 })
-    expect(mockStreamAuditEvent).toHaveBeenCalledTimes(2)
-    expect(mockStreamAuditEvent).toHaveBeenNthCalledWith(1, {
+    expect(mockStreamAuditEventOrThrow).toHaveBeenCalledTimes(2)
+    expect(mockStreamAuditEventOrThrow).toHaveBeenNthCalledWith(1, {
       eventType: 'test',
       actorUid: 'user-1',
       occurredAt: 123456,
     })
-    expect(mockStreamAuditEvent).toHaveBeenNthCalledWith(2, {
+    expect(mockStreamAuditEventOrThrow).toHaveBeenNthCalledWith(2, {
       eventType: 'test2',
       actorUid: 'user-2',
       occurredAt: 123457,
@@ -129,7 +131,7 @@ describe('replayAuditDeadLetter', () => {
     })
 
     expect(result).toEqual({ replayed: 0 })
-    expect(mockStreamAuditEvent).not.toHaveBeenCalled()
+    expect(mockStreamAuditEventOrThrow).not.toHaveBeenCalled()
   })
 
   it('skips items that are not failed_to_stream', async () => {
@@ -161,8 +163,8 @@ describe('replayAuditDeadLetter', () => {
     })
 
     expect(result).toEqual({ replayed: 1 })
-    expect(mockStreamAuditEvent).toHaveBeenCalledTimes(1)
-    expect(mockStreamAuditEvent).toHaveBeenCalledWith({
+    expect(mockStreamAuditEventOrThrow).toHaveBeenCalledTimes(1)
+    expect(mockStreamAuditEventOrThrow).toHaveBeenCalledWith({
       eventType: 'needs-replay',
       actorUid: 'user-2',
       occurredAt: 123457,
@@ -189,8 +191,8 @@ describe('replayAuditDeadLetter', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
-  it('does not mark streamed when streamAuditEvent fails', async () => {
-    mockStreamAuditEvent.mockRejectedValue(new Error('bq error'))
+  it('does not mark streamed when streamAuditEventOrThrow fails', async () => {
+    mockStreamAuditEventOrThrow.mockRejectedValue(new Error('bq error'))
     const db = createMockDb([
       {
         category: 'audit_stream',

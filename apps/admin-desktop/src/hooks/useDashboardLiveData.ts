@@ -62,8 +62,16 @@ export function useDashboardLiveData(municipalityId?: string): DashboardLiveData
 
   const [opsReports, setOpsReports] = useState<OpsRow[]>([])
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
+  const [cutoff, setCutoff] = useState(yesterdayTimestamp())
 
-  const cutoff = useMemo(() => yesterdayTimestamp(), [])
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCutoff(yesterdayTimestamp())
+    }, 60_000)
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
 
   useEffect(() => {
     const base = collection(db, 'report_ops')
@@ -76,13 +84,28 @@ export function useDashboardLiveData(municipalityId?: string): DashboardLiveData
       : query(base, where('status', 'in', ACTIVE_REPORT_STATUSES))
 
     return onSnapshot(q, (snap) => {
-      setOpsReports(
-        snap.docs.map((d) => ({
+      const rows: OpsRow[] = []
+      for (const d of snap.docs) {
+        const data = d.data()
+        const municipalityId = typeof data.municipalityId === 'string' ? data.municipalityId : ''
+        if (
+          !municipalityId ||
+          !data.createdAt ||
+          typeof (data.createdAt as Timestamp).toMillis !== 'function'
+        ) {
+          console.warn('[useDashboardLiveData] skipping malformed doc', d.id, {
+            municipalityId: data.municipalityId,
+            createdAt: data.createdAt,
+          })
+          continue
+        }
+        rows.push({
           reportId: d.id,
-          municipalityId: String(d.data().municipalityId ?? ''),
-          createdAt: d.data().createdAt as Timestamp,
-        })),
-      )
+          municipalityId,
+          createdAt: data.createdAt as Timestamp,
+        })
+      }
+      setOpsReports(rows)
       setLastUpdated(Date.now())
     })
   }, [municipalityId])
@@ -121,18 +144,19 @@ export function useDashboardLiveData(municipalityId?: string): DashboardLiveData
   // exceeding 20-min avg response time crosses the spec threshold (§4.1).
   const anomalies = useMemo<LiveAnomaly[]>(
     () =>
-      municipalData
-        .filter((m) => {
-          if (m.activeIncidents === 0 || m.avgResponseTime === '—') return false
-          const minutes = parseInt(m.avgResponseTime.split(':')[0] ?? '0', 10)
-          return minutes > 20
-        })
+      municipalPerf
+        .filter(
+          (m): m is typeof m & { avgResponseTimeMinutes: number } =>
+            (activeByMuni[m.municipalityId] ?? 0) > 0 &&
+            m.avgResponseTimeMinutes !== null &&
+            m.avgResponseTimeMinutes > 20,
+        )
         .map((m) => ({
           id: `slow-response-${m.municipalityId}`,
-          message: `${m.municipality}: avg response time ${m.avgResponseTime} (target <20:00)`,
+          message: `${MUNI_NAME[m.municipalityId] ?? m.municipalityId}: avg response time ${formatMinutes(m.avgResponseTimeMinutes)} (target <20:00)`,
           detectedAt: new Date().toISOString(),
         })),
-    [municipalData],
+    [municipalPerf, activeByMuni],
   )
 
   return {
