@@ -276,7 +276,7 @@ body {
 /* === Timeline === */
 .timeline {
   display: flex;
-  gap: 1rem;
+  gap: 0;
   justify-content: space-between;
 }
 
@@ -294,6 +294,29 @@ body {
   border-radius: 9999px;
   border: 2px solid white;
   flex-shrink: 0;
+  z-index: 1;
+}
+
+.timeline-connector {
+  flex: 1;
+  height: 2px;
+  margin-top: -5px;
+}
+
+.timeline-connector--complete {
+  background: var(--color-success-fg);
+}
+
+.timeline-connector--queued {
+  background: #f59e0b;
+}
+
+.timeline-connector--failed {
+  background: #dc2626;
+}
+
+.timeline-connector--pending {
+  background: #d1d5db;
 }
 
 .timeline-dot--complete {

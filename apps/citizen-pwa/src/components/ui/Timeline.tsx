@@ -13,7 +13,12 @@ export function Timeline({ events }: TimelineProps) {
     <div className="timeline">
       {events.map((event, i) => (
         <div key={i} className="timeline-item">
-          <div className={`timeline-dot timeline-dot--${event.state}`} aria-hidden="true" />
+          <div className="flex items-center w-full">
+            <div className={`timeline-dot timeline-dot--${event.state}`} aria-hidden="true" />
+            {i < events.length - 1 && (
+              <div className={`timeline-connector timeline-connector--${event.state}`} />
+            )}
+          </div>
           <div className="timeline-label">{event.label}</div>
           {event.meta && <div className="timeline-meta">{event.meta}</div>}
           <span className="sr-only">{event.state} status</span>
