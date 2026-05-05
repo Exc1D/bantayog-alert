@@ -449,10 +449,7 @@ export function RevealSheet({
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span
-                className="text-xs font-bold uppercase tracking-wider"
-                style={{ color: '#a73400' }}
-              >
+              <span className="text-xs font-bold uppercase tracking-wider text-warning-700">
                 Secret Code
               </span>
               <span

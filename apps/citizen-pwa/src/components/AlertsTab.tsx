@@ -164,7 +164,7 @@ export function AlertsTab() {
     <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-white/95 px-4 py-4 border-b border-surface-200">
-        <h1 className="text-[20px] font-bold text-surface-900">Alerts</h1>
+        <h1 className="text-xl font-bold text-surface-900">Alerts</h1>
         {unread > 0 && (
           <p className="text-xs text-surface-500 mt-1">
             {unread} unread alert{unread !== 1 ? 's' : ''}

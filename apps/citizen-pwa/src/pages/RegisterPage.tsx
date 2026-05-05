@@ -217,7 +217,7 @@ export function RegisterPage() {
 
         {step === 'otp' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <p className="mb-4 text-[0.9375rem] font-semibold text-surface-900">
               Enter the 6-digit code sent to {phone}
             </p>
             <input
@@ -244,7 +244,7 @@ export function RegisterPage() {
 
         {step === 'name' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <p className="mb-4 text-[0.9375rem] font-semibold text-surface-900">
               What should we call you?
             </p>
             <input
@@ -271,7 +271,7 @@ export function RegisterPage() {
 
         {step === 'consent' && (
           <div>
-            <p className="mb-4 text-[0.9375rem] font-semibold text-[#001e40]">
+            <p className="mb-4 text-[0.9375rem] font-semibold text-surface-900">
               Your previous reports are already linked to this account.
             </p>
             <p className="mb-1 text-xs text-surface-500 italic">

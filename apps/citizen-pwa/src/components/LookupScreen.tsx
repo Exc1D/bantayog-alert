@@ -148,7 +148,7 @@ export function LookupScreen() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full h-14 rounded-xl text-white font-semibold text-base border-0 bg-gradient-to-br from-brand-500 to-brand-700 ${loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+            className={`w-full h-14 rounded-xl text-white font-semibold text-base border-0 bg-brand-600 hover:bg-brand-700 transition-colors ${loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {loading ? 'Searching…' : 'Find My Report'}
           </button>

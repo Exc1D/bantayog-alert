@@ -19,7 +19,7 @@ export function VersionGate({ children }: Props) {
 
   if (blocked) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-white p-8 text-center z-[9999]">
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-surface-0 p-8 text-center z-[9999]">
         <h1 className="text-xl font-bold mb-3">
           Mangyaring i-update ang app
           <br />
@@ -31,7 +31,7 @@ export function VersionGate({ children }: Props) {
           Your version is no longer supported.
         </p>
         {updateUrl && isValidHttpsUrl(updateUrl) ? (
-          <a href={updateUrl} className="text-blue-700 underline font-semibold">
+          <a href={updateUrl} className="text-brand-700 underline font-semibold">
             I-download ang pinakabagong bersyon / Download the latest version
           </a>
         ) : (

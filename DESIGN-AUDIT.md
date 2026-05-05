@@ -246,10 +246,10 @@ Create shared utility:
 ```typescript
 // utils/severityStyles.ts
 export const severityStyles = {
-  critical: { bg: 'bg-[#fee2e2]', text: 'text-[#991b1b]', border: 'border-l-[#991b1b]' },
-  high: { bg: 'bg-[#fee2e2]', text: 'text-[#991b1b]', border: 'border-l-[#991b1b]' },
-  medium: { bg: 'bg-[#fff5ef]', text: 'text-[#a73400]', border: 'border-l-[#a73400]' },
-  low: { bg: 'bg-[#e0e7f0]', text: 'text-[#414849]', border: 'border-l-[#414849]' },
+  critical: { bg: 'bg-danger-100', text: 'text-danger-800', border: 'border-danger-600' },
+  high: { bg: 'bg-danger-100', text: 'text-danger-800', border: 'border-danger-600' },
+  medium: { bg: 'bg-warning-100', text: 'text-warning-800', border: 'border-warning-700' },
+  low: { bg: 'bg-surface-200', text: 'text-surface-700', border: 'border-surface-400' },
 }
 ```
 

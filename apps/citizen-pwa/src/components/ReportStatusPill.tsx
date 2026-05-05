@@ -105,7 +105,6 @@ export function ReportStatusPill() {
     <div
       ref={wrapperRef}
       className="fixed z-toast touch-none select-none right-4 top-1/2 -translate-y-1/2"
-      style={{ touchAction: 'none' }}
     >
       <button
         type="button"
