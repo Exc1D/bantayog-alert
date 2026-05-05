@@ -651,7 +651,7 @@ export function ProfileTab() {
       </div>
 
       {/* Sign out */}
-      <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2">
+      <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2 flex justify-center">
         {signOutError && (
           <p role="alert" className="m-0 mb-2 text-xs text-danger-500">
             Sign out failed. Please try again.

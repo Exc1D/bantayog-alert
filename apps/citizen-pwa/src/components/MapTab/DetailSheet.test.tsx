@@ -86,83 +86,29 @@ describe('DetailSheet — myReport mode', () => {
     expect(screen.getByText('abcd1234')).toBeInTheDocument()
   })
 
-  it('shows edit and cancel for new', () => {
+  it('shows edit button for new', () => {
     render(
       <DetailSheet
         sheetPhase="expanded"
         onClose={vi.fn()}
         onCollapse={vi.fn()}
-        onCancelReport={vi.fn()}
         {...myReportProps}
       />,
     )
     expect(screen.getByRole('button', { name: /edit report/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /delete report/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument()
   })
 
-  it('opens DeleteSheet when Delete report is clicked', () => {
+  it('does not show delete button', () => {
     render(
       <DetailSheet
         sheetPhase="expanded"
         onClose={vi.fn()}
         onCollapse={vi.fn()}
-        onCancelReport={vi.fn()}
         {...myReportProps}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /delete report/i }))
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    expect(screen.getByText('Keep Report')).toBeInTheDocument()
-    expect(screen.getByText('Delete Report')).toBeInTheDocument()
-  })
-
-  it('calls onCancelReport when Delete Report is confirmed in sheet', () => {
-    const onCancelReport = vi.fn()
-    render(
-      <DetailSheet
-        sheetPhase="expanded"
-        onClose={vi.fn()}
-        onCollapse={vi.fn()}
-        onCancelReport={onCancelReport}
-        {...myReportProps}
-      />,
-    )
-    fireEvent.click(screen.getByRole('button', { name: /delete report/i }))
-    fireEvent.click(screen.getByText('Delete Report'))
-    expect(onCancelReport).toHaveBeenCalledOnce()
-    expect(onCancelReport).toHaveBeenCalledWith('abcd1234', 'report-id-5678')
-  })
-
-  it('closes sheet and does NOT call onCancelReport when Keep Report is clicked', () => {
-    const onCancelReport = vi.fn()
-    render(
-      <DetailSheet
-        sheetPhase="expanded"
-        onClose={vi.fn()}
-        onCollapse={vi.fn()}
-        onCancelReport={onCancelReport}
-        {...myReportProps}
-      />,
-    )
-    fireEvent.click(screen.getByRole('button', { name: /delete report/i }))
-    fireEvent.click(screen.getByText('Keep Report'))
-    expect(screen.queryByRole('alertdialog')).toBeNull()
-    expect(onCancelReport).not.toHaveBeenCalled()
-  })
-
-  it('does NOT call onCancelReport when Edit is clicked', () => {
-    const onCancelReport = vi.fn()
-    render(
-      <DetailSheet
-        sheetPhase="expanded"
-        onClose={vi.fn()}
-        onCollapse={vi.fn()}
-        onCancelReport={onCancelReport}
-        {...myReportProps}
-      />,
-    )
-    fireEvent.click(screen.getByRole('button', { name: /edit report/i }))
-    expect(onCancelReport).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: /delete report/i })).toBeNull()
   })
 
   it('shows request correction for verified', () => {

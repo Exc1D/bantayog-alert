@@ -81,24 +81,24 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss, onDelete }: Pr
           </div>
         </div>
         <div className="flex gap-3 pt-3 border-t border-surface-100 mt-3">
-          <button
-            type="button"
-            aria-label="Track incident"
-            onClick={onExpand}
-            className="text-brand-500 text-sm font-medium"
-          >
-            Track
-          </button>
           {pin.type === 'myReport' && onDelete ? (
             <button
               type="button"
               aria-label="Delete report"
               onClick={onDelete}
-              className="text-danger-500 text-sm font-medium ml-auto"
+              className="text-danger-500 text-sm font-medium"
             >
               Delete
             </button>
           ) : null}
+          <button
+            type="button"
+            aria-label="Track incident"
+            onClick={onExpand}
+            className="text-brand-500 text-sm font-medium ml-auto"
+          >
+            Track
+          </button>
         </div>
       </div>
     </div>
