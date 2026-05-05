@@ -12,12 +12,14 @@ import {
   Home,
 } from 'lucide-react'
 import { useReport } from '../hooks/useReport.js'
-import { loadReports } from '../services/localForageReports.js'
+import { loadReports, deleteReport } from '../services/localForageReports.js'
 import type { StoredReport } from '../services/localForageReports.js'
+import { cancelReport } from '../services/callables.js'
 import { StatusBanner } from './ui/StatusBanner.js'
 import { Button } from './ui/Button.js'
 import { Timeline } from './ui/Timeline.js'
 import { RadarRings } from './ui/RadarRings.js'
+import { WithdrawSheet } from './WithdrawSheet.js'
 
 const RESPONDER_PHONE_NUMBER = '0547211216'
 
@@ -130,6 +132,7 @@ export function TrackingScreen() {
   const { reference } = useParams<{ reference: string }>()
   const { data: report, isPending, error } = useReport(reference ?? '')
   const [storedEntry, setStoredEntry] = useState<StoredReport | null>(null)
+  const [withdrawOpen, setWithdrawOpen] = useState(false)
 
   useEffect(() => {
     if (!reference) return
@@ -364,7 +367,37 @@ export function TrackingScreen() {
             Re-open if situation changed
           </Button>
         ) : null}
+
+        {['new', 'awaiting_verify'].includes(report.status) ? (
+          <div className="mt-4 pt-4 border-t border-surface-200 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setWithdrawOpen(true)
+              }}
+              className="text-sm font-medium text-danger-500"
+            >
+              Withdraw report
+            </button>
+          </div>
+        ) : null}
       </div>
+
+      <WithdrawSheet
+        open={withdrawOpen}
+        publicRef={reference}
+        reportType={report.reportType ?? ''}
+        onConfirm={() => {
+          setWithdrawOpen(false)
+          if (report.id) {
+            void cancelReport(report.id)
+            void deleteReport(reference)
+          }
+        }}
+        onCancel={() => {
+          setWithdrawOpen(false)
+        }}
+      />
     </div>
   )
 }
