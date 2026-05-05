@@ -40,7 +40,7 @@ export const auth = getAuth(firebaseApp)
 export const functions = getFunctions(firebaseApp, 'asia-southeast1')
 
 if (useEmulator) {
-  connectFirestoreEmulator(db, 'localhost', 8080)
+  connectFirestoreEmulator(db, 'localhost', 8081)
   connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
   connectFunctionsEmulator(functions, 'localhost', 5001)
 }

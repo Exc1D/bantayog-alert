@@ -1,5 +1,27 @@
 # Progress
 
+## Current Status (2026-05-05)
+
+**Admin Desktop -- SMS Audit Page (2026-05-05)**
+Final gap from the original 5-point admin-desktop plan — `SmsPage.tsx` now has real content for all three tabs.
+
+- ✅ **Outbox tab:** Table with recipient hash (truncated), purpose, color-coded status badge, segment count, created-at timestamp
+- ✅ **Inbox tab:** Table with sender hash (truncated), body preview, color-coded parse-status badge, confidence score, parsed-into report ID
+- ✅ **Provider Health tab:** Cards per provider showing circuit-state badge (closed=green, open=red, half_open=amber), error rate %, last transition reason, last probe timestamp
+- ✅ Status badge colors follow plan: queued=amber, sending=blue, sent/delivered=green, failed=red, abandoned=gray, parsed=green, low_confidence=amber, unparseable=red
+- ✅ `useSmsAudit` hook already existed — no changes needed
+- **Gate:** 9/9 sms-page tests pass, 90/90 admin-desktop tests pass, lint clean, typecheck clean
+
+**Admin Desktop -- Phase 4: System Health Controls (2026-05-05)**
+Dead-letter replay and prewarm surge callables implemented with full TDD coverage.
+
+- ✅ `replayAuditDeadLetter` callable -- queries `dead_letters` where `category: 'audit_stream'` and `status: 'failed_to_stream'`, replays via `streamAuditEvent()`, marks `streamed` on success, returns count. Superadmin-only.
+- ✅ `prewarmSurge` callable -- HTTP GET pings to function endpoints (`verifyReport`, `dispatchResponder`, `closeReport`, etc.) with `light` (3) and `heavy` (10) levels. Counts any response as success (405/404 still warms instance). Superadmin-only, Zod-validated input.
+- ✅ `audit-stream.ts` now writes dead letters to Firestore on BigQuery failure -- fire-and-forget, survives dead-letter write failure without throwing
+- ✅ `SystemHealthPage.tsx` wired -- dead-letter replay button + light/heavy pre-warm buttons with loading states and result display
+- ✅ `callables.ts` frontend wrappers for `replayDeadLetter` and `prewarmSurge`
+- **Gate:** functions 17/17 new tests pass, lint clean, typecheck clean; admin-desktop 88/88 tests pass, lint clean, typecheck clean
+
 ## Current Status (2026-05-04)
 
 **Citizen PWA -- Cancel Own Report + Draggable Status Pill (2026-05-04)**

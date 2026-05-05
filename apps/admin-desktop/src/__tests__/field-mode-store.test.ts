@@ -15,11 +15,18 @@ vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
   onSnapshot: mockOnSnapshot,
   getFirestore: vi.fn(() => ({})),
+  connectFirestoreEmulator: vi.fn(),
+}))
+
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(() => ({})),
+  connectAuthEmulator: vi.fn(),
 }))
 
 vi.mock('firebase/functions', () => ({
   httpsCallable: mockHttpsCallable,
   getFunctions: vi.fn(() => ({})),
+  connectFunctionsEmulator: vi.fn(),
 }))
 
 const ts = 1700000000000 // fixed timestamp for test determinism

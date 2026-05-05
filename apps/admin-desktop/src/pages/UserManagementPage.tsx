@@ -144,6 +144,8 @@ export function UserManagementPage() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [erasureRequests, setErasureRequests] = useState<ErasureRequest[]>([])
   const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const q = query(collection(db, 'users'), orderBy('email'))
@@ -193,11 +195,89 @@ export function UserManagementPage() {
     }
   }
 
+  const handleSuspend = async (uid: string) => {
+    if (!window.confirm('Suspend user? They will be unable to sign in.')) return
+    setProcessingUserId(uid)
+    setError(null)
+    try {
+      await callables.suspendUser({ uid, idempotencyKey: crypto.randomUUID() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Suspend failed'
+      setError(message)
+      console.error('suspendUser failed', err)
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  const handleRevoke = async (uid: string) => {
+    if (!window.confirm('Permanently revoke this user? This cannot be undone.')) return
+    setProcessingUserId(uid)
+    setError(null)
+    try {
+      await callables.revokeUser({ uid, idempotencyKey: crypto.randomUUID() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Revoke failed'
+      setError(message)
+      console.error('revokeUser failed', err)
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  const handleResetTotp = async (uid: string) => {
+    if (!window.confirm('Reset TOTP for this user? They will need to re-enroll MFA.')) return
+    setProcessingUserId(uid)
+    setError(null)
+    try {
+      await callables.resetUserTotp({ uid, idempotencyKey: crypto.randomUUID() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Reset TOTP failed'
+      setError(message)
+      console.error('resetUserTotp failed', err)
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
   return (
     <div style={PAGE_STYLE}>
       <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#111827', margin: 0 }}>
         User Management
       </h1>
+
+      {error && (
+        <div
+          role="alert"
+          style={{
+            padding: '12px 16px',
+            background: '#fee2e2',
+            border: '1px solid #fca5a5',
+            borderRadius: '6px',
+            color: '#991b1b',
+            fontSize: '13px',
+          }}
+        >
+          {error}
+          <button
+            type="button"
+            onClick={() => {
+              setError(null)
+            }}
+            style={{
+              marginLeft: '12px',
+              background: 'transparent',
+              border: 'none',
+              color: '#991b1b',
+              cursor: 'pointer',
+              fontSize: '13px',
+              textDecoration: 'underline',
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div style={LAYOUT_STYLE}>
         {/* User table */}
@@ -233,27 +313,32 @@ export function UserManagementPage() {
                       </td>
                       <td style={TD_STYLE}>{u.lastLogin?.toDate().toLocaleString() ?? '—'}</td>
                       <td style={TD_STYLE}>
-                        {/* No-op stubs — callable implementations pending 7.A */}
                         <button
+                          type="button"
                           style={BTN_DANGER_STYLE}
+                          disabled={processingUserId === u.id}
                           onClick={() => {
-                            console.warn('suspend not yet implemented', u.id)
+                            void handleSuspend(u.id)
                           }}
                         >
                           Suspend
                         </button>
                         <button
+                          type="button"
                           style={BTN_DANGER_STYLE}
+                          disabled={processingUserId === u.id}
                           onClick={() => {
-                            console.warn('revoke not yet implemented', u.id)
+                            void handleRevoke(u.id)
                           }}
                         >
                           Revoke
                         </button>
                         <button
+                          type="button"
                           style={BTN_STYLE}
+                          disabled={processingUserId === u.id}
                           onClick={() => {
-                            console.warn('reset TOTP not yet implemented', u.id)
+                            void handleResetTotp(u.id)
                           }}
                         >
                           Reset TOTP

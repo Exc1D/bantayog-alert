@@ -211,4 +211,29 @@ export const callables = {
       functions,
       'archiveProvincialResource',
     )(payload).then((r) => r.data),
+  suspendUser: (payload: { uid: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { uid: string; status: 'suspended' }>(
+      functions,
+      'suspendUser',
+    )(payload).then((r) => r.data),
+  revokeUser: (payload: { uid: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { uid: string; status: 'revoked' }>(
+      functions,
+      'revokeUser',
+    )(payload).then((r) => r.data),
+  resetUserTotp: (payload: { uid: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { uid: string; reset: true }>(
+      functions,
+      'resetUserTotp',
+    )(payload).then((r) => r.data),
+  replayDeadLetter: () =>
+    httpsCallable<Record<string, never>, { replayed: number }>(
+      functions,
+      'replayAuditDeadLetter',
+    )({}).then((r) => r.data),
+  prewarmSurge: (payload: { level: 'light' | 'heavy' }) =>
+    httpsCallable<typeof payload, { warmed: number }>(
+      functions,
+      'prewarmSurge',
+    )(payload).then((r) => r.data),
 }

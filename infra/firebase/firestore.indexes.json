@@ -207,6 +207,14 @@
       "collectionGroup": "report_events",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "municipalityId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "report_events",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "actor", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]

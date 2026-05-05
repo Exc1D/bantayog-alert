@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import { EmergencyDeclarationModal } from './EmergencyDeclarationModal'
 
-const COLOR_PROVINCE = '#7c3aed'
+const COLOR_PROVINCE = '#001e40'
 const COLOR_DANGER = '#dc2626'
 
 const BASE_LINK_STYLE: React.CSSProperties = {
@@ -153,7 +153,7 @@ export function Sidebar() {
                 letterSpacing: '0.01em',
               }}
             >
-              ⚡ Declare Alerts
+              Declare Alerts
             </button>
           </>
         )}
