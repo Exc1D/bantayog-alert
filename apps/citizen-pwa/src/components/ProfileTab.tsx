@@ -617,9 +617,9 @@ export function ProfileTab() {
           </>
         ) : reports.length === 0 ? (
           <div role="status" className="py-9 text-center">
-            <p className="m-0 mb-2 text-surface-400">
-              <ClipboardList size={40} />
-            </p>
+            <div className="mb-2 flex justify-center">
+              <ClipboardList size={40} className="text-surface-400" />
+            </div>
             <p className="m-0 mb-1.5 font-bold text-surface-900 text-[0.9375rem]">No reports yet</p>
             <p className="m-0 mb-5 text-[0.8125rem] text-surface-500">
               Your submitted reports will appear here.
