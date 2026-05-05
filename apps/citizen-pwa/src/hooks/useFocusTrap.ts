@@ -1,0 +1,47 @@
+import { useEffect, useRef } from 'react'
+
+const FOCUSABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ')
+
+export function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, active: boolean) {
+  const previousFocus = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!active || !containerRef.current) return
+
+    previousFocus.current = document.activeElement as HTMLElement
+    const container = containerRef.current
+
+    const focusable = container.querySelectorAll<HTMLElement>(FOCUSABLE)
+    focusable[0]?.focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return
+      const els = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE))
+      if (els.length === 0) return
+      const first = els[0]
+      const last = els[els.length - 1]
+      if (!first || !last) return
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    container.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      container.removeEventListener('keydown', handleKeyDown)
+      previousFocus.current?.focus()
+    }
+  }, [active, containerRef])
+}
