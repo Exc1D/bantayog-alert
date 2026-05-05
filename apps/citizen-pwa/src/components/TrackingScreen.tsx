@@ -233,15 +233,9 @@ export function TrackingScreen() {
             <div className="tracking-actions">
               <a
                 href={`tel:${RESPONDER_PHONE_NUMBER}`}
-                className="btn btn--primary btn--full"
-                style={{
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                className="btn btn--primary btn--full flex items-center justify-center gap-1"
               >
-                <PhoneCall size={14} style={{ marginRight: '4px' }} />
+                <PhoneCall size={14} />
                 Call responders
               </a>
             </div>
@@ -381,15 +375,9 @@ export function TrackingScreen() {
           </Button>
           <a
             href={`tel:${RESPONDER_PHONE_NUMBER}`}
-            className="btn btn--primary btn--full"
-            style={{
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="btn btn--primary btn--full flex items-center justify-center gap-1"
           >
-            <PhoneCall size={14} style={{ marginRight: '4px' }} />
+            <PhoneCall size={14} />
             Call responders
           </a>
         </div>

@@ -11,12 +11,11 @@ interface TimelineProps {
 export function Timeline({ events }: TimelineProps) {
   return (
     <div className="timeline">
-      <div className="timeline-track" />
       {events.map((event, i) => (
         <div key={i} className="timeline-item">
           <div className={`timeline-dot timeline-dot--${event.state}`} aria-hidden="true" />
           <div className="timeline-label">{event.label}</div>
-          <div className="timeline-meta">{event.meta}</div>
+          {event.meta && <div className="timeline-meta">{event.meta}</div>}
           <span className="sr-only">{event.state} status</span>
         </div>
       ))}
