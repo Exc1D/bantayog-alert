@@ -7,6 +7,7 @@
  */
 
 import { BigQuery } from '@google-cloud/bigquery'
+import { adminDb } from '../admin-init.js'
 
 export interface AuditStreamEvent {
   eventType: string
@@ -26,5 +27,16 @@ export async function streamAuditEvent(event: AuditStreamEvent): Promise<void> {
     await table.insert([event])
   } catch (err) {
     console.warn('[audit-stream] failed to stream event', event.eventType, err)
+    try {
+      await adminDb.collection('dead_letters').add({
+        category: 'audit_stream',
+        status: 'failed_to_stream',
+        payload: event,
+        createdAt: Date.now(),
+        error: err instanceof Error ? err.message : String(err),
+      })
+    } catch (dlErr) {
+      console.error('[audit-stream] failed to write dead letter', dlErr)
+    }
   }
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import type { Timestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
+import { callables } from '../services/callables'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -117,6 +118,38 @@ function GapValue({ seconds, warnThreshold }: { seconds: number; warnThreshold: 
 
 export function SystemHealthPage() {
   const health = useSystemHealth()
+  const [replayLoading, setReplayLoading] = useState(false)
+  const [replayResult, setReplayResult] = useState<string | null>(null)
+  const [prewarmLoading, setPrewarmLoading] = useState(false)
+  const [prewarmResult, setPrewarmResult] = useState<string | null>(null)
+
+  const handleReplay = async () => {
+    setReplayLoading(true)
+    setReplayResult(null)
+    try {
+      const result = await callables.replayDeadLetter()
+      setReplayResult(`Replayed ${String(result.replayed)} dead-letter event(s).`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Replay failed'
+      setReplayResult(`Error: ${message}`)
+    } finally {
+      setReplayLoading(false)
+    }
+  }
+
+  const handlePrewarm = async (level: 'light' | 'heavy') => {
+    setPrewarmLoading(true)
+    setPrewarmResult(null)
+    try {
+      const result = await callables.prewarmSurge({ level })
+      setPrewarmResult(`Warmed ${String(result.warmed)} function(s).`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Pre-warm failed'
+      setPrewarmResult(`Error: ${message}`)
+    } finally {
+      setPrewarmLoading(false)
+    }
+  }
 
   return (
     <div style={PAGE_STYLE}>
@@ -215,13 +248,46 @@ export function SystemHealthPage() {
           Replay dead-letter audit events that failed to stream to BigQuery.
         </p>
         <button
-          style={BTN_STYLE}
+          style={{ ...BTN_STYLE, opacity: replayLoading ? 0.6 : 1 }}
+          disabled={replayLoading}
           onClick={() => {
-            console.warn('dead-letter replay triggered (stub)')
+            void handleReplay()
           }}
         >
-          Dead-Letter Replay
+          {replayLoading ? 'Replaying…' : 'Dead-Letter Replay'}
         </button>
+        {replayResult && (
+          <p style={{ fontSize: '13px', marginTop: '8px', color: '#374151' }}>{replayResult}</p>
+        )}
+
+        <div style={{ marginTop: '16px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
+            Pre-warm Cloud Functions to reduce cold-start latency during surge events.
+          </p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              style={{ ...BTN_STYLE, opacity: prewarmLoading ? 0.6 : 1 }}
+              disabled={prewarmLoading}
+              onClick={() => {
+                void handlePrewarm('light')
+              }}
+            >
+              {prewarmLoading ? 'Warming…' : 'Light Warmup'}
+            </button>
+            <button
+              style={{ ...BTN_STYLE, opacity: prewarmLoading ? 0.6 : 1 }}
+              disabled={prewarmLoading}
+              onClick={() => {
+                void handlePrewarm('heavy')
+              }}
+            >
+              {prewarmLoading ? 'Warming…' : 'Heavy Warmup'}
+            </button>
+          </div>
+          {prewarmResult && (
+            <p style={{ fontSize: '13px', marginTop: '8px', color: '#374151' }}>{prewarmResult}</p>
+          )}
+        </div>
       </div>
     </div>
   )
