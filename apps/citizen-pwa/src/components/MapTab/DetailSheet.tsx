@@ -3,7 +3,7 @@ import { MapPin, X, Zap } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
 import { statusMeta } from '../../utils/incident-meta.js'
 import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
-import { WithdrawSheet } from '../WithdrawSheet.js'
+import { DeleteSheet } from '../DeleteSheet.js'
 import type { MyReport, PublicIncident } from './types.js'
 
 type Props =
@@ -21,7 +21,7 @@ type Props =
       sheetPhase: 'hidden' | 'peek' | 'expanded'
       onClose: () => void
       onCollapse: () => void
-      onCancelReport?: (publicRef: string, reportId: string) => void
+      onCancelReport?: (publicRef: string, reportId?: string) => void
     }
 
 const LABELS: Record<string, string> = {
@@ -206,7 +206,7 @@ export function DetailSheet(props: Props) {
       }}
     >
       {dragHandle}
-      <p className="font-extrabold text-surface-900">★ Your Report</p>
+      <p className="font-extrabold text-surface-900">Your Report</p>
       <p className="mt-1 mb-2 font-bold text-lg text-surface-900">
         {LABELS[report.reportType] ?? report.reportType}
         {report.status !== 'queued' && report.status !== 'new'
@@ -245,7 +245,7 @@ export function DetailSheet(props: Props) {
           }}
           className="text-brand-500 text-sm font-medium"
         >
-          {copied ? 'Copied ✓' : 'Copy'}
+          {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
       <div className="flex gap-1 mb-5">
@@ -266,31 +266,33 @@ export function DetailSheet(props: Props) {
         ))}
       </div>
       {actions.includes('edit') && report.id ? (
-        <div className="flex gap-2 mb-2">
-          <button type="button" aria-label="Edit report">
-            Edit
-          </button>
-          <button
-            type="button"
-            aria-label="Withdraw report"
-            className="text-danger-500 text-sm font-medium"
-            onClick={() => {
-              setWithdrawOpen(true)
-            }}
-          >
-            Withdraw report
-          </button>
-        </div>
+        <button type="button" aria-label="Edit report" className="mb-2">
+          Edit
+        </button>
       ) : null}
       {actions.includes('request_correction') ? (
         <button type="button" aria-label="Request correction" className="mb-2">
           Request Correction
         </button>
       ) : null}
+      {actions.includes('edit') ? (
+        <div className="mt-3 pt-3 border-t border-surface-200">
+          <button
+            type="button"
+            aria-label="Delete report"
+            className="w-full py-2.5 text-danger-500 text-sm font-medium text-center active:bg-danger-500/5 rounded-lg transition-colors"
+            onClick={() => {
+              setWithdrawOpen(true)
+            }}
+          >
+            Delete report
+          </button>
+        </div>
+      ) : null}
       <button type="button" aria-label="Close" onClick={props.onClose}>
         Close
       </button>
-      <WithdrawSheet
+      <DeleteSheet
         open={withdrawOpen}
         publicRef={report.publicRef}
         reportType={LABELS[report.reportType] ?? report.reportType}

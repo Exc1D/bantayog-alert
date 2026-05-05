@@ -4,6 +4,7 @@ import { Crosshair } from 'lucide-react'
 import L from 'leaflet'
 import { PeekSheet } from './PeekSheet.js'
 import { DetailSheet } from './DetailSheet.js'
+import { DeleteSheet } from '../DeleteSheet.js'
 import { FilterBar } from './FilterBar.js'
 import { IncidentLayer } from './IncidentLayer.js'
 import { MyReportLayer } from './MyReportLayer.js'
@@ -56,6 +57,7 @@ export function MapTab() {
   const [filters, setFilters] = useState<Filters>({ municipality: '' })
   const [selectedPin, setSelectedPin] = useState<SelectedPin | null>(null)
   const [sheetPhase, setSheetPhase] = useState<'hidden' | 'peek' | 'expanded'>('hidden')
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false)
 
   const {
     incidents,
@@ -66,21 +68,24 @@ export function MapTab() {
   const { toast } = useToast()
 
   const handleCancelReport = useCallback(
-    (publicRef: string, reportId: string) => {
+    (publicRef: string, reportId?: string) => {
       void (async () => {
-        try {
-          await cancelReport(reportId)
-          toast('Report cancelled', 'success')
-          setSheetPhase('hidden')
-          setSelectedPin(null)
-        } catch {
-          toast('Failed to cancel report', 'error')
-          return
+        // For queued reports without a Firestore ID, skip backend cancel
+        if (reportId) {
+          try {
+            await cancelReport(reportId)
+            toast('Report cancelled', 'success')
+          } catch {
+            toast('Failed to cancel report', 'error')
+            return
+          }
         }
+        setSheetPhase('hidden')
+        setSelectedPin(null)
         try {
           await deleteReport(publicRef)
         } catch (err: unknown) {
-          console.warn('Failed to cleanup local report cache after successful cancel', {
+          console.warn('Failed to cleanup local report cache after cancel', {
             publicRef,
             err,
           })
@@ -200,7 +205,7 @@ export function MapTab() {
     setSelectedPin({
       id: report.publicRef,
       type: 'myReport',
-      label: `★ ${INCIDENT_LABELS[report.reportType] ?? report.reportType} · ${toMapProgressLabel(report.status)}`,
+      label: `Your report: ${INCIDENT_LABELS[report.reportType] ?? report.reportType} · ${toMapProgressLabel(report.status)}`,
     })
     setSheetPhase('peek')
   }, [])
@@ -286,6 +291,15 @@ export function MapTab() {
           setSheetPhase('hidden')
           setSelectedPin(null)
         }}
+        {...(selectedPin?.type === 'myReport' &&
+        selectedMyReport &&
+        ['queued', 'new', 'awaiting_verify'].includes(selectedMyReport.status)
+          ? {
+              onDelete: () => {
+                setDeleteSheetOpen(true)
+              },
+            }
+          : {})}
       />
 
       {sheetPhase === 'expanded' && selectedIncident ? (
@@ -321,6 +335,25 @@ export function MapTab() {
           onCancelReport={handleCancelReport}
         />
       ) : null}
+
+      <DeleteSheet
+        open={deleteSheetOpen}
+        publicRef={selectedMyReport?.publicRef ?? ''}
+        reportType={
+          selectedMyReport
+            ? (INCIDENT_LABELS[selectedMyReport.reportType] ?? selectedMyReport.reportType)
+            : ''
+        }
+        onConfirm={() => {
+          setDeleteSheetOpen(false)
+          if (selectedMyReport) {
+            handleCancelReport(selectedMyReport.publicRef, selectedMyReport.id)
+          }
+        }}
+        onCancel={() => {
+          setDeleteSheetOpen(false)
+        }}
+      />
     </div>
   )
 }

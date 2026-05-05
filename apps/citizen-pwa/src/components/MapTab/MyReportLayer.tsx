@@ -31,7 +31,7 @@ function makeIcon(color: string, queued: boolean): L.DivIcon {
         <div style="width:18px;height:18px;border-radius:50%;border:3px solid ${color};background:transparent;${queued ? '' : 'animation:ringPulse 2s ease-in-out infinite;'}"></div>
         ${
           queued
-            ? '<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:10px;white-space:nowrap;">⏳</div>'
+            ? '<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;white-space:nowrap;color:#64748b;letter-spacing:0.03em;">Queued</div>'
             : ''
         }
       </div>

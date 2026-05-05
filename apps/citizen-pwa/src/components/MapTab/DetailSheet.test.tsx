@@ -60,7 +60,7 @@ describe('DetailSheet — public mode', () => {
       <DetailSheet sheetPhase="expanded" onClose={vi.fn()} onCollapse={vi.fn()} {...publicProps} />,
     )
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /withdraw/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
   it('calls onClose when Close is clicked', () => {
@@ -97,10 +97,10 @@ describe('DetailSheet — myReport mode', () => {
       />,
     )
     expect(screen.getByRole('button', { name: /edit report/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /withdraw report/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /delete report/i })).toBeInTheDocument()
   })
 
-  it('opens WithdrawSheet when Withdraw report is clicked', () => {
+  it('opens DeleteSheet when Delete report is clicked', () => {
     render(
       <DetailSheet
         sheetPhase="expanded"
@@ -110,13 +110,13 @@ describe('DetailSheet — myReport mode', () => {
         {...myReportProps}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /withdraw report/i }))
+    fireEvent.click(screen.getByRole('button', { name: /delete report/i }))
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     expect(screen.getByText('Keep Report')).toBeInTheDocument()
-    expect(screen.getByText('Withdraw Report')).toBeInTheDocument()
+    expect(screen.getByText('Delete Report')).toBeInTheDocument()
   })
 
-  it('calls onCancelReport when Withdraw Report is confirmed in sheet', () => {
+  it('calls onCancelReport when Delete Report is confirmed in sheet', () => {
     const onCancelReport = vi.fn()
     render(
       <DetailSheet
@@ -127,8 +127,8 @@ describe('DetailSheet — myReport mode', () => {
         {...myReportProps}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /withdraw report/i }))
-    fireEvent.click(screen.getByText('Withdraw Report'))
+    fireEvent.click(screen.getByRole('button', { name: /delete report/i }))
+    fireEvent.click(screen.getByText('Delete Report'))
     expect(onCancelReport).toHaveBeenCalledOnce()
     expect(onCancelReport).toHaveBeenCalledWith('abcd1234', 'report-id-5678')
   })
@@ -144,7 +144,7 @@ describe('DetailSheet — myReport mode', () => {
         {...myReportProps}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /withdraw report/i }))
+    fireEvent.click(screen.getByRole('button', { name: /delete report/i }))
     fireEvent.click(screen.getByText('Keep Report'))
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(onCancelReport).not.toHaveBeenCalled()

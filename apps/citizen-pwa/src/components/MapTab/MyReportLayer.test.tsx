@@ -83,7 +83,7 @@ describe('MyReportLayer', () => {
       expect(mockDivIcon).toHaveBeenCalled()
     })
     const iconInput = mockDivIcon.mock.calls[0]?.[0] as { html?: string } | undefined
-    expect(String(iconInput?.html)).toContain('⏳')
+    expect(String(iconInput?.html)).toContain('Queued')
   })
 
   it('skips reports with invalid coordinates', async () => {

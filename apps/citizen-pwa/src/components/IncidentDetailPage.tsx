@@ -1,6 +1,21 @@
+import { type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import {
+  ArrowLeft,
+  Waves,
+  Flame,
+  AlertTriangle,
+  CloudLightning,
+  Mountain,
+  Truck,
+  Car,
+  Building2,
+  Siren,
+  SearchX,
+  Zap,
+} from 'lucide-react'
 import { useIncident } from '../hooks/useIncident.js'
+import { getSeverityStyle } from '../utils/useSeverityStyle.js'
 
 const INCIDENT_LABELS: Record<string, string> = {
   flood: 'Flood',
@@ -16,24 +31,18 @@ const INCIDENT_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
-const INCIDENT_ICONS: Record<string, string> = {
-  flood: '🌊',
-  fire: '🔥',
-  earthquake: '⚠️',
-  typhoon: '🌀',
-  landslide: '⛰️',
-  storm_surge: '🌊',
-  medical: '🚑',
-  accident: '🚗',
-  structural: '🏗️',
-  security: '🚨',
-  other: '⚠️',
-}
-
-const SEVERITY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  high: { bg: '#fee2e2', color: '#991b1b', label: 'HIGH' },
-  medium: { bg: '#fff5ef', color: '#a73400', label: 'MEDIUM' },
-  low: { bg: '#e0e7f0', color: '#001e40', label: 'LOW' },
+const INCIDENT_ICONS: Record<string, ReactNode> = {
+  flood: <Waves size={36} className="text-blue-600" />,
+  fire: <Flame size={36} className="text-orange-600" />,
+  earthquake: <AlertTriangle size={36} className="text-yellow-600" />,
+  typhoon: <CloudLightning size={36} className="text-slate-600" />,
+  landslide: <Mountain size={36} className="text-amber-700" />,
+  storm_surge: <Waves size={36} className="text-cyan-600" />,
+  medical: <Truck size={36} className="text-red-600" />,
+  accident: <Car size={36} className="text-slate-600" />,
+  structural: <Building2 size={36} className="text-stone-600" />,
+  security: <Siren size={36} className="text-red-700" />,
+  other: <AlertTriangle size={36} className="text-slate-500" />,
 }
 
 function timeAgo(timestamp: number): string {
@@ -86,7 +95,9 @@ export function IncidentDetailPage() {
         </div>
       ) : !incident ? (
         <div role="status" style={{ textAlign: 'center', padding: '48px 0' }}>
-          <p style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>🔍</p>
+          <p style={{ margin: '0 0 8px' }}>
+            <SearchX size={40} className="text-surface-300 mx-auto" />
+          </p>
           <p style={{ fontWeight: 700, color: '#001e40', margin: '0 0 6px' }}>Incident not found</p>
           <p style={{ fontSize: '0.8125rem', color: '#52606d', margin: 0 }}>
             This report may have been removed or is no longer public.
@@ -97,11 +108,10 @@ export function IncidentDetailPage() {
           {/* Hero card */}
           <div className="card" style={{ marginBottom: '0.75rem', padding: '1rem' }}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <span
-                aria-hidden="true"
-                style={{ fontSize: '2.25rem', lineHeight: 1, flexShrink: 0 }}
-              >
-                {INCIDENT_ICONS[incident.reportType] ?? '⚠️'}
+              <span aria-hidden="true" style={{ lineHeight: 1, flexShrink: 0 }}>
+                {INCIDENT_ICONS[incident.reportType] ?? (
+                  <AlertTriangle size={36} className="text-surface-400" />
+                )}
               </span>
               <div style={{ flex: 1 }}>
                 <h2
@@ -116,8 +126,8 @@ export function IncidentDetailPage() {
                   {INCIDENT_LABELS[incident.reportType] ?? incident.reportType}
                 </h2>
                 {(() => {
-                  const badge = SEVERITY_BADGE[incident.severity]
-                  return badge ? (
+                  const s = getSeverityStyle(incident.severity)
+                  return (
                     <span
                       style={{
                         display: 'inline-block',
@@ -127,13 +137,13 @@ export function IncidentDetailPage() {
                         fontSize: '0.625rem',
                         fontWeight: 700,
                         letterSpacing: '0.06em',
-                        background: badge.bg,
-                        color: badge.color,
+                        background: s.bg,
+                        color: s.fg,
                       }}
                     >
-                      {badge.label}
+                      {s.label}
                     </span>
-                  ) : null
+                  )
                 })()}
               </div>
             </div>
@@ -175,7 +185,7 @@ export function IncidentDetailPage() {
             }}
             style={{ marginTop: '0.5rem' }}
           >
-            ⚡ Report similar incident nearby
+            <Zap size={14} className="inline" aria-hidden="true" /> Report similar incident nearby
           </button>
         </>
       )}
