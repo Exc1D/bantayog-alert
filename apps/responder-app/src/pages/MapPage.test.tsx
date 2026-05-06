@@ -53,8 +53,8 @@ describe('MapPage', () => {
     // are module-level constants), so we assert on the recorded calls rather
     // than trying to trigger them during render.
     expect(mockDivIcon).toHaveBeenCalled()
-    const lastCall = mockDivIcon.mock.calls.at(-1)!
-    const config = lastCall[0] as Record<string, unknown>
+    const lastCall = mockDivIcon.mock.calls.at(-1) as unknown as [Record<string, unknown>]
+    const config = lastCall[0]
     // divIcon uses inline HTML — no remote iconUrl
     expect(config.html).toBeDefined()
     expect(config.iconUrl).toBeUndefined()
