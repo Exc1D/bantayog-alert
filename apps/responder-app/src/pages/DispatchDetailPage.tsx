@@ -79,10 +79,31 @@ export function DispatchDetailPage() {
   const [unableReason, setUnableReason] = useState('')
   const [resolutionSummary, setResolutionSummary] = useState('')
   const [fieldNote, setFieldNote] = useState('')
+  const [autoAdvanceState, setAutoAdvanceState] = useState<'idle' | 'pending' | 'done'>('idle')
 
   useEffect(() => {
-    if (dispatch?.status === 'accepted') {
-      void advance('acknowledged')
+    if (dispatch?.status !== 'accepted') return
+    // Sync state set is intentional: the pill must render in the same paint
+    // as the status flip to give the user immediate feedback.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAutoAdvanceState('pending')
+    let cleared = false
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    advance('acknowledged').then(
+      () => {
+        if (cleared) return
+        setAutoAdvanceState('done')
+        timeoutId = setTimeout(() => {
+          setAutoAdvanceState('idle')
+        }, 2000)
+      },
+      () => {
+        if (!cleared) setAutoAdvanceState('idle')
+      },
+    )
+    return () => {
+      cleared = true
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [dispatch?.status, advance])
 
@@ -257,6 +278,11 @@ export function DispatchDetailPage() {
             <p className={styles.statusTitle}>
               Status: {statusLabel(dispatch.uiStatus, dispatch.status)}
             </p>
+            {autoAdvanceState !== 'idle' && (
+              <p role="status" className={styles.autoAdvancePill ?? ''}>
+                {autoAdvanceState === 'pending' ? 'Acknowledging dispatch…' : 'Acknowledged'}
+              </p>
+            )}
             {dispatch.status === 'accepted' && advanceError && !advanceLoading && (
               <button
                 className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
