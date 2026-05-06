@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './SosHoldButton.module.css'
 
@@ -13,6 +13,14 @@ export function SosHoldButton({ activeDispatchId, disabled }: Props) {
   const navigate = useNavigate()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [holding, setHolding] = useState(false)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+    }
+  }, [])
 
   function startHold() {
     if (disabled || !activeDispatchId) return
@@ -31,6 +39,13 @@ export function SosHoldButton({ activeDispatchId, disabled }: Props) {
     setHolding(false)
   }
 
+  function handleKey(e: KeyboardEvent<HTMLButtonElement>, kind: 'down' | 'up') {
+    if (e.key !== ' ' && e.key !== 'Enter') return
+    e.preventDefault()
+    if (kind === 'down') startHold()
+    else cancelHold()
+  }
+
   return (
     <button
       className={styles.btn}
@@ -38,6 +53,13 @@ export function SosHoldButton({ activeDispatchId, disabled }: Props) {
       onPointerDown={startHold}
       onPointerUp={cancelHold}
       onPointerLeave={cancelHold}
+      onKeyDown={(e) => {
+        handleKey(e, 'down')
+      }}
+      onKeyUp={(e) => {
+        handleKey(e, 'up')
+      }}
+      onBlur={cancelHold}
       aria-label="SOS — hold 3 seconds to activate"
       title={disabled ? 'No active dispatch' : 'Hold 3 seconds to trigger SOS'}
     >

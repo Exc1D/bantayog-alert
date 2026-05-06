@@ -59,4 +59,37 @@ describe('SosHoldButton', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
     vi.useRealTimers()
   })
+
+  it('navigates after 3-second Enter key hold', () => {
+    vi.useFakeTimers()
+    render(
+      <MemoryRouter>
+        <SosHoldButton activeDispatchId="disp-1" disabled={false} />
+      </MemoryRouter>,
+    )
+    const btn = screen.getByRole('button', { name: /sos/i })
+    fireEvent.keyDown(btn, { key: 'Enter', code: 'Enter' })
+    act(() => {
+      vi.advanceTimersByTime(3100)
+    })
+    expect(mockNavigate).toHaveBeenCalledWith('/dispatches/disp-1/sos')
+    vi.useRealTimers()
+  })
+
+  it('does not navigate if timer fires after component unmounts', () => {
+    vi.useFakeTimers()
+    const { unmount } = render(
+      <MemoryRouter>
+        <SosHoldButton activeDispatchId="disp-1" disabled={false} />
+      </MemoryRouter>,
+    )
+    const btn = screen.getByRole('button', { name: /sos/i })
+    fireEvent.pointerDown(btn)
+    unmount()
+    act(() => {
+      vi.advanceTimersByTime(3100)
+    })
+    expect(mockNavigate).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
 })
