@@ -39,6 +39,16 @@
   margin-top: var(--space-8);
 }
 
+.error {
+  padding: var(--space-3);
+  background: #fee2e2;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  text-align: center;
+  margin-top: var(--space-4);
+}
+
 .row {
   background: #fff;
   border-radius: var(--radius-lg);

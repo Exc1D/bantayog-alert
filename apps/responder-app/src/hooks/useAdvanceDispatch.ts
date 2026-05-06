@@ -34,6 +34,7 @@ export function useAdvanceDispatch(dispatchId: string) {
           resolutionSummary: extras?.resolutionSummary,
           idempotencyKey: keyRef.current,
         })
+        keyRef.current = crypto.randomUUID()
       } catch (err: unknown) {
         console.error('[useAdvanceDispatch] advance failed:', err)
         const normalized = err instanceof Error ? err : new Error(String(err))

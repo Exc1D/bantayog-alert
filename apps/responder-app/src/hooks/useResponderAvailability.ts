@@ -82,7 +82,7 @@ export function useResponderAvailability(uid: string | undefined): UseResponderA
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to update availability'
         setWriteError(msg)
-        throw new Error(msg)
+        throw err instanceof Error ? err : new Error(msg)
       }
     },
     [uid],

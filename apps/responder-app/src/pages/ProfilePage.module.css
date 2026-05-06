@@ -120,7 +120,11 @@
   font-size: var(--font-size-sm);
   font-family: inherit;
   width: 100%;
-  outline: none;
+}
+
+.reasonInput:focus-visible {
+  outline: 2px solid var(--r-navy);
+  outline-offset: 2px;
 }
 
 .updateBtn {

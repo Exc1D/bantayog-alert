@@ -25,7 +25,8 @@ export function MessageThreadPage() {
     const distance = list.scrollHeight - list.scrollTop - list.clientHeight
     // Only auto-scroll when the user is already near the bottom; otherwise
     // they're reading older messages and we shouldn't yank them away.
-    if (distance < 80) {
+    // Also scroll on first load (scrollTop === 0) so the user sees the latest messages.
+    if (list.scrollTop === 0 || distance < 80) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages.length])

@@ -14,7 +14,7 @@ const STATUS_LABEL: Record<string, string> = {
 export function DispatchHistoryPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { history, loading } = useDispatchHistory(user?.uid)
+  const { history, loading, error } = useDispatchHistory(user?.uid)
 
   return (
     <div className={styles.page}>
@@ -30,7 +30,8 @@ export function DispatchHistoryPage() {
       </div>
       <div className={styles.body}>
         {loading && <p className={styles.empty}>Loading…</p>}
-        {!loading && history.length === 0 && (
+        {error && <p className={styles.error}>{error}</p>}
+        {!loading && !error && history.length === 0 && (
           <p className={styles.empty}>No completed dispatches yet.</p>
         )}
         {history.map((row) => (

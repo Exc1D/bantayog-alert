@@ -27,7 +27,7 @@ const detailState = vi.hoisted(() => ({
     source: 'web',
     submittedAt: 1700000000000,
   },
-  mockAccept: vi.fn(),
+  mockAccept: vi.fn(() => Promise.resolve()),
   mockDecline: vi.fn(),
   mockAdvance: vi.fn(() => Promise.resolve()),
   mockMarkUnable: vi.fn(),

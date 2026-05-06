@@ -104,6 +104,7 @@ export function ProfilePage() {
               value={selectedStatus}
               onChange={(e) => {
                 setSelectedStatus(e.target.value as SettableStatus)
+                setReason('')
               }}
               aria-label="Set availability status"
             >

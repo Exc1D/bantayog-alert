@@ -42,10 +42,10 @@
 }
 
 .ringActive {
-  animation: ringFill 3s linear forwards;
+  animation: ring-fill 3s linear forwards;
 }
 
-@keyframes ringFill {
+@keyframes ring-fill {
   0% {
     opacity: 1;
     transform: scale(0.8);

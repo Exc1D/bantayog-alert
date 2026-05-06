@@ -150,9 +150,9 @@ describe('MessageThreadPage', () => {
     // defaults; clear the spy so we only assert on subsequent updates.
     scrollIntoViewSpy.mockClear()
 
-    // Simulate user scrolled far up (distance = 1000 - 0 - 300 = 700 > 80)
+    // Simulate user scrolled far up (distance = 1000 - 100 - 300 = 600 > 80)
     Object.defineProperty(list, 'scrollHeight', { value: 1000, configurable: true })
-    Object.defineProperty(list, 'scrollTop', { value: 0, configurable: true })
+    Object.defineProperty(list, 'scrollTop', { value: 100, configurable: true })
     Object.defineProperty(list, 'clientHeight', { value: 300, configurable: true })
 
     // Add another message while user is scrolled up — should NOT auto-scroll

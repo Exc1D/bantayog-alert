@@ -221,7 +221,7 @@ export function DispatchDetailPage() {
             <div className={styles.quickToggles}>
               <button
                 className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
-                onClick={() => void accept()}
+                onClick={() => void accept().catch(() => undefined)}
                 disabled={accepting}
               >
                 {accepting ? 'Accepting…' : '✓ Accept'}
@@ -286,7 +286,7 @@ export function DispatchDetailPage() {
             {dispatch.status === 'accepted' && advanceError && !advanceLoading && (
               <button
                 className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
-                onClick={() => void advance('acknowledged')}
+                onClick={() => void advance('acknowledged').catch(() => undefined)}
               >
                 Retry acknowledgement
               </button>
@@ -295,7 +295,7 @@ export function DispatchDetailPage() {
               <div className={styles.quickToggles}>
                 <button
                   className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
-                  onClick={() => void advance('en_route')}
+                  onClick={() => void advance('en_route').catch(() => undefined)}
                   disabled={advanceLoading}
                 >
                   📍 En Route
@@ -306,7 +306,7 @@ export function DispatchDetailPage() {
               <div className={styles.quickToggles}>
                 <button
                   className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
-                  onClick={() => void advance('on_scene')}
+                  onClick={() => void advance('on_scene').catch(() => undefined)}
                   disabled={advanceLoading}
                 >
                   🔧 On Scene

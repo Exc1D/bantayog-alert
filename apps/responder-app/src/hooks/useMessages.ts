@@ -36,9 +36,11 @@ export function useMessages(reportId: string | undefined) {
             const data = d.data()
             const tsRaw = data.createdAt ?? data.sentAt
             const createdAt =
-              tsRaw && typeof tsRaw === 'object' && 'toMillis' in tsRaw
-                ? (tsRaw as { toMillis: () => number }).toMillis()
-                : Date.now()
+              typeof tsRaw === 'number'
+                ? tsRaw
+                : tsRaw && typeof tsRaw === 'object' && 'toMillis' in tsRaw
+                  ? (tsRaw as { toMillis: () => number }).toMillis()
+                  : Date.now()
             const msg: IncidentMessage = {
               id: d.id,
               body: String(data.body ?? data.content ?? ''),

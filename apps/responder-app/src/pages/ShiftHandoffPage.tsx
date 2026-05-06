@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { httpsCallable } from 'firebase/functions'
@@ -12,6 +12,7 @@ export function ShiftHandoffPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const keyRef = useRef(crypto.randomUUID())
 
   async function handleSubmit(e: SyntheticEvent) {
     e.preventDefault()
@@ -29,9 +30,10 @@ export function ShiftHandoffPage() {
       await fn({
         toUid: targetUid.trim(),
         reason: reason.trim(),
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: keyRef.current,
       })
       setDone(true)
+      keyRef.current = crypto.randomUUID()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Handoff failed.')
     } finally {

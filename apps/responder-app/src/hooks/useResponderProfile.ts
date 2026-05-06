@@ -33,6 +33,7 @@ export function useResponderProfile(uid: string | undefined) {
         if (!snap.exists()) {
           setProfile(null)
           setLoading(false)
+          setError(null)
           return
         }
         const d = snap.data()

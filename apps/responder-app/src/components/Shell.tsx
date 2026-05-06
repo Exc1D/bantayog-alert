@@ -24,6 +24,13 @@ export function Shell({ children }: Props) {
     { to: '/profile', label: 'Profile', icon: '👤', exact: false },
   ]
 
+  const isActive = (tab: (typeof tabs)[number]) => {
+    if (tab.to === '/') {
+      return location.pathname === '/' || location.pathname.startsWith('/dispatches')
+    }
+    return tab.exact ? location.pathname === tab.to : location.pathname.startsWith(tab.to)
+  }
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
@@ -37,16 +44,14 @@ export function Shell({ children }: Props) {
 
       <nav className={styles.tabBar} aria-label="Main navigation">
         {tabs.map((tab) => {
-          const isActive = tab.exact
-            ? location.pathname === tab.to
-            : location.pathname.startsWith(tab.to)
+          const active = isActive(tab)
           return (
             <div key={tab.to} className={styles.tabItem}>
               <NavLink
                 to={tab.to}
-                className={[styles.tab, isActive && styles.tabActive].filter(Boolean).join(' ')}
+                className={[styles.tab, active && styles.tabActive].filter(Boolean).join(' ')}
                 aria-label={tab.label}
-                {...(isActive ? { 'aria-current': 'page' as const } : {})}
+                {...(active ? { 'aria-current': 'page' as const } : {})}
               >
                 <span className={styles.tabIcon} aria-hidden="true">
                   {tab.icon}

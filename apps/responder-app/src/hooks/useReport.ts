@@ -44,6 +44,7 @@ export function useReport(reportId: string | undefined) {
         if (!snap.exists()) {
           setReport(null)
           setLoading(false)
+          setError(null)
           return
         }
         const d = snap.data()

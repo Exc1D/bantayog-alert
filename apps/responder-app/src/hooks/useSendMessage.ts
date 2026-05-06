@@ -8,6 +8,7 @@ export function useSendMessage(reportId: string) {
   const [error, setError] = useState<Error | undefined>(undefined)
 
   async function send(content: string): Promise<void> {
+    if (!reportId.trim()) throw new Error('reportId_required')
     const trimmed = content.trim()
     if (!trimmed) throw new Error('content_required')
 

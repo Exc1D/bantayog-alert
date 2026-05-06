@@ -89,7 +89,7 @@ describe('useAdvanceDispatch', () => {
     expect(result.current.error?.message).toBe('invalid_transition')
   })
 
-  it('reuses the same idempotency key across multiple calls', async () => {
+  it('rotates idempotency key after a successful call', async () => {
     mockCallable.mockResolvedValue({ data: { status: 'acknowledged' } })
     const { result } = renderHook(() => useAdvanceDispatch('disp-1'))
 
@@ -101,6 +101,30 @@ describe('useAdvanceDispatch', () => {
 
     await act(async () => {
       await result.current.advance('en_route')
+    })
+    const call1 = mockCallable.mock.calls[1]!
+    const secondKey = (call1[0] as { idempotencyKey: string }).idempotencyKey
+
+    expect(firstKey).not.toBe(secondKey)
+  })
+
+  it('reuses the same idempotency key when retrying the same transition', async () => {
+    mockCallable.mockRejectedValueOnce(new Error('network error'))
+    mockCallable.mockResolvedValueOnce({ data: { status: 'acknowledged' } })
+    const { result } = renderHook(() => useAdvanceDispatch('disp-1'))
+
+    await act(async () => {
+      try {
+        await result.current.advance('acknowledged')
+      } catch {
+        /* expected to fail first time */
+      }
+    })
+    const call0 = mockCallable.mock.calls[0]!
+    const firstKey = (call0[0] as { idempotencyKey: string }).idempotencyKey
+
+    await act(async () => {
+      await result.current.advance('acknowledged')
     })
     const call1 = mockCallable.mock.calls[1]!
     const secondKey = (call1[0] as { idempotencyKey: string }).idempotencyKey
