@@ -206,3 +206,15 @@
 - Plan said `REPORT_TYPE_LABEL[row.reportId]` for dispatch list cards but `row.reportId` is the dispatch's report **id** (e.g. `rep_abc123`), not the report **type** (e.g. `flood`). The lookup always misses; either fetch the report (extra subscription per row) or just show a generic label. We chose the latter for the MVP list view.
 - `useDispatchHistory` queries `dispatches` for `assignedTo.uid == uid` AND `status in [resolved, declined, timed_out, cancelled, unable_to_complete]`. The `where('status', 'in', […])` array is capped at 30 by Firestore, but our terminal-status set is well under that.
 - Removing functionality from one tab (DispatchListPage's availability/handoff/sign-out) without immediately re-adding it elsewhere temporarily breaks the responder UX (no way to sign out). Keep tasks in commit order so the gap is at most one task long. Per-task atomic commits make this safe.
+
+## Responder PWA — Post-Review Hardening (2026-05-06)
+
+- **Firestore client writes must match the rule's field-name expectations.** A mocked `addDoc` test passes regardless. Always pair client message/note hooks with a corresponding rules test in `functions/src/__tests__/rules/` that uses the real emulator and asserts the actual write succeeds/fails.
+- **`L.divIcon` is the offline-friendly Leaflet marker pattern.** External CDN URLs (unpkg, cdnjs) work in dev but fail offline. The citizen-pwa's `IncidentLayer` is the canonical reference.
+- **`watchPosition` without `document.visibilityState` handling drains battery in field PWAs.** Always pause on hidden, set a `timeout`, and consider lower accuracy when stationary.
+- **Map auto-recenter on every GPS tick is a UX trap** — fly once on first lock and expose an explicit "recenter" button.
+- **`auth.currentUser.displayName` is the de facto identity field for Bantayog responders.** Firestore `responders/{uid}.displayName` is unpopulated by current bootstrap paths; fall through both before defaulting to the role label.
+- **Auto-redirect on a single-active dispatch hides any pending dispatches.** Document the trade-off; revisit after operational data is available.
+- **Centralizing incident labels in one `incident-labels.ts` module prevents label drift** across MapPage popups, DispatchDetailPage cards, and ProfilePage role display.
+- **`useOwnDispatches.error` is typed `string | null`, not `Error`.** Rendering `{error}` directly in JSX throws "Objects are not valid as a React child" if an `Error` object leaks in from a mock. Match the hook's contract exactly in tests.
+- **Happy-dom default scroll metrics are not realistic.** Tests that assert on `scrollIntoView` behavior must set explicit `scrollHeight`/`scrollTop`/`clientHeight` or the initial mount may spuriously trigger scroll.
