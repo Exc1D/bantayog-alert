@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
+import { auth } from '../app/firebase'
 import { useResponderProfile } from '../hooks/useResponderProfile'
 import { useResponderAvailability } from '../hooks/useResponderAvailability'
 import type { ResponderAvailabilityStatus } from '../hooks/useResponderAvailability'
@@ -75,7 +76,9 @@ export function ProfilePage() {
           👤
         </div>
         <div className={styles.profileInfo}>
-          <h1 className={styles.profileName}>{profile?.displayName ?? 'Responder'}</h1>
+          <h1 className={styles.profileName}>
+            {profile?.displayName ?? auth.currentUser?.displayName ?? 'Responder'}
+          </h1>
           <p className={styles.profileRole}>
             {profileTypeLabel} Responder
             {profile?.stationLabel !== undefined ? ` · ${profile.stationLabel}` : ''}
@@ -139,7 +142,7 @@ export function ProfilePage() {
           <div className={styles.statsGrid}>
             <div className={styles.statBox}>
               <span className={styles.statValue}>{String(totalCount)}</span>
-              <span className={styles.statLabel}>Total Dispatches</span>
+              <span className={styles.statLabel}>Recent Dispatches</span>
             </div>
             <div className={styles.statBox}>
               <span className={styles.statValue}>{String(resolvedCount)}</span>

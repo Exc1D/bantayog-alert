@@ -24,6 +24,11 @@ function toMillis(value: unknown): number | undefined {
   return undefined
 }
 
+function parseSeverity(value: unknown): 'low' | 'medium' | 'high' {
+  if (value === 'low' || value === 'medium' || value === 'high') return value
+  return 'low'
+}
+
 export function useReport(reportId: string | undefined) {
   const [report, setReport] = useState<ReportSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -55,7 +60,7 @@ export function useReport(reportId: string | undefined) {
 
         const summary: ReportSummary = {
           reportType: String(d.reportType ?? 'other'),
-          severity: (d.severity as 'low' | 'medium' | 'high' | undefined) ?? 'low',
+          severity: parseSeverity(d.severity),
           status: String(d.status ?? 'new'),
           description: String(d.description ?? ''),
           municipalityId: String(d.municipalityId ?? ''),

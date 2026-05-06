@@ -49,4 +49,30 @@ describe('useReport', () => {
       expect(result.current.report).toBeNull()
     })
   })
+
+  it('normalizes unknown severity values to "low" instead of leaking raw strings', async () => {
+    mockOnSnapshot.mockImplementation(
+      (_ref: unknown, onNext: (snap: { exists: () => boolean; data: () => unknown }) => void) => {
+        onNext({
+          exists: () => true,
+          data: () => ({
+            reportType: 'flood',
+            severity: 'critical', // not in the responder UI allowlist
+            status: 'verified',
+            description: '',
+            municipalityId: 'daet',
+            source: 'web',
+            submittedAt: { toMillis: () => 1700000000000 },
+          }),
+        })
+        return () => undefined
+      },
+    )
+
+    const { result } = renderHook(() => useReport('report-with-bad-severity'))
+
+    await waitFor(() => {
+      expect(result.current.report?.severity).toBe('low')
+    })
+  })
 })
