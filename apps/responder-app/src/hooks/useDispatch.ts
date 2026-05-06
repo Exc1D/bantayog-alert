@@ -11,22 +11,12 @@ import {
   type ResponderUiState,
   type TerminalSurface,
 } from '../lib/dispatch-presentation'
+import { toMillis } from '../lib/to-millis'
 
 export type DispatchDoc = SharedDispatchDoc & {
   dispatchId: string
   uiStatus: ResponderUiState
   terminalSurface: TerminalSurface
-}
-
-function toMillis(value: unknown): number | undefined {
-  if (typeof value === 'number') return value
-  if (value && typeof value === 'object' && 'toMillis' in value) {
-    const candidate = value as { toMillis: () => number }
-    if (typeof candidate.toMillis === 'function') {
-      return candidate.toMillis()
-    }
-  }
-  return undefined
 }
 
 function normalizeDispatchSnapshot(data: Record<string, unknown>): Record<string, unknown> {
