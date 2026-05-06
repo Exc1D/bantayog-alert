@@ -2,7 +2,13 @@ import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv, unauthed } from '../helpers/rules-harness.js'
-import { seedActiveAccount, seedReport, staffClaims, ts } from '../helpers/seed-factories.js'
+import {
+  seedActiveAccount,
+  seedDispatchRT,
+  seedReport,
+  staffClaims,
+  ts,
+} from '../helpers/seed-factories.js'
 
 let env: Awaited<ReturnType<typeof createTestEnv>>
 
@@ -19,6 +25,18 @@ beforeAll(async () => {
     municipalityId: 'daet',
     agencyId: 'bfp-daet',
   })
+  await seedActiveAccount(env, {
+    uid: 'bfp-responder-1',
+    role: 'responder',
+    municipalityId: 'daet',
+    agencyId: 'bfp-daet',
+  })
+  await seedActiveAccount(env, {
+    uid: 'bfp-responder-no-dispatch',
+    role: 'responder',
+    municipalityId: 'daet',
+    agencyId: 'bfp-daet',
+  })
   await seedReport(env, 'report-1', {
     municipalityId: 'daet',
     opsOverrides: { municipalityId: 'daet', agencyIds: ['bfp-daet'] },
@@ -30,6 +48,10 @@ beforeAll(async () => {
       createdAt: ts,
       schemaVersion: 1,
     })
+  })
+  await seedDispatchRT(env, 'report-1_bfp-responder-1', {
+    reportId: 'report-1',
+    assignedTo: { uid: 'bfp-responder-1', agencyId: 'bfp-daet', municipalityId: 'daet' },
   })
 })
 
@@ -108,5 +130,53 @@ describe('reports/messages rules', () => {
   it('denies unauthenticated reads', async () => {
     const db = unauthed(env)
     await assertFails(getDoc(doc(db, 'reports', 'report-1', 'messages', 'msg-1')))
+  })
+
+  it('allows responder with active dispatch to write a message', async () => {
+    const db = authed(
+      env,
+      'bfp-responder-1',
+      staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp-daet' }),
+    )
+    await assertSucceeds(
+      addDoc(collection(db, 'reports', 'report-1', 'messages'), {
+        authorUid: 'bfp-responder-1',
+        body: 'On scene.',
+        createdAt: ts,
+        schemaVersion: 1,
+      }),
+    )
+  })
+
+  it('denies responder without an active dispatch from writing a message', async () => {
+    const db = authed(
+      env,
+      'bfp-responder-no-dispatch',
+      staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp-daet' }),
+    )
+    await assertFails(
+      addDoc(collection(db, 'reports', 'report-1', 'messages'), {
+        authorUid: 'bfp-responder-no-dispatch',
+        body: 'No dispatch.',
+        createdAt: ts,
+        schemaVersion: 1,
+      }),
+    )
+  })
+
+  it('denies responder writing message with mismatched authorUid', async () => {
+    const db = authed(
+      env,
+      'bfp-responder-1',
+      staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp-daet' }),
+    )
+    await assertFails(
+      addDoc(collection(db, 'reports', 'report-1', 'messages'), {
+        authorUid: 'someone-else',
+        body: 'spoofed',
+        createdAt: ts,
+        schemaVersion: 1,
+      }),
+    )
   })
 })

@@ -7,9 +7,16 @@ import {
   useNavigate,
 } from 'react-router-dom'
 import { ProtectedRoute } from '@bantayog/shared-ui'
+import { Shell } from './components/Shell'
 import { LoginPage } from './pages/LoginPage'
 import { DispatchListPage } from './pages/DispatchListPage'
 import { DispatchDetailPage } from './pages/DispatchDetailPage'
+import { MapPage } from './pages/MapPage'
+import { MessagesPage } from './pages/MessagesPage'
+import { MessageThreadPage } from './pages/MessageThreadPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { ShiftHandoffPage } from './pages/ShiftHandoffPage'
+import { DispatchHistoryPage } from './pages/DispatchHistoryPage'
 import { ResponderWitnessReportPage } from './pages/ResponderWitnessReportPage'
 import { SosPage } from './pages/SosPage'
 import { BackupRequestPage } from './pages/BackupRequestPage'
@@ -22,14 +29,12 @@ function NotificationRouter() {
     const unsubscribeTap = subscribeNotificationTap((dispatchId) => {
       void navigate(`/dispatches/${dispatchId}`)
     })
-
     const unsubscribeForeground = subscribeForegroundPush((payload) => {
       if (import.meta.env.DEV) {
         const type = (payload as Record<string, unknown> | undefined)?.type
         console.warn('[push] foreground notification received', type)
       }
     })
-
     return () => {
       unsubscribeTap()
       unsubscribeForeground()
@@ -37,6 +42,14 @@ function NotificationRouter() {
   }, [navigate])
 
   return null
+}
+
+function TabLayout() {
+  return (
+    <Shell>
+      <Outlet />
+    </Shell>
+  )
 }
 
 function AppLayout() {
@@ -54,44 +67,33 @@ const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       {
-        path: '/',
         element: (
           <ProtectedRoute allowedRoles={['responder']}>
-            <DispatchListPage />
+            <TabLayout />
           </ProtectedRoute>
         ),
+        children: [
+          { path: '/', element: <DispatchListPage /> },
+          { path: '/map', element: <MapPage /> },
+          { path: '/messages', element: <MessagesPage /> },
+          { path: '/messages/:reportId', element: <MessageThreadPage /> },
+          { path: '/profile', element: <ProfilePage /> },
+        ],
       },
       {
-        path: '/dispatches/:dispatchId',
         element: (
           <ProtectedRoute allowedRoles={['responder']}>
-            <DispatchDetailPage />
+            <Outlet />
           </ProtectedRoute>
         ),
-      },
-      {
-        path: '/dispatches/:id/witness-report',
-        element: (
-          <ProtectedRoute allowedRoles={['responder']}>
-            <ResponderWitnessReportPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/dispatches/:id/sos',
-        element: (
-          <ProtectedRoute allowedRoles={['responder']}>
-            <SosPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/dispatches/:id/backup',
-        element: (
-          <ProtectedRoute allowedRoles={['responder']}>
-            <BackupRequestPage />
-          </ProtectedRoute>
-        ),
+        children: [
+          { path: '/dispatches/:dispatchId', element: <DispatchDetailPage /> },
+          { path: '/dispatches/:id/witness-report', element: <ResponderWitnessReportPage /> },
+          { path: '/dispatches/:id/sos', element: <SosPage /> },
+          { path: '/dispatches/:id/backup', element: <BackupRequestPage /> },
+          { path: '/handoff', element: <ShiftHandoffPage /> },
+          { path: '/history', element: <DispatchHistoryPage /> },
+        ],
       },
       { path: '/dispatches', element: <Navigate to="/" replace /> },
     ],
