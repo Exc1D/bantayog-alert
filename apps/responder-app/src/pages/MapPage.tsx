@@ -93,8 +93,6 @@ export function MapPage() {
   const [recenterRequest, setRecenterRequest] = useState(0)
 
   useEffect(() => {
-    // happy-dom (vitest) leaves navigator.geolocation as null even though
-    // browser DOM types say it's always present.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!navigator.geolocation) return
     let watchId: number | null = null
