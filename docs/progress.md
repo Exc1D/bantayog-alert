@@ -1,5 +1,24 @@
 # Progress
 
+## Current Status (2026-05-06)
+
+**Responder PWA -- Frontend Rebuild (2026-05-06)**
+Full UI layer for the responder PWA on top of the existing dispatch backend. 12 commits on `feature/responder-pwa-frontend`.
+
+- ✅ **Task 1:** Global styles (`src/styles/globals.css`) imports shared-ui theme + responder-app CSS custom properties (navy/surface/tab-bar tokens). PWA manifest at `/manifest.json`; viewport theme-color flipped to `#001e40`; Inter loaded from Google Fonts.
+- ✅ **Task 2:** `Shell` wraps tab pages with persistent navy header + bottom 4-tab nav (Dispatches/Map/Messages/Profile); pending-dispatch badge on the Dispatches tab. `SosHoldButton` requires a 3-second pointer hold before navigating to `/dispatches/{id}/sos`; releasing early cancels.
+- ✅ **Task 3:** Routes restructured. Tab routes (`/`, `/map`, `/messages`, `/messages/:reportId`, `/profile`) wrapped in Shell; detail/secondary routes (`/dispatches/:id`, `/handoff`, `/history`, etc.) sit outside Shell as full-screen pages. Stub pages added for the new routes.
+- ✅ **Task 4:** LoginPage redesigned with branded card layout (BANTAYOG ALERT title, "Responder Portal · Camarines Norte" subtitle).
+- ✅ **Task 5:** `useReport` hook subscribes to `reports/{id}` and surfaces a typed `ReportSummary`.
+- ✅ **Task 6:** DispatchListPage redesigned. Pending dispatches render as amber cards with `AcceptanceCountdown`; active dispatches as green cards with status pills. Availability/handoff/sign-out controls moved to ProfilePage (Task 11) and ShiftHandoffPage (Task 12).
+- ✅ **Task 7:** DispatchDetailPage redesigned. Report summary card with severity badge + municipality + barangay + description. State-machine UI (Pending Accept/Decline → acknowledged → en_route → on_scene → resolved) with reason selects for decline and unable-to-complete. Action stack: Backup, Message Admin, Witness Report. New `useAddFieldNote` hook writes to `reports/{id}/field_notes`.
+- ✅ **Task 8:** `useMessages` (live subscription) and `useSendMessage` (write with auth + serverTimestamp) hooks.
+- ✅ **Task 9:** MessagesPage lists active dispatches as message threads. MessageThreadPage shows bubble UI with mine/theirs split, Enter-to-send, restore-on-failure.
+- ✅ **Task 10:** MapPage with `react-leaflet` + OSM tiles. Watches `navigator.geolocation`; shows responder marker + incident pins from `useReport`. Default center is Daet, Camarines Norte. Added `leaflet`, `react-leaflet`, `@types/leaflet` to responder-app deps.
+- ✅ **Task 11:** ProfilePage with navy hero card (avatar + name + role + station). `useResponderProfile` and `useDispatchHistory` hooks. Availability section (status dot + label + select + reason guard). Stats grid (Total / Resolved / Completion %). Quick links to History and Handoff. Sign-out button uses `useAuth().signOut`.
+- ✅ **Task 12:** ShiftHandoffPage form (target UID + reason, idempotency-key callable). DispatchHistoryPage list. SosPage red full-screen confirm/cancel. CancelledScreen + RaceLossScreen share `TerminalScreen.module.css`. (BackupRequestPage left unchanged — plan's self-review explicitly scoped its restyling out.)
+- **Gate (Task 13):** vitest 55/55 pass, `pnpm typecheck`, `pnpm lint` clean, `pnpm build` succeeds (pre-existing chunk-size warnings only).
+
 ## Current Status (2026-05-05)
 
 **Admin Desktop -- SMS Audit Page (2026-05-05)**
