@@ -3,6 +3,8 @@ import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
+const mockDivIcon = vi.hoisted(() => vi.fn(() => ({ _kind: 'divIcon' })))
+
 vi.mock('@bantayog/shared-ui', () => ({ useAuth: () => ({ user: { uid: 'uid-1' } }) }))
 vi.mock('../hooks/useOwnDispatches', () => ({
   useOwnDispatches: () => ({ groups: { active: [], pending: [] }, rows: [], error: null }),
@@ -20,7 +22,8 @@ vi.mock('react-leaflet', () => ({
   useMap: () => ({ setView: vi.fn() }),
 }))
 vi.mock('leaflet', () => ({
-  default: { icon: vi.fn(() => ({})) },
+  default: { divIcon: mockDivIcon, icon: vi.fn(() => ({})) },
+  divIcon: mockDivIcon,
   icon: vi.fn(() => ({})),
 }))
 
@@ -43,5 +46,9 @@ describe('MapPage', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText(/your location/i)).toBeInTheDocument()
+  })
+
+  it('builds markers with L.divIcon (offline-friendly) instead of remote-URL L.icon', () => {
+    expect(mockDivIcon).toHaveBeenCalled()
   })
 })

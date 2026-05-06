@@ -5,17 +5,8 @@ import { useResponderProfile } from '../hooks/useResponderProfile'
 import { useResponderAvailability } from '../hooks/useResponderAvailability'
 import type { ResponderAvailabilityStatus } from '../hooks/useResponderAvailability'
 import { useDispatchHistory } from '../hooks/useDispatchHistory'
+import { responderTypeLabel } from '../lib/incident-labels'
 import styles from './ProfilePage.module.css'
-
-const RESPONDER_TYPE_LABEL: Record<string, string> = {
-  police: 'Police',
-  fire: 'Fire',
-  medical: 'Medical',
-  engineering: 'Engineering',
-  sar: 'Search & Rescue',
-  social_welfare: 'Social Welfare',
-  general: 'General',
-}
 
 const UNAVAILABLE_REASONS = ['On break', 'In meeting', 'On another call', 'Other']
 const OFF_DUTY_REASONS = ['Shift ended', 'Sick leave', 'Training', 'Day off', 'Other']
@@ -75,7 +66,7 @@ export function ProfilePage() {
   }
 
   const reasonOptions = selectedStatus === 'unavailable' ? UNAVAILABLE_REASONS : OFF_DUTY_REASONS
-  const profileTypeLabel = RESPONDER_TYPE_LABEL[profile?.responderType ?? ''] ?? 'General'
+  const profileTypeLabel = responderTypeLabel(profile?.responderType)
 
   return (
     <div className={styles.page}>

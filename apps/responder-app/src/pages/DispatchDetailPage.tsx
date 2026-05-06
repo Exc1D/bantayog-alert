@@ -9,21 +9,8 @@ import { useMarkDispatchUnableToComplete } from '../hooks/useMarkDispatchUnableT
 import { useAddFieldNote } from '../hooks/useAddFieldNote'
 import { CancelledScreen } from './CancelledScreen'
 import { RaceLossScreen } from './RaceLossScreen'
+import { reportTypeLabel } from '../lib/incident-labels'
 import styles from './DispatchDetailPage.module.css'
-
-const REPORT_TYPE_LABEL: Record<string, string> = {
-  flood: '🌊 Flood',
-  fire: '🔥 Fire',
-  earthquake: '🌍 Earthquake',
-  typhoon: '🌀 Typhoon',
-  landslide: '⛰️ Landslide',
-  storm_surge: '🌊 Storm Surge',
-  medical: '🏥 Medical',
-  accident: '💥 Accident',
-  structural: '🏚️ Structural',
-  security: '🚔 Security',
-  other: '⚠️ Other',
-}
 
 const DECLINE_REASONS = [
   'Already on another assignment',
@@ -156,7 +143,7 @@ export function DispatchDetailPage() {
     ? `https://maps.google.com/?q=${String(report.publicLocation.latitude)},${String(report.publicLocation.longitude)}`
     : null
 
-  const reportTypeLabel = report ? (REPORT_TYPE_LABEL[report.reportType] ?? report.reportType) : ''
+  const reportTypeLabelText = report ? reportTypeLabel(report.reportType) : ''
 
   return (
     <div className={styles.page}>
@@ -164,7 +151,7 @@ export function DispatchDetailPage() {
         <button className={styles.backBtn} onClick={() => void navigate('/')} aria-label="Back">
           ←
         </button>
-        <h1 className={styles.pageTitle}>{report ? reportTypeLabel : 'Dispatch'}</h1>
+        <h1 className={styles.pageTitle}>{report ? reportTypeLabelText : 'Dispatch'}</h1>
         {isActive && dispatchId !== undefined && (
           <Link to={`/dispatches/${dispatchId}/sos`} className={styles.pageHeaderSos}>
             SOS
@@ -176,7 +163,7 @@ export function DispatchDetailPage() {
         {report && (
           <div className={styles.incidentCard}>
             <h2 className={styles.incidentTitle}>
-              {reportTypeLabel}
+              {reportTypeLabelText}
               <span className={[styles.severityBadge, sevClass].filter(Boolean).join(' ')}>
                 {report.severity}
               </span>

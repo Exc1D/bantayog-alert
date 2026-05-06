@@ -5,25 +5,33 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import { useReport } from '../hooks/useReport'
+import { reportTypeLabel } from '../lib/incident-labels'
 import styles from './MapPage.module.css'
 
-// Fix Leaflet default icon broken in Vite/Webpack
-const defaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
+// Inline SVG / HTML markers so the responder app stays usable offline
+// (no unpkg/cdn dependency). Mirrors apps/citizen-pwa IncidentLayer pattern.
+const responderIcon = L.divIcon({
+  className: 'bantayog-responder-marker',
+  html: '<div style="width:18px;height:18px;border-radius:50%;background:#1d4ed8;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
 })
 
-const incidentIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  className: 'incident-marker',
-})
+function severityColor(severity: 'low' | 'medium' | 'high' | undefined): string {
+  if (severity === 'high') return '#dc2626'
+  if (severity === 'medium') return '#d97706'
+  return '#475569'
+}
+
+function buildIncidentIcon(severity: 'low' | 'medium' | 'high' | undefined): L.DivIcon {
+  const fill = severityColor(severity)
+  return L.divIcon({
+    className: 'bantayog-incident-marker',
+    html: `<div style="width:22px;height:22px;border-radius:4px;background:${fill};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);transform:rotate(45deg);"></div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  })
+}
 
 // Daet, Camarines Norte default center
 const DEFAULT_CENTER: [number, number] = [14.1131, 122.9553]
@@ -49,9 +57,9 @@ function ActiveDispatchMarker({ reportId }: { reportId: string }) {
   const lat = report.publicLocation.latitude
   const lng = report.publicLocation.longitude
   return (
-    <Marker position={[lat, lng]} icon={incidentIcon}>
+    <Marker position={[lat, lng]} icon={buildIncidentIcon(report.severity)}>
       <Popup>
-        <strong>{report.reportType}</strong>
+        <strong>{reportTypeLabel(report.reportType)}</strong>
         <br />
         {report.severity} severity
         <br />
@@ -110,7 +118,7 @@ export function MapPage() {
         />
         <MapFlyTo coords={ownLocation} />
         {ownLocation && (
-          <Marker position={[ownLocation.lat, ownLocation.lng]} icon={defaultIcon}>
+          <Marker position={[ownLocation.lat, ownLocation.lng]} icon={responderIcon}>
             <Popup>Your location</Popup>
           </Marker>
         )}
