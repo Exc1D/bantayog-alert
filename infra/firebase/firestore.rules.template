@@ -123,7 +123,11 @@ service cloud.firestore {
         allow read: if isActivePrivileged()
                     && (isMuniAdmin() || isSuperadmin()
                         || (isResponder() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()))));
-        allow write: if false;
+        allow create: if isActivePrivileged()
+                      && isResponder()
+                      && request.auth.uid == request.resource.data.authorUid
+                      && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid()));
+        allow update, delete: if false;
       }
     }
 

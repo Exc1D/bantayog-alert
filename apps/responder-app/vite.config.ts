@@ -9,16 +9,13 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          leaflet: ['leaflet', 'react-leaflet'],
-          firebase: [
-            'firebase/app',
-            'firebase/auth',
-            'firebase/firestore',
-            'firebase/database',
-            'firebase/functions',
-            'firebase/app-check',
-          ],
+        manualChunks(id: string) {
+          if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) {
+            return 'leaflet'
+          }
+          if (id.includes('node_modules/firebase')) {
+            return 'firebase'
+          }
         },
       },
     },
