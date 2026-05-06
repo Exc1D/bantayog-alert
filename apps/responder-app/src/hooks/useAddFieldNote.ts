@@ -18,9 +18,12 @@ export function useAddFieldNote(reportId: string) {
       if (!user) throw new Error('auth_required')
       const col = collection(db, 'reports', reportId, 'field_notes')
       await addDoc(col, {
-        content: trimmed,
+        body: trimmed,
         authorUid: user.uid,
+        authorRole: 'responder',
+        authorDisplayName: auth.currentUser?.displayName ?? 'Responder',
         createdAt: serverTimestamp(),
+        schemaVersion: 1,
       })
     } catch (err: unknown) {
       const normalized = err instanceof Error ? err : new Error(String(err))

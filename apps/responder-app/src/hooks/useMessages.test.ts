@@ -14,7 +14,7 @@ vi.mock('firebase/firestore', () => ({
 import { useMessages } from './useMessages'
 
 describe('useMessages', () => {
-  it('returns sorted messages from snapshot', async () => {
+  it('returns messages mapped from author/body schema', async () => {
     mockOnSnapshot.mockImplementation(
       (
         _ref: unknown,
@@ -25,10 +25,11 @@ describe('useMessages', () => {
             {
               id: 'msg-1',
               data: () => ({
-                content: 'Hello from admin',
-                senderRole: 'municipal_admin',
-                senderDisplayName: 'Admin Santos',
-                sentAt: { toMillis: () => 1700000000000 },
+                body: 'Hello from admin',
+                authorUid: 'admin-1',
+                authorRole: 'municipal_admin',
+                authorDisplayName: 'Admin Santos',
+                createdAt: { toMillis: () => 1700000000000 },
               }),
             },
           ],
@@ -41,7 +42,12 @@ describe('useMessages', () => {
 
     await waitFor(() => {
       expect(result.current.messages).toHaveLength(1)
-      expect(result.current.messages[0]?.content).toBe('Hello from admin')
+      const msg = result.current.messages[0]
+      expect(msg?.body).toBe('Hello from admin')
+      expect(msg?.authorUid).toBe('admin-1')
+      expect(msg?.authorRole).toBe('municipal_admin')
+      expect(msg?.authorDisplayName).toBe('Admin Santos')
+      expect(msg?.createdAt).toBe(1700000000000)
     })
   })
 

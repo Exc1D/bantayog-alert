@@ -3,7 +3,10 @@ import { renderHook, act } from '@testing-library/react'
 
 const mockAddDoc = vi.hoisted(() => vi.fn())
 
-vi.mock('../app/firebase', () => ({ db: {}, auth: {} }))
+vi.mock('../app/firebase', () => ({
+  db: {},
+  auth: { currentUser: { uid: 'uid-1', displayName: 'BFP Responder 01' } },
+}))
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db: unknown, ...segs: string[]) => ({ path: segs.join('/') })),
   addDoc: mockAddDoc,
@@ -16,7 +19,7 @@ vi.mock('../app/await-auth-token', () => ({
 import { useSendMessage } from './useSendMessage'
 
 describe('useSendMessage', () => {
-  it('calls addDoc with message content', async () => {
+  it('writes message with authorUid/body schema matching firestore rules', async () => {
     mockAddDoc.mockResolvedValue({ id: 'msg-1' })
     const { result } = renderHook(() => useSendMessage('report-1'))
 
@@ -26,7 +29,13 @@ describe('useSendMessage', () => {
 
     expect(mockAddDoc).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ content: 'Water rising fast', senderRole: 'responder' }),
+      expect.objectContaining({
+        body: 'Water rising fast',
+        authorUid: 'uid-1',
+        authorRole: 'responder',
+        authorDisplayName: 'BFP Responder 01',
+        schemaVersion: 1,
+      }),
     )
   })
 

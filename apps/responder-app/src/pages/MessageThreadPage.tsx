@@ -46,7 +46,7 @@ export function MessageThreadPage() {
       <div className={styles.messageList} role="log" aria-label="Messages">
         {loading && <p className={styles.loading}>Loading…</p>}
         {messages.map((msg) => {
-          const isMine = msg.senderRole === 'responder'
+          const isMine = msg.authorUid === user?.uid
           return (
             <div
               key={msg.id}
@@ -54,9 +54,9 @@ export function MessageThreadPage() {
                 .filter(Boolean)
                 .join(' ')}
             >
-              {!isMine && <div className={styles.bubbleSender}>{msg.senderDisplayName}</div>}
-              {msg.content}
-              <div className={styles.bubbleTime}>{formatTime(msg.sentAt)}</div>
+              {!isMine && <div className={styles.bubbleSender}>{msg.authorDisplayName}</div>}
+              {msg.body}
+              <div className={styles.bubbleTime}>{formatTime(msg.createdAt)}</div>
             </div>
           )
         })}

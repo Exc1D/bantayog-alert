@@ -4,10 +4,11 @@ import { db } from '../app/firebase'
 
 export interface IncidentMessage {
   id: string
-  content: string
-  senderRole: string
-  senderDisplayName: string
-  sentAt: number
+  body: string
+  authorUid: string
+  authorRole: string
+  authorDisplayName: string
+  createdAt: number
   photoUrl?: string
 }
 
@@ -25,7 +26,7 @@ export function useMessages(reportId: string | undefined) {
       return
     }
 
-    const q = query(collection(db, 'reports', reportId, 'messages'), orderBy('sentAt', 'asc'))
+    const q = query(collection(db, 'reports', reportId, 'messages'), orderBy('createdAt', 'asc'))
 
     return onSnapshot(
       q,
@@ -33,16 +34,20 @@ export function useMessages(reportId: string | undefined) {
         setMessages(
           snap.docs.map((d) => {
             const data = d.data()
-            const sentAt =
-              data.sentAt && typeof data.sentAt === 'object' && 'toMillis' in data.sentAt
-                ? (data.sentAt as { toMillis: () => number }).toMillis()
+            const tsRaw = data.createdAt ?? data.sentAt
+            const createdAt =
+              tsRaw && typeof tsRaw === 'object' && 'toMillis' in tsRaw
+                ? (tsRaw as { toMillis: () => number }).toMillis()
                 : Date.now()
             const msg: IncidentMessage = {
               id: d.id,
-              content: String(data.content ?? ''),
-              senderRole: String(data.senderRole ?? ''),
-              senderDisplayName: String(data.senderDisplayName ?? 'Admin'),
-              sentAt,
+              body: String(data.body ?? data.content ?? ''),
+              authorUid: String(data.authorUid ?? data.senderUid ?? ''),
+              authorRole: String(data.authorRole ?? data.senderRole ?? ''),
+              authorDisplayName: String(
+                data.authorDisplayName ?? data.senderDisplayName ?? 'Admin',
+              ),
+              createdAt,
             }
             if (data.photoUrl != null) msg.photoUrl = String(data.photoUrl)
             return msg

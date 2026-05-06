@@ -17,11 +17,12 @@ export function useSendMessage(reportId: string) {
       const user = await awaitFreshAuthToken(auth)
       if (!user) throw new Error('auth_required')
       await addDoc(collection(db, 'reports', reportId, 'messages'), {
-        content: trimmed,
-        senderUid: user.uid,
-        senderRole: 'responder',
-        senderDisplayName: 'Responder',
-        sentAt: serverTimestamp(),
+        body: trimmed,
+        authorUid: user.uid,
+        authorRole: 'responder',
+        authorDisplayName: auth.currentUser?.displayName ?? 'Responder',
+        createdAt: serverTimestamp(),
+        schemaVersion: 1,
       })
     } catch (err: unknown) {
       const normalized = err instanceof Error ? err : new Error(String(err))

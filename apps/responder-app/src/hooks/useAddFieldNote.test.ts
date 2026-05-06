@@ -4,7 +4,10 @@ import { renderHook, act } from '@testing-library/react'
 const mockAddDoc = vi.hoisted(() => vi.fn())
 const mockCollection = vi.hoisted(() => vi.fn())
 
-vi.mock('../app/firebase', () => ({ db: {}, auth: {} }))
+vi.mock('../app/firebase', () => ({
+  db: {},
+  auth: { currentUser: { uid: 'uid-1', displayName: 'BFP Responder 01' } },
+}))
 vi.mock('firebase/firestore', () => ({
   collection: mockCollection,
   addDoc: mockAddDoc,
@@ -17,7 +20,7 @@ vi.mock('../app/await-auth-token', () => ({
 import { useAddFieldNote } from './useAddFieldNote'
 
 describe('useAddFieldNote', () => {
-  it('calls addDoc with note content', async () => {
+  it('writes field note with authorUid/body schema matching firestore rules', async () => {
     mockCollection.mockReturnValue({ path: 'reports/r1/field_notes' })
     mockAddDoc.mockResolvedValue({ id: 'note-1' })
 
@@ -29,7 +32,13 @@ describe('useAddFieldNote', () => {
 
     expect(mockAddDoc).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ content: 'Water is rising fast' }),
+      expect.objectContaining({
+        body: 'Water is rising fast',
+        authorUid: 'uid-1',
+        authorRole: 'responder',
+        authorDisplayName: 'BFP Responder 01',
+        schemaVersion: 1,
+      }),
     )
   })
 
