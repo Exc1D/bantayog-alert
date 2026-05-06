@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { auth, functions } from '../app/firebase'
 import { awaitFreshAuthToken } from '../app/await-auth-token'
@@ -8,6 +8,11 @@ import type { AdvanceDispatchRequest, AdvanceDispatchTarget } from '@bantayog/sh
 export function useAdvanceDispatch(dispatchId: string) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | undefined>(undefined)
+  const keyRef = useRef(crypto.randomUUID())
+
+  useEffect(() => {
+    keyRef.current = crypto.randomUUID()
+  }, [dispatchId])
 
   const advance = useCallback(
     async function (to: AdvanceDispatchTarget, extras?: { resolutionSummary?: string }) {
@@ -27,12 +32,13 @@ export function useAdvanceDispatch(dispatchId: string) {
           dispatchId,
           to,
           resolutionSummary: extras?.resolutionSummary,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: keyRef.current,
         })
       } catch (err: unknown) {
         console.error('[useAdvanceDispatch] advance failed:', err)
-        if (err instanceof Error) setError(err)
-        else setError(new Error(String(err)))
+        const normalized = err instanceof Error ? err : new Error(String(err))
+        setError(normalized)
+        throw normalized
       } finally {
         setLoading(false)
       }
