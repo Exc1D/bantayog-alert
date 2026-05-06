@@ -1,0 +1,131 @@
+.page {
+  min-height: 100vh;
+  background: var(--r-surface);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--r-navy);
+  color: #fff;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.body {
+  padding: var(--space-4);
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  border: 1.5px solid var(--r-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.input {
+  padding: 12px;
+  border: 1.5px solid var(--r-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+}
+
+.textarea {
+  padding: 12px;
+  border: 1.5px solid var(--r-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.errorMsg {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.submitBtn {
+  padding: 12px;
+  background: var(--r-navy);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.successBody {
+  text-align: center;
+  padding-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.successIcon {
+  font-size: 2rem;
+}
+
+.successTitle {
+  font-weight: 700;
+  margin: 0;
+}
+
+.successText {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.successBtn {
+  padding: 12px 24px;
+  background: var(--r-navy);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+}

@@ -1,13 +1,20 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import styles from './TerminalScreen.module.css'
 
 export function RaceLossScreen() {
+  const navigate = useNavigate()
   return (
-    <main>
-      <h1>This dispatch is no longer available</h1>
-      <p>Another responder took this dispatch first.</p>
-      <p>
-        <Link to="/">Back to list</Link>
+    <div className={styles.page}>
+      <div className={styles.icon} aria-hidden="true">
+        ⚡
+      </div>
+      <h1 className={styles.title}>Dispatch Already Claimed</h1>
+      <p className={styles.text}>
+        Another responder accepted this dispatch first. Stand by for the next one.
       </p>
-    </main>
+      <button onClick={() => void navigate('/')} className={styles.backBtn}>
+        Back to Dispatches
+      </button>
+    </div>
   )
 }
