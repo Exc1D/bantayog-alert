@@ -13,13 +13,21 @@ export function MessageThreadPage() {
   const { reportId } = useParams<{ reportId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { messages, loading } = useMessages(reportId)
-  const { send, loading: sending } = useSendMessage(reportId ?? '')
+  const { messages, loading, error: messagesError } = useMessages(reportId)
+  const { send, loading: sending, error: sendError } = useSendMessage(reportId ?? '')
   const [draft, setDraft] = useState('')
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const list = listRef.current
+    if (!list) return
+    const distance = list.scrollHeight - list.scrollTop - list.clientHeight
+    // Only auto-scroll when the user is already near the bottom; otherwise
+    // they're reading older messages and we shouldn't yank them away.
+    if (distance < 80) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages.length])
 
   async function handleSend() {
@@ -34,6 +42,9 @@ export function MessageThreadPage() {
     }
   }
 
+  const errorText = sendError?.message ?? messagesError ?? null
+  const showEmptyState = !loading && messages.length === 0 && messagesError === null
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -43,8 +54,11 @@ export function MessageThreadPage() {
         <h1 className={styles.headerTitle}>Incident #{reportId?.slice(0, 8) ?? ''}</h1>
       </div>
 
-      <div className={styles.messageList} role="log" aria-label="Messages">
+      <div className={styles.messageList} role="log" aria-label="Messages" ref={listRef}>
         {loading && <p className={styles.loading}>Loading…</p>}
+        {showEmptyState && (
+          <p className={styles.emptyMessage}>No messages yet. Send the first one below.</p>
+        )}
         {messages.map((msg) => {
           const isMine = msg.authorUid === user?.uid
           return (
@@ -62,6 +76,12 @@ export function MessageThreadPage() {
         })}
         <div ref={bottomRef} />
       </div>
+
+      {errorText !== null && (
+        <p role="alert" className={styles.errorPill}>
+          {errorText}
+        </p>
+      )}
 
       <div className={styles.inputBar}>
         <textarea

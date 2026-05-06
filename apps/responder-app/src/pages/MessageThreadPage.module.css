@@ -123,3 +123,20 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.emptyMessage {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-8);
+}
+
+.errorPill {
+  margin: 0 var(--space-4) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: #fef2f2;
+  color: #991b1b;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
