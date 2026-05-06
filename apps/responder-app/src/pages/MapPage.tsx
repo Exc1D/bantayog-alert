@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -41,13 +41,22 @@ interface Coords {
   lng: number
 }
 
-function MapFlyTo({ coords }: { coords: Coords | null }) {
+function MapFlyTo({ coords, recenterRequest }: { coords: Coords | null; recenterRequest: number }) {
   const map = useMap()
+  const flownRef = useRef(false)
+
   useEffect(() => {
-    if (coords) {
+    if (coords && !flownRef.current) {
       map.setView([coords.lat, coords.lng], 15)
+      flownRef.current = true
     }
   }, [coords, map])
+
+  useEffect(() => {
+    if (recenterRequest === 0 || !coords) return
+    map.setView([coords.lat, coords.lng], 15)
+  }, [recenterRequest, coords, map])
+
   return null
 }
 
@@ -81,23 +90,45 @@ export function MapPage() {
   const { user } = useAuth()
   const { groups } = useOwnDispatches(user?.uid)
   const [ownLocation, setOwnLocation] = useState<Coords | null>(null)
+  const [recenterRequest, setRecenterRequest] = useState(0)
 
   useEffect(() => {
     // happy-dom (vitest) leaves navigator.geolocation as null even though
     // browser DOM types say it's always present.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!navigator.geolocation) return
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        setOwnLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-      },
-      (err) => {
-        console.warn('[MapPage] geolocation error:', err)
-      },
-      { enableHighAccuracy: true, maximumAge: 10_000 },
-    )
+    let watchId: number | null = null
+
+    const startWatch = () => {
+      if (watchId !== null) return
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setOwnLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        },
+        (err) => {
+          console.warn('[MapPage] geolocation error:', err)
+        },
+        { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
+      )
+    }
+
+    const stopWatch = () => {
+      if (watchId === null) return
+      navigator.geolocation.clearWatch(watchId)
+      watchId = null
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') stopWatch()
+      else startWatch()
+    }
+
+    startWatch()
+    document.addEventListener('visibilitychange', onVisibility)
+
     return () => {
-      navigator.geolocation.clearWatch(id)
+      stopWatch()
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 
@@ -116,7 +147,7 @@ export function MapPage() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapFlyTo coords={ownLocation} />
+        <MapFlyTo coords={ownLocation} recenterRequest={recenterRequest} />
         {ownLocation && (
           <Marker position={[ownLocation.lat, ownLocation.lng]} icon={responderIcon}>
             <Popup>Your location</Popup>
@@ -143,6 +174,18 @@ export function MapPage() {
           <span>Incident pin</span>
         </div>
       </div>
+
+      <button
+        type="button"
+        className={styles.recenterBtn ?? ''}
+        onClick={() => {
+          setRecenterRequest((n) => n + 1)
+        }}
+        disabled={!ownLocation}
+        aria-label="Recenter map on your location"
+      >
+        <span aria-hidden="true">⊙</span> Recenter
+      </button>
     </div>
   )
 }

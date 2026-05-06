@@ -58,3 +58,27 @@
   box-shadow: var(--shadow-md);
   z-index: 500;
 }
+
+.recenterBtn {
+  position: absolute;
+  bottom: calc(var(--r-tab-bar-height) + var(--space-4));
+  right: var(--space-4);
+  z-index: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: #fff;
+  color: var(--r-text);
+  border: 1px solid var(--r-border);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.recenterBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

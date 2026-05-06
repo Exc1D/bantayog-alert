@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockDivIcon = vi.hoisted(() => vi.fn(() => ({ _kind: 'divIcon' })))
@@ -50,5 +50,77 @@ describe('MapPage', () => {
 
   it('builds markers with L.divIcon (offline-friendly) instead of remote-URL L.icon', () => {
     expect(mockDivIcon).toHaveBeenCalled()
+  })
+
+  it('renders a Recenter button so the user can re-pan back to their GPS fix', () => {
+    render(
+      <MemoryRouter>
+        <MapPage />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('button', { name: /recenter/i })).toBeInTheDocument()
+  })
+
+  describe('GPS visibility-pause', () => {
+    let watchPosition: ReturnType<typeof vi.fn>
+    let clearWatch: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      watchPosition = vi.fn(() => 42)
+      clearWatch = vi.fn()
+      Object.defineProperty(navigator, 'geolocation', {
+        value: { watchPosition, clearWatch, getCurrentPosition: vi.fn() },
+        configurable: true,
+      })
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'visible',
+        configurable: true,
+      })
+    })
+
+    it('clears watch when document becomes hidden', () => {
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(watchPosition).toHaveBeenCalled()
+
+      act(() => {
+        Object.defineProperty(document, 'visibilityState', {
+          value: 'hidden',
+          configurable: true,
+        })
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+
+      expect(clearWatch).toHaveBeenCalledWith(42)
+    })
+
+    it('resumes watch when document becomes visible again', () => {
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(watchPosition).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        Object.defineProperty(document, 'visibilityState', {
+          value: 'hidden',
+          configurable: true,
+        })
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+      act(() => {
+        Object.defineProperty(document, 'visibilityState', {
+          value: 'visible',
+          configurable: true,
+        })
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+
+      expect(watchPosition).toHaveBeenCalledTimes(2)
+    })
   })
 })
