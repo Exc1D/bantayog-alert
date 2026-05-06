@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useRequestBackup } from '../hooks/useRequestBackup'
+import styles from './DispatchDetailPage.module.css'
 
 export function BackupRequestPage() {
   const { id } = useParams<{ id: string }>()
@@ -11,7 +12,11 @@ export function BackupRequestPage() {
   const [submitted, setSubmitted] = useState(false)
 
   if (!id) {
-    return <div role="alert">Invalid route: dispatch ID is missing.</div>
+    return (
+      <div role="alert" className={styles.errorMsg}>
+        Invalid route: dispatch ID is missing.
+      </div>
+    )
   }
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
@@ -28,51 +33,83 @@ export function BackupRequestPage() {
 
   if (submitted) {
     return (
-      <main>
-        <h1>Backup requested</h1>
-        <p>Your backup request has been submitted.</p>
-        <button
-          onClick={() => {
-            void navigate(`/dispatches/${id}`)
-          }}
-        >
-          Back to dispatch
-        </button>
-      </main>
+      <div className={styles.page}>
+        <div className={styles.pageHeader}>
+          <button
+            className={styles.backBtn}
+            onClick={() => void navigate(`/dispatches/${id}`)}
+            aria-label="Back"
+          >
+            ←
+          </button>
+          <h1 className={styles.pageTitle}>Backup requested</h1>
+        </div>
+        <div className={styles.body}>
+          <div className={styles.statusSection}>
+            <p>Your backup request has been submitted.</p>
+          </div>
+          <button
+            className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
+            onClick={() => void navigate(`/dispatches/${id}`)}
+          >
+            Back to dispatch
+          </button>
+        </div>
+      </div>
     )
   }
 
   return (
-    <main>
-      <h1>Request Backup</h1>
-      <form onSubmit={(e) => void handleSubmit(e)}>
-        <div>
-          <label htmlFor="reason">Reason (required)</label>
-          <textarea
-            id="reason"
-            value={reason}
-            onChange={(e) => {
-              setReason(e.target.value)
-            }}
-            placeholder="Why do you need backup?"
-            rows={3}
-            required
-          />
-        </div>
-        {error && <p style={{ color: 'red' }}>{error.message}</p>}
-        <button type="submit" disabled={loading}>
-          {loading ? 'Submitting…' : 'Request backup'}
-        </button>
+    <div className={styles.page}>
+      <div className={styles.pageHeader}>
         <button
-          type="button"
-          onClick={() => {
-            void navigate(`/dispatches/${id}`)
-          }}
-          disabled={loading}
+          className={styles.backBtn}
+          onClick={() => void navigate(`/dispatches/${id}`)}
+          aria-label="Back"
         >
-          Cancel
+          ←
         </button>
-      </form>
-    </main>
+        <h1 className={styles.pageTitle}>Request Backup</h1>
+      </div>
+
+      <div className={styles.body}>
+        <form onSubmit={(e) => void handleSubmit(e)} className={styles.statusSection}>
+          <div>
+            <label htmlFor="reason" className={styles.statusTitle}>
+              Reason (required)
+            </label>
+            <textarea
+              id="reason"
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value)
+              }}
+              placeholder="Why do you need backup?"
+              rows={3}
+              required
+              className={styles.textarea}
+            />
+          </div>
+          {error && <p className={styles.errorMsg}>{error.message}</p>}
+          <div className={styles.quickToggles}>
+            <button
+              type="submit"
+              disabled={loading}
+              className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
+            >
+              {loading ? 'Submitting…' : 'Request backup'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void navigate(`/dispatches/${id}`)}
+              disabled={loading}
+              className={styles.toggleBtn}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
