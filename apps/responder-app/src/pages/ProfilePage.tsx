@@ -25,7 +25,11 @@ function statusBlurb(status: ResponderAvailabilityStatus | null): string {
 export function ProfilePage() {
   const { user, signOut } = useAuth()
   const { profile } = useResponderProfile(user?.uid)
-  const { status: availStatus, setAvailability } = useResponderAvailability(user?.uid)
+  const {
+    status: availStatus,
+    setAvailability,
+    writeError: availWriteError,
+  } = useResponderAvailability(user?.uid)
   const { history } = useDispatchHistory(user?.uid)
 
   const [selectedStatus, setSelectedStatus] = useState<SettableStatus>('available')
@@ -126,6 +130,7 @@ export function ProfilePage() {
             </select>
           )}
           {statusError !== null && <p className={styles.errorMsg}>{statusError}</p>}
+          {availWriteError !== null && <p className={styles.errorMsg}>{availWriteError}</p>}
           <button
             className={styles.updateBtn}
             onClick={() => void handleStatusUpdate()}

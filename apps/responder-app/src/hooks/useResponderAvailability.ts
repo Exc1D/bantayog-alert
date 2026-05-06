@@ -8,6 +8,7 @@ export interface UseResponderAvailabilityReturn {
   status: ResponderAvailabilityStatus | null
   loading: boolean
   error: string | null
+  writeError: string | null
   setAvailability: (status: ResponderAvailabilityStatus, reason?: string) => Promise<void>
 }
 
@@ -22,6 +23,7 @@ export function useResponderAvailability(uid: string | undefined): UseResponderA
   const [status, setStatus] = useState<ResponderAvailabilityStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [writeError, setWriteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!uid) {
@@ -65,19 +67,26 @@ export function useResponderAvailability(uid: string | undefined): UseResponderA
         throw new Error('reason_required')
       }
 
+      setWriteError(null)
       const ref = doc(db, 'responders', uid)
-      await setDoc(
-        ref,
-        {
-          availabilityStatus: newStatus,
-          availabilityReason: trimmedReason ?? deleteField(),
-          updatedAt: Date.now(),
-        },
-        { merge: true },
-      )
+      try {
+        await setDoc(
+          ref,
+          {
+            availabilityStatus: newStatus,
+            availabilityReason: trimmedReason ?? deleteField(),
+            updatedAt: Date.now(),
+          },
+          { merge: true },
+        )
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to update availability'
+        setWriteError(msg)
+        throw new Error(msg)
+      }
     },
     [uid],
   )
 
-  return { status, loading, error, setAvailability }
+  return { status, loading, error, writeError, setAvailability }
 }

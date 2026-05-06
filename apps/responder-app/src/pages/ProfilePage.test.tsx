@@ -12,7 +12,7 @@ const profileState = vi.hoisted(() => ({
   },
 }))
 
-const mockSignOut = vi.hoisted(() => vi.fn())
+const mockSignOut = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const mockSetAvailability = vi.hoisted(() => vi.fn())
 
 const historyState = vi.hoisted(() => ({
@@ -33,7 +33,11 @@ vi.mock('../hooks/useResponderProfile', () => ({
 }))
 
 vi.mock('../hooks/useResponderAvailability', () => ({
-  useResponderAvailability: () => ({ status: 'available', setAvailability: mockSetAvailability }),
+  useResponderAvailability: () => ({
+    status: 'available',
+    setAvailability: mockSetAvailability,
+    writeError: null,
+  }),
 }))
 
 vi.mock('../hooks/useDispatchHistory', () => ({
