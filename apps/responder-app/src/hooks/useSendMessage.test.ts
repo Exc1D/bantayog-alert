@@ -13,7 +13,7 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: () => ({ _type: 'serverTimestamp' }),
 }))
 vi.mock('../app/await-auth-token', () => ({
-  awaitFreshAuthToken: () => Promise.resolve({ uid: 'uid-1' }),
+  awaitFreshAuthToken: () => Promise.resolve({ uid: 'uid-1', displayName: 'BFP Responder 01' }),
 }))
 
 import { useSendMessage } from './useSendMessage'

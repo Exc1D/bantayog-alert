@@ -21,7 +21,7 @@ export function useAddFieldNote(reportId: string) {
         body: trimmed,
         authorUid: user.uid,
         authorRole: 'responder',
-        authorDisplayName: auth.currentUser?.displayName ?? 'Responder',
+        authorDisplayName: user.displayName ?? 'Responder',
         createdAt: serverTimestamp(),
         schemaVersion: 1,
       })
