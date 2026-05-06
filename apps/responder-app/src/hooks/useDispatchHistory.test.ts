@@ -16,8 +16,12 @@ vi.mock('firebase/firestore', () => ({
 import { useDispatchHistory } from './useDispatchHistory'
 
 describe('useDispatchHistory', () => {
+  beforeEach(() => {
+    mockOnSnapshot.mockClear()
+  })
+
   it('returns past dispatches', async () => {
-    mockOnSnapshot.mockImplementation(
+    mockOnSnapshot.mockImplementationOnce(
       (
         _ref: unknown,
         onNext: (snap: { docs: { id: string; data: () => Record<string, unknown> }[] }) => void,
@@ -44,6 +48,28 @@ describe('useDispatchHistory', () => {
     await waitFor(() => {
       expect(result.current.history).toHaveLength(1)
       expect(result.current.history[0]?.status).toBe('resolved')
+    })
+  })
+
+  it('returns empty history when uid is undefined', async () => {
+    const { result } = renderHook(() => useDispatchHistory(undefined))
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+      expect(result.current.history).toHaveLength(0)
+    })
+  })
+
+  it('surfaces listener error', async () => {
+    mockOnSnapshot.mockImplementationOnce((_ref, _onNext, onError) => {
+      onError(new Error('permission_denied'))
+      return () => undefined
+    })
+
+    const { result } = renderHook(() => useDispatchHistory('uid-1'))
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('permission_denied')
+      expect(result.current.loading).toBe(false)
     })
   })
 })

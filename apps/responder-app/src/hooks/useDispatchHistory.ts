@@ -27,10 +27,9 @@ export function useDispatchHistory(uid: string | undefined, maxRows = 20) {
 
   useEffect(() => {
     if (!uid) {
-      queueMicrotask(() => {
-        setHistory([])
-        setLoading(false)
-      })
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHistory([])
+      setLoading(false)
       return
     }
 

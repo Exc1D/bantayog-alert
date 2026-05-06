@@ -3,7 +3,7 @@ import { useAuth } from '@bantayog/shared-ui'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import styles from './MessagesPage.module.css'
 
-function statusSubLabel(uiStatus: string | undefined): string {
+function getStatusSubLabel(uiStatus: string | undefined): string {
   if (uiStatus === 'heading_to_scene') return 'En Route'
   if (uiStatus === 'on_scene') return 'On Scene'
   if (uiStatus === 'pending') return 'Pending acceptance'
@@ -30,7 +30,7 @@ export function MessagesPage() {
             </span>
             <div className={styles.threadInfo}>
               <h2 className={styles.threadTitle}>Incident #{row.reportId.slice(0, 8)}</h2>
-              <span className={styles.threadSub}>{statusSubLabel(row.uiStatus)}</span>
+              <span className={styles.threadSub}>{getStatusSubLabel(row.uiStatus)}</span>
             </div>
             <span className={styles.threadArrow} aria-hidden="true">
               ›

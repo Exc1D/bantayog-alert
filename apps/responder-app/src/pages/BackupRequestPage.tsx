@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useRequestBackup } from '../hooks/useRequestBackup'
-import styles from './DispatchDetailPage.module.css'
+import styles from './BackupRequestPage.module.css'
 
 export function BackupRequestPage() {
   const { id } = useParams<{ id: string }>()

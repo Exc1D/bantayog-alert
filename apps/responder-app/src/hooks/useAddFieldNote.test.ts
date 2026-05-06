@@ -20,6 +20,11 @@ vi.mock('../app/await-auth-token', () => ({
 import { useAddFieldNote } from './useAddFieldNote'
 
 describe('useAddFieldNote', () => {
+  beforeEach(() => {
+    mockAddDoc.mockClear()
+    mockCollection.mockClear()
+  })
+
   it('writes field note with authorUid/body schema matching firestore rules', async () => {
     mockCollection.mockReturnValue({ path: 'reports/r1/field_notes' })
     mockAddDoc.mockResolvedValue({ id: 'note-1' })

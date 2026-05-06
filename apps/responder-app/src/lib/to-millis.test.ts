@@ -27,4 +27,8 @@ describe('toMillis', () => {
   it('returns undefined for plain objects without toMillis', () => {
     expect(toMillis({ seconds: 1715000, nanoseconds: 0 })).toBeUndefined()
   })
+
+  it('returns undefined when toMillis is present but not a function', () => {
+    expect(toMillis({ toMillis: 'not-a-function' })).toBeUndefined()
+  })
 })

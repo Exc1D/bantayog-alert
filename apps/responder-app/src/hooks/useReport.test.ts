@@ -13,7 +13,7 @@ import { useReport } from './useReport'
 
 describe('useReport', () => {
   it('returns report data when snapshot exists', async () => {
-    mockOnSnapshot.mockImplementation(
+    mockOnSnapshot.mockImplementationOnce(
       (_ref: unknown, onNext: (snap: { exists: () => boolean; data: () => unknown }) => void) => {
         onNext({
           exists: () => true,
@@ -51,7 +51,7 @@ describe('useReport', () => {
   })
 
   it('normalizes unknown severity values to "low" instead of leaking raw strings', async () => {
-    mockOnSnapshot.mockImplementation(
+    mockOnSnapshot.mockImplementationOnce(
       (_ref: unknown, onNext: (snap: { exists: () => boolean; data: () => unknown }) => void) => {
         onNext({
           exists: () => true,

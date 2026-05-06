@@ -9,7 +9,7 @@ import { useMarkDispatchUnableToComplete } from '../hooks/useMarkDispatchUnableT
 import { useAddFieldNote } from '../hooks/useAddFieldNote'
 import { CancelledScreen } from './CancelledScreen'
 import { RaceLossScreen } from './RaceLossScreen'
-import { reportTypeLabel } from '../lib/incident-labels'
+import { getReportTypeLabel } from '../lib/incident-labels'
 import styles from './DispatchDetailPage.module.css'
 
 const DECLINE_REASONS = [
@@ -164,7 +164,7 @@ export function DispatchDetailPage() {
     ? `https://maps.google.com/?q=${String(report.publicLocation.latitude)},${String(report.publicLocation.longitude)}`
     : null
 
-  const reportTypeLabelText = report ? reportTypeLabel(report.reportType) : ''
+  const reportTypeLabelText = report ? getReportTypeLabel(report.reportType) : ''
 
   return (
     <div className={styles.page}>

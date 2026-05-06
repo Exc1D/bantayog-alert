@@ -6,7 +6,7 @@ import { useResponderProfile } from '../hooks/useResponderProfile'
 import { useResponderAvailability } from '../hooks/useResponderAvailability'
 import type { ResponderAvailabilityStatus } from '../hooks/useResponderAvailability'
 import { useDispatchHistory } from '../hooks/useDispatchHistory'
-import { responderTypeLabel } from '../lib/incident-labels'
+import { getResponderTypeLabel } from '../lib/incident-labels'
 import styles from './ProfilePage.module.css'
 
 const UNAVAILABLE_REASONS = ['On break', 'In meeting', 'On another call', 'Other']
@@ -71,7 +71,7 @@ export function ProfilePage() {
   }
 
   const reasonOptions = selectedStatus === 'unavailable' ? UNAVAILABLE_REASONS : OFF_DUTY_REASONS
-  const profileTypeLabel = responderTypeLabel(profile?.responderType)
+  const profileTypeLabel = getResponderTypeLabel(profile?.responderType)
 
   return (
     <div className={styles.page}>

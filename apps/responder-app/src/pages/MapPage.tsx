@@ -5,7 +5,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import { useReport } from '../hooks/useReport'
-import { reportTypeLabel } from '../lib/incident-labels'
+import { getReportTypeLabel } from '../lib/incident-labels'
 import styles from './MapPage.module.css'
 
 // Inline SVG / HTML markers so the responder app stays usable offline
@@ -17,14 +17,14 @@ const responderIcon = L.divIcon({
   iconAnchor: [12, 12],
 })
 
-function severityColor(severity: 'low' | 'medium' | 'high' | undefined): string {
+function getSeverityColor(severity: 'low' | 'medium' | 'high' | undefined): string {
   if (severity === 'high') return '#dc2626'
   if (severity === 'medium') return '#d97706'
   return '#475569'
 }
 
 function buildIncidentIcon(severity: 'low' | 'medium' | 'high' | undefined): L.DivIcon {
-  const fill = severityColor(severity)
+  const fill = getSeverityColor(severity)
   return L.divIcon({
     className: 'bantayog-incident-marker',
     html: `<div style="width:22px;height:22px;border-radius:4px;background:${fill};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);transform:rotate(45deg);"></div>`,
@@ -68,7 +68,7 @@ function ActiveDispatchMarker({ reportId }: { reportId: string }) {
   return (
     <Marker position={[lat, lng]} icon={buildIncidentIcon(report.severity)}>
       <Popup>
-        <strong>{reportTypeLabel(report.reportType)}</strong>
+        <strong>{getReportTypeLabel(report.reportType)}</strong>
         <br />
         {report.severity} severity
         <br />

@@ -187,4 +187,22 @@ describe('useDispatch', () => {
     expect(result.current.dispatch?.uiStatus).toBe('terminal')
     expect(result.current.dispatch?.terminalSurface).toBe('cancelled')
   })
+
+  it('surfaces schema parse failures as errors', async () => {
+    mockOnSnapshot.mockImplementation((_ref, onNext) => {
+      onNext({
+        exists: () => true,
+        id: 'disp-bad',
+        data: () => ({ status: 'not-a-valid-status' }),
+      })
+      return vi.fn()
+    })
+
+    const { result } = renderHook(() => useDispatch('disp-bad'))
+
+    await waitFor(() => {
+      expect(result.current.error).toBeDefined()
+    })
+    expect(result.current.loading).toBe(false)
+  })
 })

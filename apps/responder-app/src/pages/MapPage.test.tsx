@@ -49,7 +49,15 @@ describe('MapPage', () => {
   })
 
   it('builds markers with L.divIcon (offline-friendly) instead of remote-URL L.icon', () => {
+    // divIcon is invoked at module-load time (responderIcon + buildIncidentIcon
+    // are module-level constants), so we assert on the recorded calls rather
+    // than trying to trigger them during render.
     expect(mockDivIcon).toHaveBeenCalled()
+    const lastCall = mockDivIcon.mock.calls.at(-1)!
+    const config = lastCall[0] as Record<string, unknown>
+    // divIcon uses inline HTML — no remote iconUrl
+    expect(config.html).toBeDefined()
+    expect(config.iconUrl).toBeUndefined()
   })
 
   it('renders a Recenter button so the user can re-pan back to their GPS fix', () => {

@@ -23,6 +23,12 @@
   align-items: center;
 }
 
+.backBtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .pageTitle {
   font-size: var(--font-size-md);
   font-weight: 700;

@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 
 // Vite define replacement — must be set before the module under test is imported
+const ORIGINAL_APP_VERSION = (globalThis as Record<string, unknown>).__APP_VERSION__
 ;(globalThis as Record<string, unknown>).__APP_VERSION__ = '1.0.0'
 
 const mockOnSnapshot = vi.hoisted(() => vi.fn())
@@ -22,6 +23,10 @@ import { useVersionGate } from './useVersionGate'
 describe('useVersionGate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterAll(() => {
+    ;(globalThis as Record<string, unknown>).__APP_VERSION__ = ORIGINAL_APP_VERSION
   })
 
   it('sets blocked=true when app version is older than minimum', async () => {

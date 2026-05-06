@@ -4,7 +4,7 @@ import { useAuth } from '@bantayog/shared-ui'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import { useReport } from '../hooks/useReport'
 import { AcceptanceCountdown } from '../components/AcceptanceCountdown'
-import { reportTypeLabel } from '../lib/incident-labels'
+import { getReportTypeLabel } from '../lib/incident-labels'
 import type { QueueDispatchRow } from '../lib/dispatch-presentation'
 import styles from './DispatchListPage.module.css'
 
@@ -32,7 +32,7 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
     >
       <div className={styles.cardHeader}>
         <h3 className={styles.cardTitle}>
-          {report ? reportTypeLabel(report.reportType) : `Incident ${row.reportId.slice(0, 8)}`}
+          {report ? getReportTypeLabel(report.reportType) : `Incident ${row.reportId.slice(0, 8)}`}
         </h3>
         <span
           className={[

@@ -13,7 +13,7 @@ import { useResponderProfile } from './useResponderProfile'
 
 describe('useResponderProfile', () => {
   it('returns profile data from snapshot', async () => {
-    mockOnSnapshot.mockImplementation(
+    mockOnSnapshot.mockImplementationOnce(
       (
         _ref: unknown,
         onNext: (snap: { exists: () => boolean; data: () => Record<string, unknown> }) => void,

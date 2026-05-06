@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import { AcceptanceCountdown } from './AcceptanceCountdown'
 
 describe('AcceptanceCountdown', () => {
@@ -13,6 +13,12 @@ describe('AcceptanceCountdown', () => {
     const deadline = Date.now() + 120_000 // 2 minutes from now
     render(<AcceptanceCountdown deadlineMs={deadline} />)
     expect(screen.getByText(/1:5\d|2:00/)).toBeInTheDocument()
+
+    // Advance 1 second and assert the countdown ticked
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(screen.getByText(/1:5\d/)).toBeInTheDocument()
   })
 
   it('shows "Expired" when deadline already passed', () => {

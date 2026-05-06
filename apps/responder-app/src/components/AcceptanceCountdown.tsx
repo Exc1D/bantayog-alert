@@ -16,14 +16,15 @@ export function AcceptanceCountdown({ deadlineMs }: Props) {
   const [remaining, setRemaining] = useState(() => deadlineMs - Date.now())
 
   useEffect(() => {
-    if (remaining <= 0) return
     const id = setInterval(() => {
-      setRemaining(deadlineMs - Date.now())
+      const next = deadlineMs - Date.now()
+      setRemaining(next)
+      if (next <= 0) clearInterval(id)
     }, 1000)
     return () => {
       clearInterval(id)
     }
-  }, [deadlineMs, remaining])
+  }, [deadlineMs])
 
   const isExpired = remaining <= 0
   const isUrgent = remaining > 0 && remaining < 60_000

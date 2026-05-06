@@ -62,11 +62,20 @@ describe('useAdvanceDispatch', () => {
   it('throws if resolutionSummary is missing for resolved target', async () => {
     const { result } = renderHook(() => useAdvanceDispatch('disp-1'))
 
-    await expect(
-      act(async () => {
+    let thrown: Error | undefined
+    await act(async () => {
+      try {
         await result.current.advance('resolved')
-      }),
-    ).rejects.toThrow('resolutionSummary_required')
+      } catch (err) {
+        thrown = err as Error
+      }
+    })
+
+    expect(thrown).toBeInstanceOf(Error)
+    expect(thrown?.message).toBe('resolutionSummary_required')
+    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.error?.message).toBe('resolutionSummary_required')
+    expect(result.current.loading).toBe(false)
   })
 
   it('sets error and re-throws on failure', async () => {
