@@ -45,11 +45,12 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   // the user is already on the /report route (they're actively filling it).
   useEffect(() => {
     if (pathname.startsWith('/report')) return
-    void wizardSnapshot.load()
+    void wizardSnapshot
+      .load()
       .then((snap) => {
         setHasDraft(snap !== null)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.warn('[CitizenShell] Failed to load wizard snapshot:', err)
         // Non-fatal — draft resume is convenience, not required
       })
@@ -72,7 +73,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
       .then(() => {
         setHasDraft(false)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.warn('[CitizenShell] Failed to discard draft:', err)
         // Keep banner visible so user understands issue
       })
