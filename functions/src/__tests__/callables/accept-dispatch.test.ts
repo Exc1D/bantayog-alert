@@ -140,15 +140,17 @@ describe('acceptDispatchCore', () => {
       municipalityId: 'daet',
     })
 
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    await expect(
-      acceptDispatchCore(db, {
-        dispatchId: 'dispatch-1',
-        idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'responder-2' },
-        now: Timestamp.fromMillis(ts),
-      }),
-    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
+      await expect(
+        acceptDispatchCore(db as any, {
+          dispatchId: 'dispatch-1',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'responder-2' },
+          now: Timestamp.fromMillis(ts),
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
   })
 
   it('rejects when dispatch is not found (NOT_FOUND)', async () => {
@@ -158,15 +160,17 @@ describe('acceptDispatchCore', () => {
       municipalityId: 'daet',
     })
 
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    await expect(
-      acceptDispatchCore(db, {
-        dispatchId: 'missing-dispatch-id',
-        idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'responder-1' },
-        now: Timestamp.fromMillis(ts),
-      }),
-    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
+      await expect(
+        acceptDispatchCore(db as any, {
+          dispatchId: 'missing-dispatch-id',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'responder-1' },
+          now: Timestamp.fromMillis(ts),
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    })
   })
 
   it('returns ALREADY_EXISTS when dispatch is no longer pending', async () => {
@@ -178,16 +182,16 @@ describe('acceptDispatchCore', () => {
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async () => {
-      const db = testEnv.unauthenticatedContext().firestore() as any
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
       await expect(
-        acceptDispatchCore(db, {
+        acceptDispatchCore(db as any, {
           dispatchId: 'dispatch-3',
           idempotencyKey: crypto.randomUUID(),
           actor: { uid: 'responder-1' },
           now: Timestamp.now(),
         }),
-      ).rejects.toMatchObject({ code: 'already-exists' })
+      ).rejects.toMatchObject({ code: 'CONFLICT' })
     })
   })
 
@@ -200,16 +204,16 @@ describe('acceptDispatchCore', () => {
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async () => {
-      const db = testEnv.unauthenticatedContext().firestore() as any
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
       const key = crypto.randomUUID()
-      const first = await acceptDispatchCore(db, {
+      const first = await acceptDispatchCore(db as any, {
         dispatchId: 'dispatch-4',
         idempotencyKey: key,
         actor: { uid: 'responder-1' },
         now: Timestamp.now(),
       })
-      const second = await acceptDispatchCore(db, {
+      const second = await acceptDispatchCore(db as any, {
         dispatchId: 'dispatch-4',
         idempotencyKey: key,
         actor: { uid: 'responder-1' },
@@ -236,13 +240,13 @@ describe('acceptDispatchCore', () => {
       await seedDispatchJS(testEnv, dispatchId, reportId, 'responder-rate-limit', 'pending')
     }
 
-    await testEnv.withSecurityRulesDisabled(async () => {
-      const db = testEnv.unauthenticatedContext().firestore() as any
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
       // Call 30 times to exhaust quota
       for (let i = 0; i < 30; i++) {
         const dispatchId = `dispatch-rl-${String(i)}`
 
-        await acceptDispatchCore(db, {
+        await acceptDispatchCore(db as any, {
           dispatchId,
           idempotencyKey: crypto.randomUUID(),
           actor: { uid: 'responder-rate-limit' },
@@ -251,13 +255,13 @@ describe('acceptDispatchCore', () => {
       }
       // 31st call should fail with RESOURCE_EXHAUSTED
       await expect(
-        acceptDispatchCore(db, {
+        acceptDispatchCore(db as any, {
           dispatchId: 'dispatch-rl-30',
           idempotencyKey: crypto.randomUUID(),
           actor: { uid: 'responder-rate-limit' },
           now: Timestamp.now(),
         }),
-      ).rejects.toMatchObject({ code: 'resource-exhausted' })
+      ).rejects.toMatchObject({ code: 'RATE_LIMITED' })
     })
   })
 })

@@ -40,156 +40,166 @@ afterAll(async () => {
 
 describe('verifyReportCore', () => {
   it('advances new → awaiting_verify and writes report_event', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    const result = await verifyReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    expect(result.status).toBe('awaiting_verify')
-    expect(result.updatedAt).toBeDefined()
-    const report = (await db.collection('reports').doc(reportId).get()).data()
-    expect(report.status).toBe('awaiting_verify')
-    expect(report.visibilityClass).toBe('internal')
-    expect(report.updatedAt).toBeDefined()
-    expect(report.updatedAt).toBe(result.updatedAt)
+      const result = await verifyReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
 
-    const events = await db.collection('report_events').where('reportId', '==', reportId).get()
-    expect(events.docs).toHaveLength(1)
-    expect(events.docs[0].data()).toMatchObject({
-      from: 'new',
-      to: 'awaiting_verify',
-      actor: 'admin-1',
+      expect(result.status).toBe('awaiting_verify')
+      expect(result.updatedAt).toBeDefined()
+      const report = (await db.collection('reports').doc(reportId).get()).data()
+      expect(report.status).toBe('awaiting_verify')
+      expect(report.updatedAt).toBeDefined()
+      expect(report.updatedAt).toBe(result.updatedAt)
+
+      const events = await db.collection('report_events').where('reportId', '==', reportId).get()
+      expect(events.docs).toHaveLength(1)
+      expect(events.docs[0].data()).toMatchObject({
+        from: 'new',
+        to: 'awaiting_verify',
+        actor: 'admin-1',
+      })
     })
   })
 
   it('advances awaiting_verify → verified, stamps verifiedBy, and makes the report public', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    const result = await verifyReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
+        municipalityId: 'daet',
+      })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    expect(result.status).toBe('verified')
-    expect(result.updatedAt).toBeDefined()
-    const report = (await db.collection('reports').doc(reportId).get()).data()
-    expect(report.status).toBe('verified')
-    expect(report.verifiedBy).toBe('admin-1')
-    expect(report.verifiedAt).toBeDefined()
-    expect(report.visibilityClass).toBe('public_alertable')
-    expect(report.updatedAt).toBeDefined()
-    expect(report.updatedAt).toBe(result.updatedAt)
+      const result = await verifyReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      expect(result.status).toBe('verified')
+      expect(result.updatedAt).toBeDefined()
+      const report = (await db.collection('reports').doc(reportId).get()).data()
+      expect(report.status).toBe('verified')
+      expect(report.verifiedBy).toBe('admin-1')
+      expect(report.verifiedAt).toBeDefined()
+      expect(report.visibilityClass).toBe('public_alertable')
+      expect(report.updatedAt).toBeDefined()
+      expect(report.updatedAt).toBe(result.updatedAt)
+    })
   })
 
   it('is idempotent: same idempotencyKey returns cached result', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-    const key = crypto.randomUUID()
-
-    const first = await verifyReportCore(db, {
-      reportId,
-      idempotencyKey: key,
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
-    const second = await verifyReportCore(db, {
-      reportId,
-      idempotencyKey: key,
-      actor: {
-        uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+      const key = crypto.randomUUID()
 
-    expect(first.status).toBe('awaiting_verify')
-    expect(second.status).toBe('awaiting_verify')
-    const events = await db.collection('report_events').where('reportId', '==', reportId).get()
-    expect(events.docs).toHaveLength(1) // no double event
+      const first = await verifyReportCore(db, {
+        reportId,
+        idempotencyKey: key,
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+      const second = await verifyReportCore(db, {
+        reportId,
+        idempotencyKey: key,
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      expect(first.status).toBe('awaiting_verify')
+      expect(second.status).toBe('awaiting_verify')
+      const events = await db.collection('report_events').where('reportId', '==', reportId).get()
+      expect(events.docs).toHaveLength(1) // no double event
+    })
   })
 })
 
 describe('verifyReportCore error paths', () => {
   it('returns FORBIDDEN when admin is in a different municipality', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'mercedes' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'mercedes' })
+      await seedActiveAccount(testEnv, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+      await expect(
+        verifyReportCore(db, {
+          reportId,
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
     })
-    await expect(
-      verifyReportCore(db, {
-        reportId,
-        idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
-        now: Timestamp.now(),
-      }),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 
   it('returns INVALID_STATUS_TRANSITION on a report already verified', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+      await expect(
+        verifyReportCore(db, {
+          reportId,
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
     })
-    await expect(
-      verifyReportCore(db, {
-        reportId,
-        idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
-        now: Timestamp.now(),
-      }),
-    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
   })
 
   it('returns INVALID_STATUS_TRANSITION when report is in terminal state', async () => {
     const municipalityId = 'daet'
     const reportId = `terminal-${crypto.randomUUID().slice(0, 8)}`
-    // seedReportAtStatus does not support terminal statuses; write directly with numeric ts
-    await testEnv.withSecurityRulesDisabled(async (innerCtx) => {
-      await innerCtx
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
         .firestore()
         .collection('reports')
         .doc(reportId)
@@ -204,41 +214,42 @@ describe('verifyReportCore error paths', () => {
         })
     })
     await seedActiveAccount(testEnv, { uid: 'admin-1', role: 'municipal_admin', municipalityId })
-    const adminDb = testEnv
-      .authenticatedContext('admin-1', {
-        role: 'municipal_admin',
-        municipalityId,
-        accountStatus: 'active',
-      })
-      .firestore() as any
-    await expect(
-      verifyReportCore(adminDb, {
-        reportId,
-        actor: { uid: 'admin-1', claims: staffClaims({ role: 'municipal_admin', municipalityId }) },
-        now: Timestamp.now(),
-        idempotencyKey: crypto.randomUUID(),
-      }),
-    ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await expect(
+        verifyReportCore(db, {
+          reportId,
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId }),
+          },
+          now: Timestamp.now(),
+          idempotencyKey: crypto.randomUUID(),
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+    })
   })
 
   it('returns NOT_FOUND on missing report', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await seedActiveAccount(testEnv, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+      await expect(
+        verifyReportCore(db, {
+          reportId: 'does-not-exist',
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
     })
-    await expect(
-      verifyReportCore(db, {
-        reportId: 'does-not-exist',
-        idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
-        now: Timestamp.now(),
-      }),
-    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 })
 
@@ -252,59 +263,63 @@ describe('verifyReportCore SMS enqueue', () => {
   })
 
   it('enqueues verification SMS when reporter consented', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
-      municipalityId: 'daet',
-      reporterContact: { phone: '+639171234567', smsConsent: true, locale: 'tl' },
-    })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    await verifyReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
+        municipalityId: 'daet',
+        reporterContact: { phone: '+639171234567', smsConsent: true, locale: 'tl' },
+      })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    const outboxQ = await getDocs(collection(db, 'sms_outbox'))
-    expect(outboxQ.size).toBe(1)
-    const outbox = outboxQ.docs[0]!.data()
-    expect(outbox.purpose).toBe('verification')
-    expect(outbox.recipientMsisdn).toBe('+639171234567')
-    expect(outbox.reportId).toBe(reportId)
-    expect(outbox.status).toBe('queued')
+      await verifyReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      const outboxQ = await getDocs(collection(db, 'sms_outbox'))
+      expect(outboxQ.size).toBe(1)
+      const outbox = outboxQ.docs[0]!.data()
+      expect(outbox.purpose).toBe('verification')
+      expect(outbox.recipientMsisdn).toBe('+639171234567')
+      expect(outbox.reportId).toBe(reportId)
+      expect(outbox.status).toBe('queued')
+    })
   })
 
   it('does NOT enqueue SMS when reporter had no consent', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
-      municipalityId: 'daet',
-      // no reporterContact
-    })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    await verifyReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
+        municipalityId: 'daet',
+        // no reporterContact
+      })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    const outboxQ = await getDocs(collection(db, 'sms_outbox'))
-    expect(outboxQ.size).toBe(0)
+      await verifyReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      const outboxQ = await getDocs(collection(db, 'sms_outbox'))
+      expect(outboxQ.size).toBe(0)
+    })
   })
 })

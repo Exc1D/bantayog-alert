@@ -25,8 +25,12 @@ function createMockDb() {
   const getFn = vi.fn().mockResolvedValue({ exists: true, data: () => ({ status: 'active' }) })
   const docFn = vi.fn(() => ({ set: setFn, update: updateFn, get: getFn }))
   const collectionFn = vi.fn(() => ({ doc: docFn }))
+  const runTransactionFn = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) =>
+    cb({ get: getFn, update: updateFn, set: setFn }),
+  )
   return {
     collection: collectionFn,
+    runTransaction: runTransactionFn,
     _setFn: setFn,
     _updateFn: updateFn,
     _getFn: getFn,
@@ -163,16 +167,31 @@ describe('clearHazardSignalCore', () => {
     const updateFn = vi.fn().mockResolvedValue(undefined)
     const getFn = vi.fn().mockResolvedValue({ exists: true, data: () => ({ status: 'active' }) })
     const docFn = vi.fn(() => ({ get: getFn, update: updateFn }))
-    const db = { collection: vi.fn(() => ({ doc: docFn })) } as unknown as Firestore
+    const runTransactionFn = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb({ get: getFn, update: updateFn }),
+    )
+    const db = {
+      collection: vi.fn(() => ({ doc: docFn })),
+      runTransaction: runTransactionFn,
+    } as unknown as Firestore
     await clearHazardSignalCore(db, { signalId: 'sig-1', reason: 'storm passed' }, superadminActor)
 
-    expect(updateFn).toHaveBeenCalledWith(expect.objectContaining({ status: 'cleared' }))
+    expect(updateFn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: 'cleared' }),
+    )
   })
 
   it('throws not-found when clearing a non-existent signal', async () => {
     const getFn = vi.fn().mockResolvedValue({ exists: false })
     const docFn = vi.fn(() => ({ get: getFn, update: vi.fn() }))
-    const db = { collection: vi.fn(() => ({ doc: docFn })) } as unknown as Firestore
+    const runTransactionFn = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb({ get: getFn, update: vi.fn() }),
+    )
+    const db = {
+      collection: vi.fn(() => ({ doc: docFn })),
+      runTransaction: runTransactionFn,
+    } as unknown as Firestore
     await expect(
       clearHazardSignalCore(db, { signalId: 'missing', reason: 'test' }, superadminActor),
     ).rejects.toMatchObject({ code: 'not-found' })
@@ -181,7 +200,13 @@ describe('clearHazardSignalCore', () => {
   it('throws failed-precondition when clearing a non-active signal', async () => {
     const getFn = vi.fn().mockResolvedValue({ exists: true, data: () => ({ status: 'expired' }) })
     const docFn = vi.fn(() => ({ get: getFn, update: vi.fn() }))
-    const db = { collection: vi.fn(() => ({ doc: docFn })) } as unknown as Firestore
+    const runTransactionFn = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb({ get: getFn, update: vi.fn() }),
+    )
+    const db = {
+      collection: vi.fn(() => ({ doc: docFn })),
+      runTransaction: runTransactionFn,
+    } as unknown as Firestore
     await expect(
       clearHazardSignalCore(db, { signalId: 'sig-1', reason: 'test' }, superadminActor),
     ).rejects.toMatchObject({ code: 'failed-precondition' })
