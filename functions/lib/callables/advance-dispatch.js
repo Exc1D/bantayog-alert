@@ -70,6 +70,7 @@ export const advanceDispatchCore = async (db, req) => {
     return result;
 };
 export const advanceDispatch = onCall({
+    region: 'asia-southeast1',
     enforceAppCheck: true,
     consumeAppCheckToken: false,
     cors: ['http://localhost:5174', 'http://localhost:5175'],
