@@ -73,7 +73,7 @@ export function useOwnDispatches(uid: string | undefined) {
     status: row.status,
     dispatchedAt: row.dispatchedAt,
     uiStatus: row.uiStatus,
-    ...(row.acknowledgementDeadlineAt
+    ...(row.acknowledgementDeadlineAt != null
       ? { acknowledgementDeadlineAt: row.acknowledgementDeadlineAt }
       : {}),
   }))

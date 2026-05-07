@@ -415,6 +415,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 aria-label="Email address"
+                autoComplete="email"
                 onChange={(e) => {
                   setEmail(e.target.value)
                   setLoginError(null)
@@ -426,6 +427,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 aria-label="Password"
+                autoComplete="current-password"
                 onChange={(e) => {
                   setPassword(e.target.value)
                   setLoginError(null)
