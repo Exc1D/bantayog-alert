@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { createBrowserRouter } from 'react-router-dom'
 import { ProtectedRoute, useAuth } from '@bantayog/shared-ui'
 import { Sidebar } from './components/Sidebar'
+import { ShellKeyboardShortcuts } from './components/ShellKeyboardShortcuts'
 import { LoginPage } from './pages/LoginPage'
 import { TotpEnrollmentPage } from './pages/TotpEnrollmentPage'
 import { TriageQueuePage } from './pages/TriageQueuePage'
@@ -14,6 +15,8 @@ import { UserManagementPage } from './pages/UserManagementPage'
 import { ProvincialResourcesPage } from './pages/ProvincialResourcesPage'
 import { SystemHealthPage } from './pages/SystemHealthPage'
 import { BreakGlassPage } from './pages/BreakGlassPage'
+import { ProvinceNdrrmcPage } from './pages/ProvinceNdrrmcPage'
+import { ProvinceEmergencyPage } from './pages/ProvinceEmergencyPage'
 
 import DashboardPage from './pages/DashboardPage'
 import MapPage from './pages/MapPage'
@@ -31,6 +34,7 @@ import SettingsPage from './pages/SettingsPage'
 function AppLayout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <ShellKeyboardShortcuts />
       <Sidebar />
       <main style={{ flex: 1, overflow: 'auto' }}>
         <Outlet />
@@ -202,6 +206,8 @@ export const router = createBrowserRouter([
           { path: 'resources', element: <ProvincialResourcesPage /> },
           { path: 'system-health', element: <SystemHealthPage /> },
           { path: 'break-glass', element: <BreakGlassPage /> },
+          { path: 'ndrrmc', element: <ProvinceNdrrmcPage /> },
+          { path: 'emergency', element: <ProvinceEmergencyPage /> },
         ],
       },
     ],

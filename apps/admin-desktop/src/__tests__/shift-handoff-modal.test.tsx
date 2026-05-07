@@ -36,7 +36,7 @@ vi.mock('../hooks/usePendingHandoffs', () => ({
   usePendingHandoffs: () => ({ handoffs: [], error: null }),
 }))
 
-vi.mock('../pages/ReportDetailPanel', () => ({ ReportDetailPanel: () => <div>detail</div> }))
+vi.mock('../pages/TriagePanel', () => ({ TriagePanel: () => <div>detail</div> }))
 vi.mock('../pages/DispatchModal', () => ({ DispatchModal: () => <div>dispatch</div> }))
 vi.mock('../pages/CloseReportModal', () => ({ CloseReportModal: () => <div>close</div> }))
 

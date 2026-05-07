@@ -43,9 +43,9 @@ export function MetricCard({
       {...interactive}
     >
       {live && (
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4" role="status" aria-label="Live data indicator">
           <span className="relative flex h-2 w-2">
-            <span className="animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-green-600 opacity-75" />
+            <span className="motion-safe:animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-green-600 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
           </span>
         </div>

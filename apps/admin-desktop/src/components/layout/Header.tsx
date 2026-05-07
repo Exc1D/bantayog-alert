@@ -21,7 +21,7 @@ export function Header() {
           <span className="text-sm font-semibold text-foreground leading-tight">
             Bantayog Alert
           </span>
-          <span className="text-xs text-purple-700 font-medium">Superadmin</span>
+          <span className="text-xs text-[#001e40] font-medium">Superadmin</span>
         </div>
       </div>
 
@@ -62,6 +62,9 @@ export function Header() {
             onClick={() => {
               setShowNotifs(!showNotifs)
             }}
+            aria-expanded={showNotifs}
+            aria-haspopup="dialog"
+            aria-label="Notifications"
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors relative"
           >
             <Bell className="w-4 h-4" />
@@ -72,7 +75,11 @@ export function Header() {
             )}
           </button>
           {showNotifs && (
-            <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-border rounded-lg shadow-lg z-[300]">
+            <div
+              role="dialog"
+              aria-label="Notifications"
+              className="absolute right-0 top-full mt-1 w-80 bg-white border border-border rounded-lg shadow-lg z-[300]"
+            >
               <div className="p-3 border-b border-border">
                 <p className="text-sm font-medium text-foreground">Notifications</p>
               </div>
@@ -148,21 +155,21 @@ function KeyHint({ keyName, label }: { keyName: string; label: string }) {
 function BantayogLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="15" stroke="#d64933" strokeWidth="2" />
-      <path d="M16 6L16 16" stroke="#d64933" strokeWidth="2" strokeLinecap="round" />
-      <path d="M16 16L10 22" stroke="#d64933" strokeWidth="2" strokeLinecap="round" />
-      <path d="M16 16L22 22" stroke="#d64933" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="3" fill="#d64933" />
+      <circle cx="16" cy="16" r="15" stroke="#a73400" strokeWidth="2" />
+      <path d="M16 6L16 16" stroke="#a73400" strokeWidth="2" strokeLinecap="round" />
+      <path d="M16 16L10 22" stroke="#a73400" strokeWidth="2" strokeLinecap="round" />
+      <path d="M16 16L22 22" stroke="#a73400" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="16" cy="16" r="3" fill="#a73400" />
       <path
         d="M8 10L12 12"
-        stroke="#d64933"
+        stroke="#a73400"
         strokeWidth="1.5"
         strokeLinecap="round"
         opacity="0.6"
       />
       <path
         d="M24 10L20 12"
-        stroke="#d64933"
+        stroke="#a73400"
         strokeWidth="1.5"
         strokeLinecap="round"
         opacity="0.6"

@@ -1,0 +1,127 @@
+.page {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+.metricRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.metricRowLast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.metricLabel {
+  font-size: 14px;
+  color: #374151;
+}
+
+.btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+}
+
+.btnDisabled {
+  opacity: 0.6;
+}
+
+.pageTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.statusHealthy {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.statusDegraded {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.gapValueWarn {
+  font-weight: 700;
+  font-size: 20px;
+  color: #dc2626;
+}
+
+.gapValueOk {
+  font-weight: 700;
+  font-size: 20px;
+  color: #111827;
+}
+
+.checkedAtText {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.infoText {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.descText {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.resultText {
+  font-size: 13px;
+  margin-top: 8px;
+  color: #374151;
+}
+
+.prewarmSection {
+  margin-top: 16px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 16px;
+}
+
+.btnRow {
+  display: flex;
+  gap: 8px;
+}

@@ -3,55 +3,8 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import type { Timestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import { callables } from '../services/callables'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const PAGE_STYLE: React.CSSProperties = {
-  padding: '24px',
-  maxWidth: '800px',
-  margin: '0 auto',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '24px',
-}
-
-const CARD_STYLE: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid #e5e7eb',
-  borderRadius: '8px',
-  padding: '16px 20px',
-}
-
-const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontSize: '13px',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  color: '#6b7280',
-  marginBottom: '16px',
-}
-
-const METRIC_ROW_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '10px 0',
-  borderBottom: '1px solid #f3f4f6',
-}
-
-const METRIC_LABEL_STYLE: React.CSSProperties = {
-  fontSize: '14px',
-  color: '#374151',
-}
-
-const BTN_STYLE: React.CSSProperties = {
-  padding: '8px 16px',
-  fontSize: '13px',
-  borderRadius: '6px',
-  border: '1px solid #d1d5db',
-  background: '#f9fafb',
-  cursor: 'pointer',
-}
+import { cn } from '@/lib/utils'
+import styles from './SystemHealthPage.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -101,17 +54,7 @@ function useSystemHealth(): HealthData | null {
 
 function GapValue({ seconds, warnThreshold }: { seconds: number; warnThreshold: number }) {
   const isWarn = seconds > warnThreshold
-  return (
-    <span
-      style={{
-        fontWeight: 700,
-        fontSize: '20px',
-        color: isWarn ? '#dc2626' : '#111827',
-      }}
-    >
-      {seconds}s
-    </span>
-  )
+  return <span className={isWarn ? styles.gapValueWarn : styles.gapValueOk}>{seconds}s</span>
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -152,53 +95,46 @@ export function SystemHealthPage() {
   }
 
   return (
-    <div style={PAGE_STYLE}>
-      <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#111827', margin: 0 }}>
-        System Health
-      </h1>
+    <div className={styles.page}>
+      <h1 className={styles.pageTitle}>System Health</h1>
 
-      <div style={CARD_STYLE}>
-        <div style={SECTION_TITLE_STYLE}>Audit Pipeline</div>
+      <div className={styles.card}>
+        <div className={styles.sectionTitle}>Audit Pipeline</div>
 
         {health === null ? (
-          <p style={{ fontSize: '13px', color: '#6b7280' }}>
+          <p className={styles.infoText}>
             No health data available. Waiting for first health check write to{' '}
             <code>system_health/latest</code>.
           </p>
         ) : (
           <>
-            <div style={METRIC_ROW_STYLE}>
-              <span style={METRIC_LABEL_STYLE}>Overall status</span>
+            <div className={styles.metricRow}>
+              <span className={styles.metricLabel}>Overall status</span>
               <span
-                style={{
-                  display: 'inline-block',
-                  padding: '4px 14px',
-                  borderRadius: '9999px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  background: health.healthy ? '#d1fae5' : '#fee2e2',
-                  color: health.healthy ? '#065f46' : '#991b1b',
-                }}
+                className={cn(
+                  styles.statusBadge,
+                  health.healthy ? styles.statusHealthy : styles.statusDegraded,
+                )}
               >
                 {health.healthy ? 'Healthy' : 'Degraded'}
               </span>
             </div>
 
-            <div style={METRIC_ROW_STYLE}>
-              <span style={METRIC_LABEL_STYLE}>Streaming audit gap</span>
+            <div className={styles.metricRow}>
+              <span className={styles.metricLabel}>Streaming audit gap</span>
               {/* Red when gap exceeds 60 seconds */}
               <GapValue seconds={health.streamingGapSeconds} warnThreshold={60} />
             </div>
 
-            <div style={METRIC_ROW_STYLE}>
-              <span style={METRIC_LABEL_STYLE}>Batch audit gap</span>
+            <div className={styles.metricRow}>
+              <span className={styles.metricLabel}>Batch audit gap</span>
               {/* Red when gap exceeds 900 seconds (15 min) */}
               <GapValue seconds={health.batchGapSeconds} warnThreshold={900} />
             </div>
 
-            <div style={{ ...METRIC_ROW_STYLE, borderBottom: 'none' }}>
-              <span style={METRIC_LABEL_STYLE}>Last checked</span>
-              <span style={{ fontSize: '13px', color: '#6b7280' }}>
+            <div className={styles.metricRowLast}>
+              <span className={styles.metricLabel}>Last checked</span>
+              <span className={styles.checkedAtText}>
                 {health.checkedAt?.toDate().toLocaleString() ?? '—'}
               </span>
             </div>
@@ -206,13 +142,13 @@ export function SystemHealthPage() {
         )}
       </div>
 
-      <div style={CARD_STYLE}>
-        <div style={SECTION_TITLE_STYLE}>Operations</div>
-        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
+      <div className={styles.card}>
+        <div className={styles.sectionTitle}>Operations</div>
+        <p className={styles.descText}>
           Replay dead-letter audit events that failed to stream to BigQuery.
         </p>
         <button
-          style={{ ...BTN_STYLE, opacity: replayLoading ? 0.6 : 1 }}
+          className={cn(styles.btn, replayLoading && styles.btnDisabled)}
           disabled={replayLoading}
           onClick={() => {
             void handleReplay()
@@ -220,17 +156,15 @@ export function SystemHealthPage() {
         >
           {replayLoading ? 'Replaying…' : 'Dead-Letter Replay'}
         </button>
-        {replayResult && (
-          <p style={{ fontSize: '13px', marginTop: '8px', color: '#374151' }}>{replayResult}</p>
-        )}
+        {replayResult && <p className={styles.resultText}>{replayResult}</p>}
 
-        <div style={{ marginTop: '16px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
+        <div className={styles.prewarmSection}>
+          <p className={styles.descText}>
             Pre-warm Cloud Functions to reduce cold-start latency during surge events.
           </p>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className={styles.btnRow}>
             <button
-              style={{ ...BTN_STYLE, opacity: prewarmLoading ? 0.6 : 1 }}
+              className={cn(styles.btn, prewarmLoading && styles.btnDisabled)}
               disabled={prewarmLoading}
               onClick={() => {
                 void handlePrewarm('light')
@@ -239,7 +173,7 @@ export function SystemHealthPage() {
               {prewarmLoading ? 'Warming…' : 'Light Warmup'}
             </button>
             <button
-              style={{ ...BTN_STYLE, opacity: prewarmLoading ? 0.6 : 1 }}
+              className={cn(styles.btn, prewarmLoading && styles.btnDisabled)}
               disabled={prewarmLoading}
               onClick={() => {
                 void handlePrewarm('heavy')
@@ -248,9 +182,7 @@ export function SystemHealthPage() {
               {prewarmLoading ? 'Warming…' : 'Heavy Warmup'}
             </button>
           </div>
-          {prewarmResult && (
-            <p style={{ fontSize: '13px', marginTop: '8px', color: '#374151' }}>{prewarmResult}</p>
-          )}
+          {prewarmResult && <p className={styles.resultText}>{prewarmResult}</p>}
         </div>
       </div>
     </div>
