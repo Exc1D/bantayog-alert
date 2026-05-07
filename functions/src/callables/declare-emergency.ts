@@ -52,9 +52,7 @@ export async function declareEmergencyCore(
     throw new Error('SMS_MSISDN_HASH_SALT required in production')
   }
   if (!salt && process.env.NODE_ENV !== 'production') {
-    logger.warn(
-      'SMS_MSISDN_HASH_SALT is not configured; SMS hashes may be weak in non-production',
-    )
+    logger.warn('SMS_MSISDN_HASH_SALT is not configured; SMS hashes may be weak in non-production')
     logger.warn('Skipping SMS broadcast — salt missing in non-production')
   }
   const saltValue = salt ?? ''

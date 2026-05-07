@@ -17,8 +17,7 @@ export function ShellKeyboardShortcuts() {
     function onKeyDown(e: KeyboardEvent) {
       const tag = (document.activeElement?.tagName ?? '').toLowerCase()
       const isContentEditable =
-        document.activeElement instanceof HTMLElement &&
-        document.activeElement.isContentEditable
+        document.activeElement instanceof HTMLElement && document.activeElement.isContentEditable
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || isContentEditable) return
 
       switch (e.key) {
