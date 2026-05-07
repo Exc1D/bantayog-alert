@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import type { Firestore } from 'firebase-admin/firestore'
 import type { Database } from 'firebase-admin/database'
@@ -21,9 +21,15 @@ beforeEach(async () => {
         reject(new Error('clearDatabase timeout'))
       }, 2000),
     ),
-  ]).catch(() => {
-    /* ignore cleanup timeout */
+  ]).catch((err: unknown) => {
+    if (err instanceof Error && err.message !== 'clearDatabase timeout') {
+      console.warn('[beforeEach] clearDatabase failed:', err.message)
+    }
   })
+})
+
+afterEach(async () => {
+  await testEnv.cleanup()
 })
 
 describe('getEligibleResponders', () => {

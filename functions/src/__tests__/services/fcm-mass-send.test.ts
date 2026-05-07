@@ -37,7 +37,7 @@ import { sendMassAlertFcm } from '../../services/fcm-mass-send.js'
 
 describe('sendMassAlertFcm', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it('returns zeros for empty municipalityIds', async () => {

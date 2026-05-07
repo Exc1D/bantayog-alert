@@ -45,15 +45,12 @@ const BROKEN_HTML = `<html><body>INVALID`
 function createMockDb() {
   const setFn = vi.fn().mockResolvedValue(undefined)
   const addFn = vi.fn().mockResolvedValue({ id: 'dl-1' })
-  const docSnapshot = { data: () => ({ degradedReasons: [] }) }
-  const getFn = vi.fn().mockResolvedValue(docSnapshot)
-  const docFn = vi.fn(() => ({ set: setFn, get: getFn }))
+  const docFn = vi.fn(() => ({ set: setFn }))
   const collectionFn = vi.fn(() => ({ doc: docFn, add: addFn }))
   return {
     db: { collection: collectionFn } as unknown as Firestore,
     setFn,
     addFn,
-    getFn,
   }
 }
 
@@ -127,7 +124,8 @@ vi.mock('../../triggers/pagasa-signal-poll.js', () => ({
 import { pagasaSignalPollCore } from '../../triggers/pagasa-signal-poll.js'
 
 beforeEach(() => {
-  mockReplay.mockClear()
+  mockReplay.mockReset()
+  mockReplay.mockResolvedValue(undefined)
   mockParsePagasaSignal.mockReset()
   mockIsTrustedParsedSignal.mockReset()
 })
