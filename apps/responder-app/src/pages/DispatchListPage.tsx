@@ -59,7 +59,7 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
       {variant === 'pending' && row.acknowledgementDeadlineAt && (
         <div className={styles.deadlineRow}>
           <span className={styles.deadlineLabel}>Accept by:</span>
-          <AcceptanceCountdown deadlineMs={row.acknowledgementDeadlineAt.toMillis()} />
+          <AcceptanceCountdown deadlineMs={row.acknowledgementDeadlineAt} />
         </div>
       )}
       {variant === 'pending' && (

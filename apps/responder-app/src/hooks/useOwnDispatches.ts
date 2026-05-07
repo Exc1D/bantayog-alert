@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore'
-import type { Timestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import type { DispatchStatus } from '@bantayog/shared-types'
 import {
@@ -8,14 +7,15 @@ import {
   getResponderUiState,
   type QueueDispatchRow,
 } from '../lib/dispatch-presentation'
+import { toMillis } from '../lib/to-millis'
 
 export interface OwnDispatchRow {
   dispatchId: string
   reportId: string
   status: DispatchStatus
   uiStatus: ReturnType<typeof getResponderUiState>
-  dispatchedAt: Timestamp
-  acknowledgementDeadlineAt?: Timestamp
+  dispatchedAt: number
+  acknowledgementDeadlineAt?: number
 }
 
 export function useOwnDispatches(uid: string | undefined) {
@@ -47,10 +47,13 @@ export function useOwnDispatches(uid: string | undefined) {
               reportId: String(data.reportId),
               status,
               uiStatus: getResponderUiState(status),
-              dispatchedAt: data.dispatchedAt as Timestamp,
+              dispatchedAt: toMillis(data.dispatchedAt) ?? 0,
             }
             if (data.acknowledgementDeadlineAt) {
-              row.acknowledgementDeadlineAt = data.acknowledgementDeadlineAt as Timestamp
+              const deadline = toMillis(data.acknowledgementDeadlineAt)
+              if (deadline !== undefined) {
+                row.acknowledgementDeadlineAt = deadline
+              }
             }
             return row
           }),
@@ -68,7 +71,7 @@ export function useOwnDispatches(uid: string | undefined) {
     dispatchId: row.dispatchId,
     reportId: row.reportId,
     status: row.status,
-    dispatchedAt: row.dispatchedAt.toMillis(),
+    dispatchedAt: row.dispatchedAt,
     uiStatus: row.uiStatus,
     ...(row.acknowledgementDeadlineAt
       ? { acknowledgementDeadlineAt: row.acknowledgementDeadlineAt }
