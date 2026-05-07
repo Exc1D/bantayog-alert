@@ -1,6 +1,5 @@
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
-import { Timestamp } from 'firebase-admin/firestore'
 import type { ReportStatus } from '@bantayog/shared-types'
 
 export const ts = 1713350400000
@@ -258,7 +257,7 @@ export async function seedReportAtStatus(
   const reportId = o.reportId ?? db.collection('reports').doc().id
   const municipalityId = o.municipalityId ?? 'daet'
   const municipalityLabel = o.municipalityLabel ?? 'Daet'
-  const now = Timestamp.now()
+  const now = Date.now()
 
   await db
     .collection('reports')
@@ -304,7 +303,7 @@ export async function seedReportAtStatus(
         phone: o.reporterContact.phone,
         locale: o.reporterContact.locale ?? 'tl',
         smsConsent: true,
-        createdAt: now.toMillis(),
+        createdAt: now,
         schemaVersion: 1,
       })
   }
@@ -383,7 +382,7 @@ export async function seedDispatch(
   },
 ): Promise<{ dispatchId: string }> {
   const dispatchId = o.dispatchId ?? db.collection('dispatches').doc().id
-  const now = Timestamp.now()
+  const now = Date.now()
   await db
     .collection('dispatches')
     .doc(dispatchId)
@@ -398,7 +397,7 @@ export async function seedDispatch(
       },
       dispatchedAt: now,
       lastStatusAt: now,
-      acknowledgementDeadlineAt: Timestamp.fromMillis(now.toMillis() + 15 * 60 * 1000),
+      acknowledgementDeadlineAt: now + 15 * 60 * 1000,
       correlationId: crypto.randomUUID(),
       schemaVersion: 1,
     })

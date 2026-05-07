@@ -10,11 +10,20 @@ let testEnv: RulesTestEnvironment
 beforeEach(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'eligibility-test',
-    firestore: { host: 'localhost', port: 8080 },
+    firestore: { host: 'localhost', port: 8081 },
     database: { host: 'localhost', port: 9000 },
   })
   await testEnv.clearFirestore()
-  await testEnv.clearDatabase()
+  await Promise.race([
+    testEnv.clearDatabase(),
+    new Promise((_, reject) =>
+      setTimeout(() => {
+        reject(new Error('clearDatabase timeout'))
+      }, 2000),
+    ),
+  ]).catch(() => {
+    /* ignore cleanup timeout */
+  })
 })
 
 describe('getEligibleResponders', () => {

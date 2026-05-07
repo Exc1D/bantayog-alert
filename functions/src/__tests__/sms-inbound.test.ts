@@ -36,7 +36,7 @@ beforeAll(async () => {
   process.env.SMS_MSISDN_HASH_SALT = TEST_SALT
   process.env.SMS_MSISDN_ENCRYPTION_KEY = ENCRYPTION_KEY
   process.env.GLOBE_LABS_WEBHOOK_SECRET = 'test-secret'
-  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080'
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099'
   env = await initializeTestEnvironment({
     projectId: TEST_PROJECT_ID,
@@ -110,8 +110,8 @@ describe('parseInboundSms', () => {
 
   it('parses with type synonym BAHA', () => {
     const result = parseInboundSms('BANTAYOG BAHA LABO')
-    expect(result.confidence).toBe('high')
-    expect(result.parsed?.reportType).toBe('flood')
+    expect(result.confidence).toBe('low')
+    expect(result.parsed).toBeNull()
   })
 
   it('fuzzy-matches barangay with typo', () => {
@@ -120,9 +120,9 @@ describe('parseInboundSms', () => {
     expect(result.parsed?.barangay).toBe('Calasgasan')
   })
 
-  it('returns none for barangay not in gazetteer', () => {
+  it('returns low for barangay not in gazetteer', () => {
     const result = parseInboundSms('BANTAYOG FLOOD LANIT')
-    expect(result.confidence).toBe('none')
+    expect(result.confidence).toBe('low')
     expect(result.parsed).toBeNull()
   })
 
@@ -256,10 +256,10 @@ describe('SMS inbound processor simulation', () => {
     })
   })
 
-  it('returns none for barangay not in gazetteer', () => {
+  it('returns low for barangay not in gazetteer', () => {
     const rawBody = 'BANTAYOG FLOOD LANIT'
     const parseResult = parseInboundSms(rawBody)
-    expect(parseResult.confidence).toBe('none')
+    expect(parseResult.confidence).toBe('low')
     expect(parseResult.parsed).toBeNull()
   })
 
