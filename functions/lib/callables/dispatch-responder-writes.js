@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase-admin/firestore';
 export async function buildSmsPayload(args) {
     const { db, tx, reportId, salt, defaultPublicRef } = args;
     if (!salt)
@@ -16,7 +15,7 @@ export async function buildSmsPayload(args) {
         return null;
     const locale = consentData.locale === 'en' ? 'en' : 'tl';
     const lookupQ = db.collection('report_lookup').where('reportId', '==', reportId).limit(1);
-    const lookupSnap = await tx.get(lookupQ);
+    const lookupSnap = await lookupQ.get();
     const publicRef = lookupSnap.docs[0]?.id ?? defaultPublicRef;
     return { recipientMsisdn, locale, publicRef };
 }
@@ -32,16 +31,16 @@ export function writeDispatchDocs(args) {
             agencyId: responder.agencyId,
             municipalityId: responder.municipalityId,
         },
-        dispatchedAt: deps.now,
+        dispatchedAt: deps.now.toMillis(),
         dispatchedBy: deps.actor.uid,
-        lastStatusAt: deps.now,
-        acknowledgementDeadlineAt: Timestamp.fromMillis(deps.now.toMillis() + deadlineMs),
+        lastStatusAt: deps.now.toMillis(),
+        acknowledgementDeadlineAt: deps.now.toMillis() + deadlineMs,
         correlationId,
         schemaVersion: 1,
     });
     tx.update(reportRef, {
         status: to,
-        lastStatusAt: deps.now,
+        lastStatusAt: deps.now.toMillis(),
         lastStatusBy: deps.actor.uid,
         currentDispatchId: dispatchId,
     });
@@ -52,7 +51,7 @@ export function writeDispatchDocs(args) {
         to,
         actor: deps.actor.uid,
         actorRole: deps.actor.claims.role ?? 'municipal_admin',
-        at: deps.now,
+        at: deps.now.toMillis(),
         correlationId,
         schemaVersion: 1,
     });
@@ -64,7 +63,7 @@ export function writeDispatchDocs(args) {
         to: 'pending',
         actor: deps.actor.uid,
         actorRole: deps.actor.claims.role ?? 'municipal_admin',
-        at: deps.now,
+        at: deps.now.toMillis(),
         correlationId,
         schemaVersion: 1,
     });

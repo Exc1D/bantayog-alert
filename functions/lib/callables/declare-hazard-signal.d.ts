@@ -36,6 +36,7 @@ export declare function clearHazardSignalCore(db: Firestore, input: unknown, act
 }): Promise<{
     signalId: string;
     status: 'cleared';
+    clearedReason: string;
 }>;
 export declare const declareHazardSignal: import("firebase-functions/https").CallableFunction<any, Promise<{
     signalId: string;
@@ -44,5 +45,6 @@ export declare const declareHazardSignal: import("firebase-functions/https").Cal
 export declare const clearHazardSignal: import("firebase-functions/https").CallableFunction<any, Promise<{
     signalId: string;
     status: "cleared";
+    clearedReason: string;
 }>, unknown>;
 //# sourceMappingURL=declare-hazard-signal.d.ts.map

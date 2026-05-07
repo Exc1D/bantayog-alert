@@ -46,9 +46,9 @@ describe('buildPhase1SeedDocs', () => {
     it('returns min app version config and one hello-world alert', () => {
         const seed = buildPhase1SeedDocs(1713350400000);
         expect(seed.systemConfig.min_app_version).toMatchObject({
-            citizen: '0.1.0',
-            admin: '0.1.0',
-            responder: '0.1.0',
+            citizen: '1.0.0',
+            admin: '1.0.0',
+            responder: '1.0.0',
         });
         expect(seed.alerts).toHaveLength(1);
     });

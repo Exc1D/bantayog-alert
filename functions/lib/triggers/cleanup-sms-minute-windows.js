@@ -10,7 +10,7 @@ export async function cleanupSmsMinuteWindowsCore({ db, now }) {
     const threshold = nowMs - RETENTION_MS;
     let totalDeleted = 0;
     for (const providerId of PROVIDERS) {
-        let lastDocId;
+        let lastDoc;
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (true) {
             let q = db
@@ -20,14 +20,8 @@ export async function cleanupSmsMinuteWindowsCore({ db, now }) {
                 .where('windowStartMs', '<', threshold)
                 .orderBy('windowStartMs', 'asc')
                 .limit(BATCH_SIZE);
-            if (lastDocId) {
-                const lastSnap = await db
-                    .collection('sms_provider_health')
-                    .doc(providerId)
-                    .collection('minute_windows')
-                    .doc(lastDocId)
-                    .get();
-                q = q.startAfter(lastSnap);
+            if (lastDoc) {
+                q = q.startAfter(lastDoc);
             }
             const snap = await q.get();
             if (snap.empty)
@@ -40,8 +34,7 @@ export async function cleanupSmsMinuteWindowsCore({ db, now }) {
             totalDeleted += snap.size;
             if (snap.size < BATCH_SIZE)
                 break;
-            const lastDoc = snap.docs[snap.docs.length - 1];
-            lastDocId = lastDoc ? lastDoc.id : undefined;
+            lastDoc = snap.docs[snap.docs.length - 1];
         }
     }
     log({

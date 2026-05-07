@@ -1,5 +1,6 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
+import { logger } from 'firebase-functions';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators';
@@ -38,7 +39,22 @@ export async function declareEmergencyCore(db, input, actor) {
     if (!salt && process.env.NODE_ENV === 'production') {
         throw new Error('SMS_MSISDN_HASH_SALT required in production');
     }
+    if (!salt && process.env.NODE_ENV !== 'production') {
+        logger.warn('SMS_MSISDN_HASH_SALT is not configured; SMS hashes may be weak in non-production');
+        logger.warn('Skipping SMS broadcast — salt missing in non-production');
+    }
     const saltValue = salt ?? '';
+    if (!salt) {
+        // Skip SMS broadcast when salt is not configured
+        void streamAuditEvent({
+            eventType: 'emergency_declared',
+            actorUid: actor.uid,
+            targetDocumentId: alertId,
+            metadata: { hazardType: validated.hazardType, smsSkipped: true },
+            occurredAt: now,
+        });
+        return { alertId };
+    }
     for (let i = 0; i < municipalityIds.length; i += MUNICIPALITY_CHUNK_SIZE) {
         const municipalityChunk = municipalityIds.slice(i, i + MUNICIPALITY_CHUNK_SIZE);
         await db.runTransaction(async (tx) => {

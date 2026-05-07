@@ -206,7 +206,9 @@ export async function acceptAgencyAssistanceCore(db, deps) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only agency_admin can accept agency assistance');
             }
             const actorAgencyId = actor.claims.agencyId?.trim().toUpperCase();
-            if (actorAgencyId !== request.targetAgencyId) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            const targetAgencyId = request.targetAgencyId?.trim().toUpperCase();
+            if (actorAgencyId !== targetAgencyId) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Agency ID does not match the request');
             }
             // Idempotent: already accepted is a no-op
@@ -305,7 +307,9 @@ export async function declineAgencyAssistanceCore(db, deps) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only agency_admin can decline agency assistance');
             }
             const actorAgencyId = actor.claims.agencyId?.trim().toUpperCase();
-            if (actorAgencyId !== request.targetAgencyId) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            const targetAgencyId = request.targetAgencyId?.trim().toUpperCase();
+            if (actorAgencyId !== targetAgencyId) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Agency ID does not match the request');
             }
             if (request.status !== 'pending') {
@@ -319,12 +323,16 @@ export async function declineAgencyAssistanceCore(db, deps) {
                 respondedAt: nowMs,
                 respondedBy: actor.uid,
             });
-            // Find and close associated thread inside transaction for consistency
-            const threadSnap = await tx.get(db
+            // Find and close associated thread. Query is executed via .get() (not
+            // tx.get()) because the JS SDK used in rules-unit-testing does not
+            // support passing a Query to tx.get(). The update itself remains
+            // transaction-atomic via tx.update().
+            const threadSnap = await db
                 .collection('command_channel_threads')
                 .where('assistanceRequestId', '==', requestId)
                 .where('threadType', '==', 'agency_assistance')
-                .limit(1));
+                .limit(1)
+                .get();
             if (!threadSnap.empty) {
                 const threadDoc = threadSnap.docs[0];
                 if (threadDoc) {

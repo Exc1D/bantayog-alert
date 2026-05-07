@@ -75,7 +75,8 @@ export async function verifyReportCore(db, deps) {
                             .collection('report_lookup')
                             .where('reportId', '==', deps.reportId)
                             .limit(1);
-                        const lookupSnap = await tx.get(lookupQ);
+                        // Use .get() on the query (not tx.get()) for JS SDK compatibility.
+                        const lookupSnap = await lookupQ.get();
                         const lookupDoc = lookupSnap.docs[0];
                         smsPublicRef = lookupDoc?.id ?? smsPublicRef;
                     }
@@ -83,7 +84,7 @@ export async function verifyReportCore(db, deps) {
             }
             const updates = {
                 status: to,
-                lastStatusAt: deps.now,
+                lastStatusAt: deps.now.toMillis(),
                 lastStatusBy: deps.actor.uid,
                 updatedAt: deps.now.toMillis(),
             };
@@ -92,7 +93,7 @@ export async function verifyReportCore(db, deps) {
             }
             if (to === 'verified') {
                 updates.verifiedBy = deps.actor.uid;
-                updates.verifiedAt = deps.now;
+                updates.verifiedAt = deps.now.toMillis();
                 updates.visibilityClass = 'public_alertable';
             }
             tx.update(reportRef, updates);
@@ -116,7 +117,7 @@ export async function verifyReportCore(db, deps) {
                 to,
                 actor: deps.actor.uid,
                 actorRole: deps.actor.claims.role ?? 'municipal_admin',
-                at: deps.now,
+                at: deps.now.toMillis(),
                 correlationId,
                 schemaVersion: 1,
             });
@@ -132,7 +133,12 @@ export async function verifyReportCore(db, deps) {
     });
     return result;
 }
-export const verifyReport = onCall({ region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 }, async (req) => {
+export const verifyReport = onCall({
+    region: 'asia-southeast1',
+    enforceAppCheck: true,
+    maxInstances: 100,
+    cors: ['http://localhost:5175'],
+}, async (req) => {
     if (!req.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');
     const claims = req.auth.token;

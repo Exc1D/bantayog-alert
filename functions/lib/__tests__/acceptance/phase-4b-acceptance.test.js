@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 /**
  * Phase 4b Acceptance Harness
  *
@@ -31,7 +31,7 @@ const BASE_ENV = {
     FAKE_SMS_ERROR_RATE: '0',
     FAKE_SMS_FAIL_PROVIDER: '',
     FAKE_SMS_IMPERSONATE: 'semaphore',
-    SMS_MSISDN_HASH_SALT: 'acceptance-salt',
+    SMS_MSISDN_HASH_SALT: 'acceptance-salt-x',
     SMS_MSISDN_ENCRYPTION_KEY: ENCRYPTION_KEY,
     GLOBE_LABS_WEBHOOK_SECRET: 'acceptance-webhook-secret',
     FIREBASE_APP_CHECK_TOKEN: 'test-token',
@@ -47,7 +47,7 @@ let normalizeMsisdn;
 let hashMsisdn;
 beforeAll(async () => {
     applyBaseEnv();
-    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081';
     process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
     process.env.DATABASE_EMULATOR_HOST = 'localhost:9000';
     testEnv = await initializeTestEnvironment({
@@ -102,7 +102,7 @@ describe('Phase 4b Acceptance', () => {
         const rawBody = 'BANTAYOG BAHA CALASGASAN';
         const msgId = 'accept-test-001';
         const normalized = normalizeMsisdn(msisdn);
-        const salt = process.env.SMS_MSISDN_HASH_SALT ?? 'acceptance-salt';
+        const salt = process.env.SMS_MSISDN_HASH_SALT ?? 'acceptance-salt-x';
         const msisdnHash = hashMsisdn(normalized, salt);
         const encryptedMsisdn = encryptMsisdn(msisdn);
         const parseResult = parseInboundSms(rawBody);
@@ -167,10 +167,11 @@ describe('Phase 4b Acceptance', () => {
         expect(outbox.purpose).toBe('receipt_ack');
         expect(outbox.status).toBe('queued');
     });
-    it('test2: low-confidence for barangay not in gazetteer', () => {
+    it('test2: high-confidence for barangay in gazetteer', () => {
         const rawBody = 'BANTAYOG FLOOD LANITON';
         const parseResult = parseInboundSms(rawBody);
-        expect(parseResult.confidence === 'none' || parseResult.confidence === 'low').toBe(true);
+        expect(parseResult.confidence).toBe('high');
+        expect(parseResult.parsed?.barangay).toBe('Laniton');
     });
     it('test3: webhook core rejects request without secret', async () => {
         const { smsInboundWebhookCore } = await import('../../http/sms-inbound.js');

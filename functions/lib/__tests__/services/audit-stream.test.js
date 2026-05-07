@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockInsert = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockAdd = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 'dl-1' }));
 vi.mock('@google-cloud/bigquery', () => ({
     BigQuery: class {
         dataset() {
@@ -11,9 +12,18 @@ vi.mock('@google-cloud/bigquery', () => ({
         }
     },
 }));
+vi.mock('../../admin-init.js', () => ({
+    adminDb: {
+        collection: vi.fn(() => ({
+            add: mockAdd,
+        })),
+    },
+}));
 import { streamAuditEvent } from '../../services/audit-stream.js';
 beforeEach(() => {
     mockInsert.mockClear();
+    mockAdd.mockClear();
+    mockAdd.mockResolvedValue({ id: 'dl-1' });
 });
 describe('streamAuditEvent', () => {
     it('inserts the event into BigQuery without throwing on success', async () => {
@@ -58,6 +68,44 @@ describe('streamAuditEvent', () => {
                 occurredAt: 1713350400000,
             }),
         ]);
+    });
+    it('writes dead letter when BigQuery insert fails', async () => {
+        mockInsert.mockRejectedValueOnce(new Error('bq down'));
+        await streamAuditEvent({
+            eventType: 'test_event',
+            actorUid: 'uid-1',
+            occurredAt: 1713350400000,
+        });
+        expect(mockAdd).toHaveBeenCalledOnce();
+        expect(mockAdd).toHaveBeenCalledWith({
+            category: 'audit_stream',
+            status: 'failed_to_stream',
+            payload: {
+                eventType: 'test_event',
+                actorUid: 'uid-1',
+                occurredAt: 1713350400000,
+            },
+            createdAt: expect.any(Number),
+            error: 'bq down',
+        });
+    });
+    it('does not write dead letter on success', async () => {
+        mockInsert.mockResolvedValueOnce(undefined);
+        await streamAuditEvent({
+            eventType: 'test_event',
+            actorUid: 'uid-1',
+            occurredAt: 1713350400000,
+        });
+        expect(mockAdd).not.toHaveBeenCalled();
+    });
+    it('survives dead-letter write failure without throwing', async () => {
+        mockInsert.mockRejectedValueOnce(new Error('bq down'));
+        mockAdd.mockRejectedValueOnce(new Error('firestore down'));
+        await expect(streamAuditEvent({
+            eventType: 'test_event',
+            actorUid: 'uid-1',
+            occurredAt: 1713350400000,
+        })).resolves.toBeUndefined();
     });
 });
 //# sourceMappingURL=audit-stream.test.js.map

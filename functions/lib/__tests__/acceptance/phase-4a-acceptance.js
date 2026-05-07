@@ -40,7 +40,7 @@ const BASE_ENV = {
     FAKE_SMS_ERROR_RATE: '0',
     FAKE_SMS_FAIL_PROVIDER: '',
     FAKE_SMS_IMPERSONATE: 'semaphore',
-    SMS_MSISDN_HASH_SALT: 'acceptance-salt',
+    SMS_MSISDN_HASH_SALT: 'acceptance-salt-x',
     SMS_WEBHOOK_INBOUND_SECRET: 'acceptance-webhook-secret',
     // Suppress app check in tests
     FIREBASE_APP_CHECK_TOKEN: 'test-token',
@@ -58,7 +58,7 @@ async function setup() {
             rules: 'rules_version = "2";\nservice cloud.firestore {\n match /{d=**} { allow read, write: if true; }\n}',
         },
     });
-    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081';
     process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
     if (getApps().length === 0) {
         initializeApp({ projectId: testEnv.projectId });

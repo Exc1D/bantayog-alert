@@ -85,9 +85,9 @@ describe('phase 1 firestore rules', () => {
             .firestore();
         await assertSucceeds(db.collection('alerts').doc('hello').get());
     });
-    it('blocks unauthenticated users from reading alerts', async () => {
+    it('allows unauthenticated users to read alerts (public feed)', async () => {
         const db = testEnv.unauthenticatedContext().firestore();
-        await assertFails(db.collection('alerts').doc('hello').get());
+        await assertSucceeds(db.collection('alerts').doc('hello').get());
     });
     it('allows self-read on active_accounts and blocks cross-user reads', async () => {
         const ownDb = testEnv

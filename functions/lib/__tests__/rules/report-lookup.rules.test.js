@@ -15,7 +15,6 @@ beforeAll(async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db = ctx.firestore();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         await db.collection('report_lookup').doc('pub-ref-1').set({
             publicRef: 'pub-ref-1',
             reportId: 'r-lookup-1',

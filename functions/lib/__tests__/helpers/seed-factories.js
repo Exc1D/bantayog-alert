@@ -1,6 +1,5 @@
 import {} from '@firebase/rules-unit-testing';
 import { setDoc, doc } from 'firebase/firestore';
-import { Timestamp } from 'firebase-admin/firestore';
 export const ts = 1713350400000;
 /**
  * Seeds an active_accounts document using RulesTestEnvironment context.
@@ -175,7 +174,7 @@ export async function seedReportAtStatus(db, status, o = {}) {
     const reportId = o.reportId ?? db.collection('reports').doc().id;
     const municipalityId = o.municipalityId ?? 'daet';
     const municipalityLabel = o.municipalityLabel ?? 'Daet';
-    const now = Timestamp.now();
+    const now = Date.now();
     await db
         .collection('reports')
         .doc(reportId)
@@ -217,7 +216,7 @@ export async function seedReportAtStatus(db, status, o = {}) {
             phone: o.reporterContact.phone,
             locale: o.reporterContact.locale ?? 'tl',
             smsConsent: true,
-            createdAt: now.toMillis(),
+            createdAt: now,
             schemaVersion: 1,
         });
     }
@@ -258,7 +257,7 @@ export async function seedResponderShift(rtdb, municipalityId, uid, isOnShift) {
  */
 export async function seedDispatch(db, o) {
     const dispatchId = o.dispatchId ?? db.collection('dispatches').doc().id;
-    const now = Timestamp.now();
+    const now = Date.now();
     await db
         .collection('dispatches')
         .doc(dispatchId)
@@ -273,7 +272,7 @@ export async function seedDispatch(db, o) {
         },
         dispatchedAt: now,
         lastStatusAt: now,
-        acknowledgementDeadlineAt: Timestamp.fromMillis(now.toMillis() + 15 * 60 * 1000),
+        acknowledgementDeadlineAt: now + 15 * 60 * 1000,
         correlationId: crypto.randomUUID(),
         schemaVersion: 1,
     });

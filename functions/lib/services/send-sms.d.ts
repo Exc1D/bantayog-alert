@@ -24,6 +24,7 @@ export interface OutboxPayload {
     retryCount: number;
     locale: SmsLocale;
     reportId: string;
+    dispatchId?: string;
     createdAt: number;
     queuedAt: number;
     schemaVersion: 2;

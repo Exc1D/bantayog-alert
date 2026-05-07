@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { getApps, initializeApp } from 'firebase-admin/app';

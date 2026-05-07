@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { approveErasureRequestCore } from '../../callables/approve-erasure-request.js';

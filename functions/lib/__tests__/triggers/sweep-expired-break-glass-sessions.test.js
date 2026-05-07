@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { sweepExpiredBreakGlassSessionsCore } from '../../triggers/sweep-expired-break-glass-sessions.js';

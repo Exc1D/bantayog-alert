@@ -9,7 +9,7 @@ describe('buildEnqueueSmsPayload', () => {
             recipientMsisdn: '+639171234567',
             locale: 'tl',
             publicRef: 'abc12345',
-            salt: 'test-salt',
+            salt: 'test-salt-padding',
             nowMs: 1_700_000_000_000,
             providerId: 'semaphore',
         });
@@ -31,7 +31,7 @@ describe('buildEnqueueSmsPayload', () => {
             recipientMsisdn: '+639171234567',
             locale: 'tl',
             publicRef: 'abc12345',
-            salt: 'test-salt',
+            salt: 'test-salt-padding',
             nowMs: 1_700_000_000_000,
             providerId: 'semaphore',
         });
@@ -42,7 +42,7 @@ describe('buildEnqueueSmsPayload', () => {
             recipientMsisdn: '+639171234567',
             locale: 'tl',
             publicRef: 'abc12345',
-            salt: 'test-salt',
+            salt: 'test-salt-padding',
             nowMs: 1_700_000_000_000,
             providerId: 'semaphore',
         });
@@ -56,7 +56,7 @@ describe('buildEnqueueSmsPayload', () => {
             recipientMsisdn: '+639171234567',
             locale: 'tl',
             publicRef: 'abc12345',
-            salt: 'test-salt',
+            salt: 'test-salt-padding',
             nowMs: 1_700_000_000_000,
             providerId: 'semaphore',
         };

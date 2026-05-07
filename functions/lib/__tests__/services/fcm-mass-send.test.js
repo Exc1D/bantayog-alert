@@ -14,8 +14,11 @@ function createMockDb(docs) {
             data: () => d,
         })),
     };
-    const secondWhere = {
+    const thirdWhere = {
         get: mockGet.mockResolvedValue(querySnap),
+    };
+    const secondWhere = {
+        where: vi.fn().mockReturnValue(thirdWhere),
     };
     const firstWhere = {
         where: vi.fn().mockReturnValue(secondWhere),

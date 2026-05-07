@@ -13,8 +13,8 @@ export async function requestDataErasureCore(db, auth, actor) {
         if (sentinel.exists) {
             throw new HttpsError('already-exists', 'erasure_request_already_active');
         }
-        tx.create(sentinelRef, { citizenUid: actor.uid, createdAt: now });
-        tx.create(requestRef, {
+        tx.set(sentinelRef, { citizenUid: actor.uid, createdAt: now });
+        tx.set(requestRef, {
             citizenUid: actor.uid,
             status: 'pending_review',
             legalHold: false,

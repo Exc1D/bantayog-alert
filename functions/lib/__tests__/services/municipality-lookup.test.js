@@ -23,7 +23,7 @@ describe('municipality lookup', () => {
     it('throws on unknown id', async () => {
         mockGet.mockResolvedValue({ docs: [{ id: 'daet', data: () => ({ label: 'Daet' }) }] });
         const lookup = createMunicipalityLookup(db());
-        await expect(lookup.label('unknown')).rejects.toMatchObject({ code: 'FORBIDDEN' });
+        await expect(lookup.label('unknown')).rejects.toMatchObject({ code: 'MUNICIPALITY_NOT_FOUND' });
     });
 });
 //# sourceMappingURL=municipality-lookup.test.js.map

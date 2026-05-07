@@ -11,7 +11,7 @@ beforeAll(async () => {
             rules: 'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}',
         },
     });
-    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081';
     if (getApps().length === 0)
         initializeApp({ projectId: testEnv.projectId });
 });

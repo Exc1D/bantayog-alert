@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { Firestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators';
 import { adminDb } from '../admin-init.js';
@@ -48,8 +48,8 @@ export async function acceptDispatchCore(db, deps) {
             }
             tx.update(dispatchRef, {
                 status: 'accepted',
-                acceptedAt: FieldValue.serverTimestamp(),
-                lastStatusAt: deps.now,
+                acceptedAt: deps.now.toMillis(),
+                lastStatusAt: deps.now.toMillis(),
             });
             const evRef = db.collection('dispatch_events').doc();
             tx.set(evRef, {
@@ -58,7 +58,7 @@ export async function acceptDispatchCore(db, deps) {
                 to: 'accepted',
                 actorUid: deps.actor.uid,
                 actorRole: 'responder',
-                at: deps.now,
+                at: deps.now.toMillis(),
                 correlationId,
                 schemaVersion: 1,
             });
@@ -67,7 +67,13 @@ export async function acceptDispatchCore(db, deps) {
     });
     return { ...result, fromCache };
 }
-export const acceptDispatch = onCall({ region: 'asia-southeast1', enforceAppCheck: true, timeoutSeconds: 10, minInstances: 1 }, async (request) => {
+export const acceptDispatch = onCall({
+    region: 'asia-southeast1',
+    enforceAppCheck: true,
+    timeoutSeconds: 10,
+    minInstances: 1,
+    cors: ['http://localhost:5174', 'http://localhost:5175'],
+}, async (request) => {
     if (!request.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');
     const claims = request.auth.token;

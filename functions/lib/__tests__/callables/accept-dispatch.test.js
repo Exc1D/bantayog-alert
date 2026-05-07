@@ -114,13 +114,15 @@ describe('acceptDispatchCore', () => {
             role: 'responder',
             municipalityId: 'daet',
         });
-        const db = testEnv.unauthenticatedContext().firestore();
-        await expect(acceptDispatchCore(db, {
-            dispatchId: 'dispatch-1',
-            idempotencyKey: crypto.randomUUID(),
-            actor: { uid: 'responder-2' },
-            now: Timestamp.fromMillis(ts),
-        })).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await expect(acceptDispatchCore(db, {
+                dispatchId: 'dispatch-1',
+                idempotencyKey: crypto.randomUUID(),
+                actor: { uid: 'responder-2' },
+                now: Timestamp.fromMillis(ts),
+            })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+        });
     });
     it('rejects when dispatch is not found (NOT_FOUND)', async () => {
         await seedActiveAccount(testEnv, {
@@ -128,13 +130,15 @@ describe('acceptDispatchCore', () => {
             role: 'responder',
             municipalityId: 'daet',
         });
-        const db = testEnv.unauthenticatedContext().firestore();
-        await expect(acceptDispatchCore(db, {
-            dispatchId: 'missing-dispatch-id',
-            idempotencyKey: crypto.randomUUID(),
-            actor: { uid: 'responder-1' },
-            now: Timestamp.fromMillis(ts),
-        })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await expect(acceptDispatchCore(db, {
+                dispatchId: 'missing-dispatch-id',
+                idempotencyKey: crypto.randomUUID(),
+                actor: { uid: 'responder-1' },
+                now: Timestamp.fromMillis(ts),
+            })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        });
     });
     it('returns ALREADY_EXISTS when dispatch is no longer pending', async () => {
         await seedReportAtStatusJS(testEnv, 'report-3', 'assigned');
@@ -144,14 +148,14 @@ describe('acceptDispatchCore', () => {
             role: 'responder',
             municipalityId: 'daet',
         });
-        await testEnv.withSecurityRulesDisabled(async () => {
-            const db = testEnv.unauthenticatedContext().firestore();
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
             await expect(acceptDispatchCore(db, {
                 dispatchId: 'dispatch-3',
                 idempotencyKey: crypto.randomUUID(),
                 actor: { uid: 'responder-1' },
                 now: Timestamp.now(),
-            })).rejects.toMatchObject({ code: 'already-exists' });
+            })).rejects.toMatchObject({ code: 'CONFLICT' });
         });
     });
     it('is idempotent on same key', async () => {
@@ -162,8 +166,8 @@ describe('acceptDispatchCore', () => {
             role: 'responder',
             municipalityId: 'daet',
         });
-        await testEnv.withSecurityRulesDisabled(async () => {
-            const db = testEnv.unauthenticatedContext().firestore();
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
             const key = crypto.randomUUID();
             const first = await acceptDispatchCore(db, {
                 dispatchId: 'dispatch-4',
@@ -194,8 +198,8 @@ describe('acceptDispatchCore', () => {
             await seedReportAtStatusJS(testEnv, reportId, 'assigned');
             await seedDispatchJS(testEnv, dispatchId, reportId, 'responder-rate-limit', 'pending');
         }
-        await testEnv.withSecurityRulesDisabled(async () => {
-            const db = testEnv.unauthenticatedContext().firestore();
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
             // Call 30 times to exhaust quota
             for (let i = 0; i < 30; i++) {
                 const dispatchId = `dispatch-rl-${String(i)}`;
@@ -212,7 +216,7 @@ describe('acceptDispatchCore', () => {
                 idempotencyKey: crypto.randomUUID(),
                 actor: { uid: 'responder-rate-limit' },
                 now: Timestamp.now(),
-            })).rejects.toMatchObject({ code: 'resource-exhausted' });
+            })).rejects.toMatchObject({ code: 'RATE_LIMITED' });
         });
     });
 });

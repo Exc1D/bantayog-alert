@@ -21,6 +21,9 @@ const ADMIN_ROLES = ['municipal_admin', 'agency_admin', 'provincial_superadmin']
 const ACTIVE_REPORT_STATUSES = ['assigned', 'acknowledged', 'en_route', 'on_scene'];
 const ACTIVE_DISPATCH_STATUSES = ['accepted', 'acknowledged', 'en_route', 'on_scene'];
 export async function initiateShiftHandoffCore(db, input, actor, correlationId) {
+    if (!ADMIN_ROLES.includes(actor.claims.role)) {
+        return { success: false, errorCode: 'permission-denied' };
+    }
     if (!actor.claims.active) {
         log({
             severity: 'ERROR',
@@ -128,7 +131,7 @@ export async function acceptShiftHandoffCore(db, input, actor, correlationId) {
                 if (handoff.toUid === actor.uid) {
                     return { success: true };
                 }
-                return { success: false, errorCode: 'already-exists' };
+                return { success: false, errorCode: 'already-accepted' };
             }
             tx.update(snap.ref, {
                 status: 'accepted',

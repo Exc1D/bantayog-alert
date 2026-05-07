@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { logger } from 'firebase-functions';
 const mockStreamAuditEvent = vi.hoisted(() => vi.fn());
 const mockSendMassAlertFcm = vi.hoisted(() => vi.fn().mockResolvedValue({ successCount: 0, failureCount: 0, batchCount: 0 }));
 vi.mock('../../services/audit-stream.js', () => ({
@@ -48,10 +49,19 @@ const validInput = {
 };
 describe('declareEmergencyCore', () => {
     let mockDb;
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalSmsSalt = process.env.SMS_MSISDN_HASH_SALT;
     beforeEach(() => {
         mockDb = createMockDb();
         mockSendMassAlertFcm.mockClear();
         mockStreamAuditEvent.mockClear();
+        delete process.env.SMS_MSISDN_HASH_SALT;
+        process.env.NODE_ENV = 'development';
+    });
+    afterEach(() => {
+        vi.restoreAllMocks();
+        process.env.NODE_ENV = originalNodeEnv;
+        process.env.SMS_MSISDN_HASH_SALT = originalSmsSalt;
     });
     it('writes alert doc with correct fields', async () => {
         const result = await declareEmergencyCore(mockDb, validInput, { uid: 'admin-1' });
@@ -92,13 +102,18 @@ describe('declareEmergencyCore', () => {
             eventType: 'emergency_declared',
             actorUid: 'admin-1',
             targetDocumentId: result.alertId,
-            metadata: { hazardType: 'typhoon' },
+            metadata: expect.objectContaining({ hazardType: 'typhoon' }),
         }));
         const calls = mockStreamAuditEvent.mock.calls;
         expect(calls.length).toBeGreaterThan(0);
         const callArg = calls[0][0];
         expect(callArg.occurredAt).toBeGreaterThanOrEqual(before);
         expect(callArg.occurredAt).toBeLessThanOrEqual(after);
+    });
+    it('warns when SMS salt is missing outside production', async () => {
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+        await declareEmergencyCore(mockDb, validInput, { uid: 'admin-1' });
+        expect(warnSpy).toHaveBeenCalledWith('SMS_MSISDN_HASH_SALT is not configured; SMS hashes may be weak in non-production');
     });
 });
 //# sourceMappingURL=declare-emergency.test.js.map
