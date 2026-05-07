@@ -178,7 +178,7 @@ describe('clearHazardSignalCore', () => {
 
     expect(updateFn).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ status: 'cleared' }),
+      expect.objectContaining({ status: 'cleared', clearedReason: 'storm passed' }),
     )
   })
 

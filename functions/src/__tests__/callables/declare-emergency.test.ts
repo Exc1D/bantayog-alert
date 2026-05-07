@@ -84,8 +84,16 @@ describe('declareEmergencyCore', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
-    process.env.NODE_ENV = originalNodeEnv
-    process.env.SMS_MSISDN_HASH_SALT = originalSmsSalt
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV
+    } else {
+      process.env.NODE_ENV = originalNodeEnv
+    }
+    if (originalSmsSalt === undefined) {
+      delete process.env.SMS_MSISDN_HASH_SALT
+    } else {
+      process.env.SMS_MSISDN_HASH_SALT = originalSmsSalt
+    }
   })
 
   it('writes alert doc with correct fields', async () => {
