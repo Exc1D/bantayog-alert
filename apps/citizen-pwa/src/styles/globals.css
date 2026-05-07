@@ -211,7 +211,7 @@ body {
 }
 
 .status-banner--danger {
-  background: #dc2626;
+  background: #b91c1c;
   color: #ffffff;
 }
 
@@ -458,7 +458,7 @@ body {
   padding: 1.25rem;
   pointer-events: auto;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
-  animation: reveal-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: reveal-slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .reveal-handle {
@@ -1238,5 +1238,14 @@ body {
   100% {
     transform: scale(1.8);
     opacity: 0;
+  }
+}
+
+/* C11 — At 320 px the ReportStatusPill (right-4, top-50%) risks overlapping
+   the Report FAB (-top-8 above the nav bar). Shift it up slightly so there is
+   at least 16 px of breathing room above the nav area. */
+@media (max-width: 360px) {
+  .report-status-pill {
+    top: calc(50% - 2rem);
   }
 }

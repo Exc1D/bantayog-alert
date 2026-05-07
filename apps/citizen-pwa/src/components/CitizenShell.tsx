@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Map, Rss, CirclePlus, Bell, User, WifiOff } from 'lucide-react'
+import { Map, Rss, CirclePlus, Bell, User, WifiOff, FileText } from 'lucide-react'
 import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import { ReportStatusPill } from './ReportStatusPill.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
 import { useAlerts } from '../hooks/useAlerts.js'
 import { useUIStore } from '../lib/store.js'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
+import { wizardSnapshot } from '../services/wizard-snapshot.js'
 import '../styles/design-tokens.css'
 
 const TAB_PATHS = ['/', '/feed', '/report', '/alerts', '/profile'] as const
@@ -38,6 +39,16 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const setNavDirection = useUIStore((s) => s.setNavDirection)
   const showOfflineBanner = !isOnline
   const prefersReducedMotion = useReducedMotion()
+  const [hasDraft, setHasDraft] = useState(false)
+
+  // Check for an in-progress wizard snapshot on mount. Hide the banner when
+  // the user is already on the /report route (they're actively filling it).
+  useEffect(() => {
+    if (pathname.startsWith('/report')) return
+    void wizardSnapshot.load().then((snap) => {
+      setHasDraft(snap !== null)
+    })
+  }, [pathname])
 
   // Calculate unread alerts count
   const alertIds = useMemo(() => alerts.map((a) => a.id), [alerts])
@@ -49,6 +60,20 @@ export function CitizenShell({ children }: { children: ReactNode }) {
     setNavDirection(nextIndex >= currentIndex ? 'forward' : 'backward')
     void navigate(path)
   }
+
+  const handleDiscardDraft = () => {
+    void wizardSnapshot.clear().then(() => {
+      setHasDraft(false)
+    })
+  }
+
+  const handleResumeDraft = () => {
+    setNavDirection('forward')
+    setHasDraft(false)
+    void navigate('/report')
+  }
+
+  const showDraftBanner = hasDraft && !pathname.startsWith('/report')
 
   return (
     <>
@@ -83,6 +108,45 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                   ? `Offline — ${String(queueCount)} report${queueCount !== 1 ? 's' : ''} queued`
                   : "You're offline. Reports saved on device."}
               </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Draft resume banner — shows when an in-progress wizard snapshot exists
+          and the user is not already on /report. */}
+        <AnimatePresence>
+          {showDraftBanner && (
+            <motion.div
+              initial={prefersReducedMotion ? false : { y: -40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={prefersReducedMotion ? { y: 0, opacity: 0 } : { y: -40, opacity: 0 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
+              className="shrink-0 z-toast bg-brand-50 border-b border-brand-200 px-4 py-2 flex items-center gap-2"
+              role="status"
+              aria-label="Draft report available"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <FileText size={16} className="text-brand-600 shrink-0" aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-surface-900 m-0">Resume unfinished report</p>
+                <p className="text-xs text-surface-600 italic m-0">Hindi pa natapos ang ulat</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResumeDraft}
+                className="text-xs font-semibold text-white bg-brand-600 px-3 py-1.5 rounded-md min-h-[36px]"
+              >
+                Resume
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="text-xs font-medium text-surface-600 px-2 py-1.5 rounded-md min-h-[36px]"
+                aria-label="Discard draft"
+              >
+                Discard
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -144,7 +208,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                     >
                       <Icon size={30} strokeWidth={1.5} className="text-white" />
                     </button>
-                    <span className="absolute bottom-[14px] text-[10px] font-medium leading-none text-surface-300">
+                    <span className="absolute bottom-[14px] text-[10px] font-medium leading-none text-surface-600">
                       {label}
                     </span>
                   </div>
@@ -158,7 +222,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                   onClick={() => {
                     handleNav(path)
                   }}
-                  aria-current={isActive ? 'page' : undefined}
+                  {...(isActive ? { 'aria-current': 'page' as const } : {})}
                   className="relative flex flex-col items-center justify-center w-16 h-16 gap-1 min-w-[44px] min-h-[44px] border-none bg-transparent cursor-pointer"
                 >
                   <motion.div
@@ -168,11 +232,11 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                     <Icon
                       size={22}
                       strokeWidth={isActive ? 2.5 : 1.5}
-                      className={isActive ? 'text-brand-500' : 'text-surface-300'}
+                      className={isActive ? 'text-brand-500' : 'text-surface-600'}
                     />
                   </motion.div>
                   <span
-                    className={`text-[10px] font-medium leading-none ${isActive ? 'text-brand-500' : 'text-surface-300'}`}
+                    className={`text-[10px] font-medium leading-none ${isActive ? 'text-brand-500' : 'text-surface-600'}`}
                   >
                     {label}
                   </span>

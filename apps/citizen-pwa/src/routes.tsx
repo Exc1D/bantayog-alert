@@ -9,6 +9,7 @@ import { useState, useCallback, lazy, Suspense, type ComponentType } from 'react
 import { AnimatePresence } from 'framer-motion'
 import { CitizenShell } from './components/CitizenShell.js'
 import { MapTab } from './components/MapTab/index.js'
+import { SubmitReportForm } from './components/SubmitReportForm/index.js'
 import { SplashScreen } from './pages/SplashScreen.js'
 import { useUIStore } from './lib/store.js'
 import { ErrorBoundary } from './components/ErrorBoundary.js'
@@ -49,9 +50,6 @@ const ProfileTab = lazyWithRetry(() =>
 )
 const AlertsTab = lazyWithRetry(() =>
   import('./components/AlertsTab.js').then((m) => ({ default: m.AlertsTab })),
-)
-const SubmitReportForm = lazyWithRetry(() =>
-  import('./components/SubmitReportForm/index.js').then((m) => ({ default: m.SubmitReportForm })),
 )
 const LookupScreen = lazyWithRetry(() =>
   import('./components/LookupScreen.js').then((m) => ({ default: m.LookupScreen })),
@@ -126,11 +124,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'report',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <SubmitReportForm />
-          </Suspense>
-        ),
+        element: <SubmitReportForm />,
         handle: { hideBottomNav: true },
       },
       {

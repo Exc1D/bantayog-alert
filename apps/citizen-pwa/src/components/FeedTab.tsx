@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { usePublicIncidents } from '../hooks/usePublicIncidents.js'
 import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
+import { getSeverityStyle } from '../utils/useSeverityStyle.js'
 import type { PublicIncident, Filters } from './MapTab/types.js'
 
 function timeAgo(timestamp: number): string {
@@ -15,19 +16,10 @@ function timeAgo(timestamp: number): string {
   return `${String(Math.floor(hours / 24))}d ago`
 }
 
-function severityBadgeClass(severity: string): string {
-  if (severity === 'high')
-    return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800'
-  if (severity === 'medium')
-    return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-800'
-  if (severity === 'low')
-    return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-100 text-surface-700'
-  return 'px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-900'
-}
-
 function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => void }) {
   const icon = incidentIcon(incident.reportType)
   const label = incidentLabel(incident.reportType)
+  const severityStyle = getSeverityStyle(incident.severity)
 
   return (
     <button
@@ -61,8 +53,11 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
       </div>
       {/* Footer action row */}
       <div className="border-t border-surface-100 px-4 py-2 flex items-center gap-4">
-        <span className={severityBadgeClass(incident.severity)}>
-          {incident.severity.toUpperCase()}
+        <span
+          className="px-2 py-0.5 rounded-full text-xs font-semibold"
+          style={{ backgroundColor: severityStyle.bg, color: severityStyle.fg }}
+        >
+          {severityStyle.label}
         </span>
         <span className="text-xs text-surface-500 capitalize">
           {incident.status.replace(/_/g, ' ')}
