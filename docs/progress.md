@@ -1,5 +1,54 @@
 # Progress
 
+## Current Status (2026-05-08)
+
+**UI Audit Fixes — 3-App Parallel Agent Team (2026-05-08)**
+Addressed all P0/P1/P2 UI and accessibility findings from `docs/ui-audit-findings-2026-05-07.md`. Three agents ran in isolated worktrees simultaneously. Part 3 (missing feature builds) deferred to dedicated feature sessions.
+
+### responder-app (8/20 → ~14/20) — branch `fix/audit-responder-app-ui`
+
+- ✅ R6: `<span>` → `<button type="button">` with `useNavigate` in DispatchCard (WCAG 2.1.1)
+- ✅ R4/R5: `<label htmlFor>` added to resolution-summary and field-notes textareas (WCAG 1.3.1)
+- ✅ R7: Legend dot `#3b82f6` → `#1e40af` (3.0:1 → 5.5:1, passes WCAG 1.4.11)
+- ✅ R8: Empty-state `✓` → `role="img" aria-label="All dispatches complete"`
+- ✅ R9: Severity hex values extracted to `--sev-high/medium/low-bg/fg` CSS vars; unified inconsistent sevLow blue in DispatchListPage to match canonical green
+- ✅ R10: Emoji tab bar (📋🗺️💬👤) → Lucide SVG icons (ClipboardList, Map, MessageCircle, User)
+- ✅ R11: `🆘` → `<AlertTriangle>` with `role="img" aria-label="SOS alert"`
+- ✅ R14: `prefers-reduced-motion` guard added to Shell.module.css
+- **Gate:** 149 tests passed, 0 failed · typecheck clean · lint clean
+
+### citizen-pwa (13/20 → ~17/20) — branch `fix/audit-citizen-pwa-ui`
+
+- ✅ C2: `SubmitReportForm` (RevealSheet host) converted from `lazyWithRetry()` to eager import — fixes error boundary firing offline on queued/failed states
+- ✅ C4: Inactive nav text `text-surface-300` (#6a7677, 3.2:1) → `text-surface-600` (#4F5859, 5.5:1) — passes WCAG AA
+- ✅ C5: RevealSheet spring `cubic-bezier(0.34, 1.56, 0.64, 1)` → `cubic-bezier(0.22, 1, 0.36, 1)` in both RevealSheet.tsx and globals.css keyframe
+- ✅ C7: `aria-current={isActive ? 'page' : undefined}` → conditional spread satisfying `exactOptionalPropertyTypes`
+- ✅ C8: Local `severityBadgeClass()` in FeedTab deleted; replaced with `getSeverityStyle()` from shared `useSeverityStyle.ts`
+- ✅ C9: `.status-banner--danger` `#dc2626` → `#b91c1c` (7.2:1, passes WCAG AA/AAA for body text)
+- ✅ C11: `@media (max-width: 360px)` rule pushes ReportStatusPill 32px higher to clear FAB at 320px
+- **NOTE:** Teal brand palette (`#0d7377` family) is intentional design deviation — NOT changed
+- **Gate:** 374 tests passed, 0 failed · typecheck clean · lint clean
+
+### admin-desktop (11/20 → ~16/20) — branch `fix/audit-admin-desktop-ui`
+
+- ✅ A1: Palette aligned — `#d64933` → Alert Sienna `#a73400`; purple vars removed; `--color-navy`, `--color-surface`, `--color-danger/warning/success` set to DESIGN.md canonical values
+- ✅ A2: SystemHealthPage inline `React.CSSProperties` → `SystemHealthPage.module.css` CSS classes
+- ✅ A3: 20-node particle animation removed from LoginPage
+- ✅ A4: Logo SVG `#d64933` → `#a73400` in LoginPage and Header
+- ✅ A5: Chart hardcoded hex → `COLOR_DANGER/WARNING/SUCCESS` JS constants
+- ✅ A6: Superadmin badge `text-purple-700` → `text-[#001e40]` (14:1 on white)
+- ✅ A7: Declare Alerts button `bg-red-700` → `bg-[#a73400]`
+- ✅ A8: Pulsing live indicator gets `role="status" aria-label="Live data indicator"` in both Header and MetricCard
+- ✅ A9/A11: All 12 OTP/TOTP digit inputs get `autoComplete="one-time-code"`
+- ✅ A12: Notification dropdown — trigger gets `aria-expanded`, `aria-haspopup="dialog"`; panel gets `role="dialog" aria-label="Notifications"`
+- ✅ A13: Anomaly card `bg-red-50 border-red-200 text-red-700` → `bg-[#fee2e2] border-[#991b1b] text-[#991b1b]`
+- ✅ A14: Herringbone decorative SVG removed from LoginPage
+- ✅ A16: Inter font loaded via Google Fonts in index.css + preconnect in index.html
+- ✅ A17: Global `:focus-visible` double-ring rule added to index.css
+- ✅ A19: Pulse animation wrapped in `prefers-reduced-motion: reduce` in index.css; `motion-safe:` prefix on MetricCard
+- ✅ A20: Skip-to-content link in index.html; `id="main-content"` on AppShell `<main>`
+- **Gate:** 110 tests passed, 0 failed · typecheck clean · lint clean (2 pre-existing warnings in unrelated test files)
+
 ## Current Status (2026-05-07)
 
 **Functions Test Suite -- Zero Failures (2026-05-07)**
