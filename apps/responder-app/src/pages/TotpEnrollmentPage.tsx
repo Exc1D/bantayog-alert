@@ -28,6 +28,21 @@ export function TotpEnrollmentPage() {
       setSecret(newSecret)
       setStep('scan')
     } catch (err) {
+      // Handle specific Firebase Auth errors
+      if (err && typeof err === 'object' && 'code' in err) {
+        const authErr = err as { code: string; message?: string }
+        switch (authErr.code) {
+          case 'auth/too-many-requests':
+            setError('Too many attempts. Please wait a few minutes before trying again.')
+            return
+          case 'auth/network-request-failed':
+            setError('Network error. Please check your connection and try again.')
+            return
+          case 'auth/user-disabled':
+            setError('This account has been disabled. Please contact your agency administrator.')
+            return
+        }
+      }
       setError(err instanceof Error ? err.message : 'Failed to generate secret.')
     } finally {
       setBusy(false)
@@ -43,6 +58,21 @@ export function TotpEnrollmentPage() {
       await multiFactor(auth.currentUser).enroll(assertion, 'Authenticator app')
       setStep('done')
     } catch (err) {
+      // Handle specific Firebase Auth errors
+      if (err && typeof err === 'object' && 'code' in err) {
+        const authErr = err as { code: string; message?: string }
+        switch (authErr.code) {
+          case 'auth/too-many-requests':
+            setError('Too many attempts. Please wait a few minutes before trying again.')
+            return
+          case 'auth/network-request-failed':
+            setError('Network error. Please check your connection and try again.')
+            return
+          case 'auth/user-disabled':
+            setError('This account has been disabled. Please contact your agency administrator.')
+            return
+        }
+      }
       setError(err instanceof Error ? err.message : 'Invalid TOTP code. Please try again.')
     } finally {
       setBusy(false)
@@ -134,8 +164,8 @@ export function TotpEnrollmentPage() {
             <strong>Two-factor authentication is now enabled.</strong>
           </p>
           <p>
-            Save these recovery codes in a safe place. You will need them if you lose access to your
-            authenticator app.
+            Your account is now protected. If you lose access to your authenticator app, contact
+            your agency administrator to reset your 2FA.
           </p>
           <button type="button" className={styles.button} onClick={handleContinue}>
             Continue
