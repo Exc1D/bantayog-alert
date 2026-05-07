@@ -43,18 +43,26 @@ export async function approveErasureRequestCore(db, auth, input, actor) {
         });
         return;
     }
-    // Deny path: update doc + delete sentinel FIRST, then re-enable Auth.
-    let citizenUid;
+    // Deny path: read citizenUid first, re-enable Auth, then update doc + delete sentinel.
+    // If the tx fails after Auth was re-enabled, re-disable Auth to restore the previous state.
+    const initialSnap = await requestRef.get();
+    if (!initialSnap.exists)
+        throw new HttpsError('not-found', 'erasure_request_not_found');
+    const initialData = initialSnap.data();
+    if (initialData?.status !== 'pending_review') {
+        throw new HttpsError('failed-precondition', 'erasure_already_reviewed');
+    }
+    const citizenUid = initialData.citizenUid;
+    await auth.updateUser(citizenUid, { disabled: false });
     try {
-        citizenUid = await db.runTransaction(async (tx) => {
+        await db.runTransaction(async (tx) => {
             const fresh = await tx.get(requestRef);
             if (!fresh.exists)
                 throw new HttpsError('not-found', 'erasure_request_not_found');
             if (fresh.data()?.status !== 'pending_review') {
                 throw new HttpsError('failed-precondition', 'erasure_already_reviewed');
             }
-            const uid = fresh.data()?.citizenUid;
-            const sentinelRef = db.collection('erasure_active').doc(uid);
+            const sentinelRef = db.collection('erasure_active').doc(citizenUid);
             tx.update(requestRef, {
                 status: 'denied',
                 reviewedBy: actor.uid,
@@ -62,30 +70,21 @@ export async function approveErasureRequestCore(db, auth, input, actor) {
                 ...(data.reason ? { reviewReason: data.reason } : {}),
             });
             tx.delete(sentinelRef);
-            return uid;
         });
     }
     catch (err) {
-        // Re-throw domain errors (not-found, failed-precondition) as-is.
+        // Re-disable Auth to restore previous state.
+        try {
+            await auth.updateUser(citizenUid, { disabled: true });
+        }
+        catch (reDisableErr) {
+            const reason = reDisableErr instanceof Error ? reDisableErr.message : String(reDisableErr);
+            console.error('CRITICAL: Auth re-disable failed during deny rollback for', citizenUid, reason);
+        }
         if (err instanceof HttpsError)
             throw err;
         const originalReason = err instanceof Error ? err.message : String(err);
         throw new HttpsError('internal', `deny_write_failed: ${originalReason}`);
-    }
-    // Re-enable Auth after successful denial.
-    try {
-        await auth.updateUser(citizenUid, { disabled: false });
-    }
-    catch (reEnableErr) {
-        const reason = reEnableErr instanceof Error ? reEnableErr.message : String(reEnableErr);
-        console.error('CRITICAL: Auth re-enable failed after erasure denial for', citizenUid, reason);
-        // Persist remediation state so ops can find and fix the locked-out citizen
-        await requestRef.update({
-            status: 'denied_remediation_required',
-            remediationReason: `auth_reenable_failed: ${reason}`,
-            remediationRequiredAt: Date.now(),
-        });
-        throw new HttpsError('internal', `auth_reenable_failed_after_deny: ${reason}`);
     }
     void streamAuditEvent({
         eventType: 'erasure_request_reviewed',

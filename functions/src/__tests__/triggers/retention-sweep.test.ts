@@ -151,6 +151,9 @@ describe('retentionSweepCore', () => {
 
       const privSnap = await db.collection('report_private').doc('r-delete').get()
       expect(privSnap.exists).toBe(false)
+
+      const contactsSnap = await db.collection('report_contacts').doc('r-delete').get()
+      expect(contactsSnap.exists).toBe(false)
     })
   })
 })

@@ -2,14 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMunicipalityLookup } from '../../services/municipality-lookup.js'
 
 const mockGet = vi.fn()
+const mockCollection = vi.fn()
 
 function db() {
   return {
-    collection: () => ({ get: mockGet }),
+    collection: mockCollection.mockReturnValue({ get: mockGet }),
   }
 }
 
-beforeEach(() => mockGet.mockReset())
+beforeEach(() => {
+  mockGet.mockReset()
+  mockCollection.mockClear()
+})
 
 describe('municipality lookup', () => {
   it('loads the map once and caches it', async () => {
@@ -23,6 +27,7 @@ describe('municipality lookup', () => {
     expect(await lookup.label('daet')).toBe('Daet')
     expect(await lookup.label('basud')).toBe('Basud')
     expect(mockGet).toHaveBeenCalledTimes(1)
+    expect(mockCollection).toHaveBeenCalledWith('municipalities')
   })
 
   it('throws on unknown id', async () => {

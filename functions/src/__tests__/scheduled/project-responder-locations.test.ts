@@ -21,8 +21,11 @@ beforeEach(async () => {
         reject(new Error('clearDatabase timeout'))
       }, 2000),
     ),
-  ]).catch(() => {
-    /* ignore cleanup timeout */
+  ]).catch((error: unknown) => {
+    if (error instanceof Error && error.message === 'clearDatabase timeout') {
+      return
+    }
+    throw error
   })
 })
 

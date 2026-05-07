@@ -1,9 +1,11 @@
-import { getFunctions, httpsCallable } from 'firebase/functions'
-import { getStorage } from 'firebase/storage'
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions'
+import { getStorage, connectStorageEmulator } from 'firebase/storage'
 import type { FirebaseStorage } from 'firebase/storage'
 import type { Functions } from 'firebase/functions'
 import type { Auth } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
+import { connectAuthEmulator } from 'firebase/auth'
+import { connectFirestoreEmulator } from 'firebase/firestore'
 import {
   createFirebaseWebApp,
   createAppCheck,
@@ -61,24 +63,36 @@ export function getFirebaseApp() {
 export function auth(): Auth {
   if (_auth) return _auth
   _auth = getFirebaseAuth(getFirebaseApp())
+  if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+    connectAuthEmulator(_auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  }
   return _auth
 }
 
 export function db(): Firestore {
   if (_db) return _db
   _db = getFirebaseDb(getFirebaseApp())
+  if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+    connectFirestoreEmulator(_db, '127.0.0.1', 8081)
+  }
   return _db
 }
 
 export function fns(): Functions {
   if (_fns) return _fns
   _fns = getFunctions(getFirebaseApp(), 'asia-southeast1')
+  if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+    connectFunctionsEmulator(_fns, '127.0.0.1', 5001)
+  }
   return _fns
 }
 
 export function storage(): FirebaseStorage {
   if (_storage) return _storage
   _storage = getStorage(getFirebaseApp())
+  if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+    connectStorageEmulator(_storage, '127.0.0.1', 9199)
+  }
   return _storage
 }
 

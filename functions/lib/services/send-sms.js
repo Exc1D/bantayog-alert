@@ -40,6 +40,7 @@ export function buildEnqueueSmsPayload(args) {
         retryCount: 0,
         locale: args.locale,
         reportId: args.reportId,
+        ...(args.dispatchId ? { dispatchId: args.dispatchId } : {}),
         createdAt: args.nowMs,
         queuedAt: args.nowMs,
         schemaVersion: 2,

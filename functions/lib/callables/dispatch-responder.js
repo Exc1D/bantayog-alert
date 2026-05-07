@@ -123,6 +123,7 @@ export const dispatchResponder = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: true,
     maxInstances: 100,
+    cors: ['http://localhost:5175'],
     secrets: [FCM_VAPID_PRIVATE_KEY, SMS_MSISDN_HASH_SALT],
 }, async (req) => {
     if (!req.auth)

@@ -69,7 +69,11 @@ try {
         contentType: 'application/json',
       })
   })
-} catch {
+} catch (err) {
+  console.warn(
+    '[storage.rules.test] Storage emulator unavailable or seeding failed; all storage tests will be skipped.',
+    err,
+  )
   storageAvailable = false
 }
 

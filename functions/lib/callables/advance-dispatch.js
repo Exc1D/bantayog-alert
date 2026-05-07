@@ -43,7 +43,7 @@ export const advanceDispatchCore = async (db, req) => {
         const patch = {
             status: to,
             statusUpdatedAt: now.toMillis(),
-            lastStatusAt: now,
+            lastStatusAt: now.toMillis(),
         };
         if (to === 'acknowledged')
             patch.acknowledgedAt = now.toMillis();
@@ -69,7 +69,12 @@ export const advanceDispatchCore = async (db, req) => {
     }));
     return result;
 };
-export const advanceDispatch = onCall({ enforceAppCheck: true, consumeAppCheckToken: false }, async (request) => {
+export const advanceDispatch = onCall({
+    region: 'asia-southeast1',
+    enforceAppCheck: true,
+    consumeAppCheckToken: false,
+    cors: ['http://localhost:5174', 'http://localhost:5175'],
+}, async (request) => {
     const actor = requireAuth(request, ['responder']);
     try {
         const data = advanceDispatchRequestSchema.parse(request.data);

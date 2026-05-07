@@ -100,10 +100,11 @@ export async function clearHazardSignalCore(db, input, actor) {
             status: 'cleared',
             clearedAt: now,
             clearedBy: actor.uid,
+            clearedReason: validated.reason,
         });
     });
     await replayHazardSignalProjection({ db, now });
-    return { signalId: validated.signalId, status: 'cleared' };
+    return { signalId: validated.signalId, status: 'cleared', clearedReason: validated.reason };
 }
 export const declareHazardSignal = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
     if (!request.auth)

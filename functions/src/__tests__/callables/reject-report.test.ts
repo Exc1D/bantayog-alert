@@ -120,7 +120,7 @@ describe('rejectReportCore', () => {
     })
   })
 
-  it('rejects cross-muni with PERMISSION_DENIED', async () => {
+  it('rejects cross-muni with FORBIDDEN', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {

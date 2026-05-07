@@ -66,4 +66,6 @@ export { toggleMutualAidVisibility } from './callables/toggle-mutual-aid-visibil
 export { upsertProvincialResource, archiveProvincialResource, } from './callables/provincial-resources.js';
 export { declareHazardSignal, clearHazardSignal } from './callables/declare-hazard-signal.js';
 export { replaySignalDeadLetter } from './callables/replay-signal-dead-letter.js';
+export { replayAuditDeadLetter } from './callables/replay-audit-dead-letter.js';
+export { prewarmSurge } from './callables/prewarm-surge.js';
 //# sourceMappingURL=index.d.ts.map

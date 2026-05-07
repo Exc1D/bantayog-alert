@@ -1,11 +1,11 @@
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
-import { getFirestore } from 'firebase-admin/firestore'
+import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 
-process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080'
-process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099'
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081'
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099'
 
-const PROJECT_ID = 'bantayog-alert-dev'
+const PROJECT_ID = 'bantayog-alert-staging'
 
 if (getApps().length === 0) {
   initializeApp({ projectId: PROJECT_ID })
@@ -58,6 +58,7 @@ async function main() {
   await createAccount('daet-admin-test-01', 'daet-admin-test-01@test.local', 'test123456', {
     role: 'municipal_admin',
     municipalityId: 'daet',
+    accountStatus: 'active',
     active: true,
   })
 
@@ -68,6 +69,7 @@ async function main() {
     'test123456',
     {
       role: 'provincial_superadmin',
+      accountStatus: 'active',
       active: true,
     },
   )
@@ -75,7 +77,75 @@ async function main() {
     throw new Error('Failed to provision superadmin-test-01')
   }
 
+  // Responder account
+  const createdResponder = await createAccount(
+    'responder-test-01',
+    'responder-test-01@test.local',
+    'test123456',
+    {
+      role: 'responder',
+      municipalityId: 'daet',
+      accountStatus: 'active',
+      active: true,
+    },
+  )
+  if (!createdResponder) {
+    throw new Error('Failed to provision responder-test-01')
+  }
+
   console.log('\n✓ Done! Test accounts ready.')
 }
 
-main().catch(console.error)
+async function seedActiveAccounts(db: ReturnType<typeof getFirestore>) {
+  const now = Date.now()
+  const ts = Timestamp.fromMillis(now)
+
+  const accounts = [
+    {
+      uid: 'daet-admin-test-01',
+      role: 'municipal_admin',
+      accountStatus: 'active',
+      municipalityId: 'daet',
+      agencyId: null,
+      permittedMunicipalityIds: [],
+      mfaEnrolled: false,
+      lastClaimIssuedAt: ts,
+      updatedAt: ts,
+    },
+    {
+      uid: 'superadmin-test-01',
+      role: 'provincial_superadmin',
+      accountStatus: 'active',
+      municipalityId: null,
+      agencyId: null,
+      permittedMunicipalityIds: [],
+      mfaEnrolled: false,
+      lastClaimIssuedAt: ts,
+      updatedAt: ts,
+    },
+    {
+      uid: 'responder-test-01',
+      role: 'responder',
+      accountStatus: 'active',
+      municipalityId: 'daet',
+      agencyId: null,
+      permittedMunicipalityIds: [],
+      mfaEnrolled: false,
+      lastClaimIssuedAt: ts,
+      updatedAt: ts,
+    },
+  ]
+
+  for (const acc of accounts) {
+    await db.collection('active_accounts').doc(acc.uid).set(acc)
+    console.log(`✓ active_accounts/${acc.uid}`)
+  }
+}
+
+main()
+  .then(async () => {
+    const db = getFirestore()
+    await seedActiveAccounts(db)
+    console.log('\n✓ Done! Test accounts and active_accounts seeded.')
+  })
+  .catch(console.error)

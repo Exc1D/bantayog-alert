@@ -1,8 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { FirebaseError } from 'firebase/app'
 import { cn } from '@/lib/utils'
 import { Shield, Lock, Loader2, Check } from 'lucide-react'
+import { auth } from '../app/firebase'
+
+function resolveAuthErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Invalid email or password'
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please try again later.'
+      case 'auth/user-disabled':
+        return 'This account has been disabled.'
+      default:
+        return 'Login failed'
+    }
+  }
+  return 'Login failed'
+}
 
 type LoginStep = 'phone' | 'otp' | 'totp' | 'complete'
 
@@ -26,6 +47,9 @@ export default function LoginPage() {
   const [totpTimer, setTotpTimer] = useState(30)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
   const totpRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isEmailLoading, setIsEmailLoading] = useState(false)
 
   useEffect(() => {
     if (loginStep !== 'totp' && loginStep !== 'complete') return
@@ -133,6 +157,23 @@ export default function LoginPage() {
           void navigate('/dashboard')
         }, 800)
       }
+    }
+  }
+
+  const handleEmailLogin = async () => {
+    if (!email || !password) {
+      setLoginError('Please enter email and password')
+      return
+    }
+    setLoginError(null)
+    setIsEmailLoading(true)
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
+      void navigate('/dashboard')
+    } catch (err: unknown) {
+      setLoginError(resolveAuthErrorMessage(err))
+    } finally {
+      setIsEmailLoading(false)
     }
   }
 
@@ -367,7 +408,52 @@ export default function LoginPage() {
             )}
           </AnimatePresence>
 
-          <div className="mt-6 pt-4 border-t border-border flex items-start gap-2 justify-center">
+          <div className="mt-6 pt-4 border-t border-border">
+            <p className="text-xs text-muted-foreground/70 text-center mb-3">Staff Sign In</p>
+            <div className="space-y-2">
+              <input
+                type="email"
+                value={email}
+                aria-label="Email address"
+                autoComplete="email"
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setLoginError(null)
+                }}
+                placeholder="Email"
+                className="w-full bg-white border border-border rounded-md px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-accent focus:shadow-[0_0_0_2px_rgba(214,73,51,0.15)]"
+              />
+              <input
+                type="password"
+                value={password}
+                aria-label="Password"
+                autoComplete="current-password"
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setLoginError(null)
+                }}
+                placeholder="Password"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    void handleEmailLogin()
+                  }
+                }}
+                className="w-full bg-white border border-border rounded-md px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-accent focus:shadow-[0_0_0_2px_rgba(214,73,51,0.15)]"
+              />
+              <button
+                onClick={() => {
+                  void handleEmailLogin()
+                }}
+                disabled={isEmailLoading}
+                className="w-full bg-accent text-white py-2 rounded-md text-sm font-medium hover:brightness-110 active:brightness-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isEmailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {isEmailLoading ? 'Signing in...' : 'Sign In'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-border flex items-start gap-2 justify-center">
             <Lock className="w-4 h-4 text-muted-foreground/70 shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground/70 text-center">
               All access is logged and monitored. Unauthorized access is a criminal offense under RA

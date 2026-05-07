@@ -195,7 +195,12 @@ export async function verifyReportCore(
 }
 
 export const verifyReport = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: true,
+    maxInstances: 100,
+    cors: ['http://localhost:5175'],
+  },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token as Record<string, unknown> | null

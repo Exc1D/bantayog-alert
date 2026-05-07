@@ -1,6 +1,12 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { adminAuth, adminDb } from '../admin-init.js';
-export const registerCitizen = onCall({ cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app', 'https://bantayog-citizen-dev.web.app'] }, async (request) => {
+export const registerCitizen = onCall({
+    cors: [
+        'http://localhost:5173',
+        'https://bantayog-citizen-staging.web.app',
+        'https://bantayog-citizen-dev.web.app',
+    ],
+}, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Must be signed in to register.');
     }

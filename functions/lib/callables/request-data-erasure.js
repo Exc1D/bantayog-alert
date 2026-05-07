@@ -7,14 +7,17 @@ export async function requestDataErasureCore(db, auth, actor) {
     const sentinelRef = db.collection('erasure_active').doc(actor.uid);
     const requestRef = db.collection('erasure_requests').doc();
     const now = Date.now();
-    // Atomic: create sentinel + request doc. Transaction fails if sentinel exists.
+    // Atomic: read-then-write sentinel + request doc.
+    // Duplicate prevention is application-level (see sentinel.exists check below);
+    // Firestore transaction read-set tracking retries on concurrent writes,
+    // at which point the re-read sentinel will be present and the check will throw.
     await db.runTransaction(async (tx) => {
         const sentinel = await tx.get(sentinelRef);
         if (sentinel.exists) {
             throw new HttpsError('already-exists', 'erasure_request_already_active');
         }
-        tx.create(sentinelRef, { citizenUid: actor.uid, createdAt: now });
-        tx.create(requestRef, {
+        tx.set(sentinelRef, { citizenUid: actor.uid, createdAt: now });
+        tx.set(requestRef, {
             citizenUid: actor.uid,
             status: 'pending_review',
             legalHold: false,

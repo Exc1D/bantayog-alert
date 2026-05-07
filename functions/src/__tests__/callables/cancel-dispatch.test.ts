@@ -239,7 +239,7 @@ describe('cancelDispatchCore (3b branches)', () => {
     })
   })
 
-  it('INVALID_STATUS_TRANSITION when dispatch is already cancelled', async () => {
+  it('FAILED_PRECONDITION when dispatch is already cancelled (double-cancel)', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })

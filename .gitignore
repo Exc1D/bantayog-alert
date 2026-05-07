@@ -68,3 +68,4 @@ packages/shared-data/lib/
 
 # Graphify knowledge graphs (generated output — not source)
 graphify-out/
+functions/lib/__tests__/

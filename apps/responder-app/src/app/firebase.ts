@@ -1,8 +1,8 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
-import { getFunctions } from 'firebase/functions'
-import { getDatabase } from 'firebase/database'
+import { getAuth, connectAuthEmulator } from 'firebase/auth'
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database'
 import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check'
 
 const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true'
@@ -57,32 +57,8 @@ export const rtdb = getDatabase(app)
 
 if (USE_EMULATOR) {
   const FIRESTORE_EMULATOR_PORT = import.meta.env.VITE_FIRESTORE_EMULATOR_PORT ?? '8081'
-  void import('firebase/firestore')
-    .then(({ connectFirestoreEmulator }) => {
-      connectFirestoreEmulator(db, 'localhost', Number(FIRESTORE_EMULATOR_PORT))
-    })
-    .catch((err: unknown) => {
-      console.error('[firebase] firestore emulator connect failed:', err)
-    })
-  void import('firebase/auth')
-    .then(({ connectAuthEmulator }) => {
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
-    })
-    .catch((err: unknown) => {
-      console.error('[firebase] auth emulator connect failed:', err)
-    })
-  void import('firebase/functions')
-    .then(({ connectFunctionsEmulator }) => {
-      connectFunctionsEmulator(functions, 'localhost', 5001)
-    })
-    .catch((err: unknown) => {
-      console.error('[firebase] functions emulator connect failed:', err)
-    })
-  void import('firebase/database')
-    .then(({ connectDatabaseEmulator }) => {
-      connectDatabaseEmulator(rtdb, 'localhost', 9000)
-    })
-    .catch((err: unknown) => {
-      console.error('[firebase] database emulator connect failed:', err)
-    })
+  connectFirestoreEmulator(db, 'localhost', Number(FIRESTORE_EMULATOR_PORT))
+  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
+  connectFunctionsEmulator(functions, 'localhost', 5001)
+  connectDatabaseEmulator(rtdb, 'localhost', 9000)
 }

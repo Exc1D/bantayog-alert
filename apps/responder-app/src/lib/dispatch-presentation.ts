@@ -1,5 +1,4 @@
 import type { DispatchStatus } from '@bantayog/shared-types'
-import type { Timestamp } from 'firebase/firestore'
 
 export type ResponderUiState = 'pending' | 'heading_to_scene' | 'on_scene' | 'resolved' | 'terminal'
 export type TerminalSurface = 'cancelled' | 'race_loss' | null
@@ -10,7 +9,7 @@ export interface QueueDispatchRow {
   status: DispatchStatus
   dispatchedAt: number
   uiStatus?: ResponderUiState
-  acknowledgementDeadlineAt?: Timestamp
+  acknowledgementDeadlineAt?: number
 }
 
 export function getResponderUiState(status: DispatchStatus): ResponderUiState {

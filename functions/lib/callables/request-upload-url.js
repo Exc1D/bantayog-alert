@@ -11,6 +11,7 @@ const payloadSchema = z
     .object({
     mimeType: z.string(),
     sizeBytes: z.number().int().positive(),
+    sha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
 })
     .strict();
 export async function requestUploadUrlImpl(input) {
@@ -52,7 +53,13 @@ export async function requestUploadUrlImpl(input) {
         expiresAt,
     };
 }
-export const requestUploadUrl = onCall({ cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app', 'https://bantayog-citizen-dev.web.app'] }, async (request) => {
+export const requestUploadUrl = onCall({
+    cors: [
+        'http://localhost:5173',
+        'https://bantayog-citizen-staging.web.app',
+        'https://bantayog-citizen-dev.web.app',
+    ],
+}, async (request) => {
     try {
         return await requestUploadUrlImpl({
             auth: request.auth ?? undefined,

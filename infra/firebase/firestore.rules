@@ -160,8 +160,10 @@ service cloud.firestore {
     }
 
     match /report_ops/{r} {
-      allow read: if adminOf(resource.data.municipalityId)
-                  || (isAgencyAdmin() && myAgency() in resource.data.agencyIds);
+      allow get: if adminOf(resource.data.municipalityId)
+                 || (isAgencyAdmin() && myAgency() in resource.data.agencyIds);
+      allow list: if request.query.limit <= 200
+                  && isMuniAdmin();
       allow write: if false;
     }
 
@@ -231,10 +233,13 @@ service cloud.firestore {
 
     // --- Dispatches ---
     match /dispatches/{d} {
-      allow read: if isActivePrivileged() && (
+      allow get: if isActivePrivileged() && (
         (isResponder() && resource.data.assignedTo.uid == uid())
         || adminOf(resource.data.municipalityId)
         || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
+      );
+      allow list: if isActivePrivileged() && (
+        isResponder() || isMuniAdmin() || isSuperadmin() || isAgencyAdmin()
       );
 
       function isAssignedResponder() {

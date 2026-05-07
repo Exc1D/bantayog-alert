@@ -38,8 +38,10 @@ beforeEach(async () => {
         reject(new Error('clearDatabase timeout'))
       }, 2000)
     }),
-  ]).catch(() => {
-    /* ignore cleanup timeout */
+  ]).catch((err: unknown) => {
+    if (err instanceof Error && err.message !== 'clearDatabase timeout') {
+      console.warn('[beforeEach] clearDatabase failed:', err.message)
+    }
   })
 })
 
