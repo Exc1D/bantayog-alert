@@ -120,7 +120,8 @@ export async function closeReportCore(
                 .collection('report_lookup')
                 .where('reportId', '==', deps.reportId)
                 .limit(1)
-              const lookupSnap = await tx.get(lookupQ)
+              // Use .get() on query (not tx.get()) for JS SDK compatibility.
+              const lookupSnap = await lookupQ.get()
               const lookupDoc = lookupSnap.docs[0]
               smsPublicRef = lookupDoc?.id ?? smsPublicRef
             }
@@ -129,7 +130,7 @@ export async function closeReportCore(
 
         const updates: Record<string, unknown> = {
           status: to,
-          lastStatusAt: deps.now,
+          lastStatusAt: deps.now.toMillis(),
           lastStatusBy: deps.actor.uid,
         }
         if (deps.closureSummary !== undefined) {
@@ -147,7 +148,7 @@ export async function closeReportCore(
           // Falls back to 'municipal_admin' when role is undefined (should not happen for municipal_admin callers,
           // but provincial_superadmin tokens may omit role)
           actorRole: deps.actor.claims.role ?? 'municipal_admin',
-          at: deps.now,
+          at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,
         })

@@ -4,7 +4,7 @@
  * Uses the compat database API: context.database().ref(path).set(data) / .once('value')
  *
  * Emulators required:
- *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+ *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8081
  *   FIREBASE_DATABASE_EMULATOR_HOST=127.0.0.1:9000
  *
  * Note: initializes only firestore + database emulators (storage not needed here).

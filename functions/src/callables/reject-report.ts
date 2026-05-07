@@ -68,7 +68,7 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
 
         tx.update(reportRef, {
           status: to,
-          lastStatusAt: deps.now,
+          lastStatusAt: deps.now.toMillis(),
           lastStatusBy: deps.actor.uid,
           rejectionReason: deps.reason,
         })
@@ -81,7 +81,7 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
           notes: deps.notes ?? null,
           actor: deps.actor.uid,
           actorRole: deps.actor.claims.role ?? 'municipal_admin',
-          at: deps.now,
+          at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,
         })
@@ -94,7 +94,7 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
           to,
           actor: deps.actor.uid,
           actorRole: deps.actor.claims.role ?? 'municipal_admin',
-          at: deps.now,
+          at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,
         })

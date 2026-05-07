@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { erasureSweepCore } from '../../triggers/erasure-sweep.js'
@@ -304,14 +304,29 @@ describe('erasureSweepCore', () => {
       const { getAuth } = await import('firebase-admin/auth')
       const { getStorage } = await import('firebase-admin/storage')
       await seedApprovedRequest(db, 'req-race', 'uid-race')
-      // Change status to executing so the transaction sees it's not ready and not stale
-      await db.collection('erasure_requests').doc('req-race').update({
-        status: 'executing',
-        executionStartedAt: Date.now(),
-      })
+
+      const baseNow = Date.now()
+      // Make the record stale for the query (31 min ago)
+      await db
+        .collection('erasure_requests')
+        .doc('req-race')
+        .update({
+          status: 'executing',
+          executionStartedAt: baseNow - 31 * 60 * 1000,
+        })
+
+      // Simulate TOCTOU race: record is stale at query time but no longer stale
+      // inside the transaction (now() returns a smaller value).
+      let callCount = 0
+      const mockNow = () => {
+        callCount++
+        // Call 1: staleSnap threshold (record is stale)
+        // Calls 2+: transaction time (record is no longer stale → claim_lost_race)
+        return callCount === 1 ? baseNow : baseNow - 2 * 60 * 1000
+      }
 
       await expect(
-        erasureSweepCore({ db, auth: getAuth(), storage: getStorage() }),
+        erasureSweepCore({ db, auth: getAuth(), storage: getStorage(), now: mockNow }),
       ).rejects.toThrow('claim_lost_race')
     })
   })

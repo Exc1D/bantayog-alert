@@ -14,7 +14,16 @@ beforeEach(async () => {
     projectId: 'projection-test',
     database: { host: 'localhost', port: 9000 },
   })
-  await testEnv.clearDatabase()
+  await Promise.race([
+    testEnv.clearDatabase(),
+    new Promise((_, reject) =>
+      setTimeout(() => {
+        reject(new Error('clearDatabase timeout'))
+      }, 2000),
+    ),
+  ]).catch(() => {
+    /* ignore cleanup timeout */
+  })
 })
 
 afterEach(async () => {
@@ -78,7 +87,7 @@ describe('projectResponderLocationsCore', () => {
         lat: 14.093,
         lng: 122.955,
         freshness: 'fresh',
-        lastSeenAt: now,
+        lastSeenAt: now - 10_000,
       })
     })
   })

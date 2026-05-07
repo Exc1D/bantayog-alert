@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
@@ -16,7 +16,7 @@ let testEnv: RulesTestEnvironment
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'close-report-test',
-    firestore: { host: 'localhost', port: 8080 },
+    firestore: { host: 'localhost', port: 8081 },
   })
 })
 
@@ -30,83 +30,113 @@ afterAll(async () => {
 
 describe('closeReportCore', () => {
   it('transitions a resolved report to closed', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    const result = await closeReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    expect(result.status).toBe('closed')
-    const snap = await db.collection('reports').doc(reportId).get()
-    expect(snap.data()?.status).toBe('closed')
+      const result = await closeReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      expect(result.status).toBe('closed')
+      const snap = await db.collection('reports').doc(reportId).get()
+      expect(snap.data()?.status).toBe('closed')
+    })
   })
 
   it('denies admin from another municipality', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-mercedes',
-      role: 'municipal_admin',
-      municipalityId: 'mercedes',
-    })
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
+        uid: 'admin-mercedes',
+        role: 'municipal_admin',
+        municipalityId: 'mercedes',
+      })
 
-    await expect(
-      closeReportCore(db, {
-        reportId,
-        idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-mercedes',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
-        },
-        now: Timestamp.now(),
-      }),
-    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
+      await expect(
+        closeReportCore(db, {
+          reportId,
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-mercedes',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'mercedes' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
   })
 
   it('rejects close on a non-existent report (NOT_FOUND)', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await seedActiveAccount(testEnv, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    await expect(
-      closeReportCore(db, {
-        reportId: 'missing-report-id',
-        idempotencyKey: crypto.randomUUID(),
-        actor: {
-          uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
-        now: Timestamp.now(),
-      }),
-    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(
+        closeReportCore(db, {
+          reportId: 'missing-report-id',
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    })
   })
 
   it('rejects close on a non-resolved report', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    await expect(
-      closeReportCore(db, {
+      await expect(
+        closeReportCore(db, {
+          reportId,
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
+    })
+  })
+
+  it('appends a report_events entry from:resolved to:closed', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+
+      await closeReportCore(db, {
         reportId,
         idempotencyKey: crypto.randomUUID(),
         actor: {
@@ -114,103 +144,87 @@ describe('closeReportCore', () => {
           claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
         },
         now: Timestamp.now(),
-      }),
-    ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
-  })
+      })
 
-  it('appends a report_events entry from:resolved to:closed', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
+      const events = await db
+        .collection('report_events')
+        .where('reportId', '==', reportId)
+        .orderBy('at', 'desc')
+        .get()
+      const eventData: Record<string, unknown>[] = events.docs.map(
+        (doc: any) => doc.data() as Record<string, unknown>,
+      )
+      const last = eventData[0]
+      expect(last).toMatchObject({ from: 'resolved', to: 'closed' })
     })
-
-    await closeReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
-        uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
-
-    const events = await db
-      .collection('report_events')
-      .where('reportId', '==', reportId)
-      .orderBy('at', 'desc')
-      .get()
-    const eventData: Record<string, unknown>[] = events.docs.map(
-      (doc: any) => doc.data() as Record<string, unknown>,
-    )
-    const last = eventData[0]
-    expect(last).toMatchObject({ from: 'resolved', to: 'closed' })
   })
 
   it('stores closureSummary when provided', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    await closeReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      closureSummary: 'All responders stood down, incident closed.',
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    const snap = await db.collection('reports').doc(reportId).get()
-    expect(snap.data()?.closureSummary).toBe('All responders stood down, incident closed.')
+      await closeReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        closureSummary: 'All responders stood down, incident closed.',
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      const snap = await db.collection('reports').doc(reportId).get()
+      expect(snap.data()?.closureSummary).toBe('All responders stood down, incident closed.')
+    })
   })
 
   it('is idempotent — replay with same key returns closed without error', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    const key = crypto.randomUUID()
-
-    const first = await closeReportCore(db, {
-      reportId,
-      idempotencyKey: key,
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
-    expect(first.status).toBe('closed')
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    // Replay with same key — should succeed (fromCache=true behavior)
-    const second = await closeReportCore(db, {
-      reportId,
-      idempotencyKey: key,
-      actor: {
-        uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
-    expect(second.status).toBe('closed')
+      const key = crypto.randomUUID()
 
-    // Only one event should exist (no duplicate)
-    const events = await db.collection('report_events').where('reportId', '==', reportId).get()
-    const closeEvents = events.docs.filter((doc: any) => doc.data().to === 'closed')
-    expect(closeEvents).toHaveLength(1)
+      const first = await closeReportCore(db, {
+        reportId,
+        idempotencyKey: key,
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+      expect(first.status).toBe('closed')
+
+      // Replay with same key — should succeed (fromCache=true behavior)
+      const second = await closeReportCore(db, {
+        reportId,
+        idempotencyKey: key,
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+      expect(second.status).toBe('closed')
+
+      // Only one event should exist (no duplicate)
+      const events = await db.collection('report_events').where('reportId', '==', reportId).get()
+      const closeEvents = events.docs.filter((doc: any) => doc.data().to === 'closed')
+      expect(closeEvents).toHaveLength(1)
+    })
   })
 })
 
@@ -224,59 +238,63 @@ describe('closeReportCore SMS enqueue', () => {
   })
 
   it('enqueues resolution SMS when reporter consented', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'resolved', {
-      municipalityId: 'daet',
-      reporterContact: { phone: '+639171234567', smsConsent: true, locale: 'tl' },
-    })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    await closeReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'resolved', {
+        municipalityId: 'daet',
+        reporterContact: { phone: '+639171234567', smsConsent: true, locale: 'tl' },
+      })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    const outboxQ = await getDocs(collection(db, 'sms_outbox'))
-    expect(outboxQ.size).toBe(1)
-    const outbox = outboxQ.docs[0]!.data()
-    expect(outbox.purpose).toBe('resolution')
-    expect(outbox.reportId).toBe(reportId)
-    expect(outbox.recipientMsisdn).toBe('+639171234567')
-    expect(outbox.status).toBe('queued')
+      await closeReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      const outboxQ = await getDocs(collection(db, 'sms_outbox'))
+      expect(outboxQ.size).toBe(1)
+      const outbox = outboxQ.docs[0]!.data()
+      expect(outbox.purpose).toBe('resolution')
+      expect(outbox.reportId).toBe(reportId)
+      expect(outbox.recipientMsisdn).toBe('+639171234567')
+      expect(outbox.status).toBe('queued')
+    })
   })
 
   it('does NOT enqueue SMS when reporter had no consent', async () => {
-    const db = testEnv.unauthenticatedContext().firestore() as any
-    const { reportId } = await seedReportAtStatus(db, 'resolved', {
-      municipalityId: 'daet',
-      // no reporterContact
-    })
-    await seedActiveAccount(testEnv, {
-      uid: 'admin-1',
-      role: 'municipal_admin',
-      municipalityId: 'daet',
-    })
-
-    await closeReportCore(db, {
-      reportId,
-      idempotencyKey: crypto.randomUUID(),
-      actor: {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'resolved', {
+        municipalityId: 'daet',
+        // no reporterContact
+      })
+      await seedActiveAccount(testEnv, {
         uid: 'admin-1',
-        claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      },
-      now: Timestamp.now(),
-    })
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
 
-    const outboxQ = await getDocs(collection(db, 'sms_outbox'))
-    expect(outboxQ.size).toBe(0)
+      await closeReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      const outboxQ = await getDocs(collection(db, 'sms_outbox'))
+      expect(outboxQ.size).toBe(0)
+    })
   })
 })

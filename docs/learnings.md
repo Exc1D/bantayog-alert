@@ -67,6 +67,11 @@
 - Wrap `waitFor(() => expect(...))` assertion body in braces to avoid `no-confusing-void-expression`.
 - Local dev should not hard-crash on missing Vite env vars; gate Firebase consumers and show inline messages.
 - In React, auth-dependent setup must render inside `AuthProvider` or startup effects crash the app before router mounts.
+- Emulator tests using `tx.update(docRef)` require the doc to exist; seed it or use `tx.set(docRef, data, { merge: true })`.
+- `startAfter(docSnapshot)` for pagination requires the snapshot to contain the `orderBy` field. If the doc was just deleted in the previous batch, re-fetching by ID returns an empty snapshot and `startAfter` throws "Field X is missing". Fix: keep the `QueryDocumentSnapshot` from the query batch instead of re-fetching by ID.
+- Testing a TOCTOU race condition in a Firestore transaction requires controlling `now()` so the query-time predicate differs from the transaction-time predicate. A single mock function that returns different values per call simulates the race without concurrency.
+- `@firebase/rules-unit-testing` `initializeTestEnvironment` for storage must happen at module load time (top-level await) if tests are conditionally registered with `it.skip` / `itif`. `beforeAll` runs AFTER test registration, so conditions set there are invisible to test registration-time decisions.
+- When a test file's `beforeAll` can fail due to missing emulator, use top-level await with try/catch and a boolean flag, then `itif(flag)` for conditional test execution. This lets the file gracefully skip when the emulator is unavailable instead of crashing the suite.
 
 ## React
 

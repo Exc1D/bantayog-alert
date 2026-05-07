@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { setDoc, doc, Timestamp } from 'firebase/firestore'
+import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore, getFirestore } from 'firebase-admin/firestore'
 import { initializeApp, deleteApp, type App } from 'firebase-admin/app'
 
@@ -82,7 +82,7 @@ async function seedResponder(responderId: string, overrides: Record<string, unkn
       municipalityId: 'muni-1',
       name: 'Test Responder',
       phoneNumber: '+1234567890',
-      isActive: true,
+      accountStatus: 'active',
       agencyId: 'agency-1',
       currentStatus: 'available',
       lastLocationUpdate: ts,
@@ -102,8 +102,8 @@ async function createHandoff(id: string, overrides: Record<string, unknown> = {}
       municipalityId: 'muni-1',
       reason: 'shift ended',
       status: 'pending',
-      createdAt: Timestamp.fromMillis(ts),
-      expiresAt: Timestamp.fromMillis(Date.now() + 1800000),
+      createdAt: ts,
+      expiresAt: Date.now() + 1800000,
       schemaVersion: 1,
       ...overrides,
     })

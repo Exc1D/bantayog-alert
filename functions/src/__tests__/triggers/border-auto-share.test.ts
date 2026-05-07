@@ -166,8 +166,21 @@ describe('borderAutoShareTrigger', () => {
       visibility: { scope: 'municipality', sharedWith: [] },
       schemaVersion: 1,
     }
-    // Seed report_private with exactLocation
+    // Seed report_ops and report_private
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'report_ops', 'r1'), {
+        municipalityId: 'daet',
+        locationGeohash: NEAR_BOUNDARY_GEOHASH,
+        status: 'verified',
+        severity: 'high',
+        createdAt: ts,
+        updatedAt: ts,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        schemaVersion: 1,
+      })
       await setDoc(doc(ctx.firestore(), 'report_private', 'r1'), {
         reportId: 'r1',
         reporterUid: 'u1',
@@ -202,6 +215,19 @@ describe('borderAutoShareTrigger', () => {
       schemaVersion: 1,
     }
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'report_ops', 'r1'), {
+        municipalityId: 'daet',
+        locationGeohash: NEAR_BOUNDARY_GEOHASH,
+        status: 'verified',
+        severity: 'high',
+        createdAt: ts,
+        updatedAt: ts,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        visibility: { scope: 'municipality', sharedWith: ['mercedes'] },
+        schemaVersion: 1,
+      })
       await setDoc(doc(ctx.firestore(), 'report_sharing', 'r1'), {
         ownerMunicipalityId: 'daet',
         reportId: 'r1',

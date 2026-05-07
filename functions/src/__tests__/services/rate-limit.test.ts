@@ -14,7 +14,7 @@ beforeEach(async () => {
     projectId: 'rate-limit-test',
     firestore: {
       host: 'localhost',
-      port: 8080,
+      port: 8081,
       rules: readFileSync(RULES_PATH, 'utf8'),
     },
   })

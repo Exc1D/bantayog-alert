@@ -73,7 +73,7 @@ export const advanceDispatchCore = async (
         const patch: Record<string, unknown> = {
           status: to,
           statusUpdatedAt: now.toMillis(),
-          lastStatusAt: now,
+          lastStatusAt: now.toMillis(),
         }
 
         if (to === 'acknowledged') patch.acknowledgedAt = now.toMillis()

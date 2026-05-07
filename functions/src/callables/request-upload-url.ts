@@ -13,6 +13,7 @@ const payloadSchema = z
   .object({
     mimeType: z.string(),
     sizeBytes: z.number().int().positive(),
+    sha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
   })
   .strict()
 

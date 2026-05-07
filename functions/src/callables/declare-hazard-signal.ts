@@ -103,7 +103,7 @@ export async function clearHazardSignalCore(
   db: Firestore,
   input: unknown,
   actor: { uid: string; role: string },
-): Promise<{ signalId: string; status: 'cleared' }> {
+): Promise<{ signalId: string; status: 'cleared'; clearedReason: string }> {
   if (actor.role !== 'provincial_superadmin') {
     throw new HttpsError('permission-denied', 'superadmin_required')
   }
@@ -127,12 +127,13 @@ export async function clearHazardSignalCore(
       status: 'cleared',
       clearedAt: now,
       clearedBy: actor.uid,
+      clearedReason: validated.reason,
     })
   })
 
   await replayHazardSignalProjection({ db, now })
 
-  return { signalId: validated.signalId, status: 'cleared' }
+  return { signalId: validated.signalId, status: 'cleared', clearedReason: validated.reason }
 }
 
 export const declareHazardSignal = onCall(
