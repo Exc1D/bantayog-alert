@@ -70,14 +70,14 @@ All three apps fail the AI slop test. Common tells:
 
 #### P1 — Major
 
-| #   | Issue                                                                                                    | Location                                                                | WCAG / Design Ref       |
-| --- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------- |
-| A5  | Chart colors hardcoded (#dc2626, #d97706, #16a34a) — not using design system status tokens               | `pages/DashboardPage.tsx:33-48, :312-344`                               | Theming                 |
-| A6  | Header "Superadmin" label `text-purple-700` (#7c21c2) on white — purple not in approved palette          | `components/layout/Header.tsx:24`                                       | Accessibility / Theming |
-| A7  | "Declare Alerts" button uses `bg-red-700` instead of Alert Sienna                                        | `pages/DashboardPage.tsx:124`                                           | Theming                 |
-| A8  | Pulsing live indicator has no `aria-label` or `role="status"`                                            | `components/layout/Header.tsx:46-51`, `pages/DashboardPage.tsx:101-107` | WCAG 2.1                |
-| A9  | TOTP inputs use `type="text"` + `inputMode="numeric"` — should be `type="tel"` for mobile numeric keypad | `pages/LoginPage.tsx:330`                                               | Accessibility           |
-| A10 | MetricCard font-size `text-[36px]` not responsive                                                        | `components/common/MetricCard.tsx:54`                                   | Responsive Design       |
+| #   | Issue                                                                                                                         | Location                                                                | WCAG / Design Ref       |
+| --- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------- |
+| A5  | Chart colors hardcoded (#dc2626, #d97706, #16a34a) — not using design system status tokens                                    | `pages/DashboardPage.tsx:33-48, :312-344`                               | Theming                 |
+| A6  | Header "Superadmin" label `text-purple-700` (#7c21c2) on white — purple not in approved palette                               | `components/layout/Header.tsx:24`                                       | Accessibility / Theming |
+| A7  | "Declare Alerts" button uses `bg-red-700` instead of Alert Sienna                                                             | `pages/DashboardPage.tsx:124`                                           | Theming                 |
+| A8  | Pulsing live indicator has no `aria-label` or `role="status"`                                                                 | `components/layout/Header.tsx:46-51`, `pages/DashboardPage.tsx:101-107` | WCAG 2.1                |
+| A9  | TOTP inputs missing `autocomplete="one-time-code"` (already tracked in A11; `type="text"` + `inputMode="numeric"` is correct) | `pages/LoginPage.tsx:330`                                               | Accessibility           |
+| A10 | MetricCard font-size `text-[36px]` not responsive                                                                             | `components/common/MetricCard.tsx:54`                                   | Responsive Design       |
 
 #### P2 — Minor
 
@@ -250,6 +250,13 @@ The admin-desktop PWA serves **three distinct roles** (municipal_admin, agency_a
 ---
 
 ## Part 5: Recommended Fix Order
+
+> **Note on `$impeccable`:** References like `$impeccable colorize`, `$impeccable extract`, `$impeccable polish`, and `$impeccable typeset` denote an internal CLI tool for automated design-system enforcement. Commands include:
+>
+> - `colorize` — align palette with DESIGN.md tokens
+> - `extract` — extract hardcoded values to design system variables
+> - `polish` — remove anti-pattern decorations
+> - `typeset` — enforce typography standards
 
 ### Immediate (P0 — Security / Accessibility / Core Flow Blockers)
 
