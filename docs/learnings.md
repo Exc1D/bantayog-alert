@@ -26,6 +26,8 @@
 
 - Re-read files after edits/subagents/compaction. Disk is truth.
 - Red test before behavior changes. Don’t bundle unrelated fixes.
+- Admin Desktop has two route surfaces. If provincial-superadmin login or legacy links still land on prototype URLs like `/dashboard`, `/map`, `/users`, `/reports`, or `/health`, the user falls back into `mockData` pages even when live Firestore/callable pages already exist under `/province/*` and `/analytics`. Fix the route entrypoints before chasing individual mock widgets.
+- Extend that route gate to every provincial-superadmin legacy URL that still renders prototype or demo-only UI, including pages backed by local state like `/settings` and pages backed by `useDataStore` like `/emergency`, `/ndrrmc`, `/audit`, `/handoff`, and `/erasure`. If there is no live one-for-one replacement yet, retire the route to a safe live landing page instead of exposing fake functionality.
 - After squash merge, preserve branch ancestry if history matters.
 - Firestore emulator seeded writes fail fast if rules don’t compile; fix rules harness first.
 - Workspace packages exported as TS source can break Functions emulator; give it a real JS entrypoint.

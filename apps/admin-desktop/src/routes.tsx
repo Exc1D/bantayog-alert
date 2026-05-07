@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { createBrowserRouter } from 'react-router-dom'
-import { ProtectedRoute } from '@bantayog/shared-ui'
+import { ProtectedRoute, useAuth } from '@bantayog/shared-ui'
 import { Sidebar } from './components/Sidebar'
 import { LoginPage } from './pages/LoginPage'
 import { TotpEnrollmentPage } from './pages/TotpEnrollmentPage'
@@ -39,6 +39,27 @@ function AppLayout() {
   )
 }
 
+function LegacyPrototypeRoute({
+  fallback,
+  superadminTarget,
+}: {
+  fallback: React.ReactNode
+  superadminTarget: string
+}) {
+  const { claims, loading } = useAuth()
+  const role = typeof claims?.role === 'string' ? claims.role : ''
+
+  if (loading) {
+    return <div>Loading…</div>
+  }
+
+  if (role === 'provincial_superadmin') {
+    return <Navigate to={superadminTarget} replace />
+  }
+
+  return <>{fallback}</>
+}
+
 const UNAUTHORIZED = (
   <div role="alert">You do not have access to this page. Please contact your superadmin.</div>
 )
@@ -48,18 +69,65 @@ export const router = createBrowserRouter([
   { path: '/totp-enroll', element: <TotpEnrollmentPage /> },
 
   // Prototype pages — each renders its own AppShell with Header/Sidebar
-  { path: '/dashboard', element: <DashboardPage /> },
-  { path: '/map', element: <MapPage /> },
-  { path: '/users', element: <UsersPage /> },
-  { path: '/emergency', element: <EmergencyPage /> },
-  { path: '/ndrrmc', element: <NdrrmcPage /> },
-  { path: '/reports', element: <ReportsPage /> },
-  { path: '/audit', element: <AuditPage /> },
-  { path: '/health', element: <HealthPage /> },
+  {
+    path: '/dashboard',
+    element: (
+      <LegacyPrototypeRoute superadminTarget="/province/dashboard" fallback={<DashboardPage />} />
+    ),
+  },
+  {
+    path: '/map',
+    element: <LegacyPrototypeRoute superadminTarget="/province/map" fallback={<MapPage />} />,
+  },
+  {
+    path: '/users',
+    element: <LegacyPrototypeRoute superadminTarget="/province/users" fallback={<UsersPage />} />,
+  },
+  {
+    path: '/emergency',
+    element: (
+      <LegacyPrototypeRoute superadminTarget="/province/dashboard" fallback={<EmergencyPage />} />
+    ),
+  },
+  {
+    path: '/ndrrmc',
+    element: (
+      <LegacyPrototypeRoute superadminTarget="/province/dashboard" fallback={<NdrrmcPage />} />
+    ),
+  },
+  {
+    path: '/reports',
+    element: <LegacyPrototypeRoute superadminTarget="/analytics" fallback={<ReportsPage />} />,
+  },
+  {
+    path: '/audit',
+    element: (
+      <LegacyPrototypeRoute superadminTarget="/province/dashboard" fallback={<AuditPage />} />
+    ),
+  },
+  {
+    path: '/health',
+    element: (
+      <LegacyPrototypeRoute superadminTarget="/province/system-health" fallback={<HealthPage />} />
+    ),
+  },
   { path: '/sms', element: <SmsPage /> },
-  { path: '/handoff', element: <HandoffPage /> },
-  { path: '/erasure', element: <ErasurePage /> },
-  { path: '/settings', element: <SettingsPage /> },
+  {
+    path: '/handoff',
+    element: (
+      <LegacyPrototypeRoute superadminTarget="/province/dashboard" fallback={<HandoffPage />} />
+    ),
+  },
+  {
+    path: '/erasure',
+    element: <LegacyPrototypeRoute superadminTarget="/province/users" fallback={<ErasurePage />} />,
+  },
+  {
+    path: '/settings',
+    element: (
+      <LegacyPrototypeRoute superadminTarget="/province/dashboard" fallback={<SettingsPage />} />
+    ),
+  },
 
   // Legacy pages — use AppLayout with shared Sidebar
   {

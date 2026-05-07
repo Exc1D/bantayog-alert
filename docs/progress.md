@@ -1,5 +1,19 @@
 # Progress
 
+## Current Status (2026-05-07)
+
+**Admin Desktop -- Superadmin Route Gating (2026-05-07)**
+Provincial superadmins no longer land on the mock-backed prototype analytics/report shell during normal navigation.
+
+- ✅ Added a provincial-superadmin route gate in `apps/admin-desktop/src/routes.tsx`
+- ✅ Legacy prototype URLs now redirect to live pages for this role: `/dashboard` → `/province/dashboard`, `/map` → `/province/map`, `/users` → `/province/users`, `/health` → `/province/system-health`, `/reports` → `/analytics`
+- ✅ Retired the remaining prototype-only superadmin entrypoints out of the visible path: `/emergency`, `/ndrrmc`, `/audit`, `/handoff`, and `/settings` now fall back to `/province/dashboard`; `/erasure` now redirects to `/province/users`
+- ✅ Removed the non-live TCWS signal placeholder section from `SystemHealthPage`; the page now exposes only real audit/replay controls plus prewarm actions
+- ✅ Non-superadmin fallback behavior remains unchanged on those routes
+- ✅ Added focused Vitest coverage for all retired/redirected legacy routes and the non-superadmin fallback
+- ✅ No fake report-generation backend was introduced; unsupported mock report UI remains out of the normal superadmin path instead of pretending to be real
+- **Gate:** `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/prototype-route-redirects.test.tsx` pass, `pnpm --dir apps/admin-desktop typecheck` pass, `pnpm --dir apps/admin-desktop exec eslint src/routes.tsx src/pages/SystemHealthPage.tsx src/__tests__/prototype-route-redirects.test.tsx` pass; full `pnpm --dir apps/admin-desktop lint` still reports 2 pre-existing unrelated warnings in `src/__tests__/triage-queue.test.tsx` and `src/pages/AgencyAssistanceQueuePage.test.tsx`
+
 ## Current Status (2026-05-06)
 
 **Responder PWA -- Frontend Rebuild (2026-05-06)**
