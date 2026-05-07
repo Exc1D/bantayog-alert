@@ -100,3 +100,76 @@ describe('Step3Review — false-report prevention confirmation', () => {
     expect(screen.queryByText(/are you sure this is a real emergency/i)).not.toBeInTheDocument()
   })
 })
+
+describe('False Report Gate - Double Submit Prevention', () => {
+  it('prevents double-submit when user double-clicks Submit rapidly', async () => {
+    const handleSubmit = vi.fn()
+    render(
+      <TestWrapper>
+        <Step3Review onBack={vi.fn()} onSubmit={handleSubmit} reportData={REPORT_DATA} />
+      </TestWrapper>,
+    )
+
+    const checkbox = screen.getByRole('checkbox')
+    await userEvent.click(checkbox)
+
+    const submitBtn = screen.getByRole('button', { name: /submit report/i })
+
+    // Rapid clicks
+    await userEvent.click(submitBtn)
+    await userEvent.click(submitBtn)
+
+    // Confirmation panel should be shown, but onSubmit should not have been called
+    expect(handleSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText(/are you sure this is a real emergency/i)).toBeInTheDocument()
+  })
+
+  it('prevents double-submit on confirmation button', async () => {
+    const handleSubmit = vi.fn()
+    render(
+      <TestWrapper>
+        <Step3Review onBack={vi.fn()} onSubmit={handleSubmit} reportData={REPORT_DATA} />
+      </TestWrapper>,
+    )
+
+    const checkbox = screen.getByRole('checkbox')
+    await userEvent.click(checkbox)
+
+    const submitBtn = screen.getByRole('button', { name: /submit report/i })
+    await userEvent.click(submitBtn)
+
+    const confirmBtn = screen.getByRole('button', { name: /yes, submit/i })
+
+    // Rapid clicks on confirm button
+    await userEvent.click(confirmBtn)
+    await userEvent.click(confirmBtn)
+
+    // Should only call once
+    expect(handleSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('requires explicit confirmation - Enter key does NOT bypass confirmation', async () => {
+    const handleSubmit = vi.fn()
+    render(
+      <TestWrapper>
+        <Step3Review onBack={vi.fn()} onSubmit={handleSubmit} reportData={REPORT_DATA} />
+      </TestWrapper>,
+    )
+
+    const checkbox = screen.getByRole('checkbox')
+    await userEvent.click(checkbox)
+
+    const submitBtn = screen.getByRole('button', { name: /submit report/i })
+    await userEvent.click(submitBtn)
+
+    // Confirmation panel should be visible
+    expect(screen.getByText(/are you sure this is a real emergency/i)).toBeInTheDocument()
+
+    // Press Enter on the submit button again - should not submit
+    await userEvent.type(submitBtn, '{Enter}')
+
+    // Confirmation panel should still be visible, no submission
+    expect(screen.getByText(/are you sure this is a real emergency/i)).toBeInTheDocument()
+    expect(handleSubmit).not.toHaveBeenCalled()
+  })
+})

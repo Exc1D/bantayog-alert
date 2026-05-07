@@ -66,16 +66,18 @@ export const wizardSnapshot = {
     const toSave: WizardSnapshot = { ...partial, updatedAt: Date.now() }
     try {
       await getStorage().setItem(STORAGE_KEY, toSave)
-    } catch {
+    } catch (err) {
       // Best-effort persistence — don't block step transitions if IDB fails.
+      console.warn('[wizardSnapshot] Failed to save draft:', err)
     }
   },
 
   async clear(): Promise<void> {
     try {
       await getStorage().removeItem(STORAGE_KEY)
-    } catch {
+    } catch (err) {
       // Best-effort.
+      console.warn('[wizardSnapshot] Failed to clear draft:', err)
     }
   },
 }
