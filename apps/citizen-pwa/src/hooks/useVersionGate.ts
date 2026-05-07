@@ -13,7 +13,10 @@ export function useVersionGate() {
 
     const unsubMin = onSnapshot(doc(db(), 'system_config', 'min_app_version'), {
       next: (snap) => {
-        if (!snap.exists()) return
+        if (!snap.exists()) {
+          setBlocked(false)
+          return
+        }
         const data = snap.data() as MinAppVersionDoc
         if (typeof data.citizen !== 'string') {
           console.error('[VersionGate] Invalid min_app_version document shape')
@@ -24,7 +27,9 @@ export function useVersionGate() {
       },
       error: (err) => {
         console.error('[VersionGate] Failed to listen to min_app_version:', err)
-        setBlocked(true)
+        // Don't block on permission errors — the app may still be valid
+        const isPermissionError = (err as { code?: string }).code === 'permission-denied'
+        if (!isPermissionError) setBlocked(true)
       },
     })
 
