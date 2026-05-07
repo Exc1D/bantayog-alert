@@ -2,9 +2,28 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
+import { FirebaseError } from 'firebase/app'
 import { cn } from '@/lib/utils'
 import { Shield, Lock, Loader2, Check } from 'lucide-react'
 import { auth } from '../app/firebase'
+
+function resolveAuthErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Invalid email or password'
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please try again later.'
+      case 'auth/user-disabled':
+        return 'This account has been disabled.'
+      default:
+        return 'Login failed'
+    }
+  }
+  return 'Login failed'
+}
 
 type LoginStep = 'phone' | 'otp' | 'totp' | 'complete'
 
@@ -30,6 +49,7 @@ export default function LoginPage() {
   const totpRefs = useRef<(HTMLInputElement | null)[]>([])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isEmailLoading, setIsEmailLoading] = useState(false)
 
   useEffect(() => {
     if (loginStep !== 'totp' && loginStep !== 'complete') return
@@ -146,14 +166,14 @@ export default function LoginPage() {
       return
     }
     setLoginError(null)
-    setIsLoading(true)
+    setIsEmailLoading(true)
     try {
       await signInWithEmailAndPassword(auth, email, password)
       void navigate('/dashboard')
     } catch (err: unknown) {
-      setLoginError(err instanceof Error ? err.message : 'Login failed')
+      setLoginError(resolveAuthErrorMessage(err))
     } finally {
-      setIsLoading(false)
+      setIsEmailLoading(false)
     }
   }
 
@@ -394,6 +414,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 value={email}
+                aria-label="Email address"
                 onChange={(e) => {
                   setEmail(e.target.value)
                   setLoginError(null)
@@ -404,6 +425,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 value={password}
+                aria-label="Password"
                 onChange={(e) => {
                   setPassword(e.target.value)
                   setLoginError(null)
@@ -420,11 +442,11 @@ export default function LoginPage() {
                 onClick={() => {
                   void handleEmailLogin()
                 }}
-                disabled={isLoading}
+                disabled={isEmailLoading}
                 className="w-full bg-accent text-white py-2 rounded-md text-sm font-medium hover:brightness-110 active:brightness-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isEmailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {isEmailLoading ? 'Signing in...' : 'Sign In'}
               </button>
             </div>
           </div>
