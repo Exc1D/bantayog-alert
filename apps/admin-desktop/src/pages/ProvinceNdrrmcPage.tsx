@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { TriangleAlert, CheckCircle, Clock } from 'lucide-react'
 import { db } from '../app/firebase'
 import { callables } from '../services/callables'
+import { toMs } from '../lib/timestamps'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -109,18 +110,6 @@ function timeSince(epochMs: number): string {
   const m = Math.floor((diffMs % 3600000) / 60000)
   if (h > 0) return `${String(h)}h ${String(m)}m ago`
   return `${String(m)}m ago`
-}
-
-function toMs(val: unknown): number {
-  if (
-    val !== null &&
-    typeof val === 'object' &&
-    typeof (val as { toMillis?: unknown }).toMillis === 'function'
-  ) {
-    return (val as { toMillis: () => number }).toMillis()
-  }
-  if (typeof val === 'number') return val
-  return Date.now()
 }
 
 // ── Inline review panel ───────────────────────────────────────────────────────

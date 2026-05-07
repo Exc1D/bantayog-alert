@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router-dom'
  * N → /province/ndrrmc (NDRRMC Escalation Queue)
  * A → /province/emergency (Emergency Declaration)
  *
- * Shortcuts are suppressed when focus is in an input, textarea, or select.
+ * Shortcuts are suppressed when focus is in an input, textarea, select,
+ * or contentEditable element.
  * Render this once inside AppLayout so shortcuts are active throughout the shell.
  */
 export function ShellKeyboardShortcuts() {
@@ -15,7 +16,10 @@ export function ShellKeyboardShortcuts() {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const tag = (document.activeElement?.tagName ?? '').toLowerCase()
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+      const isContentEditable =
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.isContentEditable
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || isContentEditable) return
 
       switch (e.key) {
         case 'n':

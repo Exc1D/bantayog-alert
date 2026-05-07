@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
 import { TriangleAlert, TrendingDown, UserX } from 'lucide-react'
 import { db } from '../app/firebase'
+import { toMs } from '../lib/timestamps'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,20 +47,6 @@ const ICON_COLOR: Record<AnomalyType, string> = {
   response_time_spike: '#b45309',
   resolution_drop: '#92400e',
   admin_shift_gap: '#991b1b',
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function toMs(val: unknown): number {
-  if (
-    val !== null &&
-    typeof val === 'object' &&
-    typeof (val as { toMillis?: unknown }).toMillis === 'function'
-  ) {
-    return (val as { toMillis: () => number }).toMillis()
-  }
-  if (typeof val === 'number') return val
-  return Date.now()
 }
 
 function AnomalyIcon({ type }: { type: AnomalyType }) {

@@ -3,6 +3,7 @@ import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestor
 import { Shield } from 'lucide-react'
 import { db } from '../app/firebase'
 import { useBreakGlass } from '../hooks/useBreakGlass'
+import { toMs } from '../lib/timestamps'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -13,18 +14,6 @@ function formatTimeLeft(expiresAt: number): string {
   const m = Math.floor((totalSeconds % 3600) / 60)
   const s = totalSeconds % 60
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
-}
-
-function toMs(val: unknown): number {
-  if (
-    val !== null &&
-    typeof val === 'object' &&
-    typeof (val as { toMillis?: unknown }).toMillis === 'function'
-  ) {
-    return (val as { toMillis: () => number }).toMillis()
-  }
-  if (typeof val === 'number') return val
-  return 0
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -151,7 +140,8 @@ export function BreakGlassPage() {
         })
         setPastSessions(docs)
       },
-      () => {
+      (err) => {
+        console.error('[BreakGlassPage] Audit log listener error:', err)
         // Non-fatal — audit log is secondary
       },
     )
