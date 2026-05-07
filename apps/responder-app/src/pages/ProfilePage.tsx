@@ -72,6 +72,8 @@ export function ProfilePage() {
 
   const reasonOptions = selectedStatus === 'unavailable' ? UNAVAILABLE_REASONS : OFF_DUTY_REASONS
   const profileTypeLabel = getResponderTypeLabel(profile?.responderType)
+  const responderTypeCode = profile?.responderType
+  const specializations = profile?.specializations
 
   return (
     <div className={styles.page}>
@@ -83,10 +85,35 @@ export function ProfilePage() {
           <h1 className={styles.profileName}>
             {profile?.displayName ?? auth.currentUser?.displayName ?? 'Responder'}
           </h1>
-          <p className={styles.profileRole}>
-            {profileTypeLabel} Responder
-            {profile?.stationLabel !== undefined ? ` · ${profile.stationLabel}` : ''}
-          </p>
+          <p className={styles.profileRole}>{profile?.stationLabel ?? ''}</p>
+          {responderTypeCode !== undefined && (
+            <p className={styles.profileTypeBadge}>
+              <span>{responderTypeCode}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{profileTypeLabel}</span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>Specializations</div>
+        <div className={styles.sectionBody}>
+          {specializations !== undefined && specializations.length > 0 ? (
+            <div className={styles.chipList}>
+              {specializations.map((s) => (
+                <span key={s} className={styles.chip}>
+                  {s}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.emptyState}>
+              No specialization tags.{' '}
+              <span className={styles.emptyStateHint}>Contact your agency admin</span> to add
+              specializations.
+            </p>
+          )}
         </div>
       </div>
 

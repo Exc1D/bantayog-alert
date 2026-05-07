@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { ClipboardList, Map, MessageCircle, User } from 'lucide-react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import { SosHoldButton } from './SosHoldButton'
@@ -18,10 +19,20 @@ export function Shell({ children }: Props) {
   const activeDispatchId = groups.active[0]?.dispatchId ?? null
 
   const tabs = [
-    { to: '/', label: 'Dispatches', icon: '📋', exact: true },
-    { to: '/map', label: 'Map', icon: '🗺️', exact: false },
-    { to: '/messages', label: 'Messages', icon: '💬', exact: false },
-    { to: '/profile', label: 'Profile', icon: '👤', exact: false },
+    {
+      to: '/',
+      label: 'Dispatches',
+      icon: <ClipboardList size={20} aria-hidden="true" />,
+      exact: true,
+    },
+    { to: '/map', label: 'Map', icon: <Map size={20} aria-hidden="true" />, exact: false },
+    {
+      to: '/messages',
+      label: 'Messages',
+      icon: <MessageCircle size={20} aria-hidden="true" />,
+      exact: false,
+    },
+    { to: '/profile', label: 'Profile', icon: <User size={20} aria-hidden="true" />, exact: false },
   ]
 
   const isActive = (tab: (typeof tabs)[number]) => {
@@ -53,9 +64,7 @@ export function Shell({ children }: Props) {
                 aria-label={tab.label}
                 {...(active ? { 'aria-current': 'page' as const } : {})}
               >
-                <span className={styles.tabIcon} aria-hidden="true">
-                  {tab.icon}
-                </span>
+                <span className={styles.tabIcon}>{tab.icon}</span>
                 <span>{tab.label}</span>
               </NavLink>
               {tab.to === '/' && pendingCount > 0 && (

@@ -107,3 +107,10 @@
   align-items: center;
   justify-content: center;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .tabBar * {
+    transition: none;
+    animation: none;
+  }
+}

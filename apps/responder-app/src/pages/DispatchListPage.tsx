@@ -15,6 +15,7 @@ function statusLabel(uiStatus: string | undefined, fallback: string): string {
 }
 
 function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pending' | 'active' }) {
+  const navigate = useNavigate()
   const { report } = useReport(row.reportId)
   const sevTone =
     report?.severity === 'high'
@@ -23,9 +24,10 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
         ? styles.sevMedium
         : styles.sevLow
 
+  const destination = `/dispatches/${row.dispatchId}`
+
   return (
-    <Link
-      to={`/dispatches/${row.dispatchId}`}
+    <div
       className={[styles.card, variant === 'pending' ? styles.cardPending : styles.cardActive]
         .filter(Boolean)
         .join(' ')}
@@ -64,10 +66,16 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
       )}
       {variant === 'pending' && (
         <div className={styles.cardActions}>
-          <span className={styles.btnPrimary}>View &amp; Accept</span>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            onClick={() => void navigate(destination)}
+          >
+            View &amp; Accept
+          </button>
         </div>
       )}
-    </Link>
+    </div>
   )
 }
 
@@ -89,7 +97,7 @@ export function DispatchListPage() {
     return (
       <div className={styles.page}>
         <div className={styles.emptyState}>
-          <div className={styles.emptyIcon} aria-hidden="true">
+          <div className={styles.emptyIcon} role="img" aria-label="All dispatches complete">
             ✓
           </div>
           <h2 className={styles.emptyTitle}>All Clear!</h2>

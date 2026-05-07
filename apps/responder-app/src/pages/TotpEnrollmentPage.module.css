@@ -1,0 +1,132 @@
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 20px;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: #001e40;
+  margin: 0 0 8px;
+}
+
+.subhead {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 24px;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.qrPlaceholder {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 240px;
+  margin: 0 auto 16px;
+  border: 2px dashed #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  padding: 12px;
+}
+
+.secretKeyLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+  margin: 12px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.secretKey {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  background: #f3f4f6;
+  padding: 12px;
+  border-radius: 6px;
+  word-break: break-all;
+  color: #001e40;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 18px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2em;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.input:focus-visible {
+  outline: 2px solid #001e40;
+  outline-offset: 2px;
+  border-color: #001e40;
+}
+
+.button {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: #001e40;
+  color: #ffffff;
+}
+
+.button:hover:not(:disabled) {
+  background: #002b5c;
+}
+
+.button:focus-visible {
+  outline: 2px solid #001e40;
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: 12px;
+  background: #fee2e2;
+  border: 1px solid #991b1b;
+  color: #991b1b;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}

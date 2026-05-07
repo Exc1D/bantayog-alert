@@ -27,7 +27,17 @@ export function getReportTypeLabel(type: string | undefined): string {
   return REPORT_TYPE_LABEL[type] ?? type
 }
 
+const SPEC_CODE_LABEL: Record<string, string> = {
+  POL: 'Police Officer',
+  FIR: 'Firefighter',
+  MED: 'Medical/Paramedic',
+  ENG: 'Engineer/Search & Rescue Technical',
+  SAR: 'Search and Rescue',
+  SW: 'Social Worker',
+  GEN: 'General Responder',
+}
+
 export function getResponderTypeLabel(type: string | undefined): string {
-  if (type == null) return RESPONDER_TYPE_LABEL.general ?? 'General'
-  return RESPONDER_TYPE_LABEL[type] ?? RESPONDER_TYPE_LABEL.general ?? 'General'
+  if (type == null) return 'General Responder'
+  return SPEC_CODE_LABEL[type] ?? 'General Responder'
 }

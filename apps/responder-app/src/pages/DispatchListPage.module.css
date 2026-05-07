@@ -180,18 +180,18 @@
 }
 
 .sevHigh {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--sev-high-bg);
+  color: var(--sev-high-fg);
 }
 
 .sevMedium {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--sev-medium-bg);
+  color: var(--sev-medium-fg);
 }
 
 .sevLow {
-  background: #e0f2fe;
-  color: #075985;
+  background: var(--sev-low-bg);
+  color: var(--sev-low-fg);
 }
 
 .locationChip {

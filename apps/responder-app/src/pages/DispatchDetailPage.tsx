@@ -315,7 +315,11 @@ export function DispatchDetailPage() {
             )}
             {dispatch.status === 'on_scene' && (
               <div className={styles.resolutionForm}>
+                <label htmlFor="resolution-summary" className={styles.fieldLabel}>
+                  Resolution Summary
+                </label>
                 <textarea
+                  id="resolution-summary"
                   className={styles.textarea}
                   value={resolutionSummary}
                   onChange={(e) => {
@@ -411,7 +415,11 @@ export function DispatchDetailPage() {
           <div className={styles.statusSection}>
             <p className={styles.statusTitle}>Add Field Note</p>
             <div className={styles.fieldNoteForm}>
+              <label htmlFor="field-notes" className={styles.fieldLabel}>
+                Field Notes
+              </label>
               <textarea
+                id="field-notes"
                 className={styles.noteInput}
                 value={fieldNote}
                 onChange={(e) => {

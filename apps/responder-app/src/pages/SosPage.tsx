@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import { useTriggerSOS } from '../hooks/useTriggerSOS'
 import styles from './SosPage.module.css'
 
@@ -28,8 +29,8 @@ export function SosPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.icon} aria-hidden="true">
-        🆘
+      <div className={styles.icon} role="img" aria-label="SOS alert">
+        <AlertTriangle size={64} aria-hidden="true" />
       </div>
       <h1 className={styles.title}>SOS ACTIVATION</h1>
       <p className={styles.text}>
