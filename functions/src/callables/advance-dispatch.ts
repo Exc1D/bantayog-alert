@@ -104,7 +104,11 @@ export const advanceDispatchCore = async (
 }
 
 export const advanceDispatch = onCall(
-  { enforceAppCheck: true, consumeAppCheckToken: false },
+  {
+    enforceAppCheck: true,
+    consumeAppCheckToken: false,
+    cors: ['http://localhost:5174', 'http://localhost:5175'],
+  },
   async (request) => {
     const actor = requireAuth(request, ['responder'])
 

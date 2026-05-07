@@ -182,6 +182,7 @@ export const declineDispatch = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: process.env.NODE_ENV === 'production',
+    cors: ['http://localhost:5174', 'http://localhost:5175'],
     timeoutSeconds: 10,
     minInstances: 1,
   },

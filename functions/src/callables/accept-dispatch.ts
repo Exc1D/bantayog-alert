@@ -96,7 +96,13 @@ export async function acceptDispatchCore(
 }
 
 export const acceptDispatch = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, timeoutSeconds: 10, minInstances: 1 },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: true,
+    timeoutSeconds: 10,
+    minInstances: 1,
+    cors: ['http://localhost:5174', 'http://localhost:5175'],
+  },
   async (request: CallableRequest<unknown>) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = request.auth.token as Record<string, unknown> | null
