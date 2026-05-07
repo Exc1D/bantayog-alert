@@ -28,7 +28,7 @@ beforeAll(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = ctx.firestore() as any
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
     await db.collection('report_contacts').doc('r-contacts-1').set({
       municipalityId: 'daet',
       reportId: 'r-contacts-1',
