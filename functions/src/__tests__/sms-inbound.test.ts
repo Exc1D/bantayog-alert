@@ -108,10 +108,11 @@ describe('parseInboundSms', () => {
     expect(result.parsed?.details).toBeUndefined()
   })
 
-  it('parses with type synonym BAHA', () => {
-    const result = parseInboundSms('BANTAYOG BAHA LABO')
-    expect(result.confidence).toBe('low')
-    expect(result.parsed).toBeNull()
+  it('parses high-confidence report with type synonym BAHA', () => {
+    const result = parseInboundSms('BANTAYOG BAHA CALASGASAN')
+    expect(result.confidence).toBe('high')
+    expect(result.parsed?.reportType).toBe('flood')
+    expect(result.parsed?.barangay).toBe('Calasgasan')
   })
 
   it('fuzzy-matches barangay with typo', () => {
