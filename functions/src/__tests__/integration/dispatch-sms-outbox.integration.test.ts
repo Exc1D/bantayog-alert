@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { getFirestore } from 'firebase-admin/firestore'
 import { initializeApp, getApps } from 'firebase-admin/app'
@@ -19,14 +19,16 @@ const BASE_ENV = {
 const ORIGINAL = { ...process.env }
 
 beforeAll(async () => {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   testEnv = await initializeTestEnvironment({
     projectId: `phase-4a-disp-${Date.now().toString()}`,
     firestore: {
       rules:
         'rules_version = "2";\nservice cloud.firestore {\n match /{d=**} { allow read, write: if true; }\n}',
+      host: 'localhost',
+      port: 8081,
     },
   })
-  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   if (getApps().length === 0) initializeApp({ projectId: testEnv.projectId })
 })
 
@@ -37,6 +39,11 @@ beforeEach(() => {
 afterEach(async () => {
   await testEnv.clearFirestore()
   Object.assign(process.env, ORIGINAL)
+})
+
+afterAll(async () => {
+  await testEnv.cleanup()
+  delete process.env.FIRESTORE_EMULATOR_HOST
 })
 
 describe('dispatchSmsOutboxCore', () => {

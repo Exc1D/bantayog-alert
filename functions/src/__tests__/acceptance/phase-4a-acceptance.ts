@@ -29,7 +29,7 @@ import { smsDeliveryReportCore } from '../../http/sms-delivery-report.js'
 import { resolveProvider } from '../../services/sms-providers/factory.js'
 import { seedReportAtStatus, seedActiveAccount } from '../helpers/seed-factories.js'
 
-const adminDb = getFirestore()
+let adminDb: ReturnType<typeof getFirestore>
 
 /** Inline staff claims to avoid @shared path issues in this test location */
 function staffClaims(opts: { role: string; municipalityId?: string }): {
@@ -66,21 +66,23 @@ let testEnv: RulesTestEnvironment
 
 async function setup() {
   applyBaseEnv()
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
+  process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099'
 
   testEnv = await initializeTestEnvironment({
     projectId: `phase-4a-accept-${Date.now().toString()}`,
     firestore: {
       rules:
         'rules_version = "2";\nservice cloud.firestore {\n match /{d=**} { allow read, write: if true; }\n}',
+      host: 'localhost',
+      port: 8081,
     },
   })
-
-  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
-  process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099'
 
   if (getApps().length === 0) {
     initializeApp({ projectId: testEnv.projectId })
   }
+  adminDb = getFirestore()
 }
 
 // ─── Test Cases ──────────────────────────────────────────────────────────────

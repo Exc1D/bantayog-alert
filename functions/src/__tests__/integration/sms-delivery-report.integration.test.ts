@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -8,20 +8,28 @@ let testEnv: RulesTestEnvironment
 const SECRET = 'test-webhook-secret'
 
 beforeAll(async () => {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
+  process.env.SMS_WEBHOOK_INBOUND_SECRET = SECRET
   testEnv = await initializeTestEnvironment({
     projectId: `phase-4a-dlr-${Date.now().toString()}`,
     firestore: {
       rules:
         'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}',
+      host: 'localhost',
+      port: 8081,
     },
   })
-  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
-  process.env.SMS_WEBHOOK_INBOUND_SECRET = SECRET
   if (getApps().length === 0) initializeApp({ projectId: testEnv.projectId })
 })
 
 afterEach(async () => {
   await testEnv.clearFirestore()
+})
+
+afterAll(async () => {
+  await testEnv.cleanup()
+  delete process.env.FIRESTORE_EMULATOR_HOST
+  delete process.env.SMS_WEBHOOK_INBOUND_SECRET
 })
 
 describe('smsDeliveryReportCore', () => {

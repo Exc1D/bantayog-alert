@@ -7,14 +7,16 @@ import { cleanupSmsMinuteWindowsCore } from '../../triggers/cleanup-sms-minute-w
 let testEnv: RulesTestEnvironment
 
 beforeAll(async () => {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   testEnv = await initializeTestEnvironment({
     projectId: `phase-4a-clean-${Date.now().toString()}`,
     firestore: {
       rules:
         'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}',
+      host: 'localhost',
+      port: 8081,
     },
   })
-  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   if (getApps().length === 0) initializeApp({ projectId: testEnv.projectId })
 })
 

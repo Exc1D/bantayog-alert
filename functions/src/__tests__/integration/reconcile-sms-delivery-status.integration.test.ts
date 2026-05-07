@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -7,19 +7,26 @@ import { reconcileSmsDeliveryStatusCore } from '../../triggers/reconcile-sms-del
 let testEnv: RulesTestEnvironment
 
 beforeAll(async () => {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   testEnv = await initializeTestEnvironment({
     projectId: `phase-4a-rec-${Date.now().toString()}`,
     firestore: {
       rules:
         'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}',
+      host: 'localhost',
+      port: 8081,
     },
   })
-  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
   if (getApps().length === 0) initializeApp({ projectId: testEnv.projectId })
 })
 
 afterEach(async () => {
   await testEnv.clearFirestore()
+})
+
+afterAll(async () => {
+  await testEnv.cleanup()
+  delete process.env.FIRESTORE_EMULATOR_HOST
 })
 
 function baseOutbox(id: string, overrides: Record<string, unknown> = {}) {
