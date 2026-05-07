@@ -89,37 +89,39 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
           throw new BantayogError(BantayogErrorCode.INVALID_STATUS_TRANSITION, 'invalid transition')
         }
 
+        // Read report before any writes (Firestore transaction invariant).
+        const reportRef = db.collection('reports').doc(dispatch.reportId as string)
+        const reportSnap = await tx.get(reportRef)
+        const reportCurrentDispatchId = reportSnap.exists
+          ? (reportSnap.data()?.currentDispatchId as string | undefined)
+          : undefined
+
         tx.update(dispatchRef, {
           status: to,
-          lastStatusAt: deps.now,
+          lastStatusAt: deps.now.toMillis(),
           cancelledBy: deps.actor.uid,
           cancelReason: deps.reason,
         })
 
-        const reportRef = db.collection('reports').doc(dispatch.reportId as string)
-        const reportSnap = await tx.get(reportRef)
-        if (reportSnap.exists) {
-          const reportData = reportSnap.data()
-          if (reportData?.currentDispatchId === deps.dispatchId) {
-            tx.update(reportRef, {
-              status: 'verified',
-              currentDispatchId: null,
-              lastStatusAt: deps.now,
-              lastStatusBy: deps.actor.uid,
-            })
-            const revertEv = db.collection('report_events').doc()
-            tx.set(revertEv, {
-              eventId: revertEv.id,
-              reportId: dispatch.reportId,
-              from: 'assigned',
-              to: 'verified',
-              actor: deps.actor.uid,
-              actorRole: deps.actor.claims.role ?? 'municipal_admin',
-              at: deps.now,
-              correlationId,
-              schemaVersion: 1,
-            })
-          }
+        if (reportCurrentDispatchId === deps.dispatchId) {
+          tx.update(reportRef, {
+            status: 'verified',
+            currentDispatchId: null,
+            lastStatusAt: deps.now.toMillis(),
+            lastStatusBy: deps.actor.uid,
+          })
+          const revertEv = db.collection('report_events').doc()
+          tx.set(revertEv, {
+            eventId: revertEv.id,
+            reportId: dispatch.reportId,
+            from: 'assigned',
+            to: 'verified',
+            actor: deps.actor.uid,
+            actorRole: deps.actor.claims.role ?? 'municipal_admin',
+            at: deps.now.toMillis(),
+            correlationId,
+            schemaVersion: 1,
+          })
         }
 
         const evRef = db.collection('dispatch_events').doc()
@@ -132,7 +134,7 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
           actor: deps.actor.uid,
           actorRole: deps.actor.claims.role ?? 'municipal_admin',
           reason: deps.reason,
-          at: deps.now,
+          at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,
         })

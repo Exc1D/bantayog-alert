@@ -63,6 +63,10 @@ export async function initiateShiftHandoffCore(
   actor: HandoffActor,
   correlationId: string,
 ): Promise<InitiateResult> {
+  if (!ADMIN_ROLES.includes(actor.claims.role)) {
+    return { success: false, errorCode: 'permission-denied' }
+  }
+
   if (!actor.claims.active) {
     log({
       severity: 'ERROR',
@@ -194,7 +198,7 @@ export async function acceptShiftHandoffCore(
           if (handoff.toUid === actor.uid) {
             return { success: true as const }
           }
-          return { success: false, errorCode: 'already-exists' }
+          return { success: false, errorCode: 'already-accepted' }
         }
 
         tx.update(snap.ref, {

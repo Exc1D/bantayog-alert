@@ -35,6 +35,7 @@ export interface OutboxPayload {
   retryCount: number
   locale: SmsLocale
   reportId: string
+  dispatchId?: string
   createdAt: number
   queuedAt: number
   schemaVersion: 2
@@ -84,6 +85,7 @@ export function buildEnqueueSmsPayload(args: EnqueueSmsArgs): OutboxPayload {
     retryCount: 0,
     locale: args.locale,
     reportId: args.reportId,
+    ...(args.dispatchId ? { dispatchId: args.dispatchId } : {}),
     createdAt: args.nowMs,
     queuedAt: args.nowMs,
     schemaVersion: 2,

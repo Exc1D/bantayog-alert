@@ -43,8 +43,12 @@ export async function cancelReportByCitizenCore(
       payload: { reportId: deps.reportId, actorUid: deps.actor.uid },
       now: () => deps.now.toMillis(),
     },
-    async () =>
-      db.runTransaction(async (tx) => {
+    async () => {
+      const lookupQ = db.collection('report_lookup').where('reportId', '==', deps.reportId).limit(1)
+      const lookupSnap = await lookupQ.get()
+      const lookupDoc = lookupSnap.docs[0]
+
+      return db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)
         const snap = await tx.get(reportRef)
         if (!snap.exists) {
@@ -67,13 +71,6 @@ export async function cancelReportByCitizenCore(
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'You do not own this report')
         }
 
-        const lookupQ = db
-          .collection('report_lookup')
-          .where('reportId', '==', deps.reportId)
-          .limit(1)
-        const lookupSnap = await tx.get(lookupQ)
-        const lookupDoc = lookupSnap.docs[0]
-
         tx.delete(reportRef)
         tx.delete(privateRef)
 
@@ -92,7 +89,7 @@ export async function cancelReportByCitizenCore(
           to: 'citizen_cancelled',
           actor: deps.actor.uid,
           actorRole: deps.actor.claims.role ?? 'citizen',
-          at: deps.now,
+          at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,
         })
@@ -109,7 +106,8 @@ export async function cancelReportByCitizenCore(
         })
 
         return { reportId: deps.reportId }
-      }),
+      })
+    },
   )
 
   const storage = getStorage()

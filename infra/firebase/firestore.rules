@@ -364,6 +364,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /hazard_signal_status/{s} {
+      allow read: if isSuperadmin() && isActivePrivileged();
+      allow write: if false;
+    }
+
     match /pending_media/{uploadId} {
       allow read, write: if false;
     }

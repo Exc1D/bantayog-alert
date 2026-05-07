@@ -1,5 +1,5 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
-import { Firestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
@@ -71,8 +71,8 @@ export async function acceptDispatchCore(
 
         tx.update(dispatchRef, {
           status: 'accepted',
-          acceptedAt: FieldValue.serverTimestamp(),
-          lastStatusAt: deps.now,
+          acceptedAt: deps.now.toMillis(),
+          lastStatusAt: deps.now.toMillis(),
         })
 
         const evRef = db.collection('dispatch_events').doc()
@@ -82,7 +82,7 @@ export async function acceptDispatchCore(
           to: 'accepted',
           actorUid: deps.actor.uid,
           actorRole: 'responder',
-          at: deps.now,
+          at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,
         })
