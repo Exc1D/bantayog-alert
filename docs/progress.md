@@ -12,7 +12,7 @@ Provincial superadmins no longer land on the mock-backed prototype analytics/rep
 - ✅ Non-superadmin fallback behavior remains unchanged on those routes
 - ✅ Added focused Vitest coverage for all retired/redirected legacy routes and the non-superadmin fallback
 - ✅ No fake report-generation backend was introduced; unsupported mock report UI remains out of the normal superadmin path instead of pretending to be real
-- **Gate:** `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/prototype-route-redirects.test.tsx` pass, `pnpm --dir apps/admin-desktop typecheck` pass, `pnpm --dir apps/admin-desktop exec eslint src/routes.tsx src/__tests__/prototype-route-redirects.test.tsx` pass; full `pnpm --dir apps/admin-desktop lint` still reports 2 pre-existing unrelated warnings in `src/__tests__/triage-queue.test.tsx` and `src/pages/AgencyAssistanceQueuePage.test.tsx`
+- **Gate:** `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/prototype-route-redirects.test.tsx` pass, `pnpm --dir apps/admin-desktop typecheck` pass, `pnpm --dir apps/admin-desktop exec eslint src/routes.tsx src/pages/SystemHealthPage.tsx src/__tests__/prototype-route-redirects.test.tsx` pass; full `pnpm --dir apps/admin-desktop lint` still reports 2 pre-existing unrelated warnings in `src/__tests__/triage-queue.test.tsx` and `src/pages/AgencyAssistanceQueuePage.test.tsx`
 
 ## Current Status (2026-05-06)
 
