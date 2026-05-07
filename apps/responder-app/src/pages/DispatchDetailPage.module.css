@@ -81,16 +81,16 @@
 }
 
 .sevHigh {
-  background: #fee2e2;
-  color: var(--color-danger);
+  background: var(--sev-high-bg);
+  color: var(--sev-high-fg);
 }
 .sevMedium {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--sev-medium-bg);
+  color: var(--sev-medium-fg);
 }
 .sevLow {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--sev-low-bg);
+  color: var(--sev-low-fg);
 }
 
 .incidentMeta {
@@ -178,6 +178,12 @@
 .togglePrimary:hover:not(:disabled) {
   background: var(--r-navy-light);
   color: #fff;
+}
+
+.fieldLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--r-text);
 }
 
 .resolutionForm {

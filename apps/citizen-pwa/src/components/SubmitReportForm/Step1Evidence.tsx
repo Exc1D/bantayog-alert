@@ -298,7 +298,9 @@ export function Step1Evidence({
 
         {/* Incident type grid */}
         <div>
-          <p className="text-sm font-semibold text-surface-700 mb-3 block">Incident Type</p>
+          <p className="text-sm font-semibold text-surface-700 mb-3 block">
+            What type of incident is this?
+          </p>
           <div className="grid grid-cols-2 gap-3">
             {INCIDENT_TYPES.map(({ value, label, Icon, colorClass, selBorder, selBg, selText }) => {
               const isSelected = reportType === value

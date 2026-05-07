@@ -310,7 +310,7 @@ export function RevealSheet({
       <div
         className="absolute bottom-0 left-0 right-0 max-h-[90svh] overflow-y-auto bg-surface-50 rounded-t-3xl p-5 pointer-events-auto shadow-2xl"
         style={{
-          animation: 'reveal-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+          animation: 'reveal-slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards',
         }}
       >
         <div className="w-10 h-1 bg-surface-400 rounded-full mx-auto mt-3 mb-4" />

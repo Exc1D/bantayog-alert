@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event'
 const mockUseMuniReports = vi.fn()
 
 vi.mock('../hooks/useMuniReports', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   useMuniReports: (...args: unknown[]) => mockUseMuniReports(...args),
 }))
 
@@ -31,8 +30,8 @@ vi.mock('../hooks/usePendingHandoffs', () => ({
   usePendingHandoffs: () => ({ handoffs: [], error: null }),
 }))
 
-vi.mock('../pages/ReportDetailPanel', () => ({
-  ReportDetailPanel: () => <div>detail</div>,
+vi.mock('../pages/TriagePanel', () => ({
+  TriagePanel: () => <div>detail</div>,
 }))
 vi.mock('../pages/DispatchModal', () => ({
   DispatchModal: () => <div>dispatch</div>,

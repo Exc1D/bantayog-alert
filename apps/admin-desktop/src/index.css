@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -29,17 +31,19 @@
     --color-bg-subtle: #f6f7f9;
     --color-text: #0f1419;
     --color-text-muted: #556068;
-    --color-accent: #d64933;
-    --color-accent-hover: #b53c2a;
-    --color-success: #177245;
-    --color-warning: #c7761e;
-    --color-danger: #b31b1b;
+    --color-accent: #a73400;
+    --color-accent-hover: #8a2b00;
+    --color-success: #065f46;
+    --color-warning: #92400e;
+    --color-danger: #991b1b;
     --color-border: #dfe3e8;
 
     --color-bg-elevated: #ffffff;
     --color-border-medium: #c5cad1;
     --color-text-tertiary: #8a9199;
-    --color-purple: #7c3aed;
+    --color-navy: #001e40;
+    --color-surface: #f5f7fa;
+    --color-text-primary: #1d1d1f;
 
     --space-1: 4px;
     --space-2: 8px;
@@ -108,4 +112,17 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-medium);
+}
+
+:focus-visible {
+  outline: 2px solid #001e40;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 30, 64, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-pulse-ring {
+    animation: none;
+  }
 }

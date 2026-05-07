@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { reportDocSchema } from '@bantayog/shared-validators'
 import { useSubmitResponderWitnessedReport } from '../hooks/useSubmitResponderWitnessedReport'
 import styles from './DispatchDetailPage.module.css'
 
 const REPORT_TYPES = reportDocSchema.shape.reportType.options
+
+type GpsState =
+  | { status: 'pending' }
+  | { status: 'captured'; coords: GeolocationCoordinates }
+  | { status: 'error'; message: string }
 
 export function ResponderWitnessReportPage() {
   const { id } = useParams<{ id: string }>()
@@ -14,8 +19,30 @@ export function ResponderWitnessReportPage() {
   const [reportType, setReportType] = useState('')
   const [description, setDescription] = useState('')
   const [severity, setSeverity] = useState('')
-  const [photoUrl, setPhotoUrl] = useState('')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [gps, setGps] = useState<GpsState>({ status: 'pending' })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function requestGps() {
+    setGps({ status: 'pending' })
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGps({ status: 'captured', coords: pos.coords })
+      },
+      (err) => {
+        setGps({ status: 'error', message: err.message })
+      },
+    )
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    requestGps()
+  }, [])
+
+  const gpsReady = gps.status === 'captured'
+  const canSubmit = gpsReady && !!reportType && !!description.trim() && !!severity
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -24,13 +51,16 @@ export function ResponderWitnessReportPage() {
       setValidationError('Report type, description, and severity are required.')
       return
     }
+    if (!gpsReady) {
+      setValidationError('GPS location is required.')
+      return
+    }
     setValidationError(null)
     try {
       await submit({
         reportType,
         description: normalizedDescription,
         severity,
-        ...(photoUrl.trim() ? { photoUrl: photoUrl.trim() } : {}),
       })
       void navigate(`/dispatches/${id ?? ''}`)
     } catch (err: unknown) {
@@ -52,6 +82,24 @@ export function ResponderWitnessReportPage() {
       </div>
 
       <div className={styles.body}>
+        {/* GPS status */}
+        <div aria-live="polite" aria-atomic="true">
+          {gps.status === 'captured' && (
+            <p className={styles.gpsSuccess ?? ''}>Location captured</p>
+          )}
+          {gps.status === 'error' && (
+            <div>
+              <p className={styles.errorMsg}>Location unavailable: {gps.message}</p>
+              <button type="button" onClick={requestGps} className={styles.toggleBtn}>
+                Retry
+              </button>
+            </div>
+          )}
+          {gps.status === 'pending' && (
+            <p className={styles.gpsSuccess ?? ''}>Acquiring GPS location…</p>
+          )}
+        </div>
+
         <form onSubmit={(e) => void handleSubmit(e)} className={styles.statusSection}>
           <div>
             <label htmlFor="reportType" className={styles.statusTitle}>
@@ -110,30 +158,38 @@ export function ResponderWitnessReportPage() {
             </div>
           </fieldset>
           <div>
-            <label htmlFor="photoUrl" className={styles.statusTitle}>
-              Photo URL (optional)
-            </label>
-            <input
-              id="photoUrl"
-              type="url"
-              value={photoUrl}
-              onChange={(e) => {
-                setPhotoUrl(e.target.value)
+            <button
+              type="button"
+              className={styles.toggleBtn}
+              onClick={() => {
+                fileInputRef.current?.click()
               }}
-              placeholder="https://..."
-              className={styles.select}
+            >
+              Add photo
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null
+                setPhotoFile(file)
+              }}
+              aria-label="Photo attachment"
             />
+            {photoFile !== null && <span className={styles.statusTitle}>{photoFile.name}</span>}
           </div>
-          {validationError && (
+          {validationError !== null && (
             <p role="alert" className={styles.errorMsg}>
               {validationError}
             </p>
           )}
-          {error && <p className={styles.errorMsg}>{error.message}</p>}
+          {error !== undefined && <p className={styles.errorMsg}>{error.message}</p>}
           <div className={styles.quickToggles}>
             <button
               type="submit"
-              disabled={loading}
+              disabled={!canSubmit || loading}
               className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
             >
               {loading ? 'Submitting…' : 'Submit report'}

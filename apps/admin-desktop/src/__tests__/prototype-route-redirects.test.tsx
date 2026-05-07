@@ -65,6 +65,12 @@ vi.mock('../pages/SystemHealthPage', () => ({
   SystemHealthPage: () => <div>live province health</div>,
 }))
 vi.mock('../pages/BreakGlassPage', () => ({ BreakGlassPage: () => <div>break glass page</div> }))
+vi.mock('../pages/ProvinceNdrrmcPage', () => ({
+  ProvinceNdrrmcPage: () => <div>live province ndrrmc</div>,
+}))
+vi.mock('../pages/ProvinceEmergencyPage', () => ({
+  ProvinceEmergencyPage: () => <div>live province emergency</div>,
+}))
 vi.mock('../pages/DashboardPage', () => ({ default: () => <div>prototype dashboard</div> }))
 vi.mock('../pages/MapPage', () => ({ default: () => <div>prototype map</div> }))
 vi.mock('../pages/UsersPage', () => ({ default: () => <div>prototype users</div> }))

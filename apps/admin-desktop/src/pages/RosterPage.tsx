@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
-import { useRosterManagement } from '../hooks/useRosterManagement'
+import { useRosterManagement, type RosterResponder } from '../hooks/useRosterManagement'
 import { computeFreshness, type Freshness } from '../utils/freshness'
 
 const FRESHNESS_COLOR: Record<Freshness, string> = {
@@ -8,6 +8,258 @@ const FRESHNESS_COLOR: Record<Freshness, string> = {
   degraded: 'orange',
   stale: '#c60',
   offline: '#999',
+}
+
+// Responder type badge colors
+const RESPONDER_TYPE_STYLE: Record<string, { bg: string; text: string }> = {
+  POL: { bg: '#dbeafe', text: '#1e40af' },
+  FIR: { bg: '#fee2e2', text: '#991b1b' },
+  MED: { bg: '#dcfce7', text: '#166534' },
+  ENG: { bg: '#fef9c3', text: '#854d0e' },
+  SAR: { bg: '#f3e8ff', text: '#6b21a8' },
+  SW: { bg: '#cffafe', text: '#164e63' },
+  GEN: { bg: '#f0f4f8', text: '#334155' },
+}
+
+interface RevokeState {
+  uid: string
+  reason: string
+}
+
+interface BulkConfirmState {
+  // 'available' maps to the "Set All On-Duty" action; 'off_duty' to "Set All Off-Duty"
+  targetStatus: 'available' | 'off_duty'
+  label: string
+}
+
+function SpecializationChips({ specializations }: { specializations: string[] }) {
+  if (specializations.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+      {specializations.map((s) => (
+        <span
+          key={s}
+          style={{
+            padding: '2px 8px',
+            borderRadius: 12,
+            fontSize: '0.7rem',
+            fontWeight: 500,
+            background: '#f0f4f8',
+            color: '#334155',
+            border: '1px solid #dfe3e8',
+          }}
+        >
+          {s}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function ResponderRow({
+  r,
+  actingUid,
+  revokeState,
+  onSuspend,
+  onRevokeClick,
+  onRevokeSubmit,
+  onRevokeCancel,
+  onRevokeReasonChange,
+}: {
+  r: RosterResponder
+  actingUid: string | null
+  revokeState: RevokeState | null
+  onSuspend: (uid: string) => void
+  onRevokeClick: (uid: string) => void
+  onRevokeSubmit: () => void
+  onRevokeCancel: () => void
+  onRevokeReasonChange: (reason: string) => void
+}) {
+  const freshness = computeFreshness(r.lastTelemetryAt)
+  const typeStyle = RESPONDER_TYPE_STYLE[r.responderType] ??
+    RESPONDER_TYPE_STYLE.GEN ?? { bg: '#f3f4f6', text: '#374151' }
+  const isRevokingThis = revokeState?.uid === r.uid
+  const warningId = `revoke-warning-${r.uid}`
+
+  return (
+    <li
+      style={{
+        marginBottom: 12,
+        border: '1px solid #dfe3e8',
+        borderRadius: 8,
+        padding: 16,
+        background: '#ffffff',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+      }}
+    >
+      {/* Identity row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <input
+          type="checkbox"
+          aria-label={`Select ${r.displayName}`}
+          style={{ width: 16, height: 16 }}
+          disabled
+        />
+        {/* Responder type badge */}
+        <span
+          style={{
+            padding: '2px 8px',
+            borderRadius: 12,
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            background: typeStyle.bg,
+            color: typeStyle.text,
+            letterSpacing: '0.05em',
+          }}
+        >
+          {r.responderType}
+        </span>
+        <strong style={{ fontSize: 14, color: '#1d1d1f' }}>{r.displayName}</strong>
+        {/* Availability status */}
+        <span
+          style={{
+            padding: '2px 8px',
+            borderRadius: 12,
+            background: '#f0f4f8',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            color: '#556068',
+          }}
+        >
+          {r.availabilityStatus}
+        </span>
+        {r.lastTelemetryAt != null && (
+          <span style={{ fontSize: '0.75rem', color: FRESHNESS_COLOR[freshness] }}>
+            {freshness} · {new Date(r.lastTelemetryAt).toLocaleTimeString()}
+          </span>
+        )}
+      </div>
+
+      {/* Specialization chips */}
+      <SpecializationChips specializations={r.specializations} />
+
+      {/* Actions */}
+      <div style={{ marginTop: 12 }}>
+        {isRevokingThis ? (
+          <div>
+            <p
+              id={warningId}
+              style={{
+                fontSize: 13,
+                color: '#991b1b',
+                background: '#fee2e2',
+                padding: '8px 12px',
+                borderRadius: 6,
+                marginBottom: 8,
+              }}
+            >
+              This immediately ends their active session and logs them out of all devices.
+            </p>
+            <label
+              htmlFor={`revoke-reason-${r.uid}`}
+              style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}
+            >
+              Reason for revoke
+            </label>
+            <textarea
+              id={`revoke-reason-${r.uid}`}
+              placeholder="Reason for revoke..."
+              value={revokeState.reason}
+              onChange={(e) => {
+                onRevokeReasonChange(e.target.value)
+              }}
+              aria-describedby={warningId}
+              style={{
+                display: 'block',
+                width: '100%',
+                minHeight: 56,
+                padding: '6px 8px',
+                border: '1px solid #dfe3e8',
+                borderRadius: 6,
+                fontSize: 13,
+                marginBottom: 8,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                disabled={!revokeState.reason.trim() || actingUid === r.uid}
+                onClick={onRevokeSubmit}
+                style={{
+                  padding: '8px 16px',
+                  background: '#a73400',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontWeight: 600,
+                  cursor: revokeState.reason.trim() ? 'pointer' : 'not-allowed',
+                  minHeight: 44,
+                  fontSize: 13,
+                }}
+              >
+                Confirm Revoke
+              </button>
+              <button
+                onClick={onRevokeCancel}
+                style={{
+                  padding: '8px 16px',
+                  background: '#f0f4f8',
+                  color: '#1d1d1f',
+                  border: '1px solid #dfe3e8',
+                  borderRadius: 6,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  minHeight: 44,
+                  fontSize: 13,
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              disabled={actingUid === r.uid}
+              onClick={() => {
+                onSuspend(r.uid)
+              }}
+              style={{
+                padding: '6px 14px',
+                background: '#f0f4f8',
+                color: '#1d1d1f',
+                border: '1px solid #dfe3e8',
+                borderRadius: 6,
+                cursor: 'pointer',
+                minHeight: 36,
+                fontSize: 13,
+              }}
+            >
+              Suspend
+            </button>
+            <button
+              disabled={actingUid === r.uid}
+              onClick={() => {
+                onRevokeClick(r.uid)
+              }}
+              style={{
+                padding: '6px 14px',
+                background: '#fff0ee',
+                color: '#a73400',
+                border: '1px solid #f4c3b2',
+                borderRadius: 6,
+                fontWeight: 600,
+                cursor: 'pointer',
+                minHeight: 36,
+                fontSize: 13,
+              }}
+            >
+              Revoke Access
+            </button>
+          </div>
+        )}
+      </div>
+    </li>
+  )
 }
 
 export function RosterPage() {
@@ -21,13 +273,12 @@ export function RosterPage() {
     revokeResponder,
     bulkAvailabilityOverride,
   } = useRosterManagement(agencyId)
-  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set())
-  const [bulkStatus, setBulkStatus] = useState<'available' | 'unavailable' | 'off_duty'>(
-    'available',
-  )
+
   const [banner, setBanner] = useState<string | null>(null)
   const [actingUid, setActingUid] = useState<string | null>(null)
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [revokeState, setRevokeState] = useState<RevokeState | null>(null)
+  const [bulkConfirm, setBulkConfirm] = useState<BulkConfirmState | null>(null)
   const [, setTick] = useState(0)
 
   useEffect(() => {
@@ -38,18 +289,6 @@ export function RosterPage() {
       clearInterval(id)
     }
   }, [])
-
-  const toggleSelection = (uid: string) => {
-    setSelectedUids((prev) => {
-      const next = new Set(prev)
-      if (next.has(uid)) {
-        next.delete(uid)
-      } else {
-        next.add(uid)
-      }
-      return next
-    })
-  }
 
   const handleSuspend = (uid: string) => {
     void (async () => {
@@ -65,11 +304,18 @@ export function RosterPage() {
     })()
   }
 
-  const handleRevoke = (uid: string) => {
+  const handleRevokeClick = (uid: string) => {
+    setRevokeState({ uid, reason: '' })
+  }
+
+  const handleRevokeSubmit = () => {
+    if (!revokeState?.reason.trim()) return
+    const { uid } = revokeState
     void (async () => {
       setActingUid(uid)
       try {
         await revokeResponder(uid)
+        setRevokeState(null)
         setBanner(null)
       } catch (err: unknown) {
         setBanner(err instanceof Error ? err.message : 'Revoke failed')
@@ -79,13 +325,29 @@ export function RosterPage() {
     })()
   }
 
-  const handleBulkOverride = () => {
-    if (selectedUids.size === 0) return
+  const handleRevokeCancel = () => {
+    setRevokeState(null)
+  }
+
+  const handleRevokeReasonChange = (reason: string) => {
+    setRevokeState((prev) => (prev ? { ...prev, reason } : null))
+  }
+
+  const handleBulkRequest = (targetStatus: 'available' | 'off_duty') => {
+    const label = targetStatus === 'available' ? 'On-Duty' : 'Off-Duty'
+    setBulkConfirm({ targetStatus, label })
+  }
+
+  const handleBulkConfirm = () => {
+    if (!bulkConfirm) return
+    const { targetStatus } = bulkConfirm
+    const uids = responders.map((r) => r.uid)
+    if (uids.length === 0) return
     void (async () => {
       setBulkLoading(true)
       try {
-        await bulkAvailabilityOverride(Array.from(selectedUids), bulkStatus)
-        setSelectedUids(new Set())
+        await bulkAvailabilityOverride(uids, targetStatus)
+        setBulkConfirm(null)
         setBanner(null)
       } catch (err: unknown) {
         setBanner(err instanceof Error ? err.message : 'Bulk override failed')
@@ -95,105 +357,177 @@ export function RosterPage() {
     })()
   }
 
-  return (
-    <main>
-      <header>
-        <h1>Roster · {agencyId ?? 'N/A'}</h1>
-      </header>
-      {banner && <div role="alert">{banner}</div>}
+  const handleBulkCancel = () => {
+    setBulkConfirm(null)
+  }
 
-      {selectedUids.size > 0 && (
-        <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span>Bulk override ({selectedUids.size} selected):</span>
-          <select
-            value={bulkStatus}
-            onChange={(e) => {
-              const value = e.target.value as 'available' | 'unavailable' | 'off_duty'
-              setBulkStatus(value)
+  return (
+    <main style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#001e40', margin: 0 }}>
+          Roster · {agencyId ?? 'N/A'}
+        </h1>
+
+        {/* Bulk shift toggle buttons */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => {
+              handleBulkRequest('available')
+            }}
+            disabled={bulkLoading || responders.length === 0}
+            style={{
+              padding: '8px 16px',
+              background: '#001e40',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontWeight: 600,
+              cursor: responders.length > 0 ? 'pointer' : 'not-allowed',
+              minHeight: 44,
+              fontSize: 13,
             }}
           >
-            <option value="available">Available</option>
-            <option value="unavailable">Unavailable</option>
-            <option value="off_duty">Off Duty</option>
-          </select>
-          <button onClick={handleBulkOverride} disabled={bulkLoading || selectedUids.size === 0}>
-            Apply
+            Set All On-Duty
           </button>
+          <button
+            onClick={() => {
+              handleBulkRequest('off_duty')
+            }}
+            disabled={bulkLoading || responders.length === 0}
+            style={{
+              padding: '8px 16px',
+              background: '#f0f4f8',
+              color: '#1d1d1f',
+              border: '1px solid #dfe3e8',
+              borderRadius: 6,
+              fontWeight: 500,
+              cursor: responders.length > 0 ? 'pointer' : 'not-allowed',
+              minHeight: 44,
+              fontSize: 13,
+            }}
+          >
+            Set All Off-Duty
+          </button>
+        </div>
+      </header>
+
+      {banner && (
+        <div
+          role="alert"
+          style={{
+            padding: '10px 16px',
+            background: '#fee2e2',
+            color: '#991b1b',
+            borderRadius: 6,
+            marginBottom: 16,
+            fontSize: 13,
+          }}
+        >
+          {banner}
+        </div>
+      )}
+
+      {/* Inline bulk confirmation panel */}
+      {bulkConfirm && (
+        <div
+          role="region"
+          aria-label="Bulk shift confirmation"
+          style={{
+            padding: '16px',
+            background: '#fef9c3',
+            border: '1px solid #fde047',
+            borderRadius: 8,
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 14, color: '#854d0e', flex: 1 }}>
+            This will set <strong>all {String(responders.length)} responders</strong> to{' '}
+            <strong>{bulkConfirm.label}</strong>. Confirm?
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleBulkConfirm}
+              disabled={bulkLoading}
+              style={{
+                padding: '8px 20px',
+                background: '#001e40',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                fontWeight: 600,
+                cursor: 'pointer',
+                minHeight: 44,
+                fontSize: 13,
+              }}
+            >
+              Confirm
+            </button>
+            <button
+              onClick={handleBulkCancel}
+              style={{
+                padding: '8px 16px',
+                background: '#ffffff',
+                color: '#1d1d1f',
+                border: '1px solid #dfe3e8',
+                borderRadius: 6,
+                cursor: 'pointer',
+                minHeight: 44,
+                fontSize: 13,
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
       {loading ? (
-        <p>Loading…</p>
+        <p aria-live="polite">Loading…</p>
       ) : error ? (
         <p role="alert">Error: {error}</p>
       ) : responders.length === 0 ? (
-        <p>No responders.</p>
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '48px 24px',
+            border: '1px dashed #dfe3e8',
+            borderRadius: 10,
+            color: '#8a9199',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 15 }}>No responders</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13 }}>
+            Responders assigned to this agency will appear here.
+          </p>
+        </div>
       ) : (
-        <ul>
-          {responders.map((r) => {
-            const freshness = computeFreshness(r.lastTelemetryAt)
-            return (
-              <li key={r.uid} style={{ marginBottom: 12, border: '1px solid #ccc', padding: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedUids.has(r.uid)}
-                    onChange={() => {
-                      toggleSelection(r.uid)
-                    }}
-                    aria-label={`Select ${r.displayName}`}
-                  />
-                  <strong>{r.displayName}</strong>
-                  <span
-                    style={{
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      background: '#eee',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {r.availabilityStatus}
-                  </span>
-                  {r.lastTelemetryAt != null && (
-                    <span style={{ fontSize: '0.75rem', color: FRESHNESS_COLOR[freshness] }}>
-                      {freshness} · {new Date(r.lastTelemetryAt).toLocaleTimeString()}
-                    </span>
-                  )}
-                </div>
-                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                  <button
-                    disabled={actingUid === r.uid}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Suspend responder ${r.displayName}? This will set them off-duty.`,
-                        )
-                      ) {
-                        handleSuspend(r.uid)
-                      }
-                    }}
-                  >
-                    Suspend
-                  </button>
-                  <button
-                    disabled={actingUid === r.uid}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Revoke responder ${r.displayName}? This action cannot be self-undone.`,
-                        )
-                      ) {
-                        handleRevoke(r.uid)
-                      }
-                    }}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              </li>
-            )
-          })}
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {responders.map((r) => (
+            <ResponderRow
+              key={r.uid}
+              r={r}
+              actingUid={actingUid}
+              revokeState={revokeState?.uid === r.uid ? revokeState : null}
+              onSuspend={handleSuspend}
+              onRevokeClick={handleRevokeClick}
+              onRevokeSubmit={handleRevokeSubmit}
+              onRevokeCancel={handleRevokeCancel}
+              onRevokeReasonChange={handleRevokeReasonChange}
+            />
+          ))}
         </ul>
       )}
     </main>

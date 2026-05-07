@@ -236,4 +236,16 @@ export const callables = {
       functions,
       'prewarmSurge',
     )(payload).then((r) => r.data),
+  requestAgencyAssistance: (payload: {
+    reportId: string
+    agencyId: string
+    requestType: string
+    priority: 'routine' | 'urgent' | 'emergency'
+    message: string
+    idempotencyKey: string
+  }) =>
+    httpsCallable<typeof payload, { requestId: string }>(
+      functions,
+      'requestAgencyAssistance',
+    )(payload).then((r) => r.data),
 }

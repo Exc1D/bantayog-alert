@@ -12,7 +12,6 @@ const { mockUseAgencyAssistanceQueue, mockCallable, mockHttpsCallable } = vi.hoi
 })
 
 vi.mock('../hooks/useAgencyAssistanceQueue', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   useAgencyAssistanceQueue: (...args: unknown[]) => mockUseAgencyAssistanceQueue(...args),
 }))
 
@@ -37,12 +36,17 @@ vi.mock('../app/firebase', () => ({
 const pendingRequest = {
   id: 'ar1',
   reportId: 'r1',
+  requestedByMunicipalId: 'daet',
   requestedByMunicipality: 'Daet',
   message: 'Need BFP assistance',
   priority: 'urgent' as const,
   status: 'pending' as const,
   targetAgencyId: 'bfp',
+  requestType: 'BFP' as const,
+  fulfilledByDispatchIds: [],
   createdAt: 1713350400000,
+  expiresAt: Date.now() + 60 * 60 * 1000,
+  schemaVersion: 1,
 }
 
 beforeEach(() => {
@@ -59,6 +63,44 @@ describe('AgencyAssistanceQueuePage', () => {
   it('renders pending requests for agency_admin role', () => {
     render(<AgencyAssistanceQueuePage />)
     expect(screen.getByText('Need BFP assistance')).toBeInTheDocument()
+  })
+
+  it('shows empty state when no pending requests exist', () => {
+    mockUseAgencyAssistanceQueue.mockReturnValue({
+      requests: [],
+      backupRequests: [],
+      loading: false,
+      error: null,
+    })
+    render(<AgencyAssistanceQueuePage />)
+    expect(screen.getByText(/no pending assistance requests/i)).toBeInTheDocument()
+  })
+
+  it('renders priority badge with correct label for urgent', () => {
+    render(<AgencyAssistanceQueuePage />)
+    expect(screen.getByText(/urgent/i)).toBeInTheDocument()
+  })
+
+  it('renders municipal origin on each request card', () => {
+    render(<AgencyAssistanceQueuePage />)
+    expect(screen.getByText('Daet')).toBeInTheDocument()
+  })
+
+  it('marks expired requests visually as expired when past expiresAt', () => {
+    const expiredRequest = {
+      ...pendingRequest,
+      id: 'ar-expired',
+      expiresAt: Date.now() - 1000,
+      status: 'pending' as const,
+    }
+    mockUseAgencyAssistanceQueue.mockReturnValue({
+      requests: [expiredRequest],
+      backupRequests: [],
+      loading: false,
+      error: null,
+    })
+    render(<AgencyAssistanceQueuePage />)
+    expect(screen.getByText(/expired/i)).toBeInTheDocument()
   })
 
   it('shows Accept and Decline buttons on pending requests', () => {

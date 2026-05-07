@@ -198,6 +198,38 @@
   background: #f8fafc;
 }
 
+.profileTypeBadge {
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+  margin: 4px 0 0;
+  font-weight: 600;
+}
+
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  padding: 4px 10px;
+  background: var(--r-navy);
+  color: #fff;
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.emptyState {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.emptyStateHint {
+  font-weight: 600;
+}
+
 .signOutBtn {
   width: 100%;
   padding: 14px;

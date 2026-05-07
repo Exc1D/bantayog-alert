@@ -12,6 +12,14 @@
   --r-tab-bar-height: 60px;
   --r-header-height: 56px;
   --r-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Severity tokens — use these everywhere instead of hardcoded hex */
+  --sev-high-bg: #fee2e2;
+  --sev-high-fg: #991b1b;
+  --sev-medium-bg: #fef3c7;
+  --sev-medium-fg: #92400e;
+  --sev-low-bg: #d1fae5;
+  --sev-low-fg: #065f46;
 }
 
 *,

@@ -104,7 +104,7 @@ export function ReportStatusPill() {
   return (
     <div
       ref={wrapperRef}
-      className="fixed z-toast touch-none select-none right-4 top-1/2 -translate-y-1/2"
+      className="report-status-pill fixed z-toast touch-none select-none right-4 top-1/2 -translate-y-1/2"
     >
       <button
         type="button"

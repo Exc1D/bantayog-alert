@@ -27,13 +27,6 @@ function resolveAuthErrorMessage(err: unknown): string {
 
 type LoginStep = 'phone' | 'otp' | 'totp' | 'complete'
 
-const PARTICLES = Array.from({ length: 20 }).map(() => ({
-  left: `${String(Math.random() * 100)}%`,
-  top: `${String(Math.random() * 100)}%`,
-  dur: `${String(3 + Math.random() * 4)}s`,
-  delay: `${String(Math.random() * 5)}s`,
-}))
-
 export default function LoginPage() {
   const navigate = useNavigate()
   const [loginStep, setLoginStep] = useState<LoginStep>('phone')
@@ -179,28 +172,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[100dvh] bg-white relative flex items-center justify-center overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d64933' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}
-      />
-
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {PARTICLES.map((p, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-accent rounded-full opacity-20"
-            style={{
-              left: p.left,
-              top: p.top,
-              animation: `pulse-soft ${p.dur} ease-in-out infinite`,
-              animationDelay: p.delay,
-            }}
-          />
-        ))}
-      </div>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -298,6 +269,7 @@ export default function LoginPage() {
                             }}
                             type="text"
                             inputMode="numeric"
+                            autoComplete="one-time-code"
                             maxLength={1}
                             value={digit}
                             onChange={(e) => {
@@ -349,6 +321,7 @@ export default function LoginPage() {
                       }}
                       type="text"
                       inputMode="numeric"
+                      autoComplete="one-time-code"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => {
@@ -385,7 +358,7 @@ export default function LoginPage() {
                         cy="20"
                         r="17"
                         fill="none"
-                        stroke={totpTimer < 5 ? '#dc2626' : totpTimer < 10 ? '#d97706' : '#d64933'}
+                        stroke={totpTimer < 5 ? '#dc2626' : totpTimer < 10 ? '#d97706' : '#a73400'}
                         strokeWidth="3"
                         strokeLinecap="round"
                         strokeDasharray={String(2 * Math.PI * 17)}
@@ -471,14 +444,14 @@ export { LoginPage }
 function BantayogLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="30" stroke="#d64933" strokeWidth="2.5" />
-      <path d="M32 12L32 32" stroke="#d64933" strokeWidth="3" strokeLinecap="round" />
-      <path d="M32 32L20 44" stroke="#d64933" strokeWidth="3" strokeLinecap="round" />
-      <path d="M32 32L44 44" stroke="#d64933" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="32" cy="32" r="5" fill="#d64933" />
-      <path d="M16 20L22 24" stroke="#d64933" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-      <path d="M48 20L42 24" stroke="#d64933" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-      <path d="M32 8L32 6" stroke="#d64933" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+      <circle cx="32" cy="32" r="30" stroke="#a73400" strokeWidth="2.5" />
+      <path d="M32 12L32 32" stroke="#a73400" strokeWidth="3" strokeLinecap="round" />
+      <path d="M32 32L20 44" stroke="#a73400" strokeWidth="3" strokeLinecap="round" />
+      <path d="M32 32L44 44" stroke="#a73400" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="5" fill="#a73400" />
+      <path d="M16 20L22 24" stroke="#a73400" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+      <path d="M48 20L42 24" stroke="#a73400" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+      <path d="M32 8L32 6" stroke="#a73400" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
     </svg>
   )
 }

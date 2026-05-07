@@ -54,9 +54,67 @@ export function Step3Review({
   isSubmitting = false,
 }: Step3ReviewProps) {
   const [consent, setConsent] = useState(false)
+  const [showFalseReportConfirm, setShowFalseReportConfirm] = useState(false)
 
   const incident = INCIDENT_TYPES.find((t) => t.value === reportData.reportType)
   const Icon = incident?.Icon ?? AlertTriangle
+
+  const handleSubmitClick = () => {
+    if (!consent) return
+    setShowFalseReportConfirm(true)
+  }
+
+  const handleCancelConfirm = () => {
+    setShowFalseReportConfirm(false)
+  }
+
+  const handleFinalConfirm = () => {
+    setShowFalseReportConfirm(false)
+    onSubmit()
+  }
+
+  if (showFalseReportConfirm) {
+    return (
+      <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
+        <div className="sticky top-0 z-nav bg-surface-100/90 border-b border-surface-200 px-4 py-3 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleCancelConfirm}
+            aria-label="Go back"
+            className="w-11 h-11 flex items-center justify-center rounded-full active:bg-surface-200 transition-colors"
+          >
+            <ArrowLeft size={24} className="text-surface-700" />
+          </button>
+          <h1 className="text-lg font-semibold text-surface-900 flex-1">Confirm Submission</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
+          <div className="bg-warning-50 border border-warning-200 rounded-xl p-4 flex gap-3 items-start">
+            <AlertCircle size={24} className="text-warning-600 shrink-0 mt-0.5" />
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold text-surface-900 m-0">
+                Are you sure this is a real emergency?
+              </h2>
+              <p className="text-sm text-surface-700 m-0">
+                False reports delay help for people who truly need it and may carry penalties under
+                Philippine law.
+              </p>
+              <p className="text-sm text-surface-600 italic m-0">
+                Ang maling ulat ay nakakaantala ng tulong sa mga tunay na nangangailangan.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="sticky bottom-0 z-float bg-surface-100/90 border-t border-surface-200 px-5 py-4 space-y-2">
+          <Button variant="primary" fullWidth onClick={handleFinalConfirm} disabled={isSubmitting}>
+            {isSubmitting ? 'Sending...' : 'Yes, Submit'}
+          </Button>
+          <Button variant="secondary" fullWidth onClick={handleCancelConfirm}>
+            Cancel, Go Back
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-[100dvh] bg-surface-100 flex flex-col">
@@ -225,7 +283,12 @@ export function Step3Review({
 
       {/* Bottom action */}
       <div className="sticky bottom-0 z-float bg-surface-100/90 border-t border-surface-200 px-5 py-4">
-        <Button variant="primary" fullWidth onClick={onSubmit} disabled={!consent || isSubmitting}>
+        <Button
+          variant="primary"
+          fullWidth
+          onClick={handleSubmitClick}
+          disabled={!consent || isSubmitting}
+        >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

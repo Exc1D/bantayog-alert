@@ -29,6 +29,10 @@ import {
   incidentTypeDistribution,
 } from '@/data/mockData'
 
+const COLOR_DANGER = '#991b1b'
+const COLOR_WARNING = '#92400e'
+const COLOR_SUCCESS = '#065f46'
+
 const CHART_TOOLTIP_STYLE = {
   backgroundColor: '#ffffff',
   border: '1px solid #dfe3e8',
@@ -97,7 +101,7 @@ export default function DashboardPage() {
     <AppShell>
       <div className="sticky top-0 z-10 bg-white border-b border-border -mx-6 px-6 py-3 flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" role="status" aria-label="Live data indicator">
             <span className="relative flex h-2 w-2">
               <span className="animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-green-600 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
@@ -121,7 +125,7 @@ export default function DashboardPage() {
             onClick={() => {
               void navigate('/emergency')
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white rounded-md text-sm font-medium hover:brightness-110 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-[#a73400] text-white rounded-md text-sm font-medium hover:brightness-110 transition-all"
           >
             <AlertTriangle className="w-4 h-4" />
             Declare Alerts
@@ -262,12 +266,12 @@ export default function DashboardPage() {
               duration: 0.4,
               ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
             }}
-            className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg"
+            className="mb-4 p-4 bg-[#fee2e2] border border-[#991b1b] rounded-lg"
           >
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-700 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-[#991b1b] shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-red-700">ANOMALY DETECTED</p>
+                <p className="text-sm font-semibold text-[#991b1b]">ANOMALY DETECTED</p>
                 <p className="text-base text-foreground mt-1">{anomaly.message}</p>
                 <p className="text-xs text-muted-foreground/70 font-mono mt-1">
                   Detected {timeSince(anomaly.detectedAt)}
@@ -312,25 +316,25 @@ export default function DashboardPage() {
                 <Line
                   type="monotone"
                   dataKey="high"
-                  stroke="#dc2626"
+                  stroke={COLOR_DANGER}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: '#dc2626' }}
+                  dot={{ r: 3, fill: COLOR_DANGER }}
                   name="HIGH"
                 />
                 <Line
                   type="monotone"
                   dataKey="medium"
-                  stroke="#d97706"
+                  stroke={COLOR_WARNING}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: '#d97706' }}
+                  dot={{ r: 3, fill: COLOR_WARNING }}
                   name="MEDIUM"
                 />
                 <Line
                   type="monotone"
                   dataKey="low"
-                  stroke="#16a34a"
+                  stroke={COLOR_SUCCESS}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: '#16a34a' }}
+                  dot={{ r: 3, fill: COLOR_SUCCESS }}
                   name="LOW"
                 />
                 <Line
@@ -373,7 +377,11 @@ export default function DashboardPage() {
                     <Cell
                       key={index}
                       fill={
-                        entry.avgTime < 15 ? '#16a34a' : entry.avgTime <= 20 ? '#d97706' : '#dc2626'
+                        entry.avgTime < 15
+                          ? COLOR_SUCCESS
+                          : entry.avgTime <= 20
+                            ? COLOR_WARNING
+                            : COLOR_DANGER
                       }
                     />
                   ))}
