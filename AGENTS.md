@@ -8,6 +8,30 @@ Read @.claude/ @docs/learnings.md and @docs/progress.md
 
 ---
 
+## 0. QUICK REFERENCE
+
+### Layout (pnpm + Turborepo monorepo)
+
+- `apps/citizen-pwa/` · `apps/admin-desktop/` · `apps/responder-app/`
+- `packages/shared-{data,firebase,sms-parser,types,ui,validators}/` (`@bantayog/*`)
+- `functions/` — Cloud Functions, region `asia-southeast1` (`@bantayog/functions`)
+- `infra/firebase/` — `firestore.rules`, `database.rules.json`, `storage.rules`, `firestore.indexes.json` (NOT root)
+- `docs/learnings.md` + `docs/progress.md` are auto-loaded — append, don't rewrite.
+
+### Canonical commands
+
+- `pnpm lint | typecheck | build | test` — root, all packages
+- `pnpm --dir apps/<name> exec vitest run [path]` — single-app tests
+- `pnpm --filter @bantayog/functions test:unit | test:rules | test:rules:firestore | test:rules:rtdb | test:storage` — function test subsets
+- Full functions gate: `firebase emulators:exec --only firestore,database,storage 'npx vitest run'` (run from `functions/`)
+- `pnpm emulators` — emulator suite (firestore 8081, auth 9099, db 9000, storage 9199, functions 5001, hosting 5000, pubsub 8085)
+
+### TS strict flags (non-default — expect them)
+
+`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `noImplicitOverride`, `noImplicitReturns`. See §8.7 + `learnings.md` for accumulated patterns.
+
+---
+
 ## 1. CORE OPERATING RULES (Ranked — Higher wins conflicts)
 
 1. **NEVER GUESS. ALWAYS READ.** No editing or writing code until you have used tools to read the relevant files and context.
@@ -156,6 +180,7 @@ For changes to security rules, DB indexes, deployment config, auth flows, or Clo
 
 - **Before dispatching a subagent that will edit code:** run `git branch -vv` and `git status` in the target worktree. Confirm branch name matches the task and the tree is clean.
 - **Subagents inherit your worktree, not your intent.** If the parent session is on `main`, a dispatched implementer commits to `main`. Always `cd` into the feature worktree or use `git -C <path>` explicitly.
+- **`pnpm --filter <pkg>` from a worktree resolves to the main repo's `package.json`** and silently runs the wrong tests. Use `pnpm --dir <worktree-path> exec vitest run` or `npx vitest` directly inside the package.
 - **Two-stage review is non-negotiable:** spec-compliance reviewer → code-quality reviewer → then merge. Skipping either stage is how regressions land.
 
 ### 8.6 Communication
@@ -164,12 +189,24 @@ For changes to security rules, DB indexes, deployment config, auth flows, or Clo
 - **Push back on bad instructions.** If the user asks for something that violates YAGNI, introduces `any`, or contradicts CLAUDE.md, surface the conflict and ask. Sycophancy is a bug.
 - **Short answers for simple questions.** Do not emit headers, sections, or "insights" blocks when a sentence will do.
 
+### 8.7 Project Quirks (Common False-Positives)
+
+These produce misleading errors. Check them before deeper debugging.
+
+- **Stale `functions/lib/` after source edit** — `learnings.md` flags this as the #1 cause of `FirebaseError: internal` in E2E. Rebuild functions before re-running.
+- **`@firebase/rules-unit-testing` port mismatch** — symptom: `ECONNREFUSED`. Use the project ports (firestore 8081, db 9000, storage 9199), never SDK defaults.
+- **Functions region drift** — all functions deploy to `asia-southeast1`. Misleading "unauthenticated" errors at the call site usually mean the client is hitting `us-central1`. Verify region before debugging auth/App Check.
+- **TS strict-flag surprises** — `noUncheckedIndexedAccess` makes array/dict access return `T | undefined`; `exactOptionalPropertyTypes` rejects `prop: undefined` (use conditional spread or omit the key).
+- **Storage rules tests gracefully skip when the storage emulator is offline.** The harness top-level-awaits init and registers tests via `itif(storageAvailable)`. Don't "fix" the skip — start the emulator.
+
 ---
 
 ## After Implementation
 
 Update @docs/learnings.md about mistakes and decisions so that we will not repeat them
 Update docs/progress.md to keep track of our progress
+
+If you edit **this file**, also update `AGENTS.md` — they must stay byte-identical (`diff CLAUDE.md AGENTS.md` should print nothing).
 
 **FINAL CHECKSUM:** Before your final output, verify internally:
 
