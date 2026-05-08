@@ -157,7 +157,11 @@ describe('useIncidentSubscription', () => {
 
   it('handles onSnapshot error callback', async () => {
     mockOnSnapshot.mockImplementation(
-      (_query: unknown, callback: (snap: unknown) => void, errorCallback?: (err: Error) => void) => {
+      (
+        _query: unknown,
+        callback: (snap: unknown) => void,
+        errorCallback?: (err: Error) => void,
+      ) => {
         errorCallback?.(createMockError('Firestore unavailable'))
         return vi.fn()
       },
