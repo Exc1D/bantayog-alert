@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
-import { multiFactor } from 'firebase/auth'
 
 import { useAuth } from '@bantayog/shared-ui'
 
@@ -11,7 +10,7 @@ interface TotpGuardProps {
 }
 
 export function TotpGuard({ children }: TotpGuardProps) {
-  const { user, loading: authLoading } = useAuth()
+  const { user, claims, loading: authLoading } = useAuth()
 
   // Wait for auth to initialize
   if (authLoading) {
@@ -23,9 +22,8 @@ export function TotpGuard({ children }: TotpGuardProps) {
     return <>{children}</>
   }
 
-  // Check TOTP enrollment
-  const enrolledFactors = multiFactor(user).enrolledFactors
-  if (enrolledFactors.length === 0) {
+  // Check TOTP enrollment via custom claim
+  if (claims?.mfaEnrolled !== true) {
     return <Navigate to="/totp-enroll" replace />
   }
 

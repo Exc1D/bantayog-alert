@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { reportDocSchema } from '@bantayog/shared-validators'
 import { useSubmitResponderWitnessedReport } from '../hooks/useSubmitResponderWitnessedReport'
+import { useRequestUploadUrl } from '../hooks/useRequestUploadUrl'
 import styles from './DispatchDetailPage.module.css'
 
 const REPORT_TYPES = reportDocSchema.shape.reportType.options
@@ -15,6 +16,7 @@ export function ResponderWitnessReportPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { submit, loading, error } = useSubmitResponderWitnessedReport(id ?? '')
+  const { upload: uploadPhoto, loading: uploadingPhoto, error: uploadError } = useRequestUploadUrl()
 
   const [reportType, setReportType] = useState('')
   const [description, setDescription] = useState('')
@@ -42,7 +44,8 @@ export function ResponderWitnessReportPage() {
   }, [])
 
   const gpsReady = gps.status === 'captured'
-  const canSubmit = gpsReady && !!reportType && !!description.trim() && !!severity
+  const canSubmit =
+    gpsReady && !!reportType && !!description.trim() && !!severity && !uploadingPhoto
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -57,10 +60,21 @@ export function ResponderWitnessReportPage() {
     }
     setValidationError(null)
     try {
+      let photoUrl: string | undefined
+      if (photoFile) {
+        const storagePath = await uploadPhoto(photoFile)
+        if (storagePath) {
+          const bucket = String(
+            import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? 'bantayog-alert.appspot.com',
+          )
+          photoUrl = `https://storage.googleapis.com/${bucket}/${storagePath}`
+        }
+      }
       await submit({
         reportType,
         description: normalizedDescription,
         severity,
+        ...(photoUrl ? { photoUrl } : {}),
       })
       void navigate(`/dispatches/${id ?? ''}`)
     } catch (err: unknown) {
@@ -185,6 +199,7 @@ export function ResponderWitnessReportPage() {
               {validationError}
             </p>
           )}
+          {uploadError !== undefined && <p className={styles.errorMsg}>{uploadError.message}</p>}
           {error !== undefined && <p className={styles.errorMsg}>{error.message}</p>}
           <div className={styles.quickToggles}>
             <button

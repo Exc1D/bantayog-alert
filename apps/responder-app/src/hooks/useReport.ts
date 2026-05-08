@@ -15,6 +15,7 @@ export interface ReportSummary {
   source: string
   submittedAt: number
   verifiedAt?: number
+  contactPhone?: string
 }
 
 function parseSeverity(value: unknown): 'low' | 'medium' | 'high' {
@@ -72,6 +73,14 @@ export function useReport(reportId: string | undefined) {
         }
         if (verifiedAt != null) {
           summary.verifiedAt = verifiedAt
+        }
+
+        const contactPhone =
+          (d.contact as { phone?: string } | undefined)?.phone ??
+          (d.phone as string | undefined) ??
+          (d.adminPhone as string | undefined)
+        if (contactPhone != null) {
+          summary.contactPhone = contactPhone
         }
 
         setReport(summary)

@@ -52,6 +52,12 @@ vi.mock('./pages/BackupRequestPage', () => ({
 vi.mock('./pages/ResponderWitnessReportPage', () => ({
   ResponderWitnessReportPage: () => <div data-testid="witness-page" />,
 }))
+vi.mock('./pages/TotpGuard', () => ({
+  TotpGuard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+vi.mock('./pages/TotpEnrollmentPage', () => ({
+  TotpEnrollmentPage: () => <div data-testid="totp-enroll-page" />,
+}))
 vi.mock('./services/push-client', () => ({
   subscribeForegroundPush: () => () => undefined,
   subscribeNotificationTap: () => () => undefined,

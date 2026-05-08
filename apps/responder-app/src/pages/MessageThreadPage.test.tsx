@@ -37,6 +37,10 @@ vi.mock('../hooks/useMessages', () => ({
   }),
 }))
 
+vi.mock('../hooks/useReport', () => ({
+  useReport: () => ({ report: null, loading: false }),
+}))
+
 import { MessageThreadPage } from './MessageThreadPage'
 
 function renderPage() {

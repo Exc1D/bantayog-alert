@@ -5,10 +5,19 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 
 const mockSubmit = vi.hoisted(() => vi.fn())
+const mockUpload = vi.hoisted(() => vi.fn())
 
 vi.mock('../hooks/useSubmitResponderWitnessedReport', () => ({
   useSubmitResponderWitnessedReport: () => ({
     submit: mockSubmit,
+    loading: false,
+    error: undefined,
+  }),
+}))
+
+vi.mock('../hooks/useRequestUploadUrl', () => ({
+  useRequestUploadUrl: () => ({
+    upload: mockUpload,
     loading: false,
     error: undefined,
   }),
