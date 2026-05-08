@@ -22,6 +22,23 @@ Branch `feat/missing-features-responder-admin` pushed with all CI and review blo
 - ✅ **Test coverage:** Added whitespace-only rejection tests, `contactPhone` branch tests, `/totp-enroll` route assertions, `getIdToken` mock for enrollment flow
 - **Gate:** Build 10/10 ✓ · Lint clean ✓ · Typecheck clean ✓ · Responder tests 197 passed ✓ · Admin-desktop tests 185 passed ✓
 
+**Adversarial Review Fixes — All 12 Findings Addressed (2026-05-08)**
+Post-commit review identified critical gaps; all fixed and re-verified.
+
+- ✅ **CRITICAL:** `SosPage` + `BackupRequestPage` route param `id` → `dispatchId` migration was incomplete; both pages were completely broken
+- ✅ **CRITICAL:** `create-responder.ts` still wrote audit to `report_events` (fix had only landed in `create-user.ts`)
+- ✅ **HIGH:** Added E.164 regex to `create-user.ts` phone schema to match `create-responder.ts`
+- ✅ **HIGH:** Aligned `useReport.ts` phone regex with backend (`\d{1,14}` not `\d{6,14}`)
+- ✅ **HIGH:** `TotpEnrollmentPage` now catches `getIdToken(true)` failure separately; enrollment no longer rolls back to 'setup' step on token refresh failure
+- ✅ **MEDIUM:** `RedispatchModal` got `aria-labelledby`, `tabIndex={-1}`, `useRef` + `useEffect` focus management
+- ✅ **MEDIUM:** `ReopenReportModal` uses persistent `useRef` idempotency key instead of regenerating on every confirm click
+- ✅ **MEDIUM:** Role validation (`municipalityId`/`agencyId` requirements) moved from `onCall` wrapper into `createUserCore`
+- ✅ **MEDIUM:** `useRequestUploadUrl` MIME check annotated as UX-only (browser-reported, easily spoofed)
+- ✅ **LOW:** `create-user.ts` added `auth/invalid-phone-number` error mapping (parity with `create-responder.ts`)
+- ✅ **LOW:** `RedispatchModal` empty state uses loose null check (`municipalityId == null`)
+- ✅ **LOW:** `ReopenReportModal` focus effect keyed on `reportId` instead of `[]`
+- **Gate:** Build 10/10 ✓ · Lint clean ✓ · Typecheck clean ✓ · Responder tests 197 passed ✓ · Admin-desktop tests 185 passed ✓
+
 ## Current Status (2026-05-08)
 
 **UI Audit Fixes — 3-App Parallel Agent Team (2026-05-08)**
