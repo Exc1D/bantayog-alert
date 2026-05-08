@@ -111,6 +111,18 @@ describe('AgencyAssistanceQueuePage', () => {
     expect(declineButtons).toHaveLength(1)
   })
 
+  it('shows Dispatch Responder on accepted requests', () => {
+    mockUseAgencyAssistanceQueue.mockReturnValue({
+      requests: [{ ...pendingRequest, status: 'accepted' }],
+      backupRequests: [],
+      loading: false,
+      error: null,
+    })
+    render(<AgencyAssistanceQueuePage />)
+    fireEvent.click(screen.getByRole('tab', { name: /accepted/i }))
+    expect(screen.getByRole('button', { name: /dispatch responder/i })).toBeInTheDocument()
+  })
+
   it('calls acceptAgencyAssistance callable on Accept click', async () => {
     render(<AgencyAssistanceQueuePage />)
     const acceptButton = screen.getByRole('button', { name: /^Accept$/ })

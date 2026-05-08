@@ -47,6 +47,9 @@ Addressed all P0/P1/P2 UI and accessibility findings from `docs/ui-audit-finding
 - ✅ A17: Global `:focus-visible` double-ring rule added to index.css
 - ✅ A19: Pulse animation wrapped in `prefers-reduced-motion: reduce` in index.css; `motion-safe:` prefix on MetricCard
 - ✅ A20: Skip-to-content link in index.html; `id="main-content"` on AppShell `<main>`
+- ✅ Analytics bridge: `AnalyticsDashboardPage` now delegates to reusable `ScopedAnalyticsDashboard`, scopes live counts to `municipalityId` or `agencyId`, and keeps province as the superadmin baseline; `/analytics` now admits `agency_admin` alongside municipal + provincial roles
+- ✅ Scoped operations bridge: `/map` now renders a live scope-aware incident board for municipal and agency admins, the agency queue exposes `Dispatch Responder` for accepted requests, and the sidebar hides triage/agency queue links that do not belong to the caller role
+- ✅ Scoped map backend: the agency-admin map feed now comes from a callable that reads `report_ops`/`reports` server-side, so the client no longer depends on a brittle agency list query
 - **Gate:** 110 tests passed, 0 failed · typecheck clean · lint clean (2 pre-existing warnings in unrelated test files)
 
 ## Current Status (2026-05-07)

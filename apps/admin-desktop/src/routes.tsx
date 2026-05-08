@@ -17,9 +17,9 @@ import { SystemHealthPage } from './pages/SystemHealthPage'
 import { BreakGlassPage } from './pages/BreakGlassPage'
 import { ProvinceNdrrmcPage } from './pages/ProvinceNdrrmcPage'
 import { ProvinceEmergencyPage } from './pages/ProvinceEmergencyPage'
+import ScopedOperationsMapPage from './pages/ScopedOperationsMapPage'
 
 import DashboardPage from './pages/DashboardPage'
-import MapPage from './pages/MapPage'
 import UsersPage from './pages/UsersPage'
 import EmergencyPage from './pages/EmergencyPage'
 import NdrrmcPage from './pages/NdrrmcPage'
@@ -81,7 +81,12 @@ export const router = createBrowserRouter([
   },
   {
     path: '/map',
-    element: <LegacyPrototypeRoute superadminTarget="/province/map" fallback={<MapPage />} />,
+    element: (
+      <LegacyPrototypeRoute
+        superadminTarget="/province/map"
+        fallback={<ScopedOperationsMapPage />}
+      />
+    ),
   },
   {
     path: '/users',
@@ -166,7 +171,7 @@ export const router = createBrowserRouter([
         path: '/analytics',
         element: (
           <ProtectedRoute
-            allowedRoles={['municipal_admin', 'provincial_superadmin']}
+            allowedRoles={['agency_admin', 'municipal_admin', 'provincial_superadmin']}
             requireActive
             requireMunicipalityIdForRoles={['municipal_admin']}
             unauthorizedFallback={UNAUTHORIZED}

@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, where, updateDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv } from '../helpers/rules-harness.js'
 import { seedActiveAccount, seedDispatchRT, staffClaims, ts } from '../helpers/seed-factories.js'
@@ -24,6 +24,11 @@ beforeAll(async () => {
     status: 'accepted',
     assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
   })
+  await seedDispatchRT(env, 'dispatch-2', {
+    municipalityId: 'mercedes',
+    status: 'accepted',
+    assignedTo: { uid: 'resp-2', agencyId: 'pcg', municipalityId: 'mercedes' },
+  })
 })
 
 afterAll(async () => {
@@ -38,6 +43,17 @@ describe('dispatches rules', () => {
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
     await assertSucceeds(getDoc(doc(db, 'dispatches/dispatch-1')))
+  })
+
+  it('municipality admin can query their own dispatches list', async () => {
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(
+      getDocs(query(collection(db, 'dispatches'), where('municipalityId', '==', 'daet'))),
+    )
   })
 
   it('other municipality admin cannot read dispatches', async () => {
@@ -56,6 +72,40 @@ describe('dispatches rules', () => {
       staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }),
     )
     await assertSucceeds(getDoc(doc(db, 'dispatches/dispatch-1')))
+  })
+
+  it('responder can query only their own dispatches', async () => {
+    const db = authed(
+      env,
+      'resp-1',
+      staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }),
+    )
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(db, 'dispatches'),
+          where('assignedTo.uid', '==', 'resp-1'),
+          where('status', 'in', ['pending', 'accepted', 'acknowledged', 'en_route', 'on_scene']),
+        ),
+      ),
+    )
+  })
+
+  it('responder cannot query another responder dispatch scope', async () => {
+    const db = authed(
+      env,
+      'resp-1',
+      staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp' }),
+    )
+    await assertFails(
+      getDocs(
+        query(
+          collection(db, 'dispatches'),
+          where('assignedTo.uid', '==', 'resp-2'),
+          where('status', 'in', ['pending', 'accepted', 'acknowledged', 'en_route', 'on_scene']),
+        ),
+      ),
+    )
   })
 
   it('responder can update status with valid transition', async () => {

@@ -78,6 +78,8 @@
 - Render-body ref assignment can trigger loops; sync refs in `useEffect`.
 - `useRef(initial)` does not track later state; sync explicitly if current value needed.
 - Critical external data should be fetched internally or required as a prop.
+- Shared dashboards need an explicit role-to-scope resolver inside the page or wrapper component. If a scoped admin is missing its claim-backed scope ID, do not silently fall back to province data; return a safe access-denied state instead of widening visibility.
+- Live Firestore join pages need to wait for the secondary doc fetch before asserting rendered rows or markers. A query can return the right `report_ops` rows while the join to `reports/{id}` is still settling, so tests should wait for the joined record rather than only checking the filter call.
 - `react-hooks/refs` flags `ref.current` reads during render; pass render-time values through state.
 - CodeQL `js/xss-through-dom` on blob previews: render via `createImageBitmap` + `canvas` instead of blob URL in JSX.
 - React Router v7 `useNavigate` returns `Promise<void>`; wrap with `void` or `await`.
@@ -213,6 +215,7 @@
 - Plan said `REPORT_TYPE_LABEL[row.reportId]` for dispatch list cards but `row.reportId` is the dispatch's report **id** (e.g. `rep_abc123`), not the report **type** (e.g. `flood`). The lookup always misses; either fetch the report (extra subscription per row) or just show a generic label. We chose the latter for the MVP list view.
 - `useDispatchHistory` queries `dispatches` for `assignedTo.uid == uid` AND `status in [resolved, declined, timed_out, cancelled, unable_to_complete]`. The `where('status', 'in', […])` array is capped at 30 by Firestore, but our terminal-status set is well under that.
 - Removing functionality from one tab (DispatchListPage's availability/handoff/sign-out) without immediately re-adding it elsewhere temporarily breaks the responder UX (no way to sign out). Keep tasks in commit order so the gap is at most one task long. Per-task atomic commits make this safe.
+- When a Firestore list query depends on nested agency membership, do not force the client path to fit the rules engine. Use a callable to read the scope server-side and return a narrow payload; it is less brittle than fighting query-evaluation edge cases.
 
 ## Responder PWA — Post-Review Hardening (2026-05-06)
 

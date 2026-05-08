@@ -3,6 +3,7 @@ import { callables } from '../services/callables'
 import { useAuth } from '@bantayog/shared-ui'
 import { useAgencyAssistanceQueue } from '../hooks/useAgencyAssistanceQueue'
 import type { AgencyAssistanceRequestDoc } from '@bantayog/shared-validators'
+import { AgencyDispatchModal } from './AgencyDispatchModal'
 
 type FilterTab = 'pending' | 'accepted' | 'all'
 
@@ -43,6 +44,7 @@ function RequestCard({
   onDeclineSubmit,
   onDeclineCancel,
   onDeclineReasonChange,
+  onDispatch,
 }: {
   req: AssistanceRequest
   declineState: DeclineState | null
@@ -51,6 +53,7 @@ function RequestCard({
   onDeclineSubmit: () => void
   onDeclineCancel: () => void
   onDeclineReasonChange: (reason: string) => void
+  onDispatch: (reportId: string) => void
 }) {
   const [countdown, setCountdown] = useState(() => formatCountdown(req.expiresAt))
   const expired = isExpired(req.expiresAt)
@@ -257,6 +260,28 @@ function RequestCard({
           )}
         </div>
       )}
+      {req.status === 'accepted' && !isExpiredStatus && (
+        <div style={{ marginTop: 8 }}>
+          <button
+            onClick={() => {
+              onDispatch(req.reportId)
+            }}
+            style={{
+              padding: '8px 20px',
+              background: '#001e40',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontWeight: 600,
+              cursor: 'pointer',
+              minHeight: 44,
+              fontSize: 13,
+            }}
+          >
+            Dispatch Responder
+          </button>
+        </div>
+      )}
     </li>
   )
 }
@@ -268,6 +293,7 @@ export function AgencyAssistanceQueuePage() {
   const [filter, setFilter] = useState<FilterTab>('pending')
   const [declineState, setDeclineState] = useState<DeclineState | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
+  const [dispatchReportId, setDispatchReportId] = useState<string | null>(null)
 
   const filteredRequests = requests.filter((r) => {
     if (filter === 'pending') return r.status === 'pending'
@@ -326,6 +352,19 @@ export function AgencyAssistanceQueuePage() {
 
   return (
     <main style={{ padding: '24px', maxWidth: 800, margin: '0 auto' }}>
+      {dispatchReportId && (
+        <div style={{ marginBottom: 16 }}>
+          <AgencyDispatchModal
+            reportId={dispatchReportId}
+            onClose={() => {
+              setDispatchReportId(null)
+            }}
+            onError={(msg) => {
+              setBanner(msg)
+            }}
+          />
+        </div>
+      )}
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#001e40', margin: 0 }}>
           Agency Assistance
@@ -416,6 +455,7 @@ export function AgencyAssistanceQueuePage() {
                   onDeclineSubmit={handleDeclineSubmit}
                   onDeclineCancel={handleDeclineCancel}
                   onDeclineReasonChange={handleDeclineReasonChange}
+                  onDispatch={setDispatchReportId}
                 />
               ))}
             </ul>
