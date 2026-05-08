@@ -131,4 +131,10 @@ describe('AppRouter', () => {
     expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
     expect(screen.getByTestId('login-page')).toBeInTheDocument()
   })
+
+  it('renders TotpEnrollmentPage at /totp-enroll outside Shell', async () => {
+    await renderAt('/totp-enroll')
+    expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
+    expect(screen.getByTestId('totp-enroll-page')).toBeInTheDocument()
+  })
 })

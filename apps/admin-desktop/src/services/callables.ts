@@ -289,7 +289,10 @@ export const callables = {
     reason: string
     idempotencyKey: IdempotencyKey
   }) =>
-    httpsCallable<typeof payload, { dispatchId: string; status: DispatchStatus }>(
+    httpsCallable<
+      typeof payload,
+      { newDispatchId: string; status: DispatchStatus; reportId: string }
+    >(
       functions,
       'redispatchReport',
     )(payload).then((r) => r.data),

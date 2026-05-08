@@ -15,8 +15,7 @@ export const createUserSchema = z
     municipalityId: z.string().min(1).max(128).optional(),
     agencyId: z.string().min(1).max(128).optional(),
     specializations: z.array(z.string().min(1)).optional(),
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
 })
     .strict();
 const log = logDimension('createUser');
@@ -48,7 +47,9 @@ export async function createUserCore(db, deps) {
         catch (err) {
             if (err instanceof BantayogError)
                 throw err;
-            const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : undefined;
+            const code = typeof err === 'object' && err !== null && 'code' in err
+                ? err.code
+                : undefined;
             if (code === 'auth/user-not-found') {
                 // expected — continue
             }
@@ -71,36 +72,47 @@ export async function createUserCore(db, deps) {
             mfaEnrolled: false,
         });
         await adminAuth.setCustomUserClaims(uid, claims);
-        // eslint-disable-next-line @typescript-eslint/require-await
-        await db.runTransaction(async (tx) => {
-            const userRef = db.collection('users').doc(uid);
-            tx.set(userRef, {
-                uid,
-                role: deps.role,
-                displayName: deps.displayName,
-                phone: deps.phone,
-                municipalityId: deps.municipalityId ?? null,
-                agencyId: deps.agencyId ?? null,
-                status: 'active',
-                createdAt: nowMs,
-                updatedAt: nowMs,
+        try {
+            // eslint-disable-next-line @typescript-eslint/require-await
+            await db.runTransaction(async (tx) => {
+                const userRef = db.collection('users').doc(uid);
+                tx.set(userRef, {
+                    uid,
+                    role: deps.role,
+                    displayName: deps.displayName,
+                    phone: deps.phone,
+                    municipalityId: deps.municipalityId ?? null,
+                    agencyId: deps.agencyId ?? null,
+                    status: 'active',
+                    createdAt: nowMs,
+                    updatedAt: nowMs,
+                });
+                tx.set(db.collection('active_accounts').doc(uid), buildActiveAccountDoc(uid, claims, nowMs));
+                tx.set(db.collection('claim_revocations').doc(uid), buildClaimRevocationDoc(uid, nowMs, 'claims_updated'));
+                const eventRef = db.collection('audit_events').doc();
+                tx.set(eventRef, {
+                    eventId: eventRef.id,
+                    eventType: 'user_management',
+                    actor: deps.actor.uid,
+                    actorRole: deps.actor.claims.role ?? 'unknown',
+                    targetUid: uid,
+                    targetRole: deps.role,
+                    action: 'created',
+                    at: nowMs,
+                    correlationId,
+                    schemaVersion: 1,
+                });
             });
-            tx.set(db.collection('active_accounts').doc(uid), buildActiveAccountDoc(uid, claims, nowMs));
-            tx.set(db.collection('claim_revocations').doc(uid), buildClaimRevocationDoc(uid, nowMs, 'claims_updated'));
-            const eventRef = db.collection('report_events').doc();
-            tx.set(eventRef, {
-                eventId: eventRef.id,
-                eventType: 'user_management',
-                actor: deps.actor.uid,
-                actorRole: deps.actor.claims.role ?? 'unknown',
-                targetUid: uid,
-                targetRole: deps.role,
-                action: 'created',
-                at: nowMs,
-                correlationId,
-                schemaVersion: 1,
-            });
-        });
+        }
+        catch (txErr) {
+            try {
+                await adminAuth.deleteUser(uid);
+            }
+            catch (deleteErr) {
+                console.error('[createUser] compensating delete failed:', deleteErr);
+            }
+            throw txErr;
+        }
         log({
             severity: 'INFO',
             code: 'user.created',
@@ -124,6 +136,13 @@ export const createUser = onCall({
     const parsed = createUserSchema.safeParse(request.data);
     if (!parsed.success)
         throw new HttpsError('invalid-argument', 'malformed payload');
+    if (parsed.data.role === 'municipal_admin' && !parsed.data.municipalityId) {
+        throw new HttpsError('invalid-argument', 'missing municipalityId');
+    }
+    if ((parsed.data.role === 'agency_admin' || parsed.data.role === 'responder') &&
+        !parsed.data.agencyId) {
+        throw new HttpsError('invalid-argument', 'missing agencyId');
+    }
     try {
         return await createUserCore(adminDb, {
             displayName: parsed.data.displayName,

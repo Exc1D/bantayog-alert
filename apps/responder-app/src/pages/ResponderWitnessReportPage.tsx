@@ -13,9 +13,9 @@ type GpsState =
   | { status: 'error'; message: string }
 
 export function ResponderWitnessReportPage() {
-  const { id } = useParams<{ id: string }>()
+  const { dispatchId } = useParams<{ dispatchId: string }>()
   const navigate = useNavigate()
-  const { submit, loading, error } = useSubmitResponderWitnessedReport(id ?? '')
+  const { submit, loading, error } = useSubmitResponderWitnessedReport(dispatchId ?? '')
   const { upload: uploadPhoto, loading: uploadingPhoto, error: uploadError } = useRequestUploadUrl()
 
   const [reportType, setReportType] = useState('')
@@ -67,7 +67,7 @@ export function ResponderWitnessReportPage() {
           const bucket = String(
             import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? 'bantayog-alert.appspot.com',
           )
-          photoUrl = `https://storage.googleapis.com/${bucket}/${storagePath}`
+          photoUrl = `https://storage.googleapis.com/${bucket}/${encodeURIComponent(storagePath)}`
         }
       }
       await submit({
@@ -76,7 +76,7 @@ export function ResponderWitnessReportPage() {
         severity,
         ...(photoUrl ? { photoUrl } : {}),
       })
-      void navigate(`/dispatches/${id ?? ''}`)
+      void navigate(`/dispatches/${dispatchId ?? ''}`)
     } catch (err: unknown) {
       console.error('[ResponderWitnessReportPage] submit failed:', err)
     }
@@ -87,7 +87,7 @@ export function ResponderWitnessReportPage() {
       <div className={styles.pageHeader}>
         <button
           className={styles.backBtn}
-          onClick={() => void navigate(`/dispatches/${id ?? ''}`)}
+          onClick={() => void navigate(`/dispatches/${dispatchId ?? ''}`)}
           aria-label="Back"
         >
           ←
@@ -211,7 +211,7 @@ export function ResponderWitnessReportPage() {
             </button>
             <button
               type="button"
-              onClick={() => void navigate(`/dispatches/${id ?? ''}`)}
+              onClick={() => void navigate(`/dispatches/${dispatchId ?? ''}`)}
               disabled={loading}
               className={styles.toggleBtn}
             >

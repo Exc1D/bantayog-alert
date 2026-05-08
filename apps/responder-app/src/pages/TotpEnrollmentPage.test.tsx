@@ -31,7 +31,7 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('../app/firebase', () => ({
   auth: {
-    currentUser: { uid: 'uid-1', email: 'responder@test.com' },
+    currentUser: { uid: 'uid-1', email: 'responder@test.com', getIdToken: vi.fn() },
   },
 }))
 

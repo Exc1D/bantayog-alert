@@ -144,12 +144,20 @@ export function DispatchDetailPage() {
       setDistanceMeters(Math.round(dist))
     }
 
-    const handleError = () => {
+    const handleError = (err: GeolocationPositionError) => {
+      console.error('[DispatchDetailPage] geolocation error:', err.code, err.message)
       setDistanceMeters(null)
     }
 
-    navigator.geolocation.getCurrentPosition(handleSuccess, handleError)
-  }, [dispatch?.status, report?.publicLocation])
+    // Geolocation may be unavailable in insecure contexts or some environments.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError)
+    } else {
+      setDistanceMeters(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch?.status, report?.publicLocation?.latitude, report?.publicLocation?.longitude])
 
   useEffect(() => {
     if (acceptError ?? declineError ?? advanceError ?? unableError) {

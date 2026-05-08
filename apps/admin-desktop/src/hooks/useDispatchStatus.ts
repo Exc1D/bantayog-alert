@@ -7,9 +7,8 @@ export function useDispatchStatus(dispatchId: string | undefined): string | null
 
   useEffect(() => {
     if (!dispatchId) {
-      queueMicrotask(() => {
-        setStatus(null)
-      })
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus(null)
       return
     }
     return onSnapshot(

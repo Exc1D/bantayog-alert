@@ -18,6 +18,24 @@ export function useRequestUploadUrl() {
   async function upload(file: File): Promise<string | undefined> {
     setLoading(true)
     setError(undefined)
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic']
+    const MAX_UPLOAD_BYTES = 10 * 1024 * 1024 // 10 MB
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      const err = new Error(
+        `Invalid file type: ${file.type || 'unknown'}. Allowed: ${ALLOWED_MIME_TYPES.join(', ')}`,
+      )
+      setError(err)
+      setLoading(false)
+      return undefined
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      const err = new Error(
+        `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Max: ${(MAX_UPLOAD_BYTES / 1024 / 1024).toFixed(0)} MB`,
+      )
+      setError(err)
+      setLoading(false)
+      return undefined
+    }
     try {
       const sha256 = await sha256Hex(file)
       const fn = httpsCallable<

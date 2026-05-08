@@ -6,7 +6,7 @@ export declare const createResponderSchema: z.ZodObject<{
     municipalityId: z.ZodOptional<z.ZodString>;
     agencyId: z.ZodString;
     specializations: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    idempotencyKey: z.ZodString;
+    idempotencyKey: z.ZodUUID;
 }, z.core.$strict>;
 export interface CreateResponderCoreDeps {
     displayName: string;

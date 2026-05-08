@@ -17,8 +17,7 @@ export const reopenReportSchema = z
   .object({
     reportId: z.string().min(1).max(128),
     reason: z.string().trim().min(1).max(500),
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
   })
   .strict()
 

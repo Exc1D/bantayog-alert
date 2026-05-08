@@ -12,8 +12,7 @@ export const requestProvincialEscalationSchema = z
     dispatchId: z.string().min(1).max(128),
     reason: z.string().trim().min(1).max(500),
     notes: z.string().trim().min(1).max(2000).optional(),
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
   })
   .strict()
 

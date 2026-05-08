@@ -10,12 +10,11 @@ import { buildActiveAccountDoc, buildClaimRevocationDoc, buildStaffClaims, } fro
 export const createResponderSchema = z
     .object({
     displayName: z.string().min(1).max(128),
-    phone: z.string().min(1).max(32),
+    phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'phone must be E.164 format'),
     municipalityId: z.string().min(1).max(128).optional(),
     agencyId: z.string().min(1).max(128),
     specializations: z.array(z.string().min(1)).optional(),
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
 })
     .strict();
 const log = logDimension('createResponder');
@@ -52,12 +51,17 @@ export async function createResponderCore(db, deps) {
         catch (err) {
             if (err instanceof BantayogError)
                 throw err;
-            const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : undefined;
+            const code = typeof err === 'object' && err !== null && 'code' in err
+                ? err.code
+                : undefined;
             if (code === 'auth/user-not-found') {
                 // expected — continue
             }
+            else if (code === 'auth/invalid-phone-number') {
+                throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'invalid phone number format', { cause: err });
+            }
             else {
-                throw err;
+                throw new BantayogError(BantayogErrorCode.INTERNAL_ERROR, 'auth lookup failed', { cause: err });
             }
         }
         const userRecord = await adminAuth.createUser({
@@ -76,47 +80,58 @@ export async function createResponderCore(db, deps) {
             mfaEnrolled: false,
         });
         await adminAuth.setCustomUserClaims(uid, claims);
-        // eslint-disable-next-line @typescript-eslint/require-await
-        await db.runTransaction(async (tx) => {
-            const userRef = db.collection('users').doc(uid);
-            tx.set(userRef, {
-                uid,
-                role: 'responder',
-                displayName: deps.displayName,
-                phone: deps.phone,
-                municipalityId: municipalityId ?? null,
-                agencyId: deps.agencyId,
-                status: 'active',
-                createdAt: nowMs,
-                updatedAt: nowMs,
+        try {
+            // eslint-disable-next-line @typescript-eslint/require-await
+            await db.runTransaction(async (tx) => {
+                const userRef = db.collection('users').doc(uid);
+                tx.set(userRef, {
+                    uid,
+                    role: 'responder',
+                    displayName: deps.displayName,
+                    phone: deps.phone,
+                    municipalityId: municipalityId ?? null,
+                    agencyId: deps.agencyId,
+                    status: 'active',
+                    createdAt: nowMs,
+                    updatedAt: nowMs,
+                });
+                tx.set(db.collection('active_accounts').doc(uid), buildActiveAccountDoc(uid, claims, nowMs));
+                tx.set(db.collection('claim_revocations').doc(uid), buildClaimRevocationDoc(uid, nowMs, 'claims_updated'));
+                const responderRef = db.collection('responders').doc(uid);
+                tx.set(responderRef, {
+                    uid,
+                    agencyId: deps.agencyId,
+                    municipalityId: municipalityId ?? null,
+                    specializations: deps.specializations ?? [],
+                    availabilityStatus: 'available',
+                    isActive: true,
+                    createdAt: nowMs,
+                    updatedAt: nowMs,
+                });
+                const eventRef = db.collection('report_events').doc();
+                tx.set(eventRef, {
+                    eventId: eventRef.id,
+                    eventType: 'user_management',
+                    actor: deps.actor.uid,
+                    actorRole: deps.actor.claims.role ?? 'unknown',
+                    targetUid: uid,
+                    targetRole: 'responder',
+                    action: 'created',
+                    at: nowMs,
+                    correlationId,
+                    schemaVersion: 1,
+                });
             });
-            tx.set(db.collection('active_accounts').doc(uid), buildActiveAccountDoc(uid, claims, nowMs));
-            tx.set(db.collection('claim_revocations').doc(uid), buildClaimRevocationDoc(uid, nowMs, 'claims_updated'));
-            const responderRef = db.collection('responders').doc(uid);
-            tx.set(responderRef, {
-                uid,
-                agencyId: deps.agencyId,
-                municipalityId: municipalityId ?? null,
-                specializations: deps.specializations ?? [],
-                availabilityStatus: 'available',
-                isActive: true,
-                createdAt: nowMs,
-                updatedAt: nowMs,
-            });
-            const eventRef = db.collection('report_events').doc();
-            tx.set(eventRef, {
-                eventId: eventRef.id,
-                eventType: 'user_management',
-                actor: deps.actor.uid,
-                actorRole: deps.actor.claims.role ?? 'unknown',
-                targetUid: uid,
-                targetRole: 'responder',
-                action: 'created',
-                at: nowMs,
-                correlationId,
-                schemaVersion: 1,
-            });
-        });
+        }
+        catch (txErr) {
+            try {
+                await adminAuth.deleteUser(uid);
+            }
+            catch (deleteErr) {
+                console.error('[createResponder] compensating delete failed:', deleteErr);
+            }
+            throw txErr;
+        }
         log({
             severity: 'INFO',
             code: 'responder.created',

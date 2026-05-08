@@ -75,12 +75,17 @@ export function useReport(reportId: string | undefined) {
           summary.verifiedAt = verifiedAt
         }
 
-        const contactPhone =
+        const rawContactPhone =
           (d.contact as { phone?: string } | undefined)?.phone ??
           (d.phone as string | undefined) ??
           (d.adminPhone as string | undefined)
-        if (contactPhone != null) {
-          summary.contactPhone = contactPhone
+        if (typeof rawContactPhone === 'string' && rawContactPhone.trim().length > 0) {
+          const normalized = rawContactPhone.trim().replace(/[^+\d]/g, '')
+          if (/^\+[1-9]\d{6,14}$/.test(normalized)) {
+            summary.contactPhone = normalized
+          } else {
+            console.error('[useReport] invalid contactPhone format:', rawContactPhone)
+          }
         }
 
         setReport(summary)

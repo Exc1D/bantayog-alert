@@ -3,7 +3,7 @@ import { z } from 'zod';
 export declare const reopenReportSchema: z.ZodObject<{
     reportId: z.ZodString;
     reason: z.ZodString;
-    idempotencyKey: z.ZodString;
+    idempotencyKey: z.ZodUUID;
 }, z.core.$strict>;
 export interface ReopenReportCoreDeps {
     reportId: string;

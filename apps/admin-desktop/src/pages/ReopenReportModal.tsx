@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { callables } from '../services/callables'
 
 export function ReopenReportModal({
@@ -29,9 +29,20 @@ export function ReopenReportModal({
     }
   }
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    containerRef.current?.focus()
+  }, [])
+
   return (
-    <div role="dialog" aria-modal="true">
-      <h2>Reopen Report</h2>
+    <div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reopen-title"
+      tabIndex={-1}
+    >
+      <h2 id="reopen-title">Reopen Report</h2>
       <p>This will reopen a closed report and return it to active status.</p>
       <label htmlFor="reopen-reason">Reason</label>
       <textarea

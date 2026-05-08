@@ -98,9 +98,12 @@ const router = createBrowserRouter([
             ),
             children: [
               { path: '/dispatches/:dispatchId', element: <DispatchDetailPage /> },
-              { path: '/dispatches/:id/witness-report', element: <ResponderWitnessReportPage /> },
-              { path: '/dispatches/:id/sos', element: <SosPage /> },
-              { path: '/dispatches/:id/backup', element: <BackupRequestPage /> },
+              {
+                path: '/dispatches/:dispatchId/witness-report',
+                element: <ResponderWitnessReportPage />,
+              },
+              { path: '/dispatches/:dispatchId/sos', element: <SosPage /> },
+              { path: '/dispatches/:dispatchId/backup', element: <BackupRequestPage /> },
               { path: '/handoff', element: <ShiftHandoffPage /> },
               { path: '/history', element: <DispatchHistoryPage /> },
             ],

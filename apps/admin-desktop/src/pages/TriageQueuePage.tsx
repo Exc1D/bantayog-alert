@@ -64,9 +64,8 @@ export function TriageQueuePage() {
 
   useEffect(() => {
     if (!municipalityId || !showClosed) {
-      queueMicrotask(() => {
-        setClosedReports([])
-      })
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setClosedReports([])
       return
     }
     const q = query(

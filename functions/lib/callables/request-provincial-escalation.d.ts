@@ -4,7 +4,7 @@ export declare const requestProvincialEscalationSchema: z.ZodObject<{
     dispatchId: z.ZodString;
     reason: z.ZodString;
     notes: z.ZodOptional<z.ZodString>;
-    idempotencyKey: z.ZodString;
+    idempotencyKey: z.ZodUUID;
 }, z.core.$strict>;
 export interface RequestProvincialEscalationCoreDeps {
     dispatchId: string;

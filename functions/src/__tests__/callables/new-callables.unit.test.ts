@@ -181,6 +181,16 @@ describe('reopenReportSchema', () => {
       }),
     ).toThrow()
   })
+
+  it('rejects whitespace-only reason', () => {
+    expect(() =>
+      reopenReportSchema.parse({
+        reportId: 'r-1',
+        reason: '  ',
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    ).toThrow()
+  })
 })
 
 describe('requestProvincialEscalationSchema', () => {
@@ -214,6 +224,16 @@ describe('requestProvincialEscalationSchema', () => {
       requestProvincialEscalationSchema.parse({
         dispatchId: 'd-1',
         reason: '',
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    ).toThrow()
+  })
+
+  it('rejects whitespace-only reason', () => {
+    expect(() =>
+      requestProvincialEscalationSchema.parse({
+        dispatchId: 'd-1',
+        reason: '  ',
         idempotencyKey: crypto.randomUUID(),
       }),
     ).toThrow()

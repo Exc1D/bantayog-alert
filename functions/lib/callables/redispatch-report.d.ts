@@ -4,7 +4,7 @@ export declare const redispatchReportSchema: z.ZodObject<{
     oldDispatchId: z.ZodString;
     newResponderUid: z.ZodString;
     reason: z.ZodString;
-    idempotencyKey: z.ZodString;
+    idempotencyKey: z.ZodUUID;
 }, z.core.$strict>;
 export interface RedispatchReportCoreDeps {
     oldDispatchId: string;

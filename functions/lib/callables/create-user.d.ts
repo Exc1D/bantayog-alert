@@ -12,7 +12,7 @@ export declare const createUserSchema: z.ZodObject<{
     municipalityId: z.ZodOptional<z.ZodString>;
     agencyId: z.ZodOptional<z.ZodString>;
     specializations: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    idempotencyKey: z.ZodString;
+    idempotencyKey: z.ZodUUID;
 }, z.core.$strict>;
 export interface CreateUserCoreDeps {
     displayName: string;

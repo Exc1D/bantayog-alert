@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useEligibleResponders } from '../hooks/useEligibleResponders'
 import { computeFreshness, type Freshness } from '../utils/freshness'
@@ -27,6 +27,7 @@ export function RedispatchModal({
   const [picked, setPicked] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID())
 
   async function confirm() {
     if (!picked || !reason.trim()) return
@@ -36,7 +37,7 @@ export function RedispatchModal({
         oldDispatchId,
         newResponderUid: picked,
         reason: reason.trim(),
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: idempotencyKeyRef.current,
       })
       onClose()
     } catch (err: unknown) {
@@ -50,7 +51,11 @@ export function RedispatchModal({
       <h2>Redispatch Report</h2>
       <p>The previous dispatch was declined or timed out. Select a new responder.</p>
       {eligible.length === 0 ? (
-        <p>No responders on shift in your municipality.</p>
+        <p>
+          {municipalityId === undefined
+            ? 'Your account is not assigned to a municipality.'
+            : 'No responders on shift in your municipality.'}
+        </p>
       ) : (
         <ul>
           {eligible.map((r) => (

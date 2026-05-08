@@ -354,6 +354,16 @@ export function UserManagementPage() {
           }}
         >
           <div
+            ref={(node) => {
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+              if (node && createOpen) {
+                node.focus()
+              }
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-user-title"
+            tabIndex={-1}
             style={{
               background: '#fff',
               borderRadius: '8px',
@@ -363,7 +373,10 @@ export function UserManagementPage() {
               boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
             }}
           >
-            <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: '#111827' }}>
+            <h2
+              id="create-user-title"
+              style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: '#111827' }}
+            >
               Create User
             </h2>
             {createError && (

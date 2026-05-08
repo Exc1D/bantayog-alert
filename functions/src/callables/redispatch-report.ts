@@ -12,8 +12,7 @@ export const redispatchReportSchema = z
     oldDispatchId: z.string().min(1).max(128),
     newResponderUid: z.string().min(1).max(128),
     reason: z.string().trim().min(1).max(500),
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: z.uuid(),
   })
   .strict()
 
@@ -172,11 +171,12 @@ export async function redispatchReportCore(
         const newDispatchId = oldDispatch.reportId + '_' + deps.newResponderUid
         const newDispatchRef = db.collection('dispatches').doc(newDispatchId)
 
+        const existingNewSnap = await tx.get(newDispatchRef)
         const severity = isValidSeverity(report.severityDerived) ? report.severityDerived : 'medium'
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const deadlineMs = DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
 
-        tx.set(newDispatchRef, {
+        const newDispatchData = {
           dispatchId: newDispatchId,
           reportId: oldDispatch.reportId,
           status: 'pending',
@@ -191,7 +191,13 @@ export async function redispatchReportCore(
           acknowledgementDeadlineAt: deps.now.toMillis() + deadlineMs,
           correlationId,
           schemaVersion: 1,
-        })
+        }
+
+        if (existingNewSnap.exists) {
+          tx.update(newDispatchRef, newDispatchData)
+        } else {
+          tx.set(newDispatchRef, newDispatchData)
+        }
 
         tx.update(reportRef, {
           status: 'assigned',

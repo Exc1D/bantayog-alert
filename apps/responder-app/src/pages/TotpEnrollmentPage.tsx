@@ -56,6 +56,7 @@ export function TotpEnrollmentPage() {
     try {
       const assertion = TotpMultiFactorGenerator.assertionForEnrollment(secret, code)
       await multiFactor(auth.currentUser).enroll(assertion, 'Authenticator app')
+      await auth.currentUser.getIdToken(true)
       setStep('done')
     } catch (err) {
       // Handle specific Firebase Auth errors
