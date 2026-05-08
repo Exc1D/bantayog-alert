@@ -2,6 +2,171 @@
 
 ## Current Status (2026-05-08)
 
+**Real Incident Subscription — COMPLETE**
+
+- ✅ Created `useIncidentSubscription` hook:
+  - Subscribes to `reports` collection with `status in ACTIVE_REPORT_STATUSES`
+  - Extracts real `publicLocation` (lat/lng) for map pins
+  - Maps Firestore data to `IncidentFeedItem` format with proper types
+  - Skips reports without valid location (map requires coordinates)
+  - Graceful error handling with loading state
+- ✅ Replaced synthetic incident derivation in `ProvinceDashboardPage`:
+  - Removed placeholder coordinates (`{ lat: 14.1, lng: 122.8 }`)
+  - Removed `muni-${id}` synthetic IDs
+  - Map now shows real incident locations from `reports` collection
+  - Feed shows real incidents with actual timestamps and statuses
+  - Alert level now considers real incident count in addition to anomalies
+- **Gate:** 309 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**IncidentFeed Integration — COMPLETE**
+
+- ✅ Wired `IncidentFeed` into `ProvinceDashboardPage` as slide-out drawer:
+  - Added "Incidents" toggle button in TopBanner (gray `#495057`, next to KPIs)
+  - Added `incidentPanelOpen` state to `ProvinceDashboardPage`
+  - Rendered `IncidentFeed` as slide-out drawer (450px wide, same position as KpiPanel)
+  - Derived incident data from `liveData.municipalData` (synthetic incidents until real subscription)
+  - Each municipality with active incidents becomes an incident feed item
+- ✅ Updated `TopBanner` with `onToggleIncidentPanel` prop
+- ✅ TDD: wrote 2 failing tests (RED), implemented integration (GREEN)
+- **Gate:** 306 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 3A: Wire KpiPanel into ProvinceDashboardPage — COMPLETE**
+
+- ✅ Added `onToggleKpiPanel` prop to `TopBanner` component
+- ✅ Added "KPIs" toggle button in TopBanner (blue `#001e40`, next to Declare Alert)
+- ✅ Added `kpiPanelOpen` state to `ProvinceDashboardPage`
+- ✅ Rendered `KpiPanel` as slide-out drawer from right side (450px wide, positioned below banner, above health strip)
+- ✅ Drawer toggles on/off with button click
+- ✅ KpiPanel receives live `DashboardLiveData` from parent
+- ✅ TDD: wrote 4 failing tests first (RED), implemented integration (GREEN)
+- **Gate:** 279 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 3C: Entry Snap Animation — COMPLETE**
+
+- ✅ Created `AnimatedIncidentCard` component for animated incident list items:
+  - Slide-in animation: `y: -20 → 0` with easeOut over 0.3s
+  - Opacity fade-in: `0 → 1`
+  - Staggered delay based on index (`index * 0.05s`)
+  - Left border emphasis: 4px solid severity color
+  - Severity-based backgrounds: critical `#fff3cd`, high `#ffe5b4`, normal `#ffffff`
+  - Respects `prefers-reduced-motion`: renders static card without animation
+- ✅ Refactored `IncidentFeed` to use `AnimatedIncidentCard` instead of static cards
+- ✅ TDD: wrote 7 failing tests (RED), implemented animated card component (GREEN)
+- **Gate:** 294 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 3B: Pin Drop Animation — COMPLETE**
+
+- ✅ Created `MapPin` component for animated incident markers:
+  - Drop animation: `y: -30 → 0` with spring physics (stiffness: 300, damping: 15)
+  - Scale animation: `1.3 → 1.0` during drop
+  - Opacity fade-in: `0 → 1`
+  - Severity-based colors: critical `#a73400`, high `#c77600`, medium `#2d6a4f`, low `#6c757d`
+  - Respects `prefers-reduced-motion`: renders static pin without animation
+- ✅ Uses Framer Motion `motion.div` with spring transition for natural bounce
+- ✅ TDD: wrote 7 failing tests (RED), implemented animated MapPin component (GREEN)
+- **Gate:** 293 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 3A: Authority Sweep Animation — COMPLETE**
+
+- ✅ Created `useReducedMotion` hook: reads `prefers-reduced-motion` media query, subscribes to changes
+- ✅ Implemented alert level change animation on TopBanner:
+  - Badge pulses with scale animation over 3 seconds
+  - Expanding box-shadow ring effect during pulse
+  - Triggers when `alertLevel` prop changes
+  - Respects reduced motion preference
+- ✅ Added `@media (prefers-reduced-motion: reduce)` global CSS rule
+- **Gate:** 286 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 3D: Worsening Signal Animation — COMPLETE**
+
+- ✅ Created `MunicipalCard` component for individual municipal cards:
+  - Extracted from `MunicipalGrid` for better separation of concerns
+  - Left border color indicates status severity (green/yellow/red)
+  - Status dot indicator with label (Responsive/Slow/Delayed)
+- ✅ Implemented status change detection in `MunicipalGrid`:
+  - Tracks previous statuses using `useRef`
+  - Detects when status worsens (responsive → slow → delayed)
+  - Triggers `worseningSignal` animation for 2 seconds
+  - Animation: background flashes white → severity tint → white with border pulse
+- ✅ Added `worseningSignal` keyframe animation to design-tokens.css
+- ✅ TDD: wrote 8 failing tests (RED), implemented animated MunicipalCard component (GREEN)
+- **Gate:** 302 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 4: Focus Mode System — COMPLETE**
+
+- ✅ `useFocusMode` hook already existed with full keyboard support:
+  - `Alt+1`: Focus map zone
+  - `Alt+2`: Focus grid zone
+  - `Escape`: Exit focus mode
+  - `enterFocusMode(zone)` / `exitFocusMode()` programmatic API
+- ✅ Updated `CommandCenterShell` with focus mode transitions:
+  - CSS transitions for smooth zone expansion/collapse (200ms ease-out)
+  - Exit Focus button appears top-right when in focus mode
+  - Button calls `exitFocusMode()` on click
+- ✅ Added tests for exit controls:
+  - Exit button visible when in focus mode
+  - Exit button hidden in default view
+  - Exit button click triggers `exitFocusMode`
+- **Gate:** 305 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 3: Purposeful Motion Animations — ALL COMPLETE**
+
+- ✅ 3A: Authority Sweep (alert level change) — Scale pulse + box-shadow ring
+- ✅ 3B: Pin Drop (new incident on map) — Spring physics drop animation
+- ✅ 3C: Entry Snap (new incident in list) — Slide-in with staggered delay
+- ✅ 3D: Worsening Signal (municipality degradation) — Background flash + border pulse
+- ✅ All animations respect `prefers-reduced-motion`
+- ✅ `useReducedMotion` hook shared across all animated components
+
+**Phase 2D: Empty States — COMPLETE**
+
+- ✅ `ProvincialMap`: Empty state overlay with "No active incidents" + checkmark icon, semi-transparent background
+- ✅ `MunicipalGrid`: Empty state overlay when `totalActiveIncidents === 0` with "All Clear" message + checkmark
+- ✅ `IncidentFeed`: Already had empty state with "No active incidents" (from Phase 2B)
+- ✅ `SystemHealthStrip`: Implicitly shows "OK" for all services when healthy
+- ✅ All empty states use consistent design: checkmark in success green `#2d6a4f`, Text secondary heading, Surface 0 background
+- ✅ TDD: wrote 4 failing tests total (2 for ProvincialMap, 2 for MunicipalGrid), implemented minimal overlays (GREEN)
+- **Gate:** 281 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 2C: Build KpiPanel Component — COMPLETE**
+
+- ✅ Created `KpiPanel` component accepting `DashboardLiveData` prop
+- ✅ 6 KPI cards in 2×3 grid: Active Incidents, Responders Available, Avg Response Time, Resolved Today, Unresolved >24h, Municipalities Affected
+- ✅ Severity-based left border colors: critical `#a73400`, warning `#c77600`, normal `#2d6a4f`
+- ✅ Threshold logic: active incidents (≥20 critical, ≥10 warning), unresolved (≥5 critical, ≥1 warning), response time (≥20min critical, ≥10min warning)
+- ✅ Large fonts (36px values, 14px labels) optimized for 3-6ft wall display
+- ✅ Uses design tokens: Surface 1 `#ffffff`, Text primary `#1a1a2e`, tabular-nums for values
+- ✅ TDD: wrote 10 failing tests first (RED), implemented minimal component (GREEN)
+- **Gate:** 272 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 2B: Build IncidentFeed Component — COMPLETE**
+
+- ✅ Created `IncidentFeed` component with `IncidentFeedItem` interface extending base `Incident` with `timestamp` and `status` fields
+- ✅ Static list rendering (no auto-scroll per spec)
+- ✅ Sorts incidents by timestamp (newest first)
+- ✅ Severity-based card backgrounds: critical `#fff3cd`, high `#ffe5b4`, normal `#ffffff`
+- ✅ Quick action buttons: Triage, Dispatch, View (all tested with click handlers)
+- ✅ Empty state with "No active incidents" message
+- ✅ Header shows "Active Incidents" with count badge
+- ✅ TDD: wrote 10 failing tests first (RED), implemented minimal component (GREEN)
+- ✅ Fixed `noUncheckedIndexedAccess` errors in tests by using named constants instead of array indexing
+- ✅ Fixed lint errors: added braces to void-returning arrow functions in onClick handlers
+- **Gate:** 262 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+**Phase 2A: Wire AlertDeclarationModal into ProvinceDashboardPage — COMPLETE**
+
+- ✅ Added `onDeclareAlert` prop to `TopBanner` component with proper TypeScript typing
+- ✅ Connected "Declare Alert" button in TopBanner to open modal
+- ✅ Rendered `AlertDeclarationModal` in `ProvinceDashboardPage` with state management
+- ✅ Implemented `onDeclare` handler stub (ready for `declareEmergency` callable integration)
+- ✅ Fixed lint errors: removed unused `useEffect` import, added braces to void-returning arrow functions, removed `console.log`
+- ✅ Fixed type error: added nullish coalescing for `noUncheckedIndexedAccess` compliance
+- ✅ Fixed accessibility issues in `AlertDeclarationModal`: added `htmlFor` to labels, removed redundant `role="textbox"`, escaped quotes, added `onKeyDown` handler
+- ✅ TDD: wrote 3 failing tests first (RED), implemented minimal code (GREEN), all 12 ProvinceDashboardPage tests + 10 TopBanner tests passing
+- **Gate:** 252 tests passed ✓ · Lint clean ✓ · Typecheck clean ✓
+
+## Current Status (2026-05-08)
+
 **PR #115 CodeRabbit Review Fixes — All 29 Comments Addressed (2026-05-08)**
 Branch `feat/missing-features-responder-admin` pushed with all CI and review blockers resolved.
 
