@@ -134,4 +134,9 @@ export { declareHazardSignal, clearHazardSignal } from './callables/declare-haza
 export { replaySignalDeadLetter } from './callables/replay-signal-dead-letter.js';
 export { replayAuditDeadLetter } from './callables/replay-audit-dead-letter.js';
 export { prewarmSurge } from './callables/prewarm-surge.js';
+export { createUser } from './callables/create-user.js';
+export { createResponder } from './callables/create-responder.js';
+export { redispatchReport } from './callables/redispatch-report.js';
+export { reopenReport } from './callables/reopen-report.js';
+export { requestProvincialEscalation } from './callables/request-provincial-escalation.js';
 //# sourceMappingURL=index.js.map
