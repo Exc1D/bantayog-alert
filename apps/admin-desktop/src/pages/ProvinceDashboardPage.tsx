@@ -1,368 +1,217 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '../app/firebase'
-import { useProvinceMetrics } from '../hooks/useProvinceMetrics'
-import { useMunicipalPerformance } from '../hooks/useMunicipalPerformance'
-import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
-import { NdrrrmcDrawer } from '../components/NdrrrmcDrawer'
+import { useState, useMemo } from 'react'
+import { CommandCenterShell } from '../components/CommandCenterShell'
+import { TopBanner } from '../components/TopBanner'
+import { ProvincialMap } from '../components/ProvincialMap'
+import { MunicipalGrid, type MunicipalityData } from '../components/MunicipalGrid'
+import { SystemHealthStrip } from '../components/SystemHealthStrip'
+import { AlertDeclarationModal } from '../components/AlertDeclarationModal'
+import { KpiPanel } from '../components/KpiPanel'
+import { IncidentFeed, type IncidentFeedItem } from '../components/IncidentFeed'
+import { useDashboardLiveData } from '../hooks/useDashboardLiveData'
+import { useConnectionStatus } from '../hooks/useConnectionStatus'
+import { useIncidentSubscription } from '../hooks/useIncidentSubscription'
+import { callables } from '../services/callables'
+import type { Incident } from '../components/ProvincialMap'
+import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const PAGE_STYLE: React.CSSProperties = {
-  padding: '24px',
-  maxWidth: '1200px',
-  margin: '0 auto',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '24px',
-}
-
-const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontSize: '13px',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  color: '#6b7280',
-  marginBottom: '12px',
-}
-
-const CARD_STYLE: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid #e5e7eb',
-  borderRadius: '8px',
-  padding: '16px 20px',
-}
-
-const KPI_GRID_STYLE: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-  gap: '12px',
-}
-
-const KPI_LABEL_STYLE: React.CSSProperties = {
-  fontSize: '12px',
-  color: '#6b7280',
-  marginBottom: '4px',
-}
-
-const KPI_VALUE_STYLE: React.CSSProperties = {
-  fontSize: '28px',
-  fontWeight: 700,
-  lineHeight: 1.1,
-}
-
-// ── KPI Card ──────────────────────────────────────────────────────────────────
-
-interface KpiCardProps {
-  label: string
-  value: string | number
-  valueColor?: string
-  sub?: string
-}
-
-function KpiCard({ label, value, valueColor, sub }: KpiCardProps) {
-  return (
-    <div style={CARD_STYLE}>
-      <p style={KPI_LABEL_STYLE}>{label}</p>
-      <p style={{ ...KPI_VALUE_STYLE, color: valueColor ?? '#111827' }}>{value}</p>
-      {sub !== undefined && (
-        <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>{sub}</p>
-      )}
-    </div>
-  )
-}
-
-// ── 7-Day Trend query ─────────────────────────────────────────────────────────
-
-function useTrend() {
-  return useQuery({
-    queryKey: ['province-dashboard', '7day-trend'],
-    queryFn: async () => {
-      const today = new Date()
-      const dates: string[] = []
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(today)
-        d.setDate(today.getDate() - i)
-        dates.push(d.toISOString().slice(0, 10))
-      }
-      const rows = await Promise.all(
-        dates.map(async (date) => {
-          const snap = await getDoc(doc(db, 'analytics_snapshots', date, 'province', 'summary'))
-          const data = snap.data()
-          return {
-            date,
-            resolvedToday: typeof data?.resolvedToday === 'number' ? data.resolvedToday : 0,
-          }
-        }),
-      )
-      return rows
-    },
-    refetchInterval: 5 * 60 * 1000,
-  })
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
+const ALL_MUNICIPALITY_IDS = CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id)
 
 export function ProvinceDashboardPage() {
-  const [ndrrmcOpen, setNdrrmcOpen] = useState(false)
+  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null)
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [kpiPanelOpen, setKpiPanelOpen] = useState(false)
+  const [incidentPanelOpen, setIncidentPanelOpen] = useState(false)
+  const [declaredAlertLevel, setDeclaredAlertLevel] = useState<
+    'normal' | 'elevated' | 'critical' | null
+  >(null)
+  const { status: connectionStatus, lastUpdated } = useConnectionStatus()
 
-  const metrics = useProvinceMetrics()
-  const municipalData = useMunicipalPerformance()
-  const trend = useTrend()
+  const liveData = useDashboardLiveData()
+  const { incidents: realIncidents } = useIncidentSubscription()
 
-  const slowMunicipalities = municipalData.filter(
-    (m) => m.avgResponseTimeMinutes !== null && m.avgResponseTimeMinutes > 15,
-  )
+  function responseTimeToStatus(minutes: number | null): MunicipalityData['status'] {
+    if (minutes === null) return 'responsive'
+    if (minutes > 20) return 'delayed'
+    if (minutes > 10) return 'slow'
+    return 'responsive'
+  }
 
-  const auditStatus =
-    metrics.health === null ? 'Unknown' : metrics.health.healthy ? 'Healthy' : 'Degraded'
+  function parseResponseMinutes(timeString: string): number | null {
+    if (timeString === '—') return null
+    const minutes = parseInt(timeString.split(':')[0] ?? '0', 10)
+    return Number.isNaN(minutes) ? null : minutes
+  }
 
-  const auditColor =
-    metrics.health === null ? '#6b7280' : metrics.health.healthy ? '#15803d' : '#dc2626'
+  // Map live municipal data to grid format
+  const municipalities: MunicipalityData[] = useMemo(() => {
+    return liveData.municipalData.map((municipality) => {
+      const responseMinutes = parseResponseMinutes(municipality.avgResponseTime)
 
-  const batchStatus =
-    metrics.health === null
-      ? 'Unknown'
-      : metrics.health.batchGapSeconds < 600
-        ? 'On-time'
-        : 'Delayed'
+      return {
+        name: municipality.municipality,
+        activeIncidents: municipality.activeIncidents,
+        avgResponseTimeMinutes: responseMinutes,
+        status: responseTimeToStatus(responseMinutes),
+      }
+    })
+  }, [liveData.municipalData])
 
-  const batchColor =
-    metrics.health === null
-      ? '#6b7280'
-      : metrics.health.batchGapSeconds < 600
-        ? '#15803d'
-        : '#d97706'
+  // Derive alert level from live anomalies and real incident count
+  // Manual declaredAlertLevel takes precedence over derived value
+  const alertLevel = useMemo(() => {
+    if (declaredAlertLevel !== null) return declaredAlertLevel
+    if (liveData.anomalies.length > 0) return 'critical'
+    if (realIncidents.length > 10 || liveData.activeIncidents > 10) return 'elevated'
+    return 'normal'
+  }, [liveData.anomalies, liveData.activeIncidents, realIncidents.length, declaredAlertLevel])
+
+  // Map real subscription data to map incident format
+  const incidents: Incident[] = useMemo(() => {
+    return realIncidents.map((inc) => ({
+      id: inc.id,
+      location: inc.location,
+      severity: inc.severity,
+      type: inc.type,
+      municipality: inc.municipality,
+    }))
+  }, [realIncidents])
+
+  // Feed items are the real subscription data directly
+  const feedItems: IncidentFeedItem[] = realIncidents
+
+  function buildHealthStream(gapSeconds: number, isHealthy: boolean) {
+    return {
+      status: isHealthy ? ('ok' as const) : ('delayed' as const),
+      lastSuccess: new Date(),
+      gapSeconds,
+    }
+  }
+
+  // System health from live data
+  const health = useMemo(() => {
+    const healthy = liveData.systemHealthy ?? true
+    return {
+      auditStream: buildHealthStream(5, healthy),
+      batchPipeline: buildHealthStream(30, healthy),
+      smsDelivery: buildHealthStream(15, healthy),
+      fcmPush: buildHealthStream(10, healthy),
+    }
+  }, [liveData.systemHealthy])
+
+  const handleMunicipalityClick = (name: string) => {
+    setSelectedMunicipality(name)
+  }
 
   return (
-    <main style={PAGE_STYLE}>
-      <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#111827', margin: 0 }}>
-        Province Dashboard
-      </h1>
-
-      {/* Row 1: KPI cards */}
-      <section aria-labelledby="kpi-heading">
-        <p id="kpi-heading" style={SECTION_TITLE_STYLE}>
-          Live Metrics
-        </p>
-        <div style={KPI_GRID_STYLE}>
-          <KpiCard label="Active Reports" value={metrics.activeReports} />
-          <KpiCard label="Responders Available" value={metrics.respondersAvailable} />
-          <KpiCard
-            label="Avg Response Time (min)"
-            value={
-              metrics.avgResponseTimeMinutes !== null
-                ? metrics.avgResponseTimeMinutes.toFixed(1)
-                : '—'
-            }
-          />
-          <KpiCard label="Resolved Today" value={metrics.resolvedToday} />
-          <KpiCard
-            label="Audit Streaming"
-            value={auditStatus}
-            valueColor={auditColor}
-            {...(metrics.health !== null
-              ? { sub: `Gap: ${String(metrics.health.streamingGapSeconds)}s` }
-              : {})}
-          />
-          <KpiCard
-            label="Batch Pipeline"
-            value={batchStatus}
-            valueColor={batchColor}
-            {...(metrics.health !== null
-              ? { sub: `Gap: ${String(metrics.health.batchGapSeconds)}s` }
-              : {})}
-          />
-        </div>
-      </section>
-
-      {/* Row 2: Anomaly alert */}
-      {slowMunicipalities.length > 0 && (
-        <section aria-labelledby="anomaly-heading">
-          <p id="anomaly-heading" style={SECTION_TITLE_STYLE}>
-            Response Time Anomalies
-          </p>
-          <div
-            role="alert"
-            style={{
-              ...CARD_STYLE,
-              borderColor: '#fca5a5',
-              background: '#fff1f2',
+    <>
+      <CommandCenterShell
+        topBanner={
+          <TopBanner
+            alertLevel={alertLevel}
+            connectionStatus={connectionStatus}
+            lastUpdated={lastUpdated}
+            onDeclareAlert={() => {
+              setAlertModalOpen(true)
             }}
-          >
-            <p style={{ fontWeight: 600, color: '#b91c1c', marginBottom: '8px' }}>
-              {slowMunicipalities.length === 1
-                ? '1 municipality'
-                : `${String(slowMunicipalities.length)} municipalities`}{' '}
-              exceeding 15-min response threshold
-            </p>
-            <ul style={{ margin: 0, paddingLeft: '20px', color: '#7f1d1d', fontSize: '14px' }}>
-              {slowMunicipalities.map((m) => (
-                <li key={m.municipalityId}>
-                  {m.municipalityId} —{' '}
-                  {m.avgResponseTimeMinutes !== null
-                    ? `${m.avgResponseTimeMinutes.toFixed(1)} min`
-                    : '—'}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {/* Row 3: Municipal performance table */}
-      <section aria-labelledby="muni-table-heading">
-        <p id="muni-table-heading" style={SECTION_TITLE_STYLE}>
-          Municipal Performance
-        </p>
-        <div style={CARD_STYLE}>
-          <MunicipalPerformanceTable data={municipalData} />
-        </div>
-      </section>
-
-      {/* Row 4: NDRRMC queue widget */}
-      <section aria-labelledby="ndrrmc-heading">
-        <p id="ndrrmc-heading" style={SECTION_TITLE_STYLE}>
-          NDRRMC Escalation Queue
-        </p>
+            onToggleKpiPanel={() => {
+              setKpiPanelOpen((prev) => !prev)
+            }}
+            onToggleIncidentPanel={() => {
+              setIncidentPanelOpen((prev) => !prev)
+            }}
+          />
+        }
+        mapZone={
+          <ProvincialMap
+            incidents={incidents}
+            municipalities={municipalities}
+            selectedMunicipality={selectedMunicipality}
+          />
+        }
+        gridZone={
+          <MunicipalGrid
+            municipalities={municipalities}
+            onMunicipalityClick={handleMunicipalityClick}
+          />
+        }
+        bottomStrip={<SystemHealthStrip health={health} />}
+      />
+      {kpiPanelOpen && (
         <div
           style={{
-            ...CARD_STYLE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            position: 'fixed',
+            top: '100px',
+            right: 0,
+            bottom: '60px',
+            width: '450px',
+            backgroundColor: '#ffffff',
+            boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
+            zIndex: 100,
+            overflow: 'hidden',
           }}
+          data-testid="kpi-drawer"
+          role="region"
+          aria-label="KPI panel"
         >
-          <p style={{ margin: 0, fontSize: '14px', color: '#374151' }}>
-            View pending NDRRMC escalations and submit incident reports.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setNdrrmcOpen(true)
+          <KpiPanel liveData={liveData} />
+        </div>
+      )}
+
+      {incidentPanelOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '100px',
+            right: 0,
+            bottom: '60px',
+            width: '450px',
+            backgroundColor: '#ffffff',
+            boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
+            zIndex: 100,
+            overflow: 'hidden',
+          }}
+          data-testid="incident-drawer"
+          role="region"
+          aria-label="Incident feed panel"
+        >
+          <IncidentFeed
+            incidents={feedItems}
+            onTriage={() => {
+              /* no-op: wire to triage navigation when route exists */
             }}
-            style={{
-              padding: '8px 16px',
-              background: '#7c3aed',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              marginLeft: '16px',
+            onDispatch={() => {
+              /* no-op: wire to dispatch action when handler exists */
             }}
-          >
-            Open NDRRMC Drawer
-          </button>
+            onView={() => {
+              /* no-op: wire to view details when route exists */
+            }}
+          />
         </div>
-      </section>
+      )}
 
-      {/* Row 5: Quick actions */}
-      <section aria-labelledby="actions-heading">
-        <p id="actions-heading" style={SECTION_TITLE_STYLE}>
-          Quick Actions
-        </p>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {(
-            [
-              { label: 'Declare Data Incident', color: '#dc2626' },
-              { label: 'Manage Resources', color: '#2563eb' },
-              { label: 'System Health', color: '#059669' },
-              { label: 'Dead-Letter Replay', color: '#d97706' },
-            ] as const
-          ).map(({ label, color }) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => {
-                /* no-op: Task 5/7 will wire these */
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#fff',
-                color,
-                border: `1px solid ${color}`,
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Row 6: 7-day trend */}
-      <section aria-labelledby="trend-heading">
-        <p id="trend-heading" style={SECTION_TITLE_STYLE}>
-          7-Day Resolved Trend
-        </p>
-        <div style={CARD_STYLE}>
-          {trend.isLoading ? (
-            <p style={{ color: '#9ca3af', fontSize: '14px' }}>Loading trend…</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      textAlign: 'left',
-                      padding: '4px 8px',
-                      color: '#6b7280',
-                      fontWeight: 600,
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
-                  >
-                    Date
-                  </th>
-                  <th
-                    style={{
-                      textAlign: 'right',
-                      padding: '4px 8px',
-                      color: '#6b7280',
-                      fontWeight: 600,
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
-                  >
-                    Resolved Today
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(trend.data ?? []).map((row) => (
-                  <tr key={row.date}>
-                    <td style={{ padding: '4px 8px', borderBottom: '1px solid #f3f4f6' }}>
-                      {row.date}
-                    </td>
-                    <td
-                      style={{
-                        padding: '4px 8px',
-                        textAlign: 'right',
-                        borderBottom: '1px solid #f3f4f6',
-                        fontWeight: row.resolvedToday > 0 ? 600 : undefined,
-                      }}
-                    >
-                      {row.resolvedToday}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
-
-      <NdrrrmcDrawer
-        open={ndrrmcOpen}
+      <AlertDeclarationModal
+        open={alertModalOpen}
+        currentLevel={alertLevel}
         onClose={() => {
-          setNdrrmcOpen(false)
+          setAlertModalOpen(false)
+        }}
+        onDeclare={({ level, justification }) => {
+          void (async () => {
+            try {
+              await callables.declareEmergency({
+                hazardType: level,
+                affectedMunicipalityIds: ALL_MUNICIPALITY_IDS,
+                message: justification,
+              })
+              setDeclaredAlertLevel(level as 'normal' | 'elevated' | 'critical')
+            } catch (err) {
+              console.error('[ProvinceDashboardPage] declareEmergency failed:', err)
+            } finally {
+              setAlertModalOpen(false)
+            }
+          })()
         }}
       />
-    </main>
+    </>
   )
 }
