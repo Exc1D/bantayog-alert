@@ -4,6 +4,7 @@ import type {
   ReportStatus,
   DispatchStatus,
   ScopedOperationsMapIncidentPayload,
+  UserRole,
 } from '@bantayog/shared-types'
 
 type IdempotencyKey = string
@@ -257,4 +258,54 @@ export const callables = {
       functions,
       'listScopedOperationsMap',
     )({}).then((r) => r.data),
+  createUser: (payload: {
+    displayName: string
+    phone: string
+    role: UserRole
+    municipalityId?: string
+    agencyId?: string
+    specializations?: string[]
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { uid: string }>(
+      functions,
+      'createUser',
+    )(payload).then((r) => r.data),
+  createResponder: (payload: {
+    displayName: string
+    phone: string
+    agencyId: string
+    municipalityId?: string
+    specializations?: string[]
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { uid: string }>(
+      functions,
+      'createResponder',
+    )(payload).then((r) => r.data),
+  redispatchReport: (payload: {
+    oldDispatchId: string
+    newResponderUid: string
+    reason: string
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { dispatchId: string; status: DispatchStatus }>(
+      functions,
+      'redispatchReport',
+    )(payload).then((r) => r.data),
+  reopenReport: (payload: { reportId: string; reason: string; idempotencyKey: IdempotencyKey }) =>
+    httpsCallable<typeof payload, { status: ReportStatus; reportId: string }>(
+      functions,
+      'reopenReport',
+    )(payload).then((r) => r.data),
+  requestProvincialEscalation: (payload: {
+    dispatchId: string
+    reason: string
+    notes?: string
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { escalationId: string }>(
+      functions,
+      'requestProvincialEscalation',
+    )(payload).then((r) => r.data),
 }

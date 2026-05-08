@@ -29,6 +29,8 @@ interface NavItem {
   shortcut?: string
   badge?: number
   superadminOnly?: boolean
+  agencyOnly?: boolean
+  municipalOnly?: boolean
 }
 
 interface NavGroup {
@@ -64,6 +66,8 @@ export function Sidebar() {
   const municipalityId =
     typeof claims?.municipalityId === 'string' ? claims.municipalityId : undefined
   const isSuperadmin = role === 'provincial_superadmin'
+  const isAgencyAdmin = role === 'agency_admin'
+  const isMunicipalAdmin = role === 'municipal_admin'
 
   const triageCount = useTriageCount(municipalityId)
 
@@ -77,12 +81,26 @@ export function Sidebar() {
           icon: <Inbox className="w-[18px] h-[18px]" />,
           shortcut: 'Q',
           badge: triageCount,
+          municipalOnly: true,
         },
         {
           label: 'Live Map',
           path: '/map',
           icon: <Map className="w-[18px] h-[18px]" />,
           shortcut: 'M',
+          municipalOnly: true,
+        },
+        {
+          label: 'Agency Queue',
+          path: '/agency',
+          icon: <Inbox className="w-[18px] h-[18px]" />,
+          agencyOnly: true,
+        },
+        {
+          label: 'Roster',
+          path: '/roster',
+          icon: <Users className="w-[18px] h-[18px]" />,
+          agencyOnly: true,
         },
       ],
     },
@@ -94,6 +112,7 @@ export function Sidebar() {
           path: '/emergency',
           icon: <AlertTriangle className="w-[18px] h-[18px]" />,
           shortcut: 'A',
+          municipalOnly: true,
         },
         {
           label: 'NDRRMC Queue',
@@ -107,6 +126,7 @@ export function Sidebar() {
           path: '/reports',
           icon: <FileText className="w-[18px] h-[18px]" />,
           shortcut: 'R',
+          municipalOnly: true,
         },
       ],
     },
@@ -118,11 +138,13 @@ export function Sidebar() {
           path: '/users',
           icon: <Users className="w-[18px] h-[18px]" />,
           shortcut: 'U',
+          municipalOnly: true,
         },
         {
           label: 'Shift Handoff',
           path: '/handoff',
           icon: <ArrowRightLeft className="w-[18px] h-[18px]" />,
+          municipalOnly: true,
         },
       ],
     },
@@ -173,7 +195,12 @@ export function Sidebar() {
   const visibleGroups = groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !item.superadminOnly || isSuperadmin),
+      items: group.items.filter((item) => {
+        if (item.superadminOnly && !isSuperadmin) return false
+        if (item.agencyOnly && !isAgencyAdmin && !isSuperadmin) return false
+        if (item.municipalOnly && !isMunicipalAdmin && !isSuperadmin) return false
+        return true
+      }),
     }))
     .filter((group) => group.items.length > 0)
 

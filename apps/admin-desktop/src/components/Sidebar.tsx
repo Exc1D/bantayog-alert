@@ -81,9 +81,13 @@ export function Sidebar() {
           Operations
         </p>
         {canSeeTriageQueue && <SidebarLink to="/" label="Triage Queue" />}
+        {canSeeTriageQueue && <SidebarLink to="/map" label="Live Map" />}
         <SidebarLink to="/analytics" label="Analytics" />
         {canSeeAgencyQueue && <SidebarLink to="/agency" label="Agency Queue" />}
         {canSeeRoster && <SidebarLink to="/roster" label="Roster" />}
+        {canSeeTriageQueue && <SidebarLink to="/reports" label="Reports" />}
+        {canSeeTriageQueue && <SidebarLink to="/emergency" label="Emergency" />}
+        {canSeeTriageQueue && <SidebarLink to="/handoff" label="Shift Handoff" />}
 
         {/* Province section — only for provincial_superadmin */}
         {isProvinceAdmin && (

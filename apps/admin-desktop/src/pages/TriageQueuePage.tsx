@@ -7,6 +7,16 @@ import { CloseReportModal } from './CloseReportModal'
 import { callables } from '../services/callables'
 import { usePendingHandoffs } from '../hooks/usePendingHandoffs'
 import { MassAlertModal } from './MassAlertModal'
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  limit,
+  type Timestamp,
+} from 'firebase/firestore'
+import { db } from '../app/firebase'
 
 // Surge mode keyboard shortcut: pressing S (when no modal is open and
 // surge mode is NOT active yet) activates surge mode.
@@ -44,9 +54,49 @@ export function TriageQueuePage() {
   const [surgeIndex, setSurgeIndex] = useState(0)
   const [surgeAnnouncement, setSurgeAnnouncement] = useState('')
 
+  // Closed reports
+  const [showClosed, setShowClosed] = useState(false)
+  const [closedReports, setClosedReports] = useState<MuniReportRow[]>([])
+
   const { handoffs: pendingHandoffs, error: handoffsError } = usePendingHandoffs(municipalityId)
   const dialogRef = useRef<HTMLDialogElement | null>(null)
   const indexRef = useRef<number>(-1)
+
+  useEffect(() => {
+    if (!municipalityId || !showClosed) {
+      queueMicrotask(() => {
+        setClosedReports([])
+      })
+      return
+    }
+    const q = query(
+      collection(db, 'report_ops'),
+      where('municipalityId', '==', municipalityId),
+      where('status', '==', 'closed'),
+      orderBy('createdAt', 'desc'),
+      limit(20),
+    )
+    const unsub = onSnapshot(q, (snap) => {
+      setClosedReports(
+        snap.docs.map((d) => {
+          const data = d.data()
+          const row: MuniReportRow = {
+            reportId: d.id,
+            status: String(data.status) as MuniReportRow['status'],
+            severity: String(data.severity ?? 'medium') as MuniReportRow['severity'],
+            createdAt: data.createdAt as Timestamp,
+            municipalityLabel: String(data.municipalityLabel ?? ''),
+          }
+          if (data.reportType !== undefined) row.reportType = String(data.reportType)
+          if (data.duplicateClusterId !== undefined)
+            row.duplicateClusterId = String(data.duplicateClusterId)
+          if (data.barangayId !== undefined) row.barangayId = String(data.barangayId)
+          return row
+        }),
+      )
+    })
+    return unsub
+  }, [municipalityId, showClosed])
 
   useEffect(() => {
     if (handoffModalOpen) {
@@ -811,6 +861,70 @@ export function TriageQueuePage() {
                   Cancel
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Closed reports toggle */}
+          <div style={{ marginTop: 24 }}>
+            <button
+              onClick={() => {
+                setShowClosed((s) => !s)
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 6,
+                border: '1px solid #dfe3e8',
+                cursor: 'pointer',
+                fontSize: 13,
+                background: showClosed ? '#f0f4f8' : '#ffffff',
+              }}
+            >
+              {showClosed ? 'Hide' : 'Show'} Closed Reports
+            </button>
+          </div>
+
+          {showClosed && (
+            <div style={{ marginTop: 12 }}>
+              <h2 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 600, color: '#001e40' }}>
+                Closed Reports
+              </h2>
+              {closedReports.length === 0 ? (
+                <p style={{ color: '#556068', fontSize: 14 }}>No closed reports.</p>
+              ) : (
+                <ul
+                  style={{
+                    listStyle: 'none',
+                    padding: 0,
+                    margin: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
+                  {closedReports.map((r: MuniReportRow) => (
+                    <li key={r.reportId}>
+                      <button
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '10px 14px',
+                          borderRadius: 6,
+                          border:
+                            selected === r.reportId ? '2px solid #001e40' : '1px solid #dfe3e8',
+                          background: selected === r.reportId ? '#f0f4fa' : '#ffffff',
+                          cursor: 'pointer',
+                          fontSize: 13,
+                        }}
+                        onClick={() => {
+                          setSelected(r.reportId)
+                        }}
+                      >
+                        [closed] {r.severity} — {r.reportId.slice(0, 8)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </section>
