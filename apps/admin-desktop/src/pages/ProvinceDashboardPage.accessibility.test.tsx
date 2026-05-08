@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { ProvinceDashboardPage } from '../pages/ProvinceDashboardPage'
 
 // Mock all child components
@@ -21,7 +21,14 @@ vi.mock('../components/CommandCenterShell', () => ({
 
 vi.mock('../components/TopBanner', () => ({
   TopBanner: (props: Record<string, unknown>) => (
-    <div data-testid="top-banner" data-props={JSON.stringify(props)} />
+    <div data-testid="top-banner" data-props={JSON.stringify(props)}>
+      <button data-testid="toggle-kpi" onClick={props.onToggleKpiPanel as () => void}>
+        Toggle KPI
+      </button>
+      <button data-testid="toggle-incidents" onClick={props.onToggleIncidentPanel as () => void}>
+        Toggle Incidents
+      </button>
+    </div>
   ),
 }))
 
@@ -80,6 +87,10 @@ vi.mock('../hooks/useConnectionStatus', () => ({
   useConnectionStatus: () => ({ status: 'live' as const, lastUpdated: new Date() }),
 }))
 
+vi.mock('../hooks/useIncidentSubscription', () => ({
+  useIncidentSubscription: () => ({ incidents: [], loading: false, error: null }),
+}))
+
 describe('ProvinceDashboardPage Accessibility', () => {
   afterEach(() => {
     cleanup()
@@ -98,11 +109,32 @@ describe('ProvinceDashboardPage Accessibility', () => {
 
   it('renders without hardcoded color errors', () => {
     render(<ProvinceDashboardPage />)
-    // Verify the page renders without crashing
     expect(screen.getByTestId('command-center-shell')).toBeInTheDocument()
     expect(screen.getByTestId('top-banner-slot')).toBeInTheDocument()
     expect(screen.getByTestId('map-zone-slot')).toBeInTheDocument()
     expect(screen.getByTestId('grid-zone-slot')).toBeInTheDocument()
     expect(screen.getByTestId('bottom-strip-slot')).toBeInTheDocument()
+  })
+
+  it('KPI drawer has role="region" and aria-label', () => {
+    render(<ProvinceDashboardPage />)
+    const toggleKpi = screen.getByTestId('toggle-kpi')
+
+    fireEvent.click(toggleKpi)
+
+    const kpiDrawer = screen.getByTestId('kpi-drawer')
+    expect(kpiDrawer).toHaveAttribute('role', 'region')
+    expect(kpiDrawer).toHaveAttribute('aria-label', 'KPI panel')
+  })
+
+  it('incident drawer has role="region" and aria-label', () => {
+    render(<ProvinceDashboardPage />)
+    const toggleIncidents = screen.getByTestId('toggle-incidents')
+
+    fireEvent.click(toggleIncidents)
+
+    const incidentDrawer = screen.getByTestId('incident-drawer')
+    expect(incidentDrawer).toHaveAttribute('role', 'region')
+    expect(incidentDrawer).toHaveAttribute('aria-label', 'Incident feed panel')
   })
 })

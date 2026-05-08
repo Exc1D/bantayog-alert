@@ -10,13 +10,20 @@ import { IncidentFeed, type IncidentFeedItem } from '../components/IncidentFeed'
 import { useDashboardLiveData } from '../hooks/useDashboardLiveData'
 import { useConnectionStatus } from '../hooks/useConnectionStatus'
 import { useIncidentSubscription } from '../hooks/useIncidentSubscription'
+import { callables } from '../services/callables'
 import type { Incident } from '../components/ProvincialMap'
+import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
+
+const ALL_MUNICIPALITY_IDS = CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id)
 
 export function ProvinceDashboardPage() {
   const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [kpiPanelOpen, setKpiPanelOpen] = useState(false)
   const [incidentPanelOpen, setIncidentPanelOpen] = useState(false)
+  const [declaredAlertLevel, setDeclaredAlertLevel] = useState<
+    'normal' | 'elevated' | 'critical' | null
+  >(null)
   const { status: connectionStatus, lastUpdated } = useConnectionStatus()
 
   const liveData = useDashboardLiveData()
@@ -50,11 +57,13 @@ export function ProvinceDashboardPage() {
   }, [liveData.municipalData])
 
   // Derive alert level from live anomalies and real incident count
+  // Manual declaredAlertLevel takes precedence over derived value
   const alertLevel = useMemo(() => {
+    if (declaredAlertLevel !== null) return declaredAlertLevel
     if (liveData.anomalies.length > 0) return 'critical'
     if (realIncidents.length > 10 || liveData.activeIncidents > 10) return 'elevated'
     return 'normal'
-  }, [liveData.anomalies, liveData.activeIncidents, realIncidents.length])
+  }, [liveData.anomalies, liveData.activeIncidents, realIncidents.length, declaredAlertLevel])
 
   // Map real subscription data to map incident format
   const incidents: Incident[] = useMemo(() => {
@@ -141,6 +150,8 @@ export function ProvinceDashboardPage() {
             overflow: 'hidden',
           }}
           data-testid="kpi-drawer"
+          role="region"
+          aria-label="KPI panel"
         >
           <KpiPanel liveData={liveData} />
         </div>
@@ -160,6 +171,8 @@ export function ProvinceDashboardPage() {
             overflow: 'hidden',
           }}
           data-testid="incident-drawer"
+          role="region"
+          aria-label="Incident feed panel"
         >
           <IncidentFeed
             incidents={feedItems}
@@ -182,8 +195,21 @@ export function ProvinceDashboardPage() {
         onClose={() => {
           setAlertModalOpen(false)
         }}
-        onDeclare={() => {
-          setAlertModalOpen(false)
+        onDeclare={({ level, justification }) => {
+          void (async () => {
+            try {
+              await callables.declareEmergency({
+                hazardType: level,
+                affectedMunicipalityIds: ALL_MUNICIPALITY_IDS,
+                message: justification,
+              })
+              setDeclaredAlertLevel(level as 'normal' | 'elevated' | 'critical')
+            } catch (err) {
+              console.error('[ProvinceDashboardPage] declareEmergency failed:', err)
+            } finally {
+              setAlertModalOpen(false)
+            }
+          })()
         }}
       />
     </>
