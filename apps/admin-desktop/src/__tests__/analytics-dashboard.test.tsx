@@ -3,9 +3,18 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('../app/firebase', () => ({ db: {} }))
+interface AuthClaims {
+  municipalityId?: string
+  agencyId?: string
+  role: string
+}
+const authState = vi.hoisted(() => {
+  const claims: AuthClaims = { municipalityId: 'daet', role: 'municipal_admin' }
+  return { claims }
+})
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: () => ({
-    claims: { municipalityId: 'daet', role: 'municipal_admin' },
+    claims: authState.claims,
     signOut: vi.fn(),
   }),
 }))
@@ -41,6 +50,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe('AnalyticsDashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.claims = { municipalityId: 'daet', role: 'municipal_admin' }
     mockGetCountFromServer.mockResolvedValue({ data: () => ({ count: 42 }) })
     mockGetDocs.mockResolvedValue({ docs: [] })
     mockGetDoc.mockResolvedValue({ exists: () => false })
@@ -102,5 +112,15 @@ describe('AnalyticsDashboardPage', () => {
     render(<AnalyticsDashboardPage />, { wrapper })
     expect(await screen.findByLabelText('7-day trend chart')).toBeInTheDocument()
     expect(screen.getByLabelText(/2026-04-20: 7 reports/)).toBeInTheDocument()
+  })
+
+  it('scopes analytics to the caller agency for agency admins', async () => {
+    authState.claims = { agencyId: 'drmu', role: 'agency_admin' }
+    render(<AnalyticsDashboardPage />, { wrapper })
+    expect(await screen.findByText(/drmu/i)).toBeInTheDocument()
+    const hasAgencyFilter = (mockWhere.mock.calls as unknown[][]).some(
+      (args) => args[0] === 'agencyIds' && args[1] === 'array-contains' && args[2] === 'drmu',
+    )
+    expect(hasAgencyFilter).toBe(true)
   })
 })

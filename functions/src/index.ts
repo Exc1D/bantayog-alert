@@ -9,6 +9,7 @@ export {
 export { requestUploadUrl } from './callables/request-upload-url.js'
 export { verifyReport } from './callables/verify-report.js'
 export { requestLookup } from './callables/request-lookup.js'
+export { listScopedOperationsMap } from './callables/list-scoped-operations-map.js'
 export { dispatchResponder } from './callables/dispatch-responder.js'
 export { cancelDispatch } from './callables/cancel-dispatch.js'
 export { rejectReport } from './callables/reject-report.js'

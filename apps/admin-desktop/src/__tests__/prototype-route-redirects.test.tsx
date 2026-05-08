@@ -37,6 +37,9 @@ vi.mock('../services/callables', () => ({
     prewarmSurge: (...args: unknown[]) => mockPrewarmSurge(...args),
   },
 }))
+vi.mock('../lib/utils', () => ({
+  cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
+}))
 
 vi.mock('../components/Sidebar', () => ({ Sidebar: () => <div>legacy sidebar</div> }))
 vi.mock('../pages/LoginPage', () => ({ LoginPage: () => <div>login page</div> }))
@@ -71,8 +74,10 @@ vi.mock('../pages/ProvinceNdrrmcPage', () => ({
 vi.mock('../pages/ProvinceEmergencyPage', () => ({
   ProvinceEmergencyPage: () => <div>live province emergency</div>,
 }))
+vi.mock('../pages/ScopedOperationsMapPage', () => ({
+  default: () => <div>live scoped map</div>,
+}))
 vi.mock('../pages/DashboardPage', () => ({ default: () => <div>prototype dashboard</div> }))
-vi.mock('../pages/MapPage', () => ({ default: () => <div>prototype map</div> }))
 vi.mock('../pages/UsersPage', () => ({ default: () => <div>prototype users</div> }))
 vi.mock('../pages/EmergencyPage', () => ({ default: () => <div>prototype emergency</div> }))
 vi.mock('../pages/NdrrmcPage', () => ({ default: () => <div>prototype ndrrmc</div> }))
@@ -83,6 +88,7 @@ vi.mock('../pages/SmsPage', () => ({ default: () => <div>sms page</div> }))
 vi.mock('../pages/HandoffPage', () => ({ default: () => <div>handoff page</div> }))
 vi.mock('../pages/ErasurePage', () => ({ default: () => <div>erasure page</div> }))
 vi.mock('../pages/SettingsPage', () => ({ default: () => <div>settings page</div> }))
+vi.mock('../pages/SystemHealthPage.module.css', () => ({ default: {} }))
 
 async function renderPath(path: string) {
   window.history.replaceState({}, '', path)
@@ -122,6 +128,18 @@ describe('prototype route redirects', () => {
     authState.role = 'municipal_admin'
     await renderPath('/dashboard')
     expect(await screen.findByText('prototype dashboard')).toBeInTheDocument()
+  })
+
+  it('shows the live scoped map for municipal admins', async () => {
+    authState.role = 'municipal_admin'
+    await renderPath('/map')
+    expect(await screen.findByText('live scoped map')).toBeInTheDocument()
+  })
+
+  it('shows the live scoped map for agency admins', async () => {
+    authState.role = 'agency_admin'
+    await renderPath('/map')
+    expect(await screen.findByText('live scoped map')).toBeInTheDocument()
   })
 
   it('only exposes real system health actions', async () => {

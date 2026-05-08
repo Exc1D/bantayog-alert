@@ -1,6 +1,10 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
-import type { ReportStatus, DispatchStatus } from '@bantayog/shared-types'
+import type {
+  ReportStatus,
+  DispatchStatus,
+  ScopedOperationsMapIncidentPayload,
+} from '@bantayog/shared-types'
 
 type IdempotencyKey = string
 type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
@@ -248,4 +252,9 @@ export const callables = {
       functions,
       'requestAgencyAssistance',
     )(payload).then((r) => r.data),
+  listScopedOperationsMap: () =>
+    httpsCallable<Record<string, never>, { incidents: ScopedOperationsMapIncidentPayload[] }>(
+      functions,
+      'listScopedOperationsMap',
+    )({}).then((r) => r.data),
 }

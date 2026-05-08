@@ -39,6 +39,9 @@ export function Sidebar() {
   const { claims } = useAuth()
   const role = typeof claims?.role === 'string' ? claims.role : ''
   const isProvinceAdmin = role === 'provincial_superadmin'
+  const canSeeTriageQueue = role !== 'agency_admin'
+  const canSeeAgencyQueue = role === 'agency_admin'
+  const canSeeRoster = role === 'agency_admin'
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false)
 
   return (
@@ -77,10 +80,10 @@ export function Sidebar() {
         >
           Operations
         </p>
-        <SidebarLink to="/" label="Triage Queue" />
+        {canSeeTriageQueue && <SidebarLink to="/" label="Triage Queue" />}
         <SidebarLink to="/analytics" label="Analytics" />
-        <SidebarLink to="/agency" label="Agency Queue" />
-        <SidebarLink to="/roster" label="Roster" />
+        {canSeeAgencyQueue && <SidebarLink to="/agency" label="Agency Queue" />}
+        {canSeeRoster && <SidebarLink to="/roster" label="Roster" />}
 
         {/* Province section — only for provincial_superadmin */}
         {isProvinceAdmin && (

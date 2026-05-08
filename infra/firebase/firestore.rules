@@ -46,6 +46,27 @@ service cloud.firestore {
           && (isMuniAdmin() || isSuperadmin()
               || (isAgencyAdmin() && data.agencyId == myAgency()));
     }
+    function canReadReportOps(data) {
+      return adminOf(data.municipalityId)
+          || (isAgencyAdmin()
+              && ('agencyIds' in data)
+              && data.agencyIds is list
+              && data.agencyIds.hasAny([myAgency()]));
+    }
+    function canReadDispatch(data) {
+      return (isResponder()
+              && isActivePrivileged()
+              && ('assignedTo' in data)
+              && data.assignedTo is map
+              && ('uid' in data.assignedTo)
+              && data.assignedTo.uid == uid())
+          || adminOf(data.municipalityId)
+          || (isAgencyAdmin()
+              && ('assignedTo' in data)
+              && data.assignedTo is map
+              && ('agencyId' in data.assignedTo)
+              && data.assignedTo.agencyId == myAgency());
+    }
     function validResponderTransition(from, to) {
       return       (from == 'pending' && to == 'accepted')
           ||       (from == 'pending' && to == 'declined')
@@ -160,10 +181,12 @@ service cloud.firestore {
     }
 
     match /report_ops/{r} {
-      allow get: if adminOf(resource.data.municipalityId)
-                 || (isAgencyAdmin() && myAgency() in resource.data.agencyIds);
-      allow list: if request.query.limit <= 200
-                  && isMuniAdmin();
+      allow get: if canReadReportOps(resource.data);
+      allow list: if adminOf(resource.data.municipalityId)
+                  || (isAgencyAdmin()
+                      && ('agencyIds' in resource.data)
+                      && resource.data.agencyIds is list
+                      && resource.data.agencyIds.hasAny([myAgency()]));
       allow write: if false;
     }
 
@@ -233,14 +256,11 @@ service cloud.firestore {
 
     // --- Dispatches ---
     match /dispatches/{d} {
-      allow get: if isActivePrivileged() && (
-        (isResponder() && resource.data.assignedTo.uid == uid())
-        || adminOf(resource.data.municipalityId)
-        || (isAgencyAdmin() && myAgency() == resource.data.agencyId)
-      );
+      allow get: if isActivePrivileged() && canReadDispatch(resource.data);
       allow list: if isActivePrivileged() && (
-        isResponder() || isMuniAdmin() || isSuperadmin() || isAgencyAdmin()
-      );
+                    (isResponder() && ('assignedTo' in resource.data) && resource.data.assignedTo is map && ('uid' in resource.data.assignedTo) && resource.data.assignedTo.uid == uid())
+                    || adminOf(resource.data.municipalityId)
+                  );
 
       function isAssignedResponder() {
         return isResponder()
