@@ -20,6 +20,8 @@ import { DispatchHistoryPage } from './pages/DispatchHistoryPage'
 import { ResponderWitnessReportPage } from './pages/ResponderWitnessReportPage'
 import { SosPage } from './pages/SosPage'
 import { BackupRequestPage } from './pages/BackupRequestPage'
+import { TotpGuard } from './pages/TotpGuard'
+import { TotpEnrollmentPage } from './pages/TotpEnrollmentPage'
 import { subscribeForegroundPush, subscribeNotificationTap } from './services/push-client'
 
 function NotificationRouter() {
@@ -69,30 +71,43 @@ const router = createBrowserRouter([
       {
         element: (
           <ProtectedRoute allowedRoles={['responder']}>
-            <TabLayout />
-          </ProtectedRoute>
-        ),
-        children: [
-          { path: '/', element: <DispatchListPage /> },
-          { path: '/map', element: <MapPage /> },
-          { path: '/messages', element: <MessagesPage /> },
-          { path: '/messages/:reportId', element: <MessageThreadPage /> },
-          { path: '/profile', element: <ProfilePage /> },
-        ],
-      },
-      {
-        element: (
-          <ProtectedRoute allowedRoles={['responder']}>
             <Outlet />
           </ProtectedRoute>
         ),
         children: [
-          { path: '/dispatches/:dispatchId', element: <DispatchDetailPage /> },
-          { path: '/dispatches/:id/witness-report', element: <ResponderWitnessReportPage /> },
-          { path: '/dispatches/:id/sos', element: <SosPage /> },
-          { path: '/dispatches/:id/backup', element: <BackupRequestPage /> },
-          { path: '/handoff', element: <ShiftHandoffPage /> },
-          { path: '/history', element: <DispatchHistoryPage /> },
+          { path: '/totp-enroll', element: <TotpEnrollmentPage /> },
+          {
+            element: (
+              <TotpGuard>
+                <TabLayout />
+              </TotpGuard>
+            ),
+            children: [
+              { path: '/', element: <DispatchListPage /> },
+              { path: '/map', element: <MapPage /> },
+              { path: '/messages', element: <MessagesPage /> },
+              { path: '/messages/:reportId', element: <MessageThreadPage /> },
+              { path: '/profile', element: <ProfilePage /> },
+            ],
+          },
+          {
+            element: (
+              <TotpGuard>
+                <Outlet />
+              </TotpGuard>
+            ),
+            children: [
+              { path: '/dispatches/:dispatchId', element: <DispatchDetailPage /> },
+              {
+                path: '/dispatches/:dispatchId/witness-report',
+                element: <ResponderWitnessReportPage />,
+              },
+              { path: '/dispatches/:dispatchId/sos', element: <SosPage /> },
+              { path: '/dispatches/:dispatchId/backup', element: <BackupRequestPage /> },
+              { path: '/handoff', element: <ShiftHandoffPage /> },
+              { path: '/history', element: <DispatchHistoryPage /> },
+            ],
+          },
         ],
       },
       { path: '/dispatches', element: <Navigate to="/" replace /> },

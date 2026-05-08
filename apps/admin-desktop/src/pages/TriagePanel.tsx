@@ -6,8 +6,11 @@ import { useEffect, useRef, useState } from 'react'
 import { X, Shield, AlertTriangle, CheckCircle, ChevronDown } from 'lucide-react'
 import { useReportDetail } from '../hooks/useReportDetail'
 import { useAgencies } from '../hooks/useAgencies'
+import { useDispatchStatus } from '../hooks/useDispatchStatus'
 import { callables } from '../services/callables'
 import { CommandChannelPanel } from '../components/CommandChannelPanel'
+import { RedispatchModal } from './RedispatchModal'
+import { ReopenReportModal } from './ReopenReportModal'
 
 type RejectReason = 'obviously_false' | 'duplicate' | 'test_submission' | 'insufficient_detail'
 
@@ -60,6 +63,7 @@ export function TriagePanel({
 }: Props) {
   const { report, ops, error } = useReportDetail(reportId)
   const agencies = useAgencies(municipalityId)
+  const dispatchStatus = useDispatchStatus(report?.currentDispatchId)
   const panelRef = useRef<HTMLDivElement>(null)
 
   // UI state
@@ -80,6 +84,8 @@ export function TriagePanel({
     message: '',
   })
   const [agencyLoading, setAgencyLoading] = useState(false)
+  const [redispatchOpen, setRedispatchOpen] = useState(false)
+  const [reopenOpen, setReopenOpen] = useState(false)
 
   // Focus trap: move focus into panel on mount, restore on unmount.
   useEffect(() => {
@@ -204,6 +210,8 @@ export function TriagePanel({
   const canReject = report?.status === 'awaiting_verify'
   const canDispatch = report?.status === 'verified'
   const canClose = report?.status === 'resolved'
+  const canRedispatch = dispatchStatus === 'declined' || dispatchStatus === 'timed_out'
+  const canReopen = report?.status === 'closed'
 
   const severityKey = report?.severityDerived.toLowerCase() ?? 'medium'
   const severityStyle = SEVERITY_STYLE[severityKey] ??
@@ -496,6 +504,46 @@ export function TriagePanel({
                     }}
                   >
                     Close Report
+                  </button>
+                )}
+                {canRedispatch && (
+                  <button
+                    onClick={() => {
+                      setRedispatchOpen(true)
+                    }}
+                    style={{
+                      background: '#92400e',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '10px 18px',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      minHeight: 44,
+                    }}
+                  >
+                    Redispatch
+                  </button>
+                )}
+                {canReopen && (
+                  <button
+                    onClick={() => {
+                      setReopenOpen(true)
+                    }}
+                    style={{
+                      background: 'transparent',
+                      color: '#001e40',
+                      border: '1px solid #001e40',
+                      borderRadius: 6,
+                      padding: '10px 18px',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      minHeight: 44,
+                    }}
+                  >
+                    Reopen Report
                   </button>
                 )}
               </div>
@@ -884,6 +932,31 @@ export function TriagePanel({
           )}
         </div>
       </div>
+
+      {redispatchOpen && report?.currentDispatchId && (
+        <RedispatchModal
+          oldDispatchId={report.currentDispatchId}
+          onClose={() => {
+            setRedispatchOpen(false)
+          }}
+          onError={(msg: string) => {
+            setActionBanner({ type: 'error', msg })
+            setRedispatchOpen(false)
+          }}
+        />
+      )}
+      {reopenOpen && (
+        <ReopenReportModal
+          reportId={reportId}
+          onClose={() => {
+            setReopenOpen(false)
+          }}
+          onError={(msg: string) => {
+            setActionBanner({ type: 'error', msg })
+            setReopenOpen(false)
+          }}
+        />
+      )}
 
       {/* Slide-in animation keyframe — injected once via style tag */}
       <style>{`

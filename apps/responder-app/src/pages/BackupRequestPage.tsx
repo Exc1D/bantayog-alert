@@ -4,14 +4,14 @@ import { useRequestBackup } from '../hooks/useRequestBackup'
 import styles from './BackupRequestPage.module.css'
 
 export function BackupRequestPage() {
-  const { id } = useParams<{ id: string }>()
+  const { dispatchId } = useParams<{ dispatchId: string }>()
   const navigate = useNavigate()
-  const { request, loading, error } = useRequestBackup(id ?? '')
+  const { request, loading, error } = useRequestBackup(dispatchId ?? '')
 
   const [reason, setReason] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  if (!id) {
+  if (!dispatchId) {
     return (
       <div role="alert" className={styles.errorMsg}>
         Invalid route: dispatch ID is missing.
@@ -37,7 +37,7 @@ export function BackupRequestPage() {
         <div className={styles.pageHeader}>
           <button
             className={styles.backBtn}
-            onClick={() => void navigate(`/dispatches/${id}`)}
+            onClick={() => void navigate(`/dispatches/${dispatchId}`)}
             aria-label="Back"
           >
             ←
@@ -50,7 +50,7 @@ export function BackupRequestPage() {
           </div>
           <button
             className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
-            onClick={() => void navigate(`/dispatches/${id}`)}
+            onClick={() => void navigate(`/dispatches/${dispatchId}`)}
           >
             Back to dispatch
           </button>
@@ -64,7 +64,7 @@ export function BackupRequestPage() {
       <div className={styles.pageHeader}>
         <button
           className={styles.backBtn}
-          onClick={() => void navigate(`/dispatches/${id}`)}
+          onClick={() => void navigate(`/dispatches/${dispatchId}`)}
           aria-label="Back"
         >
           ←
@@ -101,7 +101,7 @@ export function BackupRequestPage() {
             </button>
             <button
               type="button"
-              onClick={() => void navigate(`/dispatches/${id}`)}
+              onClick={() => void navigate(`/dispatches/${dispatchId}`)}
               disabled={loading}
               className={styles.toggleBtn}
             >

@@ -37,6 +37,15 @@ vi.mock('../hooks/useMessages', () => ({
   }),
 }))
 
+const reportState = vi.hoisted(() => ({
+  report: null as { contactPhone?: string } | null,
+  loading: false,
+}))
+
+vi.mock('../hooks/useReport', () => ({
+  useReport: () => ({ report: reportState.report, loading: reportState.loading }),
+}))
+
 import { MessageThreadPage } from './MessageThreadPage'
 
 function renderPage() {
@@ -57,6 +66,8 @@ describe('MessageThreadPage', () => {
     sendState.send.mockClear()
     sendState.loading = false
     sendState.error = undefined
+    reportState.report = null
+    reportState.loading = false
   })
 
   it('classifies bubbles by authorUid match against current user', () => {
@@ -126,6 +137,20 @@ describe('MessageThreadPage', () => {
 
     expect(sendState.send).toHaveBeenCalledTimes(1)
     expect(textarea.value).toBe('Urgent update')
+  })
+
+  it('shows enabled Call Admin link when contactPhone is present', () => {
+    reportState.report = { contactPhone: '+639171234567' }
+    renderPage()
+    const link = screen.getByRole('link', { name: /call admin/i })
+    expect(link).toHaveAttribute('href', 'tel:+639171234567')
+  })
+
+  it('shows disabled Call Admin button when contactPhone is absent', () => {
+    reportState.report = {}
+    renderPage()
+    const btn = screen.getByRole('button', { name: /call admin/i })
+    expect(btn).toBeDisabled()
   })
 
   it('auto-scrolls only when user is near the bottom of the list', () => {

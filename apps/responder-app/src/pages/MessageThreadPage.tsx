@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import { useMessages } from '../hooks/useMessages'
 import { useSendMessage } from '../hooks/useSendMessage'
+import { useReport } from '../hooks/useReport'
 import styles from './MessageThreadPage.module.css'
 
 function formatTime(ms: number): string {
@@ -15,6 +16,7 @@ export function MessageThreadPage() {
   const { user } = useAuth()
   const { messages, loading, error: messagesError } = useMessages(reportId)
   const { send, loading: sending, error: sendError } = useSendMessage(reportId ?? '')
+  const { report } = useReport(reportId)
   const [draft, setDraft] = useState('')
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -53,6 +55,21 @@ export function MessageThreadPage() {
           ←
         </button>
         <h1 className={styles.headerTitle}>Incident #{reportId?.slice(0, 8) ?? ''}</h1>
+        {report?.contactPhone ? (
+          <a href={`tel:${report.contactPhone}`} className={styles.sendBtn} aria-label="Call Admin">
+            📞
+          </a>
+        ) : (
+          <button
+            type="button"
+            className={styles.sendBtn}
+            disabled
+            title="Admin phone not available"
+            aria-label="Call Admin"
+          >
+            📞
+          </button>
+        )}
       </div>
 
       <div className={styles.messageList} role="log" aria-label="Messages" ref={listRef}>

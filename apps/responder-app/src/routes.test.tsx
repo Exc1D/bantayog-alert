@@ -52,6 +52,12 @@ vi.mock('./pages/BackupRequestPage', () => ({
 vi.mock('./pages/ResponderWitnessReportPage', () => ({
   ResponderWitnessReportPage: () => <div data-testid="witness-page" />,
 }))
+vi.mock('./pages/TotpGuard', () => ({
+  TotpGuard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+vi.mock('./pages/TotpEnrollmentPage', () => ({
+  TotpEnrollmentPage: () => <div data-testid="totp-enroll-page" />,
+}))
 vi.mock('./services/push-client', () => ({
   subscribeForegroundPush: () => () => undefined,
   subscribeNotificationTap: () => () => undefined,
@@ -124,5 +130,11 @@ describe('AppRouter', () => {
     await renderAt('/login')
     expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
     expect(screen.getByTestId('login-page')).toBeInTheDocument()
+  })
+
+  it('renders TotpEnrollmentPage at /totp-enroll outside Shell', async () => {
+    await renderAt('/totp-enroll')
+    expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
+    expect(screen.getByTestId('totp-enroll-page')).toBeInTheDocument()
   })
 })

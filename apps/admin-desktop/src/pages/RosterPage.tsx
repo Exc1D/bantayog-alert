@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useRosterManagement, type RosterResponder } from '../hooks/useRosterManagement'
 import { computeFreshness, type Freshness } from '../utils/freshness'
+import { callables } from '../services/callables'
 
 const FRESHNESS_COLOR: Record<Freshness, string> = {
   fresh: 'green',
@@ -280,6 +281,14 @@ export function RosterPage() {
   const [revokeState, setRevokeState] = useState<RevokeState | null>(null)
   const [bulkConfirm, setBulkConfirm] = useState<BulkConfirmState | null>(null)
   const [, setTick] = useState(0)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    displayName: '',
+    phone: '',
+    specializations: [] as string[],
+    specInput: '',
+  })
+  const [createLoading, setCreateLoading] = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -361,6 +370,48 @@ export function RosterPage() {
     setBulkConfirm(null)
   }
 
+  const handleCreateResponder = async () => {
+    if (!createForm.displayName.trim() || !createForm.phone.trim() || !agencyId) return
+    setCreateLoading(true)
+    setBanner(null)
+    try {
+      const payload: Parameters<typeof callables.createResponder>[0] = {
+        displayName: createForm.displayName.trim(),
+        phone: createForm.phone.trim(),
+        agencyId,
+        idempotencyKey: crypto.randomUUID(),
+      }
+      if (createForm.specializations.length > 0) {
+        payload.specializations = createForm.specializations
+      }
+      await callables.createResponder(payload)
+      setCreateOpen(false)
+      setCreateForm({ displayName: '', phone: '', specializations: [], specInput: '' })
+    } catch (err: unknown) {
+      setBanner(err instanceof Error ? err.message : 'Create responder failed')
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
+  const addSpecialization = () => {
+    const trimmed = createForm.specInput.trim()
+    if (!trimmed) return
+    if (createForm.specializations.includes(trimmed)) return
+    setCreateForm((f) => ({
+      ...f,
+      specializations: [...f.specializations, trimmed],
+      specInput: '',
+    }))
+  }
+
+  const removeSpecialization = (spec: string) => {
+    setCreateForm((f) => ({
+      ...f,
+      specializations: f.specializations.filter((s) => s !== spec),
+    }))
+  }
+
   return (
     <main style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
       <header
@@ -376,6 +427,28 @@ export function RosterPage() {
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#001e40', margin: 0 }}>
           Roster · {agencyId ?? 'N/A'}
         </h1>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => {
+              setCreateOpen(true)
+              setBanner(null)
+            }}
+            style={{
+              padding: '8px 16px',
+              background: '#001e40',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontWeight: 600,
+              cursor: 'pointer',
+              minHeight: 44,
+              fontSize: 13,
+            }}
+          >
+            Add Responder
+          </button>
+        </div>
 
         {/* Bulk shift toggle buttons */}
         <div style={{ display: 'flex', gap: 8 }}>
@@ -490,6 +563,260 @@ export function RosterPage() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {createOpen && (
+        <div
+          role="presentation"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.4)',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setCreateOpen(false)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setCreateOpen(false)
+          }}
+        >
+          <div
+            ref={(node) => {
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+              if (node && createOpen) {
+                node.focus()
+              }
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-responder-title"
+            tabIndex={-1}
+            style={{
+              background: '#fff',
+              borderRadius: 8,
+              padding: '24px',
+              width: '100%',
+              maxWidth: '480px',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+            }}
+          >
+            <h2
+              id="add-responder-title"
+              style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: '#001e40' }}
+            >
+              Add Responder
+            </h2>
+            <div style={{ marginBottom: '12px' }}>
+              <label
+                htmlFor="cr-displayName"
+                style={{
+                  display: 'block',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: '#556068',
+                  marginBottom: '4px',
+                }}
+              >
+                Display Name
+              </label>
+              <input
+                id="cr-displayName"
+                type="text"
+                value={createForm.displayName}
+                onChange={(e) => {
+                  setCreateForm((f) => ({ ...f, displayName: e.target.value }))
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #dfe3e8',
+                  fontSize: 13,
+                  minHeight: 44,
+                  boxSizing: 'border-box',
+                }}
+                placeholder="Full name"
+              />
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label
+                htmlFor="cr-phone"
+                style={{
+                  display: 'block',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: '#556068',
+                  marginBottom: '4px',
+                }}
+              >
+                Phone
+              </label>
+              <input
+                id="cr-phone"
+                type="tel"
+                value={createForm.phone}
+                onChange={(e) => {
+                  setCreateForm((f) => ({ ...f, phone: e.target.value }))
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #dfe3e8',
+                  fontSize: 13,
+                  minHeight: 44,
+                  boxSizing: 'border-box',
+                }}
+                placeholder="+63..."
+              />
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label
+                htmlFor="cr-spec"
+                style={{
+                  display: 'block',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: '#556068',
+                  marginBottom: '4px',
+                }}
+              >
+                Specializations
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  id="cr-spec"
+                  type="text"
+                  value={createForm.specInput}
+                  onChange={(e) => {
+                    setCreateForm((f) => ({ ...f, specInput: e.target.value }))
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addSpecialization()
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #dfe3e8',
+                    fontSize: 13,
+                    minHeight: 44,
+                    boxSizing: 'border-box',
+                  }}
+                  placeholder="Type and press Enter"
+                />
+                <button
+                  type="button"
+                  onClick={addSpecialization}
+                  style={{
+                    padding: '8px 14px',
+                    background: '#f0f4f8',
+                    border: '1px solid #dfe3e8',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {createForm.specializations.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {createForm.specializations.map((s) => (
+                    <span
+                      key={s}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: '0.75rem',
+                        background: '#f0f4f8',
+                        color: '#334155',
+                        border: '1px solid #dfe3e8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      {s}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removeSpecialization(s)
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.7rem',
+                          color: '#991b1b',
+                          padding: 0,
+                        }}
+                        aria-label={`Remove ${s}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                disabled={
+                  !createForm.displayName.trim() || !createForm.phone.trim() || createLoading
+                }
+                onClick={() => {
+                  void handleCreateResponder()
+                }}
+                style={{
+                  padding: '8px 16px',
+                  background:
+                    createForm.displayName.trim() && createForm.phone.trim() && !createLoading
+                      ? '#001e40'
+                      : '#8a9199',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontWeight: 600,
+                  cursor:
+                    createForm.displayName.trim() && createForm.phone.trim() && !createLoading
+                      ? 'pointer'
+                      : 'default',
+                  minHeight: 40,
+                  fontSize: 13,
+                }}
+              >
+                {createLoading ? 'Creating…' : 'Create'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateOpen(false)
+                }}
+                style={{
+                  padding: '8px 16px',
+                  background: '#f0f4f8',
+                  color: '#1d1d1f',
+                  border: '1px solid #dfe3e8',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  minHeight: 40,
+                  fontSize: 13,
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

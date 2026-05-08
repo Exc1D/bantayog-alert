@@ -27,7 +27,7 @@ describe('SosPage', () => {
     render(
       <MemoryRouter initialEntries={['/dispatches/d-1/sos']}>
         <Routes>
-          <Route path="/dispatches/:id/sos" element={<SosPage />} />
+          <Route path="/dispatches/:dispatchId/sos" element={<SosPage />} />
         </Routes>
       </MemoryRouter>,
     )
@@ -42,7 +42,7 @@ describe('SosPage', () => {
     render(
       <MemoryRouter initialEntries={['/dispatches/d-1/sos']}>
         <Routes>
-          <Route path="/dispatches/:id/sos" element={<SosPage />} />
+          <Route path="/dispatches/:dispatchId/sos" element={<SosPage />} />
         </Routes>
       </MemoryRouter>,
     )
@@ -59,7 +59,7 @@ describe('SosPage', () => {
     render(
       <MemoryRouter initialEntries={['/dispatches/d-1/sos']}>
         <Routes>
-          <Route path="/dispatches/:id/sos" element={<SosPage />} />
+          <Route path="/dispatches/:dispatchId/sos" element={<SosPage />} />
         </Routes>
       </MemoryRouter>,
     )

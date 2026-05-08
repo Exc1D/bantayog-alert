@@ -15,6 +15,7 @@ export interface ReportSummary {
   source: string
   submittedAt: number
   verifiedAt?: number
+  contactPhone?: string
 }
 
 function parseSeverity(value: unknown): 'low' | 'medium' | 'high' {
@@ -72,6 +73,19 @@ export function useReport(reportId: string | undefined) {
         }
         if (verifiedAt != null) {
           summary.verifiedAt = verifiedAt
+        }
+
+        const rawContactPhone =
+          (d.contact as { phone?: string } | undefined)?.phone ??
+          (d.phone as string | undefined) ??
+          (d.adminPhone as string | undefined)
+        if (typeof rawContactPhone === 'string' && rawContactPhone.trim().length > 0) {
+          const normalized = rawContactPhone.trim().replace(/[^+\d]/g, '')
+          if (/^\+[1-9]\d{1,14}$/.test(normalized)) {
+            summary.contactPhone = normalized
+          } else {
+            console.error('[useReport] invalid contactPhone format:', rawContactPhone)
+          }
         }
 
         setReport(summary)

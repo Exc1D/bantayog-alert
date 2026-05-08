@@ -9,8 +9,21 @@ import { useMarkDispatchUnableToComplete } from '../hooks/useMarkDispatchUnableT
 import { useAddFieldNote } from '../hooks/useAddFieldNote'
 import { CancelledScreen } from './CancelledScreen'
 import { RaceLossScreen } from './RaceLossScreen'
+import { PreArrivalInfo } from './PreArrivalInfo'
 import { getReportTypeLabel } from '../lib/incident-labels'
 import styles from './DispatchDetailPage.module.css'
+
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371e3
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
 
 const DECLINE_REASONS = [
   'Already on another assignment',
@@ -80,6 +93,7 @@ export function DispatchDetailPage() {
   const [resolutionSummary, setResolutionSummary] = useState('')
   const [fieldNote, setFieldNote] = useState('')
   const [autoAdvanceState, setAutoAdvanceState] = useState<'idle' | 'pending' | 'done'>('idle')
+  const [distanceMeters, setDistanceMeters] = useState<number | null>(null)
 
   useEffect(() => {
     if (dispatch?.status !== 'accepted') return
@@ -106,6 +120,44 @@ export function DispatchDetailPage() {
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [dispatch?.status, advance])
+
+  useEffect(() => {
+    if (dispatch?.status !== 'acknowledged' && dispatch?.status !== 'en_route') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDistanceMeters(null)
+      return
+    }
+    if (!report?.publicLocation) {
+      setDistanceMeters(null)
+      return
+    }
+
+    const publicLocation = report.publicLocation
+
+    const handleSuccess = (pos: GeolocationPosition) => {
+      const dist = haversine(
+        pos.coords.latitude,
+        pos.coords.longitude,
+        publicLocation.latitude,
+        publicLocation.longitude,
+      )
+      setDistanceMeters(Math.round(dist))
+    }
+
+    const handleError = (err: GeolocationPositionError) => {
+      console.error('[DispatchDetailPage] geolocation error:', err.code, err.message)
+      setDistanceMeters(null)
+    }
+
+    // Geolocation may be unavailable in insecure contexts or some environments.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError)
+    } else {
+      setDistanceMeters(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch?.status, report?.publicLocation?.latitude, report?.publicLocation?.longitude])
 
   useEffect(() => {
     if (acceptError ?? declineError ?? advanceError ?? unableError) {
@@ -214,6 +266,12 @@ export function DispatchDetailPage() {
             </a>
           </div>
         )}
+
+        {isActive &&
+          (dispatch.status === 'acknowledged' || dispatch.status === 'en_route') &&
+          report && (
+            <PreArrivalInfo reportType={report.reportType} distanceMeters={distanceMeters} />
+          )}
 
         {dispatch.status === 'pending' && (
           <div className={styles.statusSection}>
@@ -359,6 +417,20 @@ export function DispatchDetailPage() {
               <Link to={`/messages/${dispatch.reportId}`} className={styles.navBtn}>
                 💬 Message Admin
               </Link>
+              {report?.contactPhone ? (
+                <a href={`tel:${report.contactPhone}`} className={styles.navBtn}>
+                  📞 Call Admin
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.navBtn}
+                  disabled
+                  title="Admin phone not available"
+                >
+                  📞 Call Admin
+                </button>
+              )}
               {dispatchId !== undefined && (
                 <Link to={`/dispatches/${dispatchId}/witness-report`} className={styles.navBtn}>
                   📋 File Witness Report

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { erasureSweepCore } from '../../triggers/erasure-sweep.js'
 
@@ -63,6 +63,13 @@ async function seedApprovedRequest(
   })
 }
 
+beforeAll(async () => {
+  env = await initializeTestEnvironment({
+    projectId: 'demo-8c-sweep',
+    firestore: { host: 'localhost', port: 8081 },
+  })
+})
+
 beforeEach(async () => {
   mockUpdateUser.mockReset()
   mockDeleteUser.mockReset()
@@ -71,28 +78,10 @@ beforeEach(async () => {
   mockUpdateUser.mockResolvedValue(undefined)
   mockDeleteUser.mockResolvedValue(undefined)
   mockGetFiles.mockResolvedValue([[]])
-  env = await initializeTestEnvironment({
-    projectId: 'demo-8c-sweep',
-    firestore: { host: 'localhost', port: 8081 },
-  })
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    const db = ctx.firestore()
-    for (const col of [
-      'erasure_requests',
-      'erasure_active',
-      'reports',
-      'report_private',
-      'report_contacts',
-      'sms_sessions',
-      'sms_inbox',
-    ]) {
-      const snap = await db.collection(col).get()
-      await Promise.all(snap.docs.map((d) => d.ref.delete()))
-    }
-  })
+  await env!.clearFirestore()
 })
 
-afterEach(async () => {
+afterAll(async () => {
   await env?.cleanup()
 })
 
