@@ -29,7 +29,11 @@ export function ScopedAnalyticsDashboard({
     queryFn: async () => {
       const q = query(
         collection(db, 'report_ops'),
-        ...(scopeField ? [where(scopeField, '==', scopeId)] : []),
+        ...(scopeField === 'municipalityId'
+          ? [where('municipalityId', '==', scopeId)]
+          : scopeField === 'agencyId'
+            ? [where('agencyIds', 'array-contains', scopeId)]
+            : []),
         where('status', 'in', ACTIVE_REPORT_STATUSES),
       )
       const snap = await getCountFromServer(q)
@@ -89,7 +93,7 @@ export function ScopedAnalyticsDashboard({
                 const barH = Math.round((total / maxSnapshotTotal) * 70)
                 return (
                   <rect
-                    key={i}
+                    key={s.date}
                     x={i * 56}
                     y={70 - barH}
                     width={40}

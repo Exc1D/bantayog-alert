@@ -8,9 +8,10 @@ interface AuthClaims {
   agencyId?: string
   role: string
 }
-const authState = vi.hoisted(() => ({
-  claims: { municipalityId: 'daet', role: 'municipal_admin' } satisfies AuthClaims,
-}))
+const authState = vi.hoisted(() => {
+  const claims: AuthClaims = { municipalityId: 'daet', role: 'municipal_admin' }
+  return { claims }
+})
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: () => ({
     claims: authState.claims,
@@ -118,7 +119,7 @@ describe('AnalyticsDashboardPage', () => {
     render(<AnalyticsDashboardPage />, { wrapper })
     expect(await screen.findByText(/drmu/i)).toBeInTheDocument()
     const hasAgencyFilter = (mockWhere.mock.calls as unknown[][]).some(
-      (args) => args[0] === 'agencyId' && args[1] === '==' && args[2] === 'drmu',
+      (args) => args[0] === 'agencyIds' && args[1] === 'array-contains' && args[2] === 'drmu',
     )
     expect(hasAgencyFilter).toBe(true)
   })

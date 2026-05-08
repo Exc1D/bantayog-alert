@@ -96,12 +96,18 @@ afterAll(async () => {
 })
 
 describe('listScopedOperationsMapCore', () => {
-  it('returns municipal scoped incidents', async () => {
+  it('returns municipal scoped incidents and excludes out-of-scope reports', async () => {
     await seedScopedReport({
       reportId: 'rep-muni',
       municipalityId: 'daet',
       municipalityLabel: 'Daet',
       agencyIds: ['bfp-daet'],
+    })
+    await seedScopedReport({
+      reportId: 'rep-other-muni',
+      municipalityId: 'mercedes',
+      municipalityLabel: 'Mercedes',
+      agencyIds: ['bfp-mercedes'],
     })
 
     const result = await listScopedOperationsMapCore(adminDb, {
@@ -125,12 +131,18 @@ describe('listScopedOperationsMapCore', () => {
     })
   })
 
-  it('returns agency scoped incidents', async () => {
+  it('returns agency scoped incidents and excludes out-of-scope reports', async () => {
     await seedScopedReport({
       reportId: 'rep-agency',
       municipalityId: 'mercedes',
       municipalityLabel: 'Mercedes',
       agencyIds: ['bfp-daet'],
+    })
+    await seedScopedReport({
+      reportId: 'rep-other-agency',
+      municipalityId: 'mercedes',
+      municipalityLabel: 'Mercedes',
+      agencyIds: ['bfp-not-daet'],
     })
 
     const result = await listScopedOperationsMapCore(adminDb, {
@@ -160,6 +172,30 @@ describe('listScopedOperationsMapCore', () => {
         uid: 'citizen-1',
         claims: {
           role: 'citizen',
+          accountStatus: 'active',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
+  })
+
+  it('rejects a municipal_admin missing municipalityId', async () => {
+    await expect(
+      listScopedOperationsMapCore(adminDb, {
+        uid: 'muni-admin-1',
+        claims: {
+          role: 'municipal_admin',
+          accountStatus: 'active',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
+  })
+
+  it('rejects an agency_admin missing agencyId', async () => {
+    await expect(
+      listScopedOperationsMapCore(adminDb, {
+        uid: 'agency-admin-1',
+        claims: {
+          role: 'agency_admin',
           accountStatus: 'active',
         },
       }),

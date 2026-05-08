@@ -8,9 +8,10 @@ interface AuthClaims {
   agencyId?: string
 }
 
-const authState = vi.hoisted(() => ({
-  claims: { role: 'municipal_admin', municipalityId: 'daet' } satisfies AuthClaims,
-}))
+const authState = vi.hoisted(() => {
+  const claims: AuthClaims = { role: 'municipal_admin', municipalityId: 'daet' }
+  return { claims }
+})
 
 const { mockListScopedOperationsMap } = vi.hoisted(() => ({
   mockListScopedOperationsMap: vi.fn(),

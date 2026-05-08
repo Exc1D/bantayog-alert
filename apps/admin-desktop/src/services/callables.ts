@@ -1,26 +1,13 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
-import type { ReportStatus, DispatchStatus } from '@bantayog/shared-types'
+import type {
+  ReportStatus,
+  DispatchStatus,
+  ScopedOperationsMapIncidentPayload,
+} from '@bantayog/shared-types'
 
 type IdempotencyKey = string
 type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
-
-export interface ScopedOperationsMapIncidentPayload {
-  reportId: string
-  report: {
-    municipalityId: string
-    municipalityLabel?: string
-    barangayId?: string
-    reportType?: string
-    severity?: string
-    status?: string
-    description?: string
-    publicLocation?: { lat: number; lng: number }
-    submittedAt?: number
-    updatedAt?: number
-    activeResponderCount?: number
-  }
-}
 
 export const callables = {
   verifyReport: (payload: { reportId: string; idempotencyKey: IdempotencyKey }) =>

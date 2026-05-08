@@ -30,5 +30,9 @@ export function AnalyticsDashboardPage() {
     )
   }
 
-  return <ScopedAnalyticsDashboard scopeId="province" scopeLabel="Province" />
+  if (role === 'provincial_superadmin') {
+    return <ScopedAnalyticsDashboard scopeId="province" scopeLabel="Province" />
+  }
+
+  return <div role="alert">Access denied. Insufficient permissions for analytics.</div>
 }

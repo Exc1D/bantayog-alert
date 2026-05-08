@@ -2,13 +2,13 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
-const authState = vi.hoisted(() => ({
-  claims: { role: 'municipal_admin', municipalityId: 'daet' } satisfies {
-    role: string
-    municipalityId?: string
-    agencyId?: string
-  },
-}))
+const authState = vi.hoisted(() => {
+  const claims: { role: string; municipalityId?: string; agencyId?: string } = {
+    role: 'municipal_admin',
+    municipalityId: 'daet',
+  }
+  return { claims }
+})
 
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: () => ({
@@ -50,11 +50,11 @@ describe('Sidebar scope', () => {
     expect(screen.getByText('Roster')).toBeInTheDocument()
   })
 
-  it('shows both queues for provincial superadmins', () => {
+  it('shows triage but hides agency queue and roster for provincial superadmins', () => {
     authState.claims = { role: 'provincial_superadmin' }
     renderSidebar()
     expect(screen.getByText('Triage Queue')).toBeInTheDocument()
-    expect(screen.getByText('Agency Queue')).toBeInTheDocument()
-    expect(screen.getByText('Roster')).toBeInTheDocument()
+    expect(screen.queryByText('Agency Queue')).not.toBeInTheDocument()
+    expect(screen.queryByText('Roster')).not.toBeInTheDocument()
   })
 })

@@ -1,26 +1,12 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { z } from 'zod'
-import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
+import {
+  ACTIVE_REPORT_STATUSES,
+  type ScopedOperationsMapIncidentPayload,
+} from '@bantayog/shared-types'
 import { adminDb } from '../admin-init.js'
 
 const listScopedOperationsMapSchema = z.object({}).strict()
-
-export interface ScopedOperationsMapIncidentPayload {
-  reportId: string
-  report: {
-    municipalityId: string
-    municipalityLabel?: string
-    barangayId?: string
-    reportType?: string
-    severity?: string
-    status?: string
-    description?: string
-    publicLocation?: { lat: number; lng: number }
-    submittedAt?: number
-    updatedAt?: number
-    activeResponderCount?: number
-  }
-}
 
 export interface ListScopedOperationsMapResult {
   incidents: ScopedOperationsMapIncidentPayload[]
@@ -77,7 +63,7 @@ function toIncidentPayload(
       ...(typeof reportData.description === 'string'
         ? { description: reportData.description }
         : {}),
-      publicLocation: { lat: location.lat, lng: location.lng },
+      publicLocation: { lat, lng },
       submittedAt,
       updatedAt,
       ...(typeof opsData.activeResponderCount === 'number'
@@ -115,26 +101,26 @@ export async function listScopedOperationsMapCore(
     role === 'agency_admin'
       ? db
           .collection('report_ops')
-          .where('agencyIds', 'array-contains', agencyId ?? '')
+          .where('agencyIds', 'array-contains', agencyId)
           .where('status', 'in', ACTIVE_REPORT_STATUSES)
           .orderBy('createdAt', 'desc')
           .limit(100)
       : db
           .collection('report_ops')
-          .where('municipalityId', '==', municipalityId ?? '')
+          .where('municipalityId', '==', municipalityId)
           .where('status', 'in', ACTIVE_REPORT_STATUSES)
           .orderBy('createdAt', 'desc')
           .limit(100)
 
   const opsSnap = await opsQuery.get()
-  const incidents = await Promise.all(
-    opsSnap.docs.map(async (opsDoc) => {
-      const reportSnap = await db.collection('reports').doc(opsDoc.id).get()
-      if (!reportSnap.exists) return null
-      const payload = toIncidentPayload(opsDoc.id, reportSnap.data() ?? {}, opsDoc.data())
-      return payload
-    }),
-  )
+  const reportRefs = opsSnap.docs.map((opsDoc) => db.collection('reports').doc(opsDoc.id))
+  const reportSnaps = reportRefs.length > 0 ? await db.getAll(...reportRefs) : []
+
+  const incidents = opsSnap.docs.map((opsDoc, i) => {
+    const reportSnap = reportSnaps[i]
+    if (!reportSnap?.exists) return null
+    return toIncidentPayload(opsDoc.id, reportSnap.data() ?? {}, opsDoc.data())
+  })
 
   return {
     incidents: incidents.filter(
@@ -147,7 +133,7 @@ export const listScopedOperationsMap = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: true,
-    cors: ['http://localhost:5175'],
+    cors: ['http://localhost:5174', 'http://localhost:5175'],
   },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
@@ -171,6 +157,10 @@ export const listScopedOperationsMap = onCall(
           ? { municipalityId: claims.municipalityId }
           : {}),
         ...(typeof claims.agencyId === 'string' ? { agencyId: claims.agencyId } : {}),
+        ...(typeof claims.accountStatus === 'string'
+          ? { accountStatus: claims.accountStatus }
+          : {}),
+        ...(claims.active === true ? { active: true } : {}),
       },
     })
   },

@@ -40,8 +40,8 @@ export function Sidebar() {
   const role = typeof claims?.role === 'string' ? claims.role : ''
   const isProvinceAdmin = role === 'provincial_superadmin'
   const canSeeTriageQueue = role !== 'agency_admin'
-  const canSeeAgencyQueue = role !== 'municipal_admin'
-  const canSeeRoster = role === 'agency_admin' || isProvinceAdmin
+  const canSeeAgencyQueue = role === 'agency_admin'
+  const canSeeRoster = role === 'agency_admin'
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false)
 
   return (

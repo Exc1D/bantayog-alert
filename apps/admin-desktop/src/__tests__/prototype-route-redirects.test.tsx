@@ -136,6 +136,12 @@ describe('prototype route redirects', () => {
     expect(await screen.findByText('live scoped map')).toBeInTheDocument()
   })
 
+  it('shows the live scoped map for agency admins', async () => {
+    authState.role = 'agency_admin'
+    await renderPath('/map')
+    expect(await screen.findByText('live scoped map')).toBeInTheDocument()
+  })
+
   it('only exposes real system health actions', async () => {
     const { SystemHealthPage } = await vi.importActual<typeof import('../pages/SystemHealthPage')>(
       '../pages/SystemHealthPage',

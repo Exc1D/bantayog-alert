@@ -49,7 +49,7 @@ function mapStatus(value: unknown): ReportStatus {
   if (normalized === 'resolved' || normalized === 'closed' || normalized === 'cancelled') {
     return 'RESOLVED'
   }
-  return 'CRITICAL'
+  return 'PENDING'
 }
 
 function toIncident(id: string, reportData: Record<string, unknown>): Report | null {

@@ -36,6 +36,16 @@ service cloud.firestore {
       return (isMuniAdmin() && myMunicipality() == muniId)
           || (isSuperadmin() && muniId in permittedMunis());
     }
+    function canReadReportDoc(data) {
+      return ('visibilityClass' in data && data.visibilityClass == 'public_alertable')
+          || adminOf(data.municipalityId)
+          || (isResponder() && isActivePrivileged() && exists(/databases/$(database)/documents/dispatches/$(data.reportId + '_' + uid())));
+    }
+    function canReadEventDoc(data) {
+      return isActivePrivileged()
+          && (isMuniAdmin() || isSuperadmin()
+              || (isAgencyAdmin() && data.agencyId == myAgency()));
+    }
     function canReadReportOps(data) {
       return adminOf(data.municipalityId)
           || (isAgencyAdmin()
@@ -56,16 +66,6 @@ service cloud.firestore {
               && data.assignedTo is map
               && ('agencyId' in data.assignedTo)
               && data.assignedTo.agencyId == myAgency());
-    }
-    function canReadReportDoc(data) {
-      return ('visibilityClass' in data && data.visibilityClass == 'public_alertable')
-          || adminOf(data.municipalityId)
-          || (isResponder() && isActivePrivileged() && exists(/databases/$(database)/documents/dispatches/$(data.reportId + '_' + uid())));
-    }
-    function canReadEventDoc(data) {
-      return isActivePrivileged()
-          && (isMuniAdmin() || isSuperadmin()
-              || (isAgencyAdmin() && data.agencyId == myAgency()));
     }
     function validResponderTransition(from, to) {
       return       (from == 'pending' && to == 'accepted')
@@ -182,7 +182,11 @@ service cloud.firestore {
 
     match /report_ops/{r} {
       allow get: if canReadReportOps(resource.data);
-      allow list: if adminOf(resource.data.municipalityId);
+      allow list: if adminOf(resource.data.municipalityId)
+                  || (isAgencyAdmin()
+                      && ('agencyIds' in resource.data)
+                      && resource.data.agencyIds is list
+                      && resource.data.agencyIds.hasAny([myAgency()]));
       allow write: if false;
     }
 
@@ -253,8 +257,7 @@ service cloud.firestore {
     // --- Dispatches ---
     match /dispatches/{d} {
       allow get: if isActivePrivileged() && canReadDispatch(resource.data);
-      allow list: if isActivePrivileged()
-                  && (
+      allow list: if isActivePrivileged() && (
                     (isResponder() && ('assignedTo' in resource.data) && resource.data.assignedTo is map && ('uid' in resource.data.assignedTo) && resource.data.assignedTo.uid == uid())
                     || adminOf(resource.data.municipalityId)
                   );

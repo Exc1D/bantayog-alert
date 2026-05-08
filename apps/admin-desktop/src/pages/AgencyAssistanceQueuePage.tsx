@@ -353,17 +353,16 @@ export function AgencyAssistanceQueuePage() {
   return (
     <main style={{ padding: '24px', maxWidth: 800, margin: '0 auto' }}>
       {dispatchReportId && (
-        <div style={{ marginBottom: 16 }}>
-          <AgencyDispatchModal
-            reportId={dispatchReportId}
-            onClose={() => {
-              setDispatchReportId(null)
-            }}
-            onError={(msg) => {
-              setBanner(msg)
-            }}
-          />
-        </div>
+        <AgencyDispatchModal
+          reportId={dispatchReportId}
+          onClose={() => {
+            setDispatchReportId(null)
+            setBanner(null)
+          }}
+          onError={(msg) => {
+            setBanner(msg)
+          }}
+        />
       )}
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#001e40', margin: 0 }}>
