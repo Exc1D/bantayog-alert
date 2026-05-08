@@ -81,7 +81,15 @@ export function useDashboardLiveData(municipalityId?: string): DashboardLiveData
           where('municipalityId', '==', municipalityId),
           where('status', 'in', ACTIVE_REPORT_STATUSES),
         )
-      : query(base, where('status', 'in', ACTIVE_REPORT_STATUSES))
+      : query(
+          base,
+          where(
+            'municipalityId',
+            'in',
+            CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
+          ),
+          where('status', 'in', ACTIVE_REPORT_STATUSES),
+        )
 
     return onSnapshot(q, (snap) => {
       const rows: OpsRow[] = []
