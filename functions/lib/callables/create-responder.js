@@ -61,7 +61,9 @@ export async function createResponderCore(db, deps) {
                 throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'invalid phone number format', { cause: err });
             }
             else {
-                throw new BantayogError(BantayogErrorCode.INTERNAL_ERROR, 'auth lookup failed', { cause: err });
+                throw new BantayogError(BantayogErrorCode.INTERNAL_ERROR, 'auth lookup failed', {
+                    cause: err,
+                });
             }
         }
         const userRecord = await adminAuth.createUser({
@@ -108,7 +110,7 @@ export async function createResponderCore(db, deps) {
                     createdAt: nowMs,
                     updatedAt: nowMs,
                 });
-                const eventRef = db.collection('report_events').doc();
+                const eventRef = db.collection('audit_events').doc();
                 tx.set(eventRef, {
                     eventId: eventRef.id,
                     eventType: 'user_management',

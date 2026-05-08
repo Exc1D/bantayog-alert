@@ -39,6 +39,16 @@
 - Ops-facing schemas should use ops-specific enums, not broader public enums.
 - Don’t trust `tsc --outDir lib` to refresh declarations; verify emitted `.d.ts`.
 - Use `z.uuid()` instead of `z.string().uuid()` (deprecated lint rule).
+- Auth user creation + Firestore transaction is a two-phase commit with no native rollback. Always wrap the transaction in `try/catch` and call `adminAuth.deleteUser(uid)` as a compensating action before re-throwing, or you leave orphaned auth accounts.
+- `queueMicrotask()` around state resets inside `useEffect` is a race-condition smell. If the component unmounts before the microtask fires, the state update fires on an unmounted component (React warns) or a stale one. Reset state synchronously inside the effect body with an explicit `eslint-disable react-hooks/set-state-in-effect` where the project convention allows it.
+- Programmatic focus management in modals: attach `useRef` to the modal container (not the backdrop), set `tabIndex={-1}`, and call `.focus()` in a `useEffect` keyed on the open boolean. Pair with `role="dialog"`, `aria-modal="true"`, and `aria-labelledby` pointing to the title element.
+- After TOTP/MFA enrollment, Firebase's ID token does NOT automatically refresh. Call `getIdToken(true)` immediately after `multiFactor().enroll()` so downstream `onIdTokenChanged` listeners and custom claims (`mfaEnrolled`) are visible on the next route guard check. Without this, `TotpGuard` redirects back to enrollment in a loop.
+- Route param names should be consistent across parent and child routes (e.g., `:dispatchId` everywhere, not `:id` in some places). Inconsistent param names cause `useParams()` to return `undefined` in child components and break deep links.
+- `encodeURIComponent()` is required when interpolating user-controlled strings (like `storagePath`) into Google Storage direct-download URLs. Underscores, spaces, and Unicode in paths produce 404s otherwise.
+- Normalizing phone numbers at the data-boundary (hook level) rather than at every consumer prevents inconsistency. Strip non-digit/non-plus chars, ensure a leading `+`, and validate with the shared MSISDN validator before surfacing.
+- Upload URL requests should validate MIME type and file size _before_ computing the content hash. Rejecting early avoids wasted CPU on `crypto.subtle.digest()` for files that will be rejected by the storage backend anyway.
+- `navigator.geolocation` may be undefined in some environments (old browsers, restricted iframes, certain WebViews). Always guard with `if (navigator.geolocation)` before calling `.getCurrentPosition()`; never assume the API is present.
+- `useEffect` dependency arrays should contain primitives, not object references. `[dispatch?.status, report?.publicLocation?.latitude, report?.publicLocation?.longitude]` is safer than `[dispatch, report]` because object identity changes on every parent re-render even when values are stable.
 - Collection query rules differ from per-document rules; use `getDoc` if `getDocs` fails on `resource.data` checks.
 - Seed documents via `env.withSecurityRulesDisabled()`, not unauthenticated context, when `create` is `false`.
 - Rules transition tests must match the actual transition table in `firestore.rules`.

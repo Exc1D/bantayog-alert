@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useEligibleResponders } from '../hooks/useEligibleResponders'
 import { computeFreshness, type Freshness } from '../utils/freshness'
@@ -28,6 +28,11 @@ export function RedispatchModal({
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID())
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    containerRef.current?.focus()
+  }, [oldDispatchId])
 
   async function confirm() {
     if (!picked || !reason.trim()) return
@@ -47,12 +52,18 @@ export function RedispatchModal({
   }
 
   return (
-    <div role="dialog" aria-modal="true">
-      <h2>Redispatch Report</h2>
+    <div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="redispatch-title"
+      tabIndex={-1}
+    >
+      <h2 id="redispatch-title">Redispatch Report</h2>
       <p>The previous dispatch was declined or timed out. Select a new responder.</p>
       {eligible.length === 0 ? (
         <p>
-          {municipalityId === undefined
+          {municipalityId == null
             ? 'Your account is not assigned to a municipality.'
             : 'No responders on shift in your municipality.'}
         </p>

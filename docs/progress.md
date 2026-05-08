@@ -2,6 +2,28 @@
 
 ## Current Status (2026-05-08)
 
+**PR #115 CodeRabbit Review Fixes — All 29 Comments Addressed (2026-05-08)**
+Branch `feat/missing-features-responder-admin` pushed with all CI and review blockers resolved.
+
+- ✅ **CI Build/Typecheck fix:** Added missing `beforeAll`/`afterAll` vitest imports in `erasure-sweep.test.ts`
+- ✅ **Zod 4 migration:** `z.string().uuid()` → `z.uuid()` across 5 callable schemas; removed stale `eslint-disable` comments
+- ✅ **Race condition fixes:** Removed `queueMicrotask()` wrappers around state resets in `useDispatchStatus.ts` and `TriageQueuePage.tsx`
+- ✅ **ARIA & focus management:** Added `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, programmatic `focus()`, and `tabIndex={-1}` to `RedispatchModal`, `ReopenReportModal`, `RosterPage` (Add Responder), and `UserManagementPage` (Create User)
+- ✅ **Redispatch safety:** `redispatch-report.ts` now reads `tx.get(newDispatchRef)` and merge-updates if doc already exists; `callables.ts` return type aligned to backend (`{ newDispatchId; status; reportId }`)
+- ✅ **Auth orphan prevention:** Wrapped Firestore transactions in `try/catch` in `create-user.ts` and `create-responder.ts`; call `adminAuth.deleteUser(uid)` as compensating action on transaction failure
+- ✅ **Audit collection correction:** User-management audit writes changed from `report_events` to `audit_events`
+- ✅ **Responder app fixes:**
+  - `useReport.ts`: normalize `contactPhone` to E.164-ish (`+` + digits only)
+  - `useRequestUploadUrl.ts`: MIME whitelist + `MAX_UPLOAD_BYTES` validation before hashing
+  - `DispatchDetailPage.tsx`: guard `navigator.geolocation`, narrow `useEffect` deps to primitives, forward `GeolocationPositionError`
+  - `TotpEnrollmentPage.tsx` + `TotpGuard.tsx`: force Firebase ID token refresh (`getIdToken(true)`) after TOTP enrollment to prevent redirect loop
+  - `routes.tsx`: standardize route params from `:id` to `:dispatchId`; update components accordingly
+  - `ResponderWitnessReportPage.tsx`: `encodeURIComponent(storagePath)` before interpolating Storage URL
+- ✅ **Test coverage:** Added whitespace-only rejection tests, `contactPhone` branch tests, `/totp-enroll` route assertions, `getIdToken` mock for enrollment flow
+- **Gate:** Build 10/10 ✓ · Lint clean ✓ · Typecheck clean ✓ · Responder tests 197 passed ✓ · Admin-desktop tests 185 passed ✓
+
+## Current Status (2026-05-08)
+
 **UI Audit Fixes — 3-App Parallel Agent Team (2026-05-08)**
 Addressed all P0/P1/P2 UI and accessibility findings from `docs/ui-audit-findings-2026-05-07.md`. Three agents ran in isolated worktrees simultaneously. Part 3 (missing feature builds) deferred to dedicated feature sessions.
 

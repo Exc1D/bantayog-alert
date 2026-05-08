@@ -159,7 +159,7 @@ export async function createResponderCore(
             updatedAt: nowMs,
           })
 
-          const eventRef = db.collection('report_events').doc()
+          const eventRef = db.collection('audit_events').doc()
           tx.set(eventRef, {
             eventId: eventRef.id,
             eventType: 'user_management',

@@ -15,7 +15,7 @@ import {
 export const createUserSchema = z
   .object({
     displayName: z.string().min(1).max(128),
-    phone: z.string().min(1).max(32),
+    phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'phone must be E.164 format'),
     role: z.enum(['municipal_admin', 'agency_admin', 'responder', 'provincial_superadmin']),
     municipalityId: z.string().min(1).max(128).optional(),
     agencyId: z.string().min(1).max(128).optional(),
@@ -42,6 +42,13 @@ export async function createUserCore(
   db: Firestore,
   deps: CreateUserCoreDeps,
 ): Promise<{ uid: string; role: string; accountStatus: 'active' }> {
+  if (deps.role === 'municipal_admin' && !deps.municipalityId) {
+    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'missing municipalityId')
+  }
+  if ((deps.role === 'agency_admin' || deps.role === 'responder') && !deps.agencyId) {
+    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'missing agencyId')
+  }
+
   const correlationId = crypto.randomUUID()
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -84,8 +91,16 @@ export async function createUserCore(
             : undefined
         if (code === 'auth/user-not-found') {
           // expected — continue
+        } else if (code === 'auth/invalid-phone-number') {
+          throw new BantayogError(
+            BantayogErrorCode.INVALID_ARGUMENT,
+            'invalid phone number format',
+            { cause: err },
+          )
         } else {
-          throw err
+          throw new BantayogError(BantayogErrorCode.INTERNAL_ERROR, 'auth lookup failed', {
+            cause: err,
+          })
         }
       }
 
@@ -185,16 +200,6 @@ export const createUser = onCall(
 
     const parsed = createUserSchema.safeParse(request.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
-
-    if (parsed.data.role === 'municipal_admin' && !parsed.data.municipalityId) {
-      throw new HttpsError('invalid-argument', 'missing municipalityId')
-    }
-    if (
-      (parsed.data.role === 'agency_admin' || parsed.data.role === 'responder') &&
-      !parsed.data.agencyId
-    ) {
-      throw new HttpsError('invalid-argument', 'missing agencyId')
-    }
 
     try {
       return await createUserCore(adminDb, {

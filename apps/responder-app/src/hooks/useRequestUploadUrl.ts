@@ -20,6 +20,8 @@ export function useRequestUploadUrl() {
     setError(undefined)
     const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic']
     const MAX_UPLOAD_BYTES = 10 * 1024 * 1024 // 10 MB
+    // NOTE: file.type is browser-reported metadata (easily spoofed).
+    // This is UX-only; the backend callable must enforce the real restriction.
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       const err = new Error(
         `Invalid file type: ${file.type || 'unknown'}. Allowed: ${ALLOWED_MIME_TYPES.join(', ')}`,

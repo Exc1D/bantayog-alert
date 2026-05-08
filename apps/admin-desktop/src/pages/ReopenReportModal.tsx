@@ -12,6 +12,7 @@ export function ReopenReportModal({
 }) {
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID())
 
   async function confirm() {
     if (!reason.trim()) return
@@ -20,7 +21,7 @@ export function ReopenReportModal({
       await callables.reopenReport({
         reportId,
         reason: reason.trim(),
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: idempotencyKeyRef.current,
       })
       onClose()
     } catch (err: unknown) {
@@ -32,7 +33,7 @@ export function ReopenReportModal({
   const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     containerRef.current?.focus()
-  }, [])
+  }, [reportId])
 
   return (
     <div

@@ -4,11 +4,11 @@ import { useTriggerSOS } from '../hooks/useTriggerSOS'
 import styles from './SosPage.module.css'
 
 export function SosPage() {
-  const { id } = useParams<{ id: string }>()
+  const { dispatchId } = useParams<{ dispatchId: string }>()
   const navigate = useNavigate()
-  const { trigger, loading, error } = useTriggerSOS(id ?? '')
+  const { trigger, loading, error } = useTriggerSOS(dispatchId ?? '')
 
-  if (id === undefined) {
+  if (dispatchId === undefined) {
     return (
       <div role="alert" className={styles.invalid}>
         Invalid route: dispatch ID is missing.
@@ -16,12 +16,12 @@ export function SosPage() {
     )
   }
 
-  const dispatchId = id
+  const id = dispatchId
 
   async function handleConfirm() {
     try {
       await trigger()
-      void navigate(`/dispatches/${dispatchId}`)
+      void navigate(`/dispatches/${id}`)
     } catch (err: unknown) {
       console.error('[SosPage] triggerSOS failed:', err)
     }
@@ -45,7 +45,7 @@ export function SosPage() {
         {loading ? 'Sending…' : 'Confirm SOS'}
       </button>
       <button
-        onClick={() => void navigate(`/dispatches/${dispatchId}`)}
+        onClick={() => void navigate(`/dispatches/${id}`)}
         disabled={loading}
         className={styles.cancelBtn}
       >
