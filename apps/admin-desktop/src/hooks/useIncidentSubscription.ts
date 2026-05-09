@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react'
 import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
-import type { IncidentFeedItem } from '../components/IncidentFeed'
+
+export interface IncidentFeedItem {
+  id: string
+  location: { lat: number; lng: number }
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  type: string
+  municipality: string
+  timestamp: Date
+  status: string
+}
 
 export interface IncidentSubscriptionState {
   incidents: IncidentFeedItem[]
