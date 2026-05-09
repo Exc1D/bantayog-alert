@@ -1,0 +1,115 @@
+.tableSkeleton {
+  width: 100%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 30% 15% 15% 15% 25%;
+  gap: var(--hsu-spacing-md);
+  padding: var(--hsu-spacing-md) 0;
+  border-bottom: 1px solid var(--hsu-border);
+}
+
+.headerCell {
+  height: 20px;
+  background: var(--hsu-surface-2);
+  border-radius: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 30% 15% 15% 15% 25%;
+  gap: var(--hsu-spacing-md);
+  padding: var(--hsu-spacing-md) 0;
+  border-bottom: 1px solid var(--hsu-surface-3);
+}
+
+.cell {
+  height: 40px;
+  background: var(--hsu-surface-2);
+  border-radius: 4px;
+}
+
+.mapSkeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--hsu-spacing-2xl);
+  background: rgba(10, 15, 30, 0.8);
+  border-radius: 8px;
+}
+
+.icon {
+  width: 48px;
+  height: 48px;
+  color: var(--hsu-norm);
+  margin-bottom: var(--hsu-spacing-md);
+}
+
+.text {
+  color: var(--hsu-surface-3);
+  font-size: var(--hsu-label);
+  letter-spacing: 0.05em;
+}
+
+.chartSkeleton {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--hsu-spacing-md);
+}
+
+.card {
+  background: var(--hsu-surface-1);
+  border: 1px solid var(--hsu-border);
+  border-radius: 8px;
+  padding: var(--hsu-spacing-md);
+}
+
+.title {
+  height: 20px;
+  width: 60%;
+  background: var(--hsu-surface-2);
+  border-radius: 4px;
+  margin-bottom: var(--hsu-spacing-md);
+}
+
+.chartArea {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 80px;
+  margin-bottom: var(--hsu-spacing-md);
+}
+
+.bar {
+  width: 20%;
+  background: var(--hsu-surface-2);
+  border-radius: 4px 4px 0 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.footer {
+  height: 16px;
+  width: 40%;
+  background: var(--hsu-surface-2);
+  border-radius: 4px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tableSkeleton,
+  .bar {
+    animation: none;
+  }
+}
