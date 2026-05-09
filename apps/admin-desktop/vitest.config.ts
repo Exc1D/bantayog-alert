@@ -13,6 +13,6 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    setupFiles: ['@testing-library/jest-dom/vitest'],
+    setupFiles: ['@testing-library/jest-dom/vitest', './src/test-setup.ts'],
   },
 })
