@@ -115,14 +115,18 @@ The map is always visible, taking 60% of screen area. It's not a widget — it's
 
 **Animation:**
 
-- Pins pulse gently (2s cycle, 10% opacity range)
+- Fresh data pins (<60s): Pulse gently (2s cycle, 10% opacity range)
+- Stale data pins (>60s): Stop pulsing, fade to 70% opacity
 - Municipal borders glow for 5s when threshold crossed
 - New incidents drop-in with spring animation (300ms)
+- Frozen state: All animations stop immediately
 
-**Controls (floating, translucent):**
+**Controls (solid background bar at map bottom for contrast):**
 
 ```
-[Layers ▼] [Heatmap] [Responders] [Critical Only] [Fullscreen]
+┌─────────────────────────────────────────────────────────────┐
+│ [Layers ▼] [Heatmap] [Responders] [Critical Only] [Fullscreen] │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -148,11 +152,12 @@ High-volume table layout optimized for keyboard operation.
 - Hover: full row brightens to `hsu-surface-2` (secondary for desktop users)
 - Focus: 2px solid `--hsu-info` border around entire row
 
-**Compact Mode (auto-triggers at 11 items):**
+**Compact Mode (auto-triggers when <100px vertical space remaining):**
 
-- Single-line rows
+- Single-line rows (reduced padding from 16px to 8px)
 - Remove description preview
 - Prioritize: Status → ID → Location → Time
+- User can manually toggle via "Compact/Dense" button in panel header
 
 **Keyboard Shortcuts:**
 | Key | Action |
@@ -290,7 +295,7 @@ Side panel (450px) with trend charts and comparisons.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│  🏛️ PDRRMO CAMARINES NORTE                     [LIVE ●] [❄️ Freeze] [⚠️ DECLARE]    │
+│  🏛️ PDRRMO CAMARINES NORTE       [🔊 Audio] [LIVE ●] [❄️ Freeze] [⚠️ DECLARE]    │
 │  Province-wide situational awareness · Updated 5s ago                                        │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │  [Map] [Triage] [Analytics]                                                                    │
@@ -386,11 +391,11 @@ Side panel (450px) with trend charts and comparisons.
 
 ### Stale Data Indicator
 
-Data is considered stale after 30 seconds without updates. Visual treatment:
+Data is considered stale after 60 seconds without updates (configurable per deployment; 30-90s range recommended). Visual treatment:
 
 - **Desaturation:** Colors fade to 50% saturation
 - **Badge:** "STALE AS OF [timestamp]" appears in top-right
-- **Animation:** All pulse animations stop
+- **Animation:** All pulse animations stop; map pins fade to 70% opacity
 - **Recovery:** Returns to normal when fresh data arrives
 
 ---
@@ -412,6 +417,42 @@ Command centers need to brief incoming staff without live updates causing distra
 **Resume:** Click "Resume Live" button (replaces Freeze button)
 
 **Use Case:** Staff briefing, screenshot capture, incident review
+
+---
+
+## Audio Alerts
+
+Command center staff may be looking away from the display when critical events occur. Optional audio cues provide awareness without visual attention.
+
+**Audio Controls (TopBanner):**
+
+| State         | Icon | Label        | Behavior                         |
+| ------------- | ---- | ------------ | -------------------------------- |
+| Audio On      | 🔊   | Audio        | Plays alerts for critical events |
+| Audio Snoozed | 🔔   | Snoozed (5m) | Silenced for 5 minutes           |
+| Audio Off     | 🔇   | Muted        | No audio alerts                  |
+
+**Alert Events (when audio is enabled):**
+
+| Event                 | Sound Pattern                | Action to Stop                |
+| --------------------- | ---------------------------- | ----------------------------- |
+| New critical incident | 3-beep pattern (400ms ea)    | Click anywhere OR press Space |
+| Threshold breach      | Continuous tone (2s)         | Same                          |
+| responder dispatched  | Single chime                 | Automatic (1s duration)       |
+| connection lost       | Repeating beep (1s interval) | Click "Reconnect" button      |
+
+**Snooze Behavior:**
+
+- Click audio icon OR press `Ctrl+Shift+S` to snooze for 5 minutes
+- Snooze indicator shows countdown: "🔔 Snoozed (3:24 remaining)"
+- Auto-resumes after 5 minutes OR manually via "Resume Audio" click
+- Critical events (threshold breach, connection lost) ALWAYS play sound regardless of snooze
+
+**Configuration:**
+
+- Audio defaults to OFF on first load
+- Preference persists per user (localStorage)
+- Volume slider in settings panel (not shown on main display)
 
 ---
 
@@ -538,10 +579,11 @@ Design informed by:
 
 ## Version History
 
-| Version | Date       | Changes                                                                                                            |
-| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------ |
-| 1.1     | 2026-05-09 | UI review fixes: modal contrast, row visibility, static municipal grid, system states, freeze display, focus paths |
-| 1.0     | 2026-05-09 | Initial design — wall-mounted command center                                                                       |
+| Version | Date       | Changes                                                                                                                                                                        |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.2     | 2026-05-09 | Second review: stale threshold 30s→60s (configurable), audio alerts system, map pin pulse/stale clarification, compact mode space-based trigger, map controls solid background |
+| 1.1     | 2026-05-09 | UI review fixes: modal contrast, row visibility, static municipal grid, system states, freeze display, focus paths                                                             |
+| 1.0     | 2026-05-09 | Initial design — wall-mounted command center                                                                                                                                   |
 
 ---
 
