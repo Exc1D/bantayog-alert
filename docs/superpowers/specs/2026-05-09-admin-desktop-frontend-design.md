@@ -79,12 +79,12 @@ PDRRMO staff in a dimly-lit command center/war room in Daet, Camarines Norte. Vi
 
 | Element             | Size | Weight  | Letter-spacing |
 | ------------------- | ---- | ------- | -------------- |
-| Page heading        | 48px | Bold    | -0.02em        |
-| Section heading     | 36px | Bold    | -0.01em        |
-| Data value (hero)   | 72px | Bold    | 0              |
+| Page heading        | 52px | Bold    | -0.02em        |
+| Section heading     | 40px | Bold    | -0.01em        |
+| Data value (hero)   | 64px | Bold    | 0              |
 | Data value (normal) | 32px | Medium  | 0              |
 | Body text           | 18px | Regular | 0              |
-| Label (uppercase)   | 14px | Medium  | +0.08em        |
+| Label (uppercase)   | 16px | Medium  | +0.05em        |
 
 ---
 
@@ -135,18 +135,18 @@ High-volume table layout optimized for keyboard operation.
 
 | Column    | Width | Content                                       |
 | --------- | ----- | --------------------------------------------- |
-| LOCATION  | 25%   | Municipality + Barangay + Map link            |
+| LOCATION  | 30%   | Municipality + Barangay + Map link            |
 | TYPE      | 15%   | Report type icon + label                      |
 | SUBMITTED | 15%   | Relative time (2m ago) + attachment indicator |
-| SEVERITY  | 10%   | Left border color + badge                     |
-| ACTION    | 35%   | [Verify] [Dispatch] [Reject] buttons          |
+| SEVERITY  | 15%   | Left border color + badge                     |
+| ACTION    | 25%   | [Verify] [Dispatch] [Reject] buttons          |
 
 **Row Design:**
 
-- Left border indicates severity (4px solid)
-- Critical rows have slight red background tint (`rgba(239, 68, 68, 0.1)`)
-- Hover: full row brightens to `hsu-surface-2`
-- Focus: 2px border in accent color
+- Left border indicates severity (4px solid) — PRIMARY signal
+- Critical rows have red background tint (`rgba(239, 68, 68, 0.25)`) for visibility at 6-10ft
+- Hover: full row brightens to `hsu-surface-2` (secondary for desktop users)
+- Focus: 2px solid `--hsu-info` border around entire row
 
 **Compact Mode (auto-triggers at 11 items):**
 
@@ -161,8 +161,15 @@ High-volume table layout optimized for keyboard operation.
 | Enter | Dispatch selected |
 | Space | Verify selected |
 | Delete | Reject selected |
-| Escape | Clear selection |
+| Escape | Clear selection / Close panel (focus returns to trigger) |
 | Alt+T | Focus triage queue |
+
+**Focus Management:**
+
+- Opening a panel/sliding drawer: Focus moves to first interactive element
+- Closing with Escape: Focus returns to the button that opened it
+- Modal closes: Focus returns to "Declare" button in TopBanner
+- Map pins: Receive 2px solid `--hsu-info` focus ring when keyboard navigated
 
 **Dispatch Panel (slides in from right, 450px):**
 
@@ -230,10 +237,12 @@ Separate modal that forces deliberation. Not quick-access.
 
 **Visual Design:**
 
-- Modal has red border (`--hsu-crit`, 4px)
-- Confirm button is solid red with white text
-- Warning banner in red at top
-- Population estimate prominently displayed
+- Modal has red border (`--hsu-crit`, 4px) — PRIMARY danger signal
+- Modal background: light red tint (`rgba(239, 68, 68, 0.08)`) — NOT full red wash
+- Confirm button: solid `--hsu-crit` with white text (passes WCAG AA)
+- Warning banner: red background with white text at top
+- Population estimate prominently displayed in large type
+- Focus trap: Tab cycles through form elements; Escape closes (focus returns to "Declare" button)
 
 ---
 
@@ -281,7 +290,7 @@ Side panel (450px) with trend charts and comparisons.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│  🏛️ PDRRMO CAMARINES NORTE                                     [LIVE ●] [⚠️ DECLARE]    │
+│  🏛️ PDRRMO CAMARINES NORTE                     [LIVE ●] [❄️ Freeze] [⚠️ DECLARE]    │
 │  Province-wide situational awareness · Updated 5s ago                                        │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │  [Map] [Triage] [Analytics]                                                                    │
@@ -301,21 +310,25 @@ Side panel (450px) with trend charts and comparisons.
 │  └─────────────────────┘ └─────────────────────┘ └─────────────────────────────────┘ │
 │                                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────────────────────┐ │
-│  │  MUNICIPAL STATUS RIBBON (horizontal ticker)                                        │ │
-│  │  Daet:🟢 · Labo:🟡 · Capalonga:🔴 · Paracale:🟢 · ... [auto-scrolls]                 │ │
+│  │  MUNICIPAL STATUS GRID (static — all 12 visible at once)                           │ │
+│  │  ┌───────────┬───────────┬───────────┬───────────┐                                 │ │
+│  │  │ Daet:🟢   │ Labo:🟡  │ Capalonga:🔴│ Paracale:🟢│ ...                           │ │
+│  │  └───────────┴───────────┴───────────┴───────────┘                                 │ │
 │  └────────────────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Sliding Panels (Right Side, 450px)
 
-| Panel        | Trigger           | Content                 |
-| ------------ | ----------------- | ----------------------- |
-| Triage Queue | Default view      | Pending reports table   |
-| Dispatch     | Click [Dispatch]  | Responder selection     |
-| Analytics    | Click [Analytics] | Charts and trends       |
-| User Mgmt    | Click [Users]     | CRUD for admin accounts |
-| Audit Log    | Click [Audit]     | Activity history        |
+| Panel        | Trigger           | Content                 | Map Behavior                                    |
+| ------------ | ----------------- | ----------------------- | ----------------------------------------------- |
+| Triage Queue | Default view      | Pending reports table   | Compresses to 40%                               |
+| Dispatch     | Click [Dispatch]  | Responder selection     | Semi-transparent overlay (never fully obscured) |
+| Analytics    | Click [Analytics] | Charts and trends       | Compresses to 40%                               |
+| User Mgmt    | Click [Users]     | CRUD for admin accounts | Full overlay                                    |
+| Audit Log    | Click [Audit]     | Activity history        | Full overlay                                    |
+
+**Note:** Map visibility is preserved during Triage, Dispatch, and Analytics operations. The map is the primary situational awareness tool and should never be fully hidden during active incident response.
 
 ---
 
@@ -341,6 +354,67 @@ Side panel (450px) with trend charts and comparisons.
 
 ---
 
+## System States
+
+### Loading States
+
+| Component        | Loading Indicator                          | Notes                           |
+| ---------------- | ------------------------------------------ | ------------------------------- |
+| Triage queue     | Skeleton rows (4-6) with pulse animation   | Maintains layout stability      |
+| Map pins         | Pins appear incrementally (stagger 50ms)   | OR show "Loading map..." badge  |
+| Analytics charts | Sparkline skeleton + gray placeholder bars | Data labels visible during load |
+| Dispatch panel   | Spinner + "Loading responders..." text     | Centered in panel               |
+| Municipal grid   | Gray pills with subtle shimmer effect      | 12 pills, all same size         |
+
+### Error States
+
+| Component              | Error Display                             | Recovery Action                     |
+| ---------------------- | ----------------------------------------- | ----------------------------------- |
+| Firestore/RTDB failure | Red banner top: "Connection lost" + retry | Auto-retry with exponential backoff |
+| Map tile failure       | Gray tiles + "Map unavailable" overlay    | Continue with triage queue          |
+| Analytics failure      | Error card: "Analytics unavailable"       | Hide panel, retain map access       |
+| Callable timeout       | Toast notification + retry button         | User-initiated retry                |
+
+### Empty States
+
+| Component              | Empty Display                           |
+| ---------------------- | --------------------------------------- |
+| Triage queue (0 items) | "No active incidents" + green checkmark |
+| Map (0 pins)           | Semi-transparent overlay: "All Clear"   |
+| Analytics (no data)    | "No data for selected time range"       |
+| Dispatch panel         | "No responders available" + amber badge |
+
+### Stale Data Indicator
+
+Data is considered stale after 30 seconds without updates. Visual treatment:
+
+- **Desaturation:** Colors fade to 50% saturation
+- **Badge:** "STALE AS OF [timestamp]" appears in top-right
+- **Animation:** All pulse animations stop
+- **Recovery:** Returns to normal when fresh data arrives
+
+---
+
+## Freeze Display Mode
+
+Command centers need to brief incoming staff without live updates causing distraction.
+
+**Trigger:** "Freeze Display" button in TopBanner (icon: ❄️ + label)
+
+**When Frozen:**
+
+- All Firestore/RTDB subscriptions pause
+- Live indicator changes: "LIVE ●" → "FROZEN ❄️ AS OF [timestamp]"
+- Map pin pulse animations stop
+- Triage queue updates stop
+- Visual indicator: semi-transparent blue overlay on entire display (10% opacity)
+
+**Resume:** Click "Resume Live" button (replaces Freeze button)
+
+**Use Case:** Staff briefing, screenshot capture, incident review
+
+---
+
 ## Accessibility
 
 ### WCAG AA Compliance
@@ -353,10 +427,13 @@ Side panel (450px) with trend charts and comparisons.
 
 ### Focus Management
 
-- Focus visible: 2px solid `--hsu-info`
-- Focus traps in modals
-- Focus returns to trigger after modal close
-- Skip-to-content link (hidden until focused)
+- Focus visible: 2px solid `--hsu-info` border around focused element
+- Focus traps in modals (Tab cycles within modal, Escape closes)
+- Focus returns to trigger after modal/panel close
+- Map pins: Receive 2px solid `--hsu-info` focus ring when keyboard navigated
+- Skip-to-content link (hidden until focused) jumps to map zone
+- Panel slide-in: Focus moves to first interactive element
+- Panel Escape: Returns focus to button that opened the panel
 
 ---
 
@@ -461,9 +538,10 @@ Design informed by:
 
 ## Version History
 
-| Version | Date       | Changes                                      |
-| ------- | ---------- | -------------------------------------------- |
-| 1.0     | 2026-05-09 | Initial design — wall-mounted command center |
+| Version | Date       | Changes                                                                                                            |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1.1     | 2026-05-09 | UI review fixes: modal contrast, row visibility, static municipal grid, system states, freeze display, focus paths |
+| 1.0     | 2026-05-09 | Initial design — wall-mounted command center                                                                       |
 
 ---
 
