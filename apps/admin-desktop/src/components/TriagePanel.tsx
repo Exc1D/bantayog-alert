@@ -18,7 +18,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [agency, setAgency] = useState('')
-  const [responder, setResponder] = useState('')
+  const [responder] = useState('')
   const [holdProgress, setHoldProgress] = useState(0)
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -29,7 +29,6 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
   }, [report])
 
   useEffect(() => {
-    if (!report) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -37,52 +36,35 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [onClose, report])
-
-  useEffect(() => {
-    return () => {
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current)
-        holdTimerRef.current = null
-      }
-    }
-  }, [])
+  }, [onClose])
 
   if (!report) return null
 
-  const canDispatch = agency.trim().length > 0 && responder.trim().length > 0
-
-  const clearHoldTimer = () => {
-    if (holdTimerRef.current) {
-      clearInterval(holdTimerRef.current)
-      holdTimerRef.current = null
-    }
-  }
-
   const startHold = () => {
-    if (!canDispatch) return
-    clearHoldTimer()
     setHoldProgress(0)
     holdTimerRef.current = setInterval(() => {
       setHoldProgress((p) => {
-        const next = p + 10
-        if (next >= 100) {
-          clearHoldTimer()
+        if (p >= 100) {
+          if (holdTimerRef.current) clearInterval(holdTimerRef.current)
           onDispatch(report.id, agency, responder)
           return 0
         }
-        return next
+        return p + 10
       })
     }, 100)
   }
 
   const endHold = () => {
-    clearHoldTimer()
+    if (holdTimerRef.current) clearInterval(holdTimerRef.current)
     setHoldProgress(0)
   }
 
-  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 0
-  const width = screenWidth >= 1920 ? 480 : screenWidth >= 1440 ? 420 : 380
+  const width =
+    typeof window !== 'undefined' && window.innerWidth >= 1920
+      ? 480
+      : window.innerWidth >= 1440
+        ? 420
+        : 380
 
   return (
     <>
@@ -99,7 +81,6 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
         <div className="flex items-center justify-between border-b border-white/10 p-4">
           <h3 className="font-semibold text-[var(--color-text-primary)]">Report Detail</h3>
           <button
-            type="button"
             onClick={onClose}
             className="rounded p-1 hover:bg-white/10"
             aria-label="Close panel"
@@ -123,7 +104,6 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
 
           <div className="space-y-2">
             <button
-              type="button"
               onClick={() => {
                 onVerify(report.id)
               }}
@@ -132,7 +112,6 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
               Verify
             </button>
             <button
-              type="button"
               onClick={() => {
                 setRejectModalOpen(true)
               }}
@@ -144,11 +123,10 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
 
           <div className="border-t border-white/10 pt-4">
             <button
-              type="button"
               onClick={() => {
                 setShowDispatchForm((s) => !s)
               }}
-              className="w-full rounded-md bg-[var(--color-dispatch)] py-2 text-sm font-medium text-white hover:opacity-90"
+              className="w-full rounded-md bg-[#2563eb] py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Dispatch Responder
             </button>
@@ -166,24 +144,13 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
                   <option value="pnp">PNP</option>
                   <option value="ems">EMS</option>
                 </select>
-                <input
-                  type="text"
-                  value={responder}
-                  onChange={(e) => {
-                    setResponder(e.target.value)
-                  }}
-                  placeholder="Responder name or unit"
-                  className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
-                />
                 <button
-                  type="button"
-                  disabled={!canDispatch}
                   onMouseDown={startHold}
                   onMouseUp={endHold}
                   onMouseLeave={endHold}
                   onTouchStart={startHold}
                   onTouchEnd={endHold}
-                  className="relative w-full rounded-md bg-[var(--color-dispatch)] py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="relative w-full rounded-md bg-[#2563eb] py-3 text-sm font-medium text-white"
                 >
                   <span className="relative z-10">Hold to Dispatch</span>
                   {holdProgress > 0 && (
