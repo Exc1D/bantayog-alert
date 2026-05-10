@@ -8,8 +8,7 @@ export function useAudioAlerts() {
   const [enabled, setEnabled] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) === 'true'
-    } catch (err) {
-      console.warn('[useAudioAlerts] localStorage read failed', err)
+    } catch {
       return false
     }
   })
@@ -17,12 +16,7 @@ export function useAudioAlerts() {
 
   useEffect(() => {
     if (enabled) {
-      try {
-        ctxRef.current = new AudioContext()
-      } catch (err) {
-        console.warn('[useAudioAlerts] AudioContext init failed', err)
-        ctxRef.current = null
-      }
+      ctxRef.current = new AudioContext()
     }
     return () => {
       void ctxRef.current?.close()
@@ -35,15 +29,14 @@ export function useAudioAlerts() {
     const ctx = ctxRef.current
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
-    const stopTime = ctx.currentTime + ALERT_DURATION / 1000 + 0.01
     osc.type = 'sine'
     osc.frequency.setValueAtTime(ALERT_FREQUENCY, ctx.currentTime)
     gain.gain.setValueAtTime(0.3, ctx.currentTime)
-    gain.gain.linearRampToValueAtTime(0, stopTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ALERT_DURATION / 1000)
     osc.connect(gain)
     gain.connect(ctx.destination)
     osc.start(ctx.currentTime)
-    osc.stop(stopTime)
+    osc.stop(ctx.currentTime + ALERT_DURATION / 1000)
   }, [enabled])
 
   const toggle = useCallback(() => {
@@ -51,8 +44,8 @@ export function useAudioAlerts() {
       const next = !prev
       try {
         localStorage.setItem(STORAGE_KEY, String(next))
-      } catch (err) {
-        console.warn('[useAudioAlerts] localStorage write failed', err)
+      } catch {
+        /* ignore */
       }
       return next
     })

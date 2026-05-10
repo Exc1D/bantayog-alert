@@ -54,6 +54,22 @@ type SyncMessage =
 - Map clicks report pin → dashboard receives `select:report`, scrolls triage queue to that row
 - Triage action on either window → other window receives `triage:action`, shows toast confirmation
 
+## 1.4 Typography
+
+**Numeric data (status bar, table cells, timestamps, pin count badges):** JetBrains Mono, 400 weight, `font-variant-numeric: tabular-nums`. Monospaced digits align in columns and create a mission-control telemetry aesthetic — engineered, not decorative.
+
+**Body text (descriptions, labels, help text, glossary):** Inter, 400–500 weight. Retained for readability at small sizes.
+
+**Headlines (section titles, panel headers):** Inter, 600 weight.
+
+| Element               | Size | Font           | Weight |
+| --------------------- | ---- | -------------- | ------ |
+| Status bar metrics    | 32px | JetBrains Mono | 400    |
+| Section headers       | 18px | Inter          | 600    |
+| Body                  | 14px | Inter          | 400    |
+| Captions / timestamps | 12px | JetBrains Mono | 400    |
+| Metric labels         | 12px | Inter          | 500    |
+
 ---
 
 ## 2. Dashboard Window (`/dashboard`)
@@ -112,7 +128,7 @@ type SyncMessage =
 
 #### Status Bar (3 always-visible metrics)
 
-A single dense horizontal strip replacing the hero-metric card grid. Shows only what an operator needs at a glance during active response.
+A single dense horizontal strip replacing the hero-metric card grid. Shows only what an operator needs at a glance during active response. `position: sticky; top: 0` with a subtle scroll shadow (`box-shadow: 0 2px 8px rgba(0,0,0,0.3)`) — situational awareness must never scroll out of view.
 
 | Metric            | Value  | Alert Threshold    |
 | ----------------- | ------ | ------------------ |
@@ -120,7 +136,14 @@ A single dense horizontal strip replacing the hero-metric card grid. Shows only 
 | Avg Response Time | 12 min | >15 amber, >20 red |
 | Pending Triage    | 8      | >5 amber, >10 red  |
 
-**Expanded detail** (click/toggle to reveal): Resolved Today, Municipal Issues, System Health, Surge Status. Detail auto-collapses when Pending Triage > 0 to keep focus on action items.
+**Expanded detail** (click/toggle to reveal): Resolved Today, Municipal Issues, System Health, Surge Status. Detail defaults to collapsed when Pending Triage > 0 (surge mode), expanded when Pending Triage = 0 (calm mode). Manual toggle state persists per session — never override the operator's explicit choice.
+
+**Typography:** Numeric values render in JetBrains Mono (`tabular-nums`) at 32px/**500** weight for urgency and legibility. Metric labels are 12px/500 uppercase.
+
+**Surge atmosphere:** When Pending Triage > 5, two cues activate simultaneously:
+
+- **Functional:** 4px left border accent in `#a73400` (visible on all monitors)
+- **Atmospheric:** Subtle sienna glow (`box-shadow: 0 0 40px rgba(167, 52, 0, 0.25)`) (visible on quality monitors)
 
 #### Municipal Performance Table
 
@@ -151,6 +174,25 @@ A single dense horizontal strip replacing the hero-metric card grid. Shows only 
 - Click row → sends `select:report` sync message → map window centers on report pin
 - **Power-user pattern:** Arrow keys navigate rows. `V` = verify focused row. `Shift+V` = verify all selected. `R` = reject focused row. `Ctrl+D` = quick-dispatch with last-used agency.
 
+#### Empty Triage Queue State
+
+When no reports are pending verification, the queue shows a positive "all clear" indicator rather than an empty table (which looks broken):
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                                                          │
+│                    ✓ All Caught Up                       │
+│         No reports pending verification                  │
+│              Last checked: 14:32:05                      │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+- Green checkmark icon (`#22c55e`) with `role="status"`
+- Body text in muted color (`#6b7280`)
+- Live timestamp updates every 30 seconds
+- Auto-replaced by the table when new reports arrive (slide-in animation)
+
 ### 2.3 Keyboard Shortcuts
 
 | Key       | Action                                             |
@@ -166,7 +208,36 @@ A single dense horizontal strip replacing the hero-metric card grid. Shows only 
 | `Escape`  | Clear selection, close modals                      |
 | `?`       | Show shortcut help modal                           |
 
-**Auto-open map:** On initial login, if the dashboard detects no existing map window, it auto-opens `/map` after a 2-second delay (prevents popup blockers). Operator can disable this in preferences.
+**Auto-open map:** On initial login, if the dashboard detects no existing map window, it auto-opens `/map` after a 2-second delay (prevents popup blockers). During the delay, show a progress indicator ("Opening map window...") so the operator knows the system is initializing, not frozen. Operator can disable this in preferences.
+
+### 2.4 Motion Language
+
+All animations use custom easing curves. No default `ease` or `ease-in-out`.
+
+```css
+--ease-snap: cubic-bezier(0.22, 1, 0.36, 1); /* collapsible sections, panel slide */
+--ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); /* pin arrival, badge pop */
+--ease-dramatic: cubic-bezier(0.87, 0, 0.13, 1); /* modal open, full-screen transitions */
+--duration-micro: 150ms; /* button hovers, icon states */
+--duration-standard: 250ms; /* section toggle, panel slide */
+--duration-dramatic: 400ms; /* modal/page transitions, initial load */
+```
+
+**Rules:**
+
+- Don't animate CSS layout properties (`width`, `height`, `top`, `left`). Use `transform` and `opacity`.
+- Disable all motion when `prefers-reduced-motion: reduce`.
+- One well-orchestrated sequence beats scattered micro-interactions.
+
+### 2.5 Initial Load Sequence
+
+On first dashboard load, the UI reveals in a deliberate "system initializing" sequence:
+
+1. **Background settles** (0ms): Deep navy radial gradient fades in (`opacity 0 → 1`, 400ms, `ease-dramatic`).
+2. **Status bar metrics count up** (200ms delay): Each metric animates from `0` to its live value over 600ms with `ease-snap`. JetBrains Mono digits tick like a control panel booting.
+3. **Triage queue rows fade in** (400ms delay): Rows stagger at 50ms intervals (`opacity 0 → 1`, `translateY(8px) → 0`, `ease-snap`).
+4. **Map window opens** (2000ms): If auto-open is enabled, the map window opens after the dashboard has settled.
+5. **Map zooms to province** (map window, 0ms): Leaflet flies from zoom 6 to zoom 10 over 800ms (`ease-dramatic`), rather than snapping.
 
 ---
 
@@ -219,6 +290,10 @@ A single dense horizontal strip replacing the hero-metric card grid. Shows only 
 - **Center:** ~14.1°N, 122.9°E (Camarines Norte centroid)
 - **Zoom:** 10 (province view), 13 (municipality drill-down)
 
+**Map tiles:** Use a dark-themed tile layer (e.g., CartoDB Dark Matter or Stadia Alidade Smooth Dark) instead of standard OSM. The dark tiles align with the command-center aesthetic and make sienna/amber pins pop against the background.
+
+**Atmospheric texture:** A 2% opacity noise overlay on the dashboard background prevents banding on dark navy and adds an analog-monitor texture. Implemented as a CSS `::before` pseudo-element with a base64-encoded noise SVG or CSS `filter: url(#noise)`.
+
 ### 3.3 Incident Pins (Lucide React Icons)
 
 Pins use **Lucide React icons rendered as `L.divIcon`** (offline-friendly, no CDN dependency):
@@ -254,56 +329,79 @@ Each icon has a CSS pulse animation. Respects `prefers-reduced-motion: reduce`.
 ### 3.4 Map Overlay Toggles (floating toolbar, top-right)
 
 **Primary toggles** (always visible):
-`☑ All Incidents` `☑ Active Only` `☑ Responder Locations`
+`All | Active Only` (segmented control) `☑ Heatmap`
 
 **Secondary toggles** (collapsed under "More ▼"):
-`☑ Heatmap` `☑ Provincial Resources` `☑ Municipal Labels`
+`☑ Responder Locations` `☑ Provincial Resources` `☑ Municipal Labels`
 
 **Mutual exclusivity:** "All Incidents" and "Active Only" are a segmented control — exactly one is active. All other toggles are additive layers.
+
+**Hit targets:** Minimum 44×44px per toggle with 8px padding to prevent misclicks during rapid interaction.
 
 _(Municipal boundaries removed per user feedback — operators know the geography.)_
 
 ### 3.5 Triage Panel (Right Side)
 
-**Hidden when no pin selected.** The map occupies 100% width. When a pin is clicked, the panel animates in (CSS transition, 200ms). Map shrinks to 60-75%.
+**Hidden when no pin selected.** The map occupies 100% width. When a pin is clicked, the panel animates in (CSS transition, 200ms). Map shrinks to accommodate panel.
+
+**Panel width (responsive):**
+
+- `< 1440px viewport`: 380px
+- `1440–1920px viewport`: 420px
+- `> 1920px viewport`: 480px
 
 **Panel close:** X handle, `Escape` key, or clicking map background.
 
-**Panel content (no Report ID displayed):**
+**Focus management:** When the panel opens, focus moves to the panel container (`tabIndex={-1}`) so screen reader users know context changed. When closed, focus returns to the pin that triggered it.
+
+**Panel content:**
 
 - Municipality, Barangay
 - Type + Severity badge
 - Description (expandable)
 - Photo thumbnails (click to expand)
 - Reporter contact (with disclosure banner: "Private citizen data — this access is logged")
-- Action buttons:
-  - **[Verify]** — green, primary action
-  - **[Reject]** — red, opens reason dropdown
-  - **[Dispatch Responder]** — blue, expands dispatch form
+- **Action buttons (hierarchy):**
+  - **[Verify]** — primary (solid green, full width). One-click with 3s undo toast.
+  - **[Reject]** — secondary (outlined, full width). Opens confirmation modal with reason dropdown.
+  - **[Dispatch Responder]** — tertiary (distinct style, full width). Hold-to-confirm (1s). Not a peer to Verify/Reject — dispatch follows verification.
 - **Dispatch Form:**
   - Agency selector (dropdown)
   - Responder selector (filtered by agency + availability)
   - Dispatch button
 - **Activity Timeline:** Chronological list of report events with timestamps
+- **Report ID:** Shown as 10px muted caption at panel bottom (e.g., "Report #rep_abc123"). Visible for cross-window coordination but de-emphasized to reduce cognitive load.
 
 ### 3.6 Municipal Drill-Down
 
 **Trigger:** Click a municipality label on the map, or select a row in the dashboard's Municipal Performance Table.
 
-**Behavior:** Map zooms to municipality bounds (zoom 13). A floating info card appears anchored to the municipality centroid:
+**Behavior:** Map zooms to municipality bounds (zoom 13). A floating info card appears near the municipality centroid:
 
 ```
 ┌────────────────────────────┐
 │ Capalonga Municipality     │
-│ Admin: Santos (On Duty)    │
 │                            │
-│ Active Incidents: 3        │
-│ Available Responders: 9/15 │
-│ Avg Response: 18 min ❌    │
+│ 🔴 Active Incidents: 3     │
+│ 🟢 Available Responders: 9/15│
+│ ⏱ Avg Response: 18 min ❌  │
+│                            │
+│ 👤 Admin: Santos (On Duty) │
 │                            │
 │ [View All] [Contact Admin] │
 └────────────────────────────┘
 ```
+
+**Smart offset:** If the centroid is within 100px of any incident pin, the card offsets by 150px in the least-dense direction to avoid obscuring pins.
+
+**Click-through:** The card container uses `pointer-events: none`; only interactive elements (buttons, links) use `pointer-events: auto`. Clicking empty card area passes through to the map.
+
+**Content priority** (ordered for 2 AM decision-making under pressure):
+
+1. **Active Incidents** — what needs attention NOW
+2. **Available Responders** — can we handle it?
+3. **Avg Response** — are we failing?
+4. **Admin Name** — who to call if needed (least urgent)
 
 ---
 

@@ -6,12 +6,12 @@ interface Props {
   onSelectMunicipality: (municipality: string) => void
 }
 
-function responseTimeIndicator(avgResponseTime: string): string {
+function responseTimeColor(avgResponseTime: string): string {
   const match = /(\d+)/.exec(avgResponseTime)
   const minutes = match?.[1] ? Number.parseInt(match[1], 10) : 0
-  if (minutes < 12) return 'good'
-  if (minutes <= 20) return 'warning'
-  return 'bad'
+  if (minutes < 12) return '#22c55e'
+  if (minutes <= 20) return '#c77600'
+  return '#a73400'
 }
 
 export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props) {
@@ -28,18 +28,38 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
   }
 
   const sorted =
-    sortKey === 'activeIncidents'
-      ? [...data].sort((a, b) => {
-          const diff = a.activeIncidents - b.activeIncidents
+    sortKey === null
+      ? data
+      : [...data].sort((a, b) => {
+          let diff = 0
+          if (sortKey === 'activeIncidents') {
+            diff = a.activeIncidents - b.activeIncidents
+          } else if (sortKey === 'municipality') {
+            diff = a.municipality.localeCompare(b.municipality)
+          } else if (sortKey === 'avgResponseTime') {
+            const matchA = /(\d+)/.exec(a.avgResponseTime)
+            const matchB = /(\d+)/.exec(b.avgResponseTime)
+            const minA = matchA?.[1] ? Number.parseInt(matchA[1], 10) : 0
+            const minB = matchB?.[1] ? Number.parseInt(matchB[1], 10) : 0
+            diff = minA - minB
+          }
           return sortAsc ? diff : -diff
         })
-      : data
 
   return (
     <table>
       <thead>
         <tr>
-          <th>Municipality</th>
+          <th>
+            <button
+              type="button"
+              onClick={() => {
+                handleHeaderClick('municipality')
+              }}
+            >
+              Municipality
+            </button>
+          </th>
           <th>
             <button
               type="button"
@@ -51,7 +71,16 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
             </button>
           </th>
           <th>Responders</th>
-          <th>Avg Response</th>
+          <th>
+            <button
+              type="button"
+              onClick={() => {
+                handleHeaderClick('avgResponseTime')
+              }}
+            >
+              Avg Response
+            </button>
+          </th>
           <th>Admin</th>
         </tr>
       </thead>
@@ -67,7 +96,7 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
             <td>{row.municipality}</td>
             <td>{row.activeIncidents}</td>
             <td>{row.activeResponders}</td>
-            <td className={responseTimeIndicator(row.avgResponseTime)}>{row.avgResponseTime}</td>
+            <td style={{ color: responseTimeColor(row.avgResponseTime) }}>{row.avgResponseTime}</td>
             <td>{row.adminOnDuty ? 'On Duty' : 'No Shift'}</td>
           </tr>
         ))}

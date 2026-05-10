@@ -8,6 +8,7 @@ const mockMuni: MunicipalPerformance = {
   municipality: 'Capalonga',
   activeIncidents: 3,
   activeResponders: 9,
+  totalResponders: 15,
   avgResponseTime: '18 min',
   unresolvedOver24h: 2,
   adminOnDuty: true,
@@ -40,7 +41,7 @@ describe('MunicipalDrillDown', () => {
     expect(screen.getByText('Active Incidents')).toBeInTheDocument()
   })
 
-  it('shows available responders', () => {
+  it('shows available responders with total when provided', () => {
     render(
       <MunicipalDrillDown
         data={mockMuni}
@@ -49,8 +50,24 @@ describe('MunicipalDrillDown', () => {
         onContactAdmin={vi.fn()}
       />,
     )
-    expect(screen.getByText('9')).toBeInTheDocument()
+    expect(screen.getByText('9/15')).toBeInTheDocument()
     expect(screen.getByText('Available Responders')).toBeInTheDocument()
+  })
+
+  it('shows available responders without total when not provided', () => {
+    const noTotal = Object.fromEntries(
+      Object.entries(mockMuni).filter(([k]) => k !== 'totalResponders'),
+    ) as typeof mockMuni
+    render(
+      <MunicipalDrillDown
+        data={noTotal}
+        onClose={vi.fn()}
+        onViewAll={vi.fn()}
+        onContactAdmin={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('9')).toBeInTheDocument()
+    expect(screen.queryByText('9/15')).not.toBeInTheDocument()
   })
 
   it('shows admin name when on duty', () => {

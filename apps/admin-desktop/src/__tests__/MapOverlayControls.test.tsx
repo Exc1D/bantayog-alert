@@ -33,7 +33,21 @@ describe('MapOverlayControls', () => {
       />,
     )
     await user.click(screen.getByRole('button', { name: 'Active Only' }))
+    expect(onToggleOverlay).toHaveBeenCalledWith('all_incidents')
     expect(onToggleOverlay).toHaveBeenCalledWith('active_only')
+  })
+
+  it('does nothing when clicking already-active segment', async () => {
+    const user = userEvent.setup()
+    const onToggleOverlay = vi.fn()
+    render(
+      <MapOverlayControls
+        activeOverlays={new Set(['all_incidents'])}
+        onToggleOverlay={onToggleOverlay}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'All' }))
+    expect(onToggleOverlay).not.toHaveBeenCalled()
   })
 
   it('toggles heatmap checkbox', async () => {
