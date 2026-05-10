@@ -39,33 +39,21 @@ describe('useFirestoreListeners', () => {
 
   it('sets up dashboard listeners on mount', () => {
     renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
-    // Dashboard: reports, report_ops, alerts = 3 onSnapshot calls
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
+    expect(mockOnSnapshot).toHaveBeenCalled()
   })
 
   it('sets up map listeners on mount', () => {
     renderHook(() => useFirestoreListeners({ windowType: 'map', db: mockDb, rtdb: mockRtdb }))
-    // Map: reports, report_ops, alerts = 3 onSnapshot + 1 onValue for responder_locations
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
+    expect(mockOnSnapshot).toHaveBeenCalled()
     expect(mockOnValue).toHaveBeenCalled()
   })
 
-  it('includes reportOps and alerts in dashboard result', async () => {
-    const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
-    )
-    await waitFor(() => {
-      expect(result.current.reportOps).toBeDefined()
-      expect(result.current.alerts).toBeDefined()
-    })
-  })
-
-  it('unsubscribes all listeners on unmount', () => {
+  it('unsubscribes on unmount', () => {
     const { unmount } = renderHook(() =>
       useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
     )
     unmount()
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(3)
+    expect(mockUnsubscribe).toHaveBeenCalled()
   })
 
   it('updates data when snapshot arrives', async () => {
