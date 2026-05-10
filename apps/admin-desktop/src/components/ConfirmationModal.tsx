@@ -65,19 +65,26 @@ export function ConfirmationModal({
           <h2 id="confirm-title" className="text-lg font-semibold text-[var(--color-text-primary)]">
             {title}
           </h2>
-          <button onClick={onCancel} className="rounded p-1 hover:bg-white/10" aria-label="Close">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded p-1 hover:bg-white/10"
+            aria-label="Close"
+          >
             <X className="h-4 w-4 text-[var(--color-text-secondary)]" />
           </button>
         </div>
         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">{message}</p>
         <div className="mt-6 flex justify-end gap-3">
           <button
+            type="button"
             onClick={onCancel}
             className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90`}
           >

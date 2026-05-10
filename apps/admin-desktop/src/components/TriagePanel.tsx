@@ -88,6 +88,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
         <div className="flex items-center justify-between border-b border-white/10 p-4">
           <h3 className="font-semibold text-[var(--color-text-primary)]">Report Detail</h3>
           <button
+            type="button"
             onClick={onClose}
             className="rounded p-1 hover:bg-white/10"
             aria-label="Close panel"
@@ -111,6 +112,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
 
           <div className="space-y-2">
             <button
+              type="button"
               onClick={() => {
                 onVerify(report.id)
               }}
@@ -119,6 +121,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
               Verify
             </button>
             <button
+              type="button"
               onClick={() => {
                 setRejectModalOpen(true)
               }}
@@ -130,6 +133,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
 
           <div className="border-t border-white/10 pt-4">
             <button
+              type="button"
               onClick={() => {
                 setShowDispatchForm((s) => !s)
               }}
