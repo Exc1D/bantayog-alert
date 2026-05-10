@@ -72,6 +72,16 @@ export function IncidentLayer({ reports, selectedReportId, onPinClick }: Props) 
     markersRef.current = []
 
     reports.forEach((report) => {
+      const hasValidCoordinates =
+        Number.isFinite(report.latitude) &&
+        Number.isFinite(report.longitude) &&
+        report.latitude >= -90 &&
+        report.latitude <= 90 &&
+        report.longitude >= -180 &&
+        report.longitude <= 180
+
+      if (!hasValidCoordinates) return
+
       const marker = L.marker([report.latitude, report.longitude], {
         icon: createPinIcon(report.type, report.severity, report.id === selectedReportId),
       })

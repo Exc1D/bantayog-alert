@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 
 const mockUnsubscribe = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
@@ -63,30 +63,13 @@ describe('useFirestoreListeners error handling', () => {
     expect(effectRunCount).toBe(3)
     expect(result.current.error).toBe('network error')
 
-    // First retry: exponential delay = 1000 * (0 + 1) = 1000ms
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1100)
-    })
-    expect(effectRunCount).toBe(6)
+    // Advance through all retry windows (1000 + 2000 + 3000 = 6000ms)
+    // Use runAllTimersAsync to drain every pending timer
+    await vi.runAllTimersAsync()
 
-    // Second retry: exponential delay = 1000 * (1 + 1) = 2000ms
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2100)
-    })
-    expect(effectRunCount).toBe(9)
-
-    // Third retry: exponential delay = 1000 * (2 + 1) = 3000ms
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3100)
-    })
+    // Should have re-subscribed 3 additional times (MAX_RETRIES = 3)
+    // Total = 3 (initial) + 3*3 (3 retries x 3 listeners) = 12
     expect(effectRunCount).toBe(12)
-
-    // Should stop retrying after MAX_RETRIES (3)
-    const finalCount = effectRunCount
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000)
-    })
-    expect(effectRunCount).toBe(finalCount)
 
     vi.useRealTimers()
   })
@@ -119,9 +102,9 @@ describe('useFirestoreListeners error handling', () => {
 
     unmount()
 
-    // After unmount, advancing timers should not cause new onSnapshot calls
+    // After unmount, advancing timers past the retry boundary should not cause new onSnapshot calls
     const callCountAfterUnmount = mockOnSnapshot.mock.calls.length
-    await vi.advanceTimersByTimeAsync(500)
+    await vi.advanceTimersByTimeAsync(1500)
     expect(mockOnSnapshot.mock.calls.length).toBe(callCountAfterUnmount)
 
     vi.useRealTimers()

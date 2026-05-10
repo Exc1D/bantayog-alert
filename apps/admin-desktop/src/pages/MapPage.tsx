@@ -36,16 +36,44 @@ function responderEntries(responders: [string, unknown][]): {
     .filter((r) => r.uid)
 }
 
-function mapReportDocToReport(doc: {
-  id: string
-  type: string
-  severity: string
-  municipality: string
-  barangay: string
-  createdAt: string
-  status: string
-  description: string
-}): Report {
+function mapReportDocToReport(
+  doc: {
+    id: string
+    type: string
+    severity: string
+    municipality: string
+    barangay: string
+    createdAt: string
+    status: string
+    description: string
+  } & Record<string, unknown>,
+): Report | null {
+  const latitude =
+    typeof doc.latitude === 'number'
+      ? doc.latitude
+      : typeof doc.location === 'object' && doc.location !== null
+        ? (doc.location as Record<string, unknown>).latitude
+        : undefined
+  const longitude =
+    typeof doc.longitude === 'number'
+      ? doc.longitude
+      : typeof doc.location === 'object' && doc.location !== null
+        ? (doc.location as Record<string, unknown>).longitude
+        : undefined
+
+  if (
+    typeof latitude !== 'number' ||
+    typeof longitude !== 'number' ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null
+  }
+
   return {
     id: doc.id,
     type: doc.type as Report['type'],
@@ -57,8 +85,8 @@ function mapReportDocToReport(doc: {
     description: doc.description,
     reporterName: '',
     reporterPhone: '',
-    latitude: 0,
-    longitude: 0,
+    latitude,
+    longitude,
     updatedAt: '',
   }
 }
@@ -87,8 +115,11 @@ export default function MapPage() {
 
   const { sendSync, subscribe } = useWindowSyncContext()
 
-  const reports = reportDocs.map(mapReportDocToReport)
+  const reports = (reportDocs as ((typeof reportDocs)[number] & Record<string, unknown>)[])
+    .map(mapReportDocToReport)
+    .filter((r): r is Report => r !== null)
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const municipalityData: MunicipalPerformance | null = useMemo(() => {
     if (!selectedMunicipalityId) return null
@@ -125,25 +156,50 @@ export default function MapPage() {
     [selectReport, sendSync, setSuppressNextBroadcast],
   )
 
-  const handleVerify = useCallback((id: string) => {
-    void callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
+  const clearActionError = useCallback(() => {
+    setActionError(null)
   }, [])
 
-  const handleReject = useCallback((id: string) => {
-    void callables.rejectReport({
-      reportId: id,
-      reason: 'obviously_false',
-      idempotencyKey: generateIdempotencyKey(),
-    })
+  const handleVerify = useCallback(async (id: string) => {
+    try {
+      await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
+      setActionError(null)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Verify failed'
+      setActionError(msg)
+    }
   }, [])
 
-  const handleDispatch = useCallback((reportId: string, _agency: string, responderUid: string) => {
-    void callables.dispatchResponder({
-      reportId,
-      responderUid,
-      idempotencyKey: generateIdempotencyKey(),
-    })
+  const handleReject = useCallback(async (id: string) => {
+    try {
+      await callables.rejectReport({
+        reportId: id,
+        reason: 'obviously_false',
+        idempotencyKey: generateIdempotencyKey(),
+      })
+      setActionError(null)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Reject failed'
+      setActionError(msg)
+    }
   }, [])
+
+  const handleDispatch = useCallback(
+    async (reportId: string, _agency: string, responderUid: string) => {
+      try {
+        await callables.dispatchResponder({
+          reportId,
+          responderUid,
+          idempotencyKey: generateIdempotencyKey(),
+        })
+        setActionError(null)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Dispatch failed'
+        setActionError(msg)
+      }
+    },
+    [],
+  )
 
   const [lastUpdatedAt] = useState(() => Date.now())
 
@@ -161,6 +217,17 @@ export default function MapPage() {
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <OfflineBanner error={error} />
       <CommandHeader title="Provincial Map — Camarines Norte" lastUpdatedAt={lastUpdatedAt} />
+      {actionError && (
+        <div
+          className="absolute left-0 right-0 top-12 z-[60] border border-[var(--color-danger)] bg-[var(--color-danger)]/20 px-4 py-2 text-sm text-[var(--color-danger)]"
+          role="alert"
+        >
+          {actionError}
+          <button onClick={clearActionError} className="ml-2 underline">
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="relative flex-1">
         <div className="isolate h-full w-full">
           <ProvincialMap
@@ -176,9 +243,11 @@ export default function MapPage() {
           onClose={() => {
             selectReport(null)
           }}
-          onVerify={handleVerify}
-          onReject={handleReject}
-          onDispatch={handleDispatch}
+          onVerify={(id) => void handleVerify(id)}
+          onReject={(id) => void handleReject(id)}
+          onDispatch={(reportId, agency, responderUid) =>
+            void handleDispatch(reportId, agency, responderUid)
+          }
         />
         {municipalityData && (
           <div className="absolute bottom-4 left-4 z-20 max-w-xs">
@@ -186,12 +255,6 @@ export default function MapPage() {
               data={municipalityData}
               onClose={() => {
                 selectMunicipality(null)
-              }}
-              onViewAll={() => {
-                /* TODO: wire view-all */
-              }}
-              onContactAdmin={() => {
-                /* TODO: wire contact admin */
               }}
             />
           </div>

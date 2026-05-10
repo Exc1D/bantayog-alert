@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
@@ -135,13 +135,17 @@ describe('DashboardPage', () => {
     expect(mockVerifyReport).toHaveBeenCalledWith(expect.objectContaining({ reportId: 'r1' }))
   })
 
-  it('bulk verifies selected reports when Shift+V pressed', () => {
+  it('bulk verifies selected reports when Shift+V pressed', async () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     // Select all via checkbox
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
     fireEvent.keyDown(window, { key: 'V', shiftKey: true })
     // Bulk verify calls verifyReport for each selected report
-    expect(mockVerifyReport).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockVerifyReport).toHaveBeenCalledTimes(2)
+    })
+    expect(mockVerifyReport).toHaveBeenCalledWith(expect.objectContaining({ reportId: 'r1' }))
+    expect(mockVerifyReport).toHaveBeenCalledWith(expect.objectContaining({ reportId: 'r2' }))
   })
 
   it('opens reject modal when R key pressed with focused report', () => {

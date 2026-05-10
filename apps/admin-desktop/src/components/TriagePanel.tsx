@@ -40,41 +40,37 @@ export function TriagePanel({
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (report?.id && panelRef.current) {
-      previousFocusRef.current = document.activeElement as HTMLElement
-      panelRef.current.focus()
-    }
-  }, [report?.id])
+    if (!report?.id) return
+    previousFocusRef.current = document.activeElement as HTMLElement
+    panelRef.current?.focus()
 
-  useEffect(() => {
-    return () => {
-      if (previousFocusRef.current) {
-        previousFocusRef.current.focus()
-      }
-    }
-  }, [])
-
-  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKeyDown)
+
     return () => {
       window.removeEventListener('keydown', onKeyDown)
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus()
+      }
     }
-  }, [onClose])
+  }, [report?.id, onClose])
 
   if (!report) return null
 
   const filteredResponders = agency ? (responders ?? []).filter((r) => r.agency === agency) : []
 
   const startHold = () => {
+    if (!agency || !responder) return
     setHoldProgress(0)
     holdTimerRef.current = setInterval(() => {
       setHoldProgress((p) => {
         if (p >= 100) {
           if (holdTimerRef.current) clearInterval(holdTimerRef.current)
-          onDispatch(report.id, agency, responder)
+          if (agency && responder) {
+            onDispatch(report.id, agency, responder)
+          }
           return 0
         }
         return p + 10
@@ -166,6 +162,7 @@ export function TriagePanel({
             {showDispatchForm && (
               <div className="mt-3 space-y-2">
                 <select
+                  aria-label="Select Agency"
                   value={agency}
                   onChange={(e) => {
                     setAgency(e.target.value)
@@ -182,6 +179,7 @@ export function TriagePanel({
                 </select>
                 {agency && (
                   <select
+                    aria-label="Select Responder"
                     value={responder}
                     onChange={(e) => {
                       setResponder(e.target.value)
@@ -201,12 +199,13 @@ export function TriagePanel({
                   </select>
                 )}
                 <button
+                  disabled={!agency || !responder}
                   onMouseDown={startHold}
                   onMouseUp={endHold}
                   onMouseLeave={endHold}
                   onTouchStart={startHold}
                   onTouchEnd={endHold}
-                  className="relative w-full rounded-md bg-[#2563eb] py-3 text-sm font-medium text-white"
+                  className="relative w-full rounded-md bg-[#2563eb] py-3 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="relative z-10">Hold to Dispatch</span>
                   {holdProgress > 0 && (

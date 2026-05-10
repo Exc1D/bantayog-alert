@@ -51,6 +51,42 @@ function mapReportDocToReport(doc: {
   }
 }
 
+interface FirestoreAlertDoc {
+  id: string
+  message?: unknown
+  severity?: unknown
+  detectedAt?: unknown
+  municipality?: unknown
+  type?: unknown
+  dismissedAt?: unknown
+}
+
+function mapAlertDocToAnomalyAlert(doc: unknown): AnomalyAlert | null {
+  if (doc == null || typeof doc !== 'object') return null
+  const d = doc as FirestoreAlertDoc
+  if (
+    typeof d.message !== 'string' ||
+    typeof d.severity !== 'string' ||
+    typeof d.detectedAt !== 'string' ||
+    typeof d.municipality !== 'string' ||
+    typeof d.id !== 'string'
+  ) {
+    return null
+  }
+  const severity = d.severity as AnomalyAlert['severity']
+  if (!['HIGH', 'MEDIUM', 'LOW'].includes(severity)) return null
+  const result: AnomalyAlert = {
+    id: d.id,
+    message: d.message,
+    severity,
+    detectedAt: d.detectedAt,
+    municipality: d.municipality,
+    type: typeof d.type === 'string' ? d.type : 'unknown',
+    ...(typeof d.dismissedAt === 'string' ? { dismissedAt: d.dismissedAt } : {}),
+  }
+  return result
+}
+
 export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
@@ -60,9 +96,10 @@ export default function DashboardPage() {
   const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [lastUpdatedAt] = useState(() => Date.now())
+  const [bulkRejectIds, setBulkRejectIds] = useState<string[] | null>(null)
 
   const { selectReport, selectedReportId, setSuppressNextBroadcast } = useCommandCenterStore()
-  const { loading, error, reports, reportOps, alerts } = useFirestoreListeners({
+  const { loading, error, reports, reportOps, alerts, responders } = useFirestoreListeners({
     windowType: 'dashboard',
     db,
   })
@@ -132,15 +169,27 @@ export default function DashboardPage() {
   }, [])
 
   const confirmReject = useCallback(async () => {
-    if (rejectTargetId && rejectReason) {
-      try {
+    if (!rejectTargetId && !bulkRejectIds) {
+      setRejectModalOpen(false)
+      return
+    }
+    if (!rejectReason) {
+      setActionError('Please select a reason before rejecting.')
+      playError()
+      return
+    }
+
+    const ids = bulkRejectIds ?? [rejectTargetId]
+    try {
+      for (const id of ids) {
+        if (!id) continue
         const payload: {
           reportId: string
           reason: 'obviously_false' | 'duplicate' | 'test_submission' | 'insufficient_detail'
           idempotencyKey: string
           notes?: string
         } = {
-          reportId: rejectTargetId,
+          reportId: id,
           reason: rejectReason as
             | 'obviously_false'
             | 'duplicate'
@@ -152,15 +201,17 @@ export default function DashboardPage() {
           payload.notes = rejectNotes
         }
         await callables.rejectReport(payload)
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Reject failed'
-        setActionError(msg)
-        playError()
       }
+      setRejectModalOpen(false)
+      setRejectTargetId(null)
+      setBulkRejectIds(null)
+      setSelectedIds(new Set())
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Reject failed'
+      setActionError(msg)
+      playError()
     }
-    setRejectModalOpen(false)
-    setRejectTargetId(null)
-  }, [rejectTargetId, rejectReason, rejectNotes, playError])
+  }, [rejectTargetId, rejectReason, rejectNotes, playError, bulkRejectIds])
 
   const handleBulkVerify = useCallback(
     async (ids: Set<string>) => {
@@ -179,16 +230,13 @@ export default function DashboardPage() {
     [playError],
   )
 
-  const handleBulkReject = useCallback(
-    (ids: Set<string>) => {
-      if (ids.size > 0) {
-        const first = Array.from(ids)[0]
-        if (first) handleReject(first)
-      }
-      setSelectedIds(new Set())
-    },
-    [handleReject],
-  )
+  const handleBulkReject = useCallback((ids: Set<string>) => {
+    if (ids.size === 0) return
+    setBulkRejectIds(Array.from(ids))
+    setRejectReason('')
+    setRejectNotes('')
+    setRejectModalOpen(true)
+  }, [])
 
   const openMapWindow = useCallback(() => {
     window.open('/map', 'bantayog-map', 'width=1200,height=900')
@@ -337,14 +385,16 @@ export default function DashboardPage() {
         </div>
         <div className="mt-4">
           <AnomalyAlertPanel
-            alerts={alerts as AnomalyAlert[]}
+            alerts={alerts
+              .map(mapAlertDocToAnomalyAlert)
+              .filter((a): a is AnomalyAlert => a !== null)}
             onDismiss={() => {
               /* TODO: wire dismiss callable */
             }}
           />
         </div>
         <div className="mt-4">
-          <TrendAnalysisPanel reports={reports} reportOps={reportOps} responders={[]} />
+          <TrendAnalysisPanel reports={reports} reportOps={reportOps} responders={responders} />
         </div>
       </main>
       <ConfirmationModal

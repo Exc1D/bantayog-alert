@@ -54,8 +54,11 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const sendSync = useCallback((msg: SyncMessage) => {
-    bcRef.current?.postMessage(msg)
-    // Always write to localStorage as fallback
+    if (bcRef.current) {
+      bcRef.current.postMessage(msg)
+      return
+    }
+    // Fallback to localStorage when BroadcastChannel is unavailable
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: msg, timestamp: Date.now() }))
     } catch {

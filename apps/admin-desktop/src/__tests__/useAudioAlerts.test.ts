@@ -33,8 +33,6 @@ describe('useAudioAlerts', () => {
     mockOscillator = createMockOscillator()
     mockGainNode = createMockGainNode()
 
-    const mockInstances: ReturnType<typeof createMockAudioContext>[] = []
-
     function createMockAudioContext() {
       return {
         state: 'running',
@@ -48,9 +46,7 @@ describe('useAudioAlerts', () => {
     }
 
     const MockAudioContextClass = vi.fn().mockImplementation(function () {
-      const instance = createMockAudioContext()
-      mockInstances.push(instance)
-      return instance
+      return createMockAudioContext()
     }) as unknown as typeof AudioContext
 
     vi.stubGlobal('AudioContext', MockAudioContextClass)
@@ -67,7 +63,8 @@ describe('useAudioAlerts', () => {
         store[key] = value
       }),
       removeItem: vi.fn((key: string) => {
-        store[key] = undefined as unknown as string
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete store[key]
       }),
       clear: vi.fn(() => {
         store = {}

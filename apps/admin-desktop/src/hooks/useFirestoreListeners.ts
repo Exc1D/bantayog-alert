@@ -99,6 +99,14 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
+        if (retryCount < MAX_RETRIES) {
+          retryTimerRef.current = setTimeout(
+            () => {
+              setRetryCount((c) => c + 1)
+            },
+            1000 * (retryCount + 1),
+          )
+        }
       },
     )
     unsubscribers.push(unsubReportOps)
@@ -118,6 +126,14 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
+        if (retryCount < MAX_RETRIES) {
+          retryTimerRef.current = setTimeout(
+            () => {
+              setRetryCount((c) => c + 1)
+            },
+            1000 * (retryCount + 1),
+          )
+        }
       },
     )
     unsubscribers.push(unsubAlerts)

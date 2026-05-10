@@ -96,7 +96,7 @@ describe('TriagePanel', () => {
       />,
     )
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
-    const agencySelect = screen.getByRole('combobox', { name: '' })
+    const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     expect(agencySelect).toBeInTheDocument()
     // Agency options should include the allowlist
     expect(screen.getByText('BFP')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('TriagePanel', () => {
       />,
     )
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
-    const agencySelect = screen.getByRole('combobox', { name: '' })
+    const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     await user.selectOptions(agencySelect, 'BFP')
     // Responder dropdown should appear with BFP responders
     const responderOptions = screen.getAllByRole('option')
@@ -141,7 +141,7 @@ describe('TriagePanel', () => {
       />,
     )
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
-    const agencySelect = screen.getByRole('combobox', { name: '' })
+    const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     await user.selectOptions(agencySelect, 'MDRRMO')
     expect(screen.getByText('No responders available')).toBeInTheDocument()
   })
@@ -159,7 +159,7 @@ describe('TriagePanel', () => {
       />,
     )
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
-    const agencySelect = screen.getByRole('combobox', { name: '' })
+    const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     await user.selectOptions(agencySelect, 'BFP')
     // Select a responder
     const allComboboxes = screen.getAllByRole('combobox')

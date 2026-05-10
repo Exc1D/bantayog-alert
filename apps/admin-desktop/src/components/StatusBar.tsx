@@ -49,7 +49,9 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
   return (
     <div
       className={`sticky top-0 z-50 border-b bg-[var(--color-navy)] ${
-        isSurge ? 'animate-pulse border-[#c77600]' : 'border-[var(--color-navy)]'
+        isSurge
+          ? 'animate-pulse border-[var(--color-severity-medium)]'
+          : 'border-[var(--color-navy)]'
       }`}
     >
       <div className="flex items-center justify-around px-4 py-3">
@@ -67,12 +69,6 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
       </button>
       {expanded && (
         <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
-          <span>
-            Resolved Today: <strong className="text-[var(--color-text-primary)]">89</strong>
-          </span>
-          <span>
-            Muni Issues: <strong className="text-[var(--color-text-primary)]">0/12</strong>
-          </span>
           <span>
             Surge:{' '}
             <strong className="text-[var(--color-text-primary)]">

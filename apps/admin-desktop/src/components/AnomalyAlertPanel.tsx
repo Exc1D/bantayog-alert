@@ -13,9 +13,9 @@ const SEVERITY_ICON: Record<Severity, typeof AlertTriangle> = {
 }
 
 const SEVERITY_COLOR: Record<Severity, string> = {
-  HIGH: '#a73400',
-  MEDIUM: '#c77600',
-  LOW: '#414849',
+  HIGH: 'var(--color-severity-high)',
+  MEDIUM: 'var(--color-severity-medium)',
+  LOW: 'var(--color-severity-low)',
 }
 
 export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {

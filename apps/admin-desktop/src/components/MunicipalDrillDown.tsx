@@ -4,8 +4,8 @@ import type { MunicipalPerformance } from '../types'
 interface Props {
   data: MunicipalPerformance
   onClose: () => void
-  onViewAll: (municipality: string) => void
-  onContactAdmin: (municipality: string) => void
+  onViewAll?: (municipality: string) => void
+  onContactAdmin?: (municipality: string) => void
 }
 
 export function MunicipalDrillDown({ data, onClose, onViewAll, onContactAdmin }: Props) {
@@ -59,26 +59,32 @@ export function MunicipalDrillDown({ data, onClose, onViewAll, onContactAdmin }:
         )}
       </div>
 
-      <div className="mt-3 flex gap-2" style={{ pointerEvents: 'auto' }}>
-        <button
-          type="button"
-          onClick={() => {
-            onViewAll(data.municipality)
-          }}
-          className="rounded-md bg-[var(--color-sienna)] px-3 py-1.5 text-xs text-white hover:opacity-90"
-        >
-          View All
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onContactAdmin(data.municipality)
-          }}
-          className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/10"
-        >
-          Contact Admin
-        </button>
-      </div>
+      {(onViewAll ?? onContactAdmin) && (
+        <div className="mt-3 flex gap-2" style={{ pointerEvents: 'auto' }}>
+          {onViewAll && (
+            <button
+              type="button"
+              onClick={() => {
+                onViewAll(data.municipality)
+              }}
+              className="rounded-md bg-[var(--color-sienna)] px-3 py-1.5 text-xs text-white hover:opacity-90"
+            >
+              View All
+            </button>
+          )}
+          {onContactAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                onContactAdmin(data.municipality)
+              }}
+              className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/10"
+            >
+              Contact Admin
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

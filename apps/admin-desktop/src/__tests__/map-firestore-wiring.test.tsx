@@ -29,8 +29,8 @@ vi.mock('../providers/WindowSyncProvider', () => ({
   }),
 }))
 
-vi.mock('../hooks/useFirestoreListeners', () => ({
-  useFirestoreListeners: () => ({
+const mockUseFirestoreListeners = vi.hoisted(() =>
+  vi.fn().mockReturnValue({
     loading: false,
     error: null,
     reports: [
@@ -54,6 +54,10 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
     alerts: [],
     responders: [['uid1', { displayName: 'Responder A', agency: 'BFP' }]],
   }),
+)
+
+vi.mock('../hooks/useFirestoreListeners', () => ({
+  useFirestoreListeners: mockUseFirestoreListeners,
 }))
 
 describe('MapPage Firestore wiring', () => {
@@ -77,6 +81,10 @@ describe('MapPage Firestore wiring', () => {
   it('renders map with reports from Firestore', () => {
     render(<MapPage />)
     expect(screen.getByText('Provincial Map — Camarines Norte')).toBeInTheDocument()
+    // Confirm useFirestoreListeners is invoked and wired to the page
+    expect(mockUseFirestoreListeners).toHaveBeenCalledWith(
+      expect.objectContaining({ windowType: 'map' }),
+    )
   })
 
   it('shows TriagePanel when report selected', () => {
