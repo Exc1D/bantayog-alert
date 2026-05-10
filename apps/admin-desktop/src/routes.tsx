@@ -1,4 +1,7 @@
-import { Navigate } from 'react-router-dom'
 import { createBrowserRouter } from 'react-router-dom'
+import PlaceholderPage from './pages/PlaceholderPage'
 
-export const router = createBrowserRouter([{ path: '*', element: <Navigate to="/" replace /> }])
+export const router = createBrowserRouter([
+  { path: '/', element: <PlaceholderPage /> },
+  { path: '*', element: <PlaceholderPage /> },
+])
