@@ -5,28 +5,54 @@ import { ReportTypeIcon } from './ReportTypeIcon'
 import { ConfirmationModal } from './ConfirmationModal'
 import type { Report } from '../types'
 
+interface ResponderEntry {
+  uid: string
+  displayName?: string
+  agency?: string
+}
+
 interface Props {
   report: Report | null
+  responders?: ResponderEntry[]
   onClose: () => void
   onVerify: (id: string) => void
   onReject: (id: string) => void
   onDispatch: (id: string, agency: string, responder: string) => void
 }
 
-export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }: Props) {
+const AGENCIES = ['BFP', 'PNP', 'MDRRMO', 'Coast Guard'] as const
+
+export function TriagePanel({
+  report,
+  responders,
+  onClose,
+  onVerify,
+  onReject,
+  onDispatch,
+}: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [agency, setAgency] = useState('')
-  const [responder] = useState('')
+  const [responder, setResponder] = useState('')
   const [holdProgress, setHoldProgress] = useState(0)
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (report && panelRef.current) {
+    if (report?.id && panelRef.current) {
+      previousFocusRef.current = document.activeElement as HTMLElement
       panelRef.current.focus()
     }
-  }, [report])
+  }, [report?.id])
+
+  useEffect(() => {
+    return () => {
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -39,6 +65,8 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
   }, [onClose])
 
   if (!report) return null
+
+  const filteredResponders = agency ? (responders ?? []).filter((r) => r.agency === agency) : []
 
   const startHold = () => {
     setHoldProgress(0)
@@ -71,7 +99,10 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="absolute right-0 top-0 h-full overflow-y-auto border-l border-white/10 bg-[var(--color-surface-elevated)] shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="triage-panel-title"
+        className="absolute right-0 top-0 z-[1000] h-full overflow-y-auto border-l border-white/10 bg-[var(--color-surface-elevated)] shadow-xl"
         style={{
           width,
           transition: 'transform var(--duration-standard) var(--ease-snap)',
@@ -79,7 +110,9 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
         }}
       >
         <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <h3 className="font-semibold text-[var(--color-text-primary)]">Report Detail</h3>
+          <h3 id="triage-panel-title" className="font-semibold text-[var(--color-text-primary)]">
+            Report Detail
+          </h3>
           <button
             onClick={onClose}
             className="rounded p-1 hover:bg-white/10"
@@ -136,14 +169,37 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
                   value={agency}
                   onChange={(e) => {
                     setAgency(e.target.value)
+                    setResponder('')
                   }}
                   className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
                 >
                   <option value="">Select Agency</option>
-                  <option value="bfp">BFP</option>
-                  <option value="pnp">PNP</option>
-                  <option value="ems">EMS</option>
+                  {AGENCIES.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
                 </select>
+                {agency && (
+                  <select
+                    value={responder}
+                    onChange={(e) => {
+                      setResponder(e.target.value)
+                    }}
+                    className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  >
+                    <option value="">
+                      {filteredResponders.length === 0
+                        ? 'No responders available'
+                        : 'Select Responder'}
+                    </option>
+                    {filteredResponders.map((r) => (
+                      <option key={r.uid} value={r.uid}>
+                        {r.displayName ?? r.uid}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button
                   onMouseDown={startHold}
                   onMouseUp={endHold}
