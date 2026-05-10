@@ -133,7 +133,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
               onClick={() => {
                 setShowDispatchForm((s) => !s)
               }}
-              className="w-full rounded-md bg-[#2563eb] py-2 text-sm font-medium text-white hover:opacity-90"
+              className="w-full rounded-md bg-[var(--color-dispatch)] py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Dispatch Responder
             </button>
@@ -167,7 +167,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
                   onMouseLeave={endHold}
                   onTouchStart={startHold}
                   onTouchEnd={endHold}
-                  className="relative w-full rounded-md bg-[#2563eb] py-3 text-sm font-medium text-white"
+                  className="relative w-full rounded-md bg-[var(--color-dispatch)] py-3 text-sm font-medium text-white"
                 >
                   <span className="relative z-10">Hold to Dispatch</span>
                   {holdProgress > 0 && (
