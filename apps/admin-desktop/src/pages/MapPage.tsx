@@ -1,18 +1,23 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CommandHeader } from '../components/CommandHeader'
 import { ProvincialMap } from '../components/ProvincialMap'
 import { TriagePanel } from '../components/TriagePanel'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { MapOverlayControls } from '../components/MapOverlayControls'
+import { MunicipalDrillDown } from '../components/MunicipalDrillDown'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { callables } from '../services/callables'
-import { db } from '../app/firebase'
-import type { Report } from '../types'
+import { db, rtdb } from '../app/firebase'
+import type { Report, MunicipalPerformance } from '../types'
 
 function generateIdempotencyKey(): string {
-  return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
+  }
 }
 
 function responderEntries(responders: [string, unknown][]): {
@@ -61,7 +66,9 @@ function mapReportDocToReport(doc: {
 export default function MapPage() {
   const {
     selectedReportId,
+    selectedMunicipalityId,
     selectReport,
+    selectMunicipality,
     activeOverlays,
     toggleOverlay,
     setSuppressNextBroadcast,
@@ -75,12 +82,26 @@ export default function MapPage() {
   } = useFirestoreListeners({
     windowType: 'map',
     db,
+    rtdb,
   })
 
   const { sendSync, subscribe } = useWindowSyncContext()
 
   const reports = reportDocs.map(mapReportDocToReport)
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null
+
+  const municipalityData: MunicipalPerformance | null = useMemo(() => {
+    if (!selectedMunicipalityId) return null
+    const muniReports = reports.filter((r) => r.municipality === selectedMunicipalityId)
+    return {
+      municipality: selectedMunicipalityId,
+      activeIncidents: muniReports.filter((r) => r.status === 'ACTIVE').length,
+      activeResponders: 0,
+      avgResponseTime: '0m',
+      unresolvedOver24h: 0,
+      adminOnDuty: false,
+    }
+  }, [selectedMunicipalityId, reports])
 
   // Cross-window sync: receive from dashboard
   useEffect(() => {
@@ -159,6 +180,22 @@ export default function MapPage() {
           onReject={handleReject}
           onDispatch={handleDispatch}
         />
+        {municipalityData && (
+          <div className="absolute bottom-4 left-4 z-20 max-w-xs">
+            <MunicipalDrillDown
+              data={municipalityData}
+              onClose={() => {
+                selectMunicipality(null)
+              }}
+              onViewAll={() => {
+                /* TODO: wire view-all */
+              }}
+              onContactAdmin={() => {
+                /* TODO: wire contact admin */
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

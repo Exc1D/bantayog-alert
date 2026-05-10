@@ -17,7 +17,38 @@ import { db } from '../app/firebase'
 import type { Report, MunicipalPerformance, AnomalyAlert } from '../types'
 
 function generateIdempotencyKey(): string {
-  return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
+  }
+}
+
+function mapReportDocToReport(doc: {
+  id: string
+  type: string
+  severity: string
+  municipality: string
+  barangay: string
+  createdAt: string
+  status: string
+  description: string
+}): Report {
+  return {
+    id: doc.id,
+    type: doc.type as Report['type'],
+    severity: doc.severity as Report['severity'],
+    municipality: doc.municipality,
+    barangay: doc.barangay,
+    createdAt: doc.createdAt,
+    status: doc.status as Report['status'],
+    description: doc.description,
+    reporterName: '',
+    reporterPhone: '',
+    latitude: 0,
+    longitude: 0,
+    updatedAt: '',
+  }
 }
 
 export default function DashboardPage() {
@@ -214,7 +245,7 @@ export default function DashboardPage() {
     const byMuni = new Map<string, Report[]>()
     reports.forEach((r) => {
       const list = byMuni.get(r.municipality) ?? []
-      list.push(r as Report)
+      list.push(mapReportDocToReport(r))
       byMuni.set(r.municipality, list)
     })
     return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
@@ -275,7 +306,7 @@ export default function DashboardPage() {
         </h2>
         <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)]">
           <TriageQueueTable
-            reports={reports as Report[]}
+            reports={reports.map(mapReportDocToReport)}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onSelectAll={selectAll}
