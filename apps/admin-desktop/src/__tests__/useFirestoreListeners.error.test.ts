@@ -63,28 +63,28 @@ describe('useFirestoreListeners error handling', () => {
     expect(effectRunCount).toBe(3)
     expect(result.current.error).toBe('network error')
 
-    // First retry: flush timer + React state update
+    // First retry: exponential delay = 1000 * (0 + 1) = 1000ms
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(150)
+      await vi.advanceTimersByTimeAsync(1100)
     })
     expect(effectRunCount).toBe(6)
 
-    // Second retry
+    // Second retry: exponential delay = 1000 * (1 + 1) = 2000ms
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(150)
+      await vi.advanceTimersByTimeAsync(2100)
     })
     expect(effectRunCount).toBe(9)
 
-    // Third retry
+    // Third retry: exponential delay = 1000 * (2 + 1) = 3000ms
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(150)
+      await vi.advanceTimersByTimeAsync(3100)
     })
     expect(effectRunCount).toBe(12)
 
     // Should stop retrying after MAX_RETRIES (3)
     const finalCount = effectRunCount
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(200)
+      await vi.advanceTimersByTimeAsync(5000)
     })
     expect(effectRunCount).toBe(finalCount)
 

@@ -47,6 +47,11 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   useEffect(() => {
     if (!db) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
+
+    setError(null)
+
     const unsubscribers: (() => void)[] = []
 
     // Always listen to reports
@@ -60,14 +65,18 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         }))
         setReports(data)
         setLoading(false)
+        setError(null)
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
         if (retryCount < MAX_RETRIES) {
-          retryTimerRef.current = setTimeout(() => {
-            setRetryCount((c) => c + 1)
-          }, 100)
+          retryTimerRef.current = setTimeout(
+            () => {
+              setRetryCount((c) => c + 1)
+            },
+            1000 * (retryCount + 1),
+          )
         }
       },
     )
@@ -85,6 +94,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
           }))
           .filter(isReportOpsDoc)
         setReportOps(data)
+        setError(null)
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
@@ -103,6 +113,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
           ...d.data(),
         }))
         setAlerts(data)
+        setError(null)
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
@@ -114,10 +125,17 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     if (windowType === 'map' && rtdb) {
       // Listen to responder locations in RTDB
       const locationsRef = ref(rtdb, 'responder_locations')
-      const unsubLocations = onValue(locationsRef, (snapshot) => {
-        const data = (snapshot.val() ?? {}) as Record<string, unknown>
-        setResponders(Object.entries(data))
-      })
+      const unsubLocations = onValue(
+        locationsRef,
+        (snapshot) => {
+          const data = (snapshot.val() ?? {}) as Record<string, unknown>
+          setResponders(Object.entries(data))
+        },
+        (err) => {
+          const message = err instanceof Error ? err.message : String(err)
+          setError(message)
+        },
+      )
       unsubscribers.push(unsubLocations)
     }
 
