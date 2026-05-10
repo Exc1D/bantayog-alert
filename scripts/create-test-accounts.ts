@@ -14,12 +14,27 @@ if (getApps().length === 0) {
 const auth = getAuth()
 const db = getFirestore()
 
-async function createAccount(
-  uid: string,
-  email: string,
-  password: string,
-  claims?: Record<string, any>,
-) {
+interface CustomClaims {
+  role: string
+  municipalityId?: string
+  agencyId?: string
+  accountStatus: string
+  active: boolean
+  permittedMunicipalityIds: string[]
+}
+
+function isFirebaseAuthError(err: unknown): err is { code: string; message: string } {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    typeof (err as { code: unknown }).code === 'string' &&
+    'message' in err &&
+    typeof (err as { message: unknown }).message === 'string'
+  )
+}
+
+async function createAccount(uid: string, email: string, password: string, claims?: CustomClaims) {
   try {
     await auth.createUser({
       uid,
@@ -34,8 +49,8 @@ async function createAccount(
     }
 
     return true
-  } catch (err: any) {
-    if (err.code === 'auth/uid-already-exists') {
+  } catch (err: unknown) {
+    if (isFirebaseAuthError(err) && err.code === 'auth/uid-already-exists') {
       console.log(`✓ ${uid} already exists`)
       if (claims) {
         await auth.setCustomUserClaims(uid, claims)
@@ -43,7 +58,8 @@ async function createAccount(
       }
       return true
     }
-    console.error(`✗ Failed to create ${uid}:`, err.message)
+    const message = isFirebaseAuthError(err) ? err.message : String(err)
+    console.error(`✗ Failed to create ${uid}:`, message)
     return false
   }
 }
@@ -60,6 +76,7 @@ async function main() {
     municipalityId: 'daet',
     accountStatus: 'active',
     active: true,
+    permittedMunicipalityIds: ['daet'],
   })
 
   // Provincial superadmin account
@@ -71,6 +88,7 @@ async function main() {
       role: 'provincial_superadmin',
       accountStatus: 'active',
       active: true,
+      permittedMunicipalityIds: [],
     },
   )
   if (!createdSuperadmin) {
@@ -87,6 +105,7 @@ async function main() {
       municipalityId: 'daet',
       accountStatus: 'active',
       active: true,
+      permittedMunicipalityIds: ['daet'],
     },
   )
   if (!createdResponder) {
@@ -107,7 +126,7 @@ async function seedActiveAccounts(db: ReturnType<typeof getFirestore>) {
       accountStatus: 'active',
       municipalityId: 'daet',
       agencyId: null,
-      permittedMunicipalityIds: [],
+      permittedMunicipalityIds: ['daet'],
       mfaEnrolled: false,
       lastClaimIssuedAt: ts,
       updatedAt: ts,
@@ -129,7 +148,7 @@ async function seedActiveAccounts(db: ReturnType<typeof getFirestore>) {
       accountStatus: 'active',
       municipalityId: 'daet',
       agencyId: null,
-      permittedMunicipalityIds: [],
+      permittedMunicipalityIds: ['daet'],
       mfaEnrolled: false,
       lastClaimIssuedAt: ts,
       updatedAt: ts,

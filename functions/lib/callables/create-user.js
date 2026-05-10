@@ -23,8 +23,7 @@ export async function createUserCore(db, deps) {
     if (deps.role === 'municipal_admin' && !deps.municipalityId) {
         throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'missing municipalityId');
     }
-    if ((deps.role === 'agency_admin' || deps.role === 'responder') &&
-        !deps.agencyId) {
+    if ((deps.role === 'agency_admin' || deps.role === 'responder') && !deps.agencyId) {
         throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'missing agencyId');
     }
     const correlationId = crypto.randomUUID();
