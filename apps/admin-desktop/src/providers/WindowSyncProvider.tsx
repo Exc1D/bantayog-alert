@@ -12,6 +12,44 @@ const CHANNEL_NAME = 'bantayog-admin-sync'
 const STORAGE_KEY = 'bantayog-sync-fallback'
 const MESSAGE_TTL_MS = 5000
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+// Validate untrusted input from BroadcastChannel / localStorage before
+// forwarding to subscribers. Another tab (or a stale storage entry) could
+// post arbitrary JSON; subscribers assume the SyncMessage shape.
+function isValidSyncMessage(value: unknown): value is SyncMessage {
+  if (!isObject(value)) return false
+  switch (value.type) {
+    case 'select:report':
+      return (
+        typeof value.reportId === 'string' &&
+        (value.source === 'dashboard' || value.source === 'map')
+      )
+    case 'select:municipality':
+      return (
+        typeof value.municipalityId === 'string' &&
+        (value.source === 'dashboard' || value.source === 'map')
+      )
+    case 'triage:action':
+      return (
+        typeof value.reportId === 'string' &&
+        (value.action === 'verified' ||
+          value.action === 'rejected' ||
+          value.action === 'dispatched')
+      )
+    case 'triage:bulk-action':
+      return (
+        Array.isArray(value.reportIds) &&
+        value.reportIds.every((id) => typeof id === 'string') &&
+        (value.action === 'verified' || value.action === 'rejected')
+      )
+    default:
+      return false
+  }
+}
+
 export function WindowSyncProvider({ children }: { children: ReactNode }) {
   const bcRef = useRef<BroadcastChannel | null>(null)
   const listenersRef = useRef<Set<(msg: SyncMessage) => void>>(new Set())
@@ -21,9 +59,11 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
     try {
       bc = new BroadcastChannel(CHANNEL_NAME)
       bcRef.current = bc
-      bc.onmessage = (ev: MessageEvent<SyncMessage>) => {
+      bc.onmessage = (ev: MessageEvent<unknown>) => {
+        if (!isValidSyncMessage(ev.data)) return
+        const msg = ev.data
         listenersRef.current.forEach((fn) => {
-          fn(ev.data)
+          fn(msg)
         })
       }
     } catch {
@@ -33,13 +73,14 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY || !e.newValue) return
       try {
-        const msg = JSON.parse(e.newValue) as {
-          data: SyncMessage
-          timestamp: number
-        }
-        if (Date.now() - msg.timestamp > MESSAGE_TTL_MS) return
+        const parsed: unknown = JSON.parse(e.newValue)
+        if (!isObject(parsed)) return
+        if (typeof parsed.timestamp !== 'number') return
+        if (Date.now() - parsed.timestamp > MESSAGE_TTL_MS) return
+        if (!isValidSyncMessage(parsed.data)) return
+        const msg = parsed.data
         listenersRef.current.forEach((fn) => {
-          fn(msg.data)
+          fn(msg)
         })
       } catch {
         /* ignore */
