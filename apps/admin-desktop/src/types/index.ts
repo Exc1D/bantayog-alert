@@ -218,6 +218,7 @@ export interface MunicipalPerformance {
   municipality: string
   activeIncidents: number
   activeResponders: number
+  totalResponders?: number
   avgResponseTime: string
   unresolvedOver24h: number
   adminOnDuty: boolean

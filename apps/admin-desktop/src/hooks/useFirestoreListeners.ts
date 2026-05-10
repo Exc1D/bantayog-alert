@@ -22,7 +22,9 @@ interface ReportDoc {
 export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   const [loading, setLoading] = useState(true)
   const [reports, setReports] = useState<ReportDoc[]>([])
-  const [responders, setResponders] = useState<unknown[]>([])
+  const [reportOps, setReportOps] = useState<unknown[]>([])
+  const [alerts, setAlerts] = useState<unknown[]>([])
+  const [responders, setResponders] = useState<[string, unknown][]>([])
 
   useEffect(() => {
     if (!db) return
@@ -41,6 +43,28 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     })
     unsubscribers.push(unsubReports)
 
+    // Listen to report_ops
+    const reportOpsRef = collection(db, 'report_ops')
+    const unsubReportOps = onSnapshot(reportOpsRef, (snapshot) => {
+      const data = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }))
+      setReportOps(data)
+    })
+    unsubscribers.push(unsubReportOps)
+
+    // Listen to alerts
+    const alertsRef = collection(db, 'alerts')
+    const unsubAlerts = onSnapshot(alertsRef, (snapshot) => {
+      const data = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }))
+      setAlerts(data)
+    })
+    unsubscribers.push(unsubAlerts)
+
     if (windowType === 'map' && rtdb) {
       // Listen to responder locations in RTDB
       const locationsRef = ref(rtdb, 'responder_locations')
@@ -58,5 +82,5 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     }
   }, [windowType, db, rtdb])
 
-  return { loading, reports, responders }
+  return { loading, reports, reportOps, alerts, responders }
 }

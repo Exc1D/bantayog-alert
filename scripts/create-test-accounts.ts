@@ -60,6 +60,7 @@ async function main() {
     municipalityId: 'daet',
     accountStatus: 'active',
     active: true,
+    permittedMunicipalityIds: ['daet'],
   })
 
   // Provincial superadmin account
@@ -71,6 +72,7 @@ async function main() {
       role: 'provincial_superadmin',
       accountStatus: 'active',
       active: true,
+      permittedMunicipalityIds: [],
     },
   )
   if (!createdSuperadmin) {
@@ -87,6 +89,7 @@ async function main() {
       municipalityId: 'daet',
       accountStatus: 'active',
       active: true,
+      permittedMunicipalityIds: ['daet'],
     },
   )
   if (!createdResponder) {

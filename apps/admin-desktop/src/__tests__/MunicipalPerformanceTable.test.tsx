@@ -51,6 +51,27 @@ describe('MunicipalPerformanceTable', () => {
     expect(onSelect).toHaveBeenCalledWith('Daet')
   })
 
+  it('sorts by municipality name when header clicked', async () => {
+    const user = userEvent.setup()
+    render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={vi.fn()} />)
+    const nameHeader = screen.getByRole('button', { name: /municipality/i })
+    await user.click(nameHeader)
+    // Ascending: Capalonga before Daet
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Capalonga')
+    expect(rows[2]).toHaveTextContent('Daet')
+  })
+
+  it('sorts by avg response time when header clicked', async () => {
+    const user = userEvent.setup()
+    render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={vi.fn()} />)
+    const responseHeader = screen.getByRole('button', { name: /avg response/i })
+    await user.click(responseHeader)
+    // Ascending by minutes: Daet (8) before Capalonga (18)
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Daet')
+  })
+
   it('sorts by active incidents when header clicked', async () => {
     const user = userEvent.setup()
     render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={vi.fn()} />)
@@ -66,5 +87,13 @@ describe('MunicipalPerformanceTable', () => {
     // Daet: 8 min = good (<12), Capalonga: 18 min = warning (12-20)
     expect(screen.getByText('8 min')).toBeInTheDocument()
     expect(screen.getByText('18 min')).toBeInTheDocument()
+  })
+
+  it('applies color to response time cells', () => {
+    render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={vi.fn()} />)
+    const goodCell = screen.getByText('8 min')
+    const warningCell = screen.getByText('18 min')
+    expect(goodCell).toHaveStyle({ color: '#22c55e' })
+    expect(warningCell).toHaveStyle({ color: '#c77600' })
   })
 })
