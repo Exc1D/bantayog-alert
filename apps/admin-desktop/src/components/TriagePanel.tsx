@@ -18,7 +18,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [agency, setAgency] = useState('')
-  const [responder] = useState('')
+  const [responder, setResponder] = useState('')
   const [holdProgress, setHoldProgress] = useState(0)
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -29,6 +29,7 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
   }, [report])
 
   useEffect(() => {
+    if (!report) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -36,7 +37,13 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [onClose])
+  }, [onClose, report])
+
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) clearInterval(holdTimerRef.current)
+    }
+  }, [])
 
   if (!report) return null
 
@@ -144,7 +151,17 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
                   <option value="pnp">PNP</option>
                   <option value="ems">EMS</option>
                 </select>
+                <input
+                  type="text"
+                  value={responder}
+                  onChange={(e) => {
+                    setResponder(e.target.value)
+                  }}
+                  placeholder="Responder name or unit"
+                  className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                />
                 <button
+                  type="button"
                   onMouseDown={startHold}
                   onMouseUp={endHold}
                   onMouseLeave={endHold}

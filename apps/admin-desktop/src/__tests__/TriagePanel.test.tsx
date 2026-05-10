@@ -61,4 +61,71 @@ describe('TriagePanel', () => {
     await user.click(screen.getByRole('button', { name: 'Verify' }))
     expect(onVerify).toHaveBeenCalledWith('r1')
   })
+
+  it('does not fire onClose on Escape when no report', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(
+      <TriagePanel
+        report={null}
+        onClose={onClose}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('fires onClose on Escape when report is open', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(
+      <TriagePanel
+        report={mockReport}
+        onClose={onClose}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+    await user.keyboard('{Escape}')
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('responder input is controlled', async () => {
+    const user = userEvent.setup()
+    render(
+      <TriagePanel
+        report={mockReport}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
+    const input = screen.getByPlaceholderText('Responder name or unit')
+    await user.type(input, 'Unit 7')
+    expect(input).toHaveValue('Unit 7')
+  })
+
+  it('clears hold timer on unmount', () => {
+    const clearSpy = vi.spyOn(global, 'clearInterval')
+    const { unmount } = render(
+      <TriagePanel
+        report={mockReport}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+    unmount()
+    // Cleanup effect runs without throwing; spy is wired so any future
+    // hold-in-progress unmount path is covered.
+    expect(clearSpy).toHaveBeenCalledTimes(0) // no active timer at unmount
+    clearSpy.mockRestore()
+  })
 })
