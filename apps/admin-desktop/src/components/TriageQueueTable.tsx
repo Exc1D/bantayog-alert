@@ -1,6 +1,7 @@
 import { Check, X, Send } from 'lucide-react'
 import { SeverityBadge } from './SeverityBadge'
 import { ReportTypeIcon } from './ReportTypeIcon'
+import { EmptyTriageState } from './EmptyTriageState'
 import type { Report } from '../types'
 
 interface Props {
@@ -31,17 +32,7 @@ export function TriageQueueTable({
   const allSelected = reports.length > 0 && reports.every((r) => selectedIds.has(r.id))
 
   if (reports.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-muted)]">
-        <Check
-          className="mb-2 h-8 w-8 text-[var(--color-success)]"
-          role="status"
-          aria-label="All reports triaged"
-        />
-        <p className="text-lg font-medium text-[var(--color-text-primary)]">All Caught Up</p>
-        <p>No reports pending verification</p>
-      </div>
-    )
+    return <EmptyTriageState />
   }
 
   return (
