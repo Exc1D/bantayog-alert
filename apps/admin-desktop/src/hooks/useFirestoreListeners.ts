@@ -27,51 +27,80 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   const [responders, setResponders] = useState<[string, unknown][]>([])
 
   useEffect(() => {
-    if (!db) return
+    if (!db) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(false)
+      return
+    }
 
     const unsubscribers: (() => void)[] = []
 
     // Always listen to reports
     const reportsRef = collection(db, 'reports')
-    const unsubReports = onSnapshot(reportsRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<ReportDoc, 'id'>),
-      }))
-      setReports(data)
-      setLoading(false)
-    })
+    const unsubReports = onSnapshot(
+      reportsRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<ReportDoc, 'id'>),
+        }))
+        setReports(data)
+        setLoading(false)
+      },
+      (err) => {
+        console.error('[useFirestoreListeners] reports listener failed', err)
+        setLoading(false)
+      },
+    )
     unsubscribers.push(unsubReports)
 
     // Listen to report_ops
     const reportOpsRef = collection(db, 'report_ops')
-    const unsubReportOps = onSnapshot(reportOpsRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }))
-      setReportOps(data)
-    })
+    const unsubReportOps = onSnapshot(
+      reportOpsRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+        setReportOps(data)
+      },
+      (err) => {
+        console.error('[useFirestoreListeners] report_ops listener failed', err)
+      },
+    )
     unsubscribers.push(unsubReportOps)
 
     // Listen to alerts
     const alertsRef = collection(db, 'alerts')
-    const unsubAlerts = onSnapshot(alertsRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }))
-      setAlerts(data)
-    })
+    const unsubAlerts = onSnapshot(
+      alertsRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+        setAlerts(data)
+      },
+      (err) => {
+        console.error('[useFirestoreListeners] alerts listener failed', err)
+      },
+    )
     unsubscribers.push(unsubAlerts)
 
     if (windowType === 'map' && rtdb) {
       // Listen to responder locations in RTDB
       const locationsRef = ref(rtdb, 'responder_locations')
-      const unsubLocations = onValue(locationsRef, (snapshot) => {
-        const data = (snapshot.val() ?? {}) as Record<string, unknown>
-        setResponders(Object.entries(data))
-      })
+      const unsubLocations = onValue(
+        locationsRef,
+        (snapshot) => {
+          const data = (snapshot.val() ?? {}) as Record<string, unknown>
+          setResponders(Object.entries(data))
+        },
+        (err) => {
+          console.error('[useFirestoreListeners] responder_locations listener failed', err)
+        },
+      )
       unsubscribers.push(unsubLocations)
     }
 
