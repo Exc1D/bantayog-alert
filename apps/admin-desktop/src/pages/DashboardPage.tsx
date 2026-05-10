@@ -91,6 +91,35 @@ export default function DashboardPage() {
     setRejectTargetId(null)
   }, [rejectTargetId, setLastSyncMessage])
 
+  const handleBulkVerify = useCallback(
+    (ids: Set<string>) => {
+      ids.forEach((id) => {
+        setLastSyncMessage({
+          type: 'triage:action',
+          reportId: id,
+          action: 'verified',
+        })
+      })
+      setSelectedIds(new Set())
+    },
+    [setLastSyncMessage],
+  )
+
+  const handleBulkReject = useCallback(
+    (ids: Set<string>) => {
+      // For now, set sync message for each; in production this would call a bulk endpoint
+      ids.forEach((id) => {
+        setLastSyncMessage({
+          type: 'triage:action',
+          reportId: id,
+          action: 'rejected',
+        })
+      })
+      setSelectedIds(new Set())
+    },
+    [setLastSyncMessage],
+  )
+
   const openMapWindow = useCallback(() => {
     window.open('/map', 'bantayog-map', 'width=1200,height=900')
   }, [])
@@ -161,6 +190,8 @@ export default function DashboardPage() {
             onSelectAll={selectAll}
             onVerify={handleVerify}
             onReject={handleReject}
+            onBulkVerify={handleBulkVerify}
+            onBulkReject={handleBulkReject}
             onDispatch={() => {
               /* Dashboard dispatch opens map */
             }}
