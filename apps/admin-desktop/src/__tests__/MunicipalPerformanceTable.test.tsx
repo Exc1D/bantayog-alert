@@ -96,4 +96,23 @@ describe('MunicipalPerformanceTable', () => {
     expect(goodCell).toHaveStyle({ color: '#22c55e' })
     expect(warningCell).toHaveStyle({ color: '#c77600' })
   })
+
+  it('calls onSelectMunicipality when row activated via keyboard', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={onSelect} />)
+    const rows = screen.getAllByRole('row')
+    const dataRow = rows.find((r) => r.textContent.includes('Daet'))!
+    await user.type(dataRow, '{Enter}')
+    expect(onSelect).toHaveBeenCalledWith('Daet')
+  })
+
+  it('sets aria-sort on active sort header', async () => {
+    const user = userEvent.setup()
+    render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={vi.fn()} />)
+    const nameHeader = screen.getByRole('button', { name: /municipality/i }).closest('th')
+    expect(nameHeader).toHaveAttribute('aria-sort', 'none')
+    await user.click(screen.getByRole('button', { name: /municipality/i }))
+    expect(nameHeader).toHaveAttribute('aria-sort', 'ascending')
+  })
 })
