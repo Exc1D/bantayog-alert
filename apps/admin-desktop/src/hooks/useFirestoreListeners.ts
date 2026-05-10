@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { collection, onSnapshot, type Firestore } from 'firebase/firestore'
 import { ref, onValue, type Database } from 'firebase/database'
 
@@ -19,12 +19,30 @@ interface ReportDoc {
   description: string
 }
 
+export interface ReportOpsDoc {
+  id: string
+  reportId: string
+  acknowledgedAt?: string
+  status?: string
+}
+
+export function isReportOpsDoc(doc: unknown): doc is ReportOpsDoc {
+  if (doc == null || typeof doc !== 'object') return false
+  const d = doc as Record<string, unknown>
+  return typeof d.id === 'string' && typeof d.reportId === 'string'
+}
+
+const MAX_RETRIES = 3
+
 export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [reports, setReports] = useState<ReportDoc[]>([])
-  const [reportOps, setReportOps] = useState<unknown[]>([])
+  const [reportOps, setReportOps] = useState<ReportOpsDoc[]>([])
   const [alerts, setAlerts] = useState<unknown[]>([])
   const [responders, setResponders] = useState<[string, unknown][]>([])
+  const [retryCount, setRetryCount] = useState(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!db) return
@@ -33,36 +51,64 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
 
     // Always listen to reports
     const reportsRef = collection(db, 'reports')
-    const unsubReports = onSnapshot(reportsRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<ReportDoc, 'id'>),
-      }))
-      setReports(data)
-      setLoading(false)
-    })
+    const unsubReports = onSnapshot(
+      reportsRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<ReportDoc, 'id'>),
+        }))
+        setReports(data)
+        setLoading(false)
+      },
+      (err) => {
+        const message = err instanceof Error ? err.message : String(err)
+        setError(message)
+        if (retryCount < MAX_RETRIES) {
+          retryTimerRef.current = setTimeout(() => {
+            setRetryCount((c) => c + 1)
+          }, 100)
+        }
+      },
+    )
     unsubscribers.push(unsubReports)
 
     // Listen to report_ops
     const reportOpsRef = collection(db, 'report_ops')
-    const unsubReportOps = onSnapshot(reportOpsRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }))
-      setReportOps(data)
-    })
+    const unsubReportOps = onSnapshot(
+      reportOpsRef,
+      (snapshot) => {
+        const data = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
+          .filter(isReportOpsDoc)
+        setReportOps(data)
+      },
+      (err) => {
+        const message = err instanceof Error ? err.message : String(err)
+        setError(message)
+      },
+    )
     unsubscribers.push(unsubReportOps)
 
     // Listen to alerts
     const alertsRef = collection(db, 'alerts')
-    const unsubAlerts = onSnapshot(alertsRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }))
-      setAlerts(data)
-    })
+    const unsubAlerts = onSnapshot(
+      alertsRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+        setAlerts(data)
+      },
+      (err) => {
+        const message = err instanceof Error ? err.message : String(err)
+        setError(message)
+      },
+    )
     unsubscribers.push(unsubAlerts)
 
     if (windowType === 'map' && rtdb) {
@@ -76,11 +122,15 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     }
 
     return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
       unsubscribers.forEach((unsub) => {
         unsub()
       })
     }
-  }, [windowType, db, rtdb])
+  }, [windowType, db, rtdb, retryCount])
 
-  return { loading, reports, reportOps, alerts, responders }
+  return { loading, error, reports, reportOps, alerts, responders }
 }
