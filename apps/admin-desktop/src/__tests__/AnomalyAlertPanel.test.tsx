@@ -36,39 +36,13 @@ describe('AnomalyAlertPanel', () => {
     expect(screen.getAllByText('Capalonga')).toHaveLength(2)
   })
 
-  it('calls onDismiss with investigating reason', async () => {
+  it('calls onDismiss with id and reason when dismissed', async () => {
     const user = userEvent.setup()
     const onDismiss = vi.fn()
     render(<AnomalyAlertPanel alerts={mockAlerts} onDismiss={onDismiss} />)
-    const buttons = screen.getAllByRole('button', { name: 'Investigating' })
-    expect(buttons).toHaveLength(2)
-    await user.click(buttons[0]!)
+    const dismissButtons = screen.getAllByRole('button', { name: /dismiss/i })
+    await user.click(dismissButtons[0]!)
     expect(onDismiss).toHaveBeenCalledWith('a1', 'investigating')
-  })
-
-  it('calls onDismiss with false_positive reason', async () => {
-    const user = userEvent.setup()
-    const onDismiss = vi.fn()
-    render(<AnomalyAlertPanel alerts={mockAlerts} onDismiss={onDismiss} />)
-    const buttons = screen.getAllByRole('button', { name: 'False Positive' })
-    expect(buttons).toHaveLength(2)
-    await user.click(buttons[0]!)
-    expect(onDismiss).toHaveBeenCalledWith('a1', 'false_positive')
-  })
-
-  it('calls onDismiss with resolved reason', async () => {
-    const user = userEvent.setup()
-    const onDismiss = vi.fn()
-    render(<AnomalyAlertPanel alerts={mockAlerts} onDismiss={onDismiss} />)
-    const buttons = screen.getAllByRole('button', { name: 'Resolved' })
-    expect(buttons).toHaveLength(2)
-    await user.click(buttons[0]!)
-    expect(onDismiss).toHaveBeenCalledWith('a1', 'resolved')
-  })
-
-  it('does not have a generic dismiss button', () => {
-    render(<AnomalyAlertPanel alerts={mockAlerts} onDismiss={vi.fn()} />)
-    expect(screen.queryAllByRole('button', { name: /dismiss/i })).toHaveLength(0)
   })
 
   it('does not render dismissed alerts', () => {

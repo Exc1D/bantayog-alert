@@ -1,18 +1,21 @@
-import { AlertTriangle, AlertCircle, MinusCircle } from 'lucide-react'
+import { X, AlertTriangle, AlertCircle, MinusCircle } from 'lucide-react'
 import type { AnomalyAlert, Severity } from '../types'
-import { SEVERITY_COLORS } from '../styles/severity-colors'
-
-type DismissReason = 'investigating' | 'false_positive' | 'resolved'
 
 interface Props {
   alerts: AnomalyAlert[]
-  onDismiss: (id: string, reason: DismissReason) => void
+  onDismiss: (id: string, reason: string) => void
 }
 
 const SEVERITY_ICON: Record<Severity, typeof AlertTriangle> = {
   HIGH: AlertTriangle,
   MEDIUM: AlertCircle,
   LOW: MinusCircle,
+}
+
+const SEVERITY_COLOR: Record<Severity, string> = {
+  HIGH: '#a73400',
+  MEDIUM: '#c77600',
+  LOW: '#414849',
 }
 
 export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {
@@ -30,17 +33,29 @@ export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {
     <div className="space-y-3">
       {activeAlerts.map((alert) => {
         const Icon = SEVERITY_ICON[alert.severity]
-        const color = SEVERITY_COLORS[alert.severity]
+        const color = SEVERITY_COLOR[alert.severity]
         return (
           <div
             key={alert.id}
             className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
           >
-            <div className="flex items-center gap-2">
-              <Icon className="h-4 w-4" style={{ color }} aria-hidden="true" />
-              <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                {alert.municipality}
-              </span>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <Icon className="h-4 w-4" style={{ color }} aria-hidden="true" />
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {alert.municipality}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onDismiss(alert.id, 'investigating')
+                }}
+                className="rounded p-1 hover:bg-white/10"
+                aria-label="Dismiss"
+              >
+                <X className="h-3 w-3 text-[var(--color-text-muted)]" />
+              </button>
             </div>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{alert.message}</p>
             <div className="mt-2 flex gap-2">
