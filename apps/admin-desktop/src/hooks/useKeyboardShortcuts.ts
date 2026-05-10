@@ -30,8 +30,8 @@ export function useKeyboardShortcuts(configs: ShortcutConfig[]) {
       if (isInputFocused()) return
       for (const cfg of configsRef.current) {
         if (e.key.toLowerCase() !== cfg.key.toLowerCase()) continue
-        if (Boolean(cfg.shift) !== e.shiftKey) continue
-        if (Boolean(cfg.ctrl) !== e.ctrlKey) continue
+        if (cfg.shift && !e.shiftKey) continue
+        if (cfg.ctrl && !e.ctrlKey) continue
         e.preventDefault()
         cfg.handler()
         break
