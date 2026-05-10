@@ -1,7 +1,6 @@
 import { Check, X, Send } from 'lucide-react'
 import { SeverityBadge } from './SeverityBadge'
 import { ReportTypeIcon } from './ReportTypeIcon'
-import { EmptyTriageState } from './EmptyTriageState'
 import type { Report } from '../types'
 
 interface Props {
@@ -13,8 +12,6 @@ interface Props {
   onReject: (id: string) => void
   onDispatch: (id: string) => void
   onRowClick: (report: Report) => void
-  onBulkVerify?: (ids: Set<string>) => void
-  onBulkReject?: (ids: Set<string>) => void
 }
 
 export function TriageQueueTable({
@@ -26,13 +23,21 @@ export function TriageQueueTable({
   onReject,
   onDispatch,
   onRowClick,
-  onBulkVerify,
-  onBulkReject,
 }: Props) {
   const allSelected = reports.length > 0 && reports.every((r) => selectedIds.has(r.id))
 
   if (reports.length === 0) {
-    return <EmptyTriageState />
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-muted)]">
+        <Check
+          className="mb-2 h-8 w-8 text-[var(--color-success)]"
+          role="status"
+          aria-label="All reports triaged"
+        />
+        <p className="text-lg font-medium text-[var(--color-text-primary)]">All Caught Up</p>
+        <p>No reports pending verification</p>
+      </div>
+    )
   }
 
   return (
@@ -43,19 +48,17 @@ export function TriageQueueTable({
             {selectedIds.size} selected
           </span>
           <button
-            type="button"
             className="rounded bg-[var(--color-success)] px-3 py-1 text-xs text-white hover:opacity-90"
             onClick={() => {
-              onBulkVerify?.(selectedIds)
+              /* bulk verify */
             }}
           >
             Verify Selected
           </button>
           <button
-            type="button"
             className="rounded bg-[var(--color-danger)] px-3 py-1 text-xs text-white hover:opacity-90"
             onClick={() => {
-              onBulkReject?.(selectedIds)
+              /* bulk reject */
             }}
           >
             Reject Selected
@@ -119,7 +122,6 @@ export function TriageQueueTable({
               <td className="px-4 py-3">
                 <div className="flex gap-1">
                   <button
-                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onVerify(report.id)
@@ -130,7 +132,6 @@ export function TriageQueueTable({
                     <Check className="h-4 w-4" />
                   </button>
                   <button
-                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onReject(report.id)
@@ -141,12 +142,11 @@ export function TriageQueueTable({
                     <X className="h-4 w-4" />
                   </button>
                   <button
-                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onDispatch(report.id)
                     }}
-                    className="rounded p-1 text-[var(--color-dispatch)] hover:bg-white/10"
+                    className="rounded p-1 text-[#3b82f6] hover:bg-white/10"
                     aria-label="Dispatch"
                   >
                     <Send className="h-4 w-4" />

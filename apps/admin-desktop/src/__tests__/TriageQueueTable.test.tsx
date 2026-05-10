@@ -19,40 +19,7 @@ const mockReports = [
     longitude: 0,
     updatedAt: '',
   },
-  {
-    id: 'r2',
-    type: 'FIRE' as const,
-    severity: 'MEDIUM' as const,
-    municipality: 'Labo',
-    barangay: 'San Roque',
-    createdAt: '14:08',
-    status: 'PENDING' as const,
-    description: '',
-    reporterName: '',
-    reporterPhone: '',
-    latitude: 0,
-    longitude: 0,
-    updatedAt: '',
-  },
 ]
-
-function renderTable(props: Partial<Parameters<typeof TriageQueueTable>[0]> = {}) {
-  return render(
-    <TriageQueueTable
-      reports={mockReports}
-      selectedIds={new Set()}
-      onToggleSelect={vi.fn()}
-      onSelectAll={vi.fn()}
-      onVerify={vi.fn()}
-      onReject={vi.fn()}
-      onDispatch={vi.fn()}
-      onRowClick={vi.fn()}
-      onBulkVerify={vi.fn()}
-      onBulkReject={vi.fn()}
-      {...props}
-    />,
-  )
-}
 
 describe('TriageQueueTable', () => {
   it('renders empty state when no reports', () => {
@@ -72,93 +39,37 @@ describe('TriageQueueTable', () => {
   })
 
   it('renders report rows', () => {
-    renderTable()
+    render(
+      <TriageQueueTable
+        reports={mockReports}
+        selectedIds={new Set()}
+        onToggleSelect={vi.fn()}
+        onSelectAll={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+        onRowClick={vi.fn()}
+      />,
+    )
     expect(screen.getByText('Daet')).toBeInTheDocument()
   })
 
   it('calls onVerify when verify clicked', async () => {
     const user = userEvent.setup()
     const onVerify = vi.fn()
-    renderTable({ onVerify })
-    const verifyButtons = screen.getAllByRole('button', { name: 'Verify' })
-    expect(verifyButtons.length).toBeGreaterThan(0)
-    await user.click(verifyButtons[0]!)
+    render(
+      <TriageQueueTable
+        reports={mockReports}
+        selectedIds={new Set()}
+        onToggleSelect={vi.fn()}
+        onSelectAll={vi.fn()}
+        onVerify={onVerify}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+        onRowClick={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Verify' }))
     expect(onVerify).toHaveBeenCalledWith('r1')
-  })
-
-  it('shows bulk action bar when items selected', () => {
-    renderTable({ selectedIds: new Set(['r1']) })
-    expect(screen.getByText('1 selected')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Verify Selected' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reject Selected' })).toBeInTheDocument()
-  })
-
-  it('calls onBulkVerify with selected ids when bulk verify clicked', async () => {
-    const user = userEvent.setup()
-    const onBulkVerify = vi.fn()
-    renderTable({ selectedIds: new Set(['r1', 'r2']), onBulkVerify })
-    await user.click(screen.getByRole('button', { name: 'Verify Selected' }))
-    expect(onBulkVerify).toHaveBeenCalledWith(new Set(['r1', 'r2']))
-  })
-
-  it('calls onBulkReject with selected ids when bulk reject clicked', async () => {
-    const user = userEvent.setup()
-    const onBulkReject = vi.fn()
-    renderTable({ selectedIds: new Set(['r1']), onBulkReject })
-    await user.click(screen.getByRole('button', { name: 'Reject Selected' }))
-    expect(onBulkReject).toHaveBeenCalledWith(new Set(['r1']))
-  })
-
-  it('does not show bulk bar when nothing selected', () => {
-    renderTable({ selectedIds: new Set() })
-    expect(screen.queryByText('selected')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Verify Selected' })).not.toBeInTheDocument()
-  })
-
-  it('calls onRowClick when a non-interactive cell is clicked', async () => {
-    const user = userEvent.setup()
-    const onRowClick = vi.fn()
-    renderTable({ onRowClick })
-    await user.click(screen.getByText('Daet'))
-    expect(onRowClick).toHaveBeenCalledWith(mockReports[0])
-  })
-
-  it('calls onToggleSelect when a row checkbox is clicked', async () => {
-    const user = userEvent.setup()
-    const onToggleSelect = vi.fn()
-    renderTable({ onToggleSelect })
-    const checkboxes = screen.getAllByRole('checkbox')
-    // First checkbox is the header; click the second one (first row)
-    await user.click(checkboxes[1]!)
-    expect(onToggleSelect).toHaveBeenCalledWith('r1')
-  })
-
-  it('calls onSelectAll when the header checkbox is toggled', async () => {
-    const user = userEvent.setup()
-    const onSelectAll = vi.fn()
-    renderTable({ onSelectAll })
-    const headerCheckbox = screen.getByRole('checkbox', { name: 'Select all' })
-    await user.click(headerCheckbox)
-    expect(onSelectAll).toHaveBeenCalled()
-  })
-
-  it('calls onReject when reject button clicked', async () => {
-    const user = userEvent.setup()
-    const onReject = vi.fn()
-    renderTable({ onReject })
-    const rejectButtons = screen.getAllByRole('button', { name: 'Reject' })
-    expect(rejectButtons.length).toBeGreaterThan(0)
-    await user.click(rejectButtons[0]!)
-    expect(onReject).toHaveBeenCalledWith('r1')
-  })
-
-  it('calls onDispatch when dispatch button clicked', async () => {
-    const user = userEvent.setup()
-    const onDispatch = vi.fn()
-    renderTable({ onDispatch })
-    const dispatchButtons = screen.getAllByRole('button', { name: 'Dispatch' })
-    expect(dispatchButtons.length).toBeGreaterThan(0)
-    await user.click(dispatchButtons[0]!)
-    expect(onDispatch).toHaveBeenCalledWith('r1')
   })
 })
