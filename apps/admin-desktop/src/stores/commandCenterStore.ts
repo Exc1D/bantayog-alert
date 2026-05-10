@@ -33,6 +33,7 @@ interface CommandCenterState {
 
   // Cross-window
   lastSyncMessage: SyncMessage | null
+  suppressNextBroadcast: boolean
 
   // Actions
   selectMunicipality: (id: string | null) => void
@@ -46,6 +47,7 @@ interface CommandCenterState {
   setMapBounds: (
     bounds: { north: number; south: number; east: number; west: number } | null,
   ) => void
+  setSuppressNextBroadcast: (value: boolean) => void
 }
 
 export const useCommandCenterStore = create<CommandCenterState>((set) => ({
@@ -59,6 +61,7 @@ export const useCommandCenterStore = create<CommandCenterState>((set) => ({
   activeOverlays: new Set(['all_incidents']),
   triagePanelOpen: false,
   lastSyncMessage: null,
+  suppressNextBroadcast: false,
 
   selectMunicipality: (id) => {
     set({ selectedMunicipalityId: id })
@@ -94,5 +97,8 @@ export const useCommandCenterStore = create<CommandCenterState>((set) => ({
   },
   setMapBounds: (bounds) => {
     set({ mapBounds: bounds })
+  },
+  setSuppressNextBroadcast: (value) => {
+    set({ suppressNextBroadcast: value })
   },
 }))
