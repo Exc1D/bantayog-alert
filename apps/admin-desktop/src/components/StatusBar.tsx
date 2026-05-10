@@ -4,6 +4,8 @@ interface Props {
   activeIncidents: number
   avgResponseTime: number // minutes
   pendingTriage: number
+  resolvedToday: number
+  municipalitiesWithIssues: { withIssues: number; total: number }
 }
 
 function Metric({
@@ -37,7 +39,13 @@ function Metric({
   )
 }
 
-export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: Props) {
+export function StatusBar({
+  activeIncidents,
+  avgResponseTime,
+  pendingTriage,
+  resolvedToday,
+  municipalitiesWithIssues,
+}: Props) {
   const { statusBarExpandedOverride, toggleStatusBarExpanded } = useCommandCenterStore()
   const isSurge = pendingTriage > 5
   const expanded = statusBarExpandedOverride ?? !isSurge
@@ -74,10 +82,14 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
       {expanded && (
         <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
           <span>
-            Resolved Today: <strong className="text-[var(--color-text-primary)]">89</strong>
+            Resolved Today:{' '}
+            <strong className="text-[var(--color-text-primary)]">{resolvedToday}</strong>
           </span>
           <span>
-            Muni Issues: <strong className="text-[var(--color-text-primary)]">0/12</strong>
+            Muni Issues:{' '}
+            <strong className="text-[var(--color-text-primary)]">
+              {municipalitiesWithIssues.withIssues}/{municipalitiesWithIssues.total}
+            </strong>
           </span>
           <span>
             Surge:{' '}

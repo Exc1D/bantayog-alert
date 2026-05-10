@@ -177,7 +177,16 @@ export default function DashboardPage() {
         notificationCount={3}
         onOpenMap={openMapWindow}
       />
-      <StatusBar activeIncidents={47} avgResponseTime={12} pendingTriage={reports.length} />
+      <StatusBar
+        activeIncidents={reports.filter((r) => r.status === 'PENDING').length}
+        avgResponseTime={0}
+        pendingTriage={reports.length}
+        resolvedToday={0}
+        municipalitiesWithIssues={{
+          withIssues: new Set(reports.map((r) => r.municipality)).size,
+          total: 12,
+        }}
+      />
       <main className="flex-1 overflow-auto p-4">
         <h2 className="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">
           Triage Queue

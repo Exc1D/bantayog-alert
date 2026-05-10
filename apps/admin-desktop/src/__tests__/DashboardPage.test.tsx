@@ -23,7 +23,7 @@ describe('DashboardPage', () => {
   it('renders header and status bar', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
-    expect(screen.getByText('47')).toBeInTheDocument()
+    expect(screen.getByText('Active Incidents')).toBeInTheDocument()
   })
 
   it('opens map window when M key pressed', () => {
