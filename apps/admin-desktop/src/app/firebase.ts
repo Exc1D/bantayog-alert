@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database'
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 
 const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true'
@@ -38,9 +39,11 @@ if (!useEmulator) {
 export const db = getFirestore(firebaseApp)
 export const auth = getAuth(firebaseApp)
 export const functions = getFunctions(firebaseApp, 'asia-southeast1')
+export const rtdb = getDatabase(firebaseApp)
 
 if (useEmulator) {
   connectFirestoreEmulator(db, 'localhost', 8081)
   connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
   connectFunctionsEmulator(functions, 'localhost', 5001)
+  connectDatabaseEmulator(rtdb, 'localhost', 9000)
 }

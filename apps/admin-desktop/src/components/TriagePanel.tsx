@@ -5,16 +5,33 @@ import { ReportTypeIcon } from './ReportTypeIcon'
 import { ConfirmationModal } from './ConfirmationModal'
 import type { Report } from '../types'
 
+interface ResponderEntry {
+  uid: string
+  displayName?: string
+  agency?: string
+}
+
 interface Props {
   report: Report | null
+  responders?: ResponderEntry[]
   onClose: () => void
   onVerify: (id: string) => void
   onReject: (id: string) => void
   onDispatch: (id: string, agency: string, responder: string) => void
 }
 
-export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }: Props) {
+const AGENCIES = ['BFP', 'PNP', 'MDRRMO', 'Coast Guard'] as const
+
+export function TriagePanel({
+  report,
+  responders,
+  onClose,
+  onVerify,
+  onReject,
+  onDispatch,
+}: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [agency, setAgency] = useState('')
@@ -23,73 +40,65 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (report && panelRef.current) {
-      panelRef.current.focus()
-    }
-  }, [report])
+    if (!report?.id) return
+    previousFocusRef.current = document.activeElement as HTMLElement
+    panelRef.current?.focus()
 
-  useEffect(() => {
-    if (!report) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKeyDown)
+
     return () => {
       window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [onClose, report])
-
-  useEffect(() => {
-    return () => {
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current)
-        holdTimerRef.current = null
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus()
       }
     }
-  }, [])
+  }, [report?.id, onClose])
 
   if (!report) return null
 
-  const canDispatch = agency.trim().length > 0 && responder.trim().length > 0
-
-  const clearHoldTimer = () => {
-    if (holdTimerRef.current) {
-      clearInterval(holdTimerRef.current)
-      holdTimerRef.current = null
-    }
-  }
+  const filteredResponders = agency ? (responders ?? []).filter((r) => r.agency === agency) : []
 
   const startHold = () => {
-    if (!canDispatch) return
-    clearHoldTimer()
+    if (!agency || !responder) return
     setHoldProgress(0)
     holdTimerRef.current = setInterval(() => {
       setHoldProgress((p) => {
-        const next = p + 10
-        if (next >= 100) {
-          clearHoldTimer()
-          onDispatch(report.id, agency, responder)
+        if (p >= 100) {
+          if (holdTimerRef.current) clearInterval(holdTimerRef.current)
+          if (agency && responder) {
+            onDispatch(report.id, agency, responder)
+          }
           return 0
         }
-        return next
+        return p + 10
       })
     }, 100)
   }
 
   const endHold = () => {
-    clearHoldTimer()
+    if (holdTimerRef.current) clearInterval(holdTimerRef.current)
     setHoldProgress(0)
   }
 
-  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 0
-  const width = screenWidth >= 1920 ? 480 : screenWidth >= 1440 ? 420 : 380
+  const width =
+    typeof window !== 'undefined' && window.innerWidth >= 1920
+      ? 480
+      : window.innerWidth >= 1440
+        ? 420
+        : 380
 
   return (
     <>
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="absolute right-0 top-0 h-full overflow-y-auto border-l border-white/10 bg-[var(--color-surface-elevated)] shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="triage-panel-title"
+        className="absolute right-0 top-0 z-[1000] h-full overflow-y-auto border-l border-white/10 bg-[var(--color-surface-elevated)] shadow-xl"
         style={{
           width,
           transition: 'transform var(--duration-standard) var(--ease-snap)',
@@ -97,9 +106,10 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
         }}
       >
         <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <h3 className="font-semibold text-[var(--color-text-primary)]">Report Detail</h3>
+          <h3 id="triage-panel-title" className="font-semibold text-[var(--color-text-primary)]">
+            Report Detail
+          </h3>
           <button
-            type="button"
             onClick={onClose}
             className="rounded p-1 hover:bg-white/10"
             aria-label="Close panel"
@@ -123,7 +133,6 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
 
           <div className="space-y-2">
             <button
-              type="button"
               onClick={() => {
                 onVerify(report.id)
               }}
@@ -132,7 +141,6 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
               Verify
             </button>
             <button
-              type="button"
               onClick={() => {
                 setRejectModalOpen(true)
               }}
@@ -144,46 +152,60 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
 
           <div className="border-t border-white/10 pt-4">
             <button
-              type="button"
               onClick={() => {
                 setShowDispatchForm((s) => !s)
               }}
-              className="w-full rounded-md bg-[var(--color-dispatch)] py-2 text-sm font-medium text-white hover:opacity-90"
+              className="w-full rounded-md bg-[#2563eb] py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Dispatch Responder
             </button>
             {showDispatchForm && (
               <div className="mt-3 space-y-2">
                 <select
+                  aria-label="Select Agency"
                   value={agency}
                   onChange={(e) => {
                     setAgency(e.target.value)
+                    setResponder('')
                   }}
                   className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
                 >
                   <option value="">Select Agency</option>
-                  <option value="bfp">BFP</option>
-                  <option value="pnp">PNP</option>
-                  <option value="ems">EMS</option>
+                  {AGENCIES.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
                 </select>
-                <input
-                  type="text"
-                  value={responder}
-                  onChange={(e) => {
-                    setResponder(e.target.value)
-                  }}
-                  placeholder="Responder name or unit"
-                  className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
-                />
+                {agency && (
+                  <select
+                    aria-label="Select Responder"
+                    value={responder}
+                    onChange={(e) => {
+                      setResponder(e.target.value)
+                    }}
+                    className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  >
+                    <option value="">
+                      {filteredResponders.length === 0
+                        ? 'No responders available'
+                        : 'Select Responder'}
+                    </option>
+                    {filteredResponders.map((r) => (
+                      <option key={r.uid} value={r.uid}>
+                        {r.displayName ?? r.uid}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button
-                  type="button"
-                  disabled={!canDispatch}
+                  disabled={!agency || !responder}
                   onMouseDown={startHold}
                   onMouseUp={endHold}
                   onMouseLeave={endHold}
                   onTouchStart={startHold}
                   onTouchEnd={endHold}
-                  className="relative w-full rounded-md bg-[var(--color-dispatch)] py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="relative w-full rounded-md bg-[#2563eb] py-3 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="relative z-10">Hold to Dispatch</span>
                   {holdProgress > 0 && (

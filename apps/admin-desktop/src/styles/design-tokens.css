@@ -16,7 +16,9 @@
     --color-slate: #414849;
     --color-success: #22c55e;
     --color-danger: #991b1b;
-    --color-dispatch: #2563eb;
+    --color-severity-high: #a73400;
+    --color-severity-medium: #c77600;
+    --color-severity-low: #414849;
     --color-text-primary: #f1f5f9;
     --color-text-secondary: #94a3b8;
     --color-text-muted: #64748b;

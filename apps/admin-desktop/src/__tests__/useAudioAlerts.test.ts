@@ -2,69 +2,74 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useAudioAlerts } from '../hooks/useAudioAlerts'
 
-function createLocalStorageStub() {
-  const store = new Map<string, string>()
-  return {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      store.set(key, value)
-    },
-    removeItem: (key: string) => {
-      store.delete(key)
-    },
-    clear: () => {
-      store.clear()
-    },
-    key: (i: number) => Array.from(store.keys())[i] ?? null,
-    get length() {
-      return store.size
-    },
-  }
-}
-
-interface MockAudioCtx {
-  createOscillator: ReturnType<typeof vi.fn>
-  createGain: ReturnType<typeof vi.fn>
-}
-
 describe('useAudioAlerts', () => {
-  let capturedContexts: MockAudioCtx[] = []
+  let mockOscillator: ReturnType<typeof createMockOscillator>
+  let mockGainNode: ReturnType<typeof createMockGainNode>
+  let store: Record<string, string>
+
+  function createMockOscillator() {
+    return {
+      type: '',
+      frequency: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+      disconnect: vi.fn(),
+    }
+  }
+
+  function createMockGainNode() {
+    return {
+      gain: {
+        setValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+    }
+  }
 
   beforeEach(() => {
-    capturedContexts = []
-    vi.stubGlobal('localStorage', createLocalStorageStub())
-    vi.stubGlobal(
-      'AudioContext',
-      class MockAudioContext {
-        state = 'running'
-        currentTime = 0
-        destination = {}
-        resume = vi.fn().mockResolvedValue(undefined)
-        close = vi.fn().mockResolvedValue(undefined)
-        createOscillator = vi.fn().mockReturnValue({
-          type: '',
-          frequency: { setValueAtTime: vi.fn() },
-          connect: vi.fn(),
-          start: vi.fn(),
-          stop: vi.fn(),
-          disconnect: vi.fn(),
-        })
-        createGain = vi.fn().mockReturnValue({
-          gain: {
-            setValueAtTime: vi.fn(),
-            linearRampToValueAtTime: vi.fn(),
-          },
-          connect: vi.fn(),
-        })
+    store = {}
+    mockOscillator = createMockOscillator()
+    mockGainNode = createMockGainNode()
 
-        constructor() {
-          capturedContexts.push({
-            createOscillator: this.createOscillator,
-            createGain: this.createGain,
-          })
-        }
-      },
-    )
+    function createMockAudioContext() {
+      return {
+        state: 'running',
+        currentTime: 0,
+        resume: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+        createOscillator: vi.fn().mockReturnValue(mockOscillator),
+        createGain: vi.fn().mockReturnValue(mockGainNode),
+        destination: {},
+      }
+    }
+
+    const MockAudioContextClass = vi.fn().mockImplementation(function () {
+      return createMockAudioContext()
+    }) as unknown as typeof AudioContext
+
+    vi.stubGlobal('AudioContext', MockAudioContextClass)
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      writable: true,
+      configurable: true,
+    })
+
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => store[key] ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store[key] = value
+      }),
+      removeItem: vi.fn((key: string) => {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete store[key]
+      }),
+      clear: vi.fn(() => {
+        store = {}
+      }),
+    })
   })
 
   it('initializes disabled', () => {
@@ -80,41 +85,171 @@ describe('useAudioAlerts', () => {
     expect(result.current.enabled).toBe(true)
   })
 
-  it('persists enabled state to localStorage', () => {
+  it('persists toggle to localStorage', () => {
     const { result } = renderHook(() => useAudioAlerts())
     act(() => {
       result.current.toggle()
     })
-    expect(localStorage.getItem('bantayog.audio-alerts-enabled')).toBe('true')
+    expect(localStorage.setItem).toHaveBeenCalledWith('bantayog.audio-alerts-enabled', 'true')
+
+    act(() => {
+      result.current.toggle()
+    })
+    expect(localStorage.setItem).toHaveBeenCalledWith('bantayog.audio-alerts-enabled', 'false')
   })
 
-  it('reads persisted state on mount', () => {
-    localStorage.setItem('bantayog.audio-alerts-enabled', 'true')
+  it('does not play when disabled', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.play()
+    })
+    expect(AudioContext).not.toHaveBeenCalled()
+  })
+
+  it('does not play when document is hidden', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.toggle()
+    })
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      writable: true,
+      configurable: true,
+    })
+
+    act(() => {
+      result.current.play()
+    })
+    expect(AudioContext).not.toHaveBeenCalled()
+  })
+
+  it('creates AudioContext lazily on first play', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.toggle()
+    })
+
+    act(() => {
+      result.current.play()
+    })
+
+    expect(AudioContext).toHaveBeenCalledTimes(1)
+  })
+
+  it('reuses existing AudioContext on subsequent plays', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.toggle()
+    })
+
+    act(() => {
+      result.current.play()
+    })
+    act(() => {
+      result.current.play()
+    })
+
+    expect(AudioContext).toHaveBeenCalledTimes(1)
+  })
+
+  it('resumes suspended context before playing', () => {
+    const resumeMock = vi.fn().mockResolvedValue(undefined)
+
+    function createSuspendedMockAudioContext() {
+      return {
+        state: 'suspended',
+        currentTime: 0,
+        resume: resumeMock,
+        close: vi.fn().mockResolvedValue(undefined),
+        createOscillator: vi.fn().mockReturnValue(mockOscillator),
+        createGain: vi.fn().mockReturnValue(mockGainNode),
+        destination: {},
+      }
+    }
+
+    const SuspendedMockAudioContext = vi.fn().mockImplementation(function () {
+      return createSuspendedMockAudioContext()
+    }) as unknown as typeof AudioContext
+    vi.stubGlobal('AudioContext', SuspendedMockAudioContext)
+
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.toggle()
+    })
+
+    act(() => {
+      result.current.play()
+    })
+
+    expect(resumeMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('plays alert tone at 800Hz for 0.4s', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.toggle()
+    })
+
+    act(() => {
+      result.current.play()
+    })
+
+    expect(mockOscillator.frequency.setValueAtTime).toHaveBeenCalledWith(800, expect.any(Number))
+    expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(
+      0.001,
+      expect.any(Number),
+    )
+    expect(mockOscillator.stop).toHaveBeenCalledWith(expect.any(Number))
+  })
+
+  it('plays error tone at 200Hz for 0.2s', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.toggle()
+    })
+
+    act(() => {
+      result.current.playError()
+    })
+
+    expect(mockOscillator.frequency.setValueAtTime).toHaveBeenCalledWith(200, expect.any(Number))
+    expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(
+      0.001,
+      expect.any(Number),
+    )
+    expect(mockOscillator.stop).toHaveBeenCalledWith(expect.any(Number))
+  })
+
+  it('does not playError when disabled', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.playError()
+    })
+    expect(AudioContext).not.toHaveBeenCalled()
+  })
+
+  it('does not playError when document is hidden', () => {
+    const { result } = renderHook(() => useAudioAlerts())
+    act(() => {
+      result.current.toggle()
+    })
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      writable: true,
+      configurable: true,
+    })
+
+    act(() => {
+      result.current.playError()
+    })
+    expect(AudioContext).not.toHaveBeenCalled()
+  })
+
+  it('reads initial enabled state from localStorage', () => {
+    store['bantayog.audio-alerts-enabled'] = 'true'
     const { result } = renderHook(() => useAudioAlerts())
     expect(result.current.enabled).toBe(true)
-  })
-
-  it('play() is a no-op when disabled', () => {
-    const { result } = renderHook(() => useAudioAlerts())
-    expect(() => {
-      result.current.play()
-    }).not.toThrow()
-    expect(capturedContexts).toHaveLength(0)
-  })
-
-  it('play() exercises Web Audio API when enabled', () => {
-    const { result } = renderHook(() => useAudioAlerts())
-    act(() => {
-      result.current.toggle()
-    })
-    expect(capturedContexts).toHaveLength(1)
-
-    expect(() => {
-      result.current.play()
-    }).not.toThrow()
-
-    const ctx = capturedContexts[0]!
-    expect(ctx.createOscillator).toHaveBeenCalledTimes(1)
-    expect(ctx.createGain).toHaveBeenCalledTimes(1)
   })
 })

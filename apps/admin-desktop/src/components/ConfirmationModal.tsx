@@ -1,10 +1,11 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { type ReactNode, useEffect, useRef, useCallback } from 'react'
 import { X } from 'lucide-react'
 
 interface Props {
   open: boolean
   title: string
   message: string
+  children?: ReactNode
   confirmLabel: string
   confirmVariant?: 'danger' | 'primary'
   onConfirm: () => void
@@ -15,6 +16,7 @@ export function ConfirmationModal({
   open,
   title,
   message,
+  children,
   confirmLabel,
   confirmVariant = 'danger',
   onConfirm,
@@ -65,26 +67,20 @@ export function ConfirmationModal({
           <h2 id="confirm-title" className="text-lg font-semibold text-[var(--color-text-primary)]">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded p-1 hover:bg-white/10"
-            aria-label="Close"
-          >
+          <button onClick={onCancel} className="rounded p-1 hover:bg-white/10" aria-label="Close">
             <X className="h-4 w-4 text-[var(--color-text-secondary)]" />
           </button>
         </div>
         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">{message}</p>
+        {children}
         <div className="mt-6 flex justify-end gap-3">
           <button
-            type="button"
             onClick={onCancel}
             className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10"
           >
             Cancel
           </button>
           <button
-            type="button"
             onClick={onConfirm}
             className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90`}
           >

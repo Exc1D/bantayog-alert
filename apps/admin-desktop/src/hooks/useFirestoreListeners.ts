@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { collection, onSnapshot, type Firestore } from 'firebase/firestore'
 import { ref, onValue, type Database } from 'firebase/database'
 
@@ -19,19 +19,38 @@ interface ReportDoc {
   description: string
 }
 
+export interface ReportOpsDoc {
+  id: string
+  reportId: string
+  acknowledgedAt?: string
+  status?: string
+}
+
+export function isReportOpsDoc(doc: unknown): doc is ReportOpsDoc {
+  if (doc == null || typeof doc !== 'object') return false
+  const d = doc as Record<string, unknown>
+  return typeof d.id === 'string' && typeof d.reportId === 'string'
+}
+
+const MAX_RETRIES = 3
+
 export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [reports, setReports] = useState<ReportDoc[]>([])
-  const [reportOps, setReportOps] = useState<unknown[]>([])
+  const [reportOps, setReportOps] = useState<ReportOpsDoc[]>([])
   const [alerts, setAlerts] = useState<unknown[]>([])
   const [responders, setResponders] = useState<[string, unknown][]>([])
+  const [retryCount, setRetryCount] = useState(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (!db) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(false)
-      return
-    }
+    if (!db) return
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
+
+    setError(null)
 
     const unsubscribers: (() => void)[] = []
 
@@ -46,10 +65,19 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         }))
         setReports(data)
         setLoading(false)
+        setError(null)
       },
       (err) => {
-        console.error('[useFirestoreListeners] reports listener failed', err)
-        setLoading(false)
+        const message = err instanceof Error ? err.message : String(err)
+        setError(message)
+        if (retryCount < MAX_RETRIES) {
+          retryTimerRef.current = setTimeout(
+            () => {
+              setRetryCount((c) => c + 1)
+            },
+            1000 * (retryCount + 1),
+          )
+        }
       },
     )
     unsubscribers.push(unsubReports)
@@ -59,14 +87,26 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     const unsubReportOps = onSnapshot(
       reportOpsRef,
       (snapshot) => {
-        const data = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
+        const data = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
+          .filter(isReportOpsDoc)
         setReportOps(data)
+        setError(null)
       },
       (err) => {
-        console.error('[useFirestoreListeners] report_ops listener failed', err)
+        const message = err instanceof Error ? err.message : String(err)
+        setError(message)
+        if (retryCount < MAX_RETRIES) {
+          retryTimerRef.current = setTimeout(
+            () => {
+              setRetryCount((c) => c + 1)
+            },
+            1000 * (retryCount + 1),
+          )
+        }
       },
     )
     unsubscribers.push(unsubReportOps)
@@ -81,9 +121,19 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
           ...d.data(),
         }))
         setAlerts(data)
+        setError(null)
       },
       (err) => {
-        console.error('[useFirestoreListeners] alerts listener failed', err)
+        const message = err instanceof Error ? err.message : String(err)
+        setError(message)
+        if (retryCount < MAX_RETRIES) {
+          retryTimerRef.current = setTimeout(
+            () => {
+              setRetryCount((c) => c + 1)
+            },
+            1000 * (retryCount + 1),
+          )
+        }
       },
     )
     unsubscribers.push(unsubAlerts)
@@ -98,18 +148,23 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
           setResponders(Object.entries(data))
         },
         (err) => {
-          console.error('[useFirestoreListeners] responder_locations listener failed', err)
+          const message = err instanceof Error ? err.message : String(err)
+          setError(message)
         },
       )
       unsubscribers.push(unsubLocations)
     }
 
     return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
       unsubscribers.forEach((unsub) => {
         unsub()
       })
     }
-  }, [windowType, db, rtdb])
+  }, [windowType, db, rtdb, retryCount])
 
-  return { loading, reports, reportOps, alerts, responders }
+  return { loading, error, reports, reportOps, alerts, responders }
 }

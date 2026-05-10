@@ -1,18 +1,21 @@
 import { AlertTriangle, AlertCircle, MinusCircle } from 'lucide-react'
 import type { AnomalyAlert, Severity } from '../types'
-import { SEVERITY_COLORS } from '../styles/severity-colors'
-
-type DismissReason = 'investigating' | 'false_positive' | 'resolved'
 
 interface Props {
   alerts: AnomalyAlert[]
-  onDismiss: (id: string, reason: DismissReason) => void
+  onDismiss: (id: string, reason: string) => void
 }
 
 const SEVERITY_ICON: Record<Severity, typeof AlertTriangle> = {
   HIGH: AlertTriangle,
   MEDIUM: AlertCircle,
   LOW: MinusCircle,
+}
+
+const SEVERITY_COLOR: Record<Severity, string> = {
+  HIGH: 'var(--color-severity-high)',
+  MEDIUM: 'var(--color-severity-medium)',
+  LOW: 'var(--color-severity-low)',
 }
 
 export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {
@@ -30,7 +33,7 @@ export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {
     <div className="space-y-3">
       {activeAlerts.map((alert) => {
         const Icon = SEVERITY_ICON[alert.severity]
-        const color = SEVERITY_COLORS[alert.severity]
+        const color = SEVERITY_COLOR[alert.severity]
         return (
           <div
             key={alert.id}

@@ -1,10 +1,12 @@
-import { Bell, Map } from 'lucide-react'
+import { Bell, Map, Volume2, VolumeX } from 'lucide-react'
 import { LiveIndicator } from './LiveIndicator'
 
 interface Props {
   title: string
   lastUpdatedAt: number
   notificationCount?: number
+  audioEnabled?: boolean
+  onToggleAudio?: () => void
   onOpenMap?: () => void
   onShowNotifications?: () => void
 }
@@ -13,6 +15,8 @@ export function CommandHeader({
   title,
   lastUpdatedAt,
   notificationCount = 0,
+  audioEnabled,
+  onToggleAudio,
   onOpenMap,
   onShowNotifications,
 }: Props) {
@@ -23,6 +27,19 @@ export function CommandHeader({
       </div>
       <div className="flex items-center gap-4">
         <LiveIndicator lastUpdatedAt={lastUpdatedAt} />
+        {onToggleAudio && (
+          <button
+            onClick={onToggleAudio}
+            aria-label={audioEnabled ? 'Mute audio alerts' : 'Enable audio alerts'}
+            className="rounded-md p-2 hover:bg-white/10"
+          >
+            {audioEnabled ? (
+              <Volume2 className="h-4 w-4 text-[var(--color-success)]" />
+            ) : (
+              <VolumeX className="h-4 w-4 text-white/50" />
+            )}
+          </button>
+        )}
         <button
           onClick={onShowNotifications}
           className="relative rounded-md p-2 hover:bg-white/10"
