@@ -4,8 +4,6 @@ interface Props {
   activeIncidents: number
   avgResponseTime: number // minutes
   pendingTriage: number
-  resolvedToday: number
-  municipalitiesWithIssues: { withIssues: number; total: number }
 }
 
 function Metric({
@@ -39,13 +37,7 @@ function Metric({
   )
 }
 
-export function StatusBar({
-  activeIncidents,
-  avgResponseTime,
-  pendingTriage,
-  resolvedToday,
-  municipalitiesWithIssues,
-}: Props) {
+export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: Props) {
   const { statusBarExpandedOverride, toggleStatusBarExpanded } = useCommandCenterStore()
   const isSurge = pendingTriage > 5
   const expanded = statusBarExpandedOverride ?? !isSurge
@@ -56,7 +48,6 @@ export function StatusBar({
 
   return (
     <div
-      data-testid="status-bar"
       className="sticky top-0 z-50 border-b border-[var(--color-navy)] bg-[var(--color-navy)]"
       style={
         isSurge
@@ -75,7 +66,6 @@ export function StatusBar({
         <Metric label="Pending Triage" value={pendingTriage} alert={pendingAlert} />
       </div>
       <button
-        type="button"
         onClick={toggleStatusBarExpanded}
         className="w-full py-1 text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
       >
@@ -84,14 +74,10 @@ export function StatusBar({
       {expanded && (
         <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
           <span>
-            Resolved Today:{' '}
-            <strong className="text-[var(--color-text-primary)]">{resolvedToday}</strong>
+            Resolved Today: <strong className="text-[var(--color-text-primary)]">89</strong>
           </span>
           <span>
-            Muni Issues:{' '}
-            <strong className="text-[var(--color-text-primary)]">
-              {municipalitiesWithIssues.withIssues}/{municipalitiesWithIssues.total}
-            </strong>
+            Muni Issues: <strong className="text-[var(--color-text-primary)]">0/12</strong>
           </span>
           <span>
             Surge:{' '}
