@@ -12,6 +12,8 @@ interface Props {
   onReject: (id: string) => void
   onDispatch: (id: string) => void
   onRowClick: (report: Report) => void
+  onBulkVerify?: (ids: Set<string>) => void
+  onBulkReject?: (ids: Set<string>) => void
 }
 
 export function TriageQueueTable({
@@ -23,6 +25,8 @@ export function TriageQueueTable({
   onReject,
   onDispatch,
   onRowClick,
+  onBulkVerify,
+  onBulkReject,
 }: Props) {
   const allSelected = reports.length > 0 && reports.every((r) => selectedIds.has(r.id))
 
@@ -48,17 +52,19 @@ export function TriageQueueTable({
             {selectedIds.size} selected
           </span>
           <button
+            type="button"
             className="rounded bg-[var(--color-success)] px-3 py-1 text-xs text-white hover:opacity-90"
             onClick={() => {
-              /* bulk verify */
+              onBulkVerify?.(selectedIds)
             }}
           >
             Verify Selected
           </button>
           <button
+            type="button"
             className="rounded bg-[var(--color-danger)] px-3 py-1 text-xs text-white hover:opacity-90"
             onClick={() => {
-              /* bulk reject */
+              onBulkReject?.(selectedIds)
             }}
           >
             Reject Selected
