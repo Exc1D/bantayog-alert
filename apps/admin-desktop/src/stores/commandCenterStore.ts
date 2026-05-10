@@ -14,6 +14,7 @@ export type SyncMessage =
   | { type: 'select:report'; reportId: string; source: 'dashboard' | 'map' }
   | { type: 'select:municipality'; municipalityId: string; source: 'dashboard' | 'map' }
   | { type: 'triage:action'; reportId: string; action: 'verified' | 'rejected' | 'dispatched' }
+  | { type: 'triage:bulk-action'; reportIds: string[]; action: 'verified' | 'rejected' }
 
 interface CommandCenterState {
   // Selection

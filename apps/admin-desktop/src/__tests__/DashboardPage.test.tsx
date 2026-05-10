@@ -63,9 +63,13 @@ describe('DashboardPage', () => {
     // Select all via checkbox
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
     fireEvent.keyDown(window, { key: 'V', shiftKey: true })
-    // Bulk verify sets a sync message for the first selected report
-    // (in a real implementation this would call a bulk endpoint)
-    expect(useCommandCenterStore.getState().lastSyncMessage).not.toBeNull()
+    // Bulk verify emits a single bulk-action message with all selected ids
+    const msg = useCommandCenterStore.getState().lastSyncMessage
+    expect(msg).toEqual({
+      type: 'triage:bulk-action',
+      reportIds: ['r1', 'r2'],
+      action: 'verified',
+    })
   })
 
   it('opens reject modal when R key pressed with focused report', () => {

@@ -93,29 +93,28 @@ export default function DashboardPage() {
 
   const handleBulkVerify = useCallback(
     (ids: Set<string>) => {
-      ids.forEach((id) => {
-        setLastSyncMessage({
-          type: 'triage:action',
-          reportId: id,
-          action: 'verified',
-        })
+      if (ids.size === 0) return
+      setLastSyncMessage({
+        type: 'triage:bulk-action',
+        reportIds: Array.from(ids),
+        action: 'verified',
       })
       setSelectedIds(new Set())
+      // TODO: Call bulk verify endpoint
     },
     [setLastSyncMessage],
   )
 
   const handleBulkReject = useCallback(
     (ids: Set<string>) => {
-      // For now, set sync message for each; in production this would call a bulk endpoint
-      ids.forEach((id) => {
-        setLastSyncMessage({
-          type: 'triage:action',
-          reportId: id,
-          action: 'rejected',
-        })
+      if (ids.size === 0) return
+      setLastSyncMessage({
+        type: 'triage:bulk-action',
+        reportIds: Array.from(ids),
+        action: 'rejected',
       })
       setSelectedIds(new Set())
+      // TODO: Call bulk reject endpoint
     },
     [setLastSyncMessage],
   )
@@ -138,9 +137,7 @@ export default function DashboardPage() {
       key: 'v',
       shift: true,
       handler: () => {
-        selectedIds.forEach((id) => {
-          handleVerify(id)
-        })
+        handleBulkVerify(selectedIds)
       },
     },
     {
