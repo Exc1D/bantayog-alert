@@ -39,7 +39,7 @@ function Metric({
 
 export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: Props) {
   const { statusBarExpandedOverride, toggleStatusBarExpanded } = useCommandCenterStore()
-  const isSurge = pendingTriage > 5
+  const isSurge = pendingTriage >= 20 || activeIncidents >= 50
   const expanded = statusBarExpandedOverride ?? !isSurge
 
   const activeAlert = activeIncidents > 75 ? 'red' : activeIncidents > 50 ? 'amber' : 'none'
@@ -48,15 +48,9 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
 
   return (
     <div
-      className="sticky top-0 z-50 border-b border-[var(--color-navy)] bg-[var(--color-navy)]"
-      style={
-        isSurge
-          ? {
-              boxShadow: '0 0 40px rgba(167, 52, 0, 0.25)',
-              borderLeft: '4px solid var(--color-sienna)',
-            }
-          : undefined
-      }
+      className={`sticky top-0 z-50 border-b bg-[var(--color-navy)] ${
+        isSurge ? 'animate-pulse border-[#c77600]' : 'border-[var(--color-navy)]'
+      }`}
     >
       <div className="flex items-center justify-around px-4 py-3">
         <Metric label="Active Incidents" value={activeIncidents} alert={activeAlert} />
