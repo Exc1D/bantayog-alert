@@ -81,6 +81,7 @@ describe('TriageQueueTable', () => {
     const onVerify = vi.fn()
     renderTable({ onVerify })
     const verifyButtons = screen.getAllByRole('button', { name: 'Verify' })
+    expect(verifyButtons.length).toBeGreaterThan(0)
     await user.click(verifyButtons[0]!)
     expect(onVerify).toHaveBeenCalledWith('r1')
   })

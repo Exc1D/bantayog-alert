@@ -36,20 +36,23 @@ describe('DashboardPage', () => {
 
   it('ignores shortcuts when input is focused', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    render(<DashboardPage />, { wrapper: BrowserRouter })
-    const input = document.createElement('input')
-    document.body.appendChild(input)
-    input.focus()
+    render(
+      <div>
+        <input data-testid="focus-trap" />
+        <DashboardPage />
+      </div>,
+      { wrapper: BrowserRouter },
+    )
+    screen.getByTestId('focus-trap').focus()
     fireEvent.keyDown(window, { key: 'm' })
     expect(openSpy).not.toHaveBeenCalled()
-    document.body.removeChild(input)
     openSpy.mockRestore()
   })
 
   it('verifies focused report when V key pressed', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
-    // Click a row to focus it
-    fireEvent.click(screen.getByText('Daet'))
+    // Click a row to focus it — query by role to avoid hardcoded text
+    fireEvent.click(screen.getByRole('row', { name: /Daet/i }))
     fireEvent.keyDown(window, { key: 'v' })
     expect(useCommandCenterStore.getState().lastSyncMessage).toEqual({
       type: 'triage:action',
@@ -74,7 +77,7 @@ describe('DashboardPage', () => {
 
   it('opens reject modal when R key pressed with focused report', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
-    fireEvent.click(screen.getByText('Daet'))
+    fireEvent.click(screen.getByRole('row', { name: /Daet/i }))
     fireEvent.keyDown(window, { key: 'r' })
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
@@ -82,7 +85,7 @@ describe('DashboardPage', () => {
   it('clears selection and closes modal on Escape', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     // Select a report and open reject modal
-    fireEvent.click(screen.getByText('Daet'))
+    fireEvent.click(screen.getByRole('row', { name: /Daet/i }))
     fireEvent.keyDown(window, { key: 'r' })
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     // Press escape

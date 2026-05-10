@@ -119,6 +119,7 @@ export function TriageQueueTable({
               <td className="px-4 py-3">
                 <div className="flex gap-1">
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onVerify(report.id)
@@ -129,6 +130,7 @@ export function TriageQueueTable({
                     <Check className="h-4 w-4" />
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onReject(report.id)
@@ -139,6 +141,7 @@ export function TriageQueueTable({
                     <X className="h-4 w-4" />
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onDispatch(report.id)

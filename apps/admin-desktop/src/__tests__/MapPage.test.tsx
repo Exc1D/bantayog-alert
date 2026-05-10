@@ -4,7 +4,8 @@ import MapPage from '../pages/MapPage'
 
 describe('MapPage', () => {
   it('renders header and map', () => {
-    render(<MapPage />)
+    const { container } = render(<MapPage />)
     expect(screen.getByText('Provincial Map — Camarines Norte')).toBeInTheDocument()
+    expect(container.querySelector('.leaflet-container')).toBeInTheDocument()
   })
 })

@@ -28,9 +28,7 @@ describe('StatusBar', () => {
         municipalitiesWithIssues={{ withIssues: 0, total: 12 }}
       />,
     )
-    const bar = screen.getByText('8').closest('div')?.parentElement?.parentElement
-    // happy-dom parses border-left shorthand into individual properties with quirks;
-    // assert on the box-shadow which is unambiguously present in surge mode
+    const bar = screen.getByTestId('status-bar')
     expect(bar).toHaveStyle('box-shadow: 0 0 40px rgba(167, 52, 0, 0.25)')
   })
 

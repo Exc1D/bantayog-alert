@@ -66,6 +66,7 @@ export function IncidentLayer({ reports, selectedReportId, onPinClick }: Props) 
     markersRef.current = []
 
     reports.forEach((report) => {
+      if (!Number.isFinite(report.latitude) || !Number.isFinite(report.longitude)) return
       const marker = L.marker([report.latitude, report.longitude], {
         icon: createPinIcon(report.type, report.severity, report.id === selectedReportId),
       })
@@ -75,6 +76,14 @@ export function IncidentLayer({ reports, selectedReportId, onPinClick }: Props) 
       marker.addTo(map)
       markersRef.current.push(marker)
     })
+
+    return () => {
+      markersRef.current.forEach((m) => {
+        m.off('click')
+        map.removeLayer(m)
+      })
+      markersRef.current = []
+    }
   }, [reports, selectedReportId, map, onPinClick])
 
   return null

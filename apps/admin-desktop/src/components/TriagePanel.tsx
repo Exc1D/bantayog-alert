@@ -41,28 +41,43 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
 
   useEffect(() => {
     return () => {
-      if (holdTimerRef.current) clearInterval(holdTimerRef.current)
+      if (holdTimerRef.current) {
+        clearInterval(holdTimerRef.current)
+        holdTimerRef.current = null
+      }
     }
   }, [])
 
   if (!report) return null
 
+  const canDispatch = agency.trim().length > 0 && responder.trim().length > 0
+
+  const clearHoldTimer = () => {
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+  }
+
   const startHold = () => {
+    if (!canDispatch) return
+    clearHoldTimer()
     setHoldProgress(0)
     holdTimerRef.current = setInterval(() => {
       setHoldProgress((p) => {
-        if (p >= 100) {
-          if (holdTimerRef.current) clearInterval(holdTimerRef.current)
+        const next = p + 10
+        if (next >= 100) {
+          clearHoldTimer()
           onDispatch(report.id, agency, responder)
           return 0
         }
-        return p + 10
+        return next
       })
     }, 100)
   }
 
   const endHold = () => {
-    if (holdTimerRef.current) clearInterval(holdTimerRef.current)
+    clearHoldTimer()
     setHoldProgress(0)
   }
 
@@ -166,12 +181,13 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
                 />
                 <button
                   type="button"
+                  disabled={!canDispatch}
                   onMouseDown={startHold}
                   onMouseUp={endHold}
                   onMouseLeave={endHold}
                   onTouchStart={startHold}
                   onTouchEnd={endHold}
-                  className="relative w-full rounded-md bg-[var(--color-dispatch)] py-3 text-sm font-medium text-white"
+                  className="relative w-full rounded-md bg-[var(--color-dispatch)] py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="relative z-10">Hold to Dispatch</span>
                   {holdProgress > 0 && (

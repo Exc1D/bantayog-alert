@@ -102,8 +102,9 @@ describe('MunicipalPerformanceTable', () => {
     const onSelect = vi.fn()
     render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={onSelect} />)
     const rows = screen.getAllByRole('row')
-    const dataRow = rows.find((r) => r.textContent.includes('Daet'))!
-    await user.type(dataRow, '{Enter}')
+    const dataRow = rows.find((r) => r.textContent.includes('Daet'))
+    expect(dataRow).toBeDefined()
+    await user.type(dataRow!, '{Enter}')
     expect(onSelect).toHaveBeenCalledWith('Daet')
   })
 

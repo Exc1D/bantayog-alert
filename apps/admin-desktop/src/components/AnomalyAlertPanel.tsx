@@ -2,9 +2,11 @@ import { AlertTriangle, AlertCircle, MinusCircle } from 'lucide-react'
 import type { AnomalyAlert, Severity } from '../types'
 import { SEVERITY_COLORS } from '../styles/severity-colors'
 
+type DismissReason = 'investigating' | 'false_positive' | 'resolved'
+
 interface Props {
   alerts: AnomalyAlert[]
-  onDismiss: (id: string, reason: string) => void
+  onDismiss: (id: string, reason: DismissReason) => void
 }
 
 const SEVERITY_ICON: Record<Severity, typeof AlertTriangle> = {

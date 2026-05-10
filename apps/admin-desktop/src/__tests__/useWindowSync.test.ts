@@ -41,14 +41,15 @@ describe('useWindowSync', () => {
     const { result } = renderHook(() => useWindowSync(), {
       wrapper: WindowSyncProvider,
     })
+    const msg: SyncMessage = {
+      type: 'select:report',
+      reportId: 'r1',
+      source: 'dashboard',
+    }
     act(() => {
-      result.current.sendSync({
-        type: 'select:report',
-        reportId: 'r1',
-        source: 'dashboard',
-      })
+      result.current.sendSync(msg)
     })
-    expect(result.current.sendSync).toBeDefined()
+    expect(lastBc?.postMessage).toHaveBeenCalledWith(msg)
   })
 
   it('routes incoming messages to the latest onMessage without re-subscribing', () => {

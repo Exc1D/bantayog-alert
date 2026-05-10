@@ -56,6 +56,7 @@ export function StatusBar({
 
   return (
     <div
+      data-testid="status-bar"
       className="sticky top-0 z-50 border-b border-[var(--color-navy)] bg-[var(--color-navy)]"
       style={
         isSurge
@@ -74,6 +75,7 @@ export function StatusBar({
         <Metric label="Pending Triage" value={pendingTriage} alert={pendingAlert} />
       </div>
       <button
+        type="button"
         onClick={toggleStatusBarExpanded}
         className="w-full py-1 text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
       >

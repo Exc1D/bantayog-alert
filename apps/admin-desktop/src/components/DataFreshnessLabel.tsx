@@ -28,7 +28,9 @@ export function DataFreshnessLabel({ lastUpdatedAt }: Props) {
 
   useEffect(() => {
     const update = () => {
-      setSeconds(Math.floor((Date.now() - lastUpdatedAt) / 1000))
+      const elapsed = (Date.now() - lastUpdatedAt) / 1000
+      const safe = Number.isFinite(elapsed) ? Math.max(0, Math.floor(elapsed)) : 0
+      setSeconds(safe)
     }
     update()
     const id = setInterval(update, 10_000)
