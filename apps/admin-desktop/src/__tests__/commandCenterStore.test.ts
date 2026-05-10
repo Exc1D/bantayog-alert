@@ -4,7 +4,6 @@ import { useCommandCenterStore } from '../stores/commandCenterStore'
 describe('commandCenterStore', () => {
   beforeEach(() => {
     useCommandCenterStore.setState(
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       useCommandCenterStore.getInitialState?.() ?? {
         selectedMunicipalityId: null,
         selectedReportId: null,
