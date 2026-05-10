@@ -22,8 +22,16 @@ function createLocalStorageStub() {
   }
 }
 
+interface MockAudioCtx {
+  createOscillator: ReturnType<typeof vi.fn>
+  createGain: ReturnType<typeof vi.fn>
+}
+
 describe('useAudioAlerts', () => {
+  let capturedContexts: MockAudioCtx[] = []
+
   beforeEach(() => {
+    capturedContexts = []
     vi.stubGlobal('localStorage', createLocalStorageStub())
     vi.stubGlobal(
       'AudioContext',
@@ -48,6 +56,13 @@ describe('useAudioAlerts', () => {
           },
           connect: vi.fn(),
         })
+
+        constructor() {
+          capturedContexts.push({
+            createOscillator: this.createOscillator,
+            createGain: this.createGain,
+          })
+        }
       },
     )
   })
@@ -84,6 +99,7 @@ describe('useAudioAlerts', () => {
     expect(() => {
       result.current.play()
     }).not.toThrow()
+    expect(capturedContexts).toHaveLength(0)
   })
 
   it('play() exercises Web Audio API when enabled', () => {
@@ -91,8 +107,14 @@ describe('useAudioAlerts', () => {
     act(() => {
       result.current.toggle()
     })
+    expect(capturedContexts).toHaveLength(1)
+
     expect(() => {
       result.current.play()
     }).not.toThrow()
+
+    const ctx = capturedContexts[0]!
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(1)
+    expect(ctx.createGain).toHaveBeenCalledTimes(1)
   })
 })
