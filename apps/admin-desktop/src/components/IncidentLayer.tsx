@@ -4,7 +4,7 @@ import { useMap } from 'react-leaflet'
 import { Waves, Flame, Mountain, Car, HeartPulse, AlertTriangle } from 'lucide-react'
 import { renderToString } from 'react-dom/server'
 import type { Report } from '../types'
-import type { Severity } from '../stores/commandCenterStore'
+import { SEVERITY_COLORS, type Severity } from '../styles/severity-colors'
 
 const TYPE_ICONS = {
   FLOOD: Waves,
@@ -13,12 +13,6 @@ const TYPE_ICONS = {
   ACCIDENT: Car,
   MEDICAL: HeartPulse,
   OTHER: AlertTriangle,
-}
-
-const SEVERITY_COLORS: Record<Severity, string> = {
-  HIGH: '#a73400',
-  MEDIUM: '#7c3500',
-  LOW: '#414849',
 }
 
 interface Props {
