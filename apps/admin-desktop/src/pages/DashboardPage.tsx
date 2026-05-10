@@ -5,14 +5,16 @@ import { TriageQueueTable } from '../components/TriageQueueTable'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ConfirmationModal } from '../components/ConfirmationModal'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import type { Report } from '../types'
 
 export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
+  const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [lastUpdatedAt] = useState(() => Date.now())
-  const { selectReport, setLastSyncMessage } = useCommandCenterStore()
+  const { selectReport, selectedReportId, setLastSyncMessage } = useCommandCenterStore()
 
   const [reports] = useState<Report[]>([
     // Mock data for now; will be replaced with Firestore subscription
@@ -93,6 +95,50 @@ export default function DashboardPage() {
     window.open('/map', 'bantayog-map', 'width=1200,height=900')
   }, [])
 
+  useKeyboardShortcuts([
+    { key: 'm', handler: openMapWindow },
+    {
+      key: 'v',
+      handler: () => {
+        if (selectedReportId) {
+          handleVerify(selectedReportId)
+        }
+      },
+    },
+    {
+      key: 'v',
+      shift: true,
+      handler: () => {
+        selectedIds.forEach((id) => {
+          handleVerify(id)
+        })
+      },
+    },
+    {
+      key: 'r',
+      handler: () => {
+        if (selectedReportId) {
+          handleReject(selectedReportId)
+        }
+      },
+    },
+    {
+      key: 'Escape',
+      handler: () => {
+        selectReport(null)
+        setSelectedIds(new Set())
+        setRejectModalOpen(false)
+        setHelpModalOpen(false)
+      },
+    },
+    {
+      key: '?',
+      handler: () => {
+        setHelpModalOpen(true)
+      },
+    },
+  ])
+
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <OfflineBanner />
@@ -133,6 +179,19 @@ export default function DashboardPage() {
         onConfirm={confirmReject}
         onCancel={() => {
           setRejectModalOpen(false)
+        }}
+      />
+      <ConfirmationModal
+        open={helpModalOpen}
+        title="Keyboard Shortcuts"
+        message="M — Open map window | V — Verify focused report | Shift+V — Verify selected | R — Reject focused | Escape — Clear selection | ? — Show this help"
+        confirmLabel="Got it"
+        confirmVariant="primary"
+        onConfirm={() => {
+          setHelpModalOpen(false)
+        }}
+        onCancel={() => {
+          setHelpModalOpen(false)
         }}
       />
     </div>
