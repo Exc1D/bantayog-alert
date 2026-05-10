@@ -54,22 +54,6 @@ type SyncMessage =
 - Map clicks report pin → dashboard receives `select:report`, scrolls triage queue to that row
 - Triage action on either window → other window receives `triage:action`, shows toast confirmation
 
-## 1.4 Typography
-
-**Numeric data (status bar, table cells, timestamps, pin count badges):** JetBrains Mono, 400 weight, `font-variant-numeric: tabular-nums`. Monospaced digits align in columns and create a mission-control telemetry aesthetic — engineered, not decorative.
-
-**Body text (descriptions, labels, help text, glossary):** Inter, 400–500 weight. Retained for readability at small sizes.
-
-**Headlines (section titles, panel headers):** Inter, 600 weight.
-
-| Element               | Size | Font           | Weight |
-| --------------------- | ---- | -------------- | ------ |
-| Status bar metrics    | 32px | JetBrains Mono | 400    |
-| Section headers       | 18px | Inter          | 600    |
-| Body                  | 14px | Inter          | 400    |
-| Captions / timestamps | 12px | JetBrains Mono | 400    |
-| Metric labels         | 12px | Inter          | 500    |
-
 ---
 
 ## 2. Dashboard Window (`/dashboard`)
@@ -81,10 +65,11 @@ type SyncMessage =
 │ 🏛️ PDRRMO Camarines Norte        [🟢 Live]  [🔔 3]  [🗺️ Open Map Window]   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ Active Incidents: 47   │   Avg Response: 12 min   │   Pending: 8    │   │
-│  │                    [▼ more: Resolved 89 │ Muni Issues 0/12]         │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐    │
+│  │Active  │ │Response│ │Resolved│ │Muni    │ │System    │ │Surge     │    │
+│  │Incidents│ │Time   │ │Today   │ │Issues  │ │Health    │ │Status    │    │
+│  │   47   │ │ 12 min │ │  89   │ │ 0/12  │ │   🟢    │ │  Idle   │    │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └──────────┘ └──────────┘    │
 │                                                                             │
 │  ┌────────────────────────────────────┐  ┌─────────────────────────────┐   │
 │  │ MUNICIPAL PERFORMANCE TABLE        │  │ ANOMALY ALERTS              │   │
@@ -126,32 +111,23 @@ type SyncMessage =
 - **Center:** Live indicator (pulsing green dot) + data freshness ("Updated 5s ago")
 - **Right:** Notification bell with count, "Open Map Window" button, user avatar dropdown
 
-#### Status Bar (3 always-visible metrics)
+#### KPI Cards (6 cards, 1 row)
 
-A single dense horizontal strip replacing the hero-metric card grid. Shows only what an operator needs at a glance during active response. `position: sticky; top: 0` with a subtle scroll shadow (`box-shadow: 0 2px 8px rgba(0,0,0,0.3)`) — situational awareness must never scroll out of view.
-
-| Metric            | Value  | Alert Threshold    |
-| ----------------- | ------ | ------------------ |
-| Active Incidents  | 47     | >50 amber, >75 red |
-| Avg Response Time | 12 min | >15 amber, >20 red |
-| Pending Triage    | 8      | >5 amber, >10 red  |
-
-**Expanded detail** (click/toggle to reveal): Resolved Today, Municipal Issues, System Health, Surge Status. Detail defaults to collapsed when Pending Triage > 0 (surge mode), expanded when Pending Triage = 0 (calm mode). Manual toggle state persists per session — never override the operator's explicit choice.
-
-**Typography:** Numeric values render in JetBrains Mono (`tabular-nums`) at 32px/**500** weight for urgency and legibility. Metric labels are 12px/500 uppercase.
-
-**Surge atmosphere:** When Pending Triage > 5, two cues activate simultaneously:
-
-- **Functional:** 4px left border accent in `#a73400` (visible on all monitors)
-- **Atmospheric:** Subtle sienna glow (`box-shadow: 0 0 40px rgba(167, 52, 0, 0.25)`) (visible on quality monitors)
+| Card              | Value  | Trend   | Alert Threshold        |
+| ----------------- | ------ | ------- | ---------------------- |
+| Active Incidents  | 47     | —       | >50 amber, >75 red     |
+| Avg Response Time | 12 min | ↓ -2min | >15 amber, >20 red     |
+| Resolved Today    | 89     | ↑ +12   | —                      |
+| Municipal Issues  | 0/12   | —       | >0 amber               |
+| System Health     | 🟢 OK  | —       | 🟡 Degraded, 🔴 Down   |
+| Surge Status      | Idle   | —       | Active when pre-warmed |
 
 #### Municipal Performance Table
 
 - Sortable columns: Municipality, Active Incidents, Avg Response Time, Resolved Rate, Resource Utilization, Admin Status
 - Click row → sends `select:municipality` sync message → map window zooms to municipality
 - Admin Status: 🟢 On Duty, 🟡 No Shift, 🔴 Gap >30min
-- Response time: ✓ <12min, ⚠ 12-20min, ✕ >20min
-- **Collapsible:** When Pending Triage > 0, the table collapses to a single horizontal strip showing "12 municipalities monitored — 1 issue detected (Capalonga)". Click to expand the full table. This gives the triage queue vertical priority during active response.
+- Response time: ✅ <12min, ⚠️ 12-20min, ❌ >20min
 
 #### Anomaly Alerts Panel
 
@@ -161,83 +137,26 @@ A single dense horizontal strip replacing the hero-metric card grid. Shows only 
 
 #### Trend Analysis Charts
 
-- Tabbed chart area: Incident Volume (line), Response Time (bar), Resource Utilization (heatmap), Municipal Comparison (bar)
+- Tabbed chart area: Incident Volume (line), Response Time (bar), Resource Utilization (heatmap), Municipal Comparison (radar)
 - Time range: Last 7 days (default), 24h, 30d
-- **Adaptive visibility:** When Pending Triage > 0, the chart panel collapses to a single horizontal bar showing only the current tab's title and mini-sparkline. Clicking the bar expands the full panel. This keeps the triage queue above the fold during active response without hiding the charts entirely.
 
 #### Triage Queue Table
 
 - Sortable, filterable table of pending verification reports
-- Columns: [☑], Time, Type, Severity, Municipality, Barangay, Actions
-- **Bulk actions:** Multi-select via row checkboxes → "Verify Selected" / "Reject Selected" buttons appear in table header
+- Columns: Time, Type, Severity, Municipality, Barangay, Actions
 - Quick actions per row: Verify, Reject (dropdown with reason), Quick Dispatch
 - Click row → sends `select:report` sync message → map window centers on report pin
-- **Power-user pattern:** Arrow keys navigate rows. `V` = verify focused row. `Shift+V` = verify all selected. `R` = reject focused row. `Ctrl+D` = quick-dispatch with last-used agency.
-
-#### Empty Triage Queue State
-
-When no reports are pending verification, the queue shows a positive "all clear" indicator rather than an empty table (which looks broken):
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│                    ✓ All Caught Up                       │
-│         No reports pending verification                  │
-│              Last checked: 14:32:05                      │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-- Green checkmark icon (`#22c55e`) with `role="status"`
-- Body text in muted color (`#6b7280`)
-- Live timestamp updates every 30 seconds
-- Auto-replaced by the table when new reports arrive (slide-in animation)
 
 ### 2.3 Keyboard Shortcuts
 
-| Key       | Action                                             |
-| --------- | -------------------------------------------------- |
-| `D`       | Focus dashboard window                             |
-| `M`       | Focus or open map window                           |
-| `V`       | Verify focused report                              |
-| `Shift+V` | Verify all selected reports (bulk)                 |
-| `R`       | Reject focused report                              |
-| `Shift+R` | Reject all selected reports (bulk)                 |
-| `Ctrl+D`  | Quick dispatch with last-used agency (hold 1s)     |
-| `N`       | Jump to next new report (highest severity, newest) |
-| `Escape`  | Clear selection, close modals                      |
-| `?`       | Show shortcut help modal                           |
-
-**Auto-open map:** On initial login, if the dashboard detects no existing map window, it auto-opens `/map` after a 2-second delay (prevents popup blockers). During the delay, show a progress indicator ("Opening map window...") so the operator knows the system is initializing, not frozen. Operator can disable this in preferences.
-
-### 2.4 Motion Language
-
-All animations use custom easing curves. No default `ease` or `ease-in-out`.
-
-```css
---ease-snap: cubic-bezier(0.22, 1, 0.36, 1); /* collapsible sections, panel slide */
---ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); /* pin arrival, badge pop */
---ease-dramatic: cubic-bezier(0.87, 0, 0.13, 1); /* modal open, full-screen transitions */
---duration-micro: 150ms; /* button hovers, icon states */
---duration-standard: 250ms; /* section toggle, panel slide */
---duration-dramatic: 400ms; /* modal/page transitions, initial load */
-```
-
-**Rules:**
-
-- Don't animate CSS layout properties (`width`, `height`, `top`, `left`). Use `transform` and `opacity`.
-- Disable all motion when `prefers-reduced-motion: reduce`.
-- One well-orchestrated sequence beats scattered micro-interactions.
-
-### 2.5 Initial Load Sequence
-
-On first dashboard load, the UI reveals in a deliberate "system initializing" sequence:
-
-1. **Background settles** (0ms): Deep navy radial gradient fades in (`opacity 0 → 1`, 400ms, `ease-dramatic`).
-2. **Status bar metrics count up** (200ms delay): Each metric animates from `0` to its live value over 600ms with `ease-snap`. JetBrains Mono digits tick like a control panel booting.
-3. **Triage queue rows fade in** (400ms delay): Rows stagger at 50ms intervals (`opacity 0 → 1`, `translateY(8px) → 0`, `ease-snap`).
-4. **Map window opens** (2000ms): If auto-open is enabled, the map window opens after the dashboard has settled.
-5. **Map zooms to province** (map window, 0ms): Leaflet flies from zoom 6 to zoom 10 over 800ms (`ease-dramatic`), rather than snapping.
+| Key      | Action                                    |
+| -------- | ----------------------------------------- |
+| `D`      | Focus dashboard window                    |
+| `M`      | Focus or open map window                  |
+| `V`      | Verify selected report (when row focused) |
+| `R`      | Reject selected report                    |
+| `Escape` | Clear selection, close modals             |
+| `?`      | Show shortcut help modal                  |
 
 ---
 
@@ -290,10 +209,6 @@ On first dashboard load, the UI reveals in a deliberate "system initializing" se
 - **Center:** ~14.1°N, 122.9°E (Camarines Norte centroid)
 - **Zoom:** 10 (province view), 13 (municipality drill-down)
 
-**Map tiles:** Use a dark-themed tile layer (e.g., CartoDB Dark Matter or Stadia Alidade Smooth Dark) instead of standard OSM. The dark tiles align with the command-center aesthetic and make sienna/amber pins pop against the background.
-
-**Atmospheric texture:** A 2% opacity noise overlay on the dashboard background prevents banding on dark navy and adds an analog-monitor texture. Implemented as a CSS `::before` pseudo-element with a base64-encoded noise SVG or CSS `filter: url(#noise)`.
-
 ### 3.3 Incident Pins (Lucide React Icons)
 
 Pins use **Lucide React icons rendered as `L.divIcon`** (offline-friendly, no CDN dependency):
@@ -307,15 +222,13 @@ Pins use **Lucide React icons rendered as `L.divIcon`** (offline-friendly, no CD
 | Medical   | `HeartPulse`    | Severity-colored |
 | Other     | `AlertTriangle` | Severity-colored |
 
-**Severity pulse colors** (aligned to project canonical palette):
+**Severity pulse colors:**
 
-- High: `#a73400` (alert-sienna)
-- Medium: `#7c3500` (deep amber)
-- Low: `#414849` (muted slate)
+- High: `#dc2626` (red)
+- Medium: `#f59e0b` (amber)
+- Low: `#16a34a` (green)
 
 Each icon has a CSS pulse animation. Respects `prefers-reduced-motion: reduce`.
-
-> **Why not green for Low?** Green signals "all clear / resolved" in this product's visual vocabulary. A muted slate indicates "lower urgency" without implying the incident is benign or complete.
 
 **Responder dots:** Solid blue (`#2563eb`), 6px diameter, no pulse.
 
@@ -328,80 +241,49 @@ Each icon has a CSS pulse animation. Respects `prefers-reduced-motion: reduce`.
 
 ### 3.4 Map Overlay Toggles (floating toolbar, top-right)
 
-**Primary toggles** (always visible):
-`All | Active Only` (segmented control) `☑ Heatmap`
-
-**Secondary toggles** (collapsed under "More ▼"):
-`☑ Responder Locations` `☑ Provincial Resources` `☑ Municipal Labels`
-
-**Mutual exclusivity:** "All Incidents" and "Active Only" are a segmented control — exactly one is active. All other toggles are additive layers.
-
-**Hit targets:** Minimum 44×44px per toggle with 8px padding to prevent misclicks during rapid interaction.
+☑ All Incidents | ☑ Incident Heatmap | ☑ Active Only | ☑ Responder Locations | ☑ Provincial Resources | ☑ Municipal Labels
 
 _(Municipal boundaries removed per user feedback — operators know the geography.)_
 
 ### 3.5 Triage Panel (Right Side)
 
-**Hidden when no pin selected.** The map occupies 100% width. When a pin is clicked, the panel animates in (CSS transition, 200ms). Map shrinks to accommodate panel.
-
-**Panel width (responsive):**
-
-- `< 1440px viewport`: 380px
-- `1440–1920px viewport`: 420px
-- `> 1920px viewport`: 480px
+**Hidden when no pin selected.** The map occupies 100% width. When a pin is clicked, the panel animates in (CSS transition, 200ms). Map shrinks to 60-75%.
 
 **Panel close:** X handle, `Escape` key, or clicking map background.
 
-**Focus management:** When the panel opens, focus moves to the panel container (`tabIndex={-1}`) so screen reader users know context changed. When closed, focus returns to the pin that triggered it.
-
-**Panel content:**
+**Panel content (no Report ID displayed):**
 
 - Municipality, Barangay
 - Type + Severity badge
 - Description (expandable)
 - Photo thumbnails (click to expand)
 - Reporter contact (with disclosure banner: "Private citizen data — this access is logged")
-- **Action buttons (hierarchy):**
-  - **[Verify]** — primary (solid green, full width). One-click with 3s undo toast.
-  - **[Reject]** — secondary (outlined, full width). Opens confirmation modal with reason dropdown.
-  - **[Dispatch Responder]** — tertiary (distinct style, full width). Hold-to-confirm (1s). Not a peer to Verify/Reject — dispatch follows verification.
+- Action buttons:
+  - **[Verify]** — green, primary action
+  - **[Reject]** — red, opens reason dropdown
+  - **[Dispatch Responder]** — blue, expands dispatch form
 - **Dispatch Form:**
   - Agency selector (dropdown)
   - Responder selector (filtered by agency + availability)
   - Dispatch button
 - **Activity Timeline:** Chronological list of report events with timestamps
-- **Report ID:** Shown as 10px muted caption at panel bottom (e.g., "Report #rep_abc123"). Visible for cross-window coordination but de-emphasized to reduce cognitive load.
 
 ### 3.6 Municipal Drill-Down
 
-**Trigger:** Click a municipality label on the map, or select a row in the dashboard's Municipal Performance Table.
-
-**Behavior:** Map zooms to municipality bounds (zoom 13). A floating info card appears near the municipality centroid:
+Clicking a municipality label (or selecting from dashboard) zooms to municipality level and shows a floating info card:
 
 ```
 ┌────────────────────────────┐
 │ Capalonga Municipality     │
+│ Admin: Santos (On Duty)    │
 │                            │
-│ 🔴 Active Incidents: 3     │
-│ 🟢 Available Responders: 9/15│
-│ ⏱ Avg Response: 18 min ❌  │
-│                            │
-│ 👤 Admin: Santos (On Duty) │
+│ Active Incidents: 3        │
+│ Available Responders: 9/15 │
+│ Avg Response: 18 min ❌    │
 │                            │
 │ [View All] [Contact Admin] │
 └────────────────────────────┘
 ```
-
-**Smart offset:** If the centroid is within 100px of any incident pin, the card offsets by 150px in the least-dense direction to avoid obscuring pins.
-
-**Click-through:** The card container uses `pointer-events: none`; only interactive elements (buttons, links) use `pointer-events: auto`. Clicking empty card area passes through to the map.
-
-**Content priority** (ordered for 2 AM decision-making under pressure):
-
-1. **Active Incidents** — what needs attention NOW
-2. **Available Responders** — can we handle it?
-3. **Avg Response** — are we failing?
-4. **Admin Name** — who to call if needed (least urgent)
 
 ---
 
@@ -414,7 +296,7 @@ App
 │
 ├── DashboardWindow (/dashboard)
 │   ├── CommandHeader
-│   ├── StatusBar (3 metrics + expandable detail)
+│   ├── KpiPanel (6 cards)
 │   ├── MunicipalPerformanceTable
 │   ├── AnomalyAlertPanel
 │   ├── TrendAnalysisPanel (tabbed charts)
@@ -489,9 +371,9 @@ interface CommandCenterState {
   selectedReportId: string | null
 
   // Dashboard UI
+  dashboardView: 'overview' | 'triage' | 'analytics'
   triageFilters: { severity?: Severity; municipality?: string; age?: 'new' | 'stale' }
   chartTimeRange: '24h' | '7d' | '30d'
-  statusBarExpanded: boolean // toggles detail metrics visibility
 
   // Map UI
   mapBounds: LatLngBounds | null
@@ -504,8 +386,8 @@ interface CommandCenterState {
   // Actions
   selectMunicipality: (id: string | null) => void
   selectReport: (id: string | null) => void
+  setDashboardView: (view: DashboardView) => void
   setTriageFilters: (filters: TriageFilters) => void
-  toggleStatusBarExpanded: () => void
   toggleOverlay: (overlayId: string) => void
 }
 ```
@@ -527,7 +409,7 @@ When `navigator.onLine === false`:
 ### 6.2 Data Freshness
 
 - Every Firestore listener updates a `lastUpdatedAt` timestamp in Zustand
-- Status bar shows "Updated Xs ago" label
+- KPI cards show "Updated Xs ago" label
 - If data is >60s stale, show amber indicator
 - If data is >5m stale, show red indicator + "Data may be stale" warning
 
@@ -545,32 +427,16 @@ If a Firestore listener returns permission-denied:
 - Show "Access restricted" inline message
 - Do NOT redirect — the user may have partial access
 
-### 6.5 Mutation Confirmation Gates
-
-**Destructive or high-stakes actions require confirmation:**
-
-| Action      | Gate Type           | Rationale                         |
-| ----------- | ------------------- | --------------------------------- |
-| Verify      | One-click + toast   | Reversible (can reject later)     |
-| Reject      | Confirmation modal  | Permanent — drops citizen report  |
-| Dispatch    | Hold-to-confirm     | Sends responder — human lives     |
-| Bulk Verify | "Verify N reports?" | Batch operations need count guard |
-
-**Undo affordance:** Verify shows a 3-second undo toast. Reject and Dispatch are not undoable by design (they trigger external notifications), so the confirmation gate is the safety net.
-
-**Hold-to-Confirm interaction:** The Dispatch button (in both panel and quick-dispatch) shows a circular fill animation around the button border while held. Release before 1s = cancel. Hold for 1s = confirm and execute. Visual + haptic feedback on confirmation. Prevents accidental dispatches during rapid triage.
-
 ---
 
 ## 7. Accessibility
 
 - **Keyboard navigation:** All tables support arrow keys + Enter to select + action keys
 - **Focus management:** Triage panel gets focus when opened. Modal traps focus.
-- **Screen readers:** `aria-live="polite"` regions for alert announcements. Table rows have `aria-selected`. Map incidents are mirrored in a parallel text list (`aria-label` on each pin + a sidebar list view toggled via keyboard).
+- **Screen readers:** `aria-live="polite"` regions for alert announcements. Table rows have `aria-selected`.
 - **Reduced motion:** Disable pulsing animations when `prefers-reduced-motion: reduce`
 - **Color independence:** Severity indicators use both color AND icon shape (not color alone)
 - **Contrast:** All text meets WCAG AA (4.5:1 minimum)
-- **Audio alerts:** Distinct chime for new high-severity reports. Respects `prefers-reduced-motion` (treat as "no sound" when enabled, or provide visual pulse-only alternative).
 
 ---
 
@@ -589,7 +455,7 @@ If a Firestore listener returns permission-denied:
 - `MunicipalPerformanceTable` — sorting, selection, sync emission
 - `CommandHeader` — notification bell, window open button
 - `ProvincialMap` — pin rendering, clustering, overlay toggles
-- `StatusBar` — alert threshold rendering
+- `KpiPanel` — alert threshold rendering
 
 ### 8.3 Integration Tests
 
@@ -634,45 +500,20 @@ If a Firestore listener returns permission-denied:
 **To add:**
 
 - `leaflet.markercluster` — pin clustering
-- `recharts` — already in `apps/admin-desktop/package.json` (^3.8.1), use for all charts
+- Recharts or Chart.js — charting library
 
 ---
 
 ## 11. Open Questions
 
-1. ~~Should the dashboard triage queue support bulk actions?~~ **Resolved:** Yes — multi-select checkboxes + bulk Verify/Reject with count confirmation.
+1. Should the dashboard triage queue support bulk actions (multi-select + verify all)?
 2. Should anomaly alerts auto-dismiss after a threshold, or require manual dismiss?
 3. Should the map support drawing custom polygons for incident area annotation?
 4. What's the source of municipal boundary GeoJSON — static file or external API?
-5. Should the auto-open map behavior be opt-in or opt-out per operator preference?
-6. Should the audio alert distinguish severity by pitch/tone, or use a single alert sound?
-
-## 12. Onboarding & Contextual Help
-
-### First-Run Experience
-
-- **Shortcut cheat sheet:** Auto-shows on first login (can be dismissed permanently). Accessible anytime via `?`.
-- **Guided tour (optional):** 3-step overlay — (1) "This is your status bar", (2) "Triage queue is your primary action surface", (3) "Open the map window for geographic context".
-
-### Contextual Tooltips
-
-- **Surge Status:** "System pre-warm status for scale events. 'Idle' = normal. 'Active' = functions pre-warmed for high load."
-- **Municipal Issues:** "Count of municipalities with detected anomalies (response time spike, admin gap, etc.)."
-- **Hold-to-Confirm:** On first Dispatch action, show a brief inline hint: "Hold for 1 second to confirm dispatch."
-
-### Terminology Glossary (Inline)
-
-| Term        | Plain Language                                               |
-| ----------- | ------------------------------------------------------------ |
-| Triage      | Review and decide: verify, reject, or dispatch               |
-| Verify      | Confirm the report is real and actionable                    |
-| Dispatch    | Send a responder team to the location                        |
-| Surge       | Period of unusually high report volume                       |
-| Break-Glass | Emergency override for locked accounts (deferred to Phase 4) |
 
 ---
 
-## 13. Deferred to Future Phases
+## 12. Deferred to Future Phases
 
 | Feature                     | Phase                               |
 | --------------------------- | ----------------------------------- |
