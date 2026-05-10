@@ -6,16 +6,12 @@ interface Props {
   onSelectMunicipality: (municipality: string) => void
 }
 
-function parseMinutesFromResponseTime(value: string): number {
-  const match = /(\d+)/.exec(value)
-  return match?.[1] ? Number.parseInt(match[1], 10) : 0
-}
-
-function responseTimeColor(avgResponseTime: string): string {
-  const minutes = parseMinutesFromResponseTime(avgResponseTime)
-  if (minutes < 12) return '#22c55e'
-  if (minutes <= 20) return '#c77600'
-  return '#a73400'
+function responseTimeIndicator(avgResponseTime: string): string {
+  const match = /(\d+)/.exec(avgResponseTime)
+  const minutes = match?.[1] ? Number.parseInt(match[1], 10) : 0
+  if (minutes < 12) return 'good'
+  if (minutes <= 20) return 'warning'
+  return 'bad'
 }
 
 export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props) {
@@ -32,42 +28,19 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
   }
 
   const sorted =
-    sortKey === null
-      ? data
-      : [...data].sort((a, b) => {
-          let diff = 0
-          if (sortKey === 'activeIncidents') {
-            diff = a.activeIncidents - b.activeIncidents
-          } else if (sortKey === 'municipality') {
-            diff = a.municipality.localeCompare(b.municipality)
-          } else if (sortKey === 'avgResponseTime') {
-            diff =
-              parseMinutesFromResponseTime(a.avgResponseTime) -
-              parseMinutesFromResponseTime(b.avgResponseTime)
-          }
+    sortKey === 'activeIncidents'
+      ? [...data].sort((a, b) => {
+          const diff = a.activeIncidents - b.activeIncidents
           return sortAsc ? diff : -diff
         })
-
-  function ariaSort(key: string): 'ascending' | 'descending' | 'none' {
-    if (sortKey !== key) return 'none'
-    return sortAsc ? 'ascending' : 'descending'
-  }
+      : data
 
   return (
     <table>
       <thead>
         <tr>
-          <th aria-sort={ariaSort('municipality')}>
-            <button
-              type="button"
-              onClick={() => {
-                handleHeaderClick('municipality')
-              }}
-            >
-              Municipality
-            </button>
-          </th>
-          <th aria-sort={ariaSort('activeIncidents')}>
+          <th>Municipality</th>
+          <th>
             <button
               type="button"
               onClick={() => {
@@ -78,16 +51,7 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
             </button>
           </th>
           <th>Responders</th>
-          <th aria-sort={ariaSort('avgResponseTime')}>
-            <button
-              type="button"
-              onClick={() => {
-                handleHeaderClick('avgResponseTime')
-              }}
-            >
-              Avg Response
-            </button>
-          </th>
+          <th>Avg Response</th>
           <th>Admin</th>
         </tr>
       </thead>
@@ -95,22 +59,15 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
         {sorted.map((row) => (
           <tr
             key={row.municipality}
-            tabIndex={0}
             onClick={() => {
               onSelectMunicipality(row.municipality)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onSelectMunicipality(row.municipality)
-              }
             }}
             style={{ cursor: 'pointer' }}
           >
             <td>{row.municipality}</td>
             <td>{row.activeIncidents}</td>
             <td>{row.activeResponders}</td>
-            <td style={{ color: responseTimeColor(row.avgResponseTime) }}>{row.avgResponseTime}</td>
+            <td className={responseTimeIndicator(row.avgResponseTime)}>{row.avgResponseTime}</td>
             <td>{row.adminOnDuty ? 'On Duty' : 'No Shift'}</td>
           </tr>
         ))}
