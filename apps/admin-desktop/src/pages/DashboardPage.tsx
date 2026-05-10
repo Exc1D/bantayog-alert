@@ -5,16 +5,14 @@ import { TriageQueueTable } from '../components/TriageQueueTable'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ConfirmationModal } from '../components/ConfirmationModal'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import type { Report } from '../types'
 
 export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
-  const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [lastUpdatedAt] = useState(() => Date.now())
-  const { selectReport, selectedReportId, setLastSyncMessage } = useCommandCenterStore()
+  const { selectReport, setLastSyncMessage } = useCommandCenterStore()
 
   const [reports] = useState<Report[]>([
     // Mock data for now; will be replaced with Firestore subscription
@@ -91,79 +89,9 @@ export default function DashboardPage() {
     setRejectTargetId(null)
   }, [rejectTargetId, setLastSyncMessage])
 
-  const handleBulkVerify = useCallback(
-    (ids: Set<string>) => {
-      if (ids.size === 0) return
-      setLastSyncMessage({
-        type: 'triage:bulk-action',
-        reportIds: Array.from(ids),
-        action: 'verified',
-      })
-      setSelectedIds(new Set())
-      // TODO: Call bulk verify endpoint
-    },
-    [setLastSyncMessage],
-  )
-
-  const handleBulkReject = useCallback(
-    (ids: Set<string>) => {
-      if (ids.size === 0) return
-      setLastSyncMessage({
-        type: 'triage:bulk-action',
-        reportIds: Array.from(ids),
-        action: 'rejected',
-      })
-      setSelectedIds(new Set())
-      // TODO: Call bulk reject endpoint
-    },
-    [setLastSyncMessage],
-  )
-
   const openMapWindow = useCallback(() => {
     window.open('/map', 'bantayog-map', 'width=1200,height=900')
   }, [])
-
-  useKeyboardShortcuts([
-    { key: 'm', handler: openMapWindow },
-    {
-      key: 'v',
-      handler: () => {
-        if (selectedReportId) {
-          handleVerify(selectedReportId)
-        }
-      },
-    },
-    {
-      key: 'v',
-      shift: true,
-      handler: () => {
-        handleBulkVerify(selectedIds)
-      },
-    },
-    {
-      key: 'r',
-      handler: () => {
-        if (selectedReportId) {
-          handleReject(selectedReportId)
-        }
-      },
-    },
-    {
-      key: 'Escape',
-      handler: () => {
-        selectReport(null)
-        setSelectedIds(new Set())
-        setRejectModalOpen(false)
-        setHelpModalOpen(false)
-      },
-    },
-    {
-      key: '?',
-      handler: () => {
-        setHelpModalOpen(true)
-      },
-    },
-  ])
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
@@ -174,16 +102,7 @@ export default function DashboardPage() {
         notificationCount={3}
         onOpenMap={openMapWindow}
       />
-      <StatusBar
-        activeIncidents={reports.filter((r) => r.status === 'PENDING').length}
-        avgResponseTime={0}
-        pendingTriage={reports.length}
-        resolvedToday={0}
-        municipalitiesWithIssues={{
-          withIssues: new Set(reports.map((r) => r.municipality)).size,
-          total: 12,
-        }}
-      />
+      <StatusBar activeIncidents={47} avgResponseTime={12} pendingTriage={reports.length} />
       <main className="flex-1 overflow-auto p-4">
         <h2 className="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">
           Triage Queue
@@ -196,8 +115,6 @@ export default function DashboardPage() {
             onSelectAll={selectAll}
             onVerify={handleVerify}
             onReject={handleReject}
-            onBulkVerify={handleBulkVerify}
-            onBulkReject={handleBulkReject}
             onDispatch={() => {
               /* Dashboard dispatch opens map */
             }}
@@ -216,19 +133,6 @@ export default function DashboardPage() {
         onConfirm={confirmReject}
         onCancel={() => {
           setRejectModalOpen(false)
-        }}
-      />
-      <ConfirmationModal
-        open={helpModalOpen}
-        title="Keyboard Shortcuts"
-        message="M — Open map window | V — Verify focused report | Shift+V — Verify selected | R — Reject focused | Escape — Clear selection | ? — Show this help"
-        confirmLabel="Got it"
-        confirmVariant="primary"
-        onConfirm={() => {
-          setHelpModalOpen(false)
-        }}
-        onCancel={() => {
-          setHelpModalOpen(false)
         }}
       />
     </div>
