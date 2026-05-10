@@ -38,9 +38,7 @@ export function MunicipalDrillDown({ data, onClose, onViewAll, onContactAdmin }:
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-[var(--color-text-primary)]">
-            {data.totalResponders != null
-              ? `${String(data.activeResponders)}/${String(data.totalResponders)}`
-              : data.activeResponders}
+            {data.activeResponders}
           </span>
           <span className="text-xs text-[var(--color-text-secondary)]">Available Responders</span>
         </div>
