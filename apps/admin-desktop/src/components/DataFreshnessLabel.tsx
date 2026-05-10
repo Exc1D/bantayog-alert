@@ -24,7 +24,10 @@ function statusColor(seconds: number): string {
 }
 
 export function DataFreshnessLabel({ lastUpdatedAt }: Props) {
-  const [seconds, setSeconds] = useState(0)
+  const [seconds, setSeconds] = useState(() => {
+    const elapsed = (Date.now() - lastUpdatedAt) / 1000
+    return Number.isFinite(elapsed) ? Math.max(0, Math.floor(elapsed)) : 0
+  })
 
   useEffect(() => {
     const update = () => {
@@ -43,8 +46,8 @@ export function DataFreshnessLabel({ lastUpdatedAt }: Props) {
     <div className="flex items-center gap-2">
       <span
         className={`inline-block h-2 w-2 rounded-full ${statusColor(seconds)}`}
-        role="status"
-        aria-label={formatElapsed(seconds)}
+        aria-hidden="true"
+        data-testid="freshness-dot"
       />
       <span className="text-xs text-[var(--color-text-secondary)]">{formatElapsed(seconds)}</span>
     </div>

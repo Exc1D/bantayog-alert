@@ -1,10 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 
 describe('DashboardPage', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   beforeEach(() => {
     useCommandCenterStore.setState({
       selectedMunicipalityId: null,
@@ -31,7 +35,6 @@ describe('DashboardPage', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     fireEvent.keyDown(window, { key: 'm' })
     expect(openSpy).toHaveBeenCalledWith('/map', 'bantayog-map', 'width=1200,height=900')
-    openSpy.mockRestore()
   })
 
   it('ignores shortcuts when input is focused', () => {
@@ -46,7 +49,6 @@ describe('DashboardPage', () => {
     screen.getByTestId('focus-trap').focus()
     fireEvent.keyDown(window, { key: 'm' })
     expect(openSpy).not.toHaveBeenCalled()
-    openSpy.mockRestore()
   })
 
   it('verifies focused report when V key pressed', () => {

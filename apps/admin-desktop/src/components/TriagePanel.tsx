@@ -81,12 +81,8 @@ export function TriagePanel({ report, onClose, onVerify, onReject, onDispatch }:
     setHoldProgress(0)
   }
 
-  const width =
-    typeof window !== 'undefined' && window.innerWidth >= 1920
-      ? 480
-      : window.innerWidth >= 1440
-        ? 420
-        : 380
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 0
+  const width = screenWidth >= 1920 ? 480 : screenWidth >= 1440 ? 420 : 380
 
   return (
     <>

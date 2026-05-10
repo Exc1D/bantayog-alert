@@ -66,15 +66,36 @@ export function IncidentLayer({ reports, selectedReportId, onPinClick }: Props) 
     markersRef.current = []
 
     reports.forEach((report) => {
-      if (!Number.isFinite(report.latitude) || !Number.isFinite(report.longitude)) return
-      const marker = L.marker([report.latitude, report.longitude], {
-        icon: createPinIcon(report.type, report.severity, report.id === selectedReportId),
-      })
-      marker.on('click', () => {
-        onPinClick(report.id)
-      })
-      marker.addTo(map)
-      markersRef.current.push(marker)
+      // Validate coordinates at the boundary — assume external input may be broken
+      if (
+        typeof report.latitude !== 'number' ||
+        typeof report.longitude !== 'number' ||
+        !Number.isFinite(report.latitude) ||
+        !Number.isFinite(report.longitude) ||
+        report.latitude < -90 ||
+        report.latitude > 90 ||
+        report.longitude < -180 ||
+        report.longitude > 180
+      ) {
+        console.warn(`Invalid coordinates for report ${report.id}:`, {
+          lat: report.latitude,
+          lng: report.longitude,
+        })
+        return
+      }
+
+      try {
+        const marker = L.marker([report.latitude, report.longitude], {
+          icon: createPinIcon(report.type, report.severity, report.id === selectedReportId),
+        })
+        marker.on('click', () => {
+          onPinClick(report.id)
+        })
+        marker.addTo(map)
+        markersRef.current.push(marker)
+      } catch (error) {
+        console.error(`Failed to create marker for report ${report.id}:`, error)
+      }
     })
 
     return () => {

@@ -87,6 +87,9 @@ describe('useWindowSync', () => {
     const handler = vi.fn()
     renderHook(() => useWindowSync(handler), { wrapper: WindowSyncProvider })
 
+    // Ensure the BroadcastChannel mock was actually initialized.
+    expect(lastBc).toBeDefined()
+
     // Simulate a peer tab posting arbitrary garbage on the same channel.
     act(() => {
       lastBc?.emit({ type: 'unknown', foo: 'bar' } as unknown as SyncMessage)

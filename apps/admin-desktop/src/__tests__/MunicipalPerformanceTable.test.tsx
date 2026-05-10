@@ -104,7 +104,10 @@ describe('MunicipalPerformanceTable', () => {
     const rows = screen.getAllByRole('row')
     const dataRow = rows.find((r) => r.textContent.includes('Daet'))
     expect(dataRow).toBeDefined()
-    await user.type(dataRow!, '{Enter}')
+    await user.click(dataRow!)
+    onSelect.mockClear()
+    await user.keyboard('{Enter}')
+    expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith('Daet')
   })
 

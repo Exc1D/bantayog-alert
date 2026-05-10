@@ -28,14 +28,14 @@ describe('DataFreshnessLabel', () => {
     render(<DataFreshnessLabel lastUpdatedAt={twoMinutesAgo} />)
     expect(screen.getByText('Updated 2m ago')).toBeInTheDocument()
     // Amber status indicator
-    expect(screen.getByRole('status')).toHaveClass('bg-amber-500')
+    expect(screen.getByTestId('freshness-dot')).toHaveClass('bg-amber-500')
   })
 
   it('renders red warning for >5 min stale', () => {
     const tenMinutesAgo = Date.now() - 600_000
     render(<DataFreshnessLabel lastUpdatedAt={tenMinutesAgo} />)
     expect(screen.getByText('Updated 10m ago — data may be stale')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveClass('bg-red-500')
+    expect(screen.getByTestId('freshness-dot')).toHaveClass('bg-red-500')
   })
 
   it('updates elapsed time every 10 seconds', () => {
