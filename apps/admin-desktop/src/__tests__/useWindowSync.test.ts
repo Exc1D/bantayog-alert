@@ -106,12 +106,10 @@ describe('useWindowSync', () => {
     renderHook(() => useWindowSync(handler), { wrapper: WindowSyncProvider })
 
     const dispatch = (newValue: string | null) => {
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: 'bantayog-sync-fallback',
-          newValue,
-        }),
-      )
+      const ev = new StorageEvent('storage')
+      Object.defineProperty(ev, 'key', { value: 'bantayog-sync-fallback' })
+      Object.defineProperty(ev, 'newValue', { value: newValue })
+      window.dispatchEvent(ev)
     }
 
     act(() => {
@@ -137,12 +135,12 @@ describe('useWindowSync', () => {
 
     const msg: SyncMessage = { type: 'select:report', reportId: 'r9', source: 'dashboard' }
     act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: 'bantayog-sync-fallback',
-          newValue: JSON.stringify({ data: msg, timestamp: Date.now() }),
-        }),
-      )
+      const ev = new StorageEvent('storage')
+      Object.defineProperty(ev, 'key', { value: 'bantayog-sync-fallback' })
+      Object.defineProperty(ev, 'newValue', {
+        value: JSON.stringify({ data: msg, timestamp: Date.now() }),
+      })
+      window.dispatchEvent(ev)
     })
 
     expect(handler).toHaveBeenCalledWith(msg)
