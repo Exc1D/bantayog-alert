@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
-import { WifiOff } from 'lucide-react'
+import { WifiOff, AlertTriangle } from 'lucide-react'
 
-export function OfflineBanner() {
+interface Props {
+  error?: string | null
+}
+
+export function OfflineBanner({ error }: Props) {
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
   useEffect(() => {
@@ -19,11 +23,23 @@ export function OfflineBanner() {
     }
   }, [])
 
+  if (error) {
+    return (
+      <div
+        className="flex items-center justify-center gap-2 bg-[var(--color-danger)] px-4 py-2 text-sm text-white"
+        role="alert"
+      >
+        <AlertTriangle className="h-4 w-4" />
+        {error}
+      </div>
+    )
+  }
+
   if (!isOffline) return null
 
   return (
     <div
-      className="flex items-center justify-center gap-2 bg-[var(--color-danger)] px-4 py-2 text-sm text-white"
+      className="flex items-center justify-center gap-2 bg-[var(--color-warning)] px-4 py-2 text-sm text-white"
       role="alert"
     >
       <WifiOff className="h-4 w-4" />

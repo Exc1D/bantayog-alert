@@ -1,10 +1,11 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { type ReactNode, useEffect, useRef, useCallback } from 'react'
 import { X } from 'lucide-react'
 
 interface Props {
   open: boolean
   title: string
   message: string
+  children?: ReactNode
   confirmLabel: string
   confirmVariant?: 'danger' | 'primary'
   onConfirm: () => void
@@ -15,6 +16,7 @@ export function ConfirmationModal({
   open,
   title,
   message,
+  children,
   confirmLabel,
   confirmVariant = 'danger',
   onConfirm,
@@ -70,6 +72,7 @@ export function ConfirmationModal({
           </button>
         </div>
         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">{message}</p>
+        {children}
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onCancel}
