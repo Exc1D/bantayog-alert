@@ -34,8 +34,7 @@ service cloud.firestore {
     }
     function adminOf(muniId) {
       return (isMuniAdmin() && myMunicipality() == muniId)
-          || isSuperadmin()
-          || (isAgencyAdmin() && muniId in permittedMunis());
+          || (isSuperadmin() && muniId in permittedMunis());
     }
     function canReadReportDoc(data) {
       return ('visibilityClass' in data && data.visibilityClass == 'public_alertable')
@@ -183,8 +182,7 @@ service cloud.firestore {
 
     match /report_ops/{r} {
       allow get: if canReadReportOps(resource.data);
-      allow list: if isSuperadmin()
-                  || ('municipalityId' in resource.data && adminOf(resource.data.municipalityId))
+      allow list: if adminOf(resource.data.municipalityId)
                   || (isAgencyAdmin()
                       && ('agencyIds' in resource.data)
                       && resource.data.agencyIds is list
