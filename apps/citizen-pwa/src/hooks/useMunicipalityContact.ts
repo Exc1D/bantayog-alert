@@ -5,7 +5,6 @@ import { db, hasFirebaseConfig } from '../services/firebase.js'
 export interface MunicipalityContact {
   label: string
   hotline: string
-  smsShortCode: string
 }
 
 // Project-wide fallback shown when:
@@ -15,13 +14,11 @@ export interface MunicipalityContact {
 export const DEFAULT_CONTACT: MunicipalityContact = {
   label: 'Daet MDRRMO',
   hotline: '(054) 721-1216',
-  smsShortCode: '2933',
 }
 
 interface MunicipalityDocLike {
   mdrrmoLabel?: unknown
   mdrrmoHotline?: unknown
-  mdrrmoSmsShortCode?: unknown
   label?: unknown
 }
 
@@ -35,8 +32,7 @@ function toContact(data: MunicipalityDocLike | undefined): MunicipalityContact {
   if (!data) return DEFAULT_CONTACT
   const label = pickString(data.mdrrmoLabel) ?? `${pickString(data.label) ?? 'MDRRMO'} MDRRMO`
   const hotline = pickString(data.mdrrmoHotline) ?? DEFAULT_CONTACT.hotline
-  const smsShortCode = pickString(data.mdrrmoSmsShortCode) ?? DEFAULT_CONTACT.smsShortCode
-  return { label, hotline, smsShortCode }
+  return { label, hotline }
 }
 
 /**
