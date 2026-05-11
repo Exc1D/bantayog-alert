@@ -77,58 +77,6 @@ export const callables = {
       functions,
       'acceptShiftHandoff',
     )(payload).then((r) => r.data),
-  massAlertReachPlanPreview: (payload: {
-    targetScope: { municipalityIds: string[] }
-    message: string
-  }) =>
-    httpsCallable<
-      typeof payload,
-      {
-        route: 'direct' | 'ndrrmc_escalation'
-        fcmCount: number
-        smsCount: number
-        segmentCount: number
-        unicodeWarning: boolean
-      }
-    >(
-      functions,
-      'massAlertReachPlanPreview',
-    )(payload).then((r) => r.data),
-  sendMassAlert: (payload: {
-    reachPlan: {
-      route: 'direct' | 'ndrrmc_escalation'
-      fcmCount: number
-      smsCount: number
-      segmentCount: number
-      unicodeWarning: boolean
-    }
-    message: string
-    targetScope: { municipalityIds: string[] }
-    idempotencyKey: string
-  }) =>
-    httpsCallable<typeof payload, { requestId: string }>(
-      functions,
-      'sendMassAlert',
-    )(payload).then((r) => r.data),
-  requestMassAlertEscalation: (payload: {
-    message: string
-    targetScope: { municipalityIds: string[] }
-    evidencePack?: { linkedReportIds: string[]; pagasaSignalRef?: string; notes?: string }
-    idempotencyKey: string
-  }) =>
-    httpsCallable<typeof payload, { requestId: string }>(
-      functions,
-      'requestMassAlertEscalation',
-    )(payload).then((r) => r.data),
-  forwardMassAlertToNDRRMC: (payload: {
-    requestId: string
-    forwardMethod: 'email' | 'sms' | 'portal'
-    ndrrmcRecipient: string
-  }) =>
-    httpsCallable<typeof payload, { success: boolean }>(
-      functions,
-      'forwardMassAlertToNDRRMC',
-    )(payload).then((r) => r.data),
   suspendResponder: (payload: { uid: string; idempotencyKey: IdempotencyKey }) =>
     httpsCallable<typeof payload, { uid: string; status: 'suspended' }>(
       functions,
@@ -148,13 +96,6 @@ export const callables = {
       functions,
       'bulkAvailabilityOverride',
     )(payload).then((r) => r.data),
-  initiateBreakGlass: (payload: { codeA: string; codeB: string; reason: string }) =>
-    httpsCallable<typeof payload, { sessionId: string }>(
-      functions,
-      'initiateBreakGlass',
-    )(payload).then((r) => r.data),
-  deactivateBreakGlass: () =>
-    httpsCallable<Record<string, never>>(functions, 'deactivateBreakGlass')({}).then((r) => r.data),
   declareEmergency: (payload: {
     hazardType: string
     affectedMunicipalityIds: string[]
@@ -231,16 +172,6 @@ export const callables = {
       functions,
       'resetUserTotp',
     )(payload).then((r) => r.data),
-  replayDeadLetter: () =>
-    httpsCallable<Record<string, never>, { replayed: number }>(
-      functions,
-      'replayAuditDeadLetter',
-    )({}).then((r) => r.data),
-  prewarmSurge: (payload: { level: 'light' | 'heavy' }) =>
-    httpsCallable<typeof payload, { warmed: number }>(
-      functions,
-      'prewarmSurge',
-    )(payload).then((r) => r.data),
   requestAgencyAssistance: (payload: {
     reportId: string
     agencyId: string
@@ -300,15 +231,5 @@ export const callables = {
     httpsCallable<typeof payload, { status: ReportStatus; reportId: string }>(
       functions,
       'reopenReport',
-    )(payload).then((r) => r.data),
-  requestProvincialEscalation: (payload: {
-    dispatchId: string
-    reason: string
-    notes?: string
-    idempotencyKey: IdempotencyKey
-  }) =>
-    httpsCallable<typeof payload, { escalationId: string }>(
-      functions,
-      'requestProvincialEscalation',
     )(payload).then((r) => r.data),
 }

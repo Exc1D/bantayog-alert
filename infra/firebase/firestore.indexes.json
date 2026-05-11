@@ -171,31 +171,6 @@
       ]
     },
     {
-      "collectionGroup": "sms_outbox",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "providerId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "sms_outbox",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "purpose", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "sms_outbox",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "queuedAt", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "report_events",
       "queryScope": "COLLECTION",
       "fields": [

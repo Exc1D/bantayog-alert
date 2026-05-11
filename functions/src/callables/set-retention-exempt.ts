@@ -5,7 +5,7 @@ import { requireAuth, requireMfaAuth } from './https-error.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
 
 const inputSchema = z.object({
-  collection: z.enum(['reports', 'report_private', 'report_ops', 'sms_inbox']),
+  collection: z.enum(['reports', 'report_private', 'report_ops']),
   documentId: z.string().min(1),
   exempt: z.boolean(),
   reason: z.string().min(1),

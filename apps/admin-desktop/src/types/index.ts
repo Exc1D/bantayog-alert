@@ -162,17 +162,6 @@ export interface SystemHealthMetric {
   queueDepth?: number
 }
 
-export interface SmsOutboxEntry {
-  id: string
-  recipient: string
-  message: string
-  status: 'PENDING' | 'SENT' | 'FAILED' | 'DELIVERED'
-  provider: string
-  sentAt?: string
-  deliveredAt?: string
-  errorMessage?: string
-}
-
 export interface ProviderHealth {
   name: string
   status: 'HEALTHY' | 'DEGRADED' | 'DOWN' | 'CIRCUIT_OPEN'
