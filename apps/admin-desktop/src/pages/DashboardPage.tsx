@@ -374,6 +374,7 @@ export default function DashboardPage() {
         onOpenMap={openMapWindow}
         audioEnabled={audioEnabled}
         onToggleAudio={toggleAudio}
+        onShowKeyboardShortcuts={() => setHelpModalOpen(true)}
       />
       <StatusBar activeIncidents={activeCount} avgResponseTime={12} pendingTriage={pendingCount} />
       <main className="flex-1 overflow-auto p-4">
@@ -388,58 +389,58 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Triage Queue
-          </h2>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {reports.length} report{reports.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] shadow-sm">
-          <TriageQueueTable
-            reports={reports.map(mapReportDocToReport)}
-            selectedIds={selectedIds}
-            loadingIds={loadingActions}
-            onToggleSelect={toggleSelect}
-            onSelectAll={selectAll}
-            onVerify={(id) => {
-              void handleVerify(id)
-            }}
-            onReject={(id) => {
-              handleReject(id)
-            }}
-            onBulkVerify={(ids) => {
-              handleBulkVerify(ids)
-            }}
-            onBulkReject={handleBulkReject}
-            onDispatch={() => {
-              openMapWindow()
-            }}
-            onRowClick={handleRowClick}
-          />
-        </div>
-        <div className="mt-6">
-          <AnomalyAlertPanel
-            alerts={alerts
-              .map(mapAlertDocToAnomalyAlert)
-              .filter((a): a is AnomalyAlert => a !== null)}
-            onDismiss={() => {
-              /* TODO: wire dismissAnomaly callable */
-            }}
-          />
-        </div>
-        <div className="mt-6">
-          <MunicipalPerformanceTable
-            data={municipalData}
-            onSelectMunicipality={(m) => {
-              setSuppressNextBroadcast(true)
-              sendSync({ type: 'select:municipality', municipalityId: m, source: 'dashboard' })
-            }}
-          />
-        </div>
-        <div className="mt-6">
-          <TrendAnalysisPanel reports={reports} reportOps={reportOps} responders={responders} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
+          <div className="min-w-0">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+                Triage Queue
+              </h2>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                {reports.length} report{reports.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] shadow-sm">
+              <TriageQueueTable
+                reports={reports.map(mapReportDocToReport)}
+                selectedIds={selectedIds}
+                loadingIds={loadingActions}
+                onToggleSelect={toggleSelect}
+                onSelectAll={selectAll}
+                onVerify={(id) => {
+                  void handleVerify(id)
+                }}
+                onReject={(id) => {
+                  handleReject(id)
+                }}
+                onBulkVerify={(ids) => {
+                  handleBulkVerify(ids)
+                }}
+                onBulkReject={handleBulkReject}
+                onDispatch={() => {
+                  openMapWindow()
+                }}
+                onRowClick={handleRowClick}
+              />
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col gap-6">
+            <AnomalyAlertPanel
+              alerts={alerts
+                .map(mapAlertDocToAnomalyAlert)
+                .filter((a): a is AnomalyAlert => a !== null)}
+              onDismiss={() => {
+                /* TODO: wire dismissAnomaly callable */
+              }}
+            />
+            <MunicipalPerformanceTable
+              data={municipalData}
+              onSelectMunicipality={(m) => {
+                setSuppressNextBroadcast(true)
+                sendSync({ type: 'select:municipality', municipalityId: m, source: 'dashboard' })
+              }}
+            />
+            <TrendAnalysisPanel reports={reports} />
+          </div>
         </div>
       </main>
       <ConfirmationModal

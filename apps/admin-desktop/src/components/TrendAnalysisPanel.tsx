@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
-import type { ReportOpsDoc } from '../hooks/useFirestoreListeners'
 
 const TABS = [
   { id: 'volume', label: 'Volume' },
@@ -26,8 +25,6 @@ interface Props {
     status: string
     description: string
   }[]
-  reportOps: ReportOpsDoc[]
-  responders: [string, unknown][]
 }
 
 function isWithinTimeRange(createdAt: string, range: (typeof TIME_RANGES)[number]['id']): boolean {
@@ -44,6 +41,19 @@ export function TrendAnalysisPanel({ reports }: Props) {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('volume')
   const [timeRange, setTimeRange] = useState<(typeof TIME_RANGES)[number]['id']>('7d')
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!timeDropdownOpen) return
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setTimeDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [timeDropdownOpen])
 
   const chartLabel = TABS.find((t) => t.id === activeTab)?.label ?? 'Chart'
   const timeLabel = TIME_RANGES.find((t) => t.id === timeRange)?.label ?? ''
@@ -72,7 +82,7 @@ export function TrendAnalysisPanel({ reports }: Props) {
             </button>
           ))}
         </div>
-        <div className="relative ml-auto">
+        <div className="relative ml-auto" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => {

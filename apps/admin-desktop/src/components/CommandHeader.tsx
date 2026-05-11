@@ -1,4 +1,4 @@
-import { Bell, Map, Volume2, VolumeX } from 'lucide-react'
+import { Bell, Keyboard, Map, Volume2, VolumeX } from 'lucide-react'
 import { LiveIndicator } from './LiveIndicator'
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   onToggleAudio?: () => void
   onOpenMap?: () => void
   onShowNotifications?: () => void
+  onShowKeyboardShortcuts?: () => void
 }
 
 export function CommandHeader({
@@ -19,6 +20,7 @@ export function CommandHeader({
   onToggleAudio,
   onOpenMap,
   onShowNotifications,
+  onShowKeyboardShortcuts,
 }: Props) {
   return (
     <header className="flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
@@ -52,6 +54,17 @@ export function CommandHeader({
                 {notificationCount}
               </span>
             )}
+          </button>
+        )}
+        {onShowKeyboardShortcuts && (
+          <button
+            onClick={onShowKeyboardShortcuts}
+            className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/5"
+            aria-label="Keyboard shortcuts"
+            title="Press ? for shortcuts"
+          >
+            <Keyboard className="h-3.5 w-3.5" />
+            Shortcuts
           </button>
         )}
         {onOpenMap && (
