@@ -50,7 +50,7 @@ export async function setRetentionExemptCore(
 export const setRetentionExempt = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid, claims } = requireAuth(request, ['superadmin'])
+    const { uid, claims } = requireAuth(request, ['provincial_superadmin'])
     requireMfaAuth(request)
     const permittedMunicipalityIds = Array.isArray(claims.permittedMunicipalityIds)
       ? (claims.permittedMunicipalityIds as unknown[]).filter(
