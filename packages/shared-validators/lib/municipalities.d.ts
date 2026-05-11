@@ -7,13 +7,8 @@ export declare const municipalityDocSchema: z.ZodObject<{
         lat: z.ZodNumber;
         lng: z.ZodNumber;
     }, z.core.$strict>;
-    defaultSmsLocale: z.ZodOptional<z.ZodEnum<{
-        tl: "tl";
-        en: "en";
-    }>>;
     mdrrmoLabel: z.ZodOptional<z.ZodString>;
     mdrrmoHotline: z.ZodOptional<z.ZodString>;
-    mdrrmoSmsShortCode: z.ZodOptional<z.ZodString>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export type MunicipalityDoc = z.infer<typeof municipalityDocSchema>;
