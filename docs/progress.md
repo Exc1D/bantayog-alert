@@ -161,6 +161,8 @@ Final gap from the original 5-point admin-desktop plan — `SmsPage.tsx` now has
 - ✅ `useSmsAudit` hook already existed — no changes needed
 - **Gate:** 9/9 sms-page tests pass, 90/90 admin-desktop tests pass, lint clean, typecheck clean
 
+> **NOTE (2026-05-11):** The SMS features mentioned in this section (SMS audit page, outbox/inbox/provider health) were removed in commit `9f520d99` as part of the feature deferral decision. Entries are retained for historical accuracy but the features are no longer present in the codebase.
+
 **Admin Desktop -- Phase 4: System Health Controls (2026-05-05)**
 Dead-letter replay and prewarm surge callables implemented with full TDD coverage.
 
@@ -170,6 +172,8 @@ Dead-letter replay and prewarm surge callables implemented with full TDD coverag
 - ✅ `SystemHealthPage.tsx` wired -- dead-letter replay button + light/heavy pre-warm buttons with loading states and result display
 - ✅ `callables.ts` frontend wrappers for `replayDeadLetter` and `prewarmSurge`
 - **Gate:** functions 17/17 new tests pass, lint clean, typecheck clean; admin-desktop 88/88 tests pass, lint clean, typecheck clean
+
+> **NOTE (2026-05-11):** The `prewarmSurge` callable and related mass-alert infrastructure mentioned in this section were removed in commit `9f520d99` as part of the feature deferral decision. The `replayAuditDeadLetter` callable remains. Entries are retained for historical accuracy but the removed features are no longer present in the codebase.
 
 ## Current Status (2026-05-04)
 
@@ -211,6 +215,8 @@ Three root-cause bugs fixed:
 **Phase 7 -- Provincial Superadmin + NDRRMC**
 7.A (Security Callables) DONE | 7.B (Superadmin UI) DONE | 7.C (Drill & Verification) IN PROGRESS (TOTP enrollment audit in progress)
 
+> **NOTE (2026-05-11):** NDRRMC escalation features mentioned in this section were removed in commit `9f520d99` as part of the feature deferral decision. Entries are retained for historical accuracy but the features are no longer present in the codebase.
+
 **Phase 8C -- RA 10173 Erasure & Anonymization DONE**
 All 8 tasks complete. **Production blocker:** Pre-registration SMS data lacks erasure path (needs UID linkage at registration).
 
@@ -244,7 +250,7 @@ All 10 tasks complete. Residual risks: E2E dispatch progression, native push tok
 
 ### UX Bug Fixes — 10 Issues (2026-05-03)
 
-- **10 issues fixed:** TrackingScreen nav header (back + home), RevealSheet SMS iOS fix, button text → "Create Account", mt-4 spacing, FilterBar z-[800] above Leaflet, municipality chips filter (replaces severity/window), saveReport() wiring so reports appear on map + Profile, bantayog:report-saved event for live refresh, ProfileTab "Check report status" CTA
+- **10 issues fixed:** TrackingScreen nav header (back + home), RevealSheet iOS fix, button text → "Create Account", mt-4 spacing, FilterBar z-[800] above Leaflet, municipality chips filter (replaces severity/window), saveReport() wiring so reports appear on map + Profile, bantayog:report-saved event for live refresh, ProfileTab "Check report status" CTA
 - **FeedTab** also updated to municipality filter for consistency
 - **Gate:** `lint typecheck` clean, vitest 330/330 pass
 
@@ -296,23 +302,25 @@ All 7 clusters complete:
 
 ## Older Completed Phases
 
-| Phase                             | Status | Notes                                                                                                                                                            |
-| --------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 9: Citizen PWA Redesign     | DONE   | 18 tasks -- Feed/Profile/Alerts tabs, RevealSheet, Toggle, Toast, offline banner, auth-aware ProfileTab, RegisterPage, SettingsPage, routes, data export wrapper |
-| Phase 8C: RA 10173 Erasure        | DONE   | 8 tasks -- callables, sweeps, rules, delete-account flow                                                                                                         |
-| Phase 7.A: Security Callables     | DONE   | 7 callables + Firestore rules                                                                                                                                    |
-| Phase 7.B: Superadmin UI          | DONE   | Analytics dashboard, NDRRMC drawer, emergency declaration, break-glass, TOTP enrollment                                                                          |
-| Phase 6: Responder App            | DONE   | Native foundation, push, telemetry, location projection, field UX, handoffs                                                                                      |
-| Phase 5: Cluster C + PRE-C        | DONE   | Mass alerts, NDRRMC escalation, analytics                                                                                                                        |
-| Phase 4b: SMS Inbound Pipeline    | DONE   | Globe Labs webhook, parser, fuzzy barangay matching                                                                                                              |
-| Phase 3b: Admin Triage + Dispatch | DONE   | Code complete (staging UI blocked by cert issues)                                                                                                                |
-| Phase 0: Foundation               | DONE   | All tooling passing                                                                                                                                              |
+| Phase                             | Status   | Notes                                                                                                                                                            |
+| --------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 9: Citizen PWA Redesign     | DONE     | 18 tasks -- Feed/Profile/Alerts tabs, RevealSheet, Toggle, Toast, offline banner, auth-aware ProfileTab, RegisterPage, SettingsPage, routes, data export wrapper |
+| Phase 8C: RA 10173 Erasure        | DONE     | 8 tasks -- callables, sweeps, rules, delete-account flow                                                                                                         |
+| Phase 7.A: Security Callables     | DONE     | 7 callables + Firestore rules                                                                                                                                    |
+| Phase 7.B: Superadmin UI          | DONE     | Analytics dashboard, emergency declaration, TOTP enrollment (NDRRMC drawer, break-glass removed in 9f520d99)                                                     |
+| Phase 6: Responder App            | DONE     | Native foundation, push, telemetry, location projection, field UX, handoffs                                                                                      |
+| Phase 5: Cluster C + PRE-C        | DONE     | Analytics (mass alerts, NDRRMC escalation removed in 9f520d99)                                                                                                   |
+| Phase 4b: SMS Inbound Pipeline    | DEFERRED | Removed in 9f520d99; citizen SMS fallback rewired to use hotline                                                                                                 |
+| Phase 3b: Admin Triage + Dispatch | DONE     | Code complete (staging UI blocked by cert issues)                                                                                                                |
+| Phase 0: Foundation               | DONE     | All tooling passing                                                                                                                                              |
+
+> **NOTE (2026-05-11):** The features mentioned in the Phase table above (SMS inbound pipeline, NDRRMC escalation, PAGASA hazard signals, Break Glass protocol, mass alert broadcast) were removed in commit `9f520d99` as part of the feature deferral decision. Entries are retained for historical accuracy but the features are no longer present in the codebase.
 
 ---
 
 ## Open Blockers & Deferred Items
 
-1. **Production blocker (Phase 8C):** Pre-registration SMS data erasure gap -- needs UID-linkage mechanism
+1. ~~Production blocker (Phase 8C): Pre-registration SMS data erasure gap -- needs UID-linkage mechanism~~ **RESOLVED (2026-05-11):** SMS features removed in commit `9f520d99`; this blocker is no longer applicable.
 2. **Firebase Console:** Phone Auth disabled; App Check 400 errors on staging
 3. **Deploy needed:** Staging redeploy required to verify many code fixes
 4. **Phase 7.C:** Staff TOTP enrollment audit in progress
