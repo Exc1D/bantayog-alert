@@ -52,6 +52,11 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
 
     setError(null)
 
+    // Safety timeout: always exit loading state within 5s even if Firestore is slow or denied
+    const loadingTimeout = setTimeout(() => {
+      setLoading(false)
+    }, 5000)
+
     const unsubscribers: (() => void)[] = []
 
     // Always listen to reports
@@ -156,6 +161,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     }
 
     return () => {
+      clearTimeout(loadingTimeout)
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current)
         retryTimerRef.current = null

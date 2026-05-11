@@ -26,6 +26,11 @@ export default tseslint.config(
       'apps/citizen-pwa/public/sw.js',
       // k6 load-test scripts — plain JS, not part of any TS project.
       'e2e-tests/k6/**/*.js',
+      // Agent skill scripts — plain JS/MJS, not part of any TS project.
+      '.agents/**/*.{js,mjs}',
+      // Playwright e2e tests — isolated from main TS project.
+      'apps/admin-desktop/e2e/**',
+      'apps/admin-desktop/playwright.config.ts',
     ],
   },
 

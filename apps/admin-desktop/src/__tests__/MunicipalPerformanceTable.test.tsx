@@ -91,9 +91,10 @@ describe('MunicipalPerformanceTable', () => {
 
   it('applies color to response time cells', () => {
     render(<MunicipalPerformanceTable data={mockData} onSelectMunicipality={vi.fn()} />)
-    const goodCell = screen.getByText('8 min')
-    const warningCell = screen.getByText('18 min')
-    expect(goodCell).toHaveStyle({ color: '#22c55e' })
-    expect(warningCell).toHaveStyle({ color: '#c77600' })
+    const goodCell = screen.getByText('8 min').closest('td')
+    const warningCell = screen.getByText('18 min').closest('td')
+    // happy-dom doesn't resolve CSS custom properties in toHaveStyle, so check the inline style directly
+    expect(goodCell?.style.color).toBe('var(--color-norm)')
+    expect(warningCell?.style.color).toBe('var(--color-warn)')
   })
 })

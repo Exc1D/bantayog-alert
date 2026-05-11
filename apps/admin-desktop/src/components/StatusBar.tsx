@@ -17,14 +17,15 @@ function Metric({
   unit?: string
   alert: 'none' | 'amber' | 'red'
 }) {
-  const alertColor = alert === 'red' ? '#ef4444' : alert === 'amber' ? '#f59e0b' : 'transparent'
+  const alertColor =
+    alert === 'red' ? 'var(--color-crit)' : alert === 'amber' ? 'var(--color-warn)' : 'transparent'
   return (
     <div className="flex flex-col items-center">
       <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
         {label}
       </span>
       <span
-        className="mt-1 font-mono text-[32px] font-medium leading-none text-[var(--color-text-primary)]"
+        className="mt-1 font-mono text-2xl font-medium leading-none text-[var(--color-text-primary)]"
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
         {value}
@@ -48,10 +49,10 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
 
   return (
     <div
-      className={`sticky top-0 z-50 border-b bg-[var(--color-navy)] ${
+      className={`sticky top-0 z-50 border-b bg-[var(--color-surface)] ${
         isSurge
           ? 'animate-pulse border-[var(--color-severity-medium)]'
-          : 'border-[var(--color-navy)]'
+          : 'border-[var(--color-surface)]'
       }`}
     >
       <div className="flex items-center justify-around px-4 py-3">
@@ -69,6 +70,12 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
       </button>
       {expanded && (
         <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
+          <span>
+            Resolved Today: <strong className="text-[var(--color-text-primary)]">89</strong>
+          </span>
+          <span>
+            Muni Issues: <strong className="text-[var(--color-text-primary)]">0/12</strong>
+          </span>
           <span>
             Surge:{' '}
             <strong className="text-[var(--color-text-primary)]">

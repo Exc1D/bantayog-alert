@@ -1,17 +1,18 @@
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import type { ReportOpsDoc } from '../hooks/useFirestoreListeners'
 
 const TABS = [
-  { id: 'volume', label: 'Incident Volume' },
-  { id: 'response', label: 'Response Time' },
-  { id: 'resource', label: 'Resource Util' },
-  { id: 'comparison', label: 'Muni Comparison' },
+  { id: 'volume', label: 'Volume' },
+  { id: 'response', label: 'Response' },
+  { id: 'resource', label: 'Resources' },
+  { id: 'comparison', label: 'Comparison' },
 ] as const
 
 const TIME_RANGES = [
-  { id: '24h', label: '24h' },
-  { id: '7d', label: '7d' },
-  { id: '30d', label: '30d' },
+  { id: '24h', label: 'Last 24 hours' },
+  { id: '7d', label: 'Last 7 days' },
+  { id: '30d', label: 'Last 30 days' },
 ] as const
 
 interface Props {
@@ -36,22 +37,22 @@ function isWithinTimeRange(createdAt: string, range: (typeof TIME_RANGES)[number
   const ms = date.getTime()
   if (range === '24h') return now - ms <= 24 * 60 * 60 * 1000
   if (range === '7d') return now - ms <= 7 * 24 * 60 * 60 * 1000
-  // range === '30d'
   return now - ms <= 30 * 24 * 60 * 60 * 1000
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function TrendAnalysisPanel({ reports, reportOps, responders }: Props) {
+export function TrendAnalysisPanel({ reports }: Props) {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('volume')
   const [timeRange, setTimeRange] = useState<(typeof TIME_RANGES)[number]['id']>('7d')
+  const [timeDropdownOpen, setTimeDropdownOpen] = useState(false)
 
   const chartLabel = TABS.find((t) => t.id === activeTab)?.label ?? 'Chart'
+  const timeLabel = TIME_RANGES.find((t) => t.id === timeRange)?.label ?? ''
 
   const filteredReports = reports.filter((r) => isWithinTimeRange(r.createdAt, timeRange))
 
   return (
     <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-1">
           {TABS.map((tab) => (
             <button
@@ -71,25 +72,45 @@ export function TrendAnalysisPanel({ reports, reportOps, responders }: Props) {
             </button>
           ))}
         </div>
-        <div className="flex gap-1">
-          {TIME_RANGES.map((range) => (
-            <button
-              key={range.id}
-              type="button"
-              onClick={() => {
-                setTimeRange(range.id)
-              }}
-              aria-pressed={timeRange === range.id}
-              className="rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: timeRange === range.id ? 'var(--color-navy)' : 'transparent',
-                color:
-                  timeRange === range.id ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
-              }}
+        <div className="relative ml-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setTimeDropdownOpen((o) => !o)
+            }}
+            className="flex items-center gap-1.5 rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-white/5"
+            aria-haspopup="listbox"
+            aria-expanded={timeDropdownOpen}
+          >
+            {timeLabel}
+            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          </button>
+          {timeDropdownOpen && (
+            <div
+              className="absolute right-0 top-full z-10 mt-1 min-w-[140px] rounded-md border border-white/10 bg-[var(--color-surface-elevated)] shadow-lg"
+              role="listbox"
             >
-              {range.label}
-            </button>
-          ))}
+              {TIME_RANGES.map((range) => (
+                <button
+                  key={range.id}
+                  type="button"
+                  onClick={() => {
+                    setTimeRange(range.id)
+                    setTimeDropdownOpen(false)
+                  }}
+                  className="block w-full px-3 py-2 text-left text-xs text-[var(--color-text-secondary)] hover:bg-white/5"
+                  role="option"
+                  aria-selected={timeRange === range.id}
+                  style={{
+                    color: timeRange === range.id ? 'white' : undefined,
+                    backgroundColor: timeRange === range.id ? 'var(--color-sienna)' : undefined,
+                  }}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <div className="mt-4 flex h-48 items-center justify-center rounded border border-white/5 bg-[var(--color-surface)]">
@@ -99,7 +120,7 @@ export function TrendAnalysisPanel({ reports, reportOps, responders }: Props) {
           </span>
         ) : (
           <span role="status" className="text-sm text-white/50">
-            {chartLabel} — {timeRange} ({filteredReports.length} reports)
+            {chartLabel} · {timeLabel} ({String(filteredReports.length)} reports)
           </span>
         )}
       </div>

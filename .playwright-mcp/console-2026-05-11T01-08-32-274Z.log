@@ -1,0 +1,2 @@
+[     196ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=61c79ba7:14337
+[     266ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5175/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:5175/:0

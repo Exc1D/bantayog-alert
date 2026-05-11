@@ -20,7 +20,11 @@ export function LiveIndicator({ lastUpdatedAt }: Props) {
 
   const isStale = secondsAgo > 60
   const isVeryStale = secondsAgo > 300
-  const dotColor = isVeryStale ? '#ef4444' : isStale ? '#f59e0b' : '#22c55e'
+  const dotColor = isVeryStale
+    ? 'var(--color-crit)'
+    : isStale
+      ? 'var(--color-warn)'
+      : 'var(--color-norm)'
   const label = isVeryStale
     ? 'Data may be stale'
     : isStale

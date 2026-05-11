@@ -62,6 +62,6 @@ describe('TrendAnalysisPanel', () => {
       },
     ]
     render(<TrendAnalysisPanel {...defaultProps} reports={reports} />)
-    expect(screen.getByRole('status')).toHaveTextContent('Incident Volume — 7d (1 reports)')
+    expect(screen.getByRole('status')).toHaveTextContent('Incident Volume · 7d (1 reports)')
   })
 })

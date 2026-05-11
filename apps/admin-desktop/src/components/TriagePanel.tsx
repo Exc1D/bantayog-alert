@@ -83,13 +83,6 @@ export function TriagePanel({
     setHoldProgress(0)
   }
 
-  const width =
-    typeof window !== 'undefined' && window.innerWidth >= 1920
-      ? 480
-      : window.innerWidth >= 1440
-        ? 420
-        : 380
-
   return (
     <>
       <div
@@ -98,12 +91,7 @@ export function TriagePanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby="triage-panel-title"
-        className="absolute right-0 top-0 z-[1000] h-full overflow-y-auto border-l border-white/10 bg-[var(--color-surface-elevated)] shadow-xl"
-        style={{
-          width,
-          transition: 'transform var(--duration-standard) var(--ease-snap)',
-          transform: 'translateX(0)',
-        }}
+        className="absolute right-0 top-0 z-[1000] h-full w-[380px] overflow-y-auto border-l border-white/10 bg-[var(--color-surface-elevated)] shadow-xl transition-transform duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] lg:w-[420px] xl:w-[480px]"
       >
         <div className="flex items-center justify-between border-b border-white/10 p-4">
           <h3 id="triage-panel-title" className="font-semibold text-[var(--color-text-primary)]">
@@ -111,7 +99,7 @@ export function TriagePanel({
           </h3>
           <button
             onClick={onClose}
-            className="rounded p-1 hover:bg-white/10"
+            className="rounded p-2 hover:bg-white/10"
             aria-label="Close panel"
           >
             <X className="h-4 w-4 text-[var(--color-text-secondary)]" />
@@ -136,7 +124,7 @@ export function TriagePanel({
               onClick={() => {
                 onVerify(report.id)
               }}
-              className="w-full rounded-md bg-[var(--color-success)] py-2 text-sm font-medium text-white hover:opacity-90"
+              className="w-full rounded-md bg-[var(--color-success)] py-2 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-success)]"
             >
               Verify
             </button>
@@ -144,7 +132,7 @@ export function TriagePanel({
               onClick={() => {
                 setRejectModalOpen(true)
               }}
-              className="w-full rounded-md border border-[var(--color-danger)] py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+              className="w-full rounded-md border border-[var(--color-danger)] py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
             >
               Reject
             </button>
@@ -155,7 +143,7 @@ export function TriagePanel({
               onClick={() => {
                 setShowDispatchForm((s) => !s)
               }}
-              className="w-full rounded-md bg-[#2563eb] py-2 text-sm font-medium text-white hover:opacity-90"
+              className="w-full rounded-md bg-[var(--color-info)] py-2 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-info)]"
             >
               Dispatch Responder
             </button>
@@ -205,16 +193,17 @@ export function TriagePanel({
                   onMouseLeave={endHold}
                   onTouchStart={startHold}
                   onTouchEnd={endHold}
-                  className="relative w-full rounded-md bg-[#2563eb] py-3 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative w-full overflow-hidden rounded-md bg-[var(--color-info)] py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="relative z-10">Hold to Dispatch</span>
                   {holdProgress > 0 && (
                     <div
-                      className="absolute inset-0 rounded-md bg-white/20"
+                      className="pointer-events-none absolute inset-0 origin-left rounded-md bg-white/20"
                       style={{
-                        width: `${String(holdProgress)}%`,
-                        transition: 'width 100ms linear',
+                        transform: `scaleX(${String(holdProgress / 100)})`,
+                        transition: 'transform 100ms linear',
                       }}
+                      aria-hidden="true"
                     />
                   )}
                 </button>
@@ -222,7 +211,7 @@ export function TriagePanel({
             )}
           </div>
 
-          <p className="text-[10px] text-[var(--color-text-muted)]">Report #{report.id}</p>
+          <p className="text-xs text-[var(--color-text-muted)]">Report #{report.id}</p>
         </div>
       </div>
 

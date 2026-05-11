@@ -1,44 +1,48 @@
-# Product
+---
+register: product
+---
+
+# Bantayog Alert — Admin Desktop
 
 ## Users
 
-Citizens of Camarines Norte, Philippines. Reporting during active emergencies — flood water rising, a landslide just happened, they smell smoke. Time-pressured, scared, often in motion. Tech literacy ranges from first-time smartphone users to daily app users; the interface must work for both without condescending to either. Mobile-first: iOS Safari and Android Chrome on mid-range to low-end Android devices. Connectivity is unreliable during the exact moments the app matters most. Many will report without creating an account — pseudonymous use is supported and respected, not treated as a lesser experience.
+Provincial DRRMO staff in Camarines Norte command centers. 12-hour shifts, wall-mounted 6-10ft displays, dim ambient lighting. Multiple staff glance simultaneously; the display is the room's "truth source."
 
 ## Product Purpose
 
-Bantayog Alert gives citizens the fastest path from "I see an emergency" to "I've reported it and I'm being heard." Secondary jobs: stay spatially aware of what's happening nearby, browse the public incident feed, receive official government alerts, and track the status of their own reports. Success looks like a report submitted under 60 seconds, a citizen who feels their report mattered, and a community better coordinated during a crisis.
+At-a-glance situational awareness for disaster response. In 3 seconds, anyone walking in should know: crisis or calm, which municipalities are affected, where responders are, if the system is live.
 
-## Brand Personality
+## Tone
 
-Caring, Assuring, Urgent.
+Authoritative, alive, commanding. NASA mission control meets typhoon tracker. Zero-fluff, utility-first. Every pixel earns its place.
 
-The app speaks the way a calm, trusted neighbor would during a crisis — it does not panic, it does not waste words, it does not decorate. It moves with purpose. Every interaction should leave the user feeling: "I was heard, I am safe, I know what happens next."
+## Anti-References
 
-## References
+- No decorative glassmorphism or blur effects
+- No gradient text or decorative backgrounds
+- No side-stripe colored borders as primary signals
+- No identical card grids with icon+heading+text repetition
+- No modals as first-choice interaction pattern
+- No em dashes in copy
 
-- **Apple.com** — for cleanliness: generous whitespace, precise typography, nothing that doesn't earn its place on the screen.
-- **Grab mobile** — for efficiency: task-focused flows, obvious primary actions, no detours between intent and completion.
-- **Facebook feed** — for the Feed tab only: familiar infinite scroll, card rhythm, recognizable interaction patterns citizens already know.
-- **Google Maps** — for the Map tab: spatial clarity, intuitive pin interactions, minimal chrome around the map surface itself.
+## Strategic Principles
 
-## Anti-references
+1. **Luminance-first depth** — Surface stratification through lightness, not hue
+2. **Double-encoded signals** — Color + Shape + Text for every status indicator
+3. **Adaptive density** — Card mode ≤10 items, compact row mode >10 items
+4. **Data freshness heartbeat** — Desaturation at 60s staleness, visual degradation
+5. **Observation/Action bipartite split** — Map stage left, workflow panels right
+6. **Keyboard-first triage** — High-volume report processing via arrow keys + shortcuts
+7. **Deliberate high-stakes actions** — Emergency declaration requires TOTP + double-confirm
 
-Shopping apps (Shopee, Lazada aesthetic): cluttered grids, promotional banners, badge inflation, competing CTAs, anything that optimizes for attention over task completion. This app is used during emergencies. Visual noise costs lives.
+## Color Strategy
 
-## Design Principles
+Committed: dark theme with semantic signals carrying 30-60% of visual weight. HSU token palette: `--hsu-crit: #ef4444`, `--hsu-warn: #f59e0b`, `--hsu-norm: #10b981`, `--hsu-info: #3b82f6`. Neutrals tinted toward brand hue (chroma 0.005-0.01).
 
-1. **Clarity under pressure.** Every screen must work at a glance for someone who is scared, moving, and has 4% battery. If a screen requires reading to understand, it has failed.
-2. **Speed is care.** The fastest path to a submitted report is the most caring UX. Fewer taps, fewer decisions, fewer chances to abandon. Urgency and care are the same thing here.
-3. **Trust through calm.** The UI must never feel chaotic, even when reporting chaos. Calm visual weight, unambiguous status, no jank. A panicked user needs an unshakeable interface.
-4. **Familiar over clever.** When a pattern is already trusted (Maps-style pins, Feed-style cards, Apple-style form fields), use it. Novel UX patterns are a liability in a crisis.
-5. **Inclusive by default.** WCAG 2.1 AAA on report submission and alerts. Colorblind-safe status indicators. Legible at arm's length in rain. Subtle Tagalog translations on any sentence that could confuse a first-time user.
+## Typography
 
-## Accessibility & Inclusion
+Bifurcated: Inter for human-readable content (1.5 line-height, 65-75ch max), JetBrains Mono for telemetry/tabular data. Scale: 52px page headings, 64px hero data values, 18px body.
 
-- **WCAG 2.1 AAA** on critical paths: report submission flow, alerts tab, and any error or status message.
-- **WCAG 2.1 AA** minimum on all other surfaces.
-- Colorblind-safe status palette (never rely on red/green alone — pair with icons and labels).
-- Touch targets minimum 44×44px; prefer 48px on interactive elements in the report flow.
-- Reduced-motion: all animations must respect `prefers-reduced-motion`.
-- Tagalog subtitles or inline translations on complex English sentences (legal disclosures, privacy notices, error explanations). Inline, subtle — not a separate language toggle.
-- Tested on low-end Android (Chrome) at 110% system font scale.
+## Motion
+
+≤200ms transitions, deceleration easing only. Gentle pulse for fresh data pins (2s cycle), drop-in spring for new incidents. No bounce, no elastic. Respect `prefers-reduced-motion`.

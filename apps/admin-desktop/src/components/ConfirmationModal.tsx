@@ -46,7 +46,7 @@ export function ConfirmationModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
       role="presentation"
       onClick={handleBackdropClick}
       onKeyDown={(e) => {
@@ -61,7 +61,7 @@ export function ConfirmationModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="w-full max-w-md rounded-lg border border-[var(--color-navy)] bg-[var(--color-surface-elevated)] p-6 shadow-xl"
+        className="w-full max-w-md rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-6 shadow-xl"
       >
         <div className="flex items-start justify-between">
           <h2 id="confirm-title" className="text-lg font-semibold text-[var(--color-text-primary)]">

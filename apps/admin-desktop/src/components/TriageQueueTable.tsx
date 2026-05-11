@@ -7,6 +7,7 @@ import type { Report } from '../types'
 interface Props {
   reports: Report[]
   selectedIds: Set<string>
+  loadingIds?: Set<string>
   onToggleSelect: (id: string) => void
   onSelectAll: () => void
   onVerify: (id: string) => void
@@ -17,9 +18,22 @@ interface Props {
   onBulkReject?: (ids: Set<string>) => void
 }
 
+function formatRelativeTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const diffSec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
+  if (diffSec < 60) return `${String(diffSec)}s ago`
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${String(diffMin)}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${String(diffHr)}h ago`
+  return `${String(Math.floor(diffHr / 24))}d ago`
+}
+
 export function TriageQueueTable({
   reports,
   selectedIds,
+  loadingIds = new Set(),
   onToggleSelect,
   onSelectAll,
   onVerify,
@@ -106,7 +120,7 @@ export function TriageQueueTable({
                 />
               </td>
               <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-secondary)]">
-                {report.createdAt}
+                {formatRelativeTime(report.createdAt)}
               </td>
               <td className="px-4 py-3">
                 <ReportTypeIcon type={report.type} />
@@ -123,30 +137,45 @@ export function TriageQueueTable({
                       e.stopPropagation()
                       onVerify(report.id)
                     }}
-                    className="rounded p-1 text-[var(--color-success)] hover:bg-white/10"
+                    disabled={loadingIds.has(report.id)}
+                    className="rounded p-2 text-[var(--color-success)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Verify"
                   >
-                    <Check className="h-4 w-4" />
+                    {loadingIds.has(report.id) ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       onReject(report.id)
                     }}
-                    className="rounded p-1 text-[var(--color-danger)] hover:bg-white/10"
+                    disabled={loadingIds.has(report.id)}
+                    className="rounded p-2 text-[var(--color-danger)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Reject"
                   >
-                    <X className="h-4 w-4" />
+                    {loadingIds.has(report.id) ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       onDispatch(report.id)
                     }}
-                    className="rounded p-1 text-[#3b82f6] hover:bg-white/10"
+                    disabled={loadingIds.has(report.id)}
+                    className="rounded p-2 text-[var(--color-info)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Dispatch"
                   >
-                    <Send className="h-4 w-4" />
+                    {loadingIds.has(report.id) ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </td>

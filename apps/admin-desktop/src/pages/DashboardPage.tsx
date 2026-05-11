@@ -97,6 +97,8 @@ export default function DashboardPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [lastUpdatedAt] = useState(() => Date.now())
   const [bulkRejectIds, setBulkRejectIds] = useState<string[] | null>(null)
+  const [bulkVerifyIds, setBulkVerifyIds] = useState<Set<string> | null>(null)
+  const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set())
 
   const { selectReport, selectedReportId, setSuppressNextBroadcast } = useCommandCenterStore()
   const { loading, error, reports, reportOps, alerts, responders } = useFirestoreListeners({
@@ -150,12 +152,19 @@ export default function DashboardPage() {
 
   const handleVerify = useCallback(
     async (id: string) => {
+      setLoadingActions((prev) => new Set(prev).add(id))
       try {
         await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Verify failed'
         setActionError(msg)
         playError()
+      } finally {
+        setLoadingActions((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
       }
     },
     [playError],
@@ -180,6 +189,9 @@ export default function DashboardPage() {
     }
 
     const ids = bulkRejectIds ?? [rejectTargetId]
+    ids.forEach((id) => {
+      if (id) setLoadingActions((prev) => new Set(prev).add(id))
+    })
     try {
       for (const id of ids) {
         if (!id) continue
@@ -210,12 +222,31 @@ export default function DashboardPage() {
       const msg = err instanceof Error ? err.message : 'Reject failed'
       setActionError(msg)
       playError()
+    } finally {
+      ids.forEach((id) => {
+        if (id) {
+          setLoadingActions((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        }
+      })
     }
   }, [rejectTargetId, rejectReason, rejectNotes, playError, bulkRejectIds])
 
-  const handleBulkVerify = useCallback(
-    async (ids: Set<string>) => {
-      for (const id of ids) {
+  const handleBulkVerify = useCallback((ids: Set<string>) => {
+    if (ids.size === 0) return
+    setBulkVerifyIds(ids)
+  }, [])
+
+  const confirmBulkVerify = useCallback(async () => {
+    if (!bulkVerifyIds) return
+    bulkVerifyIds.forEach((id) => {
+      setLoadingActions((prev) => new Set(prev).add(id))
+    })
+    try {
+      for (const id of bulkVerifyIds) {
         try {
           await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
         } catch (err) {
@@ -225,10 +256,18 @@ export default function DashboardPage() {
           break
         }
       }
+    } finally {
+      bulkVerifyIds.forEach((id) => {
+        setLoadingActions((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+      })
+      setBulkVerifyIds(null)
       setSelectedIds(new Set())
-    },
-    [playError],
-  )
+    }
+  }, [bulkVerifyIds, playError])
 
   const handleBulkReject = useCallback((ids: Set<string>) => {
     if (ids.size === 0) return
@@ -349,13 +388,19 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
-        <h2 className="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">
-          Triage Queue
-        </h2>
-        <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)]">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+            Triage Queue
+          </h2>
+          <span className="text-xs text-[var(--color-text-muted)]">
+            {reports.length} report{reports.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] shadow-sm">
           <TriageQueueTable
             reports={reports.map(mapReportDocToReport)}
             selectedIds={selectedIds}
+            loadingIds={loadingActions}
             onToggleSelect={toggleSelect}
             onSelectAll={selectAll}
             onVerify={(id) => {
@@ -365,7 +410,7 @@ export default function DashboardPage() {
               handleReject(id)
             }}
             onBulkVerify={(ids) => {
-              void handleBulkVerify(ids)
+              handleBulkVerify(ids)
             }}
             onBulkReject={handleBulkReject}
             onDispatch={() => {
@@ -374,7 +419,17 @@ export default function DashboardPage() {
             onRowClick={handleRowClick}
           />
         </div>
-        <div className="mt-4">
+        <div className="mt-6">
+          <AnomalyAlertPanel
+            alerts={alerts
+              .map(mapAlertDocToAnomalyAlert)
+              .filter((a): a is AnomalyAlert => a !== null)}
+            onDismiss={() => {
+              /* TODO: wire dismissAnomaly callable */
+            }}
+          />
+        </div>
+        <div className="mt-6">
           <MunicipalPerformanceTable
             data={municipalData}
             onSelectMunicipality={(m) => {
@@ -383,17 +438,7 @@ export default function DashboardPage() {
             }}
           />
         </div>
-        <div className="mt-4">
-          <AnomalyAlertPanel
-            alerts={alerts
-              .map(mapAlertDocToAnomalyAlert)
-              .filter((a): a is AnomalyAlert => a !== null)}
-            onDismiss={() => {
-              /* TODO: wire dismiss callable */
-            }}
-          />
-        </div>
-        <div className="mt-4">
+        <div className="mt-6">
           <TrendAnalysisPanel reports={reports} reportOps={reportOps} responders={responders} />
         </div>
       </main>
@@ -440,6 +485,19 @@ export default function DashboardPage() {
           </label>
         </div>
       </ConfirmationModal>
+      <ConfirmationModal
+        open={bulkVerifyIds !== null}
+        title="Bulk Verify Reports"
+        message={`This will verify ${String(bulkVerifyIds?.size ?? 0)} selected report(s). Continue?`}
+        confirmLabel="Verify"
+        confirmVariant="primary"
+        onConfirm={() => {
+          void confirmBulkVerify()
+        }}
+        onCancel={() => {
+          setBulkVerifyIds(null)
+        }}
+      />
       <ConfirmationModal
         open={helpModalOpen}
         title="Keyboard Shortcuts"

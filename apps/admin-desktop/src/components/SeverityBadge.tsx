@@ -1,13 +1,13 @@
-import { AlertTriangle, AlertCircle, MinusCircle } from 'lucide-react'
+import { AlertTriangle, AlertCircle, Info } from 'lucide-react'
 import type { Severity } from '../stores/commandCenterStore'
 
 const SEVERITY_CONFIG: Record<
   Severity,
-  { label: string; color: string; icon: typeof AlertTriangle }
+  { label: string; token: string; icon: typeof AlertTriangle }
 > = {
-  HIGH: { label: 'HIGH', color: '#a73400', icon: AlertTriangle },
-  MEDIUM: { label: 'MED', color: '#7c3500', icon: AlertCircle },
-  LOW: { label: 'LOW', color: '#414849', icon: MinusCircle },
+  HIGH: { label: 'HIGH', token: 'var(--color-severity-high)', icon: AlertTriangle },
+  MEDIUM: { label: 'MED', token: 'var(--color-severity-medium)', icon: AlertCircle },
+  LOW: { label: 'LOW', token: 'var(--color-severity-low)', icon: Info },
 }
 
 interface Props {
@@ -21,9 +21,9 @@ export function SeverityBadge({ severity }: Props) {
     <span
       className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium"
       style={{
-        backgroundColor: `${cfg.color}20`,
-        color: cfg.color,
-        border: `1px solid ${cfg.color}40`,
+        backgroundColor: `color-mix(in srgb, ${cfg.token} 12%, transparent)`,
+        color: cfg.token,
+        border: `1px solid color-mix(in srgb, ${cfg.token} 25%, transparent)`,
       }}
     >
       <Icon className="h-3 w-3" aria-hidden="true" />

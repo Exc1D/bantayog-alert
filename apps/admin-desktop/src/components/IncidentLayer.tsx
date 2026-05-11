@@ -16,9 +16,9 @@ const TYPE_ICONS = {
 }
 
 const SEVERITY_COLORS: Record<Severity, string> = {
-  HIGH: '#a73400',
-  MEDIUM: '#7c3500',
-  LOW: '#414849',
+  HIGH: 'var(--color-severity-high)',
+  MEDIUM: 'var(--color-severity-medium)',
+  LOW: 'var(--color-severity-low)',
 }
 
 interface Props {

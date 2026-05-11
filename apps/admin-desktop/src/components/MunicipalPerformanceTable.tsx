@@ -1,24 +1,31 @@
 import { useState } from 'react'
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import type { MunicipalPerformance } from '../types'
+
+type SortKey = 'municipality' | 'activeIncidents' | 'avgResponseTime'
 
 interface Props {
   data: MunicipalPerformance[]
   onSelectMunicipality: (municipality: string) => void
 }
 
-function responseTimeColor(avgResponseTime: string): string {
-  const match = /(\d+)/.exec(avgResponseTime)
-  const minutes = match?.[1] ? Number.parseInt(match[1], 10) : 0
-  if (minutes < 12) return '#22c55e'
-  if (minutes <= 20) return '#c77600'
-  return '#a73400'
+function parseMinutes(value: string): number {
+  const match = /(\d+)/.exec(value)
+  return match?.[1] ? Number.parseInt(match[1], 10) : 0
+}
+
+function responseTimeToken(avgResponseTime: string): string {
+  const minutes = parseMinutes(avgResponseTime)
+  if (minutes < 12) return 'var(--color-norm)'
+  if (minutes <= 20) return 'var(--color-warn)'
+  return 'var(--color-crit)'
 }
 
 export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props) {
-  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
   const [sortAsc, setSortAsc] = useState(true)
 
-  const handleHeaderClick = (key: string) => {
+  const handleHeaderClick = (key: SortKey) => {
     if (sortKey === key) {
       setSortAsc((prev) => !prev)
     } else {
@@ -36,71 +43,135 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
             diff = a.activeIncidents - b.activeIncidents
           } else if (sortKey === 'municipality') {
             diff = a.municipality.localeCompare(b.municipality)
-          } else if (sortKey === 'avgResponseTime') {
-            const matchA = /(\d+)/.exec(a.avgResponseTime)
-            const matchB = /(\d+)/.exec(b.avgResponseTime)
-            const minA = matchA?.[1] ? Number.parseInt(matchA[1], 10) : 0
-            const minB = matchB?.[1] ? Number.parseInt(matchB[1], 10) : 0
-            diff = minA - minB
+          } else {
+            diff = parseMinutes(a.avgResponseTime) - parseMinutes(b.avgResponseTime)
           }
           return sortAsc ? diff : -diff
         })
 
+  const renderSortIcon = (key: SortKey) => {
+    if (sortKey !== key) {
+      return <ArrowUpDown className="h-3 w-3 opacity-40" aria-hidden="true" />
+    }
+    return sortAsc ? (
+      <ArrowUp className="h-3 w-3" aria-hidden="true" />
+    ) : (
+      <ArrowDown className="h-3 w-3" aria-hidden="true" />
+    )
+  }
+
+  const sortLabel = (key: SortKey) =>
+    sortKey === key ? (sortAsc ? 'ascending' : 'descending') : 'none'
+
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>
-            <button
-              type="button"
-              onClick={() => {
-                handleHeaderClick('municipality')
-              }}
-            >
-              Municipality
-            </button>
-          </th>
-          <th>
-            <button
-              type="button"
-              onClick={() => {
-                handleHeaderClick('activeIncidents')
-              }}
-            >
-              Active Incidents
-            </button>
-          </th>
-          <th>Responders</th>
-          <th>
-            <button
-              type="button"
-              onClick={() => {
-                handleHeaderClick('avgResponseTime')
-              }}
-            >
-              Avg Response
-            </button>
-          </th>
-          <th>Admin</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sorted.map((row) => (
-          <tr
-            key={row.municipality}
-            onClick={() => {
-              onSelectMunicipality(row.municipality)
-            }}
-            style={{ cursor: 'pointer' }}
-          >
-            <td>{row.municipality}</td>
-            <td>{row.activeIncidents}</td>
-            <td>{row.activeResponders}</td>
-            <td style={{ color: responseTimeColor(row.avgResponseTime) }}>{row.avgResponseTime}</td>
-            <td>{row.adminOnDuty ? 'On Duty' : 'No Shift'}</td>
+    <div className="overflow-x-auto rounded-lg border border-white/10 bg-[var(--color-surface-elevated)]">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b border-white/10 text-xs uppercase text-[var(--color-text-muted)]">
+          <tr>
+            <th scope="col" className="px-4 py-2" aria-sort={sortLabel('municipality')}>
+              <button
+                type="button"
+                onClick={() => {
+                  handleHeaderClick('municipality')
+                }}
+                className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-[var(--color-text-secondary)]"
+              >
+                Municipality
+                {renderSortIcon('municipality')}
+              </button>
+            </th>
+            <th scope="col" className="px-4 py-2" aria-sort={sortLabel('activeIncidents')}>
+              <button
+                type="button"
+                onClick={() => {
+                  handleHeaderClick('activeIncidents')
+                }}
+                className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-[var(--color-text-secondary)]"
+              >
+                Active Incidents
+                {renderSortIcon('activeIncidents')}
+              </button>
+            </th>
+            <th scope="col" className="px-4 py-2">
+              Responders
+            </th>
+            <th scope="col" className="px-4 py-2" aria-sort={sortLabel('avgResponseTime')}>
+              <button
+                type="button"
+                onClick={() => {
+                  handleHeaderClick('avgResponseTime')
+                }}
+                className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-[var(--color-text-secondary)]"
+              >
+                Avg Response
+                {renderSortIcon('avgResponseTime')}
+              </button>
+            </th>
+            <th scope="col" className="px-4 py-2">
+              Admin
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {sorted.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-[var(--color-text-muted)]">
+                <span role="status">No municipal data</span>
+              </td>
+            </tr>
+          ) : (
+            sorted.map((row) => (
+              <tr
+                key={row.municipality}
+                onClick={() => {
+                  onSelectMunicipality(row.municipality)
+                }}
+                className="cursor-pointer border-b border-white/5 hover:bg-white/5"
+              >
+                <td className="px-4 py-3 text-[var(--color-text-primary)]">{row.municipality}</td>
+                <td
+                  className="px-4 py-3 font-mono text-[var(--color-text-primary)]"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {row.activeIncidents}
+                </td>
+                <td
+                  className="px-4 py-3 font-mono text-[var(--color-text-secondary)]"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {row.activeResponders}
+                </td>
+                <td
+                  className="px-4 py-3 font-mono"
+                  style={{
+                    color: responseTimeToken(row.avgResponseTime),
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {row.avgResponseTime}
+                </td>
+                <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                  {row.adminOnDuty ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: 'var(--color-norm)' }}
+                        aria-hidden="true"
+                      />
+                      On Duty
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white/20" aria-hidden="true" />
+                      No Shift
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
   )
 }
