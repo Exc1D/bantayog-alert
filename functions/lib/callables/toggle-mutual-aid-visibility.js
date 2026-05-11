@@ -31,7 +31,7 @@ export async function toggleMutualAidVisibilityCore(db, input, actor) {
     });
 }
 export const toggleMutualAidVisibility = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['superadmin', 'pdrrmo']);
+    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo']);
     await toggleMutualAidVisibilityCore(getFirestore(), request.data, { uid });
 });
 //# sourceMappingURL=toggle-mutual-aid-visibility.js.map

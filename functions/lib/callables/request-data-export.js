@@ -41,7 +41,6 @@ export async function requestDataExportImpl(db, auth, storage, actor) {
     const profile = {
         createdAt: userDoc.data()?.createdAt ?? now,
         reporterName: userDoc.data()?.reporterName,
-        msisdnHash: userDoc.data()?.msisdnHash,
     };
     // Aggregate reports where reporterUid == uid.
     const reportsSnap = await db.collection('reports').where('reporterUid', '==', actor.uid).get();
@@ -105,7 +104,6 @@ export async function requestDataExportImpl(db, auth, storage, actor) {
         citizenUid: actor.uid,
         profile,
         reports,
-        smsMessages: [], // populated when SMS join is implemented
         media: mediaItems,
     };
     // Upload envelope to Cloud Storage.

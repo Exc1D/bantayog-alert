@@ -52,7 +52,7 @@ export async function declareDataIncidentCore(db, input, actor) {
     return { incidentId };
 }
 export const declareDataIncident = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['superadmin']);
+    const { uid } = requireAuth(request, ['provincial_superadmin']);
     requireMfaAuth(request);
     return declareDataIncidentCore(getFirestore(), request.data, { uid });
 });

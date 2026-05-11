@@ -35,7 +35,6 @@ export async function reverseGeocodeToMunicipality(db, location) {
         municipalityId: nearest.id,
         municipalityLabel: nearest.label,
         barangayId: 'unknown',
-        ...(nearest.defaultSmsLocale ? { defaultSmsLocale: nearest.defaultSmsLocale } : {}),
     };
 }
 //# sourceMappingURL=geocode.js.map
