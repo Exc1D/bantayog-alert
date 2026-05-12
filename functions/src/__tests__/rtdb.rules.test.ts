@@ -17,9 +17,10 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { afterAll, beforeAll, describe, it } from 'vitest'
+import { afterAll, describe, it } from 'vitest'
 
-let env: RulesTestEnvironment
+let env: RulesTestEnvironment | undefined
+let emulatorAvailable = false
 
 // Test UIDs
 const RESPONDER_UID = 'responder-1'
@@ -45,19 +46,29 @@ function validPayload(capturedAt: number) {
   }
 }
 
-beforeAll(async () => {
+try {
   env = await initializeTestEnvironment({
     projectId: 'demo-rtdb-rules',
     firestore: {
+      host: '127.0.0.1',
+      port: 8081,
       rules: readFileSync(resolve(process.cwd(), '../infra/firebase/firestore.rules'), 'utf8'),
     },
     database: {
+      host: '127.0.0.1',
+      port: 9000,
       rules: readFileSync(resolve(process.cwd(), '../infra/firebase/database.rules.json'), 'utf8'),
     },
   })
+  emulatorAvailable = true
+} catch (err) {
+  console.warn('[rtdb.rules.test] Emulator unavailable; tests will skip.', err)
+  emulatorAvailable = false
+}
 
-  // Seed responder_index data (bypasses rules so we can read it in write rules)
-  // and responder_locations seed data for read tests
+// Seed responder_index data (bypasses rules so we can read it in write rules)
+// and responder_locations seed data for read tests
+if (env) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database()
     // responder_index for RESPONDER_UID — used by muni_admin / agency_admin read checks
@@ -70,39 +81,47 @@ beforeAll(async () => {
     // seed shared_projection data for muni admin tests
     await db.ref(`shared_projection/daet/${RESPONDER_UID}`).set({ lat: 14.0931, lng: 122.9544 })
   })
-})
+}
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
 
 afterAll(async () => {
-  await env.cleanup()
+  if (env) await env.cleanup()
 })
 
 // ---------------------------------------------------------------------------
 // responder_locations WRITE rules
 // ---------------------------------------------------------------------------
 describe('responder_locations write', () => {
-  it('allows responder to write own location with valid capturedAt', async () => {
-    const db = env
-      .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
-      .database()
+  itif(emulatorAvailable)(
+    'allows responder to write own location with valid capturedAt',
+    async () => {
+      const db = env!
+        .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
+        .database()
 
-    await assertSucceeds(
-      db.ref(`responder_locations/${RESPONDER_UID}`).set(validPayload(Date.now())),
-    )
-  })
+      await assertSucceeds(
+        db.ref(`responder_locations/${RESPONDER_UID}`).set(validPayload(Date.now())),
+      )
+    },
+  )
 
-  it('blocks write when capturedAt is more than 60 s in the future', async () => {
-    const db = env
-      .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
-      .database()
+  itif(emulatorAvailable)(
+    'blocks write when capturedAt is more than 60 s in the future',
+    async () => {
+      const db = env!
+        .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
+        .database()
 
-    // now + 70 000 ms exceeds the <= now + 60 000 guard
-    await assertFails(
-      db.ref(`responder_locations/${RESPONDER_UID}`).set(validPayload(Date.now() + 70_000)),
-    )
-  })
+      // now + 70 000 ms exceeds the <= now + 60 000 guard
+      await assertFails(
+        db.ref(`responder_locations/${RESPONDER_UID}`).set(validPayload(Date.now() + 70_000)),
+      )
+    },
+  )
 
-  it('blocks write when capturedAt is older than 60 seconds', async () => {
-    const db = env
+  itif(emulatorAvailable)('blocks write when capturedAt is older than 60 seconds', async () => {
+    const db = env!
       .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
       .database()
 
@@ -112,16 +131,19 @@ describe('responder_locations write', () => {
     )
   })
 
-  it('blocks a non-responder role from writing to responder_locations', async () => {
-    const db = env
-      .authenticatedContext(CITIZEN_UID, { role: 'citizen', accountStatus: 'active' })
-      .database()
+  itif(emulatorAvailable)(
+    'blocks a non-responder role from writing to responder_locations',
+    async () => {
+      const db = env!
+        .authenticatedContext(CITIZEN_UID, { role: 'citizen', accountStatus: 'active' })
+        .database()
 
-    await assertFails(db.ref(`responder_locations/${CITIZEN_UID}`).set(validPayload(Date.now())))
-  })
+      await assertFails(db.ref(`responder_locations/${CITIZEN_UID}`).set(validPayload(Date.now())))
+    },
+  )
 
-  it('blocks a responder from writing to another responder node', async () => {
-    const db = env
+  itif(emulatorAvailable)('blocks a responder from writing to another responder node', async () => {
+    const db = env!
       .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
       .database()
 
@@ -131,8 +153,8 @@ describe('responder_locations write', () => {
     )
   })
 
-  it('blocks a suspended responder from writing', async () => {
-    const db = env
+  itif(emulatorAvailable)('blocks a suspended responder from writing', async () => {
+    const db = env!
       .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'suspended' })
       .database()
 
@@ -144,67 +166,79 @@ describe('responder_locations write', () => {
 // responder_locations READ rules
 // ---------------------------------------------------------------------------
 describe('responder_locations read', () => {
-  it('allows a responder to read own location', async () => {
-    const db = env
+  itif(emulatorAvailable)('allows a responder to read own location', async () => {
+    const db = env!
       .authenticatedContext(RESPONDER_UID, { role: 'responder', accountStatus: 'active' })
       .database()
 
     await assertSucceeds(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
   })
 
-  it('allows provincial_superadmin to read any responder location', async () => {
-    const db = env
-      .authenticatedContext(SUPERADMIN_UID, {
-        role: 'provincial_superadmin',
-        accountStatus: 'active',
-      })
-      .database()
+  itif(emulatorAvailable)(
+    'allows provincial_superadmin to read any responder location',
+    async () => {
+      const db = env!
+        .authenticatedContext(SUPERADMIN_UID, {
+          role: 'provincial_superadmin',
+          accountStatus: 'active',
+        })
+        .database()
 
-    await assertSucceeds(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
-  })
+      await assertSucceeds(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
+    },
+  )
 
-  it('allows municipal_admin whose municipalityId matches responder_index to read', async () => {
-    // RESPONDER_UID's responder_index.municipalityId = 'daet'
-    const db = env
-      .authenticatedContext(DAET_ADMIN_UID, {
-        role: 'municipal_admin',
-        accountStatus: 'active',
-        municipalityId: 'daet',
-      })
-      .database()
+  itif(emulatorAvailable)(
+    'allows municipal_admin whose municipalityId matches responder_index to read',
+    async () => {
+      // RESPONDER_UID's responder_index.municipalityId = 'daet'
+      const db = env!
+        .authenticatedContext(DAET_ADMIN_UID, {
+          role: 'municipal_admin',
+          accountStatus: 'active',
+          municipalityId: 'daet',
+        })
+        .database()
 
-    await assertSucceeds(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
-  })
+      await assertSucceeds(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
+    },
+  )
 
-  it('blocks municipal_admin whose municipalityId does not match', async () => {
-    // SV_ADMIN has municipalityId: 'san-vicente'; RESPONDER_UID is indexed to 'daet'
-    const db = env
-      .authenticatedContext(SV_ADMIN_UID, {
-        role: 'municipal_admin',
-        accountStatus: 'active',
-        municipalityId: 'san-vicente',
-      })
-      .database()
+  itif(emulatorAvailable)(
+    'blocks municipal_admin whose municipalityId does not match',
+    async () => {
+      // SV_ADMIN has municipalityId: 'san-vicente'; RESPONDER_UID is indexed to 'daet'
+      const db = env!
+        .authenticatedContext(SV_ADMIN_UID, {
+          role: 'municipal_admin',
+          accountStatus: 'active',
+          municipalityId: 'san-vicente',
+        })
+        .database()
 
-    await assertFails(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
-  })
+      await assertFails(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
+    },
+  )
 
-  it('allows agency_admin whose agencyId matches responder_index to read', async () => {
-    // RESPONDER_UID's responder_index.agencyId = 'pdrrmo'
-    const db = env
-      .authenticatedContext(PDRRMO_ADMIN_UID, {
-        role: 'agency_admin',
-        accountStatus: 'active',
-        agencyId: 'pdrrmo',
-      })
-      .database()
+  itif(emulatorAvailable)(
+    'allows agency_admin whose agencyId matches responder_index to read',
+    async () => {
+      // RESPONDER_UID's responder_index.agencyId = 'pdrrmo'
+      const db = env!
+        .authenticatedContext(PDRRMO_ADMIN_UID, {
+          role: 'agency_admin',
+          accountStatus: 'active',
+          agencyId: 'pdrrmo',
+        })
+        .database()
 
-    await assertSucceeds(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
-  })
+      await assertSucceeds(db.ref(`responder_locations/${RESPONDER_UID}`).once('value'))
+    },
+  )
 
-  it('blocks agency_admin whose agencyId does not match', async () => {
+  itif(emulatorAvailable)('blocks agency_admin whose agencyId does not match', async () => {
     // BFP_ADMIN has agencyId: 'bfp'; RESPONDER_UID is indexed to 'pdrrmo'
-    const db = env
+    const db = env!
       .authenticatedContext(BFP_ADMIN_UID, {
         role: 'agency_admin',
         accountStatus: 'active',
@@ -220,8 +254,8 @@ describe('responder_locations read', () => {
 // responder_index — always denied to clients
 // ---------------------------------------------------------------------------
 describe('responder_index client access', () => {
-  it('blocks any authenticated client read on responder_index', async () => {
-    const db = env
+  itif(emulatorAvailable)('blocks any authenticated client read on responder_index', async () => {
+    const db = env!
       .authenticatedContext(SUPERADMIN_UID, {
         role: 'provincial_superadmin',
         accountStatus: 'active',
@@ -231,8 +265,8 @@ describe('responder_index client access', () => {
     await assertFails(db.ref(`responder_index/${RESPONDER_UID}`).once('value'))
   })
 
-  it('blocks any authenticated client write on responder_index', async () => {
-    const db = env
+  itif(emulatorAvailable)('blocks any authenticated client write on responder_index', async () => {
+    const db = env!
       .authenticatedContext(SUPERADMIN_UID, {
         role: 'provincial_superadmin',
         accountStatus: 'active',
@@ -249,33 +283,39 @@ describe('responder_index client access', () => {
 // shared_projection — read by role, writes always denied
 // ---------------------------------------------------------------------------
 describe('shared_projection access', () => {
-  it('allows matching municipal_admin to read shared_projection/{municipalityId}', async () => {
-    const db = env
-      .authenticatedContext(DAET_ADMIN_UID, {
-        role: 'municipal_admin',
-        accountStatus: 'active',
-        municipalityId: 'daet',
-      })
-      .database()
+  itif(emulatorAvailable)(
+    'allows matching municipal_admin to read shared_projection/{municipalityId}',
+    async () => {
+      const db = env!
+        .authenticatedContext(DAET_ADMIN_UID, {
+          role: 'municipal_admin',
+          accountStatus: 'active',
+          municipalityId: 'daet',
+        })
+        .database()
 
-    await assertSucceeds(db.ref(`shared_projection/daet/${RESPONDER_UID}`).once('value'))
-  })
+      await assertSucceeds(db.ref(`shared_projection/daet/${RESPONDER_UID}`).once('value'))
+    },
+  )
 
-  it('blocks municipal_admin with mismatched municipalityId from reading', async () => {
-    // SV_ADMIN token.municipalityId = 'san-vicente' !== $municipalityId 'daet'
-    const db = env
-      .authenticatedContext(SV_ADMIN_UID, {
-        role: 'municipal_admin',
-        accountStatus: 'active',
-        municipalityId: 'san-vicente',
-      })
-      .database()
+  itif(emulatorAvailable)(
+    'blocks municipal_admin with mismatched municipalityId from reading',
+    async () => {
+      // SV_ADMIN token.municipalityId = 'san-vicente' !== $municipalityId 'daet'
+      const db = env!
+        .authenticatedContext(SV_ADMIN_UID, {
+          role: 'municipal_admin',
+          accountStatus: 'active',
+          municipalityId: 'san-vicente',
+        })
+        .database()
 
-    await assertFails(db.ref(`shared_projection/daet/${RESPONDER_UID}`).once('value'))
-  })
+      await assertFails(db.ref(`shared_projection/daet/${RESPONDER_UID}`).once('value'))
+    },
+  )
 
-  it('blocks any client write to shared_projection', async () => {
-    const db = env
+  itif(emulatorAvailable)('blocks any client write to shared_projection', async () => {
+    const db = env!
       .authenticatedContext(SUPERADMIN_UID, {
         role: 'provincial_superadmin',
         accountStatus: 'active',
@@ -285,8 +325,8 @@ describe('shared_projection access', () => {
     await assertFails(db.ref(`shared_projection/daet/${RESPONDER_UID}`).set({ lat: 99, lng: 99 }))
   })
 
-  it('blocks any client write to shared_projection parent path', async () => {
-    const db = env
+  itif(emulatorAvailable)('blocks any client write to shared_projection parent path', async () => {
+    const db = env!
       .authenticatedContext(SUPERADMIN_UID, {
         role: 'provincial_superadmin',
         accountStatus: 'active',

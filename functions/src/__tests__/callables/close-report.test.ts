@@ -15,7 +15,7 @@ let testEnv: RulesTestEnvironment
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'close-report-test',
-    firestore: { host: 'localhost', port: 8081 },
+    firestore: { host: '127.0.0.1', port: 8081 },
   })
 })
 

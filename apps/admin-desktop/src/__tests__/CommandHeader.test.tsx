@@ -54,4 +54,54 @@ describe('CommandHeader', () => {
     expect(screen.queryByTestId('window-role-chip')).not.toBeInTheDocument()
     expect(screen.queryByTestId('window-role-accent')).not.toBeInTheDocument()
   })
+
+  it('icon buttons have focus-visible ring classes', () => {
+    render(
+      <CommandHeader
+        title="Focus Test"
+        lastUpdatedAt={Date.now()}
+        audioEnabled
+        onToggleAudio={vi.fn()}
+        onShowNotifications={vi.fn()}
+        onShowKeyboardShortcuts={vi.fn()}
+      />,
+    )
+
+    const audioBtn = screen.getByRole('button', { name: /mute audio/i })
+    const notifyBtn = screen.getByRole('button', { name: /notifications/i })
+    const shortcutsBtn = screen.getByRole('button', { name: /keyboard shortcuts/i })
+
+    for (const btn of [audioBtn, notifyBtn, shortcutsBtn]) {
+      const cls = btn.className
+      expect(cls).toMatch(/focus-visible:outline-none/)
+      expect(cls).toMatch(/focus-visible:ring-2/)
+      expect(cls).toMatch(/focus-visible:ring-white\/50/)
+    }
+  })
+
+  it('notification badge uses warning color token', () => {
+    render(
+      <CommandHeader
+        title="Badge Test"
+        lastUpdatedAt={Date.now()}
+        notificationCount={3}
+        onShowNotifications={vi.fn()}
+      />,
+    )
+    const badge = screen.getByText('3')
+    expect(badge.className).toMatch(/bg-\[var\(--color-warning\)\]/)
+  })
+
+  it('muted audio icon uses text-muted token', () => {
+    render(
+      <CommandHeader
+        title="Muted Test"
+        lastUpdatedAt={Date.now()}
+        audioEnabled={false}
+        onToggleAudio={vi.fn()}
+      />,
+    )
+    const btn = screen.getByRole('button', { name: /enable audio/i })
+    expect(btn.innerHTML).toMatch(/text-\[var\(--color-text-muted\)\]/)
+  })
 })
