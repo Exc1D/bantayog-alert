@@ -52,7 +52,9 @@ export function TrendAnalysisPanel({ reports }: Props) {
       }
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+    }
   }, [timeDropdownOpen])
 
   const chartLabel = TABS.find((t) => t.id === activeTab)?.label ?? 'Chart'

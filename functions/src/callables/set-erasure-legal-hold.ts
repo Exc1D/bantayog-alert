@@ -53,7 +53,7 @@ export async function setErasureLegalHoldCore(
 export const setErasureLegalHold = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['superadmin'])
+    const { uid } = requireAuth(request, ['provincial_superadmin'])
     requireMfaAuth(request)
     await setErasureLegalHoldCore(getFirestore(), request.data, { uid })
   },

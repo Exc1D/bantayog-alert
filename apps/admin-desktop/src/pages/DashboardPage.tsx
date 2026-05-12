@@ -101,7 +101,7 @@ export default function DashboardPage() {
   const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set())
 
   const { selectReport, selectedReportId, setSuppressNextBroadcast } = useCommandCenterStore()
-  const { loading, error, reports, reportOps, alerts, responders } = useFirestoreListeners({
+  const { loading, error, reports, alerts } = useFirestoreListeners({
     windowType: 'dashboard',
     db,
   })
@@ -374,7 +374,9 @@ export default function DashboardPage() {
         onOpenMap={openMapWindow}
         audioEnabled={audioEnabled}
         onToggleAudio={toggleAudio}
-        onShowKeyboardShortcuts={() => setHelpModalOpen(true)}
+        onShowKeyboardShortcuts={() => {
+          setHelpModalOpen(true)
+        }}
       />
       <StatusBar activeIncidents={activeCount} avgResponseTime={12} pendingTriage={pendingCount} />
       <main className="flex-1 overflow-auto p-4">

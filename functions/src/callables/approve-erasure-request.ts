@@ -105,7 +105,7 @@ export async function approveErasureRequestCore(
 export const approveErasureRequest = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['superadmin'])
+    const { uid } = requireAuth(request, ['provincial_superadmin'])
     requireMfaAuth(request)
     await approveErasureRequestCore(getFirestore(), getAuth(), request.data, { uid })
   },
