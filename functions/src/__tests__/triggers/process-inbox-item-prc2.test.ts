@@ -7,10 +7,8 @@ const PERMISSIVE_RULES =
   'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}'
 
 let env: RulesTestEnvironment | undefined
-const TEST_SALT = 'test-sms-salt-prc2'
-const PREV_SMS_SALT = process.env.SMS_MSISDN_HASH_SALT
+
 beforeAll(async () => {
-  process.env.SMS_MSISDN_HASH_SALT = TEST_SALT
   env = await initializeTestEnvironment({
     projectId: 'demo-prc2-inbox',
     firestore: { rules: PERMISSIVE_RULES },
@@ -21,7 +19,6 @@ beforeAll(async () => {
       label: 'Daet',
       provinceId: 'camarines-norte',
       centroid: { lat: 14.1, lng: 122.95 },
-      defaultSmsLocale: 'tl',
       schemaVersion: 1,
     })
   })
@@ -29,11 +26,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (env) await env.cleanup()
-  if (PREV_SMS_SALT === undefined) {
-    delete process.env.SMS_MSISDN_HASH_SALT
-  } else {
-    process.env.SMS_MSISDN_HASH_SALT = PREV_SMS_SALT
-  }
 })
 
 beforeEach(async () => {
@@ -50,7 +42,6 @@ beforeEach(async () => {
       'moderation_incidents',
       'idempotency_keys',
       'pending_media',
-      'sms_outbox',
     ]
     for (const col of collections) {
       const docs = await db.collection(col).get()

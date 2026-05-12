@@ -44,10 +44,8 @@ interface ExportEnvelope {
   profile: {
     createdAt: number
     reporterName?: string
-    msisdnHash?: string
   }
   reports: ExportedReport[]
-  smsMessages: unknown[]
   media: ExportedMedia[]
 }
 
@@ -97,7 +95,6 @@ export async function requestDataExportImpl(
   const profile = {
     createdAt: userDoc.data()?.createdAt ?? now,
     reporterName: userDoc.data()?.reporterName,
-    msisdnHash: userDoc.data()?.msisdnHash,
   }
 
   // Aggregate reports where reporterUid == uid.
@@ -178,7 +175,6 @@ export async function requestDataExportImpl(
     citizenUid: actor.uid,
     profile,
     reports,
-    smsMessages: [], // populated when SMS join is implemented
     media: mediaItems,
   }
 

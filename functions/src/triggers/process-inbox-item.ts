@@ -10,7 +10,6 @@ import {
 } from '@bantayog/shared-validators'
 import { reverseGeocodeToMunicipality } from '../services/geocode.js'
 import { withIdempotency } from '../idempotency/guard.js'
-import { enqueueSms } from '../services/send-sms.js'
 
 const log = logDimension('processInboxItem')
 
@@ -96,7 +95,6 @@ export async function processInboxItemCore(
   let municipalityId: string
   let municipalityLabel: string
   let barangayId: string
-  let defaultSmsLocale: 'tl' | 'en' | undefined
 
   if (payload.municipalityId) {
     const muniSnap = await db.collection('municipalities').doc(payload.municipalityId).get()
@@ -106,11 +104,10 @@ export async function processInboxItemCore(
         `Municipality '${payload.municipalityId}' is not in jurisdiction.`,
       )
     }
-    const muniData = muniSnap.data() as { label: string; defaultSmsLocale?: 'tl' | 'en' }
+    const muniData = muniSnap.data() as { label: string }
     municipalityId = payload.municipalityId
     municipalityLabel = muniData.label
     barangayId = payload.barangayId ?? 'unknown'
-    defaultSmsLocale = muniData.defaultSmsLocale
   } else {
     const geo = await reverseGeocodeToMunicipality(db, payload.publicLocation)
     if (!geo) {
@@ -128,7 +125,6 @@ export async function processInboxItemCore(
     municipalityId = geo.municipalityId
     municipalityLabel = geo.municipalityLabel
     barangayId = geo.barangayId
-    defaultSmsLocale = geo.defaultSmsLocale
   }
 
   const createdAt = now()
@@ -246,42 +242,6 @@ export async function processInboxItemCore(
             reportId,
             expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
           })
-        }
-
-        // The inboxPayloadSchema enforces contact.smsConsent as z.literal(true), so
-        // presence of contact.phone here means the payload schema already validated consent.
-        // This code path does not re-validate — it relies on upstream schema enforcement.
-        if (payload.contact?.phone) {
-          const salt = process.env.SMS_MSISDN_HASH_SALT
-          if (!salt) {
-            log({
-              severity: 'ERROR',
-              code: 'sms.salt.missing',
-              message: 'SMS_MSISDN_HASH_SALT env not set — skipping enqueue',
-            })
-          } else {
-            const muniLocale = defaultSmsLocale ?? 'tl'
-            enqueueSms(db, tx, {
-              reportId,
-              purpose: 'receipt_ack',
-              recipientMsisdn: payload.contact.phone,
-              locale: muniLocale,
-              publicRef: inbox.publicRef,
-              salt,
-              nowMs: createdAt,
-              providerId: 'semaphore',
-            })
-            tx.set(db.collection('report_sms_consent').doc(reportId), {
-              reportId,
-              phone: payload.contact.phone,
-              locale: muniLocale,
-              smsConsent: true,
-              municipalityId,
-              followUpConsent: payload.followUpConsent === true,
-              createdAt,
-              schemaVersion: 1,
-            })
-          }
         }
 
         tx.set(db.collection('report_events').doc(), {

@@ -1,5 +1,4 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
-import { defineSecret } from 'firebase-functions/params'
 import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logEvent } from '@bantayog/shared-validators'
@@ -7,16 +6,13 @@ import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
-import { sendFcmToResponder, FCM_VAPID_PRIVATE_KEY } from '../services/fcm-send.js'
+import { sendFcmToResponder } from '../services/fcm-send.js'
 import {
   validateDispatchTransaction,
   type DispatchResponderCoreDeps,
 } from './dispatch-responder-validation.js'
 import type { Database } from 'firebase-admin/database'
-import { enqueueDispatchSms } from './dispatch-responder-notify.js'
-import { buildSmsPayload, writeDispatchDocs } from './dispatch-responder-writes.js'
-
-const SMS_MSISDN_HASH_SALT = defineSecret('SMS_MSISDN_HASH_SALT')
+import { writeDispatchDocs } from './dispatch-responder-writes.js'
 
 const InputSchema = z
   .object({
@@ -77,25 +73,6 @@ export async function dispatchResponderCore(
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
 
-        let smsPublicRef = deps.reportId
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, '')
-          .slice(0, 8)
-
-        const salt = process.env.SMS_MSISDN_HASH_SALT
-        const smsPayload = salt
-          ? await buildSmsPayload({
-              db,
-              tx,
-              reportId: deps.reportId,
-              salt,
-              defaultPublicRef: smsPublicRef,
-            })
-          : null
-        if (smsPayload) {
-          smsPublicRef = smsPayload.publicRef
-        }
-
         const dispatchId = deps.reportId + '_' + deps.responderUid
         const dispatchRef = db.collection('dispatches').doc(dispatchId)
 
@@ -115,20 +92,6 @@ export async function dispatchResponderCore(
           from,
           to: 'assigned',
         })
-
-        if (salt && smsPayload) {
-          enqueueDispatchSms({
-            db,
-            tx,
-            reportId: deps.reportId,
-            dispatchId,
-            recipientMsisdn: smsPayload.recipientMsisdn,
-            locale: smsPayload.locale,
-            publicRef: smsPublicRef,
-            salt,
-            nowMs: deps.now.toMillis(),
-          })
-        }
 
         logEvent({
           severity: 'INFO',
@@ -157,7 +120,7 @@ export const dispatchResponder = onCall(
     enforceAppCheck: true,
     maxInstances: 100,
     cors: ['http://localhost:5175'],
-    secrets: [FCM_VAPID_PRIVATE_KEY, SMS_MSISDN_HASH_SALT],
+    secrets: [],
   },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')

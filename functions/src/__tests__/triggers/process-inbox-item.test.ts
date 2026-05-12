@@ -7,9 +7,8 @@ const PERMISSIVE_RULES =
   'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}'
 
 let env: RulesTestEnvironment | undefined
-const TEST_SALT = 'test-sms-salt-ph4a'
+
 beforeAll(async () => {
-  process.env.SMS_MSISDN_HASH_SALT = TEST_SALT
   env = await initializeTestEnvironment({
     projectId: 'demo-phase-3a-inbox',
     firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
@@ -20,7 +19,6 @@ beforeAll(async () => {
       label: 'Daet',
       provinceId: 'camarines-norte',
       centroid: { lat: 14.1, lng: 122.95 },
-      defaultSmsLocale: 'tl',
       schemaVersion: 1,
     })
   })
@@ -44,7 +42,6 @@ beforeEach(async () => {
       'moderation_incidents',
       'idempotency_keys',
       'pending_media',
-      'sms_outbox',
     ]
     for (const col of collections) {
       const docs = await db.collection(col).get()
@@ -371,45 +368,6 @@ describe('processInboxItemCore', () => {
     })
   })
 
-  it('skips SMS enqueue without throwing when SMS_MSISDN_HASH_SALT is unset', async () => {
-    await env!.withSecurityRulesDisabled(async (ctx) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const db = ctx.firestore() as any
-      const savedSalt = process.env.SMS_MSISDN_HASH_SALT
-      try {
-        delete process.env.SMS_MSISDN_HASH_SALT
-        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-nosalt'), {
-          reporterUid: 'citizen-salt',
-          clientCreatedAt: 1713350400000,
-          idempotencyKey: 'idem-nosalt',
-          publicRef: 'nosalt01',
-          secretHash: 'f'.repeat(64),
-          correlationId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-          payload: {
-            reportType: 'flood',
-            description: 'salt missing test',
-            severity: 'low',
-            source: 'web',
-            publicLocation: { lat: 14.11, lng: 122.95 },
-            contact: { phone: '+639171234567', smsConsent: true },
-          },
-        })
-
-        const result = await processInboxItemCore({
-          db,
-          inboxId: 'ibx-nosalt',
-          now: () => 1713350401000,
-        })
-        expect(result.materialized).toBe(true)
-
-        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
-        expect(outboxQ.size).toBe(0)
-      } finally {
-        process.env.SMS_MSISDN_HASH_SALT = savedSalt
-      }
-    })
-  })
-
   it('materializes report without media when pendingMediaIds references a missing doc', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -555,118 +513,6 @@ describe('processInboxItemCore', () => {
         expect(result.materialized).toBe(true)
         const secretSnap = await getDoc(doc(ctx.firestore(), 'secret_lookup', '1234abcd'.repeat(8)))
         expect(secretSnap.exists()).toBe(false)
-      })
-    })
-  })
-
-  describe('SMS enqueue on consent', () => {
-    it('writes sms_outbox receipt_ack when contact.smsConsent=true', async () => {
-      await env!.withSecurityRulesDisabled(async (ctx) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const db = ctx.firestore() as any
-        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-sms-consent'), {
-          reporterUid: 'citizen-sms',
-          clientCreatedAt: 1713350400000,
-          idempotencyKey: 'idem-sms-consent',
-          publicRef: 'smsref01',
-          secretHash: 'f'.repeat(64),
-          correlationId: '66666666-6666-4666-8666-666666666666',
-          payload: {
-            reportType: 'flood',
-            description: 'flooded area',
-            severity: 'medium',
-            source: 'web',
-            publicLocation: { lat: 14.11, lng: 122.95 },
-            contact: { phone: '+639171234567', smsConsent: true },
-          },
-        })
-
-        const result = await processInboxItemCore({
-          db,
-          inboxId: 'ibx-sms-consent',
-          now: () => 1713350401000,
-        })
-
-        expect(result.materialized).toBe(true)
-        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
-        expect(outboxQ.size).toBe(1)
-        const outbox = outboxQ.docs[0]!.data()
-        expect(outbox.status).toBe('queued')
-        expect(outbox.recipientMsisdn).toBe('+639171234567')
-        expect(outbox.purpose).toBe('receipt_ack')
-        expect(outbox.reportId).toBe(result.reportId)
-      })
-    })
-
-    it('does NOT write sms_outbox when contact is absent', async () => {
-      await env!.withSecurityRulesDisabled(async (ctx) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const db = ctx.firestore() as any
-        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-no-contact'), {
-          reporterUid: 'citizen-nocontact',
-          clientCreatedAt: 1713350400000,
-          idempotencyKey: 'idem-no-contact',
-          publicRef: 'noctct01',
-          secretHash: 'f'.repeat(64),
-          correlationId: '77777777-7777-4777-8777-777777777777',
-          payload: {
-            reportType: 'flood',
-            description: 'no contact info',
-            severity: 'low',
-            source: 'web',
-            publicLocation: { lat: 14.11, lng: 122.95 },
-          },
-        })
-
-        const result = await processInboxItemCore({
-          db,
-          inboxId: 'ibx-no-contact',
-          now: () => 1713350401000,
-        })
-
-        expect(result.materialized).toBe(true)
-        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
-        expect(outboxQ.size).toBe(0)
-      })
-    })
-
-    it('is idempotent — sms_outbox is not duplicated on replay', async () => {
-      await env!.withSecurityRulesDisabled(async (ctx) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const db = ctx.firestore() as any
-        await setDoc(doc(ctx.firestore(), 'report_inbox', 'ibx-sms-replay'), {
-          reporterUid: 'citizen-replay',
-          clientCreatedAt: 1713350400000,
-          idempotencyKey: 'idem-sms-replay',
-          publicRef: 'smsrpy01',
-          secretHash: 'f'.repeat(64),
-          correlationId: '88888888-8888-4888-8888-888888888888',
-          payload: {
-            reportType: 'flood',
-            description: 'replay test',
-            severity: 'low',
-            source: 'web',
-            publicLocation: { lat: 14.11, lng: 122.95 },
-            contact: { phone: '+639178765432', smsConsent: true },
-          },
-        })
-
-        const first = await processInboxItemCore({
-          db,
-          inboxId: 'ibx-sms-replay',
-          now: () => 1713350401000,
-        })
-        expect(first.materialized).toBe(true)
-
-        const second = await processInboxItemCore({
-          db,
-          inboxId: 'ibx-sms-replay',
-          now: () => 1713350402000,
-        })
-        expect(second.replayed).toBe(true)
-
-        const outboxQ = await getDocs(collection(ctx.firestore(), 'sms_outbox'))
-        expect(outboxQ.size).toBe(1)
       })
     })
   })

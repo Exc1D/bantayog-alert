@@ -9,14 +9,12 @@ interface MunicipalityDoc {
   id: string
   label: string
   centroid?: GeoPoint
-  defaultSmsLocale?: 'tl' | 'en'
 }
 
 export interface ReverseGeocodeResult {
   municipalityId: string
   municipalityLabel: string
   barangayId: string
-  defaultSmsLocale?: 'tl' | 'en'
 }
 
 let cachedMunis: MunicipalityDoc[] | null = null
@@ -62,6 +60,5 @@ export async function reverseGeocodeToMunicipality(
     municipalityId: nearest.id,
     municipalityLabel: nearest.label,
     barangayId: 'unknown',
-    ...(nearest.defaultSmsLocale ? { defaultSmsLocale: nearest.defaultSmsLocale } : {}),
   }
 }

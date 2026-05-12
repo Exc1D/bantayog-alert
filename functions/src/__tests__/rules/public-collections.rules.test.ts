@@ -237,15 +237,6 @@ describe('privileged read tests for callable collections', () => {
     await assertSucceeds(getDocs(collection(db, 'breakglass_events')))
   })
 
-  it('superadmin with active privileged claim can read sms_outbox', async () => {
-    const db = authed(
-      env,
-      'super-1',
-      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-    )
-    await assertSucceeds(getDocs(collection(db, 'sms_outbox')))
-  })
-
   it('superadmin with active privileged claim can get a command_channel_thread document', async () => {
     // Document-level read confirms the superadmin can access a thread they participate in.
     // Collection-level getDocs fails in the emulator due to an indexing delay after seeding,

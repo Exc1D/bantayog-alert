@@ -51,11 +51,8 @@ export async function retentionSweepCore(
     if (data.retentionAnonymizedAt) continue
 
     try {
-      // Read report_private for msisdnHash BEFORE nulling
-      const privateSnap = await input.db.collection('report_private').doc(doc.id).get()
-      const senderMsisdnHash = privateSnap.data()?.senderMsisdnHash as string | undefined
-
       // Null report_private PII
+      const privateSnap = await input.db.collection('report_private').doc(doc.id).get()
       if (privateSnap.exists) {
         await input.db.collection('report_private').doc(doc.id).update({
           citizenName: null,
@@ -79,25 +76,6 @@ export async function retentionSweepCore(
       const [files] = await input.storage.bucket().getFiles({ prefix: `report_media/${doc.id}/` })
       for (const file of files) {
         await file.delete()
-      }
-
-      // Null SMS records by senderMsisdnHash
-      if (senderMsisdnHash) {
-        const sessSnap = await input.db
-          .collection('sms_sessions')
-          .where('senderMsisdnHash', '==', senderMsisdnHash)
-          .get()
-        for (const sess of sessSnap.docs) {
-          await sess.ref.update({ senderMsisdnHash: null, msisdn: null })
-        }
-
-        const inboxSnap = await input.db
-          .collection('sms_inbox')
-          .where('senderMsisdnHash', '==', senderMsisdnHash)
-          .get()
-        for (const msg of inboxSnap.docs) {
-          await msg.ref.update({ senderMsisdnHash: null, msisdn: null, rawBody: null })
-        }
       }
 
       await doc.ref.update({

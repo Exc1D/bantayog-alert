@@ -154,15 +154,7 @@ async function executeErasure(
   const reportsSnap = await db.collection('reports').where('submittedBy', '==', citizenUid).get()
   const reportIds = reportsSnap.docs.map((d) => d.id)
 
-  // Step 2: Read report_private BEFORE nulling — extract senderMsisdnHashes
-  const msisdnHashes = new Set<string>()
-  for (const reportId of reportIds) {
-    const privateSnap = await db.collection('report_private').doc(reportId).get()
-    const hash = privateSnap.data()?.senderMsisdnHash as string | undefined
-    if (hash) msisdnHashes.add(hash)
-  }
-
-  // Step 3: Anonymize reports
+  // Step 2: Anonymize reports
   for (const reportId of reportIds) {
     await db.collection('reports').doc(reportId).update({
       submittedBy: 'citizen_deleted',
@@ -180,7 +172,7 @@ async function executeErasure(
     })
   }
 
-  // Step 5: Null report_contacts content
+  // Step 3: Null report_contacts content
   for (const reportId of reportIds) {
     const contactSnap = await db.collection('report_contacts').doc(reportId).get()
     if (contactSnap.exists) {
@@ -192,23 +184,7 @@ async function executeErasure(
     }
   }
 
-  // Step 6: Null sms_sessions by senderMsisdnHash
-  for (const hash of msisdnHashes) {
-    const sessSnap = await db.collection('sms_sessions').where('senderMsisdnHash', '==', hash).get()
-    for (const sess of sessSnap.docs) {
-      await sess.ref.update({ senderMsisdnHash: null, msisdn: null })
-    }
-  }
-
-  // Step 7: Null sms_inbox by senderMsisdnHash
-  for (const hash of msisdnHashes) {
-    const inboxSnap = await db.collection('sms_inbox').where('senderMsisdnHash', '==', hash).get()
-    for (const msg of inboxSnap.docs) {
-      await msg.ref.update({ senderMsisdnHash: null, msisdn: null, rawBody: null })
-    }
-  }
-
-  // Step 8: Delete Storage blobs for all citizen reports (verified and unverified)
+  // Step 4: Delete Storage blobs for all citizen reports (verified and unverified)
   for (const reportId of reportIds) {
     const [files] = await input.storage.bucket().getFiles({ prefix: `report_media/${reportId}/` })
     for (const file of files) {
@@ -216,10 +192,10 @@ async function executeErasure(
     }
   }
 
-  // Step 9: Hard-delete Firebase Auth account — LAST, non-reversible
+  // Step 5: Hard-delete Firebase Auth account — LAST, non-reversible
   await input.auth.deleteUser(citizenUid)
 
-  // Sentinel deletion happens in the caller after this function returns (step 10)
+  // Sentinel deletion happens in the caller after this function returns
   log({
     severity: 'INFO',
     code: 'ERASURE_EXECUTED',

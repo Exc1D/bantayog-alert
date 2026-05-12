@@ -1,24 +1,15 @@
 import { onCall } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
-import { logger } from 'firebase-functions'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { requireAuth, requireMfaAuth } from './https-error.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
-import { enqueueBroadcastSms } from '../services/send-sms.js'
-import { sendMassAlertFcm } from '../services/fcm-mass-send.js'
 
 const declareEmergencyInputSchema = z.object({
   hazardType: z.string().min(1).max(100),
   affectedMunicipalityIds: z.array(z.string().min(1)).min(1),
   message: z.string().min(1).max(500),
 })
-
-const MUNICIPALITY_LABEL_BY_ID = new Map(
-  CAMARINES_NORTE_MUNICIPALITIES.map((municipality) => [municipality.id, municipality.label]),
-)
-const MUNICIPALITY_CHUNK_SIZE = 10
 
 export async function declareEmergencyCore(
   db: Firestore,
@@ -40,71 +31,6 @@ export async function declareEmergencyCore(
     schemaVersion: 1,
   })
 
-  void sendMassAlertFcm(db, {
-    municipalityIds: validated.affectedMunicipalityIds,
-    title: `Emergency: ${validated.hazardType}`,
-    body: validated.message,
-  })
-
-  const municipalityIds = [...new Set(validated.affectedMunicipalityIds)]
-  const salt = process.env.SMS_MSISDN_HASH_SALT
-  if (!salt && process.env.NODE_ENV === 'production') {
-    throw new Error('SMS_MSISDN_HASH_SALT required in production')
-  }
-  if (!salt && process.env.NODE_ENV !== 'production') {
-    logger.warn('SMS_MSISDN_HASH_SALT is not configured; SMS hashes may be weak in non-production')
-    logger.warn('Skipping SMS broadcast — salt missing in non-production')
-  }
-  const saltValue = salt ?? ''
-
-  if (!salt) {
-    // Skip SMS broadcast when salt is not configured
-    void streamAuditEvent({
-      eventType: 'emergency_declared',
-      actorUid: actor.uid,
-      targetDocumentId: alertId,
-      metadata: { hazardType: validated.hazardType, smsSkipped: true },
-      occurredAt: now,
-    })
-    return { alertId }
-  }
-
-  for (let i = 0; i < municipalityIds.length; i += MUNICIPALITY_CHUNK_SIZE) {
-    const municipalityChunk = municipalityIds.slice(i, i + MUNICIPALITY_CHUNK_SIZE)
-    await db.runTransaction(async (tx) => {
-      const consentSnap = await tx.get(
-        db
-          .collection('report_sms_consent')
-          .where('followUpConsent', '==', true)
-          .where('municipalityId', 'in', municipalityChunk),
-      )
-
-      for (const consentDoc of consentSnap.docs) {
-        const data = consentDoc.data() as {
-          phone?: string
-          locale?: string
-          municipalityId?: string
-        }
-        if (typeof data.phone !== 'string' || data.phone.length === 0) continue
-        const locale = data.locale === 'en' || data.locale === 'tl' ? data.locale : 'tl'
-        const municipalityName =
-          MUNICIPALITY_LABEL_BY_ID.get(data.municipalityId ?? '') ?? 'Municipality'
-        enqueueBroadcastSms(db, tx, {
-          recipientMsisdn: data.phone,
-          salt: saltValue,
-          locale,
-          vars: {
-            municipalityName,
-            body: validated.message,
-          },
-          providerId: 'semaphore',
-          massAlertRequestId: alertId,
-          nowMs: now,
-        })
-      }
-    })
-  }
-
   void streamAuditEvent({
     eventType: 'emergency_declared',
     actorUid: actor.uid,
@@ -119,7 +45,7 @@ export async function declareEmergencyCore(
 export const declareEmergency = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['superadmin'])
+    const { uid } = requireAuth(request, ['provincial_superadmin'])
     requireMfaAuth(request)
     return declareEmergencyCore(getFirestore(), request.data, { uid })
   },
