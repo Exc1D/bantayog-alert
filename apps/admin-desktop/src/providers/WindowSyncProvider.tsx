@@ -68,7 +68,7 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('storage', onStorage)
       bc?.close()
     }
-  }, [])
+  }, [isDuplicate])
 
   const sendSync = useCallback(
     (msg: SyncMessage) => {
