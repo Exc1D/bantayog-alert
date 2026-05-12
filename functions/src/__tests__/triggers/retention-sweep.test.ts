@@ -58,6 +58,7 @@ describe('retentionSweepCore', () => {
         .set({
           citizenName: 'Test User',
           rawPhone: '+63917',
+          contactPhone: '+63917',
           gpsExact: { lat: 14.1, lng: 122.9 },
           addressText: '123 St',
           exactLocation: { lat: 14.123456, lng: 122.987654 },
@@ -69,6 +70,7 @@ describe('retentionSweepCore', () => {
 
       const privSnap = await db.collection('report_private').doc('r-old').get()
       expect(privSnap.data().citizenName).toBeNull()
+      expect(privSnap.data().contactPhone).toBeNull()
       expect(privSnap.data().exactLocation).toBeNull()
 
       const reportSnap = await db.collection('reports').doc('r-old').get()

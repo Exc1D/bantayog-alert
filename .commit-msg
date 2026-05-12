@@ -1,0 +1,17 @@
+refactor(functions): address PR #126 review comments — centralized roles, retention collections, sweep PII coverage
+
+- Add functions/src/constants/roles.ts with PROVINCIAL_SUPERADMIN,
+  PDRRMO, PRIVILEGED_ROLES, and PRIVILEGED_WITH_PDRRMO constants
+- Add functions/src/constants/retention.ts with
+  RETENTION_EXEMPT_COLLECTIONS single source of truth
+- Update 9 callables to import roles from constants instead of
+  hard-coding role strings (prevents future role drift)
+- Update set-retention-exempt to derive collection enum from
+  RETENTION_EXEMPT_COLLECTIONS constant
+- Add contactPhone nulling to erasure-sweep and retention-sweep
+  (completes PII cleanup alongside exactLocation)
+
+Addresses Sourcery review comments:
+1. Centralize privileged roles to prevent scattered edits and drift
+2. Derive retention-exempt collections from shared type
+3. Clear all PII fields (including contactPhone) in privacy sweeps

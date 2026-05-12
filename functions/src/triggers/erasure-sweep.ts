@@ -167,9 +167,11 @@ async function executeErasure(
     await db.collection('report_private').doc(reportId).update({
       citizenName: null,
       rawPhone: null,
+      contactPhone: null,
       gpsExact: null,
       addressText: null,
       exactLocation: null,
+      contactPhone: null,
     })
   }
 
