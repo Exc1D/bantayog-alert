@@ -113,4 +113,26 @@ describe('TriageQueueTable', () => {
     expect(screen.queryByText('selected')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Verify Selected' })).not.toBeInTheDocument()
   })
+
+  it('renders thead with sticky positioning so headers stay visible during dashboard scroll', () => {
+    const { container } = renderTable()
+    const thead = container.querySelector('thead')
+    expect(thead).not.toBeNull()
+    expect(thead?.className).toContain('sticky')
+    expect(thead?.className).toContain('top-0')
+    // Background must match the card surface so tbody rows scrolling beneath
+    // the sticky thead don't bleed through.
+    expect(thead?.className).toContain('bg-[var(--color-surface-elevated)]')
+  })
+
+  it('renders the bulk-action bar sticky above the sticky thead', () => {
+    const { container } = renderTable({ selectedIds: new Set(['r1']) })
+    const bulkBar = container.querySelector('[data-testid="bulk-action-bar"]')
+    expect(bulkBar).not.toBeNull()
+    expect(bulkBar?.className).toContain('sticky')
+    expect(bulkBar?.className).toContain('top-0')
+    // z-20 so it pins ABOVE the z-10 thead.
+    expect(bulkBar?.className).toContain('z-20')
+    expect(bulkBar?.className).toContain('bg-[var(--color-surface-elevated)]')
+  })
 })
