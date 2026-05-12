@@ -43,7 +43,7 @@ export function isReportOpsDoc(doc: unknown): doc is ReportOpsDoc {
 const MAX_RETRIES = 3
 
 export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
-  const { claims } = useAuth()
+  const { claims, loading: authLoading } = useAuth()
   const role = typeof claims?.role === 'string' ? claims.role : null
   const municipalityId = typeof claims?.municipalityId === 'string' ? claims.municipalityId : null
   const agencyId = typeof claims?.agencyId === 'string' ? claims.agencyId : null
@@ -59,14 +59,22 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
 
   useEffect(() => {
     if (!db) return
+    if (authLoading) return
 
-    // Unauthorized when claims are missing or scope IDs are missing for scoped roles
+    const isSupportedRole =
+      role === 'provincial_superadmin' || role === 'municipal_admin' || role === 'agency_admin'
+
+    // Unauthorized when role is not on the admin-desktop allowlist or scope IDs are missing
     if (
-      !role ||
+      !isSupportedRole ||
       (role === 'municipal_admin' && !municipalityId) ||
       (role === 'agency_admin' && !agencyId)
     ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReports([])
+      setReportOps([])
+      setAlerts([])
+      setResponders([])
       setLoading(false)
       setError('unauthorized')
       return
@@ -206,7 +214,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         unsub()
       })
     }
-  }, [windowType, db, rtdb, retryCount, role, municipalityId, agencyId])
+  }, [windowType, db, rtdb, retryCount, role, municipalityId, agencyId, authLoading])
 
   return { loading, error, reports, reportOps, alerts, responders }
 }

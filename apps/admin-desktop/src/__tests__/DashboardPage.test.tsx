@@ -192,15 +192,15 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('Keyboard Shortcuts')).not.toBeInTheDocument()
   })
 
-  it('shows popup-blocked banner with fallback link when window.open returns null', () => {
+  it('shows popup-blocked banner with fallback link when window.open returns null', async () => {
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<DashboardPage />, { wrapper: BrowserRouter })
     fireEvent.keyDown(window, { key: 'm' })
     expect(openSpy).toHaveBeenCalled()
     // Banner exposes a status role and a real anchor that bypasses popup blockers
-    const banner = screen.getByRole('status', { name: /map window blocked/i })
+    const banner = await screen.findByRole('status', { name: /map window blocked/i })
     expect(banner).toBeInTheDocument()
-    const link = screen.getByRole('link', { name: /open map in a new tab/i })
+    const link = await screen.findByRole('link', { name: /open map in a new tab/i })
     expect(link).toHaveAttribute('href', '/map')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))

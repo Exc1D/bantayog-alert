@@ -109,9 +109,56 @@ describe('useFirestoreListeners — role scoping', () => {
 
     renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
 
-    const calls = whereCalls()
-    const alertCalls = calls.filter((c) => c.field === 'alerts' || c.value === 'alerts')
-    expect(alertCalls).toHaveLength(0)
+    // Reports + report_ops subscribe through constrained Queries; alerts must
+    // receive the plain collection ref so it stays unscoped (public read).
+    const alertsCall = mockOnSnapshot.mock.calls.find((call) => {
+      const ref = call[0] as { kind?: string } | undefined
+      return ref?.kind === 'collection'
+    })
+    expect(alertsCall).toBeDefined()
+
+    // Sanity: the other two listeners ARE constrained, so this isn't vacuous.
+    const queryCalls = mockOnSnapshot.mock.calls.filter((call) => {
+      const ref = call[0] as { kind?: string } | undefined
+      return ref?.kind === 'query'
+    })
+    expect(queryCalls).toHaveLength(2)
+  })
+
+  it('rejects unsupported role and clears any prior cached data', () => {
+    useAuthMock.mockReturnValue({
+      user: { uid: 'rogue-1' },
+      claims: { role: 'responder', municipalityId: 'M001' },
+      loading: false,
+    })
+
+    const { result } = renderHook(() =>
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+    )
+
+    expect(mockOnSnapshot).not.toHaveBeenCalled()
+    expect(result.current.error).toBe('unauthorized')
+    expect(result.current.loading).toBe(false)
+    expect(result.current.reports).toEqual([])
+    expect(result.current.reportOps).toEqual([])
+    expect(result.current.alerts).toEqual([])
+    expect(result.current.responders).toEqual([])
+  })
+
+  it('defers listener setup while auth is still loading', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      claims: null,
+      loading: true,
+    })
+
+    const { result } = renderHook(() =>
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+    )
+
+    expect(mockOnSnapshot).not.toHaveBeenCalled()
+    expect(result.current.error).toBeNull()
+    expect(result.current.loading).toBe(true)
   })
 
   it('missing claims: skips listener setup and surfaces unauthorized error', () => {
