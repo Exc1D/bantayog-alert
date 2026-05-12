@@ -40,16 +40,24 @@ describe('WindowSyncProvider dedup', () => {
     }
     act(() => {
       window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: 'bantayog-sync-fallback',
-          newValue: JSON.stringify({ data: msg, timestamp: Date.now() }),
-        }),
+        (() => {
+          const e = new Event('storage')
+          Object.defineProperty(e, 'key', { value: 'bantayog-sync-fallback' })
+          Object.defineProperty(e, 'newValue', {
+            value: JSON.stringify({ data: msg, timestamp: Date.now() }),
+          })
+          return e
+        })(),
       )
       window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: 'bantayog-sync-fallback',
-          newValue: JSON.stringify({ data: msg, timestamp: Date.now() }),
-        }),
+        (() => {
+          const e = new Event('storage')
+          Object.defineProperty(e, 'key', { value: 'bantayog-sync-fallback' })
+          Object.defineProperty(e, 'newValue', {
+            value: JSON.stringify({ data: msg, timestamp: Date.now() }),
+          })
+          return e
+        })(),
       )
     })
 
