@@ -1,1 +1,0 @@
-{"version":3,"file":"prewarm-surge.d.ts","sourceRoot":"","sources":["../../src/callables/prewarm-surge.ts"],"names":[],"mappings":"AAuBA,UAAU,iBAAiB;IACzB,GAAG,EAAE,MAAM,CAAA;IACX,IAAI,EAAE,MAAM,CAAA;CACb;AAaD,wBAAsB,gBAAgB,CACpC,KAAK,EAAE,iBAAiB,EACxB,KAAK,EAAE,OAAO,GAAG,OAAO,GACvB,OAAO,CAAC;IAAE,MAAM,EAAE,MAAM,CAAA;CAAE,CAAC,CAsB7B;AAED,eAAO,MAAM,YAAY;YAxBJ,MAAM;YA0C1B,CAAA"}

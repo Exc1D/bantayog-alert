@@ -30,14 +30,14 @@ export function FallbackCards({
       <button
         type="button"
         onClick={onSmsClick}
-        aria-label="Send SMS"
+        aria-label={`Send SMS to ${hotlineNumber}`}
         className={`fallback-card${emphasized ? ' fallback-card--emphasized' : ''}`}
       >
         <div className="fallback-icon" aria-hidden="true">
           <MessageSquare size={16} />
         </div>
         <div className="fallback-action">SMS</div>
-        <div className="fallback-detail">No data needed</div>
+        <div className="fallback-detail">{hotlineNumber}</div>
       </button>
     </div>
   )

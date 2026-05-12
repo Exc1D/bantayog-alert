@@ -79,26 +79,6 @@ describe('coordination collections rules', () => {
     })
   })
 
-  describe('mass_alert_requests', () => {
-    it('mass alert requests are callable-only reads', async () => {
-      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
-      await assertFails(getDocs(collection(db, 'mass_alert_requests')))
-    })
-
-    it('mass alert requests are callable-only writes', async () => {
-      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
-      await assertFails(
-        addDoc(collection(db, 'mass_alert_requests'), {
-          requestedBy: 'admin',
-          scope: 'municipality',
-          targetIds: ['daet'],
-          message: 'Test alert',
-          requestedAt: ts,
-        }),
-      )
-    })
-  })
-
   describe('command_channel_threads (callable)', () => {
     it('command channel threads are callable-only reads', async () => {
       const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))

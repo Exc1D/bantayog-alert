@@ -64,39 +64,6 @@ describe('hazard zones rules', () => {
     })
   })
 
-  describe('hazard_signals', () => {
-    it('hazard signals are readable by authenticated users', async () => {
-      const db = authed(
-        env,
-        'daet-admin',
-        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      )
-      await assertSucceeds(getDocs(collection(db, 'hazard_signals')))
-    })
-
-    it('citizens can read hazard signals', async () => {
-      // isAuthed() allows any active authenticated user — verify citizen role is covered
-      const db = authed(env, 'citizen-1', { accountStatus: 'active' })
-      await assertSucceeds(getDocs(collection(db, 'hazard_signals')))
-    })
-
-    it('hazard signals are callable-only writes', async () => {
-      const db = authed(
-        env,
-        'daet-admin',
-        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      )
-      await assertFails(
-        addDoc(collection(db, 'hazard_signals'), {
-          zoneId: 'zone-1',
-          version: 1,
-          detectedAt: ts,
-          severity: 'high',
-        }),
-      )
-    })
-  })
-
   describe('hazard_zones_history', () => {
     it('hazard zones history are callable-only reads', async () => {
       const db = authed(

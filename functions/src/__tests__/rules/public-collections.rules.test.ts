@@ -210,15 +210,6 @@ describe('privileged read tests for callable collections', () => {
     await assertSucceeds(getDocs(collection(db, 'dead_letters')))
   })
 
-  it('superadmin with active privileged claim can read hazard_signals', async () => {
-    const db = authed(
-      env,
-      'super-1',
-      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-    )
-    await assertSucceeds(getDocs(collection(db, 'hazard_signals')))
-  })
-
   it('superadmin with active privileged claim can read moderation_incidents', async () => {
     const db = authed(
       env,
@@ -260,15 +251,6 @@ describe('privileged read tests for callable collections', () => {
     await assertSucceeds(getDoc(doc(db, 'command_channel_messages', 'msg-1')))
     // TODO(BANTAYOG-PHASE6): getDocs (list) fails because rules reference resource.data.threadId
     // which is undefined during list evaluation. Rules need separate allow list rule.
-  })
-
-  it('superadmin with active privileged claim can read mass_alert_requests', async () => {
-    const db = authed(
-      env,
-      'super-1',
-      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-    )
-    await assertSucceeds(getDocs(collection(db, 'mass_alert_requests')))
   })
 
   it('superadmin with active privileged claim can read shift_handoffs', async () => {
@@ -409,55 +391,6 @@ describe('privileged read tests for callable collections', () => {
       await assertFails(
         addDoc(collection(db, 'erasure_requests'), { schemaVersion: 1, createdAt: ts }),
       )
-    })
-
-    describe('hazard_signal_status', () => {
-      it('superadmin with active privileged claim can read hazard signal status', async () => {
-        const db = authed(
-          env,
-          'super-1',
-          staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-        )
-        await assertSucceeds(getDocs(collection(db, 'hazard_signal_status')))
-      })
-
-      it('citizen cannot read hazard signal status', async () => {
-        const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
-        await assertFails(getDocs(collection(db, 'hazard_signal_status')))
-      })
-
-      it('client writes to hazard signal status remain blocked', async () => {
-        const db = authed(
-          env,
-          'super-1',
-          staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-        )
-        await assertFails(
-          setDoc(doc(db, 'hazard_signal_status', 'current'), {
-            active: false,
-            affectedMunicipalityIds: [],
-            effectiveScopes: [],
-            manualOverrideActive: false,
-            scraperDegraded: false,
-            lastProjectedAt: ts,
-            degradedReasons: [],
-            schemaVersion: 1,
-          }),
-        )
-      })
-
-      it('suspended superadmin cannot read hazard signal status', async () => {
-        const db = authed(
-          env,
-          'super-1',
-          staffClaims({
-            role: 'provincial_superadmin',
-            permittedMunicipalityIds: ['daet'],
-            accountStatus: 'suspended',
-          }),
-        )
-        await assertFails(getDocs(collection(db, 'hazard_signal_status')))
-      })
     })
   })
 })

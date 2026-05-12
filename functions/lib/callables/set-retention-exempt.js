@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireAuth, requireMfaAuth } from './https-error.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
 const inputSchema = z.object({
-    collection: z.enum(['reports', 'report_private', 'report_ops', 'sms_inbox']),
+    collection: z.enum(['reports', 'report_private', 'report_ops']),
     documentId: z.string().min(1),
     exempt: z.boolean(),
     reason: z.string().min(1),
@@ -41,7 +41,7 @@ export async function setRetentionExemptCore(db, input, actor) {
     });
 }
 export const setRetentionExempt = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid, claims } = requireAuth(request, ['superadmin']);
+    const { uid, claims } = requireAuth(request, ['provincial_superadmin']);
     requireMfaAuth(request);
     const permittedMunicipalityIds = Array.isArray(claims.permittedMunicipalityIds)
         ? claims.permittedMunicipalityIds.filter((v) => typeof v === 'string')

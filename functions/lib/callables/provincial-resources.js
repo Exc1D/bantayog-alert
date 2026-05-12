@@ -59,7 +59,7 @@ export async function upsertProvincialResourceCore(db, input, actor) {
     return { id };
 }
 export const upsertProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['superadmin', 'pdrrmo']);
+    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo']);
     return upsertProvincialResourceCore(getFirestore(), request.data, { uid });
 });
 export async function archiveProvincialResourceCore(db, input, actor) {
@@ -81,7 +81,7 @@ export async function archiveProvincialResourceCore(db, input, actor) {
     });
 }
 export const archiveProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['superadmin', 'pdrrmo']);
+    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo']);
     const { id } = archiveSchema.parse(request.data);
     return archiveProvincialResourceCore(getFirestore(), { id }, { uid });
 });

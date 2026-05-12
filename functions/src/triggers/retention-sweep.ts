@@ -57,6 +57,7 @@ export async function retentionSweepCore(
         await input.db.collection('report_private').doc(doc.id).update({
           citizenName: null,
           rawPhone: null,
+          contactPhone: null,
           gpsExact: null,
           addressText: null,
           exactLocation: null,

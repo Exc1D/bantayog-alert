@@ -7,7 +7,6 @@ export interface ReverseGeocodeResult {
     municipalityId: string;
     municipalityLabel: string;
     barangayId: string;
-    defaultSmsLocale?: 'tl' | 'en';
 }
 export declare function reverseGeocodeToMunicipality(db: Firestore, location: GeoPoint): Promise<ReverseGeocodeResult | null>;
 export {};

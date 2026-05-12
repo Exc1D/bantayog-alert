@@ -196,6 +196,8 @@ export async function processInboxItemCore(
           reporterUid: inbox.reporterUid,
           isPseudonymous: false,
           publicTrackingRef: inbox.publicRef,
+          exactLocation: payload.exactLocation ?? null,
+          contactPhone: payload.contact?.phone ?? null,
           createdAt,
           schemaVersion: 1,
           ...(exactLocation ? { exactLocation } : {}),

@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { requireAuth, requireMfaAuth } from './https-error.js'
+import { PRIVILEGED_ROLES } from '../constants/roles.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
 
 const dataIncidentInputSchema = z.object({
@@ -64,7 +65,7 @@ export async function declareDataIncidentCore(
 export const declareDataIncident = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['provincial_superadmin'])
+    const { uid } = requireAuth(request, PRIVILEGED_ROLES)
     requireMfaAuth(request)
     return declareDataIncidentCore(getFirestore(), request.data, { uid })
   },

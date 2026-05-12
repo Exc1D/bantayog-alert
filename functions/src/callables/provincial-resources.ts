@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { requireAuth } from './https-error.js'
+import { PRIVILEGED_WITH_PDRRMO } from '../constants/roles.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
 
 const upsertSchema = z.object({
@@ -73,7 +74,7 @@ export async function upsertProvincialResourceCore(
 export const upsertProvincialResource = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo'])
+    const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO)
     return upsertProvincialResourceCore(getFirestore(), request.data, { uid })
   },
 )
@@ -104,7 +105,7 @@ export async function archiveProvincialResourceCore(
 export const archiveProvincialResource = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo'])
+    const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO)
     const { id } = archiveSchema.parse(request.data)
     return archiveProvincialResourceCore(getFirestore(), { id }, { uid })
   },

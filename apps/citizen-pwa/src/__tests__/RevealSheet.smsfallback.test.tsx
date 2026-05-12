@@ -22,7 +22,6 @@ vi.mock('../hooks/useMunicipalityContact', () => ({
   useMunicipalityContact: () => ({
     label: 'Daet MDRRMO',
     hotline: '+63-054-440-1234',
-    smsShortCode: '4748',
   }),
 }))
 
@@ -104,5 +103,28 @@ describe('RevealSheet — queued state SMS fallback', () => {
       </TestWrapper>,
     )
     expect(screen.getByRole('button', { name: /send as sms/i })).toBeInTheDocument()
+  })
+
+  it('sets window.location.href to sms: URL with hotline number on click', async () => {
+    const assignSpy = vi.spyOn(window, 'location', 'get').mockReturnValue({
+      href: '',
+    } as unknown as Location)
+
+    const { RevealSheet } = await import('../components/RevealSheet')
+    render(
+      <TestWrapper>
+        <RevealSheet state="queued" referenceCode="BT-123456" />
+      </TestWrapper>,
+    )
+
+    const btn = screen.getByRole('button', { name: /send as sms/i })
+    btn.click()
+
+    expect(window.location.href).toMatch(/^sms:\+630544401234/)
+    expect(window.location.href).toContain('body=')
+    expect(window.location.href).toContain('BANTAYOG%20BT-123456')
+    expect(window.location.href).toContain('Add%20incident%20details')
+
+    assignSpy.mockRestore()
   })
 })

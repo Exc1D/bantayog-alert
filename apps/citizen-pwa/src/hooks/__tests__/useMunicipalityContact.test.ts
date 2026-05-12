@@ -49,7 +49,6 @@ describe('useMunicipalityContact', () => {
         data: () => ({
           mdrrmoLabel: 'Daet MDRRMO',
           mdrrmoHotline: '(054) 721-1216',
-          mdrrmoSmsShortCode: '2933',
         }),
       })
     })
@@ -57,7 +56,6 @@ describe('useMunicipalityContact', () => {
     expect(result.current).toEqual({
       label: 'Daet MDRRMO',
       hotline: '(054) 721-1216',
-      smsShortCode: '2933',
     })
   })
 
@@ -88,7 +86,24 @@ describe('useMunicipalityContact', () => {
     expect(result.current).toEqual({
       label: 'Mercedes MDRRMO',
       hotline: DEFAULT_CONTACT.hotline,
-      smsShortCode: DEFAULT_CONTACT.smsShortCode,
+    })
+  })
+
+  it('falls back to DEFAULT_CONTACT.hotline when mdrrmoHotline is missing', () => {
+    const { result } = renderHook(() => useMunicipalityContact('vinzons'))
+
+    act(() => {
+      mockOnSnapshotCallback?.({
+        exists: () => true,
+        data: () => ({
+          mdrrmoLabel: 'Vinzons MDRRMO',
+        }),
+      })
+    })
+
+    expect(result.current).toEqual({
+      label: 'Vinzons MDRRMO',
+      hotline: DEFAULT_CONTACT.hotline,
     })
   })
 })

@@ -216,14 +216,14 @@ export function RevealSheet({
   }
 
   const handleSmsFallback = () => {
-    const normalizedShortCode = contact.smsShortCode.replace(/[^\d+]/g, '')
-    if (!normalizedShortCode) {
-      console.warn('[RevealSheet] Invalid SMS shortcode:', contact.smsShortCode)
+    const normalizedHotline = contact.hotline.replace(/[^\d+]/g, '')
+    if (!normalizedHotline || !/\d/.test(normalizedHotline)) {
+      console.warn('[RevealSheet] Invalid hotline number:', contact.hotline)
       return
     }
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     const sep = isIOS ? '&' : '?'
-    window.location.href = `sms:${normalizedShortCode}${sep}body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Incident details here]`)}`
+    window.location.href = `sms:${normalizedHotline}${sep}body=${encodeURIComponent(`BANTAYOG ${referenceCode}\n[Add incident details]`)}`
   }
 
   const handlePrimaryAction = () => {

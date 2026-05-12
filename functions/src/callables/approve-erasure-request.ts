@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { z } from 'zod'
 import { requireAuth, requireMfaAuth } from './https-error.js'
+import { PRIVILEGED_ROLES } from '../constants/roles.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
 
 const inputSchema = z.object({
@@ -105,7 +106,7 @@ export async function approveErasureRequestCore(
 export const approveErasureRequest = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['provincial_superadmin'])
+    const { uid } = requireAuth(request, PRIVILEGED_ROLES)
     requireMfaAuth(request)
     await approveErasureRequestCore(getFirestore(), getAuth(), request.data, { uid })
   },
