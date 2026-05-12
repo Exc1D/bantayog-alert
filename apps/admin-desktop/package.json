@@ -26,8 +26,8 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^1.8.0",
     "qrcode.react": "^4.2.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.14.1",
     "recharts": "^3.8.1",
@@ -48,7 +48,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "3",
     "tailwindcss-animate": "^1.0.7",
-    "vite": "^8.0.10",
+    "vite": "^8.0.11",
     "vitest": "^4.1.5"
   }
 }
