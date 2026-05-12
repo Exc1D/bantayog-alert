@@ -13,7 +13,10 @@ export const PROVINCIAL_SUPERADMIN = 'provincial_superadmin' as const
 export const PDRRMO = 'pdrrmo' as const
 
 /** Convenience array for requireAuth() calls that accept only superadmin. */
-export const PRIVILEGED_ROLES: string[] = [PROVINCIAL_SUPERADMIN]
+export const PRIVILEGED_ROLES: readonly string[] = Object.freeze([PROVINCIAL_SUPERADMIN])
 
 /** Convenience array for requireAuth() calls that accept superadmin + PDRRMO. */
-export const PRIVILEGED_WITH_PDRRMO: string[] = [PROVINCIAL_SUPERADMIN, PDRRMO]
+export const PRIVILEGED_WITH_PDRRMO: readonly string[] = Object.freeze([
+  PROVINCIAL_SUPERADMIN,
+  PDRRMO,
+])

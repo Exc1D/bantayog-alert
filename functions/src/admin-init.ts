@@ -5,10 +5,11 @@ import { getDatabase } from 'firebase-admin/database'
 
 function getFallbackAppConfig() {
   if (process.env.VITEST) {
+    const emulatorHost = process.env.FIREBASE_DATABASE_EMULATOR_HOST ?? '127.0.0.1:9000'
     console.warn('[admin-init] VITEST mode: using dummy RTDB URL. Emulator must be running.')
-    return { databaseURL: 'http://localhost:9000?ns=demo' }
+    return { databaseURL: `http://${emulatorHost}?ns=demo` }
   }
-  throw new Error('Firebase Admin not configured')
+  return undefined
 }
 
 const app = getApps()[0] ?? initializeApp(getFallbackAppConfig())

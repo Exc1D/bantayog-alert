@@ -58,8 +58,8 @@ function createMockDb(seedReport?: {
   }))
 
   const collectionFn = vi.fn((name: string) => ({
-    doc: (id: string) => {
-      if (name === 'report_events' && id === '') {
+    doc: (id?: string) => {
+      if (name === 'report_events' && id === undefined) {
         // Called as collection('report_events').doc() — auto-id
         eventDocCounter++
         return {
@@ -69,7 +69,7 @@ function createMockDb(seedReport?: {
         }
       }
       const d = docFn(id)
-      d.path = `${name}/${id}`
+      d.path = `${name}/${id ?? 'auto-id'}`
       return d
     },
     where: vi.fn(() => ({ where: vi.fn(), get: vi.fn().mockResolvedValue({ docs: [] }) })),
