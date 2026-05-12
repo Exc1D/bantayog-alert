@@ -198,6 +198,7 @@ export async function processInboxItemCore(
           publicTrackingRef: inbox.publicRef,
           createdAt,
           schemaVersion: 1,
+          ...(exactLocation ? { exactLocation } : {}),
         })
 
         tx.set(db.collection('report_ops').doc(reportId), {

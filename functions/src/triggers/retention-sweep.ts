@@ -59,6 +59,7 @@ export async function retentionSweepCore(
           rawPhone: null,
           gpsExact: null,
           addressText: null,
+          exactLocation: null,
         })
       }
 
