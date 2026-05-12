@@ -44,7 +44,11 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
           } else if (sortKey === 'municipality') {
             diff = a.municipality.localeCompare(b.municipality)
           } else {
-            diff = parseMinutes(a.avgResponseTime) - parseMinutes(b.avgResponseTime)
+            const aMin =
+              a.avgResponseTime === undefined ? Infinity : parseMinutes(a.avgResponseTime)
+            const bMin =
+              b.avgResponseTime === undefined ? Infinity : parseMinutes(b.avgResponseTime)
+            diff = aMin - bMin
           }
           return sortAsc ? diff : -diff
         })
@@ -138,20 +142,30 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
                 <td
                   className="px-4 py-3 font-mono text-[var(--color-text-secondary)]"
                   style={{ fontVariantNumeric: 'tabular-nums' }}
+                  data-testid={`muniperf-responders-${row.municipality}`}
                 >
-                  {row.activeResponders}
+                  {row.activeResponders ?? '—'}
                 </td>
                 <td
                   className="px-4 py-3 font-mono"
                   style={{
-                    color: responseTimeToken(row.avgResponseTime),
+                    color:
+                      row.avgResponseTime === undefined
+                        ? 'var(--color-text-secondary)'
+                        : responseTimeToken(row.avgResponseTime),
                     fontVariantNumeric: 'tabular-nums',
                   }}
+                  data-testid={`muniperf-response-${row.municipality}`}
                 >
-                  {row.avgResponseTime}
+                  {row.avgResponseTime ?? '—'}
                 </td>
-                <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                  {row.adminOnDuty ? (
+                <td
+                  className="px-4 py-3 text-[var(--color-text-secondary)]"
+                  data-testid={`muniperf-admin-${row.municipality}`}
+                >
+                  {row.adminOnDuty === undefined ? (
+                    '—'
+                  ) : row.adminOnDuty ? (
                     <span className="inline-flex items-center gap-1.5">
                       <span
                         className="h-1.5 w-1.5 rounded-full"

@@ -127,10 +127,6 @@ export default function MapPage() {
     return {
       municipality: selectedMunicipalityId,
       activeIncidents: muniReports.filter((r) => r.status === 'ACTIVE').length,
-      activeResponders: 0,
-      avgResponseTime: '0m',
-      unresolvedOver24h: 0,
-      adminOnDuty: false,
     }
   }, [selectedMunicipalityId, reports])
 
@@ -216,7 +212,11 @@ export default function MapPage() {
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <OfflineBanner error={error} />
-      <CommandHeader title="Provincial Map — Camarines Norte" lastUpdatedAt={lastUpdatedAt} />
+      <CommandHeader
+        title="Provincial Map — Camarines Norte"
+        windowRole="map"
+        lastUpdatedAt={lastUpdatedAt}
+      />
       {actionError && (
         <div
           className="absolute left-0 right-0 top-12 z-[60] border border-[var(--color-danger)] bg-[var(--color-danger)]/20 px-4 py-2 text-sm text-[var(--color-danger)]"

@@ -206,11 +206,11 @@ export interface EmergencyDeclaration {
 export interface MunicipalPerformance {
   municipality: string
   activeIncidents: number
-  activeResponders: number
+  activeResponders?: number
   totalResponders?: number
-  avgResponseTime: string
-  unresolvedOver24h: number
-  adminOnDuty: boolean
+  avgResponseTime?: string
+  unresolvedOver24h?: number
+  adminOnDuty?: boolean
   adminName?: string
 }
 
