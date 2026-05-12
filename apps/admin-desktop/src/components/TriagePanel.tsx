@@ -40,6 +40,15 @@ export function TriagePanel({
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) {
+        clearInterval(holdTimerRef.current)
+        holdTimerRef.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (!report?.id) return
     previousFocusRef.current = document.activeElement as HTMLElement
     panelRef.current?.focus()
@@ -187,12 +196,26 @@ export function TriagePanel({
                   </select>
                 )}
                 <button
+                  type="button"
                   disabled={!agency || !responder}
+                  aria-disabled={!agency || !responder}
+                  aria-label="Hold to Dispatch responder (press and hold Space or Enter)"
                   onMouseDown={startHold}
                   onMouseUp={endHold}
                   onMouseLeave={endHold}
                   onTouchStart={startHold}
                   onTouchEnd={endHold}
+                  onKeyDown={(e) => {
+                    if (e.repeat) return
+                    if (e.key !== ' ' && e.key !== 'Enter') return
+                    e.preventDefault()
+                    startHold()
+                  }}
+                  onKeyUp={(e) => {
+                    if (e.key !== ' ' && e.key !== 'Enter') return
+                    endHold()
+                  }}
+                  onBlur={endHold}
                   className="relative w-full overflow-hidden rounded-md bg-[var(--color-info)] py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="relative z-10">Hold to Dispatch</span>

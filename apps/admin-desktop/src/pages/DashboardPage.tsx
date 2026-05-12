@@ -99,6 +99,7 @@ export default function DashboardPage() {
   const [bulkRejectIds, setBulkRejectIds] = useState<string[] | null>(null)
   const [bulkVerifyIds, setBulkVerifyIds] = useState<Set<string> | null>(null)
   const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set())
+  const [popupBlocked, setPopupBlocked] = useState(false)
 
   const { selectReport, selectedReportId, setSuppressNextBroadcast } = useCommandCenterStore()
   const { loading, error, reports, alerts } = useFirestoreListeners({
@@ -278,7 +279,8 @@ export default function DashboardPage() {
   }, [])
 
   const openMapWindow = useCallback(() => {
-    window.open('/map', 'bantayog-map', 'width=1200,height=900')
+    const w = window.open('/map', 'bantayog-map', 'width=1200,height=900')
+    setPopupBlocked(w === null)
   }, [])
 
   useKeyboardShortcuts([
@@ -320,6 +322,8 @@ export default function DashboardPage() {
     {
       key: '?',
       handler: () => {
+        if (rejectModalOpen) return
+        if (bulkVerifyIds !== null) return
         setHelpModalOpen(true)
       },
     },
@@ -338,10 +342,6 @@ export default function DashboardPage() {
     return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
       municipality,
       activeIncidents: muniReports.filter((r) => r.status === 'ACTIVE').length,
-      activeResponders: 0,
-      avgResponseTime: '0m',
-      unresolvedOver24h: 0,
-      adminOnDuty: false,
     }))
   }, [reports])
 
@@ -357,6 +357,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+        <OfflineBanner error={error} />
         <div className="flex flex-1 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
         </div>
@@ -369,6 +370,7 @@ export default function DashboardPage() {
       <OfflineBanner error={error} />
       <CommandHeader
         title="PDRRMO Camarines Norte"
+        windowRole="dashboard"
         lastUpdatedAt={lastUpdatedAt}
         notificationCount={3}
         onOpenMap={openMapWindow}
@@ -387,6 +389,26 @@ export default function DashboardPage() {
           >
             {actionError}
             <button onClick={clearActionError} className="ml-2 underline">
+              Dismiss
+            </button>
+          </div>
+        )}
+        {popupBlocked && (
+          <div
+            className="mb-4 border border-[var(--color-warning)] bg-[var(--color-warning)]/15 px-4 py-2 text-sm text-[var(--color-text-primary)]"
+            role="status"
+            aria-label="Map window blocked"
+          >
+            Map window was blocked by your browser.{' '}
+            <a href="/map" target="_blank" rel="noopener noreferrer" className="underline">
+              Open map in a new tab
+            </a>
+            <button
+              onClick={() => {
+                setPopupBlocked(false)
+              }}
+              className="ml-2 underline"
+            >
               Dismiss
             </button>
           </div>

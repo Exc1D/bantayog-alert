@@ -3,6 +3,7 @@ import { LiveIndicator } from './LiveIndicator'
 
 interface Props {
   title: string
+  windowRole?: string
   lastUpdatedAt: number
   notificationCount?: number
   audioEnabled?: boolean

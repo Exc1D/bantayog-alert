@@ -12,35 +12,32 @@ const defaultProps = {
 describe('TrendAnalysisPanel', () => {
   it('renders chart tabs', () => {
     render(<TrendAnalysisPanel {...defaultProps} />)
-    expect(screen.getByRole('button', { name: 'Incident Volume' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Response Time' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Resource Util' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Muni Comparison' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Volume' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Response' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Resources' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Comparison' })).toBeInTheDocument()
   })
 
   it('shows default 7d time range', () => {
     render(<TrendAnalysisPanel {...defaultProps} />)
-    expect(screen.getByRole('button', { name: '7d' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /last 7 days/i })).toBeInTheDocument()
   })
 
   it('switches active tab when clicked', async () => {
     const user = userEvent.setup()
     render(<TrendAnalysisPanel {...defaultProps} />)
-    const responseTimeTab = screen.getByRole('button', { name: 'Response Time' })
-    await user.click(responseTimeTab)
-    expect(responseTimeTab).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Incident Volume' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    const responseTab = screen.getByRole('button', { name: 'Response' })
+    await user.click(responseTab)
+    expect(responseTab).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Volume' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('switches time range when clicked', async () => {
     const user = userEvent.setup()
     render(<TrendAnalysisPanel {...defaultProps} />)
-    await user.click(screen.getByRole('button', { name: '24h' }))
-    expect(screen.getByRole('button', { name: '24h' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: '7d' })).toHaveAttribute('aria-pressed', 'false')
+    await user.click(screen.getByRole('button', { name: /last 7 days/i }))
+    await user.click(screen.getByRole('option', { name: /last 24 hours/i }))
+    expect(screen.getByRole('button', { name: /last 24 hours/i })).toBeInTheDocument()
   })
 
   it('renders empty state when no reports', () => {
@@ -62,6 +59,6 @@ describe('TrendAnalysisPanel', () => {
       },
     ]
     render(<TrendAnalysisPanel {...defaultProps} reports={reports} />)
-    expect(screen.getByRole('status')).toHaveTextContent('Incident Volume · 7d (1 reports)')
+    expect(screen.getByRole('status')).toHaveTextContent('Volume · Last 7 days (1 reports)')
   })
 })

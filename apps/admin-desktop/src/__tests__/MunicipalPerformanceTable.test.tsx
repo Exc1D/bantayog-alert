@@ -97,4 +97,44 @@ describe('MunicipalPerformanceTable', () => {
     expect(goodCell?.style.color).toBe('var(--color-norm)')
     expect(warningCell?.style.color).toBe('var(--color-warn)')
   })
+
+  it('renders em-dash placeholders when synthesized fields are undefined', () => {
+    // Truth gate: producers (DashboardPage, MapPage) omit fields they cannot derive from
+    // the report stream. Renderer must surface "—" rather than fabricating 0 / "0m" / "No Shift",
+    // and the response-time color must stay neutral so we don't paint green for unwired data.
+    const unwired: MunicipalPerformance[] = [
+      {
+        municipality: 'Labo',
+        activeIncidents: 4,
+      },
+    ]
+    render(<MunicipalPerformanceTable data={unwired} onSelectMunicipality={vi.fn()} />)
+    expect(screen.getByTestId('muniperf-responders-Labo')).toHaveTextContent('—')
+    expect(screen.getByTestId('muniperf-response-Labo')).toHaveTextContent('—')
+    expect(screen.getByTestId('muniperf-admin-Labo')).toHaveTextContent('—')
+    // Regression: prototype values must not appear for unwired rows.
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
+    expect(screen.queryByText('0 min')).not.toBeInTheDocument()
+    expect(screen.queryByText('No Shift')).not.toBeInTheDocument()
+    // Color must be neutral, not 'var(--color-norm)' (which would imply healthy response time).
+    const responseCell = screen.getByTestId('muniperf-response-Labo').closest('td')
+    expect(responseCell?.style.color).toBe('var(--color-text-secondary)')
+  })
+
+  it('sorts undefined avg response time to the end when ascending', async () => {
+    // Unwired rows should sort last when ascending so triage focus stays on real data.
+    const mixed: MunicipalPerformance[] = [
+      { municipality: 'Daet', activeIncidents: 1, avgResponseTime: '8 min' },
+      { municipality: 'Labo', activeIncidents: 2 },
+      { municipality: 'Capalonga', activeIncidents: 3, avgResponseTime: '18 min' },
+    ]
+    const user = userEvent.setup()
+    render(<MunicipalPerformanceTable data={mixed} onSelectMunicipality={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /avg response/i }))
+    const rows = screen.getAllByRole('row')
+    // header + Daet(8) + Capalonga(18) + Labo(undefined → Infinity, last)
+    expect(rows[1]).toHaveTextContent('Daet')
+    expect(rows[2]).toHaveTextContent('Capalonga')
+    expect(rows[3]).toHaveTextContent('Labo')
+  })
 })

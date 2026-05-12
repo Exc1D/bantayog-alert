@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TriagePanel } from '../components/TriagePanel'
 
@@ -173,5 +173,71 @@ describe('TriagePanel', () => {
     const responderTexts = responderOptions.map((o) => o.textContent)
     expect(responderTexts).toContain('Bob')
     expect(responderTexts).not.toContain('Alice')
+  })
+
+  it('triggers dispatch via keyboard Space hold for 1000ms', () => {
+    vi.useFakeTimers()
+    const onDispatch = vi.fn()
+    render(
+      <TriagePanel
+        report={mockReport}
+        responders={mockResponders}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={onDispatch}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /dispatch responder/i }))
+    const agencySelect = screen.getByRole('combobox', { name: /select agency/i })
+    fireEvent.change(agencySelect, { target: { value: 'BFP' } })
+    // Re-query after agency selection renders responder dropdown
+    const responderSelect = screen.getByRole('combobox', { name: /select responder/i })
+    fireEvent.change(responderSelect, { target: { value: 'u1' } })
+
+    const holdButton = screen.getByRole('button', { name: /hold to dispatch/i })
+    holdButton.focus()
+    fireEvent.keyDown(holdButton, { key: ' ' })
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
+    fireEvent.keyUp(holdButton, { key: ' ' })
+
+    expect(onDispatch).toHaveBeenCalledWith(mockReport.id, 'BFP', 'u1')
+    vi.useRealTimers()
+  })
+
+  it('does not re-trigger dispatch when keydown repeats', () => {
+    vi.useFakeTimers()
+    const onDispatch = vi.fn()
+    render(
+      <TriagePanel
+        report={mockReport}
+        responders={mockResponders}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={onDispatch}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /dispatch responder/i }))
+    const agencySelect2 = screen.getByRole('combobox', { name: /select agency/i })
+    fireEvent.change(agencySelect2, { target: { value: 'BFP' } })
+    const responderSelect2 = screen.getByRole('combobox', { name: /select responder/i })
+    fireEvent.change(responderSelect2, { target: { value: 'u1' } })
+
+    const holdButton = screen.getByRole('button', { name: /hold to dispatch/i })
+    holdButton.focus()
+    fireEvent.keyDown(holdButton, { key: ' ' })
+    fireEvent.keyDown(holdButton, { key: ' ', repeat: true })
+    fireEvent.keyDown(holdButton, { key: ' ', repeat: true })
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
+    fireEvent.keyUp(holdButton, { key: ' ' })
+
+    expect(onDispatch).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 })
