@@ -77,7 +77,7 @@ export async function recordIncidentResponseEventCore(
 export const recordIncidentResponseEvent = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['superadmin'])
+    const { uid } = requireAuth(request, ['provincial_superadmin'])
     requireMfaAuth(request)
     return recordIncidentResponseEventCore(getFirestore(), request.data, {
       uid,

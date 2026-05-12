@@ -45,7 +45,7 @@ export async function declareEmergencyCore(
 export const declareEmergency = onCall(
   { region: 'asia-southeast1', enforceAppCheck: true },
   async (request) => {
-    const { uid } = requireAuth(request, ['superadmin'])
+    const { uid } = requireAuth(request, ['provincial_superadmin'])
     requireMfaAuth(request)
     return declareEmergencyCore(getFirestore(), request.data, { uid })
   },
