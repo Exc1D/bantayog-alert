@@ -86,6 +86,9 @@
 
 ## React
 
+- Role-scoped client listeners must narrow `claims: Record<string, unknown> | null` via `typeof` checks (the `AuthProvider` deliberately exposes claims as a record, so consumers can't assume `claims.role` is a string). Gate scoped roles (`municipal_admin` requiring `municipalityId`, `agency_admin` requiring `agencyId`) with a synchronous `setError('unauthorized')` + early `return` BEFORE any `onSnapshot` is wired — never widen visibility by falling back to province data.
+- `report_ops` documents store the scoping field as the array `agencyIds` (not singular `agencyId`); `where('agencyIds', 'array-contains', agencyId)` is the correct query, while `reports` uses `where('agencyId', '==', agencyId)`. Mixing them produces silent zero-row results because Firestore won't error on a missing field. Always cross-check the schema before writing a `where` clause.
+- Per-listener retry-timer fan-out makes "expected effect-run count = retries × listeners" math wrong. When each listener schedules its own `setTimeout(() => setRetryCount(c => c + 1))`, React's vitest fake-timer batching can fold or split state updates, producing 4–5 setup cycles instead of the naive 4. Assert the bounded property (retries terminate within a known ceiling) — not the exact count — when testing retry behavior.
 - Render-body ref assignment can trigger loops; sync refs in `useEffect`.
 - `useRef(initial)` does not track later state; sync explicitly if current value needed.
 - Critical external data should be fetched internally or required as a prop.
@@ -95,6 +98,7 @@
 - CodeQL `js/xss-through-dom` on blob previews: render via `createImageBitmap` + `canvas` instead of blob URL in JSX.
 - React Router v7 `useNavigate` returns `Promise<void>`; wrap with `void` or `await`.
 - Citizen report tracking maps live Firestore docs, not sanitized fixtures. Normalize timestamp-like values with `toMillis()` and treat `lastStatusAt` as the fallback status timestamp, or the timeline silently drops verified/resolved steps.
+- `position: sticky` resolves to its nearest scrolling ancestor; the CSS spec coerces `overflow-y: visible` to `auto` whenever `overflow-x: auto` is set, so a `<div className="overflow-x-auto">` wrapper around a `<table>` becomes a scroll context for BOTH axes. With no height constraint, that wrapper never actually scrolls vertically — and sticky thead resolves to it instead of the outer page-scroll container, so it appears to do nothing. Fix: drop the inner `overflow-x-auto` when sticky must follow the outer scroll context, OR give the wrapper a max-height so vertical scrolling is real. Verified in `TriageQueueTable.tsx` where the outer `<main className="flex-1 overflow-auto">` in DashboardPage is the actual scroll context.
 
 ## TypeScript
 
@@ -239,3 +243,10 @@
 - **Centralizing incident labels in one `incident-labels.ts` module prevents label drift** across MapPage popups, DispatchDetailPage cards, and ProfilePage role display.
 - **`useOwnDispatches.error` is typed `string | null`, not `Error`.** Rendering `{error}` directly in JSX throws "Objects are not valid as a React child" if an `Error` object leaks in from a mock. Match the hook's contract exactly in tests.
 - **Happy-dom default scroll metrics are not realistic.** Tests that assert on `scrollIntoView` behavior must set explicit `scrollHeight`/`scrollTop`/`clientHeight` or the initial mount may spuriously trigger scroll.
+
+## Admin Desktop — Interface Design Remediation (2026-05-12)
+
+- **`userEvent.setup({ advanceTimers })` under `vi.useFakeTimers()` can deadlock on `click`/`selectOptions`.** The user-event async microtask queue stalls when fake timers are active because `advanceTimers` only fires on explicit `vi.advanceTimersByTime()` calls, not on natural microtask drainage. Fix: use `fireEvent.click` / `fireEvent.change` for form interactions under fake timers, reserve `userEvent` for real-timer flows.
+- **Truth-gate pattern for derived data:** when a producer cannot derive a field from the live stream, make it optional in the type and omit it from the emission. The renderer surfaces `—` (em-dash) and keeps color/style neutral. Never fabricate zeros or defaults — they mislead operators. Verified in `MunicipalPerformanceTable` where fabricated `activeResponders: 0` painted "No Shift" badges on municipalities whose responder roster wasn't wired yet.
+- **Sticky z-index layering:** a sticky bulk-action bar above a sticky thead needs `z-20` vs `z-10` so it overlays the headers when both are pinned. Without the gap, the bar scrolls underneath the thead.
+- **Window-sync dedup via `crypto.randomUUID()` + in-memory `Map` with TTL.** Both `BroadcastChannel` and `localStorage` fallback can deliver the same message twice. Auto-assign `id` in `sendSync`, record it locally before posting, and prune the seen-set by `MESSAGE_TTL_MS` so it cannot grow unbounded.

@@ -1,5 +1,22 @@
 # Progress
 
+## Current Status (2026-05-12)
+
+**Admin Desktop — Interface-Design Critique Remediation (in progress)**
+Sequential tasks from `docs/ui-audit-findings-2026-05-07.md` follow-up critique, sequenced per CLAUDE.md §8.3.
+
+- ✅ **Phase 0:** Consolidated severity + brand tokens in `apps/admin-desktop/src/styles/design-tokens.css`. Single source of truth: HIGH `#991b1b`, MEDIUM `#a73400`, LOW `#334155`. Deleted orphaned `severity-colors.ts` helper (zero importers). Citizen-pwa teal palette intentionally untouched (auto-memory `feedback_citizen_pwa_palette.md`).
+- ✅ **P0.1:** Role-scoped Firestore reads in `useFirestoreListeners.ts`. Narrows `claims: Record<string, unknown> | null` via `typeof` checks; gates `municipal_admin` / `agency_admin` without a scope ID with a `setError('unauthorized')` short-circuit BEFORE any `onSnapshot` is wired. Reports + report_ops now use `where('municipalityId', '==', muniId)` or `where('agencyId|agencyIds', ...)` depending on role; alerts always read raw (public per spec). Effect dep array extended with `role, municipalityId, agencyId` so claim flips re-subscribe.
+- New scoping test file (`src/__tests__/useFirestoreListeners.scoping.test.ts`, 7 tests): provincial_superadmin leaves listeners unscoped; municipal_admin scopes both; agency_admin uses `==` on reports + `array-contains` on report_ops; alerts never scoped; three unauthorized paths surface `'unauthorized'`.
+- Existing `useFirestoreListeners.test.ts` + `.error.test.ts` mock blocks extended with `mockQuery`/`mockWhere` + `useAuthMock` (defaults to `provincial_superadmin`). Retry-count assertion replaced with bounded range (12 ≤ count ≤ 15) — per-listener timer fan-out produces ~5 setup cycles × 3 listeners under React's vitest fake-timer batching, not the naive 4 × 3 = 12.
+- **Gate:** `pnpm --dir apps/admin-desktop typecheck` clean · `pnpm --dir apps/admin-desktop lint` clean · `pnpm --dir apps/admin-desktop exec vitest run` → 25/26 files, 124/129 tests pass · focused `useFirestoreListeners.*` suites 20/20 green · 5 failing tests confined to pre-existing `TrendAnalysisPanel.test.tsx` label drift (deferred per §8.3 to a separate branch).
+- ✅ **P1.8:** MunicipalPerformanceTable truth gate — `MunicipalPerformance` type loosened (4 fields optional), renderer surfaces `—` for undefined, sort treats undefined avgResponseTime as Infinity, producers emit only `municipality + activeIncidents`.
+- ✅ **P2.9:** Hold-to-Dispatch keyboard parity — Space/Enter `keydown`/`keyup` with `e.repeat` guard, `onBlur` cleanup, unmount timer cleanup.
+- ✅ **P2.10:** Sticky bulk-action bar in TriageQueueTable — `sticky top-0 z-20` pins above the `z-10` thead.
+- ✅ **P2.11:** WindowSyncProvider message de-dup — optional `id` on `SyncMessage`, auto-filled via `crypto.randomUUID()`, in-memory `seenIdsRef` with TTL pruning.
+- ✅ **P2.12:** OfflineBanner ordering — DashboardPage and MapPage loading branches now render `<OfflineBanner error={error} />` before the spinner.
+- **Remaining critique tasks:** P0.2 sticky `<thead>` in TriageQueueTable (was already sticky; bulk bar completed), P0.3 modal stack discipline, P0.4 popup-block fallback, P1.5 window-role distinguisher, P1.6 motion-safe surge pulse, P1.7 remove hardcoded StatusBar stats.
+
 ## Current Status (2026-05-10)
 
 **Admin Desktop Frontend — GREENFIELD RESET**
