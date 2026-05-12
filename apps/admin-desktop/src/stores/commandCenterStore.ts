@@ -11,9 +11,19 @@ export interface TriageFilters {
 }
 
 export type SyncMessage =
-  | { type: 'select:report'; reportId: string; source: 'dashboard' | 'map' }
-  | { type: 'select:municipality'; municipalityId: string; source: 'dashboard' | 'map' }
-  | { type: 'triage:action'; reportId: string; action: 'verified' | 'rejected' | 'dispatched' }
+  | { type: 'select:report'; reportId: string; source: 'dashboard' | 'map'; id?: string }
+  | {
+      type: 'select:municipality'
+      municipalityId: string
+      source: 'dashboard' | 'map'
+      id?: string
+    }
+  | {
+      type: 'triage:action'
+      reportId: string
+      action: 'verified' | 'rejected' | 'dispatched'
+      id?: string
+    }
 
 interface CommandCenterState {
   // Selection
