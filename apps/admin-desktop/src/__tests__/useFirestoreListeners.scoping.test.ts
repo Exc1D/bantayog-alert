@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 
 const mockUnsubscribe = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
@@ -205,5 +205,122 @@ describe('useFirestoreListeners — role scoping', () => {
 
     expect(mockOnSnapshot).not.toHaveBeenCalled()
     expect(result.current.error).toBe('unauthorized')
+  })
+
+  it('flushes prior tenant data when scope key changes between valid scopes', () => {
+    let reportsCallback: ((snap: { docs: { id: string; data: () => unknown }[] }) => void) | null =
+      null
+    mockOnSnapshot.mockImplementation((ref: unknown, next: unknown) => {
+      const r = ref as { kind?: string }
+      if (r.kind === 'query' && !reportsCallback) {
+        reportsCallback = next as typeof reportsCallback
+      }
+      return mockUnsubscribe
+    })
+
+    useAuthMock.mockReturnValue({
+      user: { uid: 'muni-1' },
+      claims: { role: 'municipal_admin', municipalityId: 'M001' },
+      loading: false,
+    })
+
+    const { result, rerender } = renderHook(() =>
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+    )
+
+    act(() => {
+      reportsCallback?.({
+        docs: [
+          {
+            id: 'r-m001',
+            data: () => ({
+              type: 'flood',
+              severity: 'high',
+              municipality: 'X',
+              barangay: 'Y',
+              createdAt: '00:00',
+              status: 'new',
+              description: 'd',
+            }),
+          },
+        ],
+      })
+    })
+
+    expect(result.current.reports).toHaveLength(1)
+
+    useAuthMock.mockReturnValue({
+      user: { uid: 'muni-2' },
+      claims: { role: 'municipal_admin', municipalityId: 'M002' },
+      loading: false,
+    })
+
+    act(() => {
+      rerender()
+    })
+
+    expect(result.current.reports).toEqual([])
+    expect(result.current.reportOps).toEqual([])
+    expect(result.current.alerts).toEqual([])
+    expect(result.current.responders).toEqual([])
+  })
+
+  it('flushes prior tenant data when claims flip back to authLoading', () => {
+    let reportsCallback: ((snap: { docs: { id: string; data: () => unknown }[] }) => void) | null =
+      null
+    mockOnSnapshot.mockImplementation((ref: unknown, next: unknown) => {
+      const r = ref as { kind?: string }
+      if (r.kind === 'query' && !reportsCallback) {
+        reportsCallback = next as typeof reportsCallback
+      }
+      return mockUnsubscribe
+    })
+
+    useAuthMock.mockReturnValue({
+      user: { uid: 'muni-1' },
+      claims: { role: 'municipal_admin', municipalityId: 'M001' },
+      loading: false,
+    })
+
+    const { result, rerender } = renderHook(() =>
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+    )
+
+    act(() => {
+      reportsCallback?.({
+        docs: [
+          {
+            id: 'r-m001',
+            data: () => ({
+              type: 'flood',
+              severity: 'high',
+              municipality: 'X',
+              barangay: 'Y',
+              createdAt: '00:00',
+              status: 'new',
+              description: 'd',
+            }),
+          },
+        ],
+      })
+    })
+
+    expect(result.current.reports).toHaveLength(1)
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      claims: null,
+      loading: true,
+    })
+
+    act(() => {
+      rerender()
+    })
+
+    expect(result.current.reports).toEqual([])
+    expect(result.current.reportOps).toEqual([])
+    expect(result.current.alerts).toEqual([])
+    expect(result.current.responders).toEqual([])
+    expect(result.current.loading).toBe(true)
   })
 })

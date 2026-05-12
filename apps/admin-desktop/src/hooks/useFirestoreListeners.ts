@@ -56,10 +56,34 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   const [responders, setResponders] = useState<[string, unknown][]>([])
   const [retryCount, setRetryCount] = useState(0)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scopeKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!db) return
-    if (authLoading) return
+
+    // Flush prior-tenant state when the visibility scope changes (e.g.,
+    // municipal_admin M001 → M002, or a token refresh that flips authLoading
+    // back to true). Without this, React keeps rendering the previous
+    // tenant's docs until the new onSnapshot callback fires.
+    const nextScopeKey = authLoading
+      ? null
+      : `${role ?? 'none'}:${municipalityId ?? ''}:${agencyId ?? ''}:${windowType}`
+
+    const scopeChanged = scopeKeyRef.current !== nextScopeKey
+    scopeKeyRef.current = nextScopeKey
+
+    if (scopeChanged) {
+      setReports([])
+      setReportOps([])
+      setAlerts([])
+      setResponders([])
+    }
+
+    if (authLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(true)
+      return
+    }
 
     const isSupportedRole =
       role === 'provincial_superadmin' || role === 'municipal_admin' || role === 'agency_admin'
@@ -70,11 +94,6 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       (role === 'municipal_admin' && !municipalityId) ||
       (role === 'agency_admin' && !agencyId)
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setReports([])
-      setReportOps([])
-      setAlerts([])
-      setResponders([])
       setLoading(false)
       setError('unauthorized')
       return
