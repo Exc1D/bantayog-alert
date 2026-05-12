@@ -4,7 +4,7 @@ Reviewed uncommitted changes via 10 parallel specialized agents.
 
 ## Files Changed
 
-```
+```text
 apps/admin-desktop/src/components/CommandHeader.tsx
 functions/src/admin-init.ts
 functions/vitest.config.ts
@@ -195,7 +195,7 @@ if (process.env.VITEST && !getApps()[0]) {
 
 ## Verdict
 
-**Merge readiness:** Issues #1, #4, and #5 should be addressed before merge. #1 (zero test coverage on `processInbox-item-prc2`) is the highest priority — it's a production Firestore trigger with no regression protection. #2 and #6 are consistency improvements that don't block merge.
+**Merge readiness:** Issues #1, #4, and #5 should be addressed before merge. #1 (zero test coverage on `process-inbox-item-prc2`) is the highest priority — it's a production Firestore trigger with no regression protection. #2 and #6 are consistency improvements that don't block merge.
 
 **Recommended action:**
 
