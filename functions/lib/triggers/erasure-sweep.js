@@ -129,8 +129,10 @@ async function executeErasure(input, citizenUid, requestId) {
         await db.collection('report_private').doc(reportId).update({
             citizenName: null,
             rawPhone: null,
+            contactPhone: null,
             gpsExact: null,
             addressText: null,
+            exactLocation: null,
         });
     }
     // Step 3: Null report_contacts content

@@ -10,14 +10,14 @@
     --color-surface-elevated: #161618;
     --color-surface-overlay: #1e1e21;
     --color-success: #22c55e;
-    --color-danger: #ef4444;
-    --color-warning: #f59e0b;
+    --color-danger: #991b1b;
+    --color-warning: #a73400;
     --color-info: #3b82f6;
 
     /* Severity colors */
     --color-severity-high: var(--color-danger);
     --color-severity-medium: var(--color-warning);
-    --color-severity-low: #64748b;
+    --color-severity-low: #334155;
 
     /* HSU palette — Hazard Status Unit (aliases for semantic colors) */
     --hsu-crit: var(--color-danger);
@@ -29,8 +29,8 @@
     --color-crit: var(--color-danger);
     --color-warn: var(--color-warning);
     --color-norm: var(--color-success);
-    --color-sienna: var(--color-danger);
-    --color-sienna-glow: rgba(239, 68, 68, 0.25);
+    --color-sienna: #a73400;
+    --color-sienna-glow: rgba(167, 52, 0, 0.25);
     --color-amber: var(--color-warning);
 
     --color-text-primary: #f1f5f9;

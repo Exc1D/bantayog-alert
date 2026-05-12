@@ -4,6 +4,8 @@ interface Props {
   activeIncidents: number
   avgResponseTime: number // minutes
   pendingTriage: number
+  resolvedToday?: number
+  muniIssues?: { resolved: number; total: number }
 }
 
 function Metric({
@@ -38,7 +40,13 @@ function Metric({
   )
 }
 
-export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: Props) {
+export function StatusBar({
+  activeIncidents,
+  avgResponseTime,
+  pendingTriage,
+  resolvedToday,
+  muniIssues,
+}: Props) {
   const { statusBarExpandedOverride, toggleStatusBarExpanded } = useCommandCenterStore()
   const isSurge = pendingTriage >= 20 || activeIncidents >= 50
   const expanded = statusBarExpandedOverride ?? !isSurge
@@ -51,7 +59,7 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
     <div
       className={`sticky top-0 z-50 border-b bg-[var(--color-surface)] ${
         isSurge
-          ? 'animate-pulse border-[var(--color-severity-medium)]'
+          ? 'motion-safe:animate-pulse border-[var(--color-severity-medium)]'
           : 'border-[var(--color-surface)]'
       }`}
     >
@@ -71,10 +79,22 @@ export function StatusBar({ activeIncidents, avgResponseTime, pendingTriage }: P
       {expanded && (
         <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
           <span>
-            Resolved Today: <strong className="text-[var(--color-text-primary)]">89</strong>
+            Resolved Today:{' '}
+            <strong
+              data-testid="statusbar-resolved-today"
+              className="text-[var(--color-text-primary)]"
+            >
+              {resolvedToday === undefined ? '—' : String(resolvedToday)}
+            </strong>
           </span>
           <span>
-            Muni Issues: <strong className="text-[var(--color-text-primary)]">0/12</strong>
+            Muni Issues:{' '}
+            <strong
+              data-testid="statusbar-muni-issues"
+              className="text-[var(--color-text-primary)]"
+            >
+              {muniIssues ? `${String(muniIssues.resolved)}/${String(muniIssues.total)}` : '—'}
+            </strong>
           </span>
           <span>
             Surge:{' '}

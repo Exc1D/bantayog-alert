@@ -166,4 +166,44 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(useCommandCenterStore.getState().selectedReportId).toBeNull()
   })
+
+  it('does not stack help modal on top of an open reject modal when ? is pressed', () => {
+    render(<DashboardPage />, { wrapper: BrowserRouter })
+    // Open the reject confirmation modal first
+    fireEvent.click(screen.getByText('Camambugan'))
+    fireEvent.keyDown(window, { key: 'r' })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    // Pressing ? must NOT open the help modal on top of the reject modal
+    fireEvent.keyDown(window, { key: '?' })
+    // Help modal exposes the "Keyboard Shortcuts" heading — it must NOT be rendered
+    expect(screen.queryByText('Keyboard Shortcuts')).not.toBeInTheDocument()
+  })
+
+  it('does not stack help modal on top of an open bulk-verify modal when ? is pressed', () => {
+    render(<DashboardPage />, { wrapper: BrowserRouter })
+    // Open the bulk-verify confirmation modal by selecting all + Shift+V handler path:
+    // simulate via the bulk-verify control surfaced when items are selected.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Verify Selected' }))
+    // Confirmation modal should be open
+    expect(screen.getByText('Bulk Verify Reports')).toBeInTheDocument()
+    // Pressing ? must NOT open the help modal on top
+    fireEvent.keyDown(window, { key: '?' })
+    expect(screen.queryByText('Keyboard Shortcuts')).not.toBeInTheDocument()
+  })
+
+  it('shows popup-blocked banner with fallback link when window.open returns null', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<DashboardPage />, { wrapper: BrowserRouter })
+    fireEvent.keyDown(window, { key: 'm' })
+    expect(openSpy).toHaveBeenCalled()
+    // Banner exposes a status role and a real anchor that bypasses popup blockers
+    const banner = screen.getByRole('status', { name: /map window blocked/i })
+    expect(banner).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /open map in a new tab/i })
+    expect(link).toHaveAttribute('href', '/map')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    openSpy.mockRestore()
+  })
 })

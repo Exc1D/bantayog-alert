@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { collection, onSnapshot, type Firestore } from 'firebase/firestore'
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+  type Firestore,
+  type Query,
+} from 'firebase/firestore'
 import { ref, onValue, type Database } from 'firebase/database'
+import { useAuth } from '@bantayog/shared-ui'
 
 interface Props {
   windowType: 'dashboard' | 'map'
@@ -35,6 +43,11 @@ export function isReportOpsDoc(doc: unknown): doc is ReportOpsDoc {
 const MAX_RETRIES = 3
 
 export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
+  const { claims } = useAuth()
+  const role = typeof claims?.role === 'string' ? claims.role : null
+  const municipalityId = typeof claims?.municipalityId === 'string' ? claims.municipalityId : null
+  const agencyId = typeof claims?.agencyId === 'string' ? claims.agencyId : null
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reports, setReports] = useState<ReportDoc[]>([])
@@ -47,7 +60,18 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   useEffect(() => {
     if (!db) return
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Unauthorized when claims are missing or scope IDs are missing for scoped roles
+    if (
+      !role ||
+      (role === 'municipal_admin' && !municipalityId) ||
+      (role === 'agency_admin' && !agencyId)
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(false)
+      setError('unauthorized')
+      return
+    }
+
     setLoading(true)
 
     setError(null)
@@ -59,8 +83,14 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
 
     const unsubscribers: (() => void)[] = []
 
-    // Always listen to reports
-    const reportsRef = collection(db, 'reports')
+    // Role-scoped reports listener
+    const reportsCol = collection(db, 'reports')
+    let reportsRef: Query = reportsCol
+    if (role === 'municipal_admin' && municipalityId) {
+      reportsRef = query(reportsCol, where('municipalityId', '==', municipalityId))
+    } else if (role === 'agency_admin' && agencyId) {
+      reportsRef = query(reportsCol, where('agencyId', '==', agencyId))
+    }
     const unsubReports = onSnapshot(
       reportsRef,
       (snapshot) => {
@@ -87,8 +117,14 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     )
     unsubscribers.push(unsubReports)
 
-    // Listen to report_ops
-    const reportOpsRef = collection(db, 'report_ops')
+    // Role-scoped report_ops listener
+    const reportOpsCol = collection(db, 'report_ops')
+    let reportOpsRef: Query = reportOpsCol
+    if (role === 'municipal_admin' && municipalityId) {
+      reportOpsRef = query(reportOpsCol, where('municipalityId', '==', municipalityId))
+    } else if (role === 'agency_admin' && agencyId) {
+      reportOpsRef = query(reportOpsCol, where('agencyIds', 'array-contains', agencyId))
+    }
     const unsubReportOps = onSnapshot(
       reportOpsRef,
       (snapshot) => {
@@ -170,7 +206,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         unsub()
       })
     }
-  }, [windowType, db, rtdb, retryCount])
+  }, [windowType, db, rtdb, retryCount, role, municipalityId, agencyId])
 
   return { loading, error, reports, reportOps, alerts, responders }
 }

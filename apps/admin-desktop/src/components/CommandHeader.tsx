@@ -1,6 +1,8 @@
 import { Bell, Keyboard, Map, Volume2, VolumeX } from 'lucide-react'
 import { LiveIndicator } from './LiveIndicator'
 
+type WindowRole = 'dashboard' | 'map'
+
 interface Props {
   title: string
   windowRole?: string
@@ -11,6 +13,17 @@ interface Props {
   onOpenMap?: () => void
   onShowNotifications?: () => void
   onShowKeyboardShortcuts?: () => void
+  windowRole?: WindowRole
+}
+
+const ROLE_ACCENT: Record<WindowRole, string> = {
+  dashboard: 'var(--color-danger)',
+  map: 'var(--color-info)',
+}
+
+const ROLE_LABEL: Record<WindowRole, string> = {
+  dashboard: 'Dashboard',
+  map: 'Map',
 }
 
 export function CommandHeader({
@@ -22,10 +35,30 @@ export function CommandHeader({
   onOpenMap,
   onShowNotifications,
   onShowKeyboardShortcuts,
+  windowRole,
 }: Props) {
   return (
-    <header className="flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
+    <header className="relative flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
+      {windowRole && (
+        <span
+          aria-hidden="true"
+          data-testid="window-role-accent"
+          data-role={windowRole}
+          className="absolute left-0 top-0 h-full w-1"
+          style={{ backgroundColor: ROLE_ACCENT[windowRole] }}
+        />
+      )}
       <div className="flex items-center gap-3">
+        {windowRole && (
+          <span
+            data-testid="window-role-chip"
+            data-role={windowRole}
+            className="rounded-sm border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]"
+            style={{ color: ROLE_ACCENT[windowRole] }}
+          >
+            {ROLE_LABEL[windowRole]}
+          </span>
+        )}
         <span className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</span>
       </div>
       <div className="flex items-center gap-4">

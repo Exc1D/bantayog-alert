@@ -6,17 +6,32 @@ const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe)
 const mockOnValue = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
 const mockCollection = vi.hoisted(() => vi.fn().mockReturnValue({}))
 const mockDoc = vi.hoisted(() => vi.fn().mockReturnValue({}))
+const mockQuery = vi.hoisted(() => vi.fn().mockImplementation((ref) => ref))
+const mockWhere = vi.hoisted(() => vi.fn().mockReturnValue({}))
 const mockRef = vi.hoisted(() => vi.fn().mockReturnValue({}))
+const useAuthMock = vi.hoisted(() =>
+  vi.fn().mockReturnValue({
+    user: { uid: 'super-1' },
+    claims: { role: 'provincial_superadmin' },
+    loading: false,
+  }),
+)
 
 vi.mock('firebase/firestore', () => ({
   collection: mockCollection,
   doc: mockDoc,
   onSnapshot: mockOnSnapshot,
+  query: mockQuery,
+  where: mockWhere,
 }))
 
 vi.mock('firebase/database', () => ({
   ref: mockRef,
   onValue: mockOnValue,
+}))
+
+vi.mock('@bantayog/shared-ui', () => ({
+  useAuth: useAuthMock,
 }))
 
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'

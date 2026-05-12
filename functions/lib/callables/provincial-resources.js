@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth } from './https-error.js';
+import { PRIVILEGED_WITH_PDRRMO } from '../constants/roles.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
 const upsertSchema = z.object({
     id: z.string().min(1).optional(),
@@ -59,7 +60,7 @@ export async function upsertProvincialResourceCore(db, input, actor) {
     return { id };
 }
 export const upsertProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo']);
+    const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO);
     return upsertProvincialResourceCore(getFirestore(), request.data, { uid });
 });
 export async function archiveProvincialResourceCore(db, input, actor) {
@@ -81,7 +82,7 @@ export async function archiveProvincialResourceCore(db, input, actor) {
     });
 }
 export const archiveProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo']);
+    const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO);
     const { id } = archiveSchema.parse(request.data);
     return archiveProvincialResourceCore(getFirestore(), { id }, { uid });
 });
