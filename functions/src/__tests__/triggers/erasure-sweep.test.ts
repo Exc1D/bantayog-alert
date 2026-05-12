@@ -54,6 +54,7 @@ async function seedApprovedRequest(
       rawPhone: '+639171234567',
       gpsExact: { lat: 14.1, lng: 122.9 },
       addressText: '123 Main St',
+      exactLocation: { lat: 14.123456, lng: 122.987654 },
       reportId: 'report-1',
     })
   await db.collection('report_contacts').doc('report-1').set({
@@ -119,6 +120,7 @@ describe('erasureSweepCore', () => {
       const privateSnap = await db.collection('report_private').doc('report-1').get()
       expect(privateSnap.data().citizenName).toBeNull()
       expect(privateSnap.data().rawPhone).toBeNull()
+      expect(privateSnap.data().exactLocation).toBeNull()
 
       // report_contacts nulled
       const contactSnap = await db.collection('report_contacts').doc('report-1').get()

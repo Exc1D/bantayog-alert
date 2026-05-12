@@ -169,6 +169,7 @@ async function executeErasure(
       rawPhone: null,
       gpsExact: null,
       addressText: null,
+      exactLocation: null,
     })
   }
 
