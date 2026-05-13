@@ -4,7 +4,9 @@ import { renderHook, act } from '@testing-library/react'
 const mockUnsubscribe = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
 const mockOnValue = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
-const mockCollection = vi.hoisted(() => vi.fn().mockReturnValue({ kind: 'collection' }))
+const mockCollection = vi.hoisted(() =>
+  vi.fn().mockImplementation((_db: unknown, path: string) => ({ kind: 'collection', path })),
+)
 const mockQuery = vi.hoisted(() =>
   vi.fn().mockImplementation((ref, ...constraints) => ({ kind: 'query', ref, constraints })),
 )
@@ -111,18 +113,26 @@ describe('useFirestoreListeners — role scoping', () => {
 
     // Reports + report_ops subscribe through constrained Queries; alerts must
     // receive the plain collection ref so it stays unscoped (public read).
-    const alertsCall = mockOnSnapshot.mock.calls.find((call) => {
-      const ref = call[0] as { kind?: string } | undefined
+    // Path-aware assertions guard against the failure mode where some *other*
+    // collection (not alerts) is the one being read unscoped.
+    const collectionCalls = mockOnSnapshot.mock.calls.filter((call) => {
+      const ref = call[0] as { kind?: string; path?: string } | undefined
       return ref?.kind === 'collection'
     })
-    expect(alertsCall).toBeDefined()
+    expect(collectionCalls).toHaveLength(1)
+    expect((collectionCalls[0]?.[0] as { path: string }).path).toBe('alerts')
 
-    // Sanity: the other two listeners ARE constrained, so this isn't vacuous.
+    // Sanity: the other two listeners ARE constrained, and they wrap the
+    // reports + report_ops collections specifically — not alerts.
     const queryCalls = mockOnSnapshot.mock.calls.filter((call) => {
       const ref = call[0] as { kind?: string } | undefined
       return ref?.kind === 'query'
     })
     expect(queryCalls).toHaveLength(2)
+    const queriedPaths = queryCalls
+      .map((call) => (call[0] as { ref: { path: string } }).ref.path)
+      .sort()
+    expect(queriedPaths).toEqual(['report_ops', 'reports'])
   })
 
   it('rejects unsupported role and clears any prior cached data', () => {
@@ -321,6 +331,50 @@ describe('useFirestoreListeners — role scoping', () => {
     expect(result.current.reportOps).toEqual([])
     expect(result.current.alerts).toEqual([])
     expect(result.current.responders).toEqual([])
+    expect(result.current.loading).toBe(true)
+  })
+
+  it('clears stale onSnapshot error when claims flip back to authLoading', () => {
+    // Capture the FIRST error handler we see so we can simulate a listener
+    // failure on the prior scope before the token refresh.
+    let firstErrorHandler: ((err: Error) => void) | null = null
+    mockOnSnapshot.mockImplementation((_ref: unknown, _next: unknown, error: unknown) => {
+      if (!firstErrorHandler && typeof error === 'function') {
+        firstErrorHandler = error as (err: Error) => void
+      }
+      return mockUnsubscribe
+    })
+
+    useAuthMock.mockReturnValue({
+      user: { uid: 'muni-1' },
+      claims: { role: 'municipal_admin', municipalityId: 'M001' },
+      loading: false,
+    })
+
+    const { result, rerender } = renderHook(() =>
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+    )
+
+    // Force the listener into an error state on the M001 scope.
+    act(() => {
+      firstErrorHandler?.(new Error('permission-denied'))
+    })
+    expect(result.current.error).toBe('permission-denied')
+
+    // Token refresh: claims briefly null + loading=true. The authLoading
+    // branch must clear the stale error before flipping back to loading,
+    // otherwise the UI would render a failure banner over the spinner.
+    useAuthMock.mockReturnValue({
+      user: null,
+      claims: null,
+      loading: true,
+    })
+
+    act(() => {
+      rerender()
+    })
+
+    expect(result.current.error).toBeNull()
     expect(result.current.loading).toBe(true)
   })
 })

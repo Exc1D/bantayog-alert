@@ -80,7 +80,12 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     }
 
     if (authLoading) {
+      // Clear any stale onSnapshot error from the prior scope before flipping
+      // back to loading; otherwise a token refresh would leave error+loading
+      // both set, and the UI would render the "failed" state on top of a
+      // spinner.
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError(null)
       setLoading(true)
       return
     }
