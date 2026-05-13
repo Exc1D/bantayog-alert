@@ -124,6 +124,9 @@ export function ProfilePage() {
     return () => {
       active = false
     }
+    // reportIdsKey is derived from history so including history is redundant.
+    // loadedReportIdsKey is only set by this effect to prevent re-triggering.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportIdsKey])
 
   const completedRows = history.filter((row) => row.status === 'resolved')
