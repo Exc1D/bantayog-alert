@@ -69,7 +69,9 @@ export function ProfilePage() {
   } = useResponderAvailability(user?.uid)
   const { history } = useDispatchHistory(user?.uid)
 
-  const [selectedStatus, setSelectedStatus] = useState<SettableStatus>('available')
+  const [selectedStatusOverride, setSelectedStatusOverride] = useState<SettableStatus | null>(null)
+  const selectedStatus =
+    selectedStatusOverride ?? (isSettableStatus(availStatus) ? availStatus : 'available')
   const [reason, setReason] = useState('')
   const [statusSaving, setStatusSaving] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
@@ -79,6 +81,8 @@ export function ProfilePage() {
   const reportTypesLoaded = loadedReportIdsKey === reportIdsKey
 
   useEffect(() => {
+    if (loadedReportIdsKey === reportIdsKey) return
+
     let active = true
     const reportIds = Array.from(new Set(history.map((row) => row.reportId)))
 
@@ -88,35 +92,38 @@ export function ProfilePage() {
       }
     }
 
-    void Promise.all(
+    void Promise.allSettled(
       reportIds.map(async (reportId) => {
         const snap = await getDoc(doc(db, 'reports', reportId))
         if (!snap.exists()) return null
         const data = snap.data()
         return [reportId, String(data.reportType ?? 'other')] as const
       }),
-    )
-      .then((pairs) => {
-        if (!active) return
-        const next: Record<string, string> = {}
-        for (const pair of pairs) {
-          if (pair === null) continue
-          next[pair[0]] = pair[1]
+    ).then((results) => {
+      if (!active) return
+      const next: Record<string, string> = {}
+      let errorCount = 0
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          errorCount++
+          continue
         }
-        setReportTypesById(next)
-        setLoadedReportIdsKey(reportIdsKey)
-      })
-      .catch((err: unknown) => {
-        if (!active) return
-        console.error('[ProfilePage] report insight load failed:', err)
-        setReportTypesById({})
-        setLoadedReportIdsKey(reportIdsKey)
-      })
+        if (result.value === null) continue
+        next[result.value[0]] = result.value[1]
+      }
+      if (errorCount > 0) {
+        console.error(
+          `[ProfilePage] report insight load failed: ${String(errorCount)} of ${String(results.length)} reports`,
+        )
+      }
+      setReportTypesById(next)
+      setLoadedReportIdsKey(reportIdsKey)
+    })
 
     return () => {
       active = false
     }
-  }, [history, reportIdsKey])
+  }, [reportIdsKey])
 
   const completedRows = history.filter((row) => row.status === 'resolved')
   const totalCount = history.length
@@ -187,6 +194,7 @@ export function ProfilePage() {
       } else {
         await setAvailability(selectedStatus, reason.trim())
       }
+      setSelectedStatusOverride(null) // Clear override to follow availStatus
       setReason('')
     } catch (err: unknown) {
       setStatusError(err instanceof Error ? err.message : 'Update failed.')
@@ -344,7 +352,7 @@ export function ProfilePage() {
             value={selectedStatus}
             onChange={(e) => {
               const val = e.target.value
-              setSelectedStatus(isSettableStatus(val) ? val : 'available')
+              setSelectedStatusOverride(isSettableStatus(val) ? val : 'available')
               setReason('')
             }}
             aria-label="Set availability status"

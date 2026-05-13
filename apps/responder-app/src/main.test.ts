@@ -5,7 +5,7 @@ describe('main stylesheet imports', () => {
     document.body.innerHTML = '<div id="root"></div>'
   })
 
-  it('imports design tokens before globals', async () => {
+  it('imports globals before design tokens', async () => {
     const importOrder: string[] = []
     const renderRoot = vi.fn()
 

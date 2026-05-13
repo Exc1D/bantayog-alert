@@ -115,7 +115,7 @@ Smartphone-only. Every interactive element follows these rules:
   - Severity badge + location chips
   - Brief description clip (1 line)
   - "View & Accept" button: amber pill, full-width within ring
-- **Screen reader:** `aria-label` on the countdown ring updates each second (e.g., "Accept in 4 minutes 32 seconds"). When <1 minute: `aria-label` appends "urgent" and `role="alert"` announces the transition.
+- **Screen reader:** Per-second `aria-label` updates use `aria-live="polite"` to avoid disruptive announcements. Only the threshold crossing into <1 minute triggers a one-time assertive announcement via a separate `role="alert"` element: \"Less than 1 minute remaining.\"
 - **Multiple pending:** Vertical stack, most urgent on top, swipe to reveal next. Page indicator dots below the stack show count and current position.
 
 ### 4.3 Active Dispatch Card — Progress Ring
@@ -197,6 +197,7 @@ Responders operate in disaster zones with unreliable connectivity. Every state t
 ### 6.1 Map Tiles
 
 - Switch from OpenStreetMap light tiles to CartoDB Dark Matter: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`
+- Attribution: Show "© OpenStreetMap contributors" attribution text on the map (required by OSM license). Position bottom-right in a semi-transparent warm-black bar.
 - Dark tiles match app theme and reduce glare in bright daylight
 
 ### 6.2 Markers
@@ -399,7 +400,7 @@ Each page gets updates to its CSS Module file. No inline styles in JSX except fo
 - **Post-dispatch summary:** Verify time breakdown + PB banner logic
 - **Offline transition queue:** Verify queue write on network failure, drain on `online` event, exponential backoff, max-retry terminal state, conflict-resolution refresh
 - **Field notes autosave:** Verify debounced Preferences write, draft restoration on remount, no overwrite when hydration settles after user input, and clear on submit
-- **First-run overlay:** Verify one-time display, permanent dismiss via sessionStorage
+- **First-run overlay:** Verify one-time display, permanent dismiss via localStorage
 
 ## 14. Implementation Order
 

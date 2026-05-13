@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { FcmSetup } from './App.js'
 import { Capacitor } from '@capacitor/core'
@@ -51,6 +51,7 @@ vi.mock('./components/PrivacyNoticeModal', () => ({
 describe('FcmSetup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    currentUser = mockUser
     vi.stubEnv('VITE_FIREBASE_API_KEY', 'test-api-key')
     vi.stubEnv('VITE_FIREBASE_AUTH_DOMAIN', 'test.firebaseapp.com')
     vi.stubEnv('VITE_FIREBASE_PROJECT_ID', 'test-project')
@@ -67,6 +68,11 @@ describe('FcmSetup', () => {
       writable: true,
       configurable: true,
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
   })
 
   it('registers SW and posts config on web when worker is active', async () => {
@@ -235,9 +241,6 @@ describe('FcmSetup', () => {
 
     expect(mockRegister).not.toHaveBeenCalled()
     expect(navigator.serviceWorker.register).not.toHaveBeenCalled()
-
-    // Restore user for other tests
-    currentUser = mockUser
   })
 
   it('warns when SW registration fails', async () => {

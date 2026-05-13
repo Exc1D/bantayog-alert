@@ -56,13 +56,16 @@ export function getRingStrokeOffset(percent: number, radius: number): number {
   if (!Number.isFinite(radius) || radius < 0) {
     throw new RangeError(`radius must be a finite non-negative number, got ${String(radius)}`)
   }
+  if (!Number.isFinite(percent)) {
+    throw new RangeError(`percent must be a finite number, got ${String(percent)}`)
+  }
   const clampedPercent = Math.max(0, Math.min(100, percent))
   const circumference = 2 * Math.PI * radius
   return circumference - (clampedPercent / 100) * circumference
 }
 
 export function formatCountdownLabel(msRemaining: number): string {
-  const safeMs = Math.max(0, msRemaining)
+  const safeMs = Number.isFinite(msRemaining) ? Math.max(0, msRemaining) : 0
   const totalSeconds = Math.floor(safeMs / 1000)
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
