@@ -115,6 +115,25 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
 
     const unsubscribers: (() => void)[] = []
 
+    // Shared retry scheduler for all listeners. Clears any previously-scheduled
+    // retry timer before overwriting the ref — without this, when multiple
+    // listeners fail in the same effect run only the last assignment is
+    // reachable via cleanup, and the prior ones become orphans that still fire
+    // setRetryCount and trigger spurious effect re-runs after authLoading flips
+    // or unmount.
+    const scheduleRetry = () => {
+      if (retryCount >= MAX_RETRIES) return
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+      }
+      retryTimerRef.current = setTimeout(
+        () => {
+          setRetryCount((c) => c + 1)
+        },
+        1000 * (retryCount + 1),
+      )
+    }
+
     // Role-scoped reports listener
     const reportsCol = collection(db, 'reports')
     let reportsRef: Query = reportsCol
@@ -137,14 +156,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
-        if (retryCount < MAX_RETRIES) {
-          retryTimerRef.current = setTimeout(
-            () => {
-              setRetryCount((c) => c + 1)
-            },
-            1000 * (retryCount + 1),
-          )
-        }
+        scheduleRetry()
       },
     )
     unsubscribers.push(unsubReports)
@@ -172,14 +184,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
-        if (retryCount < MAX_RETRIES) {
-          retryTimerRef.current = setTimeout(
-            () => {
-              setRetryCount((c) => c + 1)
-            },
-            1000 * (retryCount + 1),
-          )
-        }
+        scheduleRetry()
       },
     )
     unsubscribers.push(unsubReportOps)
@@ -199,14 +204,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
-        if (retryCount < MAX_RETRIES) {
-          retryTimerRef.current = setTimeout(
-            () => {
-              setRetryCount((c) => c + 1)
-            },
-            1000 * (retryCount + 1),
-          )
-        }
+        scheduleRetry()
       },
     )
     unsubscribers.push(unsubAlerts)

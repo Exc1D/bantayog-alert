@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 
 const mockUnsubscribe = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
@@ -60,7 +60,7 @@ describe('useFirestoreListeners error handling', () => {
   })
 
   it('retries up to MAX_RETRIES on error', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.useFakeTimers()
     let effectRunCount = 0
     mockOnSnapshot.mockImplementation((_ref, _onNext, onError) => {
       effectRunCount++
@@ -74,21 +74,28 @@ describe('useFirestoreListeners error handling', () => {
       useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
     )
 
-    // Initial mount: 3 onSnapshot calls (reports, report_ops, alerts)
+    // Initial mount: 3 onSnapshot calls (reports, report_ops, alerts).
     expect(effectRunCount).toBe(3)
     expect(result.current.error).toBe('network error')
 
-    // Advance through all retry windows (1000 + 2000 + 3000 = 6000ms)
-    // Use runAllTimersAsync to drain every pending timer
-    await vi.runAllTimersAsync()
+    // Drain every retry cycle. The shared scheduleRetry() helper keeps exactly
+    // ONE timer pending per cycle (clears the prior before re-arming). Each
+    // act() boundary forces React to commit the setRetryCount update and run
+    // the effect — which arms the next cycle's timer — before the loop drains
+    // it. Without the per-iteration act(), runAllTimersAsync inside a single
+    // act() fires only the FIRST pending timer; the effect re-run is queued
+    // but never runs because no further reconciliation pass happens inside the
+    // same act().
+    for (let i = 0; i < 4; i++) {
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+    }
 
-    // Retries are bounded by MAX_RETRIES (= 3). Each cycle subscribes 3 listeners
-    // (reports, report_ops, alerts). With per-listener retry scheduling the timer
-    // fan-out produces 5 setup cycles total (3 × 5 = 15). The point is retries are
-    // bounded, not infinite — exact count depends on React's batching of
-    // setRetryCount callbacks across vitest fake-timer ticks.
-    expect(effectRunCount).toBeLessThanOrEqual(15)
-    expect(effectRunCount).toBeGreaterThanOrEqual(12)
+    // Deterministic post-fix: 4 effect runs (initial + 3 retries) × 3 listeners
+    // = 12. After retryCount === MAX_RETRIES the scheduler is a no-op, so
+    // further timer ticks add nothing.
+    expect(effectRunCount).toBe(12)
 
     vi.useRealTimers()
   })
