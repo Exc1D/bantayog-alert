@@ -33,6 +33,25 @@
         },
         { "source": "**", "destination": "/index.html" }
       ]
+    },
+    {
+      "target": "responder",
+      "public": "apps/responder-app/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "/sw.js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+            { "key": "Pragma", "value": "no-cache" }
+          ]
+        },
+        {
+          "source": "**/*.@(js|css)",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        }
+      ],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
     }
   ],
   "firestore": {

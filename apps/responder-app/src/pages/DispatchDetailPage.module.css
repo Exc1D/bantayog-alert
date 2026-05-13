@@ -17,17 +17,21 @@
   background: none;
   border: none;
   color: var(--text-primary);
-  font-size: 1.25rem;
+  font-size: var(--font-size-lg);
   cursor: pointer;
   padding: var(--space-1);
   display: flex;
   align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.backBtn:hover {
+  background: var(--surface-raised);
 }
 
 .backBtn:focus-visible {
   outline: 2px solid var(--amber-accent);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
 }
 
 .pageTitle {
@@ -39,7 +43,7 @@
 
 .pageHeaderSos {
   color: var(--bg-black);
-  font-size: 0.75rem;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   padding: 4px 10px;
   background: var(--color-danger);
@@ -65,7 +69,7 @@
 }
 
 .incidentTitle {
-  font-size: 1.125rem;
+  font-size: var(--font-size-md);
   font-weight: 700;
   margin: 0 0 var(--space-3) 0;
   display: flex;
@@ -76,7 +80,7 @@
 .severityBadge {
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -129,7 +133,7 @@
 .timelineStep {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 10px; /* kept for timeline steps - intentionally small */
   text-align: center;
   display: grid;
   justify-items: center;
@@ -146,7 +150,7 @@
 }
 
 .statusTitle {
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -195,6 +199,11 @@
   color: var(--amber-accent);
 }
 
+.toggleBtn:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
 .toggleBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -241,6 +250,11 @@
   border-color: var(--amber-accent);
 }
 
+.textarea:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
 .select {
   width: 100%;
   padding: var(--space-3);
@@ -257,6 +271,11 @@
   border-color: var(--amber-accent);
 }
 
+.select:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
 .selectMargin {
   margin-top: var(--space-3);
 }
@@ -271,6 +290,11 @@
   font-weight: 600;
   cursor: pointer;
   width: 100%;
+}
+
+.dangerBtn:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
 }
 
 .dangerBtnSpaced {
@@ -303,6 +327,11 @@
   background: #1d1d1d;
 }
 
+.navBtn:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
 .fieldNoteForm {
   display: flex;
   flex-direction: column;
@@ -326,6 +355,11 @@
   border-color: var(--amber-accent);
 }
 
+.noteInput:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
 .noteSubmitBtn {
   padding: 10px;
   background: var(--amber-accent);
@@ -336,6 +370,11 @@
   font-weight: 700;
   cursor: pointer;
   align-self: flex-end;
+}
+
+.noteSubmitBtn:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
 }
 
 .errorMsg {
@@ -368,4 +407,9 @@
   cursor: pointer;
   text-align: center;
   text-decoration: none;
+}
+
+.navigateBtn:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
 }

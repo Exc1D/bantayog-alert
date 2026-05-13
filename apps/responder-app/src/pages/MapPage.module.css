@@ -14,7 +14,8 @@
   position: absolute;
   bottom: var(--space-4);
   left: var(--space-4);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-3);
   font-size: var(--font-size-sm);
@@ -39,11 +40,11 @@
 }
 
 .dotBlue {
-  background: #1e40af;
+  background: var(--blue-responder);
 }
 
 .dotRed {
-  background: var(--color-danger);
+  background: var(--red-urgent);
 }
 
 .noLocation {
@@ -67,9 +68,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  background: #fff;
-  color: var(--r-text);
-  border: 1px solid var(--r-border);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-full);
   padding: var(--space-2) var(--space-4);
   font-size: var(--font-size-sm);
@@ -84,6 +85,6 @@
 }
 
 .recenterBtn:focus-visible {
-  outline: 2px solid var(--r-navy);
+  outline: 2px solid var(--amber-accent);
   outline-offset: 2px;
 }

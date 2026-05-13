@@ -15,7 +15,8 @@
     "bantayog-alert-staging": {
       "hosting": {
         "citizen": ["bantayog-citizen-staging"],
-        "admin": ["bantayog-admin-staging"]
+        "admin": ["bantayog-admin-staging"],
+        "responder": ["bantayog-responder-staging"]
       }
     }
   }

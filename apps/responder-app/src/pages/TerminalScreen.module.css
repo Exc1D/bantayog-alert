@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  background: var(--r-surface);
+  background: var(--surface-elevated);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10,25 +10,25 @@
 }
 
 .icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  font-size: 3rem; /* kept for icon - intentionally large */
+  margin-bottom: var(--space-4);
 }
 
 .title {
-  font-size: 1.25rem;
+  font-size: var(--font-size-lg);
   font-weight: 700;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 var(--space-2) 0;
 }
 
 .text {
-  color: var(--color-text-muted);
-  margin-bottom: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
 }
 
 .backBtn {
-  padding: 12px 32px;
-  background: var(--r-navy);
-  color: #fff;
+  padding: var(--space-3) var(--space-4);
+  background: var(--amber-accent);
+  color: var(--bg-black);
   border: none;
   border-radius: var(--radius-md);
   font-weight: 700;

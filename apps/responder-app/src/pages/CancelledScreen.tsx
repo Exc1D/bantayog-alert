@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { X } from 'lucide-react'
 import type { DispatchDoc } from '../hooks/useDispatch'
 import styles from './TerminalScreen.module.css'
 
@@ -11,8 +12,8 @@ export function CancelledScreen({ dispatch }: CancelledScreenProps) {
   const reason = dispatch.cancelReason
   return (
     <div className={styles.page}>
-      <div className={styles.icon} aria-hidden="true">
-        ✕
+      <div className={styles.icon} role="img" aria-label="Dispatch cancelled">
+        <X size={48} aria-hidden="true" />
       </div>
       <h1 className={styles.title}>Dispatch Cancelled</h1>
       <p className={styles.text}>

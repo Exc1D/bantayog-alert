@@ -345,6 +345,17 @@ All 7 clusters complete:
 
 ## Current Status (2026-05-13)
 
+**Responder App — Staging web deploy complete**
+
+- ✅ Added Firebase Hosting config for responder web build at `apps/responder-app/dist`
+- ✅ Mapped staging Hosting target `responder` to `bantayog-responder-staging`
+- ✅ Created Firebase Hosting site `bantayog-responder-staging`
+- ✅ Deployed staging Hosting only via `firebase deploy --project bantayog-alert-staging --only hosting:responder`
+- **URL:** https://bantayog-responder-staging.web.app
+- **Gate:** `pnpm --dir apps/responder-app typecheck` pass · `pnpm --dir apps/responder-app lint` pass · `pnpm --dir apps/responder-app build` pass
+- **Hotfix:** fixed black-screen deploy by aligning `@bantayog/shared-ui` peer deps with app React/router/Firebase versions, cleaning stale generated Firebase packages, rebuilding with `VITE_USE_EMULATOR=false`, and shipping real PWA icons
+- **Live smoke:** Playwright verified `Sign In` renders, `#root` is populated, no page/console/request errors, and `/icons/icon-192.png` returns `200 image/png`
+
 **Responder App — Shell contract cleanup complete**
 
 - ✅ Shell header now uses uppercase `BANTAYOG ALERT`

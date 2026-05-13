@@ -40,9 +40,7 @@ export function LoginPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.brand}>
-          <div className={styles.brandIcon} aria-hidden="true">
-            🚨
-          </div>
+          <div className={styles.brandIcon} aria-hidden="true" />
           <h1 className={styles.brandTitle}>BANTAYOG ALERT</h1>
           <p className={styles.brandSubtitle}>Responder Portal · Camarines Norte</p>
         </div>

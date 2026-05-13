@@ -31,6 +31,11 @@
   transform: scale(0.94);
 }
 
+.btn:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
 .ring {
   position: absolute;
   inset: -4px;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { Crosshair } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
@@ -18,16 +19,16 @@ const responderIcon = L.divIcon({
 })
 
 function getSeverityColor(severity: 'low' | 'medium' | 'high' | undefined): string {
-  if (severity === 'high') return '#dc2626'
-  if (severity === 'medium') return '#d97706'
-  return '#475569'
+  if (severity === 'high') return '#991b1b'
+  if (severity === 'medium') return '#92400e'
+  return '#065f46'
 }
 
 function buildIncidentIcon(severity: 'low' | 'medium' | 'high' | undefined): L.DivIcon {
   const fill = getSeverityColor(severity)
   return L.divIcon({
     className: 'bantayog-incident-marker',
-    html: `<div style="width:22px;height:22px;border-radius:4px;background:${fill};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);transform:rotate(45deg);"></div>`,
+    html: `<div style="width:22px;height:22px;border-radius:4px;background:${fill};border:2px solid var(--text-primary);box-shadow:0 1px 4px rgba(0,0,0,0.3);transform:rotate(45deg);"></div>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   })
@@ -182,7 +183,7 @@ export function MapPage() {
         disabled={!ownLocation}
         aria-label="Recenter map on your location"
       >
-        <span aria-hidden="true">⊙</span> Recenter
+        <Crosshair size={16} aria-hidden="true" /> Recenter
       </button>
     </div>
   )

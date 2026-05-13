@@ -41,10 +41,10 @@ function buildVariants(mdrrmoLabel: string) {
       subline:
         "We saved it securely on your phone and are retrying automatically. The network is having trouble — this is not your fault and nothing is lost. If it's a life-threatening emergency, call now.",
       sublineTl: 'Ligtas ang inyong ulat. Nagre-retry kami. Kung emergency, tawagan kami ngayon.',
-      bannerVariant: 'queued' as const,
+      bannerVariant: 'failed' as const,
       receiverText: undefined as string | undefined,
       primaryButton: 'Retry now',
-      primaryVariant: 'amber' as const,
+      primaryVariant: 'red' as const,
       secondaryButton: 'Keep draft & close',
       permissionText: "We'll hold this draft for 24 hours and keep retrying.",
     },

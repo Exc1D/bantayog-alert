@@ -276,7 +276,7 @@ body {
 /* === Timeline === */
 .timeline {
   display: flex;
-  gap: 0;
+  gap: 0.5rem;
 }
 
 .timeline-item {
@@ -288,62 +288,29 @@ body {
   position: relative;
 }
 
-.timeline-dots-row {
-  display: flex;
-  align-items: center;
+.timeline-line-row {
   width: 100%;
 }
 
-.timeline-dot-wrapper {
-  flex: 0 0 auto;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.timeline-dot {
-  width: 0.625rem;
-  height: 0.625rem;
+.timeline-line {
+  width: 100%;
+  height: 3px;
   border-radius: 9999px;
-  border: 2px solid white;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
 }
 
-.timeline-connector {
-  flex: 1;
-  height: 2px;
-  min-width: 0;
-}
-
-.timeline-connector--complete {
+.timeline-line--complete {
   background: var(--color-success-fg);
 }
 
-.timeline-connector--queued {
+.timeline-line--queued {
   background: #f59e0b;
 }
 
-.timeline-connector--failed {
+.timeline-line--failed {
   background: #dc2626;
 }
 
-.timeline-connector--pending {
-  background: #d1d5db;
-}
-
-.timeline-dot--complete {
-  background: var(--color-success-fg);
-}
-.timeline-dot--queued {
-  background: #f59e0b;
-}
-.timeline-dot--failed {
-  background: #dc2626;
-}
-.timeline-dot--pending {
+.timeline-line--pending {
   background: #d1d5db;
 }
 

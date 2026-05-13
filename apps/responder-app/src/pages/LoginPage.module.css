@@ -74,6 +74,11 @@
   border-color: var(--r-navy);
 }
 
+.input:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
 .error {
   padding: var(--space-3) var(--space-4);
   background: #fee2e2;
@@ -98,6 +103,11 @@
 
 .submitBtn:hover:not(:disabled) {
   background: var(--r-navy-light);
+}
+
+.submitBtn:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
 }
 
 .submitBtn:disabled {
