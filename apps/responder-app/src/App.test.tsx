@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { render } from '@testing-library/react'
 import { FcmSetup } from './App.js'
 import { Capacitor } from '@capacitor/core'
@@ -282,11 +280,30 @@ describe('FcmSetup', () => {
 })
 
 describe('main stylesheet imports', () => {
-  it('imports design tokens before globals', () => {
-    const mainSource = readFileSync(resolve(process.cwd(), 'src/main.tsx'), 'utf8')
+  it('imports design tokens before globals', async () => {
+    const importOrder: string[] = []
+    const renderRoot = vi.fn()
 
-    expect(mainSource.indexOf("import './styles/design-tokens.css'")).toBeLessThan(
-      mainSource.indexOf("import './styles/globals.css'"),
-    )
+    document.body.innerHTML = '<div id="root"></div>'
+    vi.resetModules()
+    vi.doMock('./styles/design-tokens.css', () => {
+      importOrder.push('design-tokens.css')
+      return {}
+    })
+    vi.doMock('./styles/globals.css', () => {
+      importOrder.push('globals.css')
+      return {}
+    })
+    vi.doMock('react-dom/client', () => ({
+      createRoot: () => ({ render: renderRoot }),
+    }))
+    vi.doMock('./App.js', () => ({
+      default: () => null,
+    }))
+
+    await import('./main')
+
+    expect(importOrder).toEqual(['design-tokens.css', 'globals.css'])
+    expect(renderRoot).toHaveBeenCalled()
   })
 })
