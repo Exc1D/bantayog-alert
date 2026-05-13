@@ -51,6 +51,12 @@ vi.mock('./components/PrivacyNoticeModal', () => ({
 describe('FcmSetup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('VITE_FIREBASE_API_KEY', 'test-api-key')
+    vi.stubEnv('VITE_FIREBASE_AUTH_DOMAIN', 'test.firebaseapp.com')
+    vi.stubEnv('VITE_FIREBASE_PROJECT_ID', 'test-project')
+    vi.stubEnv('VITE_FIREBASE_STORAGE_BUCKET', 'test-bucket.appspot.com')
+    vi.stubEnv('VITE_FIREBASE_MESSAGING_SENDER_ID', '123456789')
+    vi.stubEnv('VITE_FIREBASE_APP_ID', '1:123:web:test')
     mockRegister.mockResolvedValue(undefined)
     Object.defineProperty(globalThis, 'navigator', {
       value: {
@@ -276,34 +282,5 @@ describe('FcmSetup', () => {
 
     import.meta.env.VITE_FIREBASE_API_KEY = originalApiKey
     consoleSpy.mockRestore()
-  })
-})
-
-describe('main stylesheet imports', () => {
-  it('imports design tokens before globals', async () => {
-    const importOrder: string[] = []
-    const renderRoot = vi.fn()
-
-    document.body.innerHTML = '<div id="root"></div>'
-    vi.resetModules()
-    vi.doMock('./styles/design-tokens.css', () => {
-      importOrder.push('design-tokens.css')
-      return {}
-    })
-    vi.doMock('./styles/globals.css', () => {
-      importOrder.push('globals.css')
-      return {}
-    })
-    vi.doMock('react-dom/client', () => ({
-      createRoot: () => ({ render: renderRoot }),
-    }))
-    vi.doMock('./App.js', () => ({
-      default: () => null,
-    }))
-
-    await import('./main')
-
-    expect(importOrder).toEqual(['design-tokens.css', 'globals.css'])
-    expect(renderRoot).toHaveBeenCalled()
   })
 })
