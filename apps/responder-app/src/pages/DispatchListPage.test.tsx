@@ -11,7 +11,7 @@ const dispatchListState = vi.hoisted(() => ({
     reportId: string
     status: string
     uiStatus: string
-    acknowledgementDeadlineAt: { toMillis: () => number }
+    acknowledgementDeadlineAt: number | { toMillis: () => number }
   }[],
   groups: {
     pending: [] as {
@@ -19,14 +19,14 @@ const dispatchListState = vi.hoisted(() => ({
       reportId: string
       status: string
       uiStatus: string
-      acknowledgementDeadlineAt: { toMillis: () => number }
+      acknowledgementDeadlineAt: number | { toMillis: () => number }
     }[],
     active: [] as {
       dispatchId: string
       reportId: string
       status: string
       uiStatus: string
-      acknowledgementDeadlineAt: { toMillis: () => number }
+      acknowledgementDeadlineAt: number | { toMillis: () => number }
     }[],
   },
   error: null as string | null,
@@ -104,7 +104,7 @@ describe('DispatchListPage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText(/Flood/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Flood/)).toHaveLength(2)
     expect(screen.getByText(/high/i)).toBeInTheDocument()
     expect(screen.getByText(/Daet/)).toBeInTheDocument()
   })
@@ -176,5 +176,50 @@ describe('DispatchListPage', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent(/permission-denied/)
+  })
+
+  it('renders pending dispatch inside an urgent countdown ring', () => {
+    const now = Date.now()
+    dispatchListState.rows = [
+      {
+        dispatchId: 'd-1',
+        reportId: 'report-1',
+        status: 'pending',
+        uiStatus: 'pending',
+        acknowledgementDeadlineAt: now + 59_000,
+      },
+    ]
+    dispatchListState.groups.pending = dispatchListState.rows
+
+    render(
+      <MemoryRouter>
+        <DispatchListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('alert', { name: /accept in/i })).toHaveAccessibleName(/urgent/i)
+    expect(screen.getByRole('button', { name: /view & accept/i })).toBeInTheDocument()
+  })
+
+  it('renders active dispatch progress ring and next action label', () => {
+    dispatchListState.rows = [
+      {
+        dispatchId: 'd-2',
+        reportId: 'report-2',
+        status: 'en_route',
+        uiStatus: 'heading_to_scene',
+        acknowledgementDeadlineAt: Date.now() + 60_000,
+      },
+    ]
+    dispatchListState.groups.active = dispatchListState.rows
+
+    render(
+      <MemoryRouter>
+        <DispatchListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('img', { name: /progress 60 percent/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /mark on scene/i })).toBeInTheDocument()
   })
 })

@@ -1,7 +1,9 @@
 .page {
+  min-height: 100%;
   padding: var(--space-4);
   max-width: 600px;
   margin: 0 auto;
+  background: var(--bg-black);
 }
 
 .emptyState {
@@ -41,6 +43,8 @@
 
 .section {
   margin-bottom: var(--space-6);
+  display: grid;
+  gap: var(--space-3);
 }
 
 .sectionTitle {
@@ -54,31 +58,21 @@
 }
 
 .card {
-  background: var(--r-card);
-  border-radius: var(--radius-lg);
-  border: 1.5px solid var(--r-border);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
+  background: var(--surface-elevated);
+  border-radius: 24px;
+  border: 1px solid var(--border-default);
+  padding: 18px 12px;
   box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-3);
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-  transition:
-    box-shadow 0.15s,
-    border-color 0.15s;
 }
 
 .cardPending {
-  border-color: #fbbf24;
-  background: #fffbeb;
+  border-color: var(--amber-accent);
 }
 
 .cardActive {
-  border-color: #34d399;
-  background: #f0fdf4;
+  border-color: var(--green-success);
 }
 
 .card:hover {
@@ -95,7 +89,7 @@
 .cardTitle {
   font-size: var(--font-size-md);
   font-weight: 700;
-  color: var(--r-text);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -110,13 +104,13 @@
 }
 
 .pillPending {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--amber-accent);
 }
 
 .pillActive {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(16, 185, 129, 0.16);
+  color: var(--green-success);
 }
 
 .cardMeta {
@@ -145,16 +139,55 @@
 }
 
 .btnPrimary {
-  flex: 1;
-  padding: 10px;
-  background: var(--r-navy);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md);
+  min-height: 48px;
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  background: var(--amber-accent);
+  color: var(--bg-black);
   font-size: var(--font-size-sm);
   font-weight: 700;
   text-align: center;
   cursor: pointer;
+}
+
+.btnSuccess {
+  min-height: 48px;
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  background: var(--green-success);
+  color: var(--bg-black);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ringLabel {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ringNumber {
+  display: block;
+  margin-top: 4px;
+  color: var(--amber-accent);
+  font-size: 36px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ringTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 700;
 }
 
 .errorBanner {

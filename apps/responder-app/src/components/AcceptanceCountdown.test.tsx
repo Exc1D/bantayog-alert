@@ -10,19 +10,30 @@ describe('AcceptanceCountdown', () => {
 
   it('shows remaining time formatted as M:SS', () => {
     vi.useFakeTimers()
-    const deadline = Date.now() + 120_000 // 2 minutes from now
-    render(<AcceptanceCountdown deadlineMs={deadline} />)
-    expect(screen.getByText(/1:5\d|2:00/)).toBeInTheDocument()
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+    const now = Date.now()
+    const deadline = now + 120_000
+    const { rerender } = render(<AcceptanceCountdown deadlineMs={deadline} nowMs={now} />)
+    expect(screen.getByText('2:00')).toBeInTheDocument()
+    expect(setIntervalSpy).not.toHaveBeenCalled()
 
-    // Advance 1 second and assert the countdown ticked
     act(() => {
       vi.advanceTimersByTime(1000)
     })
-    expect(screen.getByText(/1:5\d/)).toBeInTheDocument()
+    rerender(<AcceptanceCountdown deadlineMs={deadline} nowMs={now + 1000} />)
+    expect(screen.getByText('1:59')).toBeInTheDocument()
   })
 
   it('shows "Expired" when deadline already passed', () => {
-    render(<AcceptanceCountdown deadlineMs={Date.now() - 1000} />)
+    const now = Date.now()
+    render(<AcceptanceCountdown deadlineMs={now - 1000} nowMs={now} />)
     expect(screen.getByText(/expired/i)).toBeInTheDocument()
+  })
+
+  it('applies an optional className to the timer node', () => {
+    const now = Date.now()
+    render(<AcceptanceCountdown deadlineMs={now + 60_000} nowMs={now} className="ringNumber" />)
+
+    expect(screen.getByText(/0:5\d|1:00/)).toHaveClass('ringNumber')
   })
 })

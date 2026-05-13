@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -9,14 +9,22 @@ const profileState = vi.hoisted(() => ({
     displayName?: string
     responderType?: string
     stationLabel?: string
+    specializations?: string[]
   },
 }))
 
 const mockSignOut = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const mockSetAvailability = vi.hoisted(() => vi.fn())
+const mockGetDoc = vi.hoisted(() => vi.fn())
 
 const historyState = vi.hoisted(() => ({
-  history: [] as { status: string; dispatchId: string; reportId: string; dispatchedAt: number }[],
+  history: [] as {
+    status: string
+    dispatchId: string
+    reportId: string
+    dispatchedAt: number
+    resolvedAt?: number
+  }[],
 }))
 
 vi.mock('../app/firebase', () => ({
@@ -26,6 +34,11 @@ vi.mock('../app/firebase', () => ({
 
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: () => ({ user: { uid: 'uid-1' }, signOut: mockSignOut }),
+}))
+
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn((_db, _collection, id: string) => ({ id })),
+  getDoc: mockGetDoc,
 }))
 
 vi.mock('../hooks/useResponderProfile', () => ({
@@ -51,6 +64,7 @@ describe('ProfilePage', () => {
     profileState.profile = null
     mockSignOut.mockClear()
     mockSetAvailability.mockClear()
+    mockGetDoc.mockReset()
     historyState.history = []
   })
 
@@ -74,15 +88,15 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Captain Garcia')
   })
 
-  it('labels recent dispatch stats as "Recent Dispatches" rather than "Total Dispatches"', () => {
+  it('labels recent dispatch stats as "Total Dispatches"', () => {
     profileState.profile = { responderType: 'fire' }
     render(
       <MemoryRouter>
         <ProfilePage />
       </MemoryRouter>,
     )
-    expect(screen.getByText(/Recent Dispatches/i)).toBeInTheDocument()
-    expect(screen.queryByText(/^Total Dispatches$/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/Total Dispatches/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Recent Dispatches/i)).not.toBeInTheDocument()
   })
 
   it('requires a reason when setting non-available status', async () => {
@@ -134,6 +148,72 @@ describe('ProfilePage', () => {
     )
 
     expect(screen.getByText('50%')).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText(/Total Dispatches/i)).toBeInTheDocument()
+  })
+
+  it('renders the competence dashboard metrics from recent history', async () => {
+    profileState.profile = {
+      displayName: 'Captain Garcia',
+      stationLabel: 'Daet Fire Station',
+      responderType: 'FIR',
+      specializations: ['Water Rescue', 'Structure Fire'],
+    }
+    historyState.history = [
+      {
+        dispatchId: 'd-1',
+        reportId: 'r-flood',
+        status: 'resolved',
+        dispatchedAt: 1700000000000,
+        resolvedAt: 1700000600000,
+      },
+      {
+        dispatchId: 'd-2',
+        reportId: 'r-fire',
+        status: 'resolved',
+        dispatchedAt: 1700086400000,
+        resolvedAt: 1700087120000,
+      },
+      {
+        dispatchId: 'd-3',
+        reportId: 'r-flood',
+        status: 'resolved',
+        dispatchedAt: 1700172800000,
+        resolvedAt: 1700173520000,
+      },
+      {
+        dispatchId: 'd-4',
+        reportId: 'r-med',
+        status: 'declined',
+        dispatchedAt: 1700259200000,
+      },
+    ]
+    mockGetDoc.mockImplementation((ref: { id: string }) =>
+      Promise.resolve({
+        exists: () => true,
+        data: () => ({
+          reportType: ref.id === 'r-fire' ? 'fire' : ref.id === 'r-med' ? 'medical' : 'flood',
+        }),
+      }),
+    )
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('4')).toBeInTheDocument()
+      expect(screen.getByText('75%')).toBeInTheDocument()
+      expect(screen.getByText('11m 20s')).toBeInTheDocument()
+    })
+
+    expect(screen.getAllByText(/water rescue/i).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('2 resolved')).toBeInTheDocument()
+    expect(screen.getByText('1 resolved')).toBeInTheDocument()
+    expect(screen.getByText(/fastest response/i)).toBeInTheDocument()
+    expect(screen.getByText(/most dispatches in a week/i)).toBeInTheDocument()
+    expect(screen.getByText(/longest availability streak/i)).toBeInTheDocument()
+    expect(screen.getByText(/not tracked yet/i)).toBeInTheDocument()
   })
 })

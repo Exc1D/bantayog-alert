@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Check } from 'lucide-react'
 import { useDispatch } from '../hooks/useDispatch'
 import { useReport } from '../hooks/useReport'
 import { useAcceptDispatch } from '../hooks/useAcceptDispatch'
@@ -7,10 +8,12 @@ import { useAdvanceDispatch } from '../hooks/useAdvanceDispatch'
 import { useDeclineDispatch } from '../hooks/useDeclineDispatch'
 import { useMarkDispatchUnableToComplete } from '../hooks/useMarkDispatchUnableToComplete'
 import { useAddFieldNote } from '../hooks/useAddFieldNote'
+import { useFieldNoteDraft } from '../hooks/useFieldNoteDraft'
 import { CancelledScreen } from './CancelledScreen'
 import { RaceLossScreen } from './RaceLossScreen'
 import { PreArrivalInfo } from './PreArrivalInfo'
 import { getReportTypeLabel } from '../lib/incident-labels'
+import { getStepValue } from '../lib/dispatch-progress'
 import styles from './DispatchDetailPage.module.css'
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -40,6 +43,8 @@ const UNABLE_REASONS = [
   'Equipment failure',
   'Jurisdiction conflict',
 ]
+
+const TIMELINE_STEPS = ['Accepted', 'Acknowledged', 'En Route', 'On Scene', 'Resolved'] as const
 
 function getFirebaseErrorCode(error: Error | undefined): string {
   if (!error || !('code' in error)) return ''
@@ -91,9 +96,9 @@ export function DispatchDetailPage() {
   const [showUnable, setShowUnable] = useState(false)
   const [unableReason, setUnableReason] = useState('')
   const [resolutionSummary, setResolutionSummary] = useState('')
-  const [fieldNote, setFieldNote] = useState('')
   const [autoAdvanceState, setAutoAdvanceState] = useState<'idle' | 'pending' | 'done'>('idle')
   const [distanceMeters, setDistanceMeters] = useState<number | null>(null)
+  const fieldNoteDraft = useFieldNoteDraft(dispatchId)
 
   useEffect(() => {
     if (dispatch?.status !== 'accepted') return
@@ -217,6 +222,8 @@ export function DispatchDetailPage() {
     : null
 
   const reportTypeLabelText = report ? getReportTypeLabel(report.reportType) : ''
+  const step = getStepValue(dispatch.status)
+  const isPendingTimeline = dispatch.status === 'pending'
 
   return (
     <div className={styles.page}>
@@ -253,6 +260,35 @@ export function DispatchDetailPage() {
             )}
           </div>
         )}
+
+        <div
+          className={styles.timeline}
+          role="progressbar"
+          aria-label="Dispatch progress"
+          aria-valuemin={0}
+          aria-valuemax={4}
+          aria-valuenow={step.value}
+          aria-valuetext={step.text}
+        >
+          {TIMELINE_STEPS.map((label, index) => (
+            <span
+              key={label}
+              className={[
+                styles.timelineStep,
+                index < step.value ? styles.timelineDone : '',
+                !isPendingTimeline && index === step.value ? styles.timelineCurrent : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              {...(!isPendingTimeline && index === step.value
+                ? { 'aria-current': 'step' as const }
+                : {})}
+            >
+              {index < step.value && <Check size={14} aria-hidden="true" />}
+              <span>{label}</span>
+            </span>
+          ))}
+        </div>
 
         {isActive && mapsUrl !== null && (
           <div className={styles.navigateSection}>
@@ -414,9 +450,6 @@ export function DispatchDetailPage() {
                   🆘 Request Backup
                 </Link>
               )}
-              <Link to={`/messages/${dispatch.reportId}`} className={styles.navBtn}>
-                💬 Message Admin
-              </Link>
               {report?.contactPhone ? (
                 <a href={`tel:${report.contactPhone}`} className={styles.navBtn}>
                   📞 Call Admin
@@ -493,24 +526,32 @@ export function DispatchDetailPage() {
               <textarea
                 id="field-notes"
                 className={styles.noteInput}
-                value={fieldNote}
+                value={fieldNoteDraft.value}
+                disabled={!fieldNoteDraft.loaded}
                 onChange={(e) => {
-                  setFieldNote(e.target.value)
+                  fieldNoteDraft.setValue(e.target.value)
                 }}
                 placeholder="On scene. Water is waist-deep…"
                 rows={2}
               />
               <button
                 className={styles.noteSubmitBtn}
-                disabled={!fieldNote.trim() || addingNote}
+                disabled={!fieldNoteDraft.loaded || !fieldNoteDraft.value.trim() || addingNote}
                 onClick={() => {
-                  void addNote(fieldNote)
-                    .then(() => {
-                      setFieldNote('')
-                    })
-                    .catch((err: unknown) => {
+                  void (async () => {
+                    try {
+                      await addNote(fieldNoteDraft.value)
+                    } catch (err: unknown) {
                       console.error('[DispatchDetailPage] addNote failed:', err)
-                    })
+                      return
+                    }
+
+                    try {
+                      await fieldNoteDraft.clear()
+                    } catch (err: unknown) {
+                      console.error('[DispatchDetailPage] clearing field-note draft failed:', err)
+                    }
+                  })()
                 }}
               >
                 {addingNote ? 'Saving…' : 'Add Note'}

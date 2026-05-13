@@ -43,6 +43,10 @@ export function getNextActionLabel(status: string): string {
 }
 
 export function getStepValue(status: string): { value: number; text: string } {
+  if (normalizeStatus(status) === 'pending') {
+    return { value: 0, text: 'Pending acceptance' }
+  }
+
   const progress = getDispatchProgress(status)
   const value = Math.max(0, Math.min(4, Math.round(progress / 20) - 1))
   return { value, text: STEP_LABELS[value] ?? 'Accepted' }

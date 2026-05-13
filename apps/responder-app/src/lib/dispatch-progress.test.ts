@@ -31,6 +31,7 @@ describe('dispatch-progress', () => {
   })
 
   it('maps current step to a progressbar value', () => {
+    expect(getStepValue('pending')).toEqual({ value: 0, text: 'Pending acceptance' })
     expect(getStepValue('accepted')).toEqual({ value: 0, text: 'Accepted' })
     expect(getStepValue('on_scene')).toEqual({ value: 3, text: 'On Scene' })
   })
