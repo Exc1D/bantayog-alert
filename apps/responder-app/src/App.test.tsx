@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { render } from '@testing-library/react'
 import { FcmSetup } from './App.js'
 import { Capacitor } from '@capacitor/core'
@@ -22,6 +24,10 @@ vi.mock('@bantayog/shared-ui', () => ({
 
 vi.mock('./hooks/useRegisterFcmToken', () => ({
   useRegisterFcmToken: () => ({ register: mockRegister }),
+}))
+
+vi.mock('./app/firebase', () => ({
+  auth: {},
 }))
 
 vi.mock('./routes', () => ({
@@ -272,5 +278,15 @@ describe('FcmSetup', () => {
 
     import.meta.env.VITE_FIREBASE_API_KEY = originalApiKey
     consoleSpy.mockRestore()
+  })
+})
+
+describe('main stylesheet imports', () => {
+  it('imports design tokens before globals', () => {
+    const mainSource = readFileSync(resolve(process.cwd(), 'src/main.tsx'), 'utf8')
+
+    expect(mainSource.indexOf("import './styles/design-tokens.css'")).toBeLessThan(
+      mainSource.indexOf("import './styles/globals.css'"),
+    )
   })
 })
