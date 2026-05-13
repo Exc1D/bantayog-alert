@@ -342,3 +342,15 @@ All 7 clusters complete:
 3. **Deploy needed:** Staging redeploy required to verify many code fixes
 4. **Phase 7.C:** Staff TOTP enrollment audit in progress
 5. **Deferred to Phase 11:** 4 observability dashboards (Ops, Backend, Compliance, Cost)
+
+## Current Status (2026-05-13)
+
+**Responder App — Shell contract cleanup complete**
+
+- ✅ Shell header now uses uppercase `BANTAYOG ALERT`
+- ✅ Added the online status pill in the header with an explicit accessible name
+- ✅ Shell remains on 3 tabs only: Dispatches, Map, Profile
+- ✅ Pending Dispatches badge kept intact; SOS button remains disabled with no active dispatch
+- ✅ Warm-black shell styling and amber active tab state preserved in `Shell.module.css`
+- ✅ Updated shell-focused Vitest coverage for the new header and navigation contract
+- **Gate:** `pnpm --dir apps/responder-app exec vitest run src/components/Shell.test.tsx` pass · `pnpm --dir apps/responder-app typecheck` pass · `pnpm --dir apps/responder-app lint` pass

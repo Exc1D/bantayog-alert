@@ -181,6 +181,7 @@
 - `@typescript-eslint/no-confusing-void-expression` rejects `renderHook(() => useHook())` when the hook returns void — wrap in braces: `renderHook(() => { useHook() })`.
 - Merge conflicts in long-unresolved worktrees (`pagasa-signal-poll.test.ts` was `UU` for multiple sessions) must be resolved before any new commit can be created. `git add <file>` accepts current-state resolution; `git commit` will block until all `UU` files are resolved.
 - Template literal expressions with `number` types in ESLint `@typescript-eslint/restrict-template-expressions` require explicit `String()` cast: `` `${String(dragOffset.x)}px` `` instead of `` `${dragOffset.x}px` ``.
+- Shell status pills using `role="status"` can still have an empty accessible name in Vitest/happy-dom unless `aria-label` is set explicitly; visible text alone is not reliable for `getByRole('status', { name: ... })` assertions.
 
 ## Phase 4 -- System Health Controls
 

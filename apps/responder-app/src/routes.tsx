@@ -12,8 +12,6 @@ import { LoginPage } from './pages/LoginPage'
 import { DispatchListPage } from './pages/DispatchListPage'
 import { DispatchDetailPage } from './pages/DispatchDetailPage'
 import { MapPage } from './pages/MapPage'
-import { MessagesPage } from './pages/MessagesPage'
-import { MessageThreadPage } from './pages/MessageThreadPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { ShiftHandoffPage } from './pages/ShiftHandoffPage'
 import { DispatchHistoryPage } from './pages/DispatchHistoryPage'
@@ -85,8 +83,6 @@ const router = createBrowserRouter([
             children: [
               { path: '/', element: <DispatchListPage /> },
               { path: '/map', element: <MapPage /> },
-              { path: '/messages', element: <MessagesPage /> },
-              { path: '/messages/:reportId', element: <MessageThreadPage /> },
               { path: '/profile', element: <ProfilePage /> },
             ],
           },

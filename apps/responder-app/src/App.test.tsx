@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { FcmSetup } from './App.js'
 import { Capacitor } from '@capacitor/core'
@@ -24,6 +24,10 @@ vi.mock('./hooks/useRegisterFcmToken', () => ({
   useRegisterFcmToken: () => ({ register: mockRegister }),
 }))
 
+vi.mock('./app/firebase', () => ({
+  auth: {},
+}))
+
 vi.mock('./routes', () => ({
   AppRouter: () => <div data-testid="app-router" />,
 }))
@@ -47,6 +51,13 @@ vi.mock('./components/PrivacyNoticeModal', () => ({
 describe('FcmSetup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    currentUser = mockUser
+    vi.stubEnv('VITE_FIREBASE_API_KEY', 'test-api-key')
+    vi.stubEnv('VITE_FIREBASE_AUTH_DOMAIN', 'test.firebaseapp.com')
+    vi.stubEnv('VITE_FIREBASE_PROJECT_ID', 'test-project')
+    vi.stubEnv('VITE_FIREBASE_STORAGE_BUCKET', 'test-bucket.appspot.com')
+    vi.stubEnv('VITE_FIREBASE_MESSAGING_SENDER_ID', '123456789')
+    vi.stubEnv('VITE_FIREBASE_APP_ID', '1:123:web:test')
     mockRegister.mockResolvedValue(undefined)
     Object.defineProperty(globalThis, 'navigator', {
       value: {
@@ -57,6 +68,11 @@ describe('FcmSetup', () => {
       writable: true,
       configurable: true,
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
   })
 
   it('registers SW and posts config on web when worker is active', async () => {
@@ -225,9 +241,6 @@ describe('FcmSetup', () => {
 
     expect(mockRegister).not.toHaveBeenCalled()
     expect(navigator.serviceWorker.register).not.toHaveBeenCalled()
-
-    // Restore user for other tests
-    currentUser = mockUser
   })
 
   it('warns when SW registration fails', async () => {
@@ -257,8 +270,7 @@ describe('FcmSetup', () => {
     vi.mocked(navigator.serviceWorker.register).mockResolvedValue(mockRegistration)
 
     // Temporarily remove a required env var
-    const originalApiKey = import.meta.env.VITE_FIREBASE_API_KEY
-    import.meta.env.VITE_FIREBASE_API_KEY = ''
+    vi.stubEnv('VITE_FIREBASE_API_KEY', '')
 
     render(<FcmSetup />)
 
@@ -270,7 +282,6 @@ describe('FcmSetup', () => {
       expect(mockRegister).not.toHaveBeenCalled()
     })
 
-    import.meta.env.VITE_FIREBASE_API_KEY = originalApiKey
     consoleSpy.mockRestore()
   })
 })

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
-
 interface Props {
   deadlineMs: number
+  nowMs: number
+  className?: string | undefined
 }
 
 function formatRemaining(ms: number): string {
@@ -12,20 +12,8 @@ function formatRemaining(ms: number): string {
   return `${String(mins)}:${String(secs).padStart(2, '0')}`
 }
 
-export function AcceptanceCountdown({ deadlineMs }: Props) {
-  const [remaining, setRemaining] = useState(() => deadlineMs - Date.now())
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      const next = deadlineMs - Date.now()
-      setRemaining(next)
-      if (next <= 0) clearInterval(id)
-    }, 1000)
-    return () => {
-      clearInterval(id)
-    }
-  }, [deadlineMs])
-
+export function AcceptanceCountdown({ deadlineMs, nowMs, className }: Props) {
+  const remaining = deadlineMs - nowMs
   const isExpired = remaining <= 0
   const isUrgent = remaining > 0 && remaining < 60_000
 
@@ -33,6 +21,7 @@ export function AcceptanceCountdown({ deadlineMs }: Props) {
 
   return (
     <span
+      className={className}
       style={{
         color,
         fontWeight: 700,

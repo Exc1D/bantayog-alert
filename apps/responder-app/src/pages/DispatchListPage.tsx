@@ -1,10 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
+import { DispatchRing } from '../components/DispatchRing'
+import { AcceptanceCountdown } from '../components/AcceptanceCountdown'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import { useReport } from '../hooks/useReport'
-import { AcceptanceCountdown } from '../components/AcceptanceCountdown'
 import { getReportTypeLabel } from '../lib/incident-labels'
+import {
+  formatCountdownLabel,
+  getDispatchProgress,
+  getNextActionLabel,
+} from '../lib/dispatch-progress'
 import type { QueueDispatchRow } from '../lib/dispatch-presentation'
 import styles from './DispatchListPage.module.css'
 
@@ -14,7 +20,23 @@ function statusLabel(uiStatus: string | undefined, fallback: string): string {
   return uiStatus ?? fallback
 }
 
-function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pending' | 'active' }) {
+function resolveDeadlineMs(
+  deadline: number | { toMillis: () => number } | undefined,
+  fallbackNow: number,
+): number {
+  if (typeof deadline === 'number') return deadline
+  return deadline?.toMillis() ?? fallbackNow
+}
+
+function DispatchCard({
+  row,
+  variant,
+  now,
+}: {
+  row: QueueDispatchRow
+  variant: 'pending' | 'active'
+  now: number
+}) {
   const navigate = useNavigate()
   const { report } = useReport(row.reportId)
   const sevTone =
@@ -25,6 +47,14 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
         : styles.sevLow
 
   const destination = `/dispatches/${row.dispatchId}`
+  const title = report
+    ? getReportTypeLabel(report.reportType)
+    : `Incident ${row.reportId.slice(0, 8)}`
+  const deadlineMs = resolveDeadlineMs(row.acknowledgementDeadlineAt, now)
+  const remainingMs = Math.max(0, deadlineMs - now)
+  const remainingPercent = Math.max(0, Math.min(100, (remainingMs / (5 * 60 * 1000)) * 100))
+  const urgent = remainingMs > 0 && remainingMs < 60_000
+  const progress = getDispatchProgress(row.status)
 
   return (
     <div
@@ -33,9 +63,7 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
         .join(' ')}
     >
       <div className={styles.cardHeader}>
-        <h3 className={styles.cardTitle}>
-          {report ? getReportTypeLabel(report.reportType) : `Incident ${row.reportId.slice(0, 8)}`}
-        </h3>
+        <h3 className={styles.cardTitle}>{title}</h3>
         <span
           className={[
             styles.statusPill,
@@ -58,14 +86,17 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
           </span>
         </div>
       )}
-      {variant === 'pending' && row.acknowledgementDeadlineAt && (
-        <div className={styles.deadlineRow}>
-          <span className={styles.deadlineLabel}>Accept by:</span>
-          <AcceptanceCountdown deadlineMs={row.acknowledgementDeadlineAt} />
-        </div>
-      )}
-      {variant === 'pending' && (
-        <div className={styles.cardActions}>
+      {variant === 'pending' ? (
+        <DispatchRing
+          mode="countdown"
+          percent={remainingPercent}
+          tone={urgent ? 'urgent' : 'accent'}
+          ariaLabel={formatCountdownLabel(remainingMs)}
+          urgent={urgent}
+        >
+          <span className={styles.ringLabel}>ACCEPT IN</span>
+          <AcceptanceCountdown deadlineMs={deadlineMs} nowMs={now} className={styles.ringNumber} />
+          <h3 className={styles.ringTitle}>{title}</h3>
           <button
             type="button"
             className={styles.btnPrimary}
@@ -73,7 +104,25 @@ function DispatchCard({ row, variant }: { row: QueueDispatchRow; variant: 'pendi
           >
             View &amp; Accept
           </button>
-        </div>
+        </DispatchRing>
+      ) : (
+        <DispatchRing
+          mode="progress"
+          percent={progress}
+          tone="success"
+          ariaLabel={`Progress ${String(progress)} percent`}
+        >
+          <span className={styles.ringLabel}>PROGRESS</span>
+          <strong className={styles.ringNumber}>{String(progress)}%</strong>
+          <h3 className={styles.ringTitle}>{title}</h3>
+          <button
+            type="button"
+            className={styles.btnSuccess}
+            onClick={() => void navigate(destination)}
+          >
+            {getNextActionLabel(row.status)}
+          </button>
+        </DispatchRing>
       )}
     </div>
   )
@@ -83,9 +132,19 @@ export function DispatchListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { rows, groups, error } = useOwnDispatches(user?.uid)
+  const [now, setNow] = useState(() => Date.now())
 
   const activeDispatchId =
     groups.active.length === 1 ? (groups.active[0]?.dispatchId ?? null) : null
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+    return () => {
+      clearInterval(id)
+    }
+  }, [])
 
   useEffect(() => {
     if (activeDispatchId !== null) {
@@ -124,7 +183,7 @@ export function DispatchListPage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>New Dispatches ({String(groups.pending.length)})</h2>
           {groups.pending.map((row) => (
-            <DispatchCard key={row.dispatchId} row={row} variant="pending" />
+            <DispatchCard key={row.dispatchId} row={row} variant="pending" now={now} />
           ))}
         </section>
       )}
@@ -133,7 +192,7 @@ export function DispatchListPage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Active ({String(groups.active.length)})</h2>
           {groups.active.map((row) => (
-            <DispatchCard key={row.dispatchId} row={row} variant="active" />
+            <DispatchCard key={row.dispatchId} row={row} variant="active" now={now} />
           ))}
         </section>
       )}

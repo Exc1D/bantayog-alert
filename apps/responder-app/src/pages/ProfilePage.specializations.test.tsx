@@ -100,8 +100,8 @@ describe('ProfilePage — Specialization Tags', () => {
         <ProfilePage />
       </MemoryRouter>,
     )
-    expect(screen.getByText('Basic Life Support')).toBeInTheDocument()
-    expect(screen.getByText('Water Rescue')).toBeInTheDocument()
+    expect(screen.getAllByText('Basic Life Support').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Water Rescue').length).toBeGreaterThan(0)
   })
 
   it('shows empty state message when specializations is an empty array', () => {

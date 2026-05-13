@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 
@@ -42,6 +42,12 @@ const detailState = vi.hoisted(() => ({
   advanceError: undefined as Error | undefined,
   unableError: undefined as Error | undefined,
   addNoteError: undefined as Error | undefined,
+  fieldNoteDraft: {
+    value: '',
+    setValue: vi.fn(),
+    clear: vi.fn(() => Promise.resolve()),
+    loaded: true,
+  },
 }))
 
 vi.mock('../hooks/useDispatch', () => ({
@@ -101,6 +107,10 @@ vi.mock('../hooks/useAddFieldNote', () => ({
   }),
 }))
 
+vi.mock('../hooks/useFieldNoteDraft', () => ({
+  useFieldNoteDraft: () => detailState.fieldNoteDraft,
+}))
+
 import { DispatchDetailPage } from './DispatchDetailPage'
 
 function renderPage(dispatchId = 'd-1') {
@@ -140,6 +150,12 @@ describe('DispatchDetailPage', () => {
     detailState.advanceError = undefined
     detailState.unableError = undefined
     detailState.addNoteError = undefined
+    detailState.fieldNoteDraft = {
+      value: '',
+      setValue: vi.fn(),
+      clear: vi.fn(() => Promise.resolve()),
+      loaded: true,
+    }
   })
 
   it('shows an "Acknowledging" status indicator while auto-advance from accepted is in-flight', () => {
@@ -233,5 +249,69 @@ describe('DispatchDetailPage', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Dispatch Cancelled/i)
+  })
+
+  it('renders accessible state machine timeline', () => {
+    detailState.dispatch.status = 'en_route'
+    detailState.dispatch.uiStatus = 'heading_to_scene'
+    renderPage()
+
+    const timeline = screen.getByRole('progressbar', { name: /dispatch progress/i })
+    expect(timeline).toHaveAttribute('aria-valuenow', '2')
+    expect(timeline).toHaveAttribute('aria-valuetext', 'En Route')
+  })
+
+  it('keeps pending dispatches out of the accepted timeline step', () => {
+    detailState.dispatch.status = 'pending'
+    detailState.dispatch.uiStatus = 'pending'
+    renderPage()
+
+    const timeline = screen.getByRole('progressbar', { name: /dispatch progress/i })
+    expect(timeline).toHaveAttribute('aria-valuetext', 'Pending acceptance')
+    expect(screen.queryByText('Accepted')?.closest('[aria-current="step"]')).toBeNull()
+  })
+
+  it('disables field-note editing until the draft finishes loading', () => {
+    detailState.dispatch.status = 'acknowledged'
+    detailState.dispatch.uiStatus = 'acknowledged'
+    detailState.fieldNoteDraft = {
+      value: '',
+      setValue: vi.fn(),
+      clear: vi.fn(() => Promise.resolve()),
+      loaded: false,
+    }
+
+    renderPage()
+
+    expect(screen.getByRole('textbox', { name: /field notes/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /add note/i })).toBeDisabled()
+  })
+
+  it('logs draft-clear failures separately from add-note failures', async () => {
+    detailState.dispatch.status = 'acknowledged'
+    detailState.dispatch.uiStatus = 'acknowledged'
+    detailState.fieldNoteDraft = {
+      value: 'Road blocked',
+      setValue: vi.fn(),
+      clear: vi.fn(() => Promise.reject(new Error('clear failed'))),
+      loaded: true,
+    }
+    detailState.mockAddNote.mockResolvedValueOnce(undefined)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /add note/i }))
+
+    await waitFor(() => {
+      expect(detailState.fieldNoteDraft.clear).toHaveBeenCalledTimes(1)
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      '[DispatchDetailPage] clearing field-note draft failed:',
+      expect.any(Error),
+    )
+
+    consoleError.mockRestore()
   })
 })
