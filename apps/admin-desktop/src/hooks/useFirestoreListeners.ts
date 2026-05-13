@@ -77,6 +77,10 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       setReportOps([])
       setAlerts([])
       setResponders([])
+      // Reset retry budget so the new scope doesn't inherit an exhausted
+      // counter from the prior tenant. The pending retry timer (if any) is
+      // already cleared by the effect cleanup that ran before this re-entry.
+      setRetryCount(0)
     }
 
     if (authLoading) {
@@ -134,6 +138,19 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       )
     }
 
+    // Reset the shared retry budget on a successful connection. Without this,
+    // a listener that recovered after MAX_RETRIES would permanently disable
+    // future retries (scheduleRetry short-circuits on retryCount >= MAX_RETRIES),
+    // and a pending retry timer from the failing window would still fire and
+    // trigger a spurious effect re-run.
+    const resetRetryBudget = () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
+      setRetryCount(0)
+    }
+
     // Role-scoped reports listener
     const reportsCol = collection(db, 'reports')
     let reportsRef: Query = reportsCol
@@ -152,6 +169,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         setReports(data)
         setLoading(false)
         setError(null)
+        resetRetryBudget()
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
@@ -180,6 +198,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
           .filter(isReportOpsDoc)
         setReportOps(data)
         setError(null)
+        resetRetryBudget()
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
@@ -200,6 +219,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         }))
         setAlerts(data)
         setError(null)
+        resetRetryBudget()
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
