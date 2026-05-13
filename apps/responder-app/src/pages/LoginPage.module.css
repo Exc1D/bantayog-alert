@@ -11,10 +11,11 @@
 .card {
   width: 100%;
   max-width: 400px;
-  background: #fff;
+  background: var(--surface-elevated);
   border-radius: var(--radius-lg);
   padding: var(--space-8);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--border-default);
 }
 
 .brand {
@@ -56,22 +57,22 @@
 .label {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--r-text);
+  color: var(--text-primary);
 }
 
 .input {
   padding: 12px var(--space-4);
-  border: 1.5px solid var(--r-border);
+  border: 1.5px solid var(--border-default);
   border-radius: var(--radius-md);
   font-size: var(--font-size-md);
-  color: var(--r-text);
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--surface-raised);
   transition: border-color 0.15s;
   outline: none;
 }
 
 .input:focus {
-  border-color: var(--r-navy);
+  border-color: var(--amber-accent);
 }
 
 .input:focus-visible {
