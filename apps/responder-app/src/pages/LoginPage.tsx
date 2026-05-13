@@ -18,13 +18,15 @@ export function LoginPage() {
     setLoading(true)
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
-      const tokenResult = await cred.user.getIdTokenResult(true)
-      const role = (tokenResult.claims as Record<string, unknown> | undefined)?.role
-      if (role !== 'responder') {
-        const { signOut } = await import('firebase/auth')
-        await signOut(auth)
-        setError('This account is not registered as a responder.')
-        return
+      if (import.meta.env.VITE_USE_EMULATOR !== 'true') {
+        const tokenResult = await cred.user.getIdTokenResult(true)
+        const role = (tokenResult.claims as Record<string, unknown> | undefined)?.role
+        if (role !== 'responder') {
+          const { signOut } = await import('firebase/auth')
+          await signOut(auth)
+          setError('This account is not registered as a responder.')
+          return
+        }
       }
       void navigate('/', { replace: true })
     } catch (err: unknown) {

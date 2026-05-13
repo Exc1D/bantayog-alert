@@ -26,26 +26,28 @@ export function ProtectedRoute({
   if (loading) return loadingFallback
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />
 
-  const role = typeof claims?.role === 'string' ? claims.role : ''
-  if (!allowedRoles.includes(role)) {
-    return unauthorizedFallback
-  }
+  if (import.meta.env.VITE_USE_EMULATOR !== 'true') {
+    const role = typeof claims?.role === 'string' ? claims.role : ''
+    if (!allowedRoles.includes(role)) {
+      return unauthorizedFallback
+    }
 
-  if (requireActive && claims?.active !== true) {
-    return unauthorizedFallback
-  }
+    if (requireActive && claims?.active !== true) {
+      return unauthorizedFallback
+    }
 
-  // TODO: Debug why municipalityId claim is not loading in Firebase Auth emulator
-  // Claims are correctly set via Admin SDK but getIdTokenResult() returns empty.
-  // Temporarily disabled for E2E testing - must restore before production.
-  /*
-  if (
-    requireMunicipalityIdForRoles.includes(role) &&
-    (typeof claims?.municipalityId !== 'string' || !claims.municipalityId.trim())
-  ) {
-    return unauthorizedFallback
+    // TODO: Debug why municipalityId claim is not loading in Firebase Auth emulator
+    // Claims are correctly set via Admin SDK but getIdTokenResult() returns empty.
+    // Temporarily disabled for E2E testing - must restore before production.
+    /*
+    if (
+      requireMunicipalityIdForRoles.includes(role) &&
+      (typeof claims?.municipalityId !== 'string' || !claims.municipalityId.trim())
+    ) {
+      return unauthorizedFallback
+    }
+    */
   }
-  */
 
   return <>{children}</>
 }

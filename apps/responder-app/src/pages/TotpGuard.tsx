@@ -12,17 +12,18 @@ interface TotpGuardProps {
 export function TotpGuard({ children }: TotpGuardProps) {
   const { user, claims, loading: authLoading } = useAuth()
 
-  // Wait for auth to initialize
   if (authLoading) {
     return <div className={styles.loading}>Loading…</div>
   }
 
-  // No user = allow through (public route)
   if (!user) {
     return <>{children}</>
   }
 
-  // Check TOTP enrollment via custom claim
+  if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+    return <>{children}</>
+  }
+
   if (claims?.mfaEnrolled !== true) {
     return <Navigate to="/totp-enroll" replace />
   }

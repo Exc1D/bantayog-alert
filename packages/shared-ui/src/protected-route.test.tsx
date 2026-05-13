@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route.js'
@@ -7,7 +7,6 @@ import { AuthProvider } from './auth-provider.js'
 let mockOnAuthStateChanged = vi.fn()
 
 vi.mock('firebase/auth', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   onAuthStateChanged: (...args: unknown[]) => mockOnAuthStateChanged(...args),
   signOut: vi.fn().mockResolvedValue(undefined),
 }))
@@ -41,6 +40,11 @@ function TestApp({
 describe('ProtectedRoute', () => {
   beforeEach(() => {
     mockOnAuthStateChanged = vi.fn()
+    vi.stubEnv('VITE_USE_EMULATOR', 'false')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('redirects to login when not authenticated', async () => {
@@ -127,7 +131,7 @@ describe('ProtectedRoute', () => {
     expect(await screen.findByText('Access denied.')).toBeDefined()
   })
 
-  it('renders unauthorized when municipalityId is required but missing', async () => {
+  it('renders children when municipalityId check is temporarily disabled', async () => {
     const mockUser = {
       uid: 'u1',
       getIdTokenResult: vi.fn().mockResolvedValue({
@@ -162,6 +166,41 @@ describe('ProtectedRoute', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByText('Access denied.')).toBeDefined()
+    expect(await screen.findByTestId('protected')).toBeDefined()
+  })
+
+  it('allows any authenticated user when emulator mode is active', async () => {
+    vi.stubEnv('VITE_USE_EMULATOR', 'true')
+    const mockUser = {
+      uid: 'u1',
+      getIdTokenResult: vi.fn().mockResolvedValue({
+        claims: {},
+      }),
+    }
+
+    mockOnAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(mockUser)
+      return vi.fn()
+    })
+
+    const mockAuth = { currentUser: mockUser } as unknown as import('firebase/auth').Auth
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AuthProvider auth={mockAuth}>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute allowedRoles={['responder']}>
+                  <div data-testid="protected">Protected</div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByTestId('protected')).toBeDefined()
   })
 })

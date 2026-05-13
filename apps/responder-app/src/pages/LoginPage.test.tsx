@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -30,6 +30,11 @@ import { LoginPage } from './LoginPage'
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('VITE_USE_EMULATOR', 'false')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('renders Bantayog branding and login form', () => {
@@ -127,5 +132,27 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled()
+  })
+
+  it('skips role check and navigates when emulator mode is active', async () => {
+    vi.stubEnv('VITE_USE_EMULATOR', 'true')
+    mockSignIn.mockResolvedValue({
+      user: { getIdTokenResult: mockGetIdTokenResult },
+    })
+    mockGetIdTokenResult.mockResolvedValue({ claims: {} })
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/email/i), 'test@bantayog.test')
+    await user.type(screen.getByLabelText(/password/i), 'Test1234!')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true })
+    expect(mockSignOut).not.toHaveBeenCalled()
   })
 })

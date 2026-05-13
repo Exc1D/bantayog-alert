@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -31,6 +31,11 @@ describe('TotpGuard', () => {
     mockAuthState.user = { uid: 'uid-1', email: 'responder@test.com' }
     mockAuthState.claims = { mfaEnrolled: false }
     mockAuthState.loading = false
+    vi.stubEnv('VITE_USE_EMULATOR', 'false')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('redirects to /totp-enroll when mfaEnrolled claim is false', () => {
@@ -63,6 +68,13 @@ describe('TotpGuard', () => {
   it('renders children when user is null (let ProtectedRoute handle auth)', () => {
     mockAuthState.user = null
     mockAuthState.claims = null
+    renderGuard()
+    expect(screen.getByTestId('protected-content')).toBeInTheDocument()
+  })
+
+  it('renders children when emulator mode is active regardless of mfaEnrolled', () => {
+    vi.stubEnv('VITE_USE_EMULATOR', 'true')
+    mockAuthState.claims = { mfaEnrolled: false }
     renderGuard()
     expect(screen.getByTestId('protected-content')).toBeInTheDocument()
   })
