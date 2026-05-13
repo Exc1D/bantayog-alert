@@ -2,9 +2,11 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { requireAuth, requireMfaAuth } from './https-error.js';
+import { PRIVILEGED_ROLES } from '../constants/roles.js';
+import { RETENTION_EXEMPT_COLLECTIONS } from '../constants/retention.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
 const inputSchema = z.object({
-    collection: z.enum(['reports', 'report_private', 'report_ops']),
+    collection: z.enum(RETENTION_EXEMPT_COLLECTIONS),
     documentId: z.string().min(1),
     exempt: z.boolean(),
     reason: z.string().min(1),
@@ -41,7 +43,7 @@ export async function setRetentionExemptCore(db, input, actor) {
     });
 }
 export const setRetentionExempt = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid, claims } = requireAuth(request, ['provincial_superadmin']);
+    const { uid, claims } = requireAuth(request, PRIVILEGED_ROLES);
     requireMfaAuth(request);
     const permittedMunicipalityIds = Array.isArray(claims.permittedMunicipalityIds)
         ? claims.permittedMunicipalityIds.filter((v) => typeof v === 'string')

@@ -38,8 +38,10 @@ export async function retentionSweepCore(input) {
                 await input.db.collection('report_private').doc(doc.id).update({
                     citizenName: null,
                     rawPhone: null,
+                    contactPhone: null,
                     gpsExact: null,
                     addressText: null,
+                    exactLocation: null,
                 });
             }
             // Null report_contacts

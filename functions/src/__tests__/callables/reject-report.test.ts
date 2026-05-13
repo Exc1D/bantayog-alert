@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+
+vi.mock('firebase-admin/database', () => ({
+  getDatabase: vi.fn(() => ({})),
+}))
+
 import { rejectReportCore } from '../../callables/reject-report.js'
 import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
 import { Timestamp } from 'firebase-admin/firestore'
@@ -10,7 +15,7 @@ let testEnv: RulesTestEnvironment
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'reject-report-test',
-    firestore: { host: 'localhost', port: 8081 },
+    firestore: { host: '127.0.0.1', port: 8081 },
   })
 })
 

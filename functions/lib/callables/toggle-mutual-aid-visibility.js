@@ -2,6 +2,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { requireAuth } from './https-error.js';
+import { PRIVILEGED_WITH_PDRRMO } from '../constants/roles.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
 const inputSchema = z.object({
     agencyId: z.string().min(1),
@@ -31,7 +32,7 @@ export async function toggleMutualAidVisibilityCore(db, input, actor) {
     });
 }
 export const toggleMutualAidVisibility = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
-    const { uid } = requireAuth(request, ['provincial_superadmin', 'pdrrmo']);
+    const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO);
     await toggleMutualAidVisibilityCore(getFirestore(), request.data, { uid });
 });
 //# sourceMappingURL=toggle-mutual-aid-visibility.js.map

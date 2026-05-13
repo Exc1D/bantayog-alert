@@ -36,7 +36,7 @@ export function bantayogErrorToHttps(err: BantayogError): HttpsError {
 
 export function requireAuth(
   request: { auth?: { uid: string; token: Record<string, unknown> } | null },
-  allowedRoles: string[],
+  allowedRoles: readonly string[],
 ): { uid: string; claims: Record<string, unknown> } {
   if (!request.auth) throw new HttpsError('unauthenticated', 'sign-in required')
   const claims = request.auth.token

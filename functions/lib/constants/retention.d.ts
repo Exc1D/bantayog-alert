@@ -8,4 +8,5 @@
  *
  * Changing this array automatically updates all consumers.
  */
-export const RETENTION_EXEMPT_COLLECTIONS = ['reports', 'report_private', 'report_ops'] as const
+export declare const RETENTION_EXEMPT_COLLECTIONS: string[];
+//# sourceMappingURL=retention.d.ts.map

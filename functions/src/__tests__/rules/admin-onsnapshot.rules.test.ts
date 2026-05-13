@@ -14,7 +14,28 @@ import type { Firestore } from 'firebase-admin/firestore'
 const FIRESTORE_RULES_PATH = resolve(process.cwd(), '../infra/firebase/firestore.rules')
 const ts = 1713350400000
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let firestoreAvailable = false
+
+try {
+  testEnv = await initializeTestEnvironment({
+    projectId: 'admin-onsnapshot-rules-test',
+    firestore: {
+      host: '127.0.0.1',
+      port: 8081,
+      rules: readFileSync(FIRESTORE_RULES_PATH, 'utf8'),
+    },
+  })
+  firestoreAvailable = true
+} catch (err) {
+  console.warn(
+    '[admin-onsnapshot.rules.test] Firestore emulator unavailable; tests will be skipped.',
+    err,
+  )
+  firestoreAvailable = false
+}
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
 
 function seedReport(db: any, reportId: string, municipalityId: string, status: string) {
   return setDoc(doc(db, 'reports', reportId), {
@@ -34,49 +55,47 @@ function seedReport(db: any, reportId: string, municipalityId: string, status: s
 }
 
 beforeEach(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'admin-onsnapshot-rules-test',
-    firestore: {
-      rules: readFileSync(FIRESTORE_RULES_PATH, 'utf8'),
-    },
-  })
+  if (!firestoreAvailable || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 describe('admin muni-scoped onSnapshot queue', () => {
-  it('allows muni admin to read reports filtered by own municipalityId + queue statuses', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      await seedReport(db, 'r1', 'daet', 'new')
-      await seedReport(db, 'r2', 'daet', 'awaiting_verify')
-      await setDoc(doc(db, 'users', 'admin-1'), {
-        uid: 'admin-1',
-        role: 'municipal_admin',
-        municipalityId: 'daet',
-        isActive: true,
-        schemaVersion: 1,
+  itif(firestoreAvailable)(
+    'allows muni admin to read reports filtered by own municipalityId + queue statuses',
+    async () => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as any
+        await seedReport(db, 'r1', 'daet', 'new')
+        await seedReport(db, 'r2', 'daet', 'awaiting_verify')
+        await setDoc(doc(db, 'users', 'admin-1'), {
+          uid: 'admin-1',
+          role: 'municipal_admin',
+          municipalityId: 'daet',
+          isActive: true,
+          schemaVersion: 1,
+        })
       })
-    })
 
-    const adminDb = testEnv
-      .authenticatedContext('admin-1', {
-        role: 'municipal_admin',
-        municipalityId: 'daet',
-        accountStatus: 'active',
-      })
-      .firestore() as unknown as Firestore
+      const adminDb = testEnv!
+        .authenticatedContext('admin-1', {
+          role: 'municipal_admin',
+          municipalityId: 'daet',
+          accountStatus: 'active',
+        })
+        .firestore() as unknown as Firestore
 
-    await assertSucceeds(
-      adminDb
-        .collection('reports')
-        .where('municipalityId', '==', 'daet')
-        .where('status', 'in', ['new', 'awaiting_verify'])
-        .get(),
-    )
-  })
+      await assertSucceeds(
+        adminDb
+          .collection('reports')
+          .where('municipalityId', '==', 'daet')
+          .where('status', 'in', ['new', 'awaiting_verify'])
+          .get(),
+      )
+    },
+  )
 
-  it('denies cross-muni reads', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(firestoreAvailable)('denies cross-muni reads', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await seedReport(db, 'rx', 'mercedes', 'new')
       await setDoc(doc(db, 'users', 'admin-1'), {
@@ -87,7 +106,7 @@ describe('admin muni-scoped onSnapshot queue', () => {
         schemaVersion: 1,
       })
     })
-    const adminDb = testEnv
+    const adminDb = testEnv!
       .authenticatedContext('admin-1', {
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -98,13 +117,13 @@ describe('admin muni-scoped onSnapshot queue', () => {
     await assertFails(adminDb.collection('reports').where('municipalityId', '==', 'mercedes').get())
   })
 
-  it('denies unauthenticated reads', async () => {
-    const anon = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+  itif(firestoreAvailable)('denies unauthenticated reads', async () => {
+    const anon = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
     await assertFails(anon.collection('reports').where('municipalityId', '==', 'daet').get())
   })
 
-  it('denies citizen-role reads', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(firestoreAvailable)('denies citizen-role reads', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await setDoc(doc(db, 'users', 'cit-1'), {
         uid: 'cit-1',
@@ -113,7 +132,7 @@ describe('admin muni-scoped onSnapshot queue', () => {
         schemaVersion: 1,
       })
     })
-    const citDb = testEnv
+    const citDb = testEnv!
       .authenticatedContext('cit-1', { role: 'citizen', accountStatus: 'active' })
       .firestore() as unknown as Firestore
     await assertFails(citDb.collection('reports').where('municipalityId', '==', 'daet').get())

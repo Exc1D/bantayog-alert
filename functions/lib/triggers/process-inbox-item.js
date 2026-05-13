@@ -144,6 +144,7 @@ export async function processInboxItemCore(input) {
                 contactPhone: payload.contact?.phone ?? null,
                 createdAt,
                 schemaVersion: 1,
+                ...(exactLocation ? { exactLocation } : {}),
             });
             tx.set(db.collection('report_ops').doc(reportId), {
                 municipalityId,
