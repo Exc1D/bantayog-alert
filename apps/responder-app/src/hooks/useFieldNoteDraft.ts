@@ -45,7 +45,10 @@ export function useFieldNoteDraft(dispatchId: string | undefined) {
   useEffect(() => {
     if (key === null || !loaded || !hasLocalEdit) return
     const timeoutId = setTimeout(() => {
-      Preferences.set({ key, value }).catch(() => undefined)
+      Preferences.set({ key, value }).catch((err: unknown) => {
+        console.error('[useFieldNoteDraft] autosave failed:', err)
+        setDirtyKey(null)
+      })
     }, 500)
 
     return () => {

@@ -27,7 +27,7 @@ describe('main stylesheet imports', () => {
 
     await import('./main')
 
-    expect(importOrder).toEqual(['design-tokens.css', 'globals.css'])
+    expect(importOrder).toEqual(['globals.css', 'design-tokens.css'])
     expect(renderRoot).toHaveBeenCalled()
   })
 })

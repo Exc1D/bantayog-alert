@@ -160,7 +160,7 @@ Responders operate in disaster zones with unreliable connectivity. Every state t
 - Current step: `#F59E0B` filled circle (slightly larger) with amber glow, connecting line amber
 - Future steps: outlined circles `#525252`, connecting line `#525252`
 - Labels beneath each step in 10px
-- **ARIA:** Wrapper gets `role="progressbar"`, `aria-valuenow` maps to step index (0–4), `aria-valuetext` is the current step name. Each step circle gets `aria-current="step"` (current), `aria-current="true"` (completed), or unset (future). Color is never the sole indicator — step labels convey state.
+- **ARIA:** Wrapper gets `role="progressbar"`, `aria-valuenow` maps to step index (0–4), `aria-valuetext` is the current step name. Only the current step circle receives `aria-current="step"`. Completed steps convey state via step label text and `aria-label`. Color is never the sole indicator — step labels convey state.
 
 ### 5.3 Incident Card
 
@@ -258,7 +258,7 @@ Merge identity and stats into one cohesive surface — no nested cards, no hero-
 
 ## 8. First-Run Experience
 
-Minimal onboarding — not a tour, just context. Shown once, stored in `sessionStorage["bantayog.onboarded"]`.
+Minimal onboarding — not a tour, just context. Shown once, stored in `localStorage["bantayog.onboarded"]`.
 
 - **Trigger:** First login after app install/update. Single card overlay, not a multi-step wizard.
 - **Content:**
@@ -379,7 +379,7 @@ Each page gets updates to its CSS Module file. No inline styles in JSX except fo
 
 - **Offline transition queue:** localForage key `offline-transitions`, array of `{ dispatchId, transition, payload, timestamp, retryCount }`. Drained on connectivity restore.
 - **Field notes drafts:** Capacitor Preferences key `field-notes/{dispatchId}`, string. Debounced save, restored on revisit, cleared on submit without overwriting newer in-memory edits if hydration resolves late.
-- **Onboarding flag:** `sessionStorage["bantayog.onboarded"]`, boolean. Set on first dismiss.
+- **Onboarding flag:** `localStorage["bantayog.onboarded"]`, boolean. Set on first dismiss.
 
 ## 13. Testing Strategy
 

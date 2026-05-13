@@ -192,15 +192,20 @@
   gap: var(--space-3);
 }
 
-.masteryRow,
-.recordRow {
+.masteryRow {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.masteryMeta,
 .recordRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.masteryMeta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;

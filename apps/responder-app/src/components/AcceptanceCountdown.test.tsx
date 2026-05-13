@@ -6,6 +6,7 @@ import { AcceptanceCountdown } from './AcceptanceCountdown'
 describe('AcceptanceCountdown', () => {
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('shows remaining time formatted as M:SS', () => {

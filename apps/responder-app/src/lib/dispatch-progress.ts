@@ -53,6 +53,9 @@ export function getStepValue(status: string): { value: number; text: string } {
 }
 
 export function getRingStrokeOffset(percent: number, radius: number): number {
+  if (!Number.isFinite(radius) || radius < 0) {
+    throw new RangeError(`radius must be a finite non-negative number, got ${String(radius)}`)
+  }
   const clampedPercent = Math.max(0, Math.min(100, percent))
   const circumference = 2 * Math.PI * radius
   return circumference - (clampedPercent / 100) * circumference

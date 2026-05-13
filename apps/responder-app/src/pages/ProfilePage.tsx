@@ -16,6 +16,12 @@ const OFF_DUTY_REASONS = ['Shift ended', 'Sick leave', 'Training', 'Day off', 'O
 
 type SettableStatus = Extract<ResponderAvailabilityStatus, 'available' | 'unavailable' | 'off_duty'>
 
+const SETTABLE_STATUSES: ReadonlySet<string> = new Set(['available', 'unavailable', 'off_duty'])
+
+function isSettableStatus(value: string): value is SettableStatus {
+  return SETTABLE_STATUSES.has(value)
+}
+
 function statusBlurb(status: ResponderAvailabilityStatus | null): string {
   if (status === 'available') return 'Available for dispatch'
   if (status === 'unavailable') return 'Unavailable'
@@ -143,12 +149,17 @@ export function ProfilePage() {
     return getReportTypeLabel(a[0]).localeCompare(getReportTypeLabel(b[0]))
   })
   const maxMasteryCount = masterySourceRows[0]?.[1] ?? 0
+  const countByType = new Map(masterySourceRows.map(([type, count]) => [type, count]))
   const masteryRows =
     profile?.specializations != null && profile.specializations.length > 0
-      ? profile.specializations.map((label, index) => ({
-          label,
-          count: masterySourceRows[index]?.[1] ?? 0,
-        }))
+      ? profile.specializations.map((label) => {
+          const matchingType =
+            masterySourceRows.find(([type]) => getReportTypeLabel(type) === label)?.[0] ?? null
+          return {
+            label,
+            count: matchingType !== null ? (countByType.get(matchingType) ?? 0) : 0,
+          }
+        })
       : masterySourceRows.map(([type, count]) => ({
           label: getReportTypeLabel(type),
           count,
@@ -332,7 +343,8 @@ export function ProfilePage() {
             className={styles.statusSelect}
             value={selectedStatus}
             onChange={(e) => {
-              setSelectedStatus(e.target.value as SettableStatus)
+              const val = e.target.value
+              setSelectedStatus(isSettableStatus(val) ? val : 'available')
               setReason('')
             }}
             aria-label="Set availability status"

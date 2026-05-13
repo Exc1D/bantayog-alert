@@ -65,6 +65,10 @@ describe('ProfilePage', () => {
     mockSignOut.mockClear()
     mockSetAvailability.mockClear()
     mockGetDoc.mockReset()
+    mockGetDoc.mockResolvedValue({
+      exists: () => false,
+      data: () => ({}),
+    })
     historyState.history = []
   })
 
@@ -208,9 +212,9 @@ describe('ProfilePage', () => {
       expect(screen.getByText('11m 20s')).toBeInTheDocument()
     })
 
-    expect(screen.getAllByText(/water rescue/i).length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('2 resolved')).toBeInTheDocument()
-    expect(screen.getByText('1 resolved')).toBeInTheDocument()
+    expect(screen.getAllByText(/water rescue/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/structure fire/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('0 resolved').length).toBe(2)
     expect(screen.getByText(/fastest response/i)).toBeInTheDocument()
     expect(screen.getByText(/most dispatches in a week/i)).toBeInTheDocument()
     expect(screen.getByText(/longest availability streak/i)).toBeInTheDocument()

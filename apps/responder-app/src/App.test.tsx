@@ -267,8 +267,7 @@ describe('FcmSetup', () => {
     vi.mocked(navigator.serviceWorker.register).mockResolvedValue(mockRegistration)
 
     // Temporarily remove a required env var
-    const originalApiKey = import.meta.env.VITE_FIREBASE_API_KEY
-    import.meta.env.VITE_FIREBASE_API_KEY = ''
+    vi.stubEnv('VITE_FIREBASE_API_KEY', '')
 
     render(<FcmSetup />)
 
@@ -280,7 +279,6 @@ describe('FcmSetup', () => {
       expect(mockRegister).not.toHaveBeenCalled()
     })
 
-    import.meta.env.VITE_FIREBASE_API_KEY = originalApiKey
     consoleSpy.mockRestore()
   })
 })
