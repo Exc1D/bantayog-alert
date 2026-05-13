@@ -71,7 +71,8 @@ export function ProfilePage() {
 
   const [selectedStatusOverride, setSelectedStatusOverride] = useState<SettableStatus | null>(null)
   const selectedStatus =
-    selectedStatusOverride ?? (isSettableStatus(availStatus) ? availStatus : 'available')
+    selectedStatusOverride ??
+    (availStatus !== null && isSettableStatus(availStatus) ? availStatus : 'available')
   const [reason, setReason] = useState('')
   const [statusSaving, setStatusSaving] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
