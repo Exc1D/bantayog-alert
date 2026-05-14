@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -97,8 +97,9 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'test123456')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
-    await screen.findByRole('button', { name: /sign in/i })
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
+    })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
