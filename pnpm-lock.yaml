@@ -78,6 +78,9 @@ importers:
 
   apps/admin-desktop:
     dependencies:
+      '@bantayog/shared-build-utils':
+        specifier: workspace:*
+        version: link:../../packages/shared-build-utils
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -190,6 +193,9 @@ importers:
 
   apps/citizen-pwa:
     dependencies:
+      '@bantayog/shared-build-utils':
+        specifier: workspace:*
+        version: link:../../packages/shared-build-utils
       '@bantayog/shared-firebase':
         specifier: workspace:*
         version: link:../../packages/shared-firebase
@@ -287,6 +293,9 @@ importers:
 
   apps/responder-app:
     dependencies:
+      '@bantayog/shared-build-utils':
+        specifier: workspace:*
+        version: link:../../packages/shared-build-utils
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -463,6 +472,8 @@ importers:
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
+
+  packages/shared-build-utils: {}
 
   packages/shared-data:
     dependencies:

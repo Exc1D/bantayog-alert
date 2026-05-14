@@ -26,7 +26,10 @@ beforeAll(async () => {
   await seedAgency(env, 'agency-1', { municipalityId: 'daet' })
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
+      id: 'daet',
       label: 'Daet',
+      provinceId: 'camarines-norte',
+      centroid: { lat: 14.1121, lng: 122.9554 },
       mdrrmoLabel: 'Daet MDRRMO',
       mdrrmoHotline: '(054) 721-1216',
       schemaVersion: 1,
@@ -71,22 +74,20 @@ describe('public collections rules', () => {
           schemaVersion: 1,
         }),
       )
+      await assertFails(updateDoc(doc(authedDb, 'municipalities/daet'), { label: 'Updated' }))
+      await assertFails(deleteDoc(doc(authedDb, 'municipalities/daet')))
     })
 
     it('denies list (collection enumeration) on municipalities', async () => {
-      await assertFails(getDocs(collection(unauthed(env), 'municipalities')))
-      await assertFails(
-        getDocs(
-          collection(
-            authed(
-              env,
-              'daet-admin',
-              staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-            ),
-            'municipalities',
-          ),
-        ),
+      const unauthedDb = unauthed(env)
+      await assertFails(getDocs(collection(unauthedDb, 'municipalities')))
+
+      const authedDb = authed(
+        env,
+        'daet-admin',
+        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
       )
+      await assertFails(getDocs(collection(authedDb, 'municipalities')))
     })
   })
 
