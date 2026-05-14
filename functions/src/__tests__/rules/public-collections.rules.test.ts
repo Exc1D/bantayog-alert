@@ -74,6 +74,8 @@ describe('public collections rules', () => {
           schemaVersion: 1,
         }),
       )
+      await assertFails(updateDoc(doc(authedDb, 'municipalities/daet'), { label: 'Updated' }))
+      await assertFails(deleteDoc(doc(authedDb, 'municipalities/daet')))
     })
 
     it('denies list (collection enumeration) on municipalities', async () => {

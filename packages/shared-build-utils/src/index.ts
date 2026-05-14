@@ -4,7 +4,7 @@ export function assertNoEmulatorInProduction(
   rawEmulator: string | undefined,
   appName: string,
 ): void {
-  const normalized = String(rawEmulator).toLowerCase()
+  const normalized = String(rawEmulator).trim().toLowerCase()
   const enabled = normalized === 'true' || normalized === '1'
 
   if (command === 'build' && mode === 'production' && enabled) {

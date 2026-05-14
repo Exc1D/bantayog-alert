@@ -20,6 +20,15 @@ describe('assertNoEmulatorInProduction', () => {
     }).toThrow('Refusing production test-app build with VITE_USE_EMULATOR=TRUE')
   })
 
+  it('throws when emulator value has surrounding whitespace', () => {
+    expect(() => {
+      assertNoEmulatorInProduction('build', 'production', ' true ', 'test-app')
+    }).toThrow('Refusing production test-app build with VITE_USE_EMULATOR= true ')
+    expect(() => {
+      assertNoEmulatorInProduction('build', 'production', ' 1 ', 'test-app')
+    }).toThrow('Refusing production test-app build with VITE_USE_EMULATOR= 1 ')
+  })
+
   it('does not throw when emulator is false', () => {
     expect(() => {
       assertNoEmulatorInProduction('build', 'production', 'false', 'test-app')

@@ -126,10 +126,19 @@ jobs:
       - run: pnpm build
       - name: Verify emulator build guard rejects production builds
         run: |
-          if VITE_USE_EMULATOR=true pnpm --dir apps/citizen-pwa exec vite build 2>/dev/null; then
-            echo "::error::Build guard did not reject emulator-enabled production build"
-            exit 1
-          fi
+          for app in citizen-pwa admin-desktop responder-app; do
+            output=$(VITE_USE_EMULATOR=true pnpm --dir "apps/$app" exec vite build 2>&1) && rc=$? || rc=$?
+            if [ $rc -eq 0 ]; then
+              echo "::error::Build guard did not reject emulator-enabled production build in $app"
+              echo "$output"
+              exit 1
+            elif ! echo "$output" | grep -q "Refusing production"; then
+              echo "::error::Build failed in $app but not due to emulator guard"
+              echo "$output"
+              exit 1
+            fi
+            echo "✓ $app correctly rejected by guard"
+          done
 
   rules-check:
     name: Firestore Rules Check
