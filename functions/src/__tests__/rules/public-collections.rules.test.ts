@@ -1,5 +1,14 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
-import { collection, getDocs, addDoc, doc, setDoc, getDoc } from 'firebase/firestore'
+import {
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+} from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnv, unauthed } from '../helpers/rules-harness.js'
 import { seedActiveAccount, seedAgency, staffClaims, ts } from '../helpers/seed-factories.js'
@@ -37,14 +46,46 @@ describe('public collections rules', () => {
     })
 
     it('municipality docs are callable-only writes', async () => {
-      const db = unauthed(env)
+      const unauthedDb = unauthed(env)
       await assertFails(
-        setDoc(doc(db, 'municipalities/new'), {
+        setDoc(doc(unauthedDb, 'municipalities/new'), {
           label: 'New',
           mdrrmoLabel: 'New MDRRMO',
           mdrrmoHotline: '(054) 000-0000',
           schemaVersion: 1,
         }),
+      )
+      await assertFails(updateDoc(doc(unauthedDb, 'municipalities/daet'), { label: 'Updated' }))
+      await assertFails(deleteDoc(doc(unauthedDb, 'municipalities/daet')))
+
+      const authedDb = authed(
+        env,
+        'daet-admin',
+        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+      )
+      await assertFails(
+        setDoc(doc(authedDb, 'municipalities/new'), {
+          label: 'New',
+          mdrrmoLabel: 'New MDRRMO',
+          mdrrmoHotline: '(054) 000-0000',
+          schemaVersion: 1,
+        }),
+      )
+    })
+
+    it('denies list (collection enumeration) on municipalities', async () => {
+      await assertFails(getDocs(collection(unauthed(env), 'municipalities')))
+      await assertFails(
+        getDocs(
+          collection(
+            authed(
+              env,
+              'daet-admin',
+              staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+            ),
+            'municipalities',
+          ),
+        ),
       )
     })
   })

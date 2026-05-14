@@ -251,7 +251,8 @@ service cloud.firestore {
     }
 
     match /municipalities/{municipalityId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow write: if false;
     }
 

@@ -3,11 +3,13 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const useEmulator = process.env.VITE_USE_EMULATOR ?? env.VITE_USE_EMULATOR
+  const rawEmulator = process.env.VITE_USE_EMULATOR ?? env.VITE_USE_EMULATOR
+  const normalizedEmulator = String(rawEmulator).toLowerCase()
+  const emulatorEnabled = normalizedEmulator === 'true' || normalizedEmulator === '1'
 
-  if (command === 'build' && mode === 'production' && useEmulator === 'true') {
+  if (command === 'build' && mode === 'production' && emulatorEnabled) {
     throw new Error(
-      'Refusing production responder build with VITE_USE_EMULATOR=true. ' +
+      `Refusing production responder build with VITE_USE_EMULATOR=${String(rawEmulator)}. ` +
         'Set VITE_USE_EMULATOR=false for staging/prod Hosting builds.',
     )
   }
