@@ -227,6 +227,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /municipalities/{municipalityId} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if false;
+    }
+
     // ================================================================
     // Phase 2: dispatches, responders, users
     // ================================================================
