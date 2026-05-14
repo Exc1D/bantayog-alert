@@ -13,6 +13,7 @@
     "cap:sync": "cap sync"
   },
   "dependencies": {
+    "@bantayog/shared-build-utils": "workspace:*",
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-ui": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",

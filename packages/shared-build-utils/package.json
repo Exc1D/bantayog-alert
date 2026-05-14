@@ -1,0 +1,17 @@
+{
+  "name": "@bantayog/shared-build-utils",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": "./lib/index.js"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --outDir lib",
+    "test": "vitest run"
+  }
+}

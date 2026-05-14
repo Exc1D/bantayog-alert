@@ -124,6 +124,12 @@ jobs:
           key: turbo-build-${{ github.sha }}
           restore-keys: turbo-build-
       - run: pnpm build
+      - name: Verify emulator build guard rejects production builds
+        run: |
+          if VITE_USE_EMULATOR=true pnpm --dir apps/citizen-pwa exec vite build 2>/dev/null; then
+            echo "::error::Build guard did not reject emulator-enabled production build"
+            exit 1
+          fi
 
   rules-check:
     name: Firestore Rules Check
