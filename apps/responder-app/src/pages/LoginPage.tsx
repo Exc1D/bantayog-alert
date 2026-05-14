@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
+import { Shield } from 'lucide-react'
 import { auth } from '../app/firebase'
 import styles from './LoginPage.module.css'
 
@@ -40,7 +41,9 @@ export function LoginPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.brand}>
-          <div className={styles.brandIcon} aria-hidden="true" />
+          <div className={styles.brandIcon} aria-hidden="true">
+            <Shield size={40} strokeWidth={2} />
+          </div>
           <h1 className={styles.brandTitle}>BANTAYOG ALERT</h1>
           <p className={styles.brandSubtitle}>Responder Portal · Camarines Norte</p>
         </div>

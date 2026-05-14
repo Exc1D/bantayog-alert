@@ -218,6 +218,6 @@ describe('ProfilePage', () => {
     expect(screen.getByText(/fastest response/i)).toBeInTheDocument()
     expect(screen.getByText(/most dispatches in a week/i)).toBeInTheDocument()
     expect(screen.getByText(/longest availability streak/i)).toBeInTheDocument()
-    expect(screen.getByText(/not tracked yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/—/)).toBeInTheDocument()
   })
 })

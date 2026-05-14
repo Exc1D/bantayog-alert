@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { CheckCircle } from 'lucide-react'
 import { useAuth } from '@bantayog/shared-ui'
 import { DispatchRing } from '../components/DispatchRing'
 import { AcceptanceCountdown } from '../components/AcceptanceCountdown'
@@ -157,7 +158,7 @@ export function DispatchListPage() {
       <div className={styles.page}>
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon} role="img" aria-label="All dispatches complete">
-            ✓
+            <CheckCircle size={48} strokeWidth={2} />
           </div>
           <h2 className={styles.emptyTitle}>All Clear!</h2>
           <p className={styles.emptyText}>

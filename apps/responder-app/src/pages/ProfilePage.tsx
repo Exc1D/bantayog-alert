@@ -338,7 +338,7 @@ export function ProfilePage() {
             </div>
             <div className={styles.recordRow}>
               <span className={styles.recordLabel}>Longest availability streak</span>
-              <span className={styles.recordValue}>Not tracked yet</span>
+              <span className={styles.recordValue}>—</span>
             </div>
           </div>
         </div>
@@ -404,6 +404,8 @@ export function ProfilePage() {
           <span aria-hidden="true">›</span>
         </Link>
       </div>
+
+      <div className={styles.signOutDivider} aria-hidden="true" />
 
       <button
         className={styles.signOutBtn}
