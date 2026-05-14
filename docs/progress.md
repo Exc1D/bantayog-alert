@@ -343,7 +343,16 @@ All 7 clusters complete:
 4. **Phase 7.C:** Staff TOTP enrollment audit in progress
 5. **Deferred to Phase 11:** 4 observability dashboards (Ops, Backend, Compliance, Cost)
 
-## Current Status (2026-05-13)
+## Current Status (2026-05-14)
+
+**Staging QA Triage — Subagent Findings Consolidated (2026-05-14)**
+
+- ✅ Responder staging root cause confirmed: deployed artifact was built with `VITE_USE_EMULATOR=true`, causing Firestore/Auth traffic to target localhost emulator endpoints.
+- ✅ Added a responder production-build guard so default `vite build` fails closed when local env still enables emulator mode.
+- ✅ Closed the citizen municipality contact rules gap: `municipalities/{municipalityId}` is now public read / client-write denied, with focused emulator coverage.
+- **Required before redeploy:** build responder with `VITE_USE_EMULATOR=false`, then deploy only `hosting:responder` to `bantayog-alert-staging`.
+- **Not code bugs:** Citizen phone value persists correctly; admin queue visibility is auth-gated by design; `bantayog-admin-staging.web.app` and `bantayog-staging.web.app` are invalid staging URLs.
+- **Still open:** staging admin/responder test accounts must be created/imported in Firebase Auth.
 
 **Responder App — Staging web deploy complete**
 

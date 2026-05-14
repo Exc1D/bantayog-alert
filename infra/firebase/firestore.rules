@@ -250,6 +250,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /municipalities/{municipalityId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ================================================================
     // Phase 2: dispatches, responders, users
     // ================================================================

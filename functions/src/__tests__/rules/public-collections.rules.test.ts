@@ -15,6 +15,14 @@ beforeAll(async () => {
     municipalityId: 'daet',
   })
   await seedAgency(env, 'agency-1', { municipalityId: 'daet' })
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
+      label: 'Daet',
+      mdrrmoLabel: 'Daet MDRRMO',
+      mdrrmoHotline: '(054) 721-1216',
+      schemaVersion: 1,
+    })
+  })
 })
 
 afterAll(async () => {
@@ -22,6 +30,25 @@ afterAll(async () => {
 })
 
 describe('public collections rules', () => {
+  describe('municipalities', () => {
+    it('unauthed users can read municipality contact docs', async () => {
+      const db = unauthed(env)
+      await assertSucceeds(getDoc(doc(db, 'municipalities/daet')))
+    })
+
+    it('municipality docs are callable-only writes', async () => {
+      const db = unauthed(env)
+      await assertFails(
+        setDoc(doc(db, 'municipalities/new'), {
+          label: 'New',
+          mdrrmoLabel: 'New MDRRMO',
+          mdrrmoHotline: '(054) 000-0000',
+          schemaVersion: 1,
+        }),
+      )
+    })
+  })
+
   describe('agencies', () => {
     it('any authed user can read agencies', async () => {
       const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
