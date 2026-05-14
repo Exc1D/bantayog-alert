@@ -1026,7 +1026,6 @@ Replace `✓` with Lucide `CheckCircle`:
 
 ```tsx
 import { CheckCircle } from 'lucide-react'
-
 ;<CheckCircle className={styles.emptyIcon} aria-label="All dispatches complete" role="img" />
 ```
 
