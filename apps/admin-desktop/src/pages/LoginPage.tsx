@@ -18,13 +18,7 @@ export function LoginPage() {
       const cred = await signInWithEmailAndPassword(auth, email, password)
       const tokenResult = await cred.user.getIdTokenResult(true)
       const role = (tokenResult.claims as Record<string, unknown> | undefined)?.role
-      const allowedRoles = [
-        'provincial_superadmin',
-        'municipal_admin',
-        'agency_admin',
-        'admin',
-        'superadmin',
-      ]
+      const allowedRoles = ['provincial_superadmin', 'municipal_admin', 'agency_admin']
       if (!allowedRoles.includes(role as string)) {
         const { signOut } = await import('firebase/auth')
         await signOut(auth)
