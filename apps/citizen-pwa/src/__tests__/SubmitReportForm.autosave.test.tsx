@@ -32,14 +32,6 @@ beforeEach(() => {
 
 describe('DraftSaveIndicator', () => {
   it('shows "Saving draft..." during a write and "Draft saved" after', async () => {
-    let resolveSave!: () => void
-    mockSave.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveSave = resolve
-        }),
-    )
-
     const { DraftSaveIndicator } = await import('../components/SubmitReportForm/DraftSaveIndicator')
     const { rerender } = render(
       <TestWrapper>
@@ -56,9 +48,6 @@ describe('DraftSaveIndicator', () => {
       </TestWrapper>,
     )
     expect(screen.getByText(/draft saved/i)).toBeInTheDocument()
-
-    // Resolve so no async leak
-    resolveSave()
   })
 
   it('renders nothing when saveState is "idle"', async () => {
