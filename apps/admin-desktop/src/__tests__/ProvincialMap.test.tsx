@@ -5,14 +5,14 @@ import { ProvincialMap } from '../components/ProvincialMap'
 const mockReports = [
   {
     id: 'r1',
-    type: 'FLOOD' as const,
-    severity: 'HIGH' as const,
+    type: 'flood' as const,
+    severity: 'high' as const,
     latitude: 14.1,
     longitude: 122.9,
     municipality: 'Daet',
     barangay: 'Camambugan',
     createdAt: '14:02',
-    status: 'PENDING' as const,
+    status: 'new' as const,
     description: '',
     reporterName: '',
     reporterPhone: '',

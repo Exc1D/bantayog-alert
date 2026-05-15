@@ -47,12 +47,12 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
     reports: [
       {
         id: 'r1',
-        type: 'FLOOD',
-        severity: 'HIGH',
+        type: 'flood',
+        severity: 'high',
         municipality: 'Daet',
         barangay: 'Camambugan',
         createdAt: '14:02',
-        status: 'PENDING',
+        status: 'new',
         description: 'Water rising',
         reporterName: 'Juan',
         reporterPhone: '0917xxx',

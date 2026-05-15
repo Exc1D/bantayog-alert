@@ -19,6 +19,11 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true }
   }
 
+  // Debug logging removed; Sentry or equivalent should be wired here if needed.
+  // override componentDidCatch(error: Error, errorInfo: { componentStack?: string }) {
+  //   console.error('[ErrorBoundary] Caught error:', error.message, '\nComponent stack:', errorInfo.componentStack)
+  // }
+
   override render() {
     if (this.state.hasError) {
       return (

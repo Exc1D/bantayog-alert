@@ -1,22 +1,43 @@
-import { Waves, Flame, Mountain, Car, HeartPulse, AlertTriangle } from 'lucide-react'
+import {
+  Waves,
+  Flame,
+  Mountain,
+  Car,
+  HeartPulse,
+  AlertTriangle,
+  CloudLightning,
+  Wind,
+  Building,
+  ShieldAlert,
+} from 'lucide-react'
 import type { ReportType } from '../types'
 
 const TYPE_ICONS: Record<ReportType, typeof Waves> = {
-  FLOOD: Waves,
-  FIRE: Flame,
-  LANDSLIDE: Mountain,
-  ACCIDENT: Car,
-  MEDICAL: HeartPulse,
-  OTHER: AlertTriangle,
+  flood: Waves,
+  fire: Flame,
+  earthquake: CloudLightning,
+  typhoon: Wind,
+  landslide: Mountain,
+  storm_surge: Waves,
+  medical: HeartPulse,
+  accident: Car,
+  structural: Building,
+  security: ShieldAlert,
+  other: AlertTriangle,
 }
 
 const TYPE_LABELS: Record<ReportType, string> = {
-  FLOOD: 'Flood',
-  FIRE: 'Fire',
-  LANDSLIDE: 'Landslide',
-  ACCIDENT: 'Accident',
-  MEDICAL: 'Medical',
-  OTHER: 'Other',
+  flood: 'Flood',
+  fire: 'Fire',
+  earthquake: 'Earthquake',
+  typhoon: 'Typhoon',
+  landslide: 'Landslide',
+  storm_surge: 'Storm Surge',
+  medical: 'Medical',
+  accident: 'Accident',
+  structural: 'Structural',
+  security: 'Security',
+  other: 'Other',
 }
 
 interface Props {

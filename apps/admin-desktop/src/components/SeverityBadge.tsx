@@ -5,9 +5,9 @@ const SEVERITY_CONFIG: Record<
   Severity,
   { label: string; token: string; icon: typeof AlertTriangle }
 > = {
-  HIGH: { label: 'HIGH', token: 'var(--color-severity-high)', icon: AlertTriangle },
-  MEDIUM: { label: 'MED', token: 'var(--color-severity-medium)', icon: AlertCircle },
-  LOW: { label: 'LOW', token: 'var(--color-severity-low)', icon: Info },
+  high: { label: 'HIGH', token: 'var(--color-severity-high)', icon: AlertTriangle },
+  medium: { label: 'MED', token: 'var(--color-severity-medium)', icon: AlertCircle },
+  low: { label: 'LOW', token: 'var(--color-severity-low)', icon: Info },
 }
 
 interface Props {

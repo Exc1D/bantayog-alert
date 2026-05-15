@@ -7,15 +7,15 @@ interface Props {
 }
 
 const SEVERITY_ICON: Record<Severity, typeof AlertTriangle> = {
-  HIGH: AlertTriangle,
-  MEDIUM: AlertCircle,
-  LOW: MinusCircle,
+  high: AlertTriangle,
+  medium: AlertCircle,
+  low: MinusCircle,
 }
 
 const SEVERITY_COLOR: Record<Severity, string> = {
-  HIGH: 'var(--color-severity-high)',
-  MEDIUM: 'var(--color-severity-medium)',
-  LOW: 'var(--color-severity-low)',
+  high: 'var(--color-severity-high)',
+  medium: 'var(--color-severity-medium)',
+  low: 'var(--color-severity-low)',
 }
 
 export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {

@@ -10,7 +10,7 @@ const mockAlerts: AnomalyAlert[] = [
     municipality: 'Capalonga',
     type: 'response_time_spike',
     message: 'Response time up 40% (18 min avg)',
-    severity: 'HIGH',
+    severity: 'high',
     detectedAt: '2026-05-10T10:00:00Z',
   },
   {
@@ -18,7 +18,7 @@ const mockAlerts: AnomalyAlert[] = [
     municipality: 'Capalonga',
     type: 'admin_shift_gap',
     message: 'No admin shift handoff for 8h',
-    severity: 'MEDIUM',
+    severity: 'medium',
     detectedAt: '2026-05-10T09:00:00Z',
   },
 ]
@@ -76,7 +76,7 @@ describe('AnomalyAlertPanel', () => {
         municipality: 'Daet',
         type: 'zero_activity',
         message: 'Zero incident reports in 6h',
-        severity: 'LOW',
+        severity: 'low',
         detectedAt: '2026-05-10T08:00:00Z',
         dismissedAt: '2026-05-10T11:00:00Z',
       },

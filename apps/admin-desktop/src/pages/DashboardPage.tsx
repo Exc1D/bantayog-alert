@@ -14,7 +14,8 @@ import { useAudioAlerts } from '../hooks/useAudioAlerts'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
-import type { Report, MunicipalPerformance, AnomalyAlert } from '../types'
+import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
+import type { Report, MunicipalPerformance, AnomalyAlert, ReportStatus } from '../types'
 
 function generateIdempotencyKey(): string {
   try {
@@ -84,7 +85,7 @@ function mapAlertDocToAnomalyAlert(doc: unknown): AnomalyAlert | null {
     return null
   }
   const severity = d.severity as AnomalyAlert['severity']
-  if (!['HIGH', 'MEDIUM', 'LOW'].includes(severity)) return null
+  if (!['high', 'medium', 'low'].includes(severity)) return null
   const result: AnomalyAlert = {
     id: d.id,
     message: d.message,
@@ -342,7 +343,9 @@ export default function DashboardPage() {
   ])
 
   const pendingCount = reports.filter((r) => r.status === 'awaiting_verify').length
-  const activeCount = reports.filter((r) => r.status === 'ACTIVE').length
+  const activeCount = reports.filter((r) =>
+    ACTIVE_REPORT_STATUSES.includes(r.status as ReportStatus),
+  ).length
 
   const municipalData: MunicipalPerformance[] = useMemo(() => {
     const byMuni = new Map<string, Report[]>()
@@ -353,7 +356,7 @@ export default function DashboardPage() {
     })
     return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
       municipality,
-      activeIncidents: muniReports.filter((r) => r.status === 'ACTIVE').length,
+      activeIncidents: muniReports.filter((r) => ACTIVE_REPORT_STATUSES.includes(r.status)).length,
     }))
   }, [reports])
 

@@ -10,6 +10,7 @@ import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { callables } from '../services/callables'
 import { db, rtdb } from '../app/firebase'
+import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import type { Report, MunicipalPerformance } from '../types'
 
 function generateIdempotencyKey(): string {
@@ -126,7 +127,7 @@ export default function MapPage() {
     const muniReports = reports.filter((r) => r.municipality === selectedMunicipalityId)
     return {
       municipality: selectedMunicipalityId,
-      activeIncidents: muniReports.filter((r) => r.status === 'ACTIVE').length,
+      activeIncidents: muniReports.filter((r) => ACTIVE_REPORT_STATUSES.includes(r.status)).length,
     }
   }, [selectedMunicipalityId, reports])
 

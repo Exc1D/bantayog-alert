@@ -5,8 +5,8 @@ import { TriagePanel } from '../components/TriagePanel'
 
 const mockReport = {
   id: 'r1',
-  type: 'FLOOD' as const,
-  severity: 'HIGH' as const,
+  type: 'flood' as const,
+  severity: 'high' as const,
   municipality: 'Daet',
   barangay: 'Camambugan',
   description: 'Water rising',
@@ -15,7 +15,7 @@ const mockReport = {
   latitude: 14.1,
   longitude: 122.9,
   createdAt: '14:02',
-  status: 'PENDING' as const,
+  status: 'new' as const,
   updatedAt: '',
 }
 

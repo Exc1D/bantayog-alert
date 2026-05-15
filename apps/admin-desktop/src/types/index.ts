@@ -1,8 +1,5 @@
-export type Severity = 'HIGH' | 'MEDIUM' | 'LOW'
-
-export type ReportType = 'FLOOD' | 'FIRE' | 'LANDSLIDE' | 'ACCIDENT' | 'MEDICAL' | 'OTHER'
-
-export type ReportStatus = 'ACTIVE' | 'PENDING' | 'RESOLVED' | 'ESCALATED' | 'CRITICAL'
+import type { Severity, ReportType, ReportStatus } from '@bantayog/shared-types'
+export type { Severity, ReportType, ReportStatus }
 
 export type Role =
   | 'SUPERADMIN'

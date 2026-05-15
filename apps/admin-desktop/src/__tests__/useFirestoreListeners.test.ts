@@ -85,7 +85,7 @@ describe('useFirestoreListeners', () => {
 
   it('updates data when snapshot arrives', async () => {
     mockOnSnapshot.mockImplementation((_ref, callback) => {
-      callback({ docs: [{ id: 'r1', data: () => ({ type: 'FLOOD' }) }] })
+      callback({ docs: [{ id: 'r1', data: () => ({ type: 'flood' }) }] })
       return mockUnsubscribe
     })
 

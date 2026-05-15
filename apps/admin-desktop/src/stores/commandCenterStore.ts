@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type Severity = 'HIGH' | 'MEDIUM' | 'LOW'
+export type Severity = 'low' | 'medium' | 'high'
 export type ChartTimeRange = '24h' | '7d' | '30d'
 export type TriageAge = 'new' | 'stale'
 

@@ -1,24 +1,40 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { useMap } from 'react-leaflet'
-import { Waves, Flame, Mountain, Car, HeartPulse, AlertTriangle } from 'lucide-react'
+import {
+  Waves,
+  Flame,
+  Mountain,
+  Car,
+  HeartPulse,
+  AlertTriangle,
+  CloudLightning,
+  Wind,
+  Building,
+  ShieldAlert,
+} from 'lucide-react'
 import { renderToString } from 'react-dom/server'
 import type { Report } from '../types'
 import type { Severity } from '../stores/commandCenterStore'
 
 const TYPE_ICONS = {
-  FLOOD: Waves,
-  FIRE: Flame,
-  LANDSLIDE: Mountain,
-  ACCIDENT: Car,
-  MEDICAL: HeartPulse,
-  OTHER: AlertTriangle,
+  flood: Waves,
+  fire: Flame,
+  earthquake: CloudLightning,
+  typhoon: Wind,
+  landslide: Mountain,
+  storm_surge: Waves,
+  medical: HeartPulse,
+  accident: Car,
+  structural: Building,
+  security: ShieldAlert,
+  other: AlertTriangle,
 }
 
 const SEVERITY_COLORS: Record<Severity, string> = {
-  HIGH: 'var(--color-severity-high)',
-  MEDIUM: 'var(--color-severity-medium)',
-  LOW: 'var(--color-severity-low)',
+  high: 'var(--color-severity-high)',
+  medium: 'var(--color-severity-medium)',
+  low: 'var(--color-severity-low)',
 }
 
 interface Props {

@@ -44,8 +44,8 @@ vi.mock('../providers/WindowSyncProvider', () => ({
 const defaultReports = [
   {
     id: 'r1',
-    type: 'FLOOD',
-    severity: 'HIGH',
+    type: 'flood',
+    severity: 'high',
     municipality: 'Daet',
     barangay: 'Camambugan',
     createdAt: '14:02',
@@ -59,8 +59,8 @@ const defaultReports = [
   },
   {
     id: 'r2',
-    type: 'FIRE',
-    severity: 'MEDIUM',
+    type: 'fire',
+    severity: 'medium',
     municipality: 'Labo',
     barangay: 'San Roque',
     createdAt: '14:08',
@@ -114,7 +114,8 @@ describe('DashboardPage', () => {
   it('renders header and status bar', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument() // pending count from 2 awaiting_verify reports
+    // Both active (2 awaiting_verify reports are active) and pending (2 awaiting_verify) show 2
+    expect(screen.getAllByText('2')).toHaveLength(2)
   })
 
   it('opens map window when M key pressed', () => {
@@ -226,8 +227,8 @@ describe('DashboardPage', () => {
     const mockTimestampReports: ReportWithTimestamp[] = [
       {
         id: 'r1',
-        type: 'FLOOD' as const,
-        severity: 'HIGH' as const,
+        type: 'flood' as const,
+        severity: 'high' as const,
         municipality: 'Daet',
         barangay: 'Camambugan',
         createdAt: {
