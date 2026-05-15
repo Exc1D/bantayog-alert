@@ -63,7 +63,7 @@ async function main() {
     await auth.setCustomUserClaims('daet-admin-test-01', {
       role: 'municipal_admin',
       municipalityId: 'daet',
-      active: true,
+      accountStatus: 'active',
     })
     console.log('✓ daet-admin-test-01 custom claims set')
   } catch (err: any) {
@@ -93,7 +93,9 @@ async function main() {
       role: 'responder',
       municipalityId: 'daet',
       agencyId: 'bfp-daet',
-      active: true,
+      accountStatus: 'active', // matches rules check: request.auth.token.accountStatus == 'active'
+      mfaEnrolled: true,
+      lastClaimIssuedAt: Date.now(), // required by CustomClaims interface
     })
     console.log('✓ bfp-responder-test-01 custom claims set')
   } catch (err: any) {
@@ -112,6 +114,28 @@ async function main() {
     console.log('✓ bfp-responder-test-01 document created')
   } catch (err: any) {
     console.error('✗ Failed to create responder document:', err.message)
+  }
+
+  // 4b. Create active_accounts document (required by isActivePrivileged() rules)
+  console.log('\nCreating active_accounts document...')
+  try {
+    await db
+      .collection('active_accounts')
+      .doc('bfp-responder-test-01')
+      .set({
+        uid: 'bfp-responder-test-01',
+        role: 'responder',
+        accountStatus: 'active',
+        municipalityId: 'daet',
+        agencyId: 'bfp-daet',
+        mfaEnrolled: true,
+        permittedMunicipalityIds: ['daet'],
+        lastClaimIssuedAt: Date.now(),
+        updatedAt: new Date(),
+      })
+    console.log('✓ bfp-responder-test-01 active_accounts document created')
+  } catch (err: any) {
+    console.error('✗ Failed to create active_accounts document:', err.message)
   }
 
   // 5. Create feature flag

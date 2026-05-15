@@ -1,5 +1,19 @@
 # Progress
 
+## Current Status (2026-05-15)
+
+**Staging E2E Report Flow — Root Cause Fixes (in progress)**
+
+Addressing Admin Dashboard crashes and Responder permission errors identified via 10-subagent parallel investigation.
+
+- ✅ **Fix 4 (Dashboard Timestamp):** `mapReportDocToReport` in DashboardPage.tsx now converts Firestore Timestamp to ISO string for `createdAt`. Added TDD test reproducing React error #31 with mock Timestamp object; fix confirmed with 11/11 tests passing.
+- ✅ **Fix 5 (Bootstrap Claims Keys):** Changed `active: true` → `accountStatus: 'active'` and added `lastClaimIssuedAt: Date.now()` to bootstrap responder claims (rules check `request.auth.token.accountStatus == 'active'`).
+- ✅ **Fix 6 (active_accounts Document):** Added `active_accounts/bfp-responder-test-01` document creation to bootstrap script — required by `isActivePrivileged()` Firestore rules.
+- ✅ **Fix 7 (Dispatches Composite Index):** Already exists at lines 133-140 — no change needed.
+- **Pending:** Re-run bootstrap to staging after key.json deployment, then full E2E verification.
+
+**Gate:** typecheck clean · 11/11 DashboardPage tests pass
+
 ## Current Status (2026-05-12)
 
 **Admin Desktop — Interface-Design Critique Remediation (in progress)**

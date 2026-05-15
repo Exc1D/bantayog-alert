@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
+import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 
 const mockVerifyReport = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ status: 'VERIFIED', reportId: 'r1' }),
@@ -40,51 +41,61 @@ vi.mock('../providers/WindowSyncProvider', () => ({
   }),
 }))
 
+const defaultReports = [
+  {
+    id: 'r1',
+    type: 'FLOOD',
+    severity: 'HIGH',
+    municipality: 'Daet',
+    barangay: 'Camambugan',
+    createdAt: '14:02',
+    status: 'awaiting_verify',
+    description: 'Water rising',
+    reporterName: 'Juan',
+    reporterPhone: '0917xxx',
+    latitude: 14.1,
+    longitude: 122.9,
+    updatedAt: '',
+  },
+  {
+    id: 'r2',
+    type: 'FIRE',
+    severity: 'MEDIUM',
+    municipality: 'Labo',
+    barangay: 'San Roque',
+    createdAt: '14:08',
+    status: 'awaiting_verify',
+    description: 'House fire',
+    reporterName: 'Maria',
+    reporterPhone: '0918xxx',
+    latitude: 14.0,
+    longitude: 122.8,
+    updatedAt: '',
+  },
+]
+
 vi.mock('../hooks/useFirestoreListeners', () => ({
-  useFirestoreListeners: () => ({
+  useFirestoreListeners: vi.fn(() => ({
     loading: false,
     error: null,
-    reports: [
-      {
-        id: 'r1',
-        type: 'FLOOD',
-        severity: 'HIGH',
-        municipality: 'Daet',
-        barangay: 'Camambugan',
-        createdAt: '14:02',
-        status: 'PENDING',
-        description: 'Water rising',
-        reporterName: 'Juan',
-        reporterPhone: '0917xxx',
-        latitude: 14.1,
-        longitude: 122.9,
-        updatedAt: '',
-      },
-      {
-        id: 'r2',
-        type: 'FIRE',
-        severity: 'MEDIUM',
-        municipality: 'Labo',
-        barangay: 'San Roque',
-        createdAt: '14:08',
-        status: 'PENDING',
-        description: 'House fire',
-        reporterName: 'Maria',
-        reporterPhone: '0918xxx',
-        latitude: 14.0,
-        longitude: 122.8,
-        updatedAt: '',
-      },
-    ],
+    reports: defaultReports,
     reportOps: [],
     alerts: [],
     responders: [],
-  }),
+  })),
 }))
 
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useFirestoreListeners).mockReturnValue({
+      loading: false,
+      error: null,
+      reports: defaultReports,
+      reportOps: [],
+      alerts: [],
+      responders: [],
+    })
     useCommandCenterStore.setState({
       selectedMunicipalityId: null,
       selectedReportId: null,
@@ -103,7 +114,7 @@ describe('DashboardPage', () => {
   it('renders header and status bar', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument() // pending count from 2 PENDING reports
+    expect(screen.getByText('2')).toBeInTheDocument() // pending count from 2 awaiting_verify reports
   })
 
   it('opens map window when M key pressed', () => {
@@ -205,5 +216,48 @@ describe('DashboardPage', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
     openSpy.mockRestore()
+  })
+
+  it('handles reports with createdAt as Firestore Timestamp object', async () => {
+    // Simulate Firestore Timestamp - has toDate() method but is not a string
+    const mockTimestampReports = [
+      {
+        id: 'r1',
+        type: 'FLOOD' as const,
+        severity: 'HIGH' as const,
+        municipality: 'Daet',
+        barangay: 'Camambugan',
+        createdAt: {
+          toDate: () => new Date('2026-05-14T14:02:00.000Z'),
+          seconds: 1747228920,
+          nanoseconds: 0,
+        },
+        status: 'awaiting_verify' as const,
+        description: 'Water rising',
+        reporterName: 'Juan',
+        reporterPhone: '0917xxx',
+        latitude: 14.1,
+        longitude: 122.9,
+        updatedAt: '',
+      },
+    ]
+
+    vi.mocked(useFirestoreListeners).mockReturnValueOnce({
+      loading: false,
+      error: null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      reports: mockTimestampReports as any,
+      reportOps: [],
+      alerts: [],
+      responders: [],
+    })
+
+    render(<DashboardPage />, { wrapper: BrowserRouter })
+    // Should render without crashing (React error #31 = objects not valid as React children)
+    await waitFor(() => {
+      expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
+    })
+    // The report row should be visible with barangay
+    expect(screen.getByText('Camambugan')).toBeInTheDocument()
   })
 })

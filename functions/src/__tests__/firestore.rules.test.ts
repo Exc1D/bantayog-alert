@@ -215,4 +215,19 @@ describe('phase 1 firestore rules', () => {
       }),
     )
   })
+
+  itif(emulatorAvailable)(
+    'superadmin with empty permittedMunicipalityIds can read non-public reports',
+    async () => {
+      const db = testEnv!
+        .authenticatedContext('super-empty-muni', {
+          role: 'provincial_superadmin',
+          accountStatus: 'active',
+          permittedMunicipalityIds: [], // empty - was blocking read
+        })
+        .firestore()
+
+      await assertSucceeds(db.collection('reports').doc('RPT-123').get())
+    },
+  )
 })

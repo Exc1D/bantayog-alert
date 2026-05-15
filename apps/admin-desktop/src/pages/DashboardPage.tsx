@@ -30,17 +30,25 @@ function mapReportDocToReport(doc: {
   severity: string
   municipality: string
   barangay: string
-  createdAt: string
+  createdAt: string | { toDate(): Date }
   status: string
   description: string
 }): Report {
+  const createdAtVal = doc.createdAt
+  const convertedCreatedAt =
+    typeof createdAtVal === 'string'
+      ? createdAtVal
+      : 'toDate' in createdAtVal
+        ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          (createdAtVal as { toDate: () => Date }).toDate().toISOString()
+        : String(createdAtVal)
   return {
     id: doc.id,
     type: doc.type as Report['type'],
     severity: doc.severity as Report['severity'],
     municipality: doc.municipality,
     barangay: doc.barangay,
-    createdAt: doc.createdAt,
+    createdAt: convertedCreatedAt,
     status: doc.status as Report['status'],
     description: doc.description,
     reporterName: '',
@@ -113,9 +121,11 @@ export default function DashboardPage() {
 
   // Audio alert on new PENDING reports
   useEffect(() => {
-    const currentPending = new Set(reports.filter((r) => r.status === 'PENDING').map((r) => r.id))
+    const currentPending = new Set(
+      reports.filter((r) => r.status === 'awaiting_verify').map((r) => r.id),
+    )
     const newArrivals = reports.filter(
-      (r) => r.status === 'PENDING' && !prevIdsRef.current.has(r.id),
+      (r) => r.status === 'awaiting_verify' && !prevIdsRef.current.has(r.id),
     )
     if (newArrivals.length > 0) {
       play()
@@ -329,7 +339,7 @@ export default function DashboardPage() {
     },
   ])
 
-  const pendingCount = reports.filter((r) => r.status === 'PENDING').length
+  const pendingCount = reports.filter((r) => r.status === 'awaiting_verify').length
   const activeCount = reports.filter((r) => r.status === 'ACTIVE').length
 
   const municipalData: MunicipalPerformance[] = useMemo(() => {
