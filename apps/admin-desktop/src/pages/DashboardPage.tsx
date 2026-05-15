@@ -35,13 +35,15 @@ function mapReportDocToReport(doc: {
   description: string
 }): Report {
   const createdAtVal = doc.createdAt
-  const convertedCreatedAt =
-    typeof createdAtVal === 'string'
-      ? createdAtVal
-      : 'toDate' in createdAtVal
-        ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-          (createdAtVal as { toDate: () => Date }).toDate().toISOString()
-        : String(createdAtVal)
+  let convertedCreatedAt: string
+  if (typeof createdAtVal === 'string') {
+    convertedCreatedAt = createdAtVal
+  } else {
+    // createdAt is { toDate(): Date } per interface; call toDate and validate result
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const dt = (createdAtVal as { toDate: () => Date }).toDate()
+    convertedCreatedAt = dt instanceof Date && !Number.isNaN(dt.getTime()) ? dt.toISOString() : ''
+  }
   return {
     id: doc.id,
     type: doc.type as Report['type'],

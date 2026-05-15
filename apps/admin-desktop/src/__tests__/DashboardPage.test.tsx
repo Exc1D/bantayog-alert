@@ -220,7 +220,10 @@ describe('DashboardPage', () => {
 
   it('handles reports with createdAt as Firestore Timestamp object', async () => {
     // Simulate Firestore Timestamp - has toDate() method but is not a string
-    const mockTimestampReports = [
+    type ReportWithTimestamp = Omit<(typeof defaultReports)[number], 'createdAt'> & {
+      createdAt: { toDate: () => Date; seconds?: number; nanoseconds?: number }
+    }
+    const mockTimestampReports: ReportWithTimestamp[] = [
       {
         id: 'r1',
         type: 'FLOOD' as const,
@@ -245,8 +248,7 @@ describe('DashboardPage', () => {
     vi.mocked(useFirestoreListeners).mockReturnValueOnce({
       loading: false,
       error: null,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      reports: mockTimestampReports as any,
+      reports: mockTimestampReports as unknown as typeof defaultReports,
       reportOps: [],
       alerts: [],
       responders: [],

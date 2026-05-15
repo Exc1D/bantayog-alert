@@ -96,6 +96,7 @@ async function main() {
       accountStatus: 'active', // matches rules check: request.auth.token.accountStatus == 'active'
       mfaEnrolled: true,
       lastClaimIssuedAt: Date.now(), // required by CustomClaims interface
+      permittedMunicipalityIds: ['daet'], // required by rules that reference request.auth.token.permittedMunicipalityIds
     })
     console.log('✓ bfp-responder-test-01 custom claims set')
   } catch (err: any) {
@@ -122,17 +123,20 @@ async function main() {
     await db
       .collection('active_accounts')
       .doc('bfp-responder-test-01')
-      .set({
-        uid: 'bfp-responder-test-01',
-        role: 'responder',
-        accountStatus: 'active',
-        municipalityId: 'daet',
-        agencyId: 'bfp-daet',
-        mfaEnrolled: true,
-        permittedMunicipalityIds: ['daet'],
-        lastClaimIssuedAt: Date.now(),
-        updatedAt: new Date(),
-      })
+      .set(
+        {
+          uid: 'bfp-responder-test-01',
+          role: 'responder',
+          accountStatus: 'active',
+          municipalityId: 'daet',
+          agencyId: 'bfp-daet',
+          mfaEnrolled: true,
+          permittedMunicipalityIds: ['daet'],
+          lastClaimIssuedAt: Date.now(),
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
     console.log('✓ bfp-responder-test-01 active_accounts document created')
   } catch (err: any) {
     console.error('✗ Failed to create active_accounts document:', err.message)
