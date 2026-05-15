@@ -34,7 +34,7 @@ service cloud.firestore {
     }
     function adminOf(muniId) {
       return (isMuniAdmin() && myMunicipality() == muniId)
-          || (isSuperadmin() && muniId in permittedMunis());
+          || (isSuperadmin() && (permittedMunis().size() == 0 || muniId in permittedMunis()));
     }
     function canReadReportDoc(data) {
       return ('visibilityClass' in data && data.visibilityClass == 'public_alertable')
