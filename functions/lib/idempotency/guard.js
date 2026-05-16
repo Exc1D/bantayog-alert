@@ -1,4 +1,20 @@
 import { canonicalPayloadHash } from '@bantayog/shared-validators';
+function deepStripUndefined(value) {
+    if (value === null || typeof value !== 'object') {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map(deepStripUndefined);
+    }
+    const record = value;
+    const result = {};
+    for (const [key, val] of Object.entries(record)) {
+        if (val !== undefined) {
+            result[key] = deepStripUndefined(val);
+        }
+    }
+    return result;
+}
 export class IdempotencyMismatchError extends Error {
     key;
     firstSeenAt;
@@ -19,7 +35,7 @@ export class IdempotencyInProgressError extends Error {
 }
 export async function withIdempotency(db, opts, op) {
     const now = opts.now ?? (() => Date.now());
-    const hash = await canonicalPayloadHash(opts.payload);
+    const hash = await canonicalPayloadHash(deepStripUndefined(opts.payload));
     const keyRef = db.collection('idempotency_keys').doc(opts.key);
     const cached = await db.runTransaction(async (tx) => {
         const snap = await tx.get(keyRef);

@@ -7,7 +7,7 @@ export declare function requireAuth(request: {
         uid: string;
         token: Record<string, unknown>;
     } | null;
-}, allowedRoles: string[]): {
+}, allowedRoles: readonly string[]): {
     uid: string;
     claims: Record<string, unknown>;
 };

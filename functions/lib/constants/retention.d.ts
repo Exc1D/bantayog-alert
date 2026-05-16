@@ -8,5 +8,5 @@
  *
  * Changing this array automatically updates all consumers.
  */
-export declare const RETENTION_EXEMPT_COLLECTIONS: string[];
+export declare const RETENTION_EXEMPT_COLLECTIONS: readonly ["reports", "report_private", "report_ops"];
 //# sourceMappingURL=retention.d.ts.map

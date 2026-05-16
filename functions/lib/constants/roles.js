@@ -10,7 +10,10 @@ export const PROVINCIAL_SUPERADMIN = 'provincial_superadmin';
 /** PDRRMO role — provincial disaster-response officer. */
 export const PDRRMO = 'pdrrmo';
 /** Convenience array for requireAuth() calls that accept only superadmin. */
-export const PRIVILEGED_ROLES = [PROVINCIAL_SUPERADMIN];
+export const PRIVILEGED_ROLES = Object.freeze([PROVINCIAL_SUPERADMIN]);
 /** Convenience array for requireAuth() calls that accept superadmin + PDRRMO. */
-export const PRIVILEGED_WITH_PDRRMO = [PROVINCIAL_SUPERADMIN, PDRRMO];
+export const PRIVILEGED_WITH_PDRRMO = Object.freeze([
+    PROVINCIAL_SUPERADMIN,
+    PDRRMO,
+]);
 //# sourceMappingURL=roles.js.map

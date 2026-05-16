@@ -2,6 +2,8 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { ACTIVE_REPORT_STATUSES, } from '@bantayog/shared-types';
 import { adminDb } from '../admin-init.js';
+import { getAdminCallableCorsOrigins } from './callable-config.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 const listScopedOperationsMapSchema = z.object({}).strict();
 function readClaimString(claims, key) {
     const value = claims[key];
@@ -96,8 +98,8 @@ export async function listScopedOperationsMapCore(db, actor) {
 }
 export const listScopedOperationsMap = onCall({
     region: 'asia-southeast1',
-    enforceAppCheck: true,
-    cors: ['http://localhost:5174', 'http://localhost:5175'],
+    enforceAppCheck: shouldEnforceAppCheck(),
+    cors: getAdminCallableCorsOrigins(),
 }, async (req) => {
     if (!req.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');

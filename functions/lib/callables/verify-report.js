@@ -4,6 +4,9 @@ import { z } from 'zod';
 import { BantayogError, BantayogErrorCode, isValidReportTransition, } from '@bantayog/shared-validators';
 import { bantayogErrorToHttps } from './https-error.js';
 import { adminDb } from '../admin-init.js';
+import { isAccountActive } from './admin-auth.js';
+import { getAdminCallableCorsOrigins } from './callable-config.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 import { withIdempotency } from '../idempotency/guard.js';
 import { checkRateLimit } from '../services/rate-limit.js';
 import { logDimension } from '@bantayog/shared-validators';
@@ -38,7 +41,8 @@ export async function verifyReportCore(db, deps) {
                 });
             }
             const report = reportData;
-            if (report.municipalityId !== deps.actor.claims.municipalityId) {
+            if (deps.actor.claims.role !== 'provincial_superadmin' &&
+                report.municipalityId !== deps.actor.claims.municipalityId) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report is not in your municipality');
             }
             const from = report.status;
@@ -48,6 +52,7 @@ export async function verifyReportCore(db, deps) {
             else if (from === 'awaiting_verify')
                 to = 'verified';
             else {
+                console.error(`verifyReport status transition blocked: report=${deps.reportId} from=${from}`);
                 throw new BantayogError(BantayogErrorCode.INVALID_STATUS_TRANSITION, `verifyReport cannot advance from status ${from}`, { reportId: deps.reportId, from });
             }
             if (!isValidReportTransition(from, to)) {
@@ -97,9 +102,9 @@ export async function verifyReportCore(db, deps) {
 }
 export const verifyReport = onCall({
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 100,
-    cors: ['http://localhost:5175'],
+    cors: getAdminCallableCorsOrigins(),
 }, async (req) => {
     if (!req.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');
@@ -109,12 +114,14 @@ export const verifyReport = onCall({
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
         throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required');
     }
-    if (claims.active !== true) {
+    if (!isAccountActive(claims)) {
         throw new HttpsError('permission-denied', 'account is not active');
     }
     const parsed = InputSchema.safeParse(req.data);
-    if (!parsed.success)
+    if (!parsed.success) {
+        console.error('verifyReport validation failed:', z.treeifyError(parsed.error));
         throw new HttpsError('invalid-argument', 'malformed payload');
+    }
     const rl = await checkRateLimit(adminDb, {
         key: `verifyReport:${req.auth.uid}`,
         limit: 60,
@@ -138,7 +145,7 @@ export const verifyReport = onCall({
                 claims: {
                     role: claims.role,
                     municipalityId: claims.municipalityId,
-                    active: claims.active,
+                    active: claims.active === true,
                 },
             },
             now: Timestamp.now(),

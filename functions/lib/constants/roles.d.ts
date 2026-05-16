@@ -10,7 +10,7 @@ export declare const PROVINCIAL_SUPERADMIN: "provincial_superadmin";
 /** PDRRMO role — provincial disaster-response officer. */
 export declare const PDRRMO: "pdrrmo";
 /** Convenience array for requireAuth() calls that accept only superadmin. */
-export declare const PRIVILEGED_ROLES: string[];
+export declare const PRIVILEGED_ROLES: readonly string[];
 /** Convenience array for requireAuth() calls that accept superadmin + PDRRMO. */
-export declare const PRIVILEGED_WITH_PDRRMO: string[];
+export declare const PRIVILEGED_WITH_PDRRMO: readonly string[];
 //# sourceMappingURL=roles.d.ts.map

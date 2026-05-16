@@ -140,11 +140,10 @@ export async function processInboxItemCore(input) {
                 reporterUid: inbox.reporterUid,
                 isPseudonymous: false,
                 publicTrackingRef: inbox.publicRef,
-                exactLocation: payload.exactLocation ?? null,
                 contactPhone: payload.contact?.phone ?? null,
                 createdAt,
                 schemaVersion: 1,
-                ...(exactLocation ? { exactLocation } : {}),
+                ...(exactLocation != null ? { exactLocation } : {}),
             });
             tx.set(db.collection('report_ops').doc(reportId), {
                 municipalityId,
