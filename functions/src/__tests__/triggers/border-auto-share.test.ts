@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
 import ngeohash from 'ngeohash'
@@ -84,30 +86,38 @@ vi.mock('../../admin-init.js', () => ({
 
 import { borderAutoShareCore } from '../../triggers/border-auto-share.js'
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'border-auto-share-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'border-auto-share-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'border-auto-share',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('borderAutoShareTrigger', () => {
-  it('skips reports with no locationGeohash', async () => {
+  itif(available)('skips reports with no locationGeohash', async () => {
     const opsDoc = {
       municipalityId: 'daet',
       status: 'verified',
@@ -129,7 +139,7 @@ describe('borderAutoShareTrigger', () => {
     expect(snap.exists).toBe(false)
   })
 
-  it('does not create report_sharing for a report far from any boundary', async () => {
+  itif(available)('does not create report_sharing for a report far from any boundary', async () => {
     const opsDoc = {
       municipalityId: 'daet',
       locationGeohash: FAR_GEOHASH,
@@ -152,7 +162,7 @@ describe('borderAutoShareTrigger', () => {
     expect(snap.exists).toBe(false)
   })
 
-  it('creates report_sharing with source auto when near boundary', async () => {
+  itif(available)('creates report_sharing with source auto when near boundary', async () => {
     const opsDoc = {
       municipalityId: 'daet',
       locationGeohash: NEAR_BOUNDARY_GEOHASH,
@@ -167,7 +177,7 @@ describe('borderAutoShareTrigger', () => {
       schemaVersion: 1,
     }
     // Seed report_ops and report_private
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'report_ops', 'r1'), {
         municipalityId: 'daet',
         locationGeohash: NEAR_BOUNDARY_GEOHASH,
@@ -200,22 +210,10 @@ describe('borderAutoShareTrigger', () => {
     expect(events.docs.some((d) => d.data().source === 'auto')).toBe(true)
   })
 
-  it('does not re-trigger if report already shared with that municipality', async () => {
-    const opsDoc = {
-      municipalityId: 'daet',
-      locationGeohash: NEAR_BOUNDARY_GEOHASH,
-      status: 'verified',
-      severity: 'high',
-      createdAt: ts,
-      updatedAt: ts,
-      agencyIds: [],
-      activeResponderCount: 0,
-      requiresLocationFollowUp: false,
-      visibility: { scope: 'municipality', sharedWith: ['mercedes'] },
-      schemaVersion: 1,
-    }
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'report_ops', 'r1'), {
+  itif(available)(
+    'does not re-trigger if report already shared with that municipality',
+    async () => {
+      const opsDoc = {
         municipalityId: 'daet',
         locationGeohash: NEAR_BOUNDARY_GEOHASH,
         status: 'verified',
@@ -227,29 +225,44 @@ describe('borderAutoShareTrigger', () => {
         requiresLocationFollowUp: false,
         visibility: { scope: 'municipality', sharedWith: ['mercedes'] },
         schemaVersion: 1,
+      }
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'report_ops', 'r1'), {
+          municipalityId: 'daet',
+          locationGeohash: NEAR_BOUNDARY_GEOHASH,
+          status: 'verified',
+          severity: 'high',
+          createdAt: ts,
+          updatedAt: ts,
+          agencyIds: [],
+          activeResponderCount: 0,
+          requiresLocationFollowUp: false,
+          visibility: { scope: 'municipality', sharedWith: ['mercedes'] },
+          schemaVersion: 1,
+        })
+        await setDoc(doc(ctx.firestore(), 'report_sharing', 'r1'), {
+          ownerMunicipalityId: 'daet',
+          reportId: 'r1',
+          sharedWith: ['mercedes'],
+          createdAt: ts,
+          updatedAt: ts,
+          schemaVersion: 1,
+        })
+        await setDoc(doc(ctx.firestore(), 'report_private', 'r1'), {
+          reportId: 'r1',
+          reporterUid: 'u1',
+          createdAt: ts,
+          schemaVersion: 1,
+          exactLocation: { lat: NEAR_BOUNDARY_LAT, lng: NEAR_BOUNDARY_LNG },
+        })
       })
-      await setDoc(doc(ctx.firestore(), 'report_sharing', 'r1'), {
-        ownerMunicipalityId: 'daet',
+      await borderAutoShareCore(adminDb, {
         reportId: 'r1',
-        sharedWith: ['mercedes'],
-        createdAt: ts,
-        updatedAt: ts,
-        schemaVersion: 1,
+        opsData: opsDoc,
+        boundaryGeohashSet: new Set<string>([NEAR_BOUNDARY_GEOHASH]),
       })
-      await setDoc(doc(ctx.firestore(), 'report_private', 'r1'), {
-        reportId: 'r1',
-        reporterUid: 'u1',
-        createdAt: ts,
-        schemaVersion: 1,
-        exactLocation: { lat: NEAR_BOUNDARY_LAT, lng: NEAR_BOUNDARY_LNG },
-      })
-    })
-    await borderAutoShareCore(adminDb, {
-      reportId: 'r1',
-      opsData: opsDoc,
-      boundaryGeohashSet: new Set<string>([NEAR_BOUNDARY_GEOHASH]),
-    })
-    const events = await adminDb.collection('report_sharing').doc('r1').collection('events').get()
-    expect(events.size).toBe(0) // no new event written
-  })
+      const events = await adminDb.collection('report_sharing').doc('r1').collection('events').get()
+      expect(events.size).toBe(0) // no new event written
+    },
+  )
 })

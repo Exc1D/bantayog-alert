@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { describe, it, expect, beforeEach, afterAll } from 'vitest'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import type { Database } from 'firebase-admin/database'
 import {
   projectResponderLocationsCore,
@@ -7,13 +8,20 @@ import {
   computeFreshness,
 } from '../../scheduled/project-responder-locations.js'
 
-let testEnv: RulesTestEnvironment
-
-beforeEach(async () => {
-  testEnv = await initializeTestEnvironment({
+const guarded = await guardInitTestEnvironment(
+  {
     projectId: 'projection-test',
     database: { host: 'localhost', port: 9000 },
-  })
+  },
+  'project-responder-locations',
+)
+const testEnv: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
+
+beforeEach(async () => {
+  if (!testEnv) return
   await Promise.race([
     testEnv.clearDatabase(),
     new Promise((_, reject) =>
@@ -29,8 +37,8 @@ beforeEach(async () => {
   })
 })
 
-afterEach(async () => {
-  await testEnv.cleanup()
+afterAll(async () => {
+  await testEnv?.cleanup()
 })
 
 describe('roundToGrid', () => {
@@ -66,37 +74,40 @@ describe('computeFreshness', () => {
 })
 
 describe('projectResponderLocationsCore', () => {
-  it('projects active responders with rounded coordinates and correct freshness', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const rtdb = ctx.database() as unknown as Database
-      const now = 1_000_000
+  itif(available)(
+    'projects active responders with rounded coordinates and correct freshness',
+    async () => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const rtdb = ctx.database() as unknown as Database
+        const now = 1_000_000
 
-      await rtdb.ref('responder_index/r1').set({ municipalityId: 'daet', agencyId: 'bfp' })
-      await rtdb.ref('responder_locations/r1').set({
-        capturedAt: now - 10_000,
-        lat: 14.09315,
-        lng: 122.95455,
-        accuracy: 5,
-        batteryPct: 80,
-        motionState: 'moving',
-        appVersion: '1.0.0',
-        telemetryStatus: 'active',
+        await rtdb.ref('responder_index/r1').set({ municipalityId: 'daet', agencyId: 'bfp' })
+        await rtdb.ref('responder_locations/r1').set({
+          capturedAt: now - 10_000,
+          lat: 14.09315,
+          lng: 122.95455,
+          accuracy: 5,
+          batteryPct: 80,
+          motionState: 'moving',
+          appVersion: '1.0.0',
+          telemetryStatus: 'active',
+        })
+
+        await projectResponderLocationsCore(rtdb, { now })
+
+        const snap = await rtdb.ref('shared_projection/daet/r1').get()
+        expect(snap.val()).toEqual({
+          lat: 14.093,
+          lng: 122.955,
+          freshness: 'fresh',
+          lastSeenAt: now - 10_000,
+        })
       })
+    },
+  )
 
-      await projectResponderLocationsCore(rtdb, { now })
-
-      const snap = await rtdb.ref('shared_projection/daet/r1').get()
-      expect(snap.val()).toEqual({
-        lat: 14.093,
-        lng: 122.955,
-        freshness: 'fresh',
-        lastSeenAt: now - 10_000,
-      })
-    })
-  })
-
-  it('deletes offline responders from projection', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('deletes offline responders from projection', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const rtdb = ctx.database() as unknown as Database
       const now = 1_000_000
 
@@ -125,8 +136,8 @@ describe('projectResponderLocationsCore', () => {
     })
   })
 
-  it('cleans up stale projection entries via TTL', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('cleans up stale projection entries via TTL', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const rtdb = ctx.database() as unknown as Database
       const now = 1_000_000
 
@@ -144,8 +155,8 @@ describe('projectResponderLocationsCore', () => {
     })
   })
 
-  it('groups responders by municipalityId', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('groups responders by municipalityId', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const rtdb = ctx.database() as unknown as Database
       const now = 1_000_000
 

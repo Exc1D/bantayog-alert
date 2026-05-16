@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { getApps, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { dispatchMirrorToReportCore } from '../../triggers/dispatch-mirror-to-report.js'
@@ -17,18 +19,25 @@ const adminDb = getFirestore(app)
 // Test environment
 // ---------------------------------------------------------------------------
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeEach(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'dispatch-mirror-test',
-    firestore: { host: 'localhost', port: 8081 },
-  })
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'dispatch-mirror-test',
+      firestore: { host: 'localhost', port: 8081 },
+    },
+    'dispatch-mirror-to-report',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterEach(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 async function withAdminDb<T>(fn: (db: any) => Promise<T>): Promise<T> {
@@ -96,7 +105,7 @@ async function seedDispatchJS(
 // ---------------------------------------------------------------------------
 
 describe('dispatchMirrorToReport', () => {
-  it('mirrors accepted → reports.status=acknowledged', async () => {
+  itif(available)('mirrors accepted → reports.status=acknowledged', async () => {
     const { reportId, dispatchId } = await seedPendingDispatch()
 
     // Simulate dispatch transitioning from pending → accepted
@@ -113,7 +122,7 @@ describe('dispatchMirrorToReport', () => {
     })
   })
 
-  it('appends report_events on each mirrored change', async () => {
+  itif(available)('appends report_events on each mirrored change', async () => {
     const { reportId, dispatchId } = await seedAcceptedDispatch()
 
     await withAdminDb(async (db) => {
@@ -137,7 +146,7 @@ describe('dispatchMirrorToReport', () => {
     })
   })
 
-  it('no-ops when dispatch.status == cancelled', async () => {
+  itif(available)('no-ops when dispatch.status == cancelled', async () => {
     const { reportId, dispatchId } = await seedAcceptedDispatch()
 
     await withAdminDb(async (db) => {
@@ -158,7 +167,7 @@ describe('dispatchMirrorToReport', () => {
     })
   })
 
-  it('skips if reports/{id} is missing (delete race)', async () => {
+  itif(available)('skips if reports/{id} is missing (delete race)', async () => {
     const dispatchId = `dispatch-${crypto.randomUUID()}`
     await seedDispatchJS(dispatchId, 'nonexistent-report', 'pending')
 
@@ -177,39 +186,45 @@ describe('dispatchMirrorToReport', () => {
     })
   })
 
-  it('reverts declined dispatches back to verified and clears currentDispatchId', async () => {
-    const { reportId, dispatchId } = await seedAcceptedDispatch()
+  itif(available)(
+    'reverts declined dispatches back to verified and clears currentDispatchId',
+    async () => {
+      const { reportId, dispatchId } = await seedAcceptedDispatch()
 
-    await withAdminDb(async (db) => {
-      await dispatchMirrorToReportCore({
-        db,
-        dispatchId,
-        beforeData: { status: 'accepted' },
-        afterData: { status: 'declined', reportId, correlationId: crypto.randomUUID() },
+      await withAdminDb(async (db) => {
+        await dispatchMirrorToReportCore({
+          db,
+          dispatchId,
+          beforeData: { status: 'accepted' },
+          afterData: { status: 'declined', reportId, correlationId: crypto.randomUUID() },
+        })
+
+        const reportSnap = await db.collection('reports').doc(reportId).get()
+        expect(reportSnap.data()?.status).toBe('verified')
+        expect(reportSnap.data()?.currentDispatchId).toBeNull()
       })
+    },
+  )
 
-      const reportSnap = await db.collection('reports').doc(reportId).get()
-      expect(reportSnap.data()?.status).toBe('verified')
-      expect(reportSnap.data()?.currentDispatchId).toBeNull()
-    })
-  })
+  itif(available)(
+    'reverts timed out dispatches back to verified and clears currentDispatchId',
+    async () => {
+      const { reportId, dispatchId } = await seedAcceptedDispatch()
 
-  it('reverts timed out dispatches back to verified and clears currentDispatchId', async () => {
-    const { reportId, dispatchId } = await seedAcceptedDispatch()
+      await withAdminDb(async (db) => {
+        await dispatchMirrorToReportCore({
+          db,
+          dispatchId,
+          beforeData: { status: 'accepted' },
+          afterData: { status: 'timed_out', reportId, correlationId: crypto.randomUUID() },
+        })
 
-    await withAdminDb(async (db) => {
-      await dispatchMirrorToReportCore({
-        db,
-        dispatchId,
-        beforeData: { status: 'accepted' },
-        afterData: { status: 'timed_out', reportId, correlationId: crypto.randomUUID() },
+        const reportSnap = await db.collection('reports').doc(reportId).get()
+        expect(reportSnap.data()?.status).toBe('verified')
+        expect(reportSnap.data()?.currentDispatchId).toBeNull()
       })
-
-      const reportSnap = await db.collection('reports').doc(reportId).get()
-      expect(reportSnap.data()?.status).toBe('verified')
-      expect(reportSnap.data()?.currentDispatchId).toBeNull()
-    })
-  })
+    },
+  )
 })
 
 // ---------------------------------------------------------------------------

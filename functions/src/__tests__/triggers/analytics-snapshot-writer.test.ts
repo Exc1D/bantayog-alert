@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore, Timestamp } from 'firebase-admin/firestore'
 
@@ -18,19 +20,26 @@ vi.mock('firebase-functions/v2/scheduler', () => ({
 import { analyticsSnapshotWriterCore } from '../../scheduled/analytics-snapshot-writer.js'
 
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'analytics-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'analytics-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'analytics-snapshot-writer',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 
   // Intercept all .collection() calls — return mock for report_ops,
   // pass through everything else (analytics_snapshots writes need real path).
@@ -77,11 +86,12 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
   if (collectionSpy) collectionSpy.mockRestore()
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 async function seedReportOp({
@@ -95,7 +105,7 @@ async function seedReportOp({
   status: string
   severity: string
 }) {
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'report_ops', id), {
       municipalityId,
       status,
@@ -115,7 +125,7 @@ async function seedReportOp({
 const dateStr = '2026-04-24'
 
 describe('analyticsSnapshotWriter', () => {
-  it('writes a snapshot doc for each municipality', async () => {
+  itif(available)('writes a snapshot doc for each municipality', async () => {
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
     const snap = await adminDb
       .collection('analytics_snapshots')
@@ -126,7 +136,7 @@ describe('analyticsSnapshotWriter', () => {
     expect(snap.exists).toBe(true)
   })
 
-  it('counts reports by status correctly', async () => {
+  itif(available)('counts reports by status correctly', async () => {
     await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' })
     await seedReportOp({ id: 'r2', municipalityId: 'daet', status: 'new', severity: 'medium' })
     await seedReportOp({ id: 'r3', municipalityId: 'daet', status: 'verified', severity: 'high' })
@@ -145,7 +155,7 @@ describe('analyticsSnapshotWriter', () => {
     expect(data.reportsByStatus.verified).toBe(1)
   })
 
-  it('counts reports by severity correctly', async () => {
+  itif(available)('counts reports by severity correctly', async () => {
     await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' })
     await seedReportOp({ id: 'r2', municipalityId: 'daet', status: 'new', severity: 'medium' })
     await seedReportOp({
@@ -170,7 +180,7 @@ describe('analyticsSnapshotWriter', () => {
     expect(data.reportsBySeverity.critical).toBe(1)
   })
 
-  it('writes a province-wide aggregate for superadmin scope', async () => {
+  itif(available)('writes a province-wide aggregate for superadmin scope', async () => {
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
     const provinceSnap = await adminDb
       .collection('analytics_snapshots')
@@ -181,7 +191,7 @@ describe('analyticsSnapshotWriter', () => {
     expect(provinceSnap.exists).toBe(true)
   })
 
-  it('is idempotent — re-running overwrites, not duplicates', async () => {
+  itif(available)('is idempotent — re-running overwrites, not duplicates', async () => {
     await seedReportOp({ id: 'r1', municipalityId: 'daet', status: 'new', severity: 'high' })
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
     await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
@@ -197,55 +207,58 @@ describe('analyticsSnapshotWriter', () => {
     expect(data.reportsByStatus.new).toBe(1)
   })
 
-  it('handles a municipality with zero reports without erroring', async () => {
+  itif(available)('handles a municipality with zero reports without erroring', async () => {
     await expect(
       analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) }),
     ).resolves.not.toThrow()
   })
 
-  it('computes resolvedToday and avgResponseTimeMinutes for province summary', async () => {
-    const dayStart = new Date(`${dateStr}T00:00:00.000Z`).getTime()
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'report_ops', 'resolved-r1'), {
-        municipalityId: 'daet',
-        status: 'resolved',
-        severity: 'high',
-        reportType: 'flood',
-        createdAt: dayStart + 3600000,
-        updatedAt: dayStart + 7200000,
-        resolvedAt: dayStart + 7200000,
-        agencyIds: [],
-        activeResponderCount: 0,
-        requiresLocationFollowUp: false,
-        visibility: { scope: 'municipality', sharedWith: [] },
-        schemaVersion: 1,
+  itif(available)(
+    'computes resolvedToday and avgResponseTimeMinutes for province summary',
+    async () => {
+      const dayStart = new Date(`${dateStr}T00:00:00.000Z`).getTime()
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'report_ops', 'resolved-r1'), {
+          municipalityId: 'daet',
+          status: 'resolved',
+          severity: 'high',
+          reportType: 'flood',
+          createdAt: dayStart + 3600000,
+          updatedAt: dayStart + 7200000,
+          resolvedAt: dayStart + 7200000,
+          agencyIds: [],
+          activeResponderCount: 0,
+          requiresLocationFollowUp: false,
+          visibility: { scope: 'municipality', sharedWith: [] },
+          schemaVersion: 1,
+        })
+        await setDoc(doc(ctx.firestore(), 'report_ops', 'resolved-r2'), {
+          municipalityId: 'daet',
+          status: 'resolved',
+          severity: 'medium',
+          reportType: 'flood',
+          createdAt: dayStart + 7200000,
+          updatedAt: dayStart + 18000000,
+          resolvedAt: dayStart + 18000000,
+          agencyIds: [],
+          activeResponderCount: 0,
+          requiresLocationFollowUp: false,
+          visibility: { scope: 'municipality', sharedWith: [] },
+          schemaVersion: 1,
+        })
       })
-      await setDoc(doc(ctx.firestore(), 'report_ops', 'resolved-r2'), {
-        municipalityId: 'daet',
-        status: 'resolved',
-        severity: 'medium',
-        reportType: 'flood',
-        createdAt: dayStart + 7200000,
-        updatedAt: dayStart + 18000000,
-        resolvedAt: dayStart + 18000000,
-        agencyIds: [],
-        activeResponderCount: 0,
-        requiresLocationFollowUp: false,
-        visibility: { scope: 'municipality', sharedWith: [] },
-        schemaVersion: 1,
-      })
-    })
 
-    await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
+      await analyticsSnapshotWriterCore(adminDb, { date: dateStr, now: Timestamp.fromMillis(ts) })
 
-    const provinceSnap = await adminDb
-      .collection('analytics_snapshots')
-      .doc(dateStr)
-      .collection('province')
-      .doc('summary')
-      .get()
-    const data = provinceSnap.data()!
-    expect(data.resolvedToday).toBe(2)
-    expect(data.avgResponseTimeMinutes).toBeCloseTo(120, 0)
-  })
+      const provinceSnap = await adminDb
+        .collection('analytics_snapshots')
+        .doc(dateStr)
+        .collection('province')
+        .doc('summary')
+        .get()
+      const data = provinceSnap.data()!
+      expect(data.resolvedToday).toBe(2)
+      expect(data.avgResponseTimeMinutes).toBeCloseTo(120, 0)
+    },
+  )
 })
