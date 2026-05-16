@@ -1,4 +1,4 @@
-import { Bell, Keyboard, Map, Volume2, VolumeX } from 'lucide-react'
+import { Bell, Keyboard, LogOut, Map, Volume2, VolumeX } from 'lucide-react'
 import { LiveIndicator } from './LiveIndicator'
 
 type WindowRole = 'dashboard' | 'map'
@@ -12,6 +12,7 @@ interface Props {
   onOpenMap?: () => void
   onShowNotifications?: () => void
   onShowKeyboardShortcuts?: () => void
+  onSignOut?: () => void
   windowRole?: WindowRole
 }
 
@@ -34,6 +35,7 @@ export function CommandHeader({
   onOpenMap,
   onShowNotifications,
   onShowKeyboardShortcuts,
+  onSignOut,
   windowRole,
 }: Props) {
   return (
@@ -98,6 +100,16 @@ export function CommandHeader({
           >
             <Keyboard className="h-3.5 w-3.5" />
             Shortcuts
+          </button>
+        )}
+        {onSignOut && (
+          <button
+            onClick={onSignOut}
+            className="rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="h-4 w-4 text-[var(--color-text-muted)]" />
           </button>
         )}
         {onOpenMap && (

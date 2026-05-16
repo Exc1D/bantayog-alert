@@ -89,4 +89,26 @@ describe('AnomalyAlertPanel', () => {
     render(<AnomalyAlertPanel alerts={[]} onDismiss={vi.fn()} />)
     expect(screen.getByText('No anomalies detected')).toBeInTheDocument()
   })
+
+  it('renders unknown severity without crashing', () => {
+    // Runtime guard: unmapped severity should not produce React #130
+    const { container } = render(
+      <AnomalyAlertPanel
+        alerts={[
+          {
+            id: 'a3',
+            municipality: 'Mercedes',
+            type: 'spike',
+            message: 'Unknown severity anomaly',
+            severity: 'critical' as unknown as 'high',
+            detectedAt: '2026-05-10T08:00:00Z',
+          },
+        ]}
+        onDismiss={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Unknown severity anomaly')).toBeInTheDocument()
+    // Should still render an icon (the fallback AlertTriangle)
+    expect(container.querySelector('svg')).not.toBeNull()
+  })
 })

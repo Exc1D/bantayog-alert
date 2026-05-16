@@ -7,6 +7,8 @@ import { ConfirmationModal } from '../components/ConfirmationModal'
 import { TrendAnalysisPanel } from '../components/TrendAnalysisPanel'
 import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
 import { AnomalyAlertPanel } from '../components/AnomalyAlertPanel'
+import { ActiveIncidentsTable } from '../components/ActiveIncidentsTable'
+import { useAuth } from '@bantayog/shared-ui'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
@@ -15,6 +17,7 @@ import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
+import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import type { Report, MunicipalPerformance, AnomalyAlert, ReportStatus } from '../types'
 
 function generateIdempotencyKey(): string {
@@ -22,43 +25,6 @@ function generateIdempotencyKey(): string {
     return crypto.randomUUID()
   } catch {
     return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
-  }
-}
-
-function mapReportDocToReport(doc: {
-  id: string
-  type: string
-  severity: string
-  municipality: string
-  barangay: string
-  createdAt: string | { toDate(): Date }
-  status: string
-  description: string
-}): Report {
-  const createdAtVal = doc.createdAt
-  let convertedCreatedAt: string
-  if (typeof createdAtVal === 'string') {
-    convertedCreatedAt = createdAtVal
-  } else {
-    // createdAt is { toDate(): Date } per interface; call toDate and validate result
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const dt = (createdAtVal as { toDate: () => Date }).toDate()
-    convertedCreatedAt = dt instanceof Date && !Number.isNaN(dt.getTime()) ? dt.toISOString() : ''
-  }
-  return {
-    id: doc.id,
-    type: doc.type as Report['type'],
-    severity: doc.severity as Report['severity'],
-    municipality: doc.municipality,
-    barangay: doc.barangay,
-    createdAt: convertedCreatedAt,
-    status: doc.status as Report['status'],
-    description: doc.description,
-    reporterName: '',
-    reporterPhone: '',
-    latitude: 0,
-    longitude: 0,
-    updatedAt: '',
   }
 }
 
@@ -112,6 +78,7 @@ export default function DashboardPage() {
   const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set())
   const [popupBlocked, setPopupBlocked] = useState(false)
 
+  const { signOut } = useAuth()
   const { selectReport, selectedReportId, setSuppressNextBroadcast } = useCommandCenterStore()
   const { loading, error, reports, alerts } = useFirestoreListeners({
     windowType: 'dashboard',
@@ -158,11 +125,21 @@ export default function DashboardPage() {
     })
   }, [])
 
+  const triageReports = useMemo(
+    () => reports.filter((r) => r.status === 'new' || r.status === 'awaiting_verify'),
+    [reports],
+  )
+
+  const trackingReports = useMemo(
+    () => reports.filter((r) => r.status !== 'new' && r.status !== 'awaiting_verify'),
+    [reports],
+  )
+
   const selectAll = useCallback(() => {
     setSelectedIds((prev) =>
-      prev.size === reports.length ? new Set() : new Set(reports.map((r) => r.id)),
+      prev.size === triageReports.length ? new Set() : new Set(triageReports.map((r) => r.id)),
     )
-  }, [reports])
+  }, [triageReports])
 
   const handleVerify = useCallback(
     async (id: string) => {
@@ -301,9 +278,10 @@ export default function DashboardPage() {
     {
       key: 'v',
       handler: () => {
-        if (selectedReportId) {
-          void handleVerify(selectedReportId)
-        }
+        if (!selectedReportId) return
+        const focused = reports.find((r) => r.id === selectedReportId)
+        if (focused?.status !== 'new' && focused?.status !== 'awaiting_verify') return
+        void handleVerify(selectedReportId)
       },
     },
     {
@@ -318,9 +296,10 @@ export default function DashboardPage() {
     {
       key: 'r',
       handler: () => {
-        if (selectedReportId) {
-          handleReject(selectedReportId)
-        }
+        if (!selectedReportId) return
+        const focused = reports.find((r) => r.id === selectedReportId)
+        if (focused?.status !== 'awaiting_verify') return
+        handleReject(selectedReportId)
       },
     },
     {
@@ -350,9 +329,11 @@ export default function DashboardPage() {
   const municipalData: MunicipalPerformance[] = useMemo(() => {
     const byMuni = new Map<string, Report[]>()
     reports.forEach((r) => {
-      const list = byMuni.get(r.municipality) ?? []
-      list.push(mapReportDocToReport(r))
-      byMuni.set(r.municipality, list)
+      const mapped = mapReportDocToReportLoose(r as unknown as Record<string, unknown>)
+      const key = mapped.municipality || 'Unknown'
+      const list = byMuni.get(key) ?? []
+      list.push(mapped)
+      byMuni.set(key, list)
     })
     return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
       municipality,
@@ -393,6 +374,9 @@ export default function DashboardPage() {
         onToggleAudio={toggleAudio}
         onShowKeyboardShortcuts={() => {
           setHelpModalOpen(true)
+        }}
+        onSignOut={() => {
+          void signOut()
         }}
       />
       <StatusBar activeIncidents={activeCount} avgResponseTime={12} pendingTriage={pendingCount} />
@@ -435,12 +419,14 @@ export default function DashboardPage() {
                 Triage Queue
               </h2>
               <span className="text-xs text-[var(--color-text-muted)]">
-                {reports.length} report{reports.length !== 1 ? 's' : ''}
+                {triageReports.length} report{triageReports.length !== 1 ? 's' : ''}
               </span>
             </div>
             <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] shadow-sm">
               <TriageQueueTable
-                reports={reports.map(mapReportDocToReport)}
+                reports={triageReports.map((r) =>
+                  mapReportDocToReportLoose(r as unknown as Record<string, unknown>),
+                )}
                 selectedIds={selectedIds}
                 loadingIds={loadingActions}
                 onToggleSelect={toggleSelect}
@@ -461,6 +447,24 @@ export default function DashboardPage() {
                 onRowClick={handleRowClick}
               />
             </div>
+            {trackingReports.length > 0 && (
+              <div className="mt-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+                    Active &amp; Recent Incidents
+                  </h2>
+                  <span className="text-xs text-[var(--color-text-muted)]">
+                    {trackingReports.length} report{trackingReports.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <ActiveIncidentsTable
+                  reports={trackingReports.map((r) =>
+                    mapReportDocToReportLoose(r as unknown as Record<string, unknown>),
+                  )}
+                  onRowClick={handleRowClick}
+                />
+              </div>
+            )}
           </div>
           <div className="flex min-w-0 flex-col gap-6">
             <AnomalyAlertPanel

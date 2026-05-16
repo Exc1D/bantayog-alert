@@ -1,14 +1,22 @@
-import { useState, type SubmitEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
+import { useAuth } from '@bantayog/shared-ui'
 import { auth } from '../app/firebase'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      void navigate('/dashboard', { replace: true })
+    }
+  }, [user, authLoading, navigate])
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()

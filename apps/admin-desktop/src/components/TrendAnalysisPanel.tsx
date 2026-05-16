@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChevronDown } from 'lucide-react'
 
 const TABS = [
@@ -17,24 +18,61 @@ const TIME_RANGES = [
 interface Props {
   reports: {
     id: string
-    type: string
+    type?: string
+    reportType?: string
     severity: string
-    municipality: string
-    barangay: string
-    createdAt: string
+    municipality?: string
+    municipalityLabel?: string
+    barangay?: string
+    barangayId?: string
+    createdAt?: string | number | { toDate(): Date }
+    submittedAt?: string | number | { toDate(): Date }
     status: string
     description: string
   }[]
 }
 
-function isWithinTimeRange(createdAt: string, range: (typeof TIME_RANGES)[number]['id']): boolean {
-  const date = new Date(createdAt)
-  if (Number.isNaN(date.getTime())) return false
+function toEpochMs(raw: unknown): number | null {
+  if (typeof raw === 'number') return raw
+  if (typeof raw === 'string') {
+    const d = new Date(raw)
+    return Number.isNaN(d.getTime()) ? null : d.getTime()
+  }
+  if (
+    raw != null &&
+    typeof raw === 'object' &&
+    typeof (raw as { toDate?: unknown }).toDate === 'function'
+  ) {
+    const dt = (raw as { toDate: () => Date }).toDate()
+    return dt instanceof Date && !Number.isNaN(dt.getTime()) ? dt.getTime() : null
+  }
+  return null
+}
+
+function isWithinTimeRange(
+  raw: string | number | { toDate(): Date } | undefined,
+  range: (typeof TIME_RANGES)[number]['id'],
+): boolean {
+  const ms = toEpochMs(raw)
+  if (ms === null) return false
   const now = Date.now()
-  const ms = date.getTime()
   if (range === '24h') return now - ms <= 24 * 60 * 60 * 1000
   if (range === '7d') return now - ms <= 7 * 24 * 60 * 60 * 1000
   return now - ms <= 30 * 24 * 60 * 60 * 1000
+}
+
+function getRangeHours(range: (typeof TIME_RANGES)[number]['id']): number {
+  if (range === '24h') return 24
+  if (range === '7d') return 7 * 24
+  return 30 * 24
+}
+
+function formatBucketLabel(bucketMs: number, range: (typeof TIME_RANGES)[number]['id']): string {
+  const d = new Date(bucketMs)
+  if (range === '24h') {
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export function TrendAnalysisPanel({ reports }: Props) {
@@ -43,7 +81,6 @@ export function TrendAnalysisPanel({ reports }: Props) {
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!timeDropdownOpen) return
     const handler = (e: MouseEvent) => {
@@ -60,7 +97,39 @@ export function TrendAnalysisPanel({ reports }: Props) {
   const chartLabel = TABS.find((t) => t.id === activeTab)?.label ?? 'Chart'
   const timeLabel = TIME_RANGES.find((t) => t.id === timeRange)?.label ?? ''
 
-  const filteredReports = reports.filter((r) => isWithinTimeRange(r.createdAt, timeRange))
+  const filteredReports = useMemo(
+    () => reports.filter((r) => isWithinTimeRange(r.submittedAt ?? r.createdAt, timeRange)),
+    [reports, timeRange],
+  )
+
+  const volumeData = useMemo(() => {
+    if (filteredReports.length === 0) return []
+    const rangeHours = getRangeHours(timeRange)
+    const bucketMs = rangeHours <= 24 ? 3600000 : 86400000
+
+    const buckets = new Map<number, number>()
+    filteredReports.forEach((r) => {
+      const ms = toEpochMs(r.submittedAt ?? r.createdAt)
+      if (ms === null) return
+      const slot = Math.floor(ms / bucketMs) * bucketMs
+      buckets.set(slot, (buckets.get(slot) ?? 0) + 1)
+    })
+
+    if (buckets.size === 0) return []
+
+    const slots = Array.from(buckets.keys()).sort((a, b) => a - b)
+    const firstSlot = slots[0]
+    const lastSlot = slots[slots.length - 1]
+    if (firstSlot === undefined || lastSlot === undefined) return []
+    const result: { label: string; count: number }[] = []
+    for (let ts = firstSlot; ts <= lastSlot; ts += bucketMs) {
+      result.push({
+        label: formatBucketLabel(ts, timeRange),
+        count: buckets.get(ts) ?? 0,
+      })
+    }
+    return result
+  }, [filteredReports, timeRange])
 
   return (
     <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4">
@@ -130,6 +199,52 @@ export function TrendAnalysisPanel({ reports }: Props) {
           <span role="status" className="text-sm text-white/50">
             No incidents in selected period
           </span>
+        ) : activeTab === 'volume' ? (
+          volumeData.length > 1 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={volumeData} margin={{ top: 16, right: 16, bottom: 0, left: 0 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--color-surface-elevated)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={24}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-surface-elevated)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: 'var(--color-text-primary)',
+                  }}
+                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                />
+                <Bar
+                  dataKey="count"
+                  fill="var(--color-sienna)"
+                  radius={[2, 2, 0, 0]}
+                  maxBarSize={40}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <span role="status" className="text-sm text-white/50">
+              {chartLabel} · {timeLabel} ({String(filteredReports.length)} reports)
+            </span>
+          )
         ) : (
           <span role="status" className="text-sm text-white/50">
             {chartLabel} · {timeLabel} ({String(filteredReports.length)} reports)

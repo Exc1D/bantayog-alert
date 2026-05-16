@@ -18,11 +18,16 @@ interface Props {
 
 interface ReportDoc {
   id: string
-  type: string
+  reportType?: string
+  type?: string
   severity: string
-  municipality: string
-  barangay: string
-  createdAt: string
+  municipalityLabel?: string
+  municipalityId?: string
+  municipality?: string
+  barangayId?: string
+  barangay?: string
+  submittedAt?: number | string | { toDate(): Date }
+  createdAt?: number | string | { toDate(): Date }
   status: string
   description: string
 }

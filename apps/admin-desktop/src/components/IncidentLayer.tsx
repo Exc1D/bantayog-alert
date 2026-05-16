@@ -1,51 +1,19 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { useMap } from 'react-leaflet'
-import {
-  Waves,
-  Flame,
-  Mountain,
-  Car,
-  HeartPulse,
-  AlertTriangle,
-  CloudLightning,
-  Wind,
-  Building,
-  ShieldAlert,
-} from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { renderToString } from 'react-dom/server'
+import { TYPE_ICONS, SEVERITY_COLORS } from '../constants/report'
 import type { Report } from '../types'
 import type { Severity } from '../stores/commandCenterStore'
 
-const TYPE_ICONS = {
-  flood: Waves,
-  fire: Flame,
-  earthquake: CloudLightning,
-  typhoon: Wind,
-  landslide: Mountain,
-  storm_surge: Waves,
-  medical: HeartPulse,
-  accident: Car,
-  structural: Building,
-  security: ShieldAlert,
-  other: AlertTriangle,
-}
-
-const SEVERITY_COLORS: Record<Severity, string> = {
-  high: 'var(--color-severity-high)',
-  medium: 'var(--color-severity-medium)',
-  low: 'var(--color-severity-low)',
-}
-
-interface Props {
-  reports: Report[]
-  selectedReportId: string | null
-  onPinClick: (reportId: string) => void
-}
-
 function createPinIcon(type: Report['type'], severity: Severity, isSelected: boolean) {
-  const Icon = TYPE_ICONS[type]
-  const color = SEVERITY_COLORS[severity]
+  // Runtime guard: Firestore may contain legacy/unknown type values
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const Icon = TYPE_ICONS[type] ?? AlertTriangle
+  // Runtime guard: unknown severity should not produce transparent pins
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const color = SEVERITY_COLORS[severity] ?? 'var(--color-severity-low)'
   const size = isSelected ? 28 : 24
   const html = renderToString(
     <div
@@ -76,6 +44,12 @@ function createPinIcon(type: Report['type'], severity: Severity, isSelected: boo
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
+}
+
+interface Props {
+  reports: Report[]
+  selectedReportId: string | null
+  onPinClick: (reportId: string) => void
 }
 
 export function IncidentLayer({ reports, selectedReportId, onPinClick }: Props) {

@@ -1,21 +1,10 @@
-import { AlertTriangle, AlertCircle, MinusCircle } from 'lucide-react'
-import type { AnomalyAlert, Severity } from '../types'
+import { AlertTriangle } from 'lucide-react'
+import { SEVERITY_ICON, SEVERITY_COLOR } from '../constants/report'
+import type { AnomalyAlert } from '../types'
 
 interface Props {
   alerts: AnomalyAlert[]
   onDismiss: (id: string, reason: string) => void
-}
-
-const SEVERITY_ICON: Record<Severity, typeof AlertTriangle> = {
-  high: AlertTriangle,
-  medium: AlertCircle,
-  low: MinusCircle,
-}
-
-const SEVERITY_COLOR: Record<Severity, string> = {
-  high: 'var(--color-severity-high)',
-  medium: 'var(--color-severity-medium)',
-  low: 'var(--color-severity-low)',
 }
 
 export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {
@@ -32,8 +21,11 @@ export function AnomalyAlertPanel({ alerts, onDismiss }: Props) {
   return (
     <div className="space-y-3">
       {activeAlerts.map((alert) => {
-        const Icon = SEVERITY_ICON[alert.severity]
-        const color = SEVERITY_COLOR[alert.severity]
+        // Runtime guard: severity is validated upstream, but defend against drift
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const Icon = SEVERITY_ICON[alert.severity] ?? AlertTriangle
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const color = SEVERITY_COLOR[alert.severity] ?? 'var(--color-text-muted)'
         return (
           <div
             key={alert.id}

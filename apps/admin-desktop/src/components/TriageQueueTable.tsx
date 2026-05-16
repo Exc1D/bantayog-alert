@@ -2,6 +2,7 @@ import { Check, X, Send } from 'lucide-react'
 import { SeverityBadge } from './SeverityBadge'
 import { ReportTypeIcon } from './ReportTypeIcon'
 import { EmptyTriageState } from './EmptyTriageState'
+import { formatRelativeTime } from '../utils/format-time'
 import type { Report } from '../types'
 
 interface Props {
@@ -18,16 +19,14 @@ interface Props {
   onBulkReject?: (ids: Set<string>) => void
 }
 
-function formatRelativeTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  const diffSec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
-  if (diffSec < 60) return `${String(diffSec)}s ago`
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${String(diffMin)}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${String(diffHr)}h ago`
-  return `${String(Math.floor(diffHr / 24))}d ago`
+function actionFlags(status: string) {
+  const canVerify = status === 'new' || status === 'awaiting_verify'
+  const canReject = status === 'awaiting_verify'
+  // Dispatch requires `verified` status, but DashboardPage only feeds this
+  // table reports with status `new` or `awaiting_verify`. Dispatch happens
+  // from the Map page after verification, not from triage.
+  const canDispatch = false
+  return { canVerify, canReject, canDispatch }
 }
 
 export function TriageQueueTable({
@@ -99,91 +98,102 @@ export function TriageQueueTable({
           </tr>
         </thead>
         <tbody>
-          {reports.map((report) => (
-            <tr
-              key={report.id}
-              className="cursor-pointer border-b border-white/5 hover:bg-white/5"
-              onClick={() => {
-                onRowClick(report)
-              }}
-            >
-              <td
-                className="px-4 py-3"
-                onClick={(e) => {
-                  e.stopPropagation()
+          {reports.map((report) => {
+            const actions = actionFlags(report.status)
+            return (
+              <tr
+                key={report.id}
+                className="cursor-pointer border-b border-white/5 hover:bg-white/5"
+                onClick={() => {
+                  onRowClick(report)
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(report.id)}
-                  onChange={() => {
-                    onToggleSelect(report.id)
+                <td
+                  className="px-4 py-3"
+                  onClick={(e) => {
+                    e.stopPropagation()
                   }}
-                  aria-label={`Select report ${report.id}`}
-                />
-              </td>
-              <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-secondary)]">
-                {formatRelativeTime(report.createdAt)}
-              </td>
-              <td className="px-4 py-3">
-                <ReportTypeIcon type={report.type} />
-              </td>
-              <td className="px-4 py-3">
-                <SeverityBadge severity={report.severity} />
-              </td>
-              <td className="px-4 py-3 text-[var(--color-text-primary)]">{report.municipality}</td>
-              <td className="px-4 py-3 text-[var(--color-text-secondary)]">{report.barangay}</td>
-              <td className="px-4 py-3">
-                <div className="flex gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onVerify(report.id)
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(report.id)}
+                    onChange={() => {
+                      onToggleSelect(report.id)
                     }}
-                    disabled={loadingIds.has(report.id)}
-                    className="rounded p-2 text-[var(--color-success)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Verify"
-                  >
-                    {loadingIds.has(report.id) ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <Check className="h-4 w-4" />
+                    aria-label={`Select report ${report.id}`}
+                  />
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-secondary)]">
+                  {formatRelativeTime(report.createdAt)}
+                </td>
+                <td className="px-4 py-3">
+                  <ReportTypeIcon type={report.type} />
+                </td>
+                <td className="px-4 py-3">
+                  <SeverityBadge severity={report.severity} />
+                </td>
+                <td className="px-4 py-3 text-[var(--color-text-primary)]">
+                  {report.municipality}
+                </td>
+                <td className="px-4 py-3 text-[var(--color-text-secondary)]">{report.barangay}</td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-1">
+                    {actions.canVerify && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onVerify(report.id)
+                        }}
+                        disabled={loadingIds.has(report.id)}
+                        className="rounded p-2 text-[var(--color-success)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Verify"
+                      >
+                        {loadingIds.has(report.id) ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </button>
                     )}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onReject(report.id)
-                    }}
-                    disabled={loadingIds.has(report.id)}
-                    className="rounded p-2 text-[var(--color-danger)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Reject"
-                  >
-                    {loadingIds.has(report.id) ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <X className="h-4 w-4" />
+                    {actions.canReject && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onReject(report.id)
+                        }}
+                        disabled={loadingIds.has(report.id)}
+                        className="rounded p-2 text-[var(--color-danger)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Reject"
+                      >
+                        {loadingIds.has(report.id) ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                      </button>
                     )}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDispatch(report.id)
-                    }}
-                    disabled={loadingIds.has(report.id)}
-                    className="rounded p-2 text-[var(--color-info)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Dispatch"
-                  >
-                    {loadingIds.has(report.id) ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <Send className="h-4 w-4" />
+                    {actions.canDispatch && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDispatch(report.id)
+                        }}
+                        disabled={loadingIds.has(report.id)}
+                        className="rounded p-2 text-[var(--color-info)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Dispatch"
+                      >
+                        {loadingIds.has(report.id) ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </button>
                     )}
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

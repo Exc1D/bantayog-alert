@@ -1,21 +1,14 @@
-import { AlertTriangle, AlertCircle, Info } from 'lucide-react'
+import { SEVERITY_CONFIG } from '../constants/report'
 import type { Severity } from '../stores/commandCenterStore'
-
-const SEVERITY_CONFIG: Record<
-  Severity,
-  { label: string; token: string; icon: typeof AlertTriangle }
-> = {
-  high: { label: 'HIGH', token: 'var(--color-severity-high)', icon: AlertTriangle },
-  medium: { label: 'MED', token: 'var(--color-severity-medium)', icon: AlertCircle },
-  low: { label: 'LOW', token: 'var(--color-severity-low)', icon: Info },
-}
 
 interface Props {
   severity: Severity
 }
 
 export function SeverityBadge({ severity }: Props) {
-  const cfg = SEVERITY_CONFIG[severity]
+  // Runtime guard: defend against unmapped severity values
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const cfg = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.low
   const Icon = cfg.icon
   return (
     <span

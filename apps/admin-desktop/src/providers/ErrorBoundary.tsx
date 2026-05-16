@@ -19,10 +19,14 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true }
   }
 
-  // Debug logging removed; Sentry or equivalent should be wired here if needed.
-  // override componentDidCatch(error: Error, errorInfo: { componentStack?: string }) {
-  //   console.error('[ErrorBoundary] Caught error:', error.message, '\nComponent stack:', errorInfo.componentStack)
-  // }
+  override componentDidCatch(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _error: Error,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _errorInfo: { componentStack?: string },
+  ) {
+    // Error logging can be wired here (e.g., Sentry)
+  }
 
   override render() {
     if (this.state.hasError) {

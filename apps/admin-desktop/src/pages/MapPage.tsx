@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@bantayog/shared-ui'
 import { CommandHeader } from '../components/CommandHeader'
 import { ProvincialMap } from '../components/ProvincialMap'
 import { TriagePanel } from '../components/TriagePanel'
@@ -11,6 +12,7 @@ import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { callables } from '../services/callables'
 import { db, rtdb } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
+import { mapReportDocToReport } from '../utils/map-report-doc'
 import type { Report, MunicipalPerformance } from '../types'
 
 function generateIdempotencyKey(): string {
@@ -37,62 +39,8 @@ function responderEntries(responders: [string, unknown][]): {
     .filter((r) => r.uid)
 }
 
-function mapReportDocToReport(
-  doc: {
-    id: string
-    type: string
-    severity: string
-    municipality: string
-    barangay: string
-    createdAt: string
-    status: string
-    description: string
-  } & Record<string, unknown>,
-): Report | null {
-  const latitude =
-    typeof doc.latitude === 'number'
-      ? doc.latitude
-      : typeof doc.location === 'object' && doc.location !== null
-        ? (doc.location as Record<string, unknown>).latitude
-        : undefined
-  const longitude =
-    typeof doc.longitude === 'number'
-      ? doc.longitude
-      : typeof doc.location === 'object' && doc.location !== null
-        ? (doc.location as Record<string, unknown>).longitude
-        : undefined
-
-  if (
-    typeof latitude !== 'number' ||
-    typeof longitude !== 'number' ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180
-  ) {
-    return null
-  }
-
-  return {
-    id: doc.id,
-    type: doc.type as Report['type'],
-    severity: doc.severity as Report['severity'],
-    municipality: doc.municipality,
-    barangay: doc.barangay,
-    createdAt: doc.createdAt,
-    status: doc.status as Report['status'],
-    description: doc.description,
-    reporterName: '',
-    reporterPhone: '',
-    latitude,
-    longitude,
-    updatedAt: '',
-  }
-}
-
 export default function MapPage() {
+  const { signOut } = useAuth()
   const {
     selectedReportId,
     selectedMunicipalityId,
@@ -218,6 +166,9 @@ export default function MapPage() {
         title="Provincial Map — Camarines Norte"
         windowRole="map"
         lastUpdatedAt={lastUpdatedAt}
+        onSignOut={() => {
+          void signOut()
+        }}
       />
       {actionError && (
         <div

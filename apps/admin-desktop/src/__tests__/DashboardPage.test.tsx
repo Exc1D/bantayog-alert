@@ -249,6 +249,7 @@ describe('DashboardPage', () => {
     vi.mocked(useFirestoreListeners).mockReturnValueOnce({
       loading: false,
       error: null,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- cast needed: Timestamp createdAt vs string createdAt
       reports: mockTimestampReports as unknown as typeof defaultReports,
       reportOps: [],
       alerts: [],
@@ -262,5 +263,54 @@ describe('DashboardPage', () => {
     })
     // The report row should be visible with barangay
     expect(screen.getByText('Camambugan')).toBeInTheDocument()
+  })
+
+  describe('triage queue filtering', () => {
+    it('shows only new and awaiting_verify reports in triage queue', () => {
+      const mixedReports = [
+        { ...defaultReports[0], id: 'r1', status: 'awaiting_verify', barangay: 'TriageOne' },
+        { ...defaultReports[0], id: 'r2', status: 'new', barangay: 'TriageTwo' },
+        { ...defaultReports[0], id: 'r3', status: 'verified', barangay: 'NotTriage' },
+        { ...defaultReports[0], id: 'r4', status: 'closed', barangay: 'AlsoNotTriage' },
+      ]
+      vi.mocked(useFirestoreListeners).mockReturnValueOnce({
+        loading: false,
+        error: null,
+        reports: mixedReports as unknown as typeof defaultReports,
+        reportOps: [],
+        alerts: [],
+        responders: [],
+      })
+
+      render(<DashboardPage />, { wrapper: BrowserRouter })
+      // Triage reports should be visible
+      expect(screen.getByText('TriageOne')).toBeInTheDocument()
+      expect(screen.getByText('TriageTwo')).toBeInTheDocument()
+      // Non-triage reports should appear in the tracking section, not triage
+      expect(screen.getByText('NotTriage')).toBeInTheDocument()
+      expect(screen.getByText('AlsoNotTriage')).toBeInTheDocument()
+      expect(screen.getByText('Active & Recent Incidents')).toBeInTheDocument()
+    })
+
+    it('selectAll only selects triage reports', () => {
+      const mixedReports = [
+        { ...defaultReports[0], id: 'r1', status: 'awaiting_verify', barangay: 'TriageOne' },
+        { ...defaultReports[0], id: 'r2', status: 'new', barangay: 'TriageTwo' },
+        { ...defaultReports[0], id: 'r3', status: 'verified', barangay: 'NotTriage' },
+      ]
+      vi.mocked(useFirestoreListeners).mockReturnValueOnce({
+        loading: false,
+        error: null,
+        reports: mixedReports as unknown as typeof defaultReports,
+        reportOps: [],
+        alerts: [],
+        responders: [],
+      })
+
+      render(<DashboardPage />, { wrapper: BrowserRouter })
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
+      // Should only show "2 selected" (triage reports), not 3
+      expect(screen.getByText('2 selected')).toBeInTheDocument()
+    })
   })
 })
