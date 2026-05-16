@@ -33,7 +33,8 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
-  await env!.clearFirestore()
+  if (!env) return
+  await env.clearFirestore()
 })
 
 describe('user_consents rules', () => {

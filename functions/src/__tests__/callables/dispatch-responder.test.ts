@@ -37,10 +37,11 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
-  await testEnv!.clearFirestore()
+  if (!available || !testEnv) return
+  await testEnv.clearFirestore()
   // clearDatabase hangs when the RTDB emulator is not running.
   await Promise.race([
-    testEnv!.clearDatabase(),
+    testEnv.clearDatabase(),
     new Promise((_, reject) => {
       setTimeout(() => {
         reject(new Error('clearDatabase timeout'))

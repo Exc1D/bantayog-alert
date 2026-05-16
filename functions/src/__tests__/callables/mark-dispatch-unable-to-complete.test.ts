@@ -3,6 +3,8 @@ import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
+const itif = (condition: boolean) => (condition ? it : it.skip)
+
 vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
 }))
@@ -120,44 +122,47 @@ async function seedReport(
 }
 
 describe('markDispatchUnableToCompleteCore', () => {
-  it('marks an active dispatch unable_to_complete and resets report to verified', async () => {
-    await seedReport(testEnv!, 'report-1', 'assigned')
-    await seedDispatchActive({
-      env: testEnv!,
-      dispatchId: 'dispatch-1',
-      reportId: 'report-1',
-      responderUid: 'r1',
-      status: 'on_scene',
-    })
-    await seedActiveAccount(testEnv!, {
-      uid: 'r1',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
-
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
-      const result = await markDispatchUnableToCompleteCore(db, {
+  itif(available)(
+    'marks an active dispatch unable_to_complete and resets report to verified',
+    async () => {
+      await seedReport(testEnv!, 'report-1', 'assigned')
+      await seedDispatchActive({
+        env: testEnv!,
         dispatchId: 'dispatch-1',
-        reason: 'Equipment failure',
-        idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
-        now: Timestamp.now(),
+        reportId: 'report-1',
+        responderUid: 'r1',
+        status: 'on_scene',
+      })
+      await seedActiveAccount(testEnv!, {
+        uid: 'r1',
+        role: 'responder',
+        municipalityId: 'daet',
       })
 
-      expect(result.status).toBe('unable_to_complete')
-      expect(result.dispatchId).toBe('dispatch-1')
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore
+        const result = await markDispatchUnableToCompleteCore(db, {
+          dispatchId: 'dispatch-1',
+          reason: 'Equipment failure',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+          now: Timestamp.now(),
+        })
 
-      const dispatch = (await db.collection('dispatches').doc('dispatch-1').get()).data()
-      expect(dispatch?.status).toBe('unable_to_complete')
-      expect(dispatch?.unableToCompleteReason).toBe('Equipment failure')
+        expect(result.status).toBe('unable_to_complete')
+        expect(result.dispatchId).toBe('dispatch-1')
 
-      const report = (await db.collection('reports').doc('report-1').get()).data()
-      expect(report?.status).toBe('verified')
-    })
-  })
+        const dispatch = (await db.collection('dispatches').doc('dispatch-1').get()).data()
+        expect(dispatch?.status).toBe('unable_to_complete')
+        expect(dispatch?.unableToCompleteReason).toBe('Equipment failure')
 
-  it('rejects when dispatch is not active', async () => {
+        const report = (await db.collection('reports').doc('report-1').get()).data()
+        expect(report?.status).toBe('verified')
+      })
+    },
+  )
+
+  itif(available)('rejects when dispatch is not active', async () => {
     await seedReport(testEnv!, 'report-2', 'assigned')
     await seedDispatchActive({
       env: testEnv!,
@@ -186,7 +191,7 @@ describe('markDispatchUnableToCompleteCore', () => {
     })
   })
 
-  it('is idempotent on same key', async () => {
+  itif(available)('is idempotent on same key', async () => {
     await seedReport(testEnv!, 'report-3', 'assigned')
     await seedDispatchActive({
       env: testEnv!,
@@ -229,7 +234,7 @@ describe('markDispatchUnableToCompleteCore', () => {
     })
   })
 
-  it('rejects when caller is not the assigned responder', async () => {
+  itif(available)('rejects when caller is not the assigned responder', async () => {
     await seedReport(testEnv!, 'report-4', 'assigned')
     await seedDispatchActive({
       env: testEnv!,
@@ -265,7 +270,7 @@ describe('markDispatchUnableToComplete callable', () => {
     data: { dispatchId: string; reason: string; idempotencyKey: string }
   }) => Promise<{ status: 'unable_to_complete'; dispatchId: string }>
 
-  it('rejects unauthenticated request', async () => {
+  itif(available)('rejects unauthenticated request', async () => {
     await expect(
       callCallable({
         data: {
@@ -277,7 +282,7 @@ describe('markDispatchUnableToComplete callable', () => {
     ).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 
-  it('rejects wrong-role request', async () => {
+  itif(available)('rejects wrong-role request', async () => {
     await expect(
       callCallable({
         auth: {

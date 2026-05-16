@@ -76,7 +76,8 @@ beforeEach(async () => {
   mockUpdateUser.mockResolvedValue(undefined)
   mockDeleteUser.mockResolvedValue(undefined)
   mockGetFiles.mockResolvedValue([[]])
-  await env!.clearFirestore()
+  if (!env) return
+  await env.clearFirestore()
 })
 
 beforeAll(async () => {

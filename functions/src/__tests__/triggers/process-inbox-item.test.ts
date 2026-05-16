@@ -482,7 +482,7 @@ describe('processInboxItemCore', () => {
   })
 
   describe('secret_lookup on web submissions', () => {
-    it('writes secret_lookup doc for web submissions', async () => {
+    itif(available)('writes secret_lookup doc for web submissions', async () => {
       await env!.withSecurityRulesDisabled(async (ctx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db = ctx.firestore() as any
@@ -517,7 +517,7 @@ describe('processInboxItemCore', () => {
       })
     })
 
-    it('does NOT write secret_lookup for sms submissions', async () => {
+    itif(available)('does NOT write secret_lookup for sms submissions', async () => {
       await env!.withSecurityRulesDisabled(async (ctx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db = ctx.firestore() as any

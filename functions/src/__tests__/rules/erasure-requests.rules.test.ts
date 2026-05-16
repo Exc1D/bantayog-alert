@@ -38,7 +38,8 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
-  await env!.withSecurityRulesDisabled(async (ctx) => {
+  if (!env) return
+  await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
     for (const col of ['erasure_requests', 'erasure_active']) {
       const snap = await db.collection(col).get()
