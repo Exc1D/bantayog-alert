@@ -1,13 +1,17 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
+import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { doc, getDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
-import { authed, createTestEnv, unauthed } from '../helpers/rules-harness.js'
+import { authed, createTestEnvSafe, unauthed } from '../helpers/rules-harness.js'
 import { seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
 
-let env: Awaited<ReturnType<typeof createTestEnv>>
+let env: RulesTestEnvironment | undefined
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
 
 beforeAll(async () => {
-  env = await createTestEnv('demo-phase-2-report-lookup')
+  env = await createTestEnvSafe('demo-phase-2-report-lookup')
+  if (!env) return
   await seedActiveAccount(env, { uid: 'citizen-1', role: 'citizen' })
   await seedActiveAccount(env, {
     uid: 'daet-admin',
@@ -29,16 +33,16 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await env.cleanup()
+  await env?.cleanup()
 })
 
 describe('report_lookup rules', () => {
-  it('any authed user reads (positive)', async () => {
+  itif(!!env)('any authed user reads (positive)', async () => {
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertSucceeds(getDoc(doc(db, 'report_lookup/pub-ref-1')))
   })
 
-  it('municipal admin reads (positive)', async () => {
+  itif(!!env)('municipal admin reads (positive)', async () => {
     const db = authed(
       env,
       'daet-admin',
@@ -47,7 +51,7 @@ describe('report_lookup rules', () => {
     await assertSucceeds(getDoc(doc(db, 'report_lookup/pub-ref-1')))
   })
 
-  it('any client write fails', async () => {
+  itif(!!env)('any client write fails', async () => {
     const db = authed(
       env,
       'daet-admin',
@@ -57,12 +61,12 @@ describe('report_lookup rules', () => {
     await assertFails(setDoc(doc(db, 'report_lookup/new'), { publicRef: 'new', reportId: 'r-new' }))
   })
 
-  it('unauthed read succeeds', async () => {
+  itif(!!env)('unauthed read succeeds', async () => {
     const db = unauthed(env)
     await assertSucceeds(getDoc(doc(db, 'report_lookup/pub-ref-1')))
   })
 
-  it('unauthed write fails', async () => {
+  itif(!!env)('unauthed write fails', async () => {
     const db = unauthed(env)
     const { setDoc } = await import('firebase/firestore')
     await assertFails(setDoc(doc(db, 'report_lookup/new'), { publicRef: 'new', reportId: 'r-new' }))

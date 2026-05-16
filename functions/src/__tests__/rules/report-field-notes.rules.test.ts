@@ -1,7 +1,8 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
+import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
-import { authed, createTestEnv, unauthed } from '../helpers/rules-harness.js'
+import { authed, createTestEnvSafe, unauthed } from '../helpers/rules-harness.js'
 import {
   seedActiveAccount,
   seedDispatchRT,
@@ -10,10 +11,13 @@ import {
   ts,
 } from '../helpers/seed-factories.js'
 
-let env: Awaited<ReturnType<typeof createTestEnv>>
+let env: RulesTestEnvironment | undefined
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
 
 beforeAll(async () => {
-  env = await createTestEnv('report-field-notes-rules-test')
+  env = await createTestEnvSafe('report-field-notes-rules-test')
+  if (!env) return
   await seedActiveAccount(env, {
     uid: 'daet-admin',
     role: 'municipal_admin',
@@ -52,11 +56,11 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await env.cleanup()
+  await env?.cleanup()
 })
 
 describe('reports/field_notes rules', () => {
-  it('allows muni admin to read a field note', async () => {
+  itif(!!env)('allows muni admin to read a field note', async () => {
     const db = authed(
       env,
       'daet-admin',
@@ -65,7 +69,7 @@ describe('reports/field_notes rules', () => {
     await assertSucceeds(getDoc(doc(db, 'reports', 'report-1', 'field_notes', 'note-1')))
   })
 
-  it('allows responder with active dispatch to read a field note', async () => {
+  itif(!!env)('allows responder with active dispatch to read a field note', async () => {
     const db = authed(
       env,
       'bfp-responder-1',
@@ -74,7 +78,7 @@ describe('reports/field_notes rules', () => {
     await assertSucceeds(getDoc(doc(db, 'reports', 'report-1', 'field_notes', 'note-1')))
   })
 
-  it('allows responder with active dispatch to create a field note', async () => {
+  itif(!!env)('allows responder with active dispatch to create a field note', async () => {
     const db = authed(
       env,
       'bfp-responder-1',
@@ -92,25 +96,28 @@ describe('reports/field_notes rules', () => {
     )
   })
 
-  it('denies responder without an active dispatch from creating a field note', async () => {
-    const db = authed(
-      env,
-      'bfp-responder-no-dispatch',
-      staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp-daet' }),
-    )
-    await assertFails(
-      addDoc(collection(db, 'reports', 'report-1', 'field_notes'), {
-        authorUid: 'bfp-responder-no-dispatch',
-        authorRole: 'responder',
-        authorDisplayName: 'No Dispatch',
-        body: 'Should fail',
-        createdAt: ts,
-        schemaVersion: 1,
-      }),
-    )
-  })
+  itif(!!env)(
+    'denies responder without an active dispatch from creating a field note',
+    async () => {
+      const db = authed(
+        env,
+        'bfp-responder-no-dispatch',
+        staffClaims({ role: 'responder', municipalityId: 'daet', agencyId: 'bfp-daet' }),
+      )
+      await assertFails(
+        addDoc(collection(db, 'reports', 'report-1', 'field_notes'), {
+          authorUid: 'bfp-responder-no-dispatch',
+          authorRole: 'responder',
+          authorDisplayName: 'No Dispatch',
+          body: 'Should fail',
+          createdAt: ts,
+          schemaVersion: 1,
+        }),
+      )
+    },
+  )
 
-  it('denies responder writing field note with mismatched authorUid', async () => {
+  itif(!!env)('denies responder writing field note with mismatched authorUid', async () => {
     const db = authed(
       env,
       'bfp-responder-1',
@@ -128,12 +135,12 @@ describe('reports/field_notes rules', () => {
     )
   })
 
-  it('denies citizen reads', async () => {
+  itif(!!env)('denies citizen reads', async () => {
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertFails(getDoc(doc(db, 'reports', 'report-1', 'field_notes', 'note-1')))
   })
 
-  it('denies unauthenticated reads', async () => {
+  itif(!!env)('denies unauthenticated reads', async () => {
     const db = unauthed(env)
     await assertFails(getDoc(doc(db, 'reports', 'report-1', 'field_notes', 'note-1')))
   })

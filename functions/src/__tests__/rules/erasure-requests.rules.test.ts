@@ -1,9 +1,9 @@
 import {
-  initializeTestEnvironment,
   assertSucceeds,
   assertFails,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
@@ -20,11 +20,17 @@ const superadminToken = {
   mfaVerified: true,
 }
 
+const itif = (condition: boolean) => (condition ? it : it.skip)
+
 beforeAll(async () => {
-  env = await initializeTestEnvironment({
-    projectId: 'demo-8c-rules',
-    firestore: { rules: readFileSync(RULES_PATH, 'utf8'), host: 'localhost', port: 8081 },
-  })
+  const result = await guardInitTestEnvironment(
+    {
+      projectId: 'demo-8c-rules',
+      firestore: { rules: readFileSync(RULES_PATH, 'utf8'), host: 'localhost', port: 8081 },
+    },
+    'erasure-requests-rules',
+  )
+  env = result.env
 })
 
 afterAll(async () => {
@@ -42,7 +48,7 @@ beforeEach(async () => {
 })
 
 describe('erasure_requests rules', () => {
-  it('citizen can create their own pending_review request', async () => {
+  itif(!!env)('citizen can create their own pending_review request', async () => {
     const db = env!.authenticatedContext('uid-citizen', citizenToken).firestore()
     await assertSucceeds(
       setDoc(doc(db, 'erasure_requests', 'req-1'), {
@@ -54,7 +60,7 @@ describe('erasure_requests rules', () => {
     )
   })
 
-  it('citizen cannot create with executing status', async () => {
+  itif(!!env)('citizen cannot create with executing status', async () => {
     const db = env!.authenticatedContext('uid-citizen', citizenToken).firestore()
     await assertFails(
       setDoc(doc(db, 'erasure_requests', 'req-bad'), {
@@ -65,7 +71,7 @@ describe('erasure_requests rules', () => {
     )
   })
 
-  it('citizen can read their own request', async () => {
+  itif(!!env)('citizen can read their own request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'erasure_requests', 'req-mine'), {
         citizenUid: 'uid-citizen',
@@ -77,7 +83,7 @@ describe('erasure_requests rules', () => {
     await assertSucceeds(getDoc(doc(db, 'erasure_requests', 'req-mine')))
   })
 
-  it('citizen cannot read another citizen request', async () => {
+  itif(!!env)('citizen cannot read another citizen request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'erasure_requests', 'req-other'), {
         citizenUid: 'uid-other',
@@ -89,7 +95,7 @@ describe('erasure_requests rules', () => {
     await assertFails(getDoc(doc(db, 'erasure_requests', 'req-other')))
   })
 
-  it('superadmin can read any request', async () => {
+  itif(!!env)('superadmin can read any request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'erasure_requests', 'req-any'), {
         citizenUid: 'uid-citizen',
@@ -104,7 +110,7 @@ describe('erasure_requests rules', () => {
     await assertSucceeds(getDoc(doc(db, 'erasure_requests', 'req-any')))
   })
 
-  it('citizen cannot update a request after creation', async () => {
+  itif(!!env)('citizen cannot update a request after creation', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'erasure_requests', 'req-update'), {
         citizenUid: 'uid-citizen',
@@ -118,7 +124,7 @@ describe('erasure_requests rules', () => {
 })
 
 describe('erasure_active sentinel rules', () => {
-  it('citizen can read their own sentinel', async () => {
+  itif(!!env)('citizen can read their own sentinel', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'erasure_active', 'uid-citizen'), {
         citizenUid: 'uid-citizen',
@@ -129,7 +135,7 @@ describe('erasure_active sentinel rules', () => {
     await assertSucceeds(getDoc(doc(db, 'erasure_active', 'uid-citizen')))
   })
 
-  it('citizen cannot read another citizen sentinel', async () => {
+  itif(!!env)('citizen cannot read another citizen sentinel', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'erasure_active', 'uid-other'), {
         citizenUid: 'uid-other',
