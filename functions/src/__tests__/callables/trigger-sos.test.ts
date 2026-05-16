@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({
@@ -30,27 +32,35 @@ vi.mock('../../admin-init.js', () => ({
 import { triggerSOS, triggerSosCore } from '../../callables/trigger-sos.js'
 import { seedActiveAccount } from '../helpers/seed-factories.js'
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'trigger-sos-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'trigger-sos-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'trigger-sos',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 async function seedDispatchActive(
@@ -84,15 +94,15 @@ async function seedDispatchActive(
 }
 
 describe('triggerSosCore', () => {
-  it('sets sosTriggeredAt for an active dispatch', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-1', 'report-1', 'r1', 'on_scene')
-    await seedActiveAccount(testEnv, {
+  itif(available)('sets sosTriggeredAt for an active dispatch', async () => {
+    await seedDispatchActive(testEnv!, 'dispatch-1', 'report-1', 'r1', 'on_scene')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       const result = await triggerSosCore(db, {
         dispatchId: 'dispatch-1',
@@ -113,17 +123,17 @@ describe('triggerSosCore', () => {
     })
   })
 
-  it('rejects when SOS already triggered (rate limit)', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-2', 'report-2', 'r1', 'on_scene', {
+  itif(available)('rejects when SOS already triggered (rate limit)', async () => {
+    await seedDispatchActive(testEnv!, 'dispatch-2', 'report-2', 'r1', 'on_scene', {
       sosTriggeredAt: Date.now(),
     })
-    await seedActiveAccount(testEnv, {
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
         triggerSosCore(db, {
@@ -135,15 +145,15 @@ describe('triggerSosCore', () => {
     })
   })
 
-  it('rejects when dispatch is not active', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-3', 'report-3', 'r1', 'pending')
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when dispatch is not active', async () => {
+    await seedDispatchActive(testEnv!, 'dispatch-3', 'report-3', 'r1', 'pending')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
         triggerSosCore(db, {
@@ -155,15 +165,15 @@ describe('triggerSosCore', () => {
     })
   })
 
-  it('rejects when caller is not the assigned responder', async () => {
-    await seedDispatchActive(testEnv, 'dispatch-4', 'report-4', 'r1', 'on_scene')
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when caller is not the assigned responder', async () => {
+    await seedDispatchActive(testEnv!, 'dispatch-4', 'report-4', 'r1', 'on_scene')
+    await seedActiveAccount(testEnv!, {
       uid: 'r2',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
         triggerSosCore(db, {
@@ -182,7 +192,7 @@ describe('triggerSOS callable', () => {
     data: { dispatchId: string }
   }) => Promise<{ status: 'sos_triggered'; dispatchId: string }>
 
-  it('rejects unauthenticated request', async () => {
+  itif(available)('rejects unauthenticated request', async () => {
     await expect(
       callCallable({
         data: { dispatchId: 'dispatch-x' },
@@ -190,7 +200,7 @@ describe('triggerSOS callable', () => {
     ).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 
-  it('rejects wrong-role request', async () => {
+  itif(available)('rejects wrong-role request', async () => {
     await expect(
       callCallable({
         auth: {

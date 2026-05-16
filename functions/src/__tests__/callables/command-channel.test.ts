@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
@@ -14,32 +16,39 @@ vi.mock('../../admin-init.js', () => ({
 import { addCommandChannelMessageCore } from '../../callables/add-command-channel-message.js'
 
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'command-channel-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'command-channel-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'command-channel',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   await testEnv?.cleanup()
 })
 
 async function seedThread(id: string, participants: string[]) {
   const participantUids = Object.fromEntries(participants.map((u) => [u, true]))
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'command_channel_threads', id), {
       threadId: id,
       reportId: 'r1',
@@ -60,7 +69,7 @@ const actor = {
 }
 
 describe('addCommandChannelMessage', () => {
-  it('rejects a caller whose UID is not in thread participantUids', async () => {
+  itif(available)('rejects a caller whose UID is not in thread participantUids', async () => {
     await seedThread('th1', ['bfp-admin'])
     await expect(
       addCommandChannelMessageCore(adminDb, {
@@ -73,7 +82,7 @@ describe('addCommandChannelMessage', () => {
     ).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 
-  it('rejects an empty body', async () => {
+  itif(available)('rejects an empty body', async () => {
     await seedThread('th1', ['daet-admin'])
     await expect(
       addCommandChannelMessageCore(adminDb, {
@@ -86,7 +95,7 @@ describe('addCommandChannelMessage', () => {
     ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
   })
 
-  it('rejects body over 2000 chars', async () => {
+  itif(available)('rejects body over 2000 chars', async () => {
     await seedThread('th1', ['daet-admin'])
     await expect(
       addCommandChannelMessageCore(adminDb, {
@@ -99,7 +108,7 @@ describe('addCommandChannelMessage', () => {
     ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
   })
 
-  it('writes message and updates thread.lastMessageAt', async () => {
+  itif(available)('writes message and updates thread.lastMessageAt', async () => {
     await seedThread('th1', ['daet-admin', 'bfp-admin'])
     await addCommandChannelMessageCore(adminDb, {
       threadId: 'th1',

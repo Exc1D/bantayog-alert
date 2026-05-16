@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 
 // Mock rtdb before importing callable modules that depend on firebase-admin.ts
@@ -14,21 +16,29 @@ import { Timestamp } from 'firebase-admin/firestore'
 
 const ts = 1713350400000
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'accept-dispatch-test',
-    firestore: { host: 'localhost', port: 8081 },
-  })
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'accept-dispatch-test',
+      firestore: { host: 'localhost', port: 8081 },
+    },
+    'accept-dispatch',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 /**
@@ -97,50 +107,53 @@ async function seedDispatchJS(
 }
 
 describe('acceptDispatchCore', () => {
-  it('transitions a pending dispatch to accepted for the assigned responder', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-1', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-1', 'report-1', 'responder-1', 'pending')
-    await seedActiveAccount(testEnv, {
-      uid: 'responder-1',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
-
-    // acceptDispatchCore does a Firestore transaction on idempotency_keys.
-    // Bypass emulator security rules so the transaction can read/write that collection.
-    await testEnv.withSecurityRulesDisabled(async (ctx): Promise<void> => {
-      const db = ctx.firestore()
-      const result = await acceptDispatchCore(db as any, {
-        dispatchId: 'dispatch-1',
-        idempotencyKey: crypto.randomUUID(),
-        actor: { uid: 'responder-1' },
-        now: Timestamp.now(),
+  itif(available)(
+    'transitions a pending dispatch to accepted for the assigned responder',
+    async () => {
+      await seedReportAtStatusJS(testEnv!, 'report-1', 'assigned')
+      await seedDispatchJS(testEnv!, 'dispatch-1', 'report-1', 'responder-1', 'pending')
+      await seedActiveAccount(testEnv!, {
+        uid: 'responder-1',
+        role: 'responder',
+        municipalityId: 'daet',
       })
 
-      expect(result.status).toBe('accepted')
+      // acceptDispatchCore does a Firestore transaction on idempotency_keys.
+      // Bypass emulator security rules so the transaction can read/write that collection.
+      await testEnv!.withSecurityRulesDisabled(async (ctx): Promise<void> => {
+        const db = ctx.firestore()
+        const result = await acceptDispatchCore(db as any, {
+          dispatchId: 'dispatch-1',
+          idempotencyKey: crypto.randomUUID(),
+          actor: { uid: 'responder-1' },
+          now: Timestamp.now(),
+        })
 
-      const dispatchSnap = await db.collection('dispatches').doc('dispatch-1').get()
-      expect(dispatchSnap.data()?.status).toBe('accepted')
+        expect(result.status).toBe('accepted')
 
-      const events = await db
-        .collection('dispatch_events')
-        .where('dispatchId', '==', 'dispatch-1')
-        .get()
-      const eventTos: string[] = events.docs.map((d) => (d.data() as { to: string }).to)
-      expect(eventTos).toContain('accepted')
-    })
-  })
+        const dispatchSnap = await db.collection('dispatches').doc('dispatch-1').get()
+        expect(dispatchSnap.data()?.status).toBe('accepted')
 
-  it('denies when caller is not the assigned responder', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-1', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-1', 'report-1', 'responder-1', 'pending')
-    await seedActiveAccount(testEnv, {
+        const events = await db
+          .collection('dispatch_events')
+          .where('dispatchId', '==', 'dispatch-1')
+          .get()
+        const eventTos: string[] = events.docs.map((d) => (d.data() as { to: string }).to)
+        expect(eventTos).toContain('accepted')
+      })
+    },
+  )
+
+  itif(available)('denies when caller is not the assigned responder', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-1', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-1', 'report-1', 'responder-1', 'pending')
+    await seedActiveAccount(testEnv!, {
       uid: 'responder-2',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
       await expect(
         acceptDispatchCore(db as any, {
@@ -153,14 +166,14 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  it('rejects when dispatch is not found (NOT_FOUND)', async () => {
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when dispatch is not found (NOT_FOUND)', async () => {
+    await seedActiveAccount(testEnv!, {
       uid: 'responder-1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
       await expect(
         acceptDispatchCore(db as any, {
@@ -173,16 +186,16 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  it('returns ALREADY_EXISTS when dispatch is no longer pending', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-3', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-3', 'report-3', 'responder-1', 'cancelled')
-    await seedActiveAccount(testEnv, {
+  itif(available)('returns ALREADY_EXISTS when dispatch is no longer pending', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-3', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-3', 'report-3', 'responder-1', 'cancelled')
+    await seedActiveAccount(testEnv!, {
       uid: 'responder-1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
       await expect(
         acceptDispatchCore(db as any, {
@@ -195,16 +208,16 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  it('is idempotent on same key', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-4', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-4', 'report-4', 'responder-1', 'pending')
-    await seedActiveAccount(testEnv, {
+  itif(available)('is idempotent on same key', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-4', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-4', 'report-4', 'responder-1', 'pending')
+    await seedActiveAccount(testEnv!, {
       uid: 'responder-1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
       const key = crypto.randomUUID()
       const first = await acceptDispatchCore(db as any, {
@@ -225,43 +238,46 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  it('returns RESOURCE_EXHAUSTED when responder exceeds 30 accepts/minute', async () => {
-    await seedActiveAccount(testEnv, {
-      uid: 'responder-rate-limit',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
+  itif(available)(
+    'returns RESOURCE_EXHAUSTED when responder exceeds 30 accepts/minute',
+    async () => {
+      await seedActiveAccount(testEnv!, {
+        uid: 'responder-rate-limit',
+        role: 'responder',
+        municipalityId: 'daet',
+      })
 
-    // Seed 31 dispatches so we can call accept 31 times without status conflicts
-    for (let i = 0; i < 31; i++) {
-      const reportId = `report-rl-${String(i)}`
-      const dispatchId = `dispatch-rl-${String(i)}`
-      await seedReportAtStatusJS(testEnv, reportId, 'assigned')
-      await seedDispatchJS(testEnv, dispatchId, reportId, 'responder-rate-limit', 'pending')
-    }
-
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore()
-      // Call 30 times to exhaust quota
-      for (let i = 0; i < 30; i++) {
+      // Seed 31 dispatches so we can call accept 31 times without status conflicts
+      for (let i = 0; i < 31; i++) {
+        const reportId = `report-rl-${String(i)}`
         const dispatchId = `dispatch-rl-${String(i)}`
-
-        await acceptDispatchCore(db as any, {
-          dispatchId,
-          idempotencyKey: crypto.randomUUID(),
-          actor: { uid: 'responder-rate-limit' },
-          now: Timestamp.now(),
-        })
+        await seedReportAtStatusJS(testEnv!, reportId, 'assigned')
+        await seedDispatchJS(testEnv!, dispatchId, reportId, 'responder-rate-limit', 'pending')
       }
-      // 31st call should fail with RESOURCE_EXHAUSTED
-      await expect(
-        acceptDispatchCore(db as any, {
-          dispatchId: 'dispatch-rl-30',
-          idempotencyKey: crypto.randomUUID(),
-          actor: { uid: 'responder-rate-limit' },
-          now: Timestamp.now(),
-        }),
-      ).rejects.toMatchObject({ code: 'RATE_LIMITED' })
-    })
-  })
+
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore()
+        // Call 30 times to exhaust quota
+        for (let i = 0; i < 30; i++) {
+          const dispatchId = `dispatch-rl-${String(i)}`
+
+          await acceptDispatchCore(db as any, {
+            dispatchId,
+            idempotencyKey: crypto.randomUUID(),
+            actor: { uid: 'responder-rate-limit' },
+            now: Timestamp.now(),
+          })
+        }
+        // 31st call should fail with RESOURCE_EXHAUSTED
+        await expect(
+          acceptDispatchCore(db as any, {
+            dispatchId: 'dispatch-rl-30',
+            idempotencyKey: crypto.randomUUID(),
+            actor: { uid: 'responder-rate-limit' },
+            now: Timestamp.now(),
+          }),
+        ).rejects.toMatchObject({ code: 'RATE_LIMITED' })
+      })
+    },
+  )
 })

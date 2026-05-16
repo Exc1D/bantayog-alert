@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
@@ -31,31 +33,39 @@ vi.mock('../../admin-init.js', () => ({
 import { shareReportCore } from '../../callables/share-report.js'
 
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'share-report-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'share-report-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'share-report',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 async function seedReportOps(id: string, muni: string) {
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'report_ops', id), {
       municipalityId: muni,
       status: 'verified',
@@ -82,7 +92,7 @@ const daetAdminMissingMuniId = {
 }
 
 describe('shareReport', () => {
-  it('rejects caller from a different municipality than the report', async () => {
+  itif(available)('rejects caller from a different municipality than the report', async () => {
     await seedReportOps('r1', 'mercedes')
     await expect(
       shareReportCore(adminDb, {
@@ -95,7 +105,7 @@ describe('shareReport', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
-  it('rejects municipal_admin missing municipalityId claim', async () => {
+  itif(available)('rejects municipal_admin missing municipalityId claim', async () => {
     await seedReportOps('r1', 'mercedes')
     await expect(
       shareReportCore(adminDb, {
@@ -108,7 +118,7 @@ describe('shareReport', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
-  it('creates report_sharing doc with source manual and appends event', async () => {
+  itif(available)('creates report_sharing doc with source manual and appends event', async () => {
     await seedReportOps('r1', 'daet')
     await shareReportCore(adminDb, {
       reportId: 'r1',
@@ -127,7 +137,7 @@ describe('shareReport', () => {
     expect(events.docs[0]?.data().sharedBy).toBe('daet-admin')
   })
 
-  it('creates a command_channel_thread with threadType border_share', async () => {
+  itif(available)('creates a command_channel_thread with threadType border_share', async () => {
     await seedReportOps('r1', 'daet')
     await shareReportCore(adminDb, {
       reportId: 'r1',
@@ -144,7 +154,7 @@ describe('shareReport', () => {
     expect(threads.empty).toBe(false)
   })
 
-  it('is idempotent — sharing same muni twice does not duplicate', async () => {
+  itif(available)('is idempotent — sharing same muni twice does not duplicate', async () => {
     await seedReportOps('r1', 'daet')
     const key = crypto.randomUUID()
     await shareReportCore(adminDb, {

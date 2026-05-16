@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 
 // Mock rtdb before importing callable modules that depend on firebase-admin.ts
 vi.mock('firebase-admin/database', () => ({
@@ -15,26 +17,34 @@ import {
 } from '../helpers/seed-factories.js'
 import { Timestamp } from 'firebase-admin/firestore'
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'cancel-dispatch-test',
-    firestore: { host: 'localhost', port: 8081 },
-  })
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'cancel-dispatch-test',
+      firestore: { host: 'localhost', port: 8081 },
+    },
+    'cancel-dispatch',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
 })
 
 beforeEach(async () => {
-  await testEnv.clearFirestore()
+  if (!available || !testEnv) return
+  await testEnv!.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('cancelDispatchCore (3b branches)', () => {
-  it('cancels a pending dispatch and reverts report to verified', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('cancels a pending dispatch and reverts report to verified', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
       const { dispatchId } = await seedDispatch(db, {
@@ -45,7 +55,7 @@ describe('cancelDispatchCore (3b branches)', () => {
       })
       // Link report to dispatch so cancellation reverts the report
       await db.collection('reports').doc(reportId).update({ currentDispatchId: dispatchId })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -81,8 +91,8 @@ describe('cancelDispatchCore (3b branches)', () => {
     })
   })
 
-  it('PERMISSION_DENIED when cancelling a dispatch for a different muni', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('PERMISSION_DENIED when cancelling a dispatch for a different muni', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'mercedes' })
       const { dispatchId } = await seedDispatch(db, {
@@ -91,7 +101,7 @@ describe('cancelDispatchCore (3b branches)', () => {
         municipalityId: 'mercedes',
         status: 'pending',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -111,8 +121,8 @@ describe('cancelDispatchCore (3b branches)', () => {
     })
   })
 
-  it('FAILED_PRECONDITION when dispatch is in terminal state (resolved)', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('FAILED_PRECONDITION when dispatch is in terminal state (resolved)', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
       const { dispatchId } = await seedDispatch(db, {
@@ -121,7 +131,7 @@ describe('cancelDispatchCore (3b branches)', () => {
         municipalityId: 'daet',
         status: 'resolved',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -141,8 +151,8 @@ describe('cancelDispatchCore (3b branches)', () => {
     })
   })
 
-  it('FAILED_PRECONDITION when dispatch is in terminal state (declined)', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('FAILED_PRECONDITION when dispatch is in terminal state (declined)', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
       const { dispatchId } = await seedDispatch(db, {
@@ -151,7 +161,7 @@ describe('cancelDispatchCore (3b branches)', () => {
         municipalityId: 'daet',
         status: 'declined',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -171,10 +181,10 @@ describe('cancelDispatchCore (3b branches)', () => {
     })
   })
 
-  it('NOT_FOUND when dispatch does not exist', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('NOT_FOUND when dispatch does not exist', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -194,8 +204,8 @@ describe('cancelDispatchCore (3b branches)', () => {
     })
   })
 
-  it('cancels non-current dispatch without reverting report status', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('cancels non-current dispatch without reverting report status', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
       // Point the report at a different (newer) dispatch so this one is superseded
@@ -210,7 +220,7 @@ describe('cancelDispatchCore (3b branches)', () => {
         municipalityId: 'daet',
         status: 'pending',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -239,49 +249,52 @@ describe('cancelDispatchCore (3b branches)', () => {
     })
   })
 
-  it('FAILED_PRECONDITION when dispatch is already cancelled (double-cancel)', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
-      const { dispatchId } = await seedDispatch(db, {
-        reportId,
-        responderUid: 'r1',
-        municipalityId: 'daet',
-        status: 'pending',
-      })
-      // Link report to dispatch so cancellation reverts the report
-      await db.collection('reports').doc(reportId).update({ currentDispatchId: dispatchId })
-      await seedActiveAccount(testEnv, {
-        uid: 'admin-1',
-        role: 'municipal_admin',
-        municipalityId: 'daet',
-      })
-      // First cancel succeeds
-      await cancelDispatchCore(db, {
-        dispatchId,
-        reason: 'responder_unavailable',
-        idempotencyKey: crypto.randomUUID(),
-        actor: {
+  itif(available)(
+    'FAILED_PRECONDITION when dispatch is already cancelled (double-cancel)',
+    async () => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as any
+        const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
+        const { dispatchId } = await seedDispatch(db, {
+          reportId,
+          responderUid: 'r1',
+          municipalityId: 'daet',
+          status: 'pending',
+        })
+        // Link report to dispatch so cancellation reverts the report
+        await db.collection('reports').doc(reportId).update({ currentDispatchId: dispatchId })
+        await seedActiveAccount(testEnv!, {
           uid: 'admin-1',
-          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-        },
-        now: Timestamp.now(),
-      })
-      // Second cancel should fail with INVALID_STATUS_TRANSITION
-      await expect(
-        cancelDispatchCore(db, {
+          role: 'municipal_admin',
+          municipalityId: 'daet',
+        })
+        // First cancel succeeds
+        await cancelDispatchCore(db, {
           dispatchId,
-          reason: 'admin_error',
+          reason: 'responder_unavailable',
           idempotencyKey: crypto.randomUUID(),
           actor: {
             uid: 'admin-1',
             claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
           },
           now: Timestamp.now(),
-        }),
-      ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
-    })
-  })
+        })
+        // Second cancel should fail with INVALID_STATUS_TRANSITION
+        await expect(
+          cancelDispatchCore(db, {
+            dispatchId,
+            reason: 'admin_error',
+            idempotencyKey: crypto.randomUUID(),
+            actor: {
+              uid: 'admin-1',
+              claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+            },
+            now: Timestamp.now(),
+          }),
+        ).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' })
+      })
+    },
+  )
 })
 
 describe('cancelDispatch — widened from-state (3c)', () => {
@@ -289,7 +302,7 @@ describe('cancelDispatch — widened from-state (3c)', () => {
 
   for (const from of CANCELLABLE_FROM) {
     it(`allows cancel from ${from} → status=cancelled, report reverted to verified`, async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
         const db = ctx.firestore() as any
         const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
         const { dispatchId } = await seedDispatch(db, {
@@ -300,7 +313,7 @@ describe('cancelDispatch — widened from-state (3c)', () => {
         })
         // Link report to dispatch so cancellation reverts the report
         await db.collection('reports').doc(reportId).update({ currentDispatchId: dispatchId })
-        await seedActiveAccount(testEnv, {
+        await seedActiveAccount(testEnv!, {
           uid: 'admin-1',
           role: 'municipal_admin',
           municipalityId: 'daet',

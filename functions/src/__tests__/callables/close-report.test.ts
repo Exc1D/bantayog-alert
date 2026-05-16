@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { Timestamp } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({
@@ -10,29 +12,37 @@ vi.mock('firebase-admin/database', () => ({
 import { closeReportCore } from '../../callables/close-report.js'
 import { seedReportAtStatus, seedActiveAccount, staffClaims } from '../helpers/seed-factories.js'
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'close-report-test',
-    firestore: { host: '127.0.0.1', port: 8081 },
-  })
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'close-report-test',
+      firestore: { host: '127.0.0.1', port: 8081 },
+    },
+    'close-report',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('closeReportCore', () => {
-  it('transitions a resolved report to closed', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('transitions a resolved report to closed', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -54,11 +64,11 @@ describe('closeReportCore', () => {
     })
   })
 
-  it('denies admin from another municipality', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('denies admin from another municipality', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-mercedes',
         role: 'municipal_admin',
         municipalityId: 'mercedes',
@@ -78,10 +88,10 @@ describe('closeReportCore', () => {
     })
   })
 
-  it('rejects close on a non-existent report (NOT_FOUND)', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('rejects close on a non-existent report (NOT_FOUND)', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -101,11 +111,11 @@ describe('closeReportCore', () => {
     })
   })
 
-  it('rejects close on a non-resolved report', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('rejects close on a non-resolved report', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -125,11 +135,11 @@ describe('closeReportCore', () => {
     })
   })
 
-  it('appends a report_events entry from:resolved to:closed', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('appends a report_events entry from:resolved to:closed', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -158,11 +168,11 @@ describe('closeReportCore', () => {
     })
   })
 
-  it('stores closureSummary when provided', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('stores closureSummary when provided', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
@@ -184,11 +194,11 @@ describe('closeReportCore', () => {
     })
   })
 
-  it('is idempotent — replay with same key returns closed without error', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('is idempotent — replay with same key returns closed without error', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'resolved', { municipalityId: 'daet' })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',

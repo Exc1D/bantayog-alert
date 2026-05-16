@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
@@ -37,31 +39,39 @@ const ts = 1713350400000
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'field-mode-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'field-mode-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'field-mode',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('enterFieldModeCore', () => {
-  it('rejects a muni admin whose auth_time is more than 4 hours ago', async () => {
+  itif(available)('rejects a muni admin whose auth_time is more than 4 hours ago', async () => {
     // auth_time is Unix seconds; stale means > 4 hours ago
     const staleAuthTime = Math.floor((ts - FOUR_HOURS_MS - 1000) / 1000)
     await expect(
@@ -80,7 +90,7 @@ describe('enterFieldModeCore', () => {
     ).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 
-  it('creates field_mode_sessions with isActive true and 12h expiry', async () => {
+  itif(available)('creates field_mode_sessions with isActive true and 12h expiry', async () => {
     const freshAuthTime = Math.floor((ts - 60000) / 1000) // 1 minute ago
     await enterFieldModeCore(adminDb, {
       actor: {
@@ -99,7 +109,7 @@ describe('enterFieldModeCore', () => {
     expect(snap.data()?.expiresAt).toBe(ts + TWELVE_HOURS_MS)
   })
 
-  it('rejects citizens and responders', async () => {
+  itif(available)('rejects citizens and responders', async () => {
     for (const role of ['citizen', 'responder'] as const) {
       await expect(
         enterFieldModeCore(adminDb, {
@@ -118,7 +128,7 @@ describe('enterFieldModeCore', () => {
     }
   })
 
-  it('rejects inactive accounts', async () => {
+  itif(available)('rejects inactive accounts', async () => {
     await expect(
       enterFieldModeCore(adminDb, {
         actor: {
@@ -137,8 +147,8 @@ describe('enterFieldModeCore', () => {
 })
 
 describe('exitFieldModeCore', () => {
-  it('sets isActive false and records exitedAt', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('sets isActive false and records exitedAt', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'field_mode_sessions', 'daet-admin'), {
         uid: 'daet-admin',
         municipalityId: 'daet',
@@ -160,8 +170,8 @@ describe('exitFieldModeCore', () => {
     expect(snap.data()?.exitedAt).toBe(ts)
   })
 
-  it('is idempotent — double-exit returns success without throwing', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('is idempotent — double-exit returns success without throwing', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'field_mode_sessions', 'daet-admin'), {
         uid: 'daet-admin',
         municipalityId: 'daet',
@@ -183,7 +193,7 @@ describe('exitFieldModeCore', () => {
     ).resolves.toEqual({ status: 'exited' })
   })
 
-  it('returns exited for non-existent session', async () => {
+  itif(available)('returns exited for non-existent session', async () => {
     const result = await exitFieldModeCore(adminDb, {
       actor: {
         uid: 'ghost-admin',
@@ -200,7 +210,7 @@ describe('enterFieldMode callable', () => {
     auth?: { uid: string; token: Record<string, unknown> }
   }) => Promise<{ status: 'entered'; expiresAt: number }>
 
-  it('wires App Check config from NODE_ENV', () => {
+  itif(available)('wires App Check config from NODE_ENV', () => {
     const shouldEnforce = process.env.NODE_ENV === 'production'
     expect(onCallMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -211,7 +221,7 @@ describe('enterFieldMode callable', () => {
     )
   })
 
-  it('accepts an authenticated municipal_admin with fresh token', async () => {
+  itif(available)('accepts an authenticated municipal_admin with fresh token', async () => {
     const nowSec = Math.floor(Date.now() / 1000)
     const freshAuthTime = nowSec - 60 // 1 minute ago
     const result = await callEnterFieldMode({
@@ -229,7 +239,7 @@ describe('enterFieldMode callable', () => {
     expect(result.expiresAt).toBeGreaterThan(Date.now())
   })
 
-  it('rejects unauthenticated request', async () => {
+  itif(available)('rejects unauthenticated request', async () => {
     await expect(callEnterFieldMode({})).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 })
@@ -239,7 +249,7 @@ describe('exitFieldMode callable', () => {
     auth?: { uid: string; token: Record<string, unknown> }
   }) => Promise<{ status: 'exited' }>
 
-  it('wires App Check config from NODE_ENV', () => {
+  itif(available)('wires App Check config from NODE_ENV', () => {
     const shouldEnforce = process.env.NODE_ENV === 'production'
     // Find calls for exitFieldMode (second call)
     const calls = onCallMock.mock.calls.filter(([, handler]) => handler != null)
@@ -252,8 +262,8 @@ describe('exitFieldMode callable', () => {
     })
   })
 
-  it('accepts an authenticated admin and exits field mode', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('accepts an authenticated admin and exits field mode', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'field_mode_sessions', 'daet-admin'), {
         uid: 'daet-admin',
         municipalityId: 'daet',
@@ -277,7 +287,7 @@ describe('exitFieldMode callable', () => {
     expect(result).toEqual({ status: 'exited' })
   })
 
-  it('rejects unauthenticated request', async () => {
+  itif(available)('rejects unauthenticated request', async () => {
     await expect(callExitFieldMode({})).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 })
