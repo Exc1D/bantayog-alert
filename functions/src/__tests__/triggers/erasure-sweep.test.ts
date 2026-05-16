@@ -68,13 +68,6 @@ async function seedApprovedRequest(
   })
 }
 
-beforeAll(async () => {
-  env = await initializeTestEnvironment({
-    projectId: 'demo-8c-sweep',
-    firestore: { host: 'localhost', port: 8081 },
-  })
-})
-
 beforeEach(async () => {
   mockUpdateUser.mockReset()
   mockDeleteUser.mockReset()
@@ -84,10 +77,6 @@ beforeEach(async () => {
   mockDeleteUser.mockResolvedValue(undefined)
   mockGetFiles.mockResolvedValue([[]])
   await env!.clearFirestore()
-})
-
-afterAll(async () => {
-  await env?.cleanup()
 })
 
 beforeAll(async () => {

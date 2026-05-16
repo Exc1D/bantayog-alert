@@ -1,8 +1,9 @@
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import { inboxReconciliationSweepCore } from '../../triggers/inbox-reconciliation-sweep.js'
 
 const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/firestore.rules')
@@ -10,18 +11,18 @@ const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/fire
 let env: RulesTestEnvironment | undefined
 let emulatorAvailable = false
 
-try {
-  env = await initializeTestEnvironment({
-    projectId: 'demo-3a-sweep',
-    firestore: { host: '127.0.0.1', port: 8081, rules: readFileSync(RULES_PATH, 'utf8') },
-  })
-  emulatorAvailable = true
-} catch (err) {
-  console.warn('[inbox-reconciliation-sweep.test] Emulator unavailable; tests will skip.', err)
-  emulatorAvailable = false
-}
+beforeAll(async () => {
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'demo-3a-sweep',
+      firestore: { host: '127.0.0.1', port: 8081, rules: readFileSync(RULES_PATH, 'utf8') },
+    },
+    'inbox-reconciliation-sweep',
+  )
+  env = guarded.env
+  emulatorAvailable = guarded.available
+  if (!emulatorAvailable || !env) return
 
-if (env) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
       id: 'daet',
@@ -31,7 +32,7 @@ if (env) {
       schemaVersion: 1,
     })
   })
-}
+})
 
 const itif = (condition: boolean) => (condition ? it : it.skip)
 
