@@ -171,6 +171,31 @@ describe('verifyReportCore error paths', () => {
     })
   })
 
+  it('allows provincial_superadmin to verify report in any municipality', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'mercedes' })
+      await seedActiveAccount(testEnv, {
+        uid: 'super-1',
+        role: 'provincial_superadmin',
+      })
+
+      const result = await verifyReportCore(db, {
+        reportId,
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'super-1',
+          claims: staffClaims({ role: 'provincial_superadmin' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      expect(result.status).toBe('awaiting_verify')
+      const report = (await db.collection('reports').doc(reportId).get()).data()
+      expect(report.status).toBe('awaiting_verify')
+    })
+  })
+
   it('returns INVALID_STATUS_TRANSITION on a report already verified', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any

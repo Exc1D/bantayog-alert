@@ -6,6 +6,9 @@ import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
+import { isAccountActive } from './admin-auth.js'
+import { getAdminCallableCorsOrigins } from './callable-config.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 import { sendFcmToResponder } from '../services/fcm-send.js'
 import {
   validateDispatchTransaction,
@@ -117,9 +120,9 @@ export async function dispatchResponderCore(
 export const dispatchResponder = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 100,
-    cors: ['http://localhost:5175'],
+    cors: getAdminCallableCorsOrigins(),
     secrets: [],
   },
   async (req: CallableRequest<unknown>) => {
@@ -129,7 +132,7 @@ export const dispatchResponder = onCall(
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
-    if (claims.active !== true) throw new HttpsError('permission-denied', 'account is not active')
+    if (!isAccountActive(claims)) throw new HttpsError('permission-denied', 'account is not active')
     const parsed = InputSchema.safeParse(req.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
     const rl = await checkRateLimit(adminDb, {

@@ -12,6 +12,9 @@ import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
+import { isAccountActive } from './admin-auth.js'
+import { getAdminCallableCorsOrigins } from './callable-config.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 export const closeReportRequestSchema = z.object({
   reportId: z.string().min(1).max(128),
@@ -147,7 +150,12 @@ export async function closeReportCore(
 }
 
 export const closeReport = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 100,
+    cors: getAdminCallableCorsOrigins(),
+  },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token as Record<string, unknown> | null
@@ -155,7 +163,7 @@ export const closeReport = onCall(
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
-    if (claims.active !== true) {
+    if (!isAccountActive(claims)) {
       throw new HttpsError('permission-denied', 'account is not active')
     }
     // municipal_admin requires a municipalityId; provincial_superadmin does not
@@ -188,7 +196,7 @@ export const closeReport = onCall(
           claims: {
             role: claims.role,
             municipalityId: claims.municipalityId as string,
-            active: claims.active,
+            active: claims.active === true,
           },
         },
         now: Timestamp.now(),

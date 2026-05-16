@@ -177,4 +177,51 @@ describe('withIdempotency', () => {
     ).rejects.toBeInstanceOf(IdempotencyMismatchError)
     expect(op).toHaveBeenCalledTimes(1)
   })
+
+  it('accepts payloads containing undefined values without crashing', async () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const op = vi.fn(async () => ({ resultId: 'x1' }))
+    const { result, fromCache } = await withIdempotency(
+      db,
+      {
+        key: 'cb:rejectReport:u1',
+        payload: {
+          reportId: 'r1',
+          notes: undefined,
+          actor: { claims: { role: 'municipal_admin', municipalityId: undefined } },
+        },
+        now: () => 1000,
+      },
+      op,
+    )
+    expect(result).toEqual({ resultId: 'x1' })
+    expect(fromCache).toBe(false)
+    expect(op).toHaveBeenCalledTimes(1)
+  })
+
+  it('treats undefined and omitted keys as the same payload', async () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    const op = vi.fn(async () => ({ resultId: 'x1' }))
+    await withIdempotency(
+      db,
+      {
+        key: 'cb:verifyReport:u1',
+        payload: { reportId: 'r1', notes: undefined },
+        now: () => 1000,
+      },
+      op,
+    )
+    const { result: cachedResult, fromCache } = await withIdempotency(
+      db,
+      {
+        key: 'cb:verifyReport:u1',
+        payload: { reportId: 'r1' },
+        now: () => 2000,
+      },
+      op,
+    )
+    expect(op).toHaveBeenCalledTimes(1)
+    expect(cachedResult).toEqual({ resultId: 'x1' })
+    expect(fromCache).toBe(true)
+  })
 })

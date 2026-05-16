@@ -1,6 +1,23 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { canonicalPayloadHash } from '@bantayog/shared-validators'
 
+function deepStripUndefined(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') {
+    return value
+  }
+  if (Array.isArray(value)) {
+    return value.map(deepStripUndefined)
+  }
+  const record = value as Record<string, unknown>
+  const result: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(record)) {
+    if (val !== undefined) {
+      result[key] = deepStripUndefined(val)
+    }
+  }
+  return result
+}
+
 export class IdempotencyMismatchError extends Error {
   constructor(
     public readonly key: string,
@@ -32,7 +49,7 @@ export async function withIdempotency<TPayload, TResult>(
   op: () => Promise<TResult>,
 ): Promise<{ result: TResult; fromCache: boolean }> {
   const now = opts.now ?? (() => Date.now())
-  const hash = await canonicalPayloadHash(opts.payload)
+  const hash = await canonicalPayloadHash(deepStripUndefined(opts.payload))
   const keyRef = db.collection('idempotency_keys').doc(opts.key)
 
   const cached = await db.runTransaction(async (tx) => {

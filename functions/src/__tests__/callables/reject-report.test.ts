@@ -150,4 +150,32 @@ describe('rejectReportCore', () => {
       ).rejects.toMatchObject({ code: 'FORBIDDEN' })
     })
   })
+
+  it('allows provincial_superadmin to reject report in any municipality', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
+        municipalityId: 'mercedes',
+      })
+      await seedActiveAccount(testEnv, {
+        uid: 'super-1',
+        role: 'provincial_superadmin',
+      })
+
+      const result = await rejectReportCore(db, {
+        reportId,
+        reason: 'obviously_false',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'super-1',
+          claims: staffClaims({ role: 'provincial_superadmin' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      expect(result.status).toBe('cancelled_false_report')
+      const report = (await db.collection('reports').doc(reportId).get()).data()
+      expect(report.status).toBe('cancelled_false_report')
+    })
+  })
 })

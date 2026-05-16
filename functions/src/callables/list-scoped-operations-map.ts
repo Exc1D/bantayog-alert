@@ -5,6 +5,8 @@ import {
   type ScopedOperationsMapIncidentPayload,
 } from '@bantayog/shared-types'
 import { adminDb } from '../admin-init.js'
+import { getAdminCallableCorsOrigins } from './callable-config.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 const listScopedOperationsMapSchema = z.object({}).strict()
 
@@ -132,8 +134,8 @@ export async function listScopedOperationsMapCore(
 export const listScopedOperationsMap = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: true,
-    cors: ['http://localhost:5174', 'http://localhost:5175'],
+    enforceAppCheck: shouldEnforceAppCheck(),
+    cors: getAdminCallableCorsOrigins(),
   },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')

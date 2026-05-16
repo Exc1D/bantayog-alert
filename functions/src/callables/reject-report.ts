@@ -6,6 +6,9 @@ import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { bantayogErrorToHttps } from './https-error.js'
+import { isAccountActive } from './admin-auth.js'
+import { getAdminCallableCorsOrigins } from './callable-config.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 const REJECT_REASONS = [
   'obviously_false',
@@ -38,11 +41,13 @@ const log = logDimension('rejectReport')
 export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps) {
   const correlationId = crypto.randomUUID()
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency(
     db,
     {
       key: `rejectReport:${deps.actor.uid}:${deps.idempotencyKey}`,
-      payload: deps,
+      payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
     async () =>
@@ -53,12 +58,16 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
           throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found')
         }
         const report = snap.data() as Record<string, unknown>
-        if (report.municipalityId !== deps.actor.claims.municipalityId) {
+        if (
+          deps.actor.claims.role !== 'provincial_superadmin' &&
+          report.municipalityId !== deps.actor.claims.municipalityId
+        ) {
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
         }
         const from = report.status as string
         const to = 'cancelled_false_report' as const
         if (from !== 'awaiting_verify') {
+          console.error(`rejectReport status blocked: report=${deps.reportId} from=${from}`)
           throw new BantayogError(
             BantayogErrorCode.FAILED_PRECONDITION,
             `rejectReport is only valid from awaiting_verify, got ${from}`,
@@ -118,7 +127,12 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
 }
 
 export const rejectReport = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 100,
+    cors: getAdminCallableCorsOrigins(),
+  },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token as Record<string, unknown> | null
@@ -126,9 +140,12 @@ export const rejectReport = onCall(
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
-    if (claims.active !== true) throw new HttpsError('permission-denied', 'account is not active')
+    if (!isAccountActive(claims)) throw new HttpsError('permission-denied', 'account is not active')
     const parsed = InputSchema.safeParse(req.data)
-    if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
+    if (!parsed.success) {
+      console.error('rejectReport validation failed:', z.treeifyError(parsed.error))
+      throw new HttpsError('invalid-argument', 'malformed payload')
+    }
     const rl = await checkRateLimit(adminDb, {
       key: `rejectReport:${req.auth.uid}`,
       limit: 60,
