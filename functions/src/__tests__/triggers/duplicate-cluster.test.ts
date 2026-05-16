@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
@@ -15,33 +17,41 @@ vi.mock('../../admin-init.js', () => ({
 import { duplicateClusterTriggerCore } from '../../triggers/duplicate-cluster-trigger.js'
 
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'dup-cluster-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'dup-cluster-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'duplicate-cluster',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 const DAET_GEOHASH = 'w7hfm2mb'
 const NEARBY_GEOHASH = 'w7hfm2mc'
 
 async function seedReportOps(id: string, overrides: Record<string, unknown>) {
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'report_ops', id), {
       municipalityId: 'daet',
       reportType: 'flood',
@@ -69,7 +79,7 @@ function makeSnap(id: string, data: Record<string, unknown>): QueryDocumentSnaps
 }
 
 describe('duplicateClusterTrigger', () => {
-  it('does not set duplicateClusterId when no nearby reports exist', async () => {
+  itif(available)('does not set duplicateClusterId when no nearby reports exist', async () => {
     const newData = {
       municipalityId: 'daet',
       reportType: 'flood',
@@ -92,32 +102,38 @@ describe('duplicateClusterTrigger', () => {
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 
-  it('sets duplicateClusterId on both reports when same type + muni + within geohash proximity + within 2h', async () => {
-    await seedReportOps('r-existing', { locationGeohash: NEARBY_GEOHASH, createdAt: ts - 3600000 })
-    const newData = {
-      municipalityId: 'daet',
-      reportType: 'flood',
-      status: 'new',
-      severity: 'high',
-      createdAt: ts,
-      updatedAt: ts,
-      agencyIds: [],
-      activeResponderCount: 0,
-      requiresLocationFollowUp: false,
-      locationGeohash: DAET_GEOHASH,
-      visibility: { scope: 'municipality', sharedWith: [] },
-      schemaVersion: 1,
-    }
-    await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH })
-    const snap = makeSnap('r-new', newData)
-    await duplicateClusterTriggerCore(adminDb, snap)
-    const newSnap = await adminDb.collection('report_ops').doc('r-new').get()
-    const existingSnap = await adminDb.collection('report_ops').doc('r-existing').get()
-    expect(newSnap.data()?.duplicateClusterId).toBeDefined()
-    expect(newSnap.data()?.duplicateClusterId).toBe(existingSnap.data()?.duplicateClusterId)
-  })
+  itif(available)(
+    'sets duplicateClusterId on both reports when same type + muni + within geohash proximity + within 2h',
+    async () => {
+      await seedReportOps('r-existing', {
+        locationGeohash: NEARBY_GEOHASH,
+        createdAt: ts - 3600000,
+      })
+      const newData = {
+        municipalityId: 'daet',
+        reportType: 'flood',
+        status: 'new',
+        severity: 'high',
+        createdAt: ts,
+        updatedAt: ts,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        locationGeohash: DAET_GEOHASH,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        schemaVersion: 1,
+      }
+      await seedReportOps('r-new', { locationGeohash: DAET_GEOHASH })
+      const snap = makeSnap('r-new', newData)
+      await duplicateClusterTriggerCore(adminDb, snap)
+      const newSnap = await adminDb.collection('report_ops').doc('r-new').get()
+      const existingSnap = await adminDb.collection('report_ops').doc('r-existing').get()
+      expect(newSnap.data()?.duplicateClusterId).toBeDefined()
+      expect(newSnap.data()?.duplicateClusterId).toBe(existingSnap.data()?.duplicateClusterId)
+    },
+  )
 
-  it('does not cluster reports of different types', async () => {
+  itif(available)('does not cluster reports of different types', async () => {
     await seedReportOps('r-fire', {
       reportType: 'fire',
       locationGeohash: NEARBY_GEOHASH,
@@ -145,7 +161,7 @@ describe('duplicateClusterTrigger', () => {
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 
-  it('does not cluster reports older than 2h', async () => {
+  itif(available)('does not cluster reports older than 2h', async () => {
     const TWO_H_PLUS_ONE = 2 * 3600000 + 1
     await seedReportOps('r-old', {
       locationGeohash: NEARBY_GEOHASH,
@@ -173,35 +189,38 @@ describe('duplicateClusterTrigger', () => {
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 
-  it('assigns the same existing clusterId when a third report joins a cluster', async () => {
-    const existingClusterId = 'cluster-uuid-existing'
-    await seedReportOps('r-first', {
-      locationGeohash: NEARBY_GEOHASH,
-      createdAt: ts - 3600000,
-      duplicateClusterId: existingClusterId,
-    })
-    const newData = {
-      municipalityId: 'daet',
-      reportType: 'flood',
-      status: 'new',
-      severity: 'high',
-      createdAt: ts,
-      updatedAt: ts,
-      agencyIds: [],
-      activeResponderCount: 0,
-      requiresLocationFollowUp: false,
-      locationGeohash: DAET_GEOHASH,
-      visibility: { scope: 'municipality', sharedWith: [] },
-      schemaVersion: 1,
-    }
-    await seedReportOps('r-third', { locationGeohash: DAET_GEOHASH })
-    const snap = makeSnap('r-third', newData)
-    await duplicateClusterTriggerCore(adminDb, snap)
-    const updated = await adminDb.collection('report_ops').doc('r-third').get()
-    expect(updated.data()?.duplicateClusterId).toBe(existingClusterId)
-  })
+  itif(available)(
+    'assigns the same existing clusterId when a third report joins a cluster',
+    async () => {
+      const existingClusterId = 'cluster-uuid-existing'
+      await seedReportOps('r-first', {
+        locationGeohash: NEARBY_GEOHASH,
+        createdAt: ts - 3600000,
+        duplicateClusterId: existingClusterId,
+      })
+      const newData = {
+        municipalityId: 'daet',
+        reportType: 'flood',
+        status: 'new',
+        severity: 'high',
+        createdAt: ts,
+        updatedAt: ts,
+        agencyIds: [],
+        activeResponderCount: 0,
+        requiresLocationFollowUp: false,
+        locationGeohash: DAET_GEOHASH,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        schemaVersion: 1,
+      }
+      await seedReportOps('r-third', { locationGeohash: DAET_GEOHASH })
+      const snap = makeSnap('r-third', newData)
+      await duplicateClusterTriggerCore(adminDb, snap)
+      const updated = await adminDb.collection('report_ops').doc('r-third').get()
+      expect(updated.data()?.duplicateClusterId).toBe(existingClusterId)
+    },
+  )
 
-  it('skips reports with no locationGeohash', async () => {
+  itif(available)('skips reports with no locationGeohash', async () => {
     const newData = {
       municipalityId: 'daet',
       reportType: 'flood',
@@ -223,7 +242,7 @@ describe('duplicateClusterTrigger', () => {
     expect(updated.data()?.duplicateClusterId).toBeUndefined()
   })
 
-  it('is safe to run twice (idempotent cluster assignment)', async () => {
+  itif(available)('is safe to run twice (idempotent cluster assignment)', async () => {
     await seedReportOps('r-existing', { locationGeohash: NEARBY_GEOHASH, createdAt: ts - 3600000 })
     const newData = {
       municipalityId: 'daet',

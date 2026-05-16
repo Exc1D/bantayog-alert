@@ -1,18 +1,27 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import type { Firestore } from 'firebase-admin/firestore'
 import type { Database } from 'firebase-admin/database'
 import { getEligibleResponders } from '../../services/responder-eligibility.js'
 import { seedResponderDoc, seedResponderShift } from '../helpers/seed-factories.js'
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeEach(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'eligibility-test',
-    firestore: { host: 'localhost', port: 8081 },
-    database: { host: 'localhost', port: 9000 },
-  })
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'eligibility-test',
+      firestore: { host: 'localhost', port: 8081 },
+      database: { host: 'localhost', port: 9000 },
+    },
+    'responder-eligibility',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
   await Promise.race([
     testEnv.clearDatabase(),
@@ -29,49 +38,52 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('getEligibleResponders', () => {
-  it('returns only active responders in the target municipality who are on shift', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
-      const rtdb = ctx.database() as unknown as Database
-      await seedResponderDoc(db, {
-        uid: 'r1',
-        municipalityId: 'daet',
-        agencyId: 'bfp-daet',
-        isActive: true,
-      })
-      await seedResponderDoc(db, {
-        uid: 'r2',
-        municipalityId: 'daet',
-        agencyId: 'bfp-daet',
-        isActive: true,
-      })
-      await seedResponderDoc(db, {
-        uid: 'r3',
-        municipalityId: 'daet',
-        agencyId: 'bfp-daet',
-        isActive: false,
-      })
-      await seedResponderDoc(db, {
-        uid: 'r4',
-        municipalityId: 'mercedes',
-        agencyId: 'bfp-mercedes',
-        isActive: true,
-      })
-      await seedResponderShift(rtdb, 'daet', 'r1', true)
-      await seedResponderShift(rtdb, 'daet', 'r2', false)
-      await seedResponderShift(rtdb, 'mercedes', 'r4', true)
+  itif(available)(
+    'returns only active responders in the target municipality who are on shift',
+    async () => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore
+        const rtdb = ctx.database() as unknown as Database
+        await seedResponderDoc(db, {
+          uid: 'r1',
+          municipalityId: 'daet',
+          agencyId: 'bfp-daet',
+          isActive: true,
+        })
+        await seedResponderDoc(db, {
+          uid: 'r2',
+          municipalityId: 'daet',
+          agencyId: 'bfp-daet',
+          isActive: true,
+        })
+        await seedResponderDoc(db, {
+          uid: 'r3',
+          municipalityId: 'daet',
+          agencyId: 'bfp-daet',
+          isActive: false,
+        })
+        await seedResponderDoc(db, {
+          uid: 'r4',
+          municipalityId: 'mercedes',
+          agencyId: 'bfp-mercedes',
+          isActive: true,
+        })
+        await seedResponderShift(rtdb, 'daet', 'r1', true)
+        await seedResponderShift(rtdb, 'daet', 'r2', false)
+        await seedResponderShift(rtdb, 'mercedes', 'r4', true)
 
-      const result = await getEligibleResponders(db, rtdb, { municipalityId: 'daet' })
-      expect(result.map((r) => r.uid).sort()).toEqual(['r1'])
-    })
-  })
+        const result = await getEligibleResponders(db, rtdb, { municipalityId: 'daet' })
+        expect(result.map((r) => r.uid).sort()).toEqual(['r1'])
+      })
+    },
+  )
 
-  it('filters by agency when provided', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('filters by agency when provided', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       const rtdb = ctx.database() as unknown as Database
       await seedResponderDoc(db, {

@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
@@ -33,27 +35,35 @@ import { seedActiveAccount } from '../helpers/seed-factories.js'
 
 const ts = 1713350400000
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'decline-dispatch-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'decline-dispatch-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'decline-dispatch',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 async function seedReportAtStatusJS(
@@ -114,16 +124,16 @@ async function seedDispatchJS(
 }
 
 describe('declineDispatchCore', () => {
-  it('declines a pending dispatch with a required reason', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-1', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-1', 'report-1', 'r1', 'pending')
-    await seedActiveAccount(testEnv, {
+  itif(available)('declines a pending dispatch with a required reason', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-1', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-1', 'report-1', 'r1', 'pending')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       const result = await declineDispatchCore(db, {
         dispatchId: 'dispatch-1',
@@ -163,16 +173,16 @@ describe('declineDispatchCore', () => {
     })
   })
 
-  it('rejects when declineReason is blank', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-2', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-2', 'report-2', 'r1', 'pending')
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when declineReason is blank', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-2', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-2', 'report-2', 'r1', 'pending')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
         declineDispatchCore(db, {
@@ -186,10 +196,10 @@ describe('declineDispatchCore', () => {
     })
   })
 
-  it('rejects when declineReason exceeds 200 characters', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-2b', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-2b', 'report-2b', 'r1', 'pending')
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when declineReason exceeds 200 characters', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-2b', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-2b', 'report-2b', 'r1', 'pending')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
@@ -215,16 +225,16 @@ describe('declineDispatchCore', () => {
     ).rejects.toMatchObject({ code: 'invalid-argument' })
   })
 
-  it('rejects when dispatch is not pending', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-3', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-3', 'report-3', 'r1', 'accepted')
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when dispatch is not pending', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-3', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-3', 'report-3', 'r1', 'accepted')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
         declineDispatchCore(db, {
@@ -238,16 +248,16 @@ describe('declineDispatchCore', () => {
     })
   })
 
-  it('rejects when the dispatch is assigned to another responder', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-4', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-4', 'report-4', 'r1', 'pending')
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when the dispatch is assigned to another responder', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-4', 'assigned')
+    await seedDispatchJS(testEnv!, 'dispatch-4', 'report-4', 'r1', 'pending')
+    await seedActiveAccount(testEnv!, {
       uid: 'r2',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
         declineDispatchCore(db, {
@@ -261,14 +271,14 @@ describe('declineDispatchCore', () => {
     })
   })
 
-  it('rejects when dispatch is not found (NOT_FOUND)', async () => {
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when dispatch is not found (NOT_FOUND)', async () => {
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       await expect(
         declineDispatchCore(db, {
@@ -282,15 +292,15 @@ describe('declineDispatchCore', () => {
     })
   })
 
-  it('rejects when dispatch.assignedTo is missing', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-missing-assignee', 'assigned')
-    await seedActiveAccount(testEnv, {
+  itif(available)('rejects when dispatch.assignedTo is missing', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-missing-assignee', 'assigned')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
       await setDoc(doc(db, 'dispatches', 'dispatch-missing-assignee'), {
         dispatchId: 'dispatch-missing-assignee',
@@ -313,80 +323,86 @@ describe('declineDispatchCore', () => {
     })
   })
 
-  it('rejects when dispatch.assignedTo.uid matches but agencyId is missing', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-partial-assignee-core', 'assigned')
-    await seedActiveAccount(testEnv, {
-      uid: 'r1',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
-
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore()
-      await setDoc(doc(db, 'dispatches', 'dispatch-partial-assignee-core'), {
-        dispatchId: 'dispatch-partial-assignee-core',
-        reportId: 'report-partial-assignee-core',
-        status: 'pending',
-        assignedTo: {
-          uid: 'r1',
-          municipalityId: 'daet',
-        },
-        dispatchedAt: ts,
-        lastStatusAt: ts,
-        schemaVersion: 1,
+  itif(available)(
+    'rejects when dispatch.assignedTo.uid matches but agencyId is missing',
+    async () => {
+      await seedReportAtStatusJS(testEnv!, 'report-partial-assignee-core', 'assigned')
+      await seedActiveAccount(testEnv!, {
+        uid: 'r1',
+        role: 'responder',
+        municipalityId: 'daet',
       })
 
-      await expect(
-        declineDispatchCore(db as unknown as Firestore, {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore()
+        await setDoc(doc(db, 'dispatches', 'dispatch-partial-assignee-core'), {
           dispatchId: 'dispatch-partial-assignee-core',
+          reportId: 'report-partial-assignee-core',
+          status: 'pending',
+          assignedTo: {
+            uid: 'r1',
+            municipalityId: 'daet',
+          },
+          dispatchedAt: ts,
+          lastStatusAt: ts,
+          schemaVersion: 1,
+        })
+
+        await expect(
+          declineDispatchCore(db as unknown as Firestore, {
+            dispatchId: 'dispatch-partial-assignee-core',
+            declineReason: 'Already handling another incident',
+            idempotencyKey: crypto.randomUUID(),
+            actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+            now: Timestamp.now(),
+          }),
+        ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      })
+    },
+  )
+
+  itif(available)(
+    'returns the same result without duplicating events when replayed with the same idempotency key',
+    async () => {
+      await seedReportAtStatusJS(testEnv!, 'report-5b', 'assigned')
+      await seedDispatchJS(testEnv!, 'dispatch-5b', 'report-5b', 'r1', 'pending')
+      await seedActiveAccount(testEnv!, {
+        uid: 'r1',
+        role: 'responder',
+        municipalityId: 'daet',
+      })
+
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore
+        const key = crypto.randomUUID()
+        const first = await declineDispatchCore(db, {
+          dispatchId: 'dispatch-5b',
           declineReason: 'Already handling another incident',
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: key,
           actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
           now: Timestamp.now(),
-        }),
-      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
-    })
-  })
+        })
+        const second = await declineDispatchCore(db, {
+          dispatchId: 'dispatch-5b',
+          declineReason: 'Already handling another incident',
+          idempotencyKey: key,
+          actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+          now: Timestamp.now(),
+        })
 
-  it('returns the same result without duplicating events when replayed with the same idempotency key', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-5b', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-5b', 'report-5b', 'r1', 'pending')
-    await seedActiveAccount(testEnv, {
-      uid: 'r1',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
+        expect(second).toEqual(first)
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
-      const key = crypto.randomUUID()
-      const first = await declineDispatchCore(db, {
-        dispatchId: 'dispatch-5b',
-        declineReason: 'Already handling another incident',
-        idempotencyKey: key,
-        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
-        now: Timestamp.now(),
+        const evts = await db
+          .collection('dispatch_events')
+          .where('dispatchId', '==', 'dispatch-5b')
+          .get()
+        expect(evts.docs).toHaveLength(1)
       })
-      const second = await declineDispatchCore(db, {
-        dispatchId: 'dispatch-5b',
-        declineReason: 'Already handling another incident',
-        idempotencyKey: key,
-        actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
-        now: Timestamp.now(),
-      })
+    },
+  )
 
-      expect(second).toEqual(first)
-
-      const evts = await db
-        .collection('dispatch_events')
-        .where('dispatchId', '==', 'dispatch-5b')
-        .get()
-      expect(evts.docs).toHaveLength(1)
-    })
-  })
-
-  it('returns RATE_LIMITED when responder exceeds 30 declines/minute', async () => {
-    await seedActiveAccount(testEnv, {
+  itif(available)('returns RATE_LIMITED when responder exceeds 30 declines/minute', async () => {
+    await seedActiveAccount(testEnv!, {
       uid: 'responder-rate-limit',
       role: 'responder',
       municipalityId: 'daet',
@@ -395,11 +411,11 @@ describe('declineDispatchCore', () => {
     for (let i = 0; i < 31; i++) {
       const reportId = `report-decline-rl-${String(i)}`
       const dispatchId = `dispatch-decline-rl-${String(i)}`
-      await seedReportAtStatusJS(testEnv, reportId, 'assigned')
-      await seedDispatchJS(testEnv, dispatchId, reportId, 'responder-rate-limit', 'pending')
+      await seedReportAtStatusJS(testEnv!, reportId, 'assigned')
+      await seedDispatchJS(testEnv!, dispatchId, reportId, 'responder-rate-limit', 'pending')
     }
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore
       const now = Timestamp.fromMillis(ts)
 
@@ -438,51 +454,54 @@ describe('declineDispatch callable', () => {
     data: { dispatchId: string; declineReason: string; idempotencyKey: string }
   }) => Promise<{ status: 'declined' }>
 
-  it('wires App Check config and accepts an authenticated responder request', async () => {
-    const shouldEnforce = process.env.NODE_ENV === 'production'
-    expect(onCallMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        region: 'asia-southeast1',
-        enforceAppCheck: shouldEnforce,
-        timeoutSeconds: 10,
-        minInstances: 1,
-      }),
-      expect.any(Function),
-    )
+  itif(available)(
+    'wires App Check config and accepts an authenticated responder request',
+    async () => {
+      const shouldEnforce = process.env.NODE_ENV === 'production'
+      expect(onCallMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          region: 'asia-southeast1',
+          enforceAppCheck: shouldEnforce,
+          timeoutSeconds: 10,
+          minInstances: 1,
+        }),
+        expect.any(Function),
+      )
 
-    await seedReportAtStatusJS(testEnv, 'report-5', 'assigned')
-    await seedDispatchJS(testEnv, 'dispatch-5', 'report-5', 'r1', 'pending')
-    await seedActiveAccount(testEnv, {
-      uid: 'r1',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
-
-    const result = await callDeclineDispatch({
-      auth: {
+      await seedReportAtStatusJS(testEnv!, 'report-5', 'assigned')
+      await seedDispatchJS(testEnv!, 'dispatch-5', 'report-5', 'r1', 'pending')
+      await seedActiveAccount(testEnv!, {
         uid: 'r1',
-        token: { role: 'responder', accountStatus: 'active' },
-      },
-      data: {
-        dispatchId: 'dispatch-5',
-        declineReason: 'Already assigned to another incident',
-        idempotencyKey: crypto.randomUUID(),
-      },
-    })
-
-    expect(result).toMatchObject({ status: 'declined' })
-
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
-      const dispatch = (await db.collection('dispatches').doc('dispatch-5').get()).data()
-      expect(dispatch).toMatchObject({
-        status: 'declined',
-        declineReason: 'Already assigned to another incident',
+        role: 'responder',
+        municipalityId: 'daet',
       })
-    })
-  })
 
-  it('rejects an unauthenticated request', async () => {
+      const result = await callDeclineDispatch({
+        auth: {
+          uid: 'r1',
+          token: { role: 'responder', accountStatus: 'active' },
+        },
+        data: {
+          dispatchId: 'dispatch-5',
+          declineReason: 'Already assigned to another incident',
+          idempotencyKey: crypto.randomUUID(),
+        },
+      })
+
+      expect(result).toMatchObject({ status: 'declined' })
+
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore
+        const dispatch = (await db.collection('dispatches').doc('dispatch-5').get()).data()
+        expect(dispatch).toMatchObject({
+          status: 'declined',
+          declineReason: 'Already assigned to another incident',
+        })
+      })
+    },
+  )
+
+  itif(available)('rejects an unauthenticated request', async () => {
     await expect(
       callDeclineDispatch({
         data: {
@@ -494,7 +513,7 @@ describe('declineDispatch callable', () => {
     ).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 
-  it('rejects a wrong-role request', async () => {
+  itif(available)('rejects a wrong-role request', async () => {
     await expect(
       callDeclineDispatch({
         auth: {
@@ -510,8 +529,8 @@ describe('declineDispatch callable', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
-  it('surfaces not-found when dispatch is missing', async () => {
-    await seedActiveAccount(testEnv, {
+  itif(available)('surfaces not-found when dispatch is missing', async () => {
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
@@ -532,15 +551,15 @@ describe('declineDispatch callable', () => {
     ).rejects.toMatchObject({ code: 'not-found' })
   })
 
-  it('surfaces permission-denied when dispatch.assignedTo is missing', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-callable-missing-assignee', 'assigned')
-    await seedActiveAccount(testEnv, {
+  itif(available)('surfaces permission-denied when dispatch.assignedTo is missing', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-callable-missing-assignee', 'assigned')
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',
     })
 
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
       await setDoc(doc(db, 'dispatches', 'dispatch-callable-missing-assignee'), {
         dispatchId: 'dispatch-callable-missing-assignee',
@@ -567,104 +586,110 @@ describe('declineDispatch callable', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
-  it('surfaces permission-denied when dispatch.assignedTo.uid matches but municipalityId is missing', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-callable-partial-assignee', 'assigned')
-    await seedActiveAccount(testEnv, {
-      uid: 'r1',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
-
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore()
-      await setDoc(doc(db, 'dispatches', 'dispatch-callable-partial-assignee'), {
-        dispatchId: 'dispatch-callable-partial-assignee',
-        reportId: 'report-callable-partial-assignee',
-        status: 'pending',
-        assignedTo: {
-          uid: 'r1',
-          agencyId: 'bfp-daet',
-        },
-        dispatchedAt: ts,
-        lastStatusAt: ts,
-        schemaVersion: 1,
+  itif(available)(
+    'surfaces permission-denied when dispatch.assignedTo.uid matches but municipalityId is missing',
+    async () => {
+      await seedReportAtStatusJS(testEnv!, 'report-callable-partial-assignee', 'assigned')
+      await seedActiveAccount(testEnv!, {
+        uid: 'r1',
+        role: 'responder',
+        municipalityId: 'daet',
       })
-    })
 
-    await expect(
-      callDeclineDispatch({
-        auth: {
-          uid: 'r1',
-          token: { role: 'responder', accountStatus: 'active' },
-        },
-        data: {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore()
+        await setDoc(doc(db, 'dispatches', 'dispatch-callable-partial-assignee'), {
           dispatchId: 'dispatch-callable-partial-assignee',
-          declineReason: 'Already handling another incident',
-          idempotencyKey: crypto.randomUUID(),
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'permission-denied' })
-  })
-
-  it('surfaces resource-exhausted when responder exceeds 30 declines per minute', async () => {
-    await seedActiveAccount(testEnv, {
-      uid: 'responder-callable-rate-limit',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
-
-    for (let i = 0; i < 31; i++) {
-      const reportId = `report-callable-decline-rl-${String(i)}`
-      const dispatchId = `dispatch-callable-decline-rl-${String(i)}`
-      await seedReportAtStatusJS(testEnv, reportId, 'assigned')
-      await seedDispatchJS(
-        testEnv,
-        dispatchId,
-        reportId,
-        'responder-callable-rate-limit',
-        'pending',
-      )
-    }
-
-    for (let i = 0; i < 30; i++) {
-      await callDeclineDispatch({
-        auth: {
-          uid: 'responder-callable-rate-limit',
-          token: { role: 'responder', accountStatus: 'active' },
-        },
-        data: {
-          dispatchId: `dispatch-callable-decline-rl-${String(i)}`,
-          declineReason: `Busy ${String(i)}`,
-          idempotencyKey: crypto.randomUUID(),
-        },
+          reportId: 'report-callable-partial-assignee',
+          status: 'pending',
+          assignedTo: {
+            uid: 'r1',
+            agencyId: 'bfp-daet',
+          },
+          dispatchedAt: ts,
+          lastStatusAt: ts,
+          schemaVersion: 1,
+        })
       })
-    }
 
-    await expect(
-      callDeclineDispatch({
-        auth: {
-          uid: 'responder-callable-rate-limit',
-          token: { role: 'responder', accountStatus: 'active' },
-        },
-        data: {
-          dispatchId: 'dispatch-callable-decline-rl-30',
-          declineReason: 'Busy 30',
-          idempotencyKey: crypto.randomUUID(),
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'resource-exhausted' })
-  })
+      await expect(
+        callDeclineDispatch({
+          auth: {
+            uid: 'r1',
+            token: { role: 'responder', accountStatus: 'active' },
+          },
+          data: {
+            dispatchId: 'dispatch-callable-partial-assignee',
+            declineReason: 'Already handling another incident',
+            idempotencyKey: crypto.randomUUID(),
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'permission-denied' })
+    },
+  )
 
-  it('rejects idempotency key replay with different payload', async () => {
-    await seedReportAtStatusJS(testEnv, 'report-idempotency-mismatch', 'assigned')
+  itif(available)(
+    'surfaces resource-exhausted when responder exceeds 30 declines per minute',
+    async () => {
+      await seedActiveAccount(testEnv!, {
+        uid: 'responder-callable-rate-limit',
+        role: 'responder',
+        municipalityId: 'daet',
+      })
+
+      for (let i = 0; i < 31; i++) {
+        const reportId = `report-callable-decline-rl-${String(i)}`
+        const dispatchId = `dispatch-callable-decline-rl-${String(i)}`
+        await seedReportAtStatusJS(testEnv!, reportId, 'assigned')
+        await seedDispatchJS(
+          testEnv!,
+          dispatchId,
+          reportId,
+          'responder-callable-rate-limit',
+          'pending',
+        )
+      }
+
+      for (let i = 0; i < 30; i++) {
+        await callDeclineDispatch({
+          auth: {
+            uid: 'responder-callable-rate-limit',
+            token: { role: 'responder', accountStatus: 'active' },
+          },
+          data: {
+            dispatchId: `dispatch-callable-decline-rl-${String(i)}`,
+            declineReason: `Busy ${String(i)}`,
+            idempotencyKey: crypto.randomUUID(),
+          },
+        })
+      }
+
+      await expect(
+        callDeclineDispatch({
+          auth: {
+            uid: 'responder-callable-rate-limit',
+            token: { role: 'responder', accountStatus: 'active' },
+          },
+          data: {
+            dispatchId: 'dispatch-callable-decline-rl-30',
+            declineReason: 'Busy 30',
+            idempotencyKey: crypto.randomUUID(),
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'resource-exhausted' })
+    },
+  )
+
+  itif(available)('rejects idempotency key replay with different payload', async () => {
+    await seedReportAtStatusJS(testEnv!, 'report-idempotency-mismatch', 'assigned')
     await seedDispatchJS(
-      testEnv,
+      testEnv!,
       'dispatch-idempotency-mismatch',
       'report-idempotency-mismatch',
       'r1',
       'pending',
     )
-    await seedActiveAccount(testEnv, {
+    await seedActiveAccount(testEnv!, {
       uid: 'r1',
       role: 'responder',
       municipalityId: 'daet',

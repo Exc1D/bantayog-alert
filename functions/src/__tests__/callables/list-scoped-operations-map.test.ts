@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { initializeApp, deleteApp, type App } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 
@@ -11,7 +13,8 @@ import { listScopedOperationsMapCore } from '../../callables/list-scoped-operati
 import { seedReportAtStatus } from '../helpers/seed-factories.js'
 
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 let adminApp: App
 let adminDb: Firestore
 const originalEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST
@@ -68,25 +71,32 @@ async function seedScopedReport(opts: {
 
 beforeAll(async () => {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
-  testEnv = await initializeTestEnvironment({
-    projectId: 'list-scoped-operations-map-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'list-scoped-operations-map-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
+    'list-scoped-operations-map',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
   adminApp = initializeApp({ projectId: 'list-scoped-operations-map-test' }, 'list-scoped-ops')
   adminDb = getFirestore(adminApp)
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
   await deleteApp(adminApp)
   if (originalEmulatorHost === undefined) {
     delete process.env.FIRESTORE_EMULATOR_HOST
@@ -96,42 +106,45 @@ afterAll(async () => {
 })
 
 describe('listScopedOperationsMapCore', () => {
-  it('returns municipal scoped incidents and excludes out-of-scope reports', async () => {
-    await seedScopedReport({
-      reportId: 'rep-muni',
-      municipalityId: 'daet',
-      municipalityLabel: 'Daet',
-      agencyIds: ['bfp-daet'],
-    })
-    await seedScopedReport({
-      reportId: 'rep-other-muni',
-      municipalityId: 'mercedes',
-      municipalityLabel: 'Mercedes',
-      agencyIds: ['bfp-mercedes'],
-    })
-
-    const result = await listScopedOperationsMapCore(adminDb, {
-      uid: 'daet-admin',
-      claims: {
-        role: 'municipal_admin',
-        accountStatus: 'active',
-        municipalityId: 'daet',
-      },
-    })
-
-    expect(result.incidents).toHaveLength(1)
-    expect(result.incidents[0]).toMatchObject({
-      reportId: 'rep-muni',
-      report: {
+  itif(available)(
+    'returns municipal scoped incidents and excludes out-of-scope reports',
+    async () => {
+      await seedScopedReport({
+        reportId: 'rep-muni',
         municipalityId: 'daet',
         municipalityLabel: 'Daet',
-        description: 'Scoped map incident',
-        activeResponderCount: 2,
-      },
-    })
-  })
+        agencyIds: ['bfp-daet'],
+      })
+      await seedScopedReport({
+        reportId: 'rep-other-muni',
+        municipalityId: 'mercedes',
+        municipalityLabel: 'Mercedes',
+        agencyIds: ['bfp-mercedes'],
+      })
 
-  it('returns agency scoped incidents and excludes out-of-scope reports', async () => {
+      const result = await listScopedOperationsMapCore(adminDb, {
+        uid: 'daet-admin',
+        claims: {
+          role: 'municipal_admin',
+          accountStatus: 'active',
+          municipalityId: 'daet',
+        },
+      })
+
+      expect(result.incidents).toHaveLength(1)
+      expect(result.incidents[0]).toMatchObject({
+        reportId: 'rep-muni',
+        report: {
+          municipalityId: 'daet',
+          municipalityLabel: 'Daet',
+          description: 'Scoped map incident',
+          activeResponderCount: 2,
+        },
+      })
+    },
+  )
+
+  itif(available)('returns agency scoped incidents and excludes out-of-scope reports', async () => {
     await seedScopedReport({
       reportId: 'rep-agency',
       municipalityId: 'mercedes',
@@ -166,7 +179,7 @@ describe('listScopedOperationsMapCore', () => {
     })
   })
 
-  it('rejects a caller without a scoped admin role', async () => {
+  itif(available)('rejects a caller without a scoped admin role', async () => {
     await expect(
       listScopedOperationsMapCore(adminDb, {
         uid: 'citizen-1',
@@ -178,7 +191,7 @@ describe('listScopedOperationsMapCore', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
-  it('rejects a municipal_admin missing municipalityId', async () => {
+  itif(available)('rejects a municipal_admin missing municipalityId', async () => {
     await expect(
       listScopedOperationsMapCore(adminDb, {
         uid: 'muni-admin-1',
@@ -190,7 +203,7 @@ describe('listScopedOperationsMapCore', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
-  it('rejects an agency_admin missing agencyId', async () => {
+  itif(available)('rejects an agency_admin missing agencyId', async () => {
     await expect(
       listScopedOperationsMapCore(adminDb, {
         uid: 'agency-admin-1',

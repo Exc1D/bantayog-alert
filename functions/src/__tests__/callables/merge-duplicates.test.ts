@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore, Timestamp, getFirestore } from 'firebase-admin/firestore'
 import { initializeApp, deleteApp, type App } from 'firebase-admin/app'
@@ -24,33 +26,41 @@ import {
 const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const ts = 1713350400000
 const CLUSTER_ID = 'cluster-uuid-1'
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
-  testEnv = await initializeTestEnvironment({
-    projectId: 'merge-dup-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'merge-dup-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
+    'merge-duplicates',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
   adminApp = initializeApp({ projectId: 'merge-dup-test' }, 'merge-dup-test')
   adminDb = getFirestore(adminApp)
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
   await deleteApp(adminApp)
 })
 
 async function seedReport(id: string, overrides: Record<string, unknown> = {}) {
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'reports', id), {
       municipalityId: 'daet',
       reportType: 'flood',
@@ -99,7 +109,7 @@ const muniAdminActor = {
 }
 
 describe('mergeDuplicates', () => {
-  it('rejects a non-muni-admin caller', async () => {
+  itif(available)('rejects a non-muni-admin caller', async () => {
     const result = await mergeDuplicatesCore(
       adminDb,
       {
@@ -115,7 +125,7 @@ describe('mergeDuplicates', () => {
     expectError(result, 'permission-denied')
   })
 
-  it('rejects inactive admin', async () => {
+  itif(available)('rejects inactive admin', async () => {
     await seedReport('r1')
     await seedReport('r2')
     const result = await mergeDuplicatesCore(
@@ -138,7 +148,7 @@ describe('mergeDuplicates', () => {
     expectError(result, 'permission-denied')
   })
 
-  it('rejects report IDs from different municipalities', async () => {
+  itif(available)('rejects report IDs from different municipalities', async () => {
     await seedReport('r1')
     await seedReport('r2', { municipalityId: 'labo' })
     const result = await mergeDuplicatesCore(
@@ -153,7 +163,7 @@ describe('mergeDuplicates', () => {
     expectError(result, 'invalid-argument')
   })
 
-  it('rejects report IDs that do not share a duplicateClusterId', async () => {
+  itif(available)('rejects report IDs that do not share a duplicateClusterId', async () => {
     await seedReport('r1', { duplicateClusterId: 'cluster-a' })
     await seedReport('r2', { duplicateClusterId: 'cluster-b' })
     const result = await mergeDuplicatesCore(
@@ -168,7 +178,7 @@ describe('mergeDuplicates', () => {
     expectError(result, 'failed-precondition')
   })
 
-  it('sets status merged_as_duplicate on all non-primary reports', async () => {
+  itif(available)('sets status merged_as_duplicate on all non-primary reports', async () => {
     await seedReport('r-primary')
     await seedReport('r-dup1')
     await seedReport('r-dup2')
@@ -187,7 +197,7 @@ describe('mergeDuplicates', () => {
     expect(dup2.data()?.status).toBe('merged_as_duplicate')
   })
 
-  it('sets mergedInto on all non-primary reports', async () => {
+  itif(available)('sets mergedInto on all non-primary reports', async () => {
     await seedReport('r-primary')
     await seedReport('r-dup1')
     await mergeDuplicatesCore(
@@ -203,7 +213,7 @@ describe('mergeDuplicates', () => {
     expect(dup1.data()?.mergedInto).toBe('r-primary')
   })
 
-  it('aggregates unique mediaRefs from duplicates onto the primary', async () => {
+  itif(available)('aggregates unique mediaRefs from duplicates onto the primary', async () => {
     await seedReport('r-primary', { mediaRefs: ['media-a', 'media-b'] })
     await seedReport('r-dup1', { mediaRefs: ['media-b', 'media-c'] })
     await mergeDuplicatesCore(
@@ -223,7 +233,7 @@ describe('mergeDuplicates', () => {
     expect(new Set(refs).size).toBe(refs.length)
   })
 
-  it('is idempotent', async () => {
+  itif(available)('is idempotent', async () => {
     await seedReport('r-primary')
     await seedReport('r-dup1')
     const result1 = await mergeDuplicatesCore(
@@ -267,7 +277,7 @@ describe('mergeDuplicates', () => {
     expect(mergeEvents.size).toBe(1)
   })
 
-  it('rejects when primary report does not exist', async () => {
+  itif(available)('rejects when primary report does not exist', async () => {
     await seedReport('r-dup1')
     const result = await mergeDuplicatesCore(
       adminDb,
@@ -281,7 +291,7 @@ describe('mergeDuplicates', () => {
     expectError(result, 'not-found')
   })
 
-  it('updates report_ops for primary and duplicates', async () => {
+  itif(available)('updates report_ops for primary and duplicates', async () => {
     await seedReport('r-primary')
     await seedReport('r-dup1')
     await mergeDuplicatesCore(

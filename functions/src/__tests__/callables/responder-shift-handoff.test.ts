@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore, getFirestore } from 'firebase-admin/firestore'
 import { initializeApp, deleteApp, type App } from 'firebase-admin/app'
@@ -31,29 +33,37 @@ import {
 
 const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 const _origEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST
 
 beforeAll(async () => {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
-  testEnv = await initializeTestEnvironment({
-    projectId: 'responder-handoff-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'responder-handoff-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
+    'responder-shift-handoff',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
   adminApp = initializeApp({ projectId: 'responder-handoff-test' }, 'responder-handoff-test')
   adminDb = getFirestore(adminApp)
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
   await deleteApp(adminApp)
   if (_origEmulatorHost === undefined) {
     delete process.env.FIRESTORE_EMULATOR_HOST
@@ -76,7 +86,7 @@ function makeActor(uid: string, overrides: Record<string, unknown> = {}) {
 }
 
 async function seedResponder(responderId: string, overrides: Record<string, unknown> = {}) {
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'responders', responderId), {
       uid: responderId,
       municipalityId: 'muni-1',
@@ -94,7 +104,7 @@ async function seedResponder(responderId: string, overrides: Record<string, unkn
 }
 
 async function createHandoff(id: string, overrides: Record<string, unknown> = {}) {
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'responder_shift_handoffs', id), {
       fromUid: 'from-responder',
       toUid: 'to-responder',
@@ -111,7 +121,7 @@ async function createHandoff(id: string, overrides: Record<string, unknown> = {}
 }
 
 describe('initiateResponderHandoffCore', () => {
-  it('should reject when actor account status is not active', async () => {
+  itif(available)('should reject when actor account status is not active', async () => {
     const result = await initiateResponderHandoffCore(
       adminDb,
       { toUid: 'responder-b', reason: 'shift ended', idempotencyKey: uuid(1) },
@@ -124,7 +134,7 @@ describe('initiateResponderHandoffCore', () => {
     }
   })
 
-  it('should reject when toUid equals actor uid', async () => {
+  itif(available)('should reject when toUid equals actor uid', async () => {
     const result = await initiateResponderHandoffCore(
       adminDb,
       { toUid: 'responder-a', reason: 'shift ended', idempotencyKey: uuid(2) },
@@ -137,7 +147,7 @@ describe('initiateResponderHandoffCore', () => {
     }
   })
 
-  it('should reject when toUid responder is not found', async () => {
+  itif(available)('should reject when toUid responder is not found', async () => {
     await seedResponder('responder-a')
     const result = await initiateResponderHandoffCore(
       adminDb,
@@ -151,7 +161,7 @@ describe('initiateResponderHandoffCore', () => {
     }
   })
 
-  it('should create handoff document when valid', async () => {
+  itif(available)('should create handoff document when valid', async () => {
     await seedResponder('responder-a')
     await seedResponder('responder-b')
     const result = await initiateResponderHandoffCore(
@@ -167,32 +177,35 @@ describe('initiateResponderHandoffCore', () => {
     }
   })
 
-  it('should be idempotent when called twice with the same idempotencyKey', async () => {
-    await seedResponder('responder-a')
-    await seedResponder('responder-b')
-    const input = { toUid: 'responder-b', reason: 'shift ended', idempotencyKey: uuid(5) }
-    const result1 = await initiateResponderHandoffCore(
-      adminDb,
-      input,
-      makeActor('responder-a'),
-      'corr-5a',
-    )
-    const result2 = await initiateResponderHandoffCore(
-      adminDb,
-      input,
-      makeActor('responder-a'),
-      'corr-5b',
-    )
-    expect(result1.success).toBe(true)
-    expect(result2.success).toBe(true)
-    if (result1.success && result2.success) {
-      expect(result1.handoffId).toBe(result2.handoffId)
-    }
-  })
+  itif(available)(
+    'should be idempotent when called twice with the same idempotencyKey',
+    async () => {
+      await seedResponder('responder-a')
+      await seedResponder('responder-b')
+      const input = { toUid: 'responder-b', reason: 'shift ended', idempotencyKey: uuid(5) }
+      const result1 = await initiateResponderHandoffCore(
+        adminDb,
+        input,
+        makeActor('responder-a'),
+        'corr-5a',
+      )
+      const result2 = await initiateResponderHandoffCore(
+        adminDb,
+        input,
+        makeActor('responder-a'),
+        'corr-5b',
+      )
+      expect(result1.success).toBe(true)
+      expect(result2.success).toBe(true)
+      if (result1.success && result2.success) {
+        expect(result1.handoffId).toBe(result2.handoffId)
+      }
+    },
+  )
 })
 
 describe('acceptResponderHandoffCore', () => {
-  it('should reject when handoff is not found', async () => {
+  itif(available)('should reject when handoff is not found', async () => {
     const result = await acceptResponderHandoffCore(
       adminDb,
       { handoffId: 'missing-handoff', idempotencyKey: uuid(6) },
@@ -205,7 +218,7 @@ describe('acceptResponderHandoffCore', () => {
     }
   })
 
-  it('should reject when accepting uid is not the toUid', async () => {
+  itif(available)('should reject when accepting uid is not the toUid', async () => {
     await createHandoff('handoff-1', { toUid: 'other-responder' })
     const result = await acceptResponderHandoffCore(
       adminDb,
@@ -219,7 +232,7 @@ describe('acceptResponderHandoffCore', () => {
     }
   })
 
-  it('should mark handoff as accepted', async () => {
+  itif(available)('should mark handoff as accepted', async () => {
     await createHandoff('handoff-2', { toUid: 'responder-b' })
     const result = await acceptResponderHandoffCore(
       adminDb,

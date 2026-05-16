@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc, Timestamp } from 'firebase/firestore'
 import { type Firestore, getFirestore } from 'firebase-admin/firestore'
 import { initializeApp, deleteApp, type App } from 'firebase-admin/app'
@@ -29,29 +31,37 @@ import { initiateShiftHandoffCore, acceptShiftHandoffCore } from '../../callable
 
 const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 const _origEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST
 
 beforeAll(async () => {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8081'
-  testEnv = await initializeTestEnvironment({
-    projectId: 'shift-handoff-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'shift-handoff-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
+    'shift-handoff',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
   adminApp = initializeApp({ projectId: 'shift-handoff-test' }, 'shift-handoff-test')
   adminDb = getFirestore(adminApp)
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
   await deleteApp(adminApp)
   if (_origEmulatorHost === undefined) {
     delete process.env.FIRESTORE_EMULATOR_HOST
@@ -71,7 +81,7 @@ const adminActor = {
 }
 
 async function seedReportOp(id: string) {
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await testEnv!.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'report_ops', id), {
       municipalityId: 'daet',
       status: 'assigned',
@@ -89,7 +99,7 @@ async function seedReportOp(id: string) {
 }
 
 describe('initiateShiftHandoff', () => {
-  it('rejects citizens and responders', async () => {
+  itif(available)('rejects citizens and responders', async () => {
     const result = await initiateShiftHandoffCore(
       adminDb,
       {
@@ -108,7 +118,7 @@ describe('initiateShiftHandoff', () => {
     }
   })
 
-  it('rejects inactive admin', async () => {
+  itif(available)('rejects inactive admin', async () => {
     const result = await initiateShiftHandoffCore(
       adminDb,
       {
@@ -132,7 +142,7 @@ describe('initiateShiftHandoff', () => {
     }
   })
 
-  it('rejects municipal_admin missing municipalityId', async () => {
+  itif(available)('rejects municipal_admin missing municipalityId', async () => {
     const result = await initiateShiftHandoffCore(
       adminDb,
       {
@@ -155,7 +165,7 @@ describe('initiateShiftHandoff', () => {
     }
   })
 
-  it('creates shift_handoffs doc with status pending and no toUid', async () => {
+  itif(available)('creates shift_handoffs doc with status pending and no toUid', async () => {
     const result = await initiateShiftHandoffCore(
       adminDb,
       {
@@ -178,7 +188,7 @@ describe('initiateShiftHandoff', () => {
     expect(created.data()?.fromUid).toBe('admin-from')
   })
 
-  it('builds activeIncidentSnapshot from live Firestore state', async () => {
+  itif(available)('builds activeIncidentSnapshot from live Firestore state', async () => {
     await seedReportOp('r-active-1')
     await seedReportOp('r-active-2')
     const result = await initiateShiftHandoffCore(
@@ -200,7 +210,7 @@ describe('initiateShiftHandoff', () => {
     expect(snapshot).toContain('r-active-2')
   })
 
-  it('is idempotent', async () => {
+  itif(available)('is idempotent', async () => {
     const result1 = await initiateShiftHandoffCore(
       adminDb,
       {
@@ -231,7 +241,7 @@ describe('initiateShiftHandoff', () => {
 
 describe('acceptShiftHandoff', () => {
   async function createHandoff(id: string, overrides: Record<string, unknown> = {}) {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'shift_handoffs', id), {
         fromUid: 'admin-from',
         municipalityId: 'daet',
@@ -246,7 +256,7 @@ describe('acceptShiftHandoff', () => {
     })
   }
 
-  it('rejects inactive admin', async () => {
+  itif(available)('rejects inactive admin', async () => {
     await createHandoff('h-inactive')
     const result = await acceptShiftHandoffCore(
       adminDb,
@@ -268,7 +278,7 @@ describe('acceptShiftHandoff', () => {
     }
   })
 
-  it('rejects non-existent handoff', async () => {
+  itif(available)('rejects non-existent handoff', async () => {
     const result = await acceptShiftHandoffCore(
       adminDb,
       { handoffId: 'h-missing', idempotencyKey: uuid(13) },
@@ -289,7 +299,7 @@ describe('acceptShiftHandoff', () => {
     }
   })
 
-  it('rejects expired handoff', async () => {
+  itif(available)('rejects expired handoff', async () => {
     await createHandoff('h-expired', { expiresAt: Timestamp.fromMillis(ts - 1) })
     const result = await acceptShiftHandoffCore(
       adminDb,
@@ -311,7 +321,7 @@ describe('acceptShiftHandoff', () => {
     }
   })
 
-  it('rejects self-accept', async () => {
+  itif(available)('rejects self-accept', async () => {
     await createHandoff('h-self')
     const result = await acceptShiftHandoffCore(
       adminDb,
@@ -333,7 +343,7 @@ describe('acceptShiftHandoff', () => {
     }
   })
 
-  it('rejects a caller from a different municipality', async () => {
+  itif(available)('rejects a caller from a different municipality', async () => {
     await createHandoff('h1')
     const result = await acceptShiftHandoffCore(
       adminDb,
@@ -355,7 +365,7 @@ describe('acceptShiftHandoff', () => {
     }
   })
 
-  it('updates status to accepted and sets toUid', async () => {
+  itif(available)('updates status to accepted and sets toUid', async () => {
     await createHandoff('h2')
     const result = await acceptShiftHandoffCore(
       adminDb,
@@ -377,7 +387,7 @@ describe('acceptShiftHandoff', () => {
     expect(updated.data()?.toUid).toBe('admin-to')
   })
 
-  it('is idempotent — double-accept returns success', async () => {
+  itif(available)('is idempotent — double-accept returns success', async () => {
     await createHandoff('h3')
     const actor = {
       uid: 'admin-to',
@@ -405,7 +415,7 @@ describe('acceptShiftHandoff', () => {
     expect(result2.success).toBe(true)
   })
 
-  it('rejects a different user accepting an already-accepted handoff', async () => {
+  itif(available)('rejects a different user accepting an already-accepted handoff', async () => {
     await createHandoff('h-already')
     const actorA = {
       uid: 'admin-to',

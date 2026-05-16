@@ -1,17 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import { setErasureLegalHoldCore } from '../../callables/set-erasure-legal-hold.js'
 
 vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
 
-let env: RulesTestEnvironment | undefined
-
-beforeEach(async () => {
-  env = await initializeTestEnvironment({
+const guarded = await guardInitTestEnvironment(
+  {
     projectId: 'demo-8c-legalhold',
     firestore: { host: 'localhost', port: 8081 },
-  })
+  },
+  'set-erasure-legal-hold',
+)
+const env: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
+
+beforeEach(async () => {
+  if (!env) return
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
     const snap = await db.collection('erasure_requests').get()
@@ -19,12 +27,12 @@ beforeEach(async () => {
   })
 })
 
-afterEach(async () => {
+afterAll(async () => {
   await env?.cleanup()
 })
 
 describe('setErasureLegalHoldCore', () => {
-  it('sets legalHold true on an approved_pending_anonymization request', async () => {
+  itif(available)('sets legalHold true on an approved_pending_anonymization request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await db.collection('erasure_requests').doc('req-1').set({
@@ -38,7 +46,6 @@ describe('setErasureLegalHoldCore', () => {
         { erasureRequestId: 'req-1', hold: true, reason: 'court order' },
         { uid: 'admin-1' },
       )
-
       const snap = await db.collection('erasure_requests').doc('req-1').get()
       expect(snap.data().legalHold).toBe(true)
       expect(snap.data().legalHoldReason).toBe('court order')
@@ -46,7 +53,7 @@ describe('setErasureLegalHoldCore', () => {
     })
   })
 
-  it('clears legalHold on an existing hold', async () => {
+  itif(available)('clears legalHold on an existing hold', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await db.collection('erasure_requests').doc('req-2').set({
@@ -60,13 +67,12 @@ describe('setErasureLegalHoldCore', () => {
         { erasureRequestId: 'req-2', hold: false, reason: 'court lifted' },
         { uid: 'admin-1' },
       )
-
       const snap = await db.collection('erasure_requests').doc('req-2').get()
       expect(snap.data().legalHold).toBe(false)
     })
   })
 
-  it('throws not-found for missing request', async () => {
+  itif(available)('throws not-found for missing request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await expect(
@@ -79,7 +85,7 @@ describe('setErasureLegalHoldCore', () => {
     })
   })
 
-  it('throws failed-precondition on completed request', async () => {
+  itif(available)('throws failed-precondition on completed request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await db
@@ -96,7 +102,7 @@ describe('setErasureLegalHoldCore', () => {
     })
   })
 
-  it('throws failed-precondition on denied request', async () => {
+  itif(available)('throws failed-precondition on denied request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await db

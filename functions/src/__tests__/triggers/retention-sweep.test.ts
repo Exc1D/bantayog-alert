@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import { retentionSweepCore } from '../../triggers/retention-sweep.js'
 
 const mockGetFiles = vi.fn().mockResolvedValue([[]])
@@ -18,14 +19,21 @@ vi.mock('firebase-admin/storage', () => ({
 }))
 vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
 
-let env: RulesTestEnvironment | undefined
+const guarded = await guardInitTestEnvironment(
+  {
+    projectId: 'demo-8c-retention',
+    firestore: { host: 'localhost', port: 8081 },
+  },
+  'retention-sweep',
+)
+const env: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
 
 beforeEach(async () => {
   mockGetFiles.mockResolvedValue([[]])
-  env = await initializeTestEnvironment({
-    projectId: 'demo-8c-retention',
-    firestore: { host: 'localhost', port: 8081 },
-  })
+  if (!env) return
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
     for (const col of ['reports', 'report_private', 'report_contacts', 'erasure_requests']) {
@@ -35,51 +43,54 @@ beforeEach(async () => {
   })
 })
 
-afterEach(async () => {
+afterAll(async () => {
   await env?.cleanup()
 })
 
 describe('retentionSweepCore', () => {
-  it('anonymizes unverified report older than 1 week and sets retentionHardDeleteEligibleAt', async () => {
-    await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      const { getStorage } = await import('firebase-admin/storage')
-      const oldSubmittedAt = Date.now() - 8 * 24 * 60 * 60 * 1000
+  itif(available)(
+    'anonymizes unverified report older than 1 week and sets retentionHardDeleteEligibleAt',
+    async () => {
+      await env!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as any
+        const { getStorage } = await import('firebase-admin/storage')
+        const oldSubmittedAt = Date.now() - 8 * 24 * 60 * 60 * 1000
 
-      await db.collection('reports').doc('r-old').set({
-        submittedBy: 'uid-anon',
-        verified: false,
-        submittedAt: oldSubmittedAt,
-        municipalityId: 'daet',
-      })
-      await db
-        .collection('report_private')
-        .doc('r-old')
-        .set({
-          citizenName: 'Test User',
-          rawPhone: '+63917',
-          contactPhone: '+63917',
-          gpsExact: { lat: 14.1, lng: 122.9 },
-          addressText: '123 St',
-          exactLocation: { lat: 14.123456, lng: 122.987654 },
-          reportId: 'r-old',
+        await db.collection('reports').doc('r-old').set({
+          submittedBy: 'uid-anon',
+          verified: false,
+          submittedAt: oldSubmittedAt,
+          municipalityId: 'daet',
         })
+        await db
+          .collection('report_private')
+          .doc('r-old')
+          .set({
+            citizenName: 'Test User',
+            rawPhone: '+63917',
+            contactPhone: '+63917',
+            gpsExact: { lat: 14.1, lng: 122.9 },
+            addressText: '123 St',
+            exactLocation: { lat: 14.123456, lng: 122.987654 },
+            reportId: 'r-old',
+          })
 
-      const result = await retentionSweepCore({ db, storage: getStorage() })
-      expect(result.anonymized).toBe(1)
+        const result = await retentionSweepCore({ db, storage: getStorage() })
+        expect(result.anonymized).toBe(1)
 
-      const privSnap = await db.collection('report_private').doc('r-old').get()
-      expect(privSnap.data().citizenName).toBeNull()
-      expect(privSnap.data().contactPhone).toBeNull()
-      expect(privSnap.data().exactLocation).toBeNull()
+        const privSnap = await db.collection('report_private').doc('r-old').get()
+        expect(privSnap.data().citizenName).toBeNull()
+        expect(privSnap.data().contactPhone).toBeNull()
+        expect(privSnap.data().exactLocation).toBeNull()
 
-      const reportSnap = await db.collection('reports').doc('r-old').get()
-      expect(reportSnap.data().retentionAnonymizedAt).toBeDefined()
-      expect(reportSnap.data().retentionHardDeleteEligibleAt).toBeGreaterThan(Date.now())
-    })
-  })
+        const reportSnap = await db.collection('reports').doc('r-old').get()
+        expect(reportSnap.data().retentionAnonymizedAt).toBeDefined()
+        expect(reportSnap.data().retentionHardDeleteEligibleAt).toBeGreaterThan(Date.now())
+      })
+    },
+  )
 
-  it('skips reports where submittedBy === citizen_deleted', async () => {
+  itif(available)('skips reports where submittedBy === citizen_deleted', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { getStorage } = await import('firebase-admin/storage')
@@ -99,7 +110,7 @@ describe('retentionSweepCore', () => {
     })
   })
 
-  it('skips reports belonging to citizen with active erasure request', async () => {
+  itif(available)('skips reports belonging to citizen with active erasure request', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { getStorage } = await import('firebase-admin/storage')
@@ -127,37 +138,40 @@ describe('retentionSweepCore', () => {
     })
   })
 
-  it('hard-deletes report when retentionHardDeleteEligibleAt is in the past', async () => {
-    await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      const { getStorage } = await import('firebase-admin/storage')
-      const pastEligible = Date.now() - 1000
+  itif(available)(
+    'hard-deletes report when retentionHardDeleteEligibleAt is in the past',
+    async () => {
+      await env!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as any
+        const { getStorage } = await import('firebase-admin/storage')
+        const pastEligible = Date.now() - 1000
 
-      await db
-        .collection('reports')
-        .doc('r-delete')
-        .set({
-          submittedBy: 'uid-old',
-          verified: false,
-          submittedAt: Date.now() - 40 * 24 * 60 * 60 * 1000,
-          retentionAnonymizedAt: pastEligible - 30 * 24 * 60 * 60 * 1000,
-          retentionHardDeleteEligibleAt: pastEligible,
-          municipalityId: 'daet',
-        })
-      await db.collection('report_private').doc('r-delete').set({ reportId: 'r-delete' })
-      await db.collection('report_contacts').doc('r-delete').set({ reportId: 'r-delete' })
+        await db
+          .collection('reports')
+          .doc('r-delete')
+          .set({
+            submittedBy: 'uid-old',
+            verified: false,
+            submittedAt: Date.now() - 40 * 24 * 60 * 60 * 1000,
+            retentionAnonymizedAt: pastEligible - 30 * 24 * 60 * 60 * 1000,
+            retentionHardDeleteEligibleAt: pastEligible,
+            municipalityId: 'daet',
+          })
+        await db.collection('report_private').doc('r-delete').set({ reportId: 'r-delete' })
+        await db.collection('report_contacts').doc('r-delete').set({ reportId: 'r-delete' })
 
-      const result = await retentionSweepCore({ db, storage: getStorage() })
-      expect(result.hardDeleted).toBe(1)
+        const result = await retentionSweepCore({ db, storage: getStorage() })
+        expect(result.hardDeleted).toBe(1)
 
-      const reportSnap = await db.collection('reports').doc('r-delete').get()
-      expect(reportSnap.exists).toBe(false)
+        const reportSnap = await db.collection('reports').doc('r-delete').get()
+        expect(reportSnap.exists).toBe(false)
 
-      const privSnap = await db.collection('report_private').doc('r-delete').get()
-      expect(privSnap.exists).toBe(false)
+        const privSnap = await db.collection('report_private').doc('r-delete').get()
+        expect(privSnap.exists).toBe(false)
 
-      const contactsSnap = await db.collection('report_contacts').doc('r-delete').get()
-      expect(contactsSnap.exists).toBe(false)
-    })
-  })
+        const contactsSnap = await db.collection('report_contacts').doc('r-delete').get()
+        expect(contactsSnap.exists).toBe(false)
+      })
+    },
+  )
 })

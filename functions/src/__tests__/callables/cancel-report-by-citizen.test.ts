@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { Timestamp } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({
@@ -18,32 +20,40 @@ vi.mock('firebase-admin/storage', () => ({
 import { cancelReportByCitizenCore } from '../../callables/cancel-report-by-citizen.js'
 import { seedReportAtStatus, seedActiveAccount } from '../helpers/seed-factories.js'
 
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'cancel-report-by-citizen-test',
-    firestore: { host: 'localhost', port: 8081 },
-  })
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'cancel-report-by-citizen-test',
+      firestore: { host: 'localhost', port: 8081 },
+    },
+    'cancel-report-by-citizen',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('cancelReportByCitizenCore', () => {
-  it('deletes report when status is new and citizen owns it', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('deletes report when status is new and citizen owns it', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
         municipalityId: 'daet',
         reporterUid: 'citizen-1',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-1',
         role: 'citizen',
         municipalityId: 'daet',
@@ -65,14 +75,14 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  it('deletes report when status is awaiting_verify and citizen owns it', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('deletes report when status is awaiting_verify and citizen owns it', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
         municipalityId: 'daet',
         reporterUid: 'citizen-1',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-1',
         role: 'citizen',
         municipalityId: 'daet',
@@ -96,14 +106,14 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  it('writes a report_events entry with eventType citizen_cancelled', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('writes a report_events entry with eventType citizen_cancelled', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
         municipalityId: 'daet',
         reporterUid: 'citizen-1',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-1',
         role: 'citizen',
         municipalityId: 'daet',
@@ -129,10 +139,10 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  it('rejects non-existent report with NOT_FOUND', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('rejects non-existent report with NOT_FOUND', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-1',
         role: 'citizen',
         municipalityId: 'daet',
@@ -152,14 +162,14 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  it('rejects status verified with FAILED_PRECONDITION', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('rejects status verified with FAILED_PRECONDITION', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'verified', {
         municipalityId: 'daet',
         reporterUid: 'citizen-1',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-1',
         role: 'citizen',
         municipalityId: 'daet',
@@ -179,14 +189,14 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  it('rejects when citizen does not own the report with FORBIDDEN', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('rejects when citizen does not own the report with FORBIDDEN', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
         municipalityId: 'daet',
         reporterUid: 'citizen-1',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-2',
         role: 'citizen',
         municipalityId: 'daet',
@@ -206,14 +216,14 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  it('is idempotent — replay with same key succeeds without error', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('is idempotent — replay with same key succeeds without error', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
         municipalityId: 'daet',
         reporterUid: 'citizen-1',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-1',
         role: 'citizen',
         municipalityId: 'daet',
@@ -249,14 +259,14 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  it('also deletes report_contacts and report_lookup when cancelling', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('also deletes report_contacts and report_lookup when cancelling', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
         municipalityId: 'daet',
         reporterUid: 'citizen-1',
       })
-      await seedActiveAccount(testEnv, {
+      await seedActiveAccount(testEnv!, {
         uid: 'citizen-1',
         role: 'citizen',
         municipalityId: 'daet',

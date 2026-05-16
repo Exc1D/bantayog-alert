@@ -1,33 +1,41 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { describe, it, expect, beforeEach, afterAll } from 'vitest'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import { checkRateLimit } from '../../services/rate-limit.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/firestore.rules')
 
-let testEnv: RulesTestEnvironment
-
-beforeEach(async () => {
-  testEnv = await initializeTestEnvironment({
+const guarded = await guardInitTestEnvironment(
+  {
     projectId: 'rate-limit-test',
     firestore: {
       host: 'localhost',
       port: 8081,
       rules: readFileSync(RULES_PATH, 'utf8'),
     },
-  })
+  },
+  'rate-limit',
+)
+const testEnv: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
+
+const itif = (condition: boolean) => (condition ? it : it.skip)
+
+beforeEach(async () => {
+  if (!testEnv) return
   await testEnv.clearFirestore()
 })
 
-afterEach(async () => {
-  await testEnv.cleanup()
+afterAll(async () => {
+  await testEnv?.cleanup()
 })
 
 describe('checkRateLimit', () => {
-  it('allows the first call under the limit', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('allows the first call under the limit', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = ctx.firestore() as any
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -36,7 +44,6 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now: Timestamp.now(),
-
         updatedAt: Date.now(),
       })
       expect(result.allowed).toBe(true)
@@ -44,8 +51,8 @@ describe('checkRateLimit', () => {
     })
   })
 
-  it('denies calls past the limit and returns retryAfterSeconds', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('denies calls past the limit and returns retryAfterSeconds', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = ctx.firestore() as any
       const now = Timestamp.now()
@@ -57,7 +64,6 @@ describe('checkRateLimit', () => {
           limit: 60,
           windowSeconds: 60,
           now,
-
           updatedAt: nowMs,
         })
       }
@@ -67,7 +73,6 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now,
-
         updatedAt: nowMs,
       })
       expect(denied.allowed).toBe(false)
@@ -75,8 +80,8 @@ describe('checkRateLimit', () => {
     })
   })
 
-  it('evicts timestamps outside the window', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('evicts timestamps outside the window', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = ctx.firestore() as any
       const now = Timestamp.fromMillis(1_000_000)
@@ -88,7 +93,6 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now: old,
-
         updatedAt: old.toMillis(),
       })
       // Now call with current time — old entry must be filtered out
@@ -98,7 +102,6 @@ describe('checkRateLimit', () => {
         limit: 60,
         windowSeconds: 60,
         now,
-
         updatedAt: now.toMillis(),
       })
       expect(result.allowed).toBe(true)

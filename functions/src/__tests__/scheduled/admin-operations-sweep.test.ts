@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
@@ -15,31 +17,39 @@ import { adminOperationsSweepCore } from '../../scheduled/admin-operations-sweep
 
 const ts = 1713350400000
 const THIRTY_MIN_MS = 30 * 60 * 1000
-let testEnv: RulesTestEnvironment
+let testEnv: RulesTestEnvironment | undefined
+let available = false
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: 'admin-sweep-test',
-    firestore: {
-      host: 'localhost',
-      port: 8081,
-      rules:
-        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+  const guarded = await guardInitTestEnvironment(
+    {
+      projectId: 'admin-sweep-test',
+      firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules:
+          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+      },
     },
-  })
-  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+    'admin-operations-sweep',
+  )
+  testEnv = guarded.env
+  available = guarded.available
+  if (!available) return
+  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 })
 
 beforeEach(async () => {
+  if (!available || !testEnv) return
   await testEnv.clearFirestore()
 })
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('adminOperationsSweep — agency assistance escalation', () => {
-  it('ignores requests pending for less than 30 minutes', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('ignores requests pending for less than 30 minutes', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'agency_assistance_requests', 'ar1'), {
         status: 'pending',
         createdAt: ts - THIRTY_MIN_MS + 60000,
@@ -60,8 +70,8 @@ describe('adminOperationsSweep — agency assistance escalation', () => {
     expect(snap.data()?.escalatedAt).toBeNull()
   })
 
-  it('sets escalatedAt on requests pending over 30 minutes', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('sets escalatedAt on requests pending over 30 minutes', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'agency_assistance_requests', 'ar1'), {
         status: 'pending',
         createdAt: ts - THIRTY_MIN_MS - 1,
@@ -82,9 +92,9 @@ describe('adminOperationsSweep — agency assistance escalation', () => {
     expect(snap.data()?.escalatedAt).toBe(ts)
   })
 
-  it('does not re-escalate already-escalated requests', async () => {
+  itif(available)('does not re-escalate already-escalated requests', async () => {
     const originalEscalatedAt = ts - 60000
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'agency_assistance_requests', 'ar1'), {
         status: 'pending',
         createdAt: ts - THIRTY_MIN_MS - 1,
@@ -107,8 +117,8 @@ describe('adminOperationsSweep — agency assistance escalation', () => {
 })
 
 describe('adminOperationsSweep — shift handoff escalation', () => {
-  it('ignores handoffs pending less than 30 minutes', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('ignores handoffs pending less than 30 minutes', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'shift_handoffs', 'h1'), {
         fromUid: 'admin-1',
         municipalityId: 'daet',
@@ -125,8 +135,8 @@ describe('adminOperationsSweep — shift handoff escalation', () => {
     expect(snap.data()?.escalatedAt).toBeNull()
   })
 
-  it('sets escalatedAt on handoffs pending over 30 minutes', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  itif(available)('sets escalatedAt on handoffs pending over 30 minutes', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'shift_handoffs', 'h1'), {
         fromUid: 'admin-1',
         municipalityId: 'daet',

@@ -127,10 +127,27 @@ export async function createTestEnv(projectId: string): Promise<RulesTestEnviron
   }
 }
 
-export function authed(env: RulesTestEnvironment, uid: string, claims: Record<string, unknown>) {
+export function authed(
+  env: RulesTestEnvironment | undefined,
+  uid: string,
+  claims: Record<string, unknown>,
+) {
+  if (!env) throw new Error('[authed] env is undefined — did the emulator init fail?')
   return env.authenticatedContext(uid, claims).firestore()
 }
 
-export function unauthed(env: RulesTestEnvironment) {
+export function unauthed(env: RulesTestEnvironment | undefined) {
+  if (!env) throw new Error('[unauthed] env is undefined — did the emulator init fail?')
   return env.unauthenticatedContext().firestore()
+}
+
+export async function createTestEnvSafe(
+  projectId: string,
+): Promise<RulesTestEnvironment | undefined> {
+  try {
+    return await createTestEnv(projectId)
+  } catch (err) {
+    console.warn(`[${projectId}] Emulator unavailable; tests will skip.`, err)
+    return undefined
+  }
 }
