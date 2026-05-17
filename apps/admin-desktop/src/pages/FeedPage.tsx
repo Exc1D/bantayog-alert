@@ -30,7 +30,16 @@ export default function FeedPage() {
   const [publishingId, setPublishingId] = useState<string | null>(null)
   const [unpublishingId, setUnpublishingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [lastUpdatedAt] = useState(() => Date.now())
+  const lastUpdatedAt = useMemo(() => {
+    if (reports.length === 0) return 0
+    return Math.max(
+      ...reports.map((r) => {
+        const raw = r as unknown as Record<string, unknown>
+        const ts = raw.updatedAt
+        return typeof ts === 'number' ? ts : 0
+      }),
+    )
+  }, [reports])
 
   const feedReports = useMemo(
     () =>
