@@ -145,6 +145,8 @@ describe('inboxReconciliationSweepCore', () => {
 
         const stale = await getDoc(doc(ctx.firestore(), 'report_inbox', 'stale-failed'))
         expect(stale.data()?.processedAt).toBeUndefined()
+        expect(stale.data()?.processingStartedAt).toBeNull()
+        expect(typeof stale.data()?.lastProcessingFailedAt).toBe('number')
         expect(stale.data()?.lastProcessingError).toBe('transient firestore failure')
       })
     },
