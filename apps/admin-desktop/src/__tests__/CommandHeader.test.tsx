@@ -1,20 +1,33 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { CommandHeader } from '../components/CommandHeader'
 
 describe('CommandHeader', () => {
   it('renders title and live indicator', () => {
-    render(<CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={Date.now()} />)
+    render(
+      <MemoryRouter>
+        <CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={Date.now()} />
+      </MemoryRouter>,
+    )
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('renders command-center tabs including feed moderation', () => {
     render(
-      <CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={Date.now()} windowRole="feed" />,
+      <MemoryRouter>
+        <CommandHeader
+          title="PDRRMO Camarines Norte"
+          lastUpdatedAt={Date.now()}
+          windowRole="feed"
+        />
+      </MemoryRouter>,
     )
 
+    // react-router-dom Link renders as <a>, but the href is replaced by a resolved 'to'
+    // On the root of MemoryRouter, these resolve to relative /dashboard, /map, /feed
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard')
     expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute('href', '/map')
     expect(screen.getByRole('link', { name: 'Feed' })).toHaveAttribute('href', '/feed')
@@ -24,18 +37,24 @@ describe('CommandHeader', () => {
   it('opens map window when clicked', async () => {
     const user = userEvent.setup()
     const onOpenMap = vi.fn()
-    render(<CommandHeader title="Test" lastUpdatedAt={Date.now()} onOpenMap={onOpenMap} />)
+    render(
+      <MemoryRouter>
+        <CommandHeader title="Test" lastUpdatedAt={Date.now()} onOpenMap={onOpenMap} />
+      </MemoryRouter>,
+    )
     await user.click(screen.getByRole('button', { name: /open map/i }))
     expect(onOpenMap).toHaveBeenCalled()
   })
 
   it('shows a Dashboard role chip and danger-toned accent when windowRole is "dashboard"', () => {
     const { container } = render(
-      <CommandHeader
-        title="PDRRMO Camarines Norte"
-        lastUpdatedAt={Date.now()}
-        windowRole="dashboard"
-      />,
+      <MemoryRouter>
+        <CommandHeader
+          title="PDRRMO Camarines Norte"
+          lastUpdatedAt={Date.now()}
+          windowRole="dashboard"
+        />
+      </MemoryRouter>,
     )
     const chip = screen.getByTestId('window-role-chip')
     expect(chip).toHaveTextContent(/dashboard/i)
@@ -47,11 +66,13 @@ describe('CommandHeader', () => {
 
   it('shows a Map role chip and info-toned accent when windowRole is "map"', () => {
     const { container } = render(
-      <CommandHeader
-        title="Provincial Map — Camarines Norte"
-        lastUpdatedAt={Date.now()}
-        windowRole="map"
-      />,
+      <MemoryRouter>
+        <CommandHeader
+          title="Provincial Map — Camarines Norte"
+          lastUpdatedAt={Date.now()}
+          windowRole="map"
+        />
+      </MemoryRouter>,
     )
     const chip = screen.getByTestId('window-role-chip')
     expect(chip).toHaveTextContent(/map/i)
@@ -61,21 +82,27 @@ describe('CommandHeader', () => {
   })
 
   it('renders without role chip or accent when windowRole is not provided', () => {
-    render(<CommandHeader title="Generic" lastUpdatedAt={Date.now()} />)
+    render(
+      <MemoryRouter>
+        <CommandHeader title="Generic" lastUpdatedAt={Date.now()} />
+      </MemoryRouter>,
+    )
     expect(screen.queryByTestId('window-role-chip')).not.toBeInTheDocument()
     expect(screen.queryByTestId('window-role-accent')).not.toBeInTheDocument()
   })
 
   it('icon buttons have focus-visible ring classes', () => {
     render(
-      <CommandHeader
-        title="Focus Test"
-        lastUpdatedAt={Date.now()}
-        audioEnabled
-        onToggleAudio={vi.fn()}
-        onShowNotifications={vi.fn()}
-        onShowKeyboardShortcuts={vi.fn()}
-      />,
+      <MemoryRouter>
+        <CommandHeader
+          title="Focus Test"
+          lastUpdatedAt={Date.now()}
+          audioEnabled
+          onToggleAudio={vi.fn()}
+          onShowNotifications={vi.fn()}
+          onShowKeyboardShortcuts={vi.fn()}
+        />
+      </MemoryRouter>,
     )
 
     const audioBtn = screen.getByRole('button', { name: /mute audio/i })
@@ -92,12 +119,14 @@ describe('CommandHeader', () => {
 
   it('notification badge uses warning color token', () => {
     render(
-      <CommandHeader
-        title="Badge Test"
-        lastUpdatedAt={Date.now()}
-        notificationCount={3}
-        onShowNotifications={vi.fn()}
-      />,
+      <MemoryRouter>
+        <CommandHeader
+          title="Badge Test"
+          lastUpdatedAt={Date.now()}
+          notificationCount={3}
+          onShowNotifications={vi.fn()}
+        />
+      </MemoryRouter>,
     )
     const badge = screen.getByText('3')
     expect(badge.className).toMatch(/bg-\[var\(--color-warning\)\]/)
@@ -105,12 +134,14 @@ describe('CommandHeader', () => {
 
   it('muted audio icon uses text-muted token', () => {
     render(
-      <CommandHeader
-        title="Muted Test"
-        lastUpdatedAt={Date.now()}
-        audioEnabled={false}
-        onToggleAudio={vi.fn()}
-      />,
+      <MemoryRouter>
+        <CommandHeader
+          title="Muted Test"
+          lastUpdatedAt={Date.now()}
+          audioEnabled={false}
+          onToggleAudio={vi.fn()}
+        />
+      </MemoryRouter>,
     )
     const btn = screen.getByRole('button', { name: /enable audio/i })
     expect(btn.innerHTML).toMatch(/text-\[var\(--color-text-muted\)\]/)

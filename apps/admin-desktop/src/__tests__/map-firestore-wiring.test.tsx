@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 
@@ -79,7 +80,11 @@ describe('MapPage Firestore wiring', () => {
   })
 
   it('renders map with reports from Firestore', () => {
-    render(<MapPage />)
+    render(
+      <MemoryRouter>
+        <MapPage />
+      </MemoryRouter>,
+    )
     expect(screen.getByText('Provincial Map — Camarines Norte')).toBeInTheDocument()
     // Confirm useFirestoreListeners is invoked and wired to the page
     expect(mockUseFirestoreListeners).toHaveBeenCalledWith(
@@ -89,13 +94,21 @@ describe('MapPage Firestore wiring', () => {
 
   it('shows TriagePanel when report selected', () => {
     useCommandCenterStore.setState({ selectedReportId: 'r1' })
-    render(<MapPage />)
+    render(
+      <MemoryRouter>
+        <MapPage />
+      </MemoryRouter>,
+    )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('does not show reject or dispatch controls for a newly submitted report', () => {
     useCommandCenterStore.setState({ selectedReportId: 'r1' })
-    render(<MapPage />)
+    render(
+      <MemoryRouter>
+        <MapPage />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByRole('dialog')).toHaveTextContent('Water rising')
     expect(screen.getByRole('button', { name: 'Advance to review' })).toBeInTheDocument()

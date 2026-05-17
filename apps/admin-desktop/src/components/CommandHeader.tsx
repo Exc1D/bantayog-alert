@@ -8,6 +8,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { LiveIndicator } from './LiveIndicator'
 
 type WindowRole = 'dashboard' | 'map' | 'feed'
@@ -89,9 +90,9 @@ export function CommandHeader({
               const Icon = item.icon
               const active = windowRole === item.role
               return (
-                <a
+                <Link
                   key={item.role}
-                  href={item.href}
+                  to={item.href}
                   {...(active ? { 'aria-current': 'page' as const } : {})}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   style={{
@@ -101,7 +102,7 @@ export function CommandHeader({
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {item.label}
-                </a>
+                </Link>
               )
             })}
           </nav>

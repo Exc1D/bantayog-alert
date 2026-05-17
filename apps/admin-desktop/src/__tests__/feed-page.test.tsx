@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import FeedPage from '../pages/FeedPage'
 
 const mockVerifyReport = vi.hoisted(() =>
@@ -70,7 +71,11 @@ describe('FeedPage', () => {
   })
 
   it('renders pending and public feed reports for moderation', () => {
-    render(<FeedPage />)
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByRole('heading', { name: 'Feed moderation' })).toBeInTheDocument()
     expect(screen.getByText('Needs swear word removed')).toBeInTheDocument()
@@ -81,7 +86,11 @@ describe('FeedPage', () => {
   })
 
   it('publishes scrubbed copy through verifyReport', async () => {
-    render(<FeedPage />)
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
 
     fireEvent.change(screen.getByLabelText('Scrubbed copy for r-awaiting'), {
       target: { value: 'Needs sensitive detail removed' },
@@ -99,7 +108,11 @@ describe('FeedPage', () => {
   })
 
   it('unpublishes already-public feed reports through the backend callable', async () => {
-    render(<FeedPage />)
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Unpublish report r-public' }))
 
