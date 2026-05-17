@@ -71,9 +71,12 @@ export async function unpublishReportCore(
           throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found')
         }
         const report = snap.data() as Record<string, unknown>
+        // Require both IDs present and equal — don't allow implicit cross-municipality when either is missing
+        const reportMuni = report.municipalityId
+        const actorMuni = deps.actor.claims.municipalityId
         if (
           deps.actor.claims.role !== 'provincial_superadmin' &&
-          report.municipalityId !== deps.actor.claims.municipalityId
+          !(reportMuni !== undefined && reportMuni === actorMuni)
         ) {
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
         }
