@@ -112,4 +112,41 @@ describe('inboxReconciliationSweepCore', () => {
       expect(fresh.data()?.processedAt).toBeUndefined()
     })
   })
+
+  itif(emulatorAvailable)(
+    'does not mark transient materialization failures as processed',
+    async () => {
+      await env!.withSecurityRulesDisabled(async (ctx) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = ctx.firestore() as any
+        const now = 1713350500000
+        await setDoc(doc(ctx.firestore(), 'report_inbox', 'stale-failed'), {
+          reporterUid: 'c-1',
+          clientCreatedAt: now - 3 * 60 * 1000,
+          idempotencyKey: 'idem-failed',
+          publicRef: 'bad11111',
+          secretHash: 'c'.repeat(64),
+          correlationId: '77777777-7777-4777-8777-777777777777',
+          payload: {
+            reportType: 'flood',
+            description: 'x',
+            severity: 'low',
+            source: 'web',
+            publicLocation: { lat: 14.11, lng: 122.95 },
+          },
+        })
+
+        const result = await inboxReconciliationSweepCore({
+          db,
+          now: () => now,
+          processInboxItem: () => Promise.reject(new Error('transient firestore failure')),
+        })
+        expect(result.failed).toBe(1)
+
+        const stale = await getDoc(doc(ctx.firestore(), 'report_inbox', 'stale-failed'))
+        expect(stale.data()?.processedAt).toBeUndefined()
+        expect(stale.data()?.lastProcessingError).toBe('transient firestore failure')
+      })
+    },
+  )
 })

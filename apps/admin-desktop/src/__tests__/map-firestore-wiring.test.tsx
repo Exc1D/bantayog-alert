@@ -92,4 +92,14 @@ describe('MapPage Firestore wiring', () => {
     render(<MapPage />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
+
+  it('does not show reject or dispatch controls for a newly submitted report', () => {
+    useCommandCenterStore.setState({ selectedReportId: 'r1' })
+    render(<MapPage />)
+
+    expect(screen.getByRole('dialog')).toHaveTextContent('Water rising')
+    expect(screen.getByRole('button', { name: 'Advance to review' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Dispatch Responder' })).not.toBeInTheDocument()
+  })
 })

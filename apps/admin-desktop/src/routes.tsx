@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import DashboardPage from './pages/DashboardPage'
 import MapPage from './pages/MapPage'
+import FeedPage from './pages/FeedPage'
 import MobileGate from './pages/MobileGate'
 import { LoginPage } from './pages/LoginPage'
 import { WindowSyncProvider } from './providers/WindowSyncProvider'
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: '/', element: isMobile ? <MobileGate /> : <Navigate to="/dashboard" replace /> },
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/map', element: <MapPage /> },
+      { path: '/feed', element: <FeedPage /> },
       { path: '*', element: <Navigate to="/dashboard" replace /> },
     ],
   },

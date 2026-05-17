@@ -1,7 +1,9 @@
 import { getFirestore } from 'firebase-admin/firestore';
+import { type ProcessInboxItemCoreInput, type ProcessInboxItemCoreResult } from './process-inbox-item.js';
 export interface SweepInput {
     db: ReturnType<typeof getFirestore>;
     now?: () => number;
+    processInboxItem?: (input: ProcessInboxItemCoreInput) => Promise<ProcessInboxItemCoreResult>;
 }
 export interface SweepResult {
     candidates: number;

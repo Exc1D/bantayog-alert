@@ -48,6 +48,9 @@
 - Normalize phone numbers at the data-boundary (hook level), not at each consumer. Strip non-digit/non-plus chars, ensure leading `+`, validate with shared MSISDN validator.
 - Upload URL requests should validate MIME type and file size _before_ computing content hash.
 - `navigator.geolocation` may be undefined in some environments. Always guard before calling `.getCurrentPosition()`.
+- Admin map triage controls must mirror backend report transitions: `new` can only advance to review, `awaiting_verify` can verify or reject, and dispatch controls belong to verified/active reports. Showing every action for every status creates guaranteed callable failures.
+- Admin feed moderation can use `verifyReport.scrubbedDescription` for pre-publication scrubbing. Post-public takedown must go through backend `unpublishReport`; Firestore rules intentionally block clients from flipping `visibilityClass`.
+- `report_inbox` reconciliation claims must not use `processedAt` until materialization succeeds or a permanent moderation incident exists. Use a non-terminal processing claim so transient Cloud Functions failures remain retryable.
 - Adversarial review before merge catches bugs that CI misses. Run it yourself before asking for human review — it takes 10 minutes and saves hours of revert work.
 - `useEffect` dependency arrays should contain primitives, not object references. `[dispatch?.status, report?.publicLocation?.latitude]` is safer than `[dispatch, report]`.
 - Collection query rules differ from per-document rules; use `getDoc` if `getDocs` fails on `resource.data` checks.

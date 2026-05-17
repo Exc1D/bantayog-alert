@@ -1,7 +1,16 @@
-import { Bell, Keyboard, LogOut, Map, Volume2, VolumeX } from 'lucide-react'
+import {
+  Bell,
+  Keyboard,
+  LayoutDashboard,
+  LogOut,
+  Map,
+  Newspaper,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
 import { LiveIndicator } from './LiveIndicator'
 
-type WindowRole = 'dashboard' | 'map'
+type WindowRole = 'dashboard' | 'map' | 'feed'
 
 interface Props {
   title: string
@@ -19,12 +28,20 @@ interface Props {
 const ROLE_ACCENT: Record<WindowRole, string> = {
   dashboard: 'var(--color-danger)',
   map: 'var(--color-info)',
+  feed: 'var(--color-success)',
 } as const
 
 const ROLE_LABEL: Record<WindowRole, string> = {
   dashboard: 'Dashboard',
   map: 'Map',
+  feed: 'Feed',
 } as const
+
+const NAV_ITEMS = [
+  { role: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { role: 'map', href: '/map', label: 'Map', icon: Map },
+  { role: 'feed', href: '/feed', label: 'Feed', icon: Newspaper },
+] as const
 
 export function CommandHeader({
   title,
@@ -63,6 +80,32 @@ export function CommandHeader({
         <span className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</span>
       </div>
       <div className="flex items-center gap-4">
+        {windowRole && (
+          <nav
+            aria-label="Command center tabs"
+            className="flex overflow-hidden rounded border border-white/10"
+          >
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon
+              const active = windowRole === item.role
+              return (
+                <a
+                  key={item.role}
+                  href={item.href}
+                  {...(active ? { 'aria-current': 'page' as const } : {})}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  style={{
+                    color: active ? ROLE_ACCENT[item.role] : 'var(--color-text-secondary)',
+                    backgroundColor: active ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  }}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </a>
+              )
+            })}
+          </nav>
+        )}
         <LiveIndicator lastUpdatedAt={lastUpdatedAt} />
         {onToggleAudio && (
           <button

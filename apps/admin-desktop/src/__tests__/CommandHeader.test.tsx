@@ -10,6 +10,17 @@ describe('CommandHeader', () => {
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
+  it('renders command-center tabs including feed moderation', () => {
+    render(
+      <CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={Date.now()} windowRole="feed" />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute('href', '/map')
+    expect(screen.getByRole('link', { name: 'Feed' })).toHaveAttribute('href', '/feed')
+    expect(screen.getByRole('link', { name: 'Feed' })).toHaveAttribute('aria-current', 'page')
+  })
+
   it('opens map window when clicked', async () => {
     const user = userEvent.setup()
     const onOpenMap = vi.fn()

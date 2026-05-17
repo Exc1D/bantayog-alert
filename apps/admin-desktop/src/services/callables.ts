@@ -11,7 +11,11 @@ type IdempotencyKey = string
 type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
 
 export const callables = {
-  verifyReport: (payload: { reportId: string; idempotencyKey: IdempotencyKey }) =>
+  verifyReport: (payload: {
+    reportId: string
+    idempotencyKey: IdempotencyKey
+    scrubbedDescription?: string
+  }) =>
     httpsCallable<typeof payload, { status: ReportStatus; reportId: string }>(
       functions,
       'verifyReport',
@@ -25,6 +29,21 @@ export const callables = {
     httpsCallable<typeof payload, { status: ReportStatus; reportId: string }>(
       functions,
       'rejectReport',
+    )(payload).then((r) => r.data),
+  unpublishReport: (payload: {
+    reportId: string
+    reason:
+      | 'sensitive_content'
+      | 'privacy_request'
+      | 'false_or_misleading'
+      | 'legal_request'
+      | 'other'
+    notes?: string
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { visibilityClass: 'internal'; reportId: string }>(
+      functions,
+      'unpublishReport',
     )(payload).then((r) => r.data),
   dispatchResponder: (payload: {
     reportId: string

@@ -1,7 +1,11 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { getFirestore } from 'firebase-admin/firestore'
 import { logDimension } from '@bantayog/shared-validators'
-import { processInboxItemCore } from './process-inbox-item.js'
+import {
+  processInboxItemCore,
+  type ProcessInboxItemCoreInput,
+  type ProcessInboxItemCoreResult,
+} from './process-inbox-item.js'
 
 const log = logDimension('inboxReconciliationSweep')
 
@@ -11,6 +15,7 @@ const BATCH = 100
 export interface SweepInput {
   db: ReturnType<typeof getFirestore>
   now?: () => number
+  processInboxItem?: (input: ProcessInboxItemCoreInput) => Promise<ProcessInboxItemCoreResult>
 }
 
 export interface SweepResult {
@@ -22,6 +27,7 @@ export interface SweepResult {
 
 export async function inboxReconciliationSweepCore(input: SweepInput): Promise<SweepResult> {
   const now = input.now ?? (() => Date.now())
+  const processInboxItem = input.processInboxItem ?? processInboxItemCore
   const threshold = now() - STALENESS_MS
   const snap = await input.db
     .collection('report_inbox')
@@ -34,7 +40,11 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
   let failed = 0
   let oldestAgeMs = 0
   for (const d of snap.docs) {
-    const data = d.data() as { processedAt?: number; clientCreatedAt: number }
+    const data = d.data() as {
+      processedAt?: number
+      processingStartedAt?: number | null
+      clientCreatedAt: number
+    }
     if (data.processedAt) continue
     // Atomically claim this item so concurrent scheduler instances don't duplicate work
     const claimRef = input.db.collection('report_inbox').doc(d.id)
@@ -42,8 +52,17 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
     try {
       claimed = await input.db.runTransaction(async (tx) => {
         const snap = await tx.get(claimRef)
-        if (snap.data()?.processedAt) return false
-        tx.update(claimRef, { processedAt: now() })
+        const current = snap.data() as
+          | { processedAt?: number; processingStartedAt?: number | null }
+          | undefined
+        if (current?.processedAt) return false
+        if (
+          typeof current?.processingStartedAt === 'number' &&
+          current.processingStartedAt > now() - STALENESS_MS
+        ) {
+          return false
+        }
+        tx.update(claimRef, { processingStartedAt: now() })
         return true
       })
     } catch {
@@ -52,7 +71,7 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
     if (!claimed) continue
     oldestAgeMs = Math.max(oldestAgeMs, now() - data.clientCreatedAt)
     try {
-      await processInboxItemCore({ db: input.db, inboxId: d.id, now })
+      await processInboxItem({ db: input.db, inboxId: d.id, now })
       processed++
     } catch (err: unknown) {
       failed++
@@ -60,6 +79,12 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
       const incidentSnap = await input.db.collection('moderation_incidents').doc(d.id).get()
       if (incidentSnap.exists) {
         await d.ref.update({ processedAt: now() })
+      } else {
+        await d.ref.update({
+          processingStartedAt: null,
+          lastProcessingFailedAt: now(),
+          lastProcessingError: err instanceof Error ? err.message : String(err),
+        })
       }
       log({
         severity: 'WARNING',
