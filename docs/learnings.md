@@ -48,6 +48,9 @@
 - Normalize phone numbers at the data-boundary (hook level), not at each consumer. Strip non-digit/non-plus chars, ensure leading `+`, validate with shared MSISDN validator.
 - Upload URL requests should validate MIME type and file size _before_ computing content hash.
 - `navigator.geolocation` may be undefined in some environments. Always guard before calling `.getCurrentPosition()`.
+- Admin map triage controls must mirror backend report transitions: `new` can only advance to review, `awaiting_verify` can verify or reject, and dispatch controls belong to verified/active reports. Showing every action for every status creates guaranteed callable failures.
+- Admin feed moderation can use `verifyReport.scrubbedDescription` for pre-publication scrubbing. Post-public takedown must go through backend `unpublishReport`; Firestore rules intentionally block clients from flipping `visibilityClass`.
+- `report_inbox` reconciliation claims must not use `processedAt` until materialization succeeds or a permanent moderation incident exists. Use a non-terminal processing claim so transient Cloud Functions failures remain retryable.
 - Adversarial review before merge catches bugs that CI misses. Run it yourself before asking for human review — it takes 10 minutes and saves hours of revert work.
 - `useEffect` dependency arrays should contain primitives, not object references. `[dispatch?.status, report?.publicLocation?.latitude]` is safer than `[dispatch, report]`.
 - Collection query rules differ from per-document rules; use `getDoc` if `getDocs` fails on `resource.data` checks.
@@ -257,3 +260,9 @@
 - Truth-gate pattern for derived data: when a field cannot be derived from the live stream, make it optional in the type and omit from emission. Render `—` (em-dash) with neutral color. Never fabricate zeros — they mislead operators (verified where fabricated `activeResponders: 0` painted "No Shift" badges incorrectly).
 - Sticky z-index layering: sticky bulk-action bar above sticky thead needs `z-20` vs `z-10` so it overlays headers when pinned.
 - Window-sync dedup via `crypto.randomUUID()` + in-memory `Map` with TTL. Both BroadcastChannel and localStorage can deliver the same message twice. Auto-assign `id` in `sendSync`, record locally before posting, prune seen-set by `MESSAGE_TTL_MS`.
+
+## TypeScript Strictness — Firestore Auth Token Casting (2026-05-17)
+
+- `req.auth.token` from Firebase callable functions is typed broadly. When extracting typed claims (e.g., `municipalityId`) that are later used as `string` in downstream interfaces, a type assertion (`as string`) is REQUIRED at the boundary where the value enters a typed interface.
+- The same field (`claims.municipalityId`) works without assertion in other callables because those callables use `VerifyReportActor` (which has `municipalityId?: string`) vs `UnpublishReportCoreDeps.actor.claims` (which expects `role?: string; municipalityId?: string`). But the callable site passes the claims object directly into the core function, and the type checker cannot infer the `unknown` → `string` coercion across the boundary.
+- Symptom: `Type 'unknown' is not assignable to type 'string'` at the call site in `unpublish-report.ts:201`. Fix: add explicit `as string` cast, consistent with all other callable entry points that pass `municipalityId` into core functions.

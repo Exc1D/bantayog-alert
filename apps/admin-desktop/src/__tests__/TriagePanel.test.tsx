@@ -18,6 +18,10 @@ const mockReport = {
   status: 'new' as const,
   updatedAt: '',
 }
+const awaitingReport = { ...mockReport, status: 'awaiting_verify' as const }
+const verifiedReport = { ...mockReport, status: 'verified' as const }
+
+const verifiedReport2 = { ...mockReport, id: 'r2', status: 'verified' as const }
 
 const mockResponders = [
   { uid: 'u1', displayName: 'Alice', agency: 'BFP' },
@@ -26,6 +30,40 @@ const mockResponders = [
 ]
 
 describe('TriagePanel', () => {
+  it('resets dispatch state when report changes', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <TriagePanel
+        report={verifiedReport}
+        responders={mockResponders}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
+    expect(screen.getByRole('combobox', { name: 'Select Agency' })).toBeInTheDocument()
+
+    // Switch to a different report that still allows dispatch
+    rerender(
+      <TriagePanel
+        report={verifiedReport2}
+        responders={mockResponders}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+
+    // Dispatch form should be closed
+    expect(screen.queryByRole('combobox', { name: 'Select Agency' })).not.toBeInTheDocument()
+    // Hold button should not be present
+    expect(screen.queryByRole('button', { name: /hold to dispatch/i })).not.toBeInTheDocument()
+  })
+
   it('does not render when no report', () => {
     render(
       <TriagePanel
@@ -42,7 +80,7 @@ describe('TriagePanel', () => {
   it('renders report details', () => {
     render(
       <TriagePanel
-        report={mockReport}
+        report={awaitingReport}
         onClose={vi.fn()}
         onVerify={vi.fn()}
         onReject={vi.fn()}
@@ -57,7 +95,7 @@ describe('TriagePanel', () => {
     const onVerify = vi.fn()
     render(
       <TriagePanel
-        report={mockReport}
+        report={awaitingReport}
         onClose={vi.fn()}
         onVerify={onVerify}
         onReject={vi.fn()}
@@ -71,7 +109,7 @@ describe('TriagePanel', () => {
   it('has dialog role and aria-modal', () => {
     render(
       <TriagePanel
-        report={mockReport}
+        report={verifiedReport}
         onClose={vi.fn()}
         onVerify={vi.fn()}
         onReject={vi.fn()}
@@ -87,7 +125,7 @@ describe('TriagePanel', () => {
     const user = userEvent.setup()
     render(
       <TriagePanel
-        report={mockReport}
+        report={verifiedReport}
         responders={mockResponders}
         onClose={vi.fn()}
         onVerify={vi.fn()}
@@ -109,7 +147,7 @@ describe('TriagePanel', () => {
     const user = userEvent.setup()
     render(
       <TriagePanel
-        report={mockReport}
+        report={verifiedReport}
         responders={mockResponders}
         onClose={vi.fn()}
         onVerify={vi.fn()}
@@ -132,7 +170,7 @@ describe('TriagePanel', () => {
     const user = userEvent.setup()
     render(
       <TriagePanel
-        report={mockReport}
+        report={verifiedReport}
         responders={mockResponders}
         onClose={vi.fn()}
         onVerify={vi.fn()}
@@ -150,7 +188,7 @@ describe('TriagePanel', () => {
     const user = userEvent.setup()
     render(
       <TriagePanel
-        report={mockReport}
+        report={verifiedReport}
         responders={mockResponders}
         onClose={vi.fn()}
         onVerify={vi.fn()}
@@ -180,7 +218,7 @@ describe('TriagePanel', () => {
     const onDispatch = vi.fn()
     render(
       <TriagePanel
-        report={mockReport}
+        report={verifiedReport}
         responders={mockResponders}
         onClose={vi.fn()}
         onVerify={vi.fn()}
@@ -204,7 +242,7 @@ describe('TriagePanel', () => {
     })
     fireEvent.keyUp(holdButton, { key: ' ' })
 
-    expect(onDispatch).toHaveBeenCalledWith(mockReport.id, 'BFP', 'u1')
+    expect(onDispatch).toHaveBeenCalledWith(verifiedReport.id, 'BFP', 'u1')
     vi.useRealTimers()
   })
 
@@ -213,7 +251,7 @@ describe('TriagePanel', () => {
     const onDispatch = vi.fn()
     render(
       <TriagePanel
-        report={mockReport}
+        report={verifiedReport}
         responders={mockResponders}
         onClose={vi.fn()}
         onVerify={vi.fn()}

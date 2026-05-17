@@ -1,5 +1,16 @@
 # Progress
 
+## Current Status (2026-05-17)
+
+**Admin Desktop Live Report Surfacing + Feed Moderation**
+
+- ✅ Map right panel is status-aware: `new` reports show only Advance to review, `awaiting_verify` reports show Verify/Reject, and dispatch controls are reserved for verified/active reports.
+- ✅ Admin header now exposes Dashboard / Map / Feed tabs, with `/feed` routed to a live feed-moderation page.
+- ✅ Feed moderation page lists scoped live report docs, separates pending/public feed items, and can publish scrubbed copy through the existing `verifyReport.scrubbedDescription` backend path.
+- ✅ Post-public feed takedown now uses backend `unpublishReport`, which scopes admins by municipality/provincial role, flips `reports.visibilityClass` from `public_alertable` to `internal`, and writes moderation/audit evidence.
+- ✅ `inboxReconciliationSweep` no longer marks transient retry claims as `processedAt`; failed materialization remains retryable while permanent moderation failures still close out.
+- **Gate:** `pnpm --dir apps/admin-desktop exec vitest run` pass (36 files, 223 tests) · `pnpm --dir apps/admin-desktop typecheck` pass · `pnpm --dir apps/admin-desktop lint` pass · `pnpm --dir functions typecheck` pass · `pnpm --dir functions lint` pass · focused functions vitest compiled but skipped because Firestore emulator was offline.
+
 ## Current Status (2026-05-15)
 
 **Staging E2E Report Flow — Root Cause Fixes (in progress)**

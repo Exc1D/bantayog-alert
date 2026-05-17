@@ -3,6 +3,7 @@ import { z } from 'zod';
 export declare const submitResponderWitnessedReportSchema: z.ZodObject<{
     dispatchId: z.ZodString;
     reportType: z.ZodEnum<{
+        other: "other";
         flood: "flood";
         fire: "fire";
         earthquake: "earthquake";
@@ -13,7 +14,6 @@ export declare const submitResponderWitnessedReportSchema: z.ZodObject<{
         accident: "accident";
         structural: "structural";
         security: "security";
-        other: "other";
     }>;
     description: z.ZodString;
     severity: z.ZodEnum<{

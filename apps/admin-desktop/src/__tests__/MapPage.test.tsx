@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import MapPage from '../pages/MapPage'
 
 vi.mock('../hooks/useFirestoreListeners', () => ({
@@ -24,7 +25,11 @@ vi.mock('../providers/WindowSyncProvider', () => ({
 
 describe('MapPage', () => {
   it('renders header and map', () => {
-    render(<MapPage />)
+    render(
+      <MemoryRouter>
+        <MapPage />
+      </MemoryRouter>,
+    )
     expect(screen.getByText('Provincial Map — Camarines Norte')).toBeInTheDocument()
   })
 })
