@@ -198,7 +198,7 @@ export const unpublishReport = onCall(
           uid: req.auth.uid,
           claims: {
             role: claims.role,
-            municipalityId: claims.municipalityId as string,
+            municipalityId: claims.municipalityId,
           },
         },
         now: Timestamp.now(),
