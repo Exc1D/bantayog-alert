@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-assertion */
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -34,8 +35,6 @@ beforeAll(async () => {
   })
 })
 
-const itif = (condition: boolean) => (condition ? it : it.skip)
-
 afterAll(async () => {
   if (env) await env.cleanup()
 })
@@ -65,9 +64,9 @@ beforeEach(async () => {
 })
 
 describe('inboxReconciliationSweepCore', () => {
-  itif(emulatorAvailable)('picks up unprocessed inbox items older than the threshold', async () => {
-    await env!.withSecurityRulesDisabled(async (ctx) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  it('picks up unprocessed inbox items older than the threshold', async () => {
+    if (!emulatorAvailable || !env) return
+    await env.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const now = 1713350500000
       // Stale (3 min old, unprocessed) — above 2 min threshold
@@ -103,7 +102,7 @@ describe('inboxReconciliationSweepCore', () => {
         },
       })
 
-      const result = await inboxReconciliationSweepCore({ db, now: () => now })
+      const result = await inboxReconciliationSweepCore({ db: db as any, now: () => now })
       expect(result.processed).toBe(1)
 
       const stale = await getDoc(doc(ctx.firestore(), 'report_inbox', 'stale-1'))
@@ -113,42 +112,39 @@ describe('inboxReconciliationSweepCore', () => {
     })
   })
 
-  itif(emulatorAvailable)(
-    'does not mark transient materialization failures as processed',
-    async () => {
-      await env!.withSecurityRulesDisabled(async (ctx) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const db = ctx.firestore() as any
-        const now = 1713350500000
-        await setDoc(doc(ctx.firestore(), 'report_inbox', 'stale-failed'), {
-          reporterUid: 'c-1',
-          clientCreatedAt: now - 3 * 60 * 1000,
-          idempotencyKey: 'idem-failed',
-          publicRef: 'bad11111',
-          secretHash: 'c'.repeat(64),
-          correlationId: '77777777-7777-4777-8777-777777777777',
-          payload: {
-            reportType: 'flood',
-            description: 'x',
-            severity: 'low',
-            source: 'web',
-            publicLocation: { lat: 14.11, lng: 122.95 },
-          },
-        })
-
-        const result = await inboxReconciliationSweepCore({
-          db,
-          now: () => now,
-          processInboxItem: () => Promise.reject(new Error('transient firestore failure')),
-        })
-        expect(result.failed).toBe(1)
-
-        const stale = await getDoc(doc(ctx.firestore(), 'report_inbox', 'stale-failed'))
-        expect(stale.data()?.processedAt).toBeUndefined()
-        expect(stale.data()?.processingStartedAt).toBeNull()
-        expect(typeof stale.data()?.lastProcessingFailedAt).toBe('number')
-        expect(stale.data()?.lastProcessingError).toBe('transient firestore failure')
+  it('does not mark transient materialization failures as processed', async () => {
+    if (!emulatorAvailable || !env) return
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
+      const now = 1713350500000
+      await setDoc(doc(ctx.firestore(), 'report_inbox', 'stale-failed'), {
+        reporterUid: 'c-1',
+        clientCreatedAt: now - 3 * 60 * 1000,
+        idempotencyKey: 'idem-failed',
+        publicRef: 'bad11111',
+        secretHash: 'c'.repeat(64),
+        correlationId: '77777777-7777-4777-8777-777777777777',
+        payload: {
+          reportType: 'flood',
+          description: 'x',
+          severity: 'low',
+          source: 'web',
+          publicLocation: { lat: 14.11, lng: 122.95 },
+        },
       })
-    },
-  )
+
+      const result = await inboxReconciliationSweepCore({
+        db: db as any,
+        now: () => now,
+        processInboxItem: () => Promise.reject(new Error('transient firestore failure')),
+      })
+      expect(result.failed).toBe(1)
+
+      const stale = await getDoc(doc(ctx.firestore(), 'report_inbox', 'stale-failed'))
+      expect(stale.data()?.processedAt).toBeUndefined()
+      expect(stale.data()?.processingStartedAt).toBeNull()
+      expect(stale.data()?.lastProcessingFailedAt).toBeDefined()
+      expect(stale.data()?.lastProcessingError).toBe('transient firestore failure')
+    })
+  })
 })

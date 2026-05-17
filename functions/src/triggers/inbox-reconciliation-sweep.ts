@@ -50,6 +50,8 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
     const claimRef = input.db.collection('report_inbox').doc(d.id)
     let claimed = false
     let claimStartedAt: number | null = null
+    // Compute once so the claim window remains stable even if Firestore retries the transaction
+    const claimThreshold = now() - STALENESS_MS
     try {
       const claimTimestamp = now()
       claimed = await input.db.runTransaction(async (tx) => {
@@ -60,7 +62,7 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
         if (current?.processedAt) return false
         if (
           typeof current?.processingStartedAt === 'number' &&
-          current.processingStartedAt > now() - STALENESS_MS
+          current.processingStartedAt > claimThreshold
         ) {
           return false
         }

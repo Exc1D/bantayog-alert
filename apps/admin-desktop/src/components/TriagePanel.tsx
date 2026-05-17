@@ -39,6 +39,20 @@ export function TriagePanel({
   const [holdProgress, setHoldProgress] = useState(0)
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Reset dispatch form state when the selected report changes so stale selections don't leak across reports
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    setShowDispatchForm(false)
+    setAgency('')
+    setResponder('')
+    setHoldProgress(0)
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+  }, [report?.id, report?.status])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) {

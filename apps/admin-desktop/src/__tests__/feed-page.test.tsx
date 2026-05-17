@@ -9,12 +9,17 @@ const mockVerifyReport = vi.hoisted(() =>
 const mockUnpublishReport = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ visibilityClass: 'internal', reportId: 'r-public' }),
 )
+const mockSignOut = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 
 vi.mock('../services/callables', () => ({
   callables: {
     verifyReport: mockVerifyReport,
     unpublishReport: mockUnpublishReport,
   },
+}))
+
+vi.mock('@bantayog/shared-ui', () => ({
+  useAuth: () => ({ signOut: mockSignOut }),
 }))
 
 vi.mock('../hooks/useFirestoreListeners', () => ({
@@ -33,6 +38,7 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
         description: 'Needs swear word removed',
         publicLocation: { lat: 14.1, lng: 122.9 },
         visibilityClass: 'internal',
+        updatedAt: 1713350400001,
       },
       {
         id: 'r-public',
@@ -45,6 +51,7 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
         description: 'Public feed copy',
         publicLocation: { lat: 14.2, lng: 122.8 },
         visibilityClass: 'public_alertable',
+        updatedAt: 1713350500001,
       },
       {
         id: 'r-hidden',
@@ -57,6 +64,20 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
         description: 'Hidden feed copy',
         publicLocation: { lat: 14.3, lng: 122.7 },
         visibilityClass: 'internal',
+        updatedAt: 1713350600001,
+      },
+      {
+        id: 'r-new',
+        reportType: 'fire',
+        severity: 'low',
+        municipalityLabel: 'Paracale',
+        barangayId: 'Barangay 2',
+        submittedAt: 1713350700000,
+        status: 'new',
+        description: 'New incoming report',
+        publicLocation: { lat: 14.4, lng: 122.6 },
+        visibilityClass: 'internal',
+        updatedAt: 1713350700001,
       },
     ],
     reportOps: [],
@@ -82,7 +103,10 @@ describe('FeedPage', () => {
     expect(screen.getByText('Public feed copy')).toBeInTheDocument()
     expect(screen.getByText('Pending publication')).toBeInTheDocument()
     expect(screen.getByText('Published')).toBeInTheDocument()
-    expect(screen.getByText('Unpublished')).toBeInTheDocument()
+
+    // verified+internal items are not feed-relevant and should be hidden
+    expect(screen.queryByText('Hidden feed copy')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unpublished')).not.toBeInTheDocument()
   })
 
   it('publishes scrubbed copy through verifyReport', async () => {
@@ -107,6 +131,22 @@ describe('FeedPage', () => {
     })
   })
 
+  it('surfaces sign-out errors in the actionError banner', async () => {
+    mockSignOut.mockRejectedValueOnce(new Error('Network error during sign out'))
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    const signOutBtn = screen.getByRole('button', { name: /sign out/i })
+    fireEvent.click(signOutBtn)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Network error during sign out/)
+    })
+  })
+
   it('unpublishes already-public feed reports through the backend callable', async () => {
     render(
       <MemoryRouter>
@@ -124,5 +164,20 @@ describe('FeedPage', () => {
         }),
       )
     })
+  })
+
+  it('does not show new or already-verified-internal reports in the feed', () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Needs swear word removed')).toBeInTheDocument()
+    expect(screen.getByText('Public feed copy')).toBeInTheDocument()
+    // 'new' items should not appear in feed moderation
+    expect(screen.queryByText('New incoming report')).not.toBeInTheDocument()
+    // verified+internal items should not appear either
+    expect(screen.queryByText('Hidden feed copy')).not.toBeInTheDocument()
   })
 })

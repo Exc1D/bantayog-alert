@@ -49,6 +49,12 @@ export async function unpublishReportCore(
   db: Firestore,
   deps: UnpublishReportCoreDeps,
 ): Promise<UnpublishReportResult> {
+  // Defense-in-depth role gate — only admin roles may unpublish
+  const role = deps.actor.claims.role
+  if (role !== 'municipal_admin' && role !== 'provincial_superadmin') {
+    throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Admin role required to unpublish')
+  }
+
   const correlationId = crypto.randomUUID()
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -128,21 +134,23 @@ export async function unpublishReportCore(
           schemaVersion: 1,
         })
 
-        log({
-          severity: 'INFO',
-          code: 'report.unpublished',
-          message: `Report ${deps.reportId} unpublished as ${deps.reason}`,
-          data: {
-            correlationId,
-            reportId: deps.reportId,
-            reason: deps.reason,
-            actorUid: deps.actor.uid,
-          },
-        })
-
         return { reportId: deps.reportId, visibilityClass: 'internal', updatedAt }
       }),
   )
+
+  // Log only after the transaction commits successfully so we don't replay logs on Firestore retries
+  log({
+    severity: 'INFO',
+    code: 'report.unpublished',
+    message: `Report ${deps.reportId} unpublished as ${deps.reason}`,
+    data: {
+      correlationId,
+      reportId: deps.reportId,
+      reason: deps.reason,
+      actorUid: deps.actor.uid,
+    },
+  })
+
   return result
 }
 

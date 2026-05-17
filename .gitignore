@@ -69,3 +69,7 @@ packages/shared-data/lib/
 # Graphify knowledge graphs (generated output — not source)
 graphify-out/
 functions/lib/__tests__/
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json

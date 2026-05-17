@@ -26,6 +26,11 @@ const InputSchema = z
     .strict();
 const log = logDimension('unpublishReport');
 export async function unpublishReportCore(db, deps) {
+    // Defense-in-depth role gate — only admin roles may unpublish
+    const role = deps.actor.claims.role;
+    if (role !== 'municipal_admin' && role !== 'provincial_superadmin') {
+        throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Admin role required to unpublish');
+    }
     const correlationId = crypto.randomUUID();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { now: _now, ...idempotentPayload } = deps;
@@ -40,8 +45,11 @@ export async function unpublishReportCore(db, deps) {
             throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found');
         }
         const report = snap.data();
+        // Require both IDs present and equal — don't allow implicit cross-municipality when either is missing
+        const reportMuni = report.municipalityId;
+        const actorMuni = deps.actor.claims.municipalityId;
         if (deps.actor.claims.role !== 'provincial_superadmin' &&
-            report.municipalityId !== deps.actor.claims.municipalityId) {
+            !(reportMuni !== undefined && reportMuni === actorMuni)) {
             throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality');
         }
         const fromVisibilityClass = report.visibilityClass;
@@ -84,19 +92,20 @@ export async function unpublishReportCore(db, deps) {
             correlationId,
             schemaVersion: 1,
         });
-        log({
-            severity: 'INFO',
-            code: 'report.unpublished',
-            message: `Report ${deps.reportId} unpublished as ${deps.reason}`,
-            data: {
-                correlationId,
-                reportId: deps.reportId,
-                reason: deps.reason,
-                actorUid: deps.actor.uid,
-            },
-        });
         return { reportId: deps.reportId, visibilityClass: 'internal', updatedAt };
     }));
+    // Log only after the transaction commits successfully so we don't replay logs on Firestore retries
+    log({
+        severity: 'INFO',
+        code: 'report.unpublished',
+        message: `Report ${deps.reportId} unpublished as ${deps.reason}`,
+        data: {
+            correlationId,
+            reportId: deps.reportId,
+            reason: deps.reason,
+            actorUid: deps.actor.uid,
+        },
+    });
     return result;
 }
 export const unpublishReport = onCall({

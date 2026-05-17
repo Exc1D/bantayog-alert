@@ -21,6 +21,8 @@ const mockReport = {
 const awaitingReport = { ...mockReport, status: 'awaiting_verify' as const }
 const verifiedReport = { ...mockReport, status: 'verified' as const }
 
+const verifiedReport2 = { ...mockReport, id: 'r2', status: 'verified' as const }
+
 const mockResponders = [
   { uid: 'u1', displayName: 'Alice', agency: 'BFP' },
   { uid: 'u2', displayName: 'Bob', agency: 'PNP' },
@@ -28,6 +30,40 @@ const mockResponders = [
 ]
 
 describe('TriagePanel', () => {
+  it('resets dispatch state when report changes', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <TriagePanel
+        report={verifiedReport}
+        responders={mockResponders}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
+    expect(screen.getByRole('combobox', { name: 'Select Agency' })).toBeInTheDocument()
+
+    // Switch to a different report that still allows dispatch
+    rerender(
+      <TriagePanel
+        report={verifiedReport2}
+        responders={mockResponders}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={vi.fn()}
+      />,
+    )
+
+    // Dispatch form should be closed
+    expect(screen.queryByRole('combobox', { name: 'Select Agency' })).not.toBeInTheDocument()
+    // Hold button should not be present
+    expect(screen.queryByRole('button', { name: /hold to dispatch/i })).not.toBeInTheDocument()
+  })
+
   it('does not render when no report', () => {
     render(
       <TriagePanel

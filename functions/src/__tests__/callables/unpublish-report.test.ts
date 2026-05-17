@@ -119,6 +119,30 @@ describe('unpublishReportCore', () => {
     })
   })
 
+  it('rejects non-admin callers', async ({ skip }) => {
+    if (!available || !testEnv) skip()
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
+      await db.collection('reports').doc(reportId).update({
+        visibilityClass: 'public_alertable',
+      })
+
+      await expect(
+        unpublishReportCore(db, {
+          reportId,
+          reason: 'sensitive_content',
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'citizen-1',
+            claims: staffClaims({ role: 'citizen', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
+  })
+
   it('rejects reports that are not currently public', async ({ skip }) => {
     if (!available || !testEnv) skip()
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {

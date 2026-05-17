@@ -27,8 +27,8 @@ export default function FeedPage() {
   const { signOut } = useAuth()
   const { loading, error, reports } = useFirestoreListeners({ windowType: 'dashboard', db })
   const [drafts, setDrafts] = useState<Record<string, string>>({})
-  const [publishingId, setPublishingId] = useState<string | null>(null)
-  const [unpublishingId, setUnpublishingId] = useState<string | null>(null)
+  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
+  const [unpublishingIds, setUnpublishingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const lastUpdatedAt = useMemo(() => {
     if (reports.length === 0) return 0
@@ -50,7 +50,8 @@ export default function FeedPage() {
         })
         .filter(
           ({ raw, report }) =>
-            raw.visibilityClass === 'public_alertable' || report.status !== 'new',
+            raw.visibilityClass === 'public_alertable' ||
+            (report.status === 'awaiting_verify' && raw.visibilityClass !== 'public_alertable'),
         ),
     [reports],
   )
@@ -61,7 +62,7 @@ export default function FeedPage() {
       setActionError('Scrubbed copy cannot be empty.')
       return
     }
-    setPublishingId(report.id)
+    setPublishingIds((prev) => new Set(prev).add(report.id))
     try {
       await callables.verifyReport({
         reportId: report.id,
@@ -72,12 +73,16 @@ export default function FeedPage() {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Publish failed')
     } finally {
-      setPublishingId(null)
+      setPublishingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(report.id)
+        return next
+      })
     }
   }
 
   async function unpublish(report: Report) {
-    setUnpublishingId(report.id)
+    setUnpublishingIds((prev) => new Set(prev).add(report.id))
     try {
       await callables.unpublishReport({
         reportId: report.id,
@@ -88,7 +93,11 @@ export default function FeedPage() {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unpublish failed')
     } finally {
-      setUnpublishingId(null)
+      setUnpublishingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(report.id)
+        return next
+      })
     }
   }
 
@@ -111,7 +120,13 @@ export default function FeedPage() {
         windowRole="feed"
         lastUpdatedAt={lastUpdatedAt}
         onSignOut={() => {
-          void signOut()
+          signOut()
+            .then(() => {
+              setActionError(null)
+            })
+            .catch((err: unknown) => {
+              setActionError(err instanceof Error ? err.message : 'Sign out failed')
+            })
         }}
       />
       <main className="flex-1 overflow-auto p-4">
@@ -178,11 +193,11 @@ export default function FeedPage() {
                           onClick={() => {
                             void publishScrubbed(report)
                           }}
-                          disabled={publishingId === report.id}
+                          disabled={publishingIds.has(report.id)}
                           className="rounded bg-[var(--color-success)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                           aria-label={`Publish scrubbed copy for ${report.id}`}
                         >
-                          {publishingId === report.id ? 'Publishing' : 'Publish scrubbed copy'}
+                          {publishingIds.has(report.id) ? 'Publishing' : 'Publish scrubbed copy'}
                         </button>
                       )}
                       {canUnpublish && (
@@ -191,11 +206,11 @@ export default function FeedPage() {
                           onClick={() => {
                             void unpublish(report)
                           }}
-                          disabled={unpublishingId === report.id}
+                          disabled={unpublishingIds.has(report.id)}
                           className="rounded border border-[var(--color-danger)] px-3 py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-50"
                           aria-label={`Unpublish report ${report.id}`}
                         >
-                          {unpublishingId === report.id ? 'Unpublishing' : 'Unpublish'}
+                          {unpublishingIds.has(report.id) ? 'Unpublishing' : 'Unpublish'}
                         </button>
                       )}
                     </div>
