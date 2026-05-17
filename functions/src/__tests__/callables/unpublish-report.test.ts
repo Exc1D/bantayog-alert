@@ -4,8 +4,6 @@ import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
 import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 
-const itif = (condition: boolean) => (condition ? it : it.skip)
-
 vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
 }))
@@ -38,7 +36,8 @@ afterAll(async () => {
 })
 
 describe('unpublishReportCore', () => {
-  itif(available)('hides a public report and records moderation/audit evidence', async () => {
+  it('hides a public report and records moderation/audit evidence', async ({ skip }) => {
+    if (!available || !testEnv) skip()
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
@@ -91,7 +90,8 @@ describe('unpublishReportCore', () => {
     })
   })
 
-  itif(available)('rejects cross-municipality takedowns by municipal admins', async () => {
+  it('rejects cross-municipality takedowns by municipal admins', async ({ skip }) => {
+    if (!available || !testEnv) skip()
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'labo' })
@@ -119,7 +119,8 @@ describe('unpublishReportCore', () => {
     })
   })
 
-  itif(available)('rejects reports that are not currently public', async () => {
+  it('rejects reports that are not currently public', async ({ skip }) => {
+    if (!available || !testEnv) skip()
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
