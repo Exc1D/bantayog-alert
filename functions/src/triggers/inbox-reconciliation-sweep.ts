@@ -49,7 +49,9 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
     // Atomically claim this item so concurrent scheduler instances don't duplicate work
     const claimRef = input.db.collection('report_inbox').doc(d.id)
     let claimed = false
+    let claimStartedAt: number | null = null
     try {
+      const claimTimestamp = now()
       claimed = await input.db.runTransaction(async (tx) => {
         const snap = await tx.get(claimRef)
         const current = snap.data() as
@@ -62,9 +64,10 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
         ) {
           return false
         }
-        tx.update(claimRef, { processingStartedAt: now() })
+        tx.update(claimRef, { processingStartedAt: claimTimestamp })
         return true
       })
+      if (claimed) claimStartedAt = claimTimestamp
     } catch {
       // Transaction contention — another instance claimed it; skip
     }
@@ -80,10 +83,16 @@ export async function inboxReconciliationSweepCore(input: SweepInput): Promise<S
       if (incidentSnap.exists) {
         await d.ref.update({ processedAt: now() })
       } else {
-        await d.ref.update({
-          processingStartedAt: null,
-          lastProcessingFailedAt: now(),
-          lastProcessingError: err instanceof Error ? err.message : String(err),
+        // Only clear our own claim to avoid clobbering a newer concurrent claim
+        await input.db.runTransaction(async (tx) => {
+          const latestSnap = await tx.get(claimRef)
+          const latest = latestSnap.data() as { processingStartedAt?: number | null } | undefined
+          if (claimStartedAt === null || latest?.processingStartedAt !== claimStartedAt) return
+          tx.update(claimRef, {
+            processingStartedAt: null,
+            lastProcessingFailedAt: now(),
+            lastProcessingError: err instanceof Error ? err.message : String(err),
+          })
         })
       }
       log({
