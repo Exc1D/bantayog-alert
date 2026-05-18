@@ -2,13 +2,6 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChevronDown } from 'lucide-react'
 
-const TABS = [
-  { id: 'volume', label: 'Volume' },
-  { id: 'response', label: 'Response' },
-  { id: 'resource', label: 'Resources' },
-  { id: 'comparison', label: 'Comparison' },
-] as const
-
 const TIME_RANGES = [
   { id: '24h', label: 'Last 24 hours' },
   { id: '7d', label: 'Last 7 days' },
@@ -76,7 +69,6 @@ function formatBucketLabel(bucketMs: number, range: (typeof TIME_RANGES)[number]
 }
 
 export function TrendAnalysisPanel({ reports }: Props) {
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('volume')
   const [timeRange, setTimeRange] = useState<(typeof TIME_RANGES)[number]['id']>('7d')
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -94,7 +86,6 @@ export function TrendAnalysisPanel({ reports }: Props) {
     }
   }, [timeDropdownOpen])
 
-  const chartLabel = TABS.find((t) => t.id === activeTab)?.label ?? 'Chart'
   const timeLabel = TIME_RANGES.find((t) => t.id === timeRange)?.label ?? ''
 
   const filteredReports = useMemo(
@@ -133,27 +124,9 @@ export function TrendAnalysisPanel({ reports }: Props) {
 
   return (
     <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab.id)
-              }}
-              aria-pressed={activeTab === tab.id}
-              className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: activeTab === tab.id ? 'var(--color-sienna)' : 'transparent',
-                color: activeTab === tab.id ? 'white' : 'var(--color-text-secondary)',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative ml-auto" ref={dropdownRef}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)]">Incident Volume</h3>
+        <div className="relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => {
@@ -199,55 +172,49 @@ export function TrendAnalysisPanel({ reports }: Props) {
           <span role="status" className="text-sm text-white/50">
             No incidents in selected period
           </span>
-        ) : activeTab === 'volume' ? (
-          volumeData.length > 1 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={volumeData} margin={{ top: 16, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--color-surface-elevated)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={24}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--color-surface-elevated)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    color: 'var(--color-text-primary)',
-                  }}
-                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                />
-                <Bar
-                  dataKey="count"
-                  fill="var(--color-sienna)"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={40}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <span role="status" className="text-sm text-white/50">
-              {chartLabel} · {timeLabel} ({String(filteredReports.length)} reports)
-            </span>
-          )
+        ) : volumeData.length > 1 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={volumeData} margin={{ top: 16, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--color-surface-elevated)"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                axisLine={false}
+                tickLine={false}
+                width={24}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--color-surface-elevated)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: 'var(--color-text-primary)',
+                }}
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+              />
+              <Bar
+                dataKey="count"
+                fill="var(--color-sienna)"
+                radius={[2, 2, 0, 0]}
+                maxBarSize={40}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         ) : (
           <span role="status" className="text-sm text-white/50">
-            {chartLabel} · {timeLabel} ({String(filteredReports.length)} reports)
+            Incident Volume · {timeLabel} ({String(filteredReports.length)} reports)
           </span>
         )}
       </div>

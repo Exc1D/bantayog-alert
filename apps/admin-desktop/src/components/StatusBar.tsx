@@ -20,7 +20,11 @@ function Metric({
   alert: 'none' | 'amber' | 'red'
 }) {
   const alertColor =
-    alert === 'red' ? 'var(--color-crit)' : alert === 'amber' ? 'var(--color-warn)' : 'transparent'
+    alert === 'red'
+      ? 'var(--color-danger)'
+      : alert === 'amber'
+        ? 'var(--color-warning)'
+        : 'transparent'
   return (
     <div className="flex flex-col items-center">
       <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
