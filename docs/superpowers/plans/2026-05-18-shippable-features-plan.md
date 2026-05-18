@@ -846,15 +846,15 @@ ls infra/firebase/
 
 - [ ] **Step 2: Add public read rule for finalized images**
 
-Add a rule that allows public read for finalized (non-pending) report media:
+Add a rule that allows public read for finalized (non-pending) report media, gated by the parent report's visibility:
 
 ```rules
 match /report_media/{municipalityId}/{reportId}/{filename} {
-  allow read: if true;
+  allow read: if get(/databases/$(database)/documents/reports/$(municipalityId)_$(reportId)).data.visibilityClass == 'public_alertable';
 }
 ```
 
-This should be placed alongside the existing `report_media` rules. The `pending/` prefix images remain restricted by the default-deny rule.
+This ensures only media from citizen-visible reports can be read. The `pending/` prefix images remain restricted by the default-deny rule.
 
 ### Task 16: Add storage rules test for citizen public read
 

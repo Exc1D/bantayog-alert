@@ -27,58 +27,82 @@ if (getApps().length === 0) {
 
 const db = getFirestore()
 
-const TEST_INBOX: Record<string, unknown> = {
-  reporterUid: 'test-citizen-uid',
-  clientCreatedAt: Date.now(),
-  idempotencyKey: crypto.randomUUID(),
-  publicRef: 'test1234',
-  secretHash: '9caf06bb4436cdbfa20af9121a626bc1093c4f54b31c0fa937957856135345b6',
-  correlationId: crypto.randomUUID(),
-  payload: {
-    reportType: 'flood',
-    description: 'Test flood report from E2E script',
-    severity: 'high',
-    source: 'web',
-    clientDraftRef: 'test-draft-ref-12345',
-    municipalityId: 'daet',
-    barangayId: 'brgy-daet-1',
-    nearestLandmark: 'Near central plaza',
-    publicLocation: { lat: 14.1122, lng: 122.9553 },
-    contact: {
-      phone: '+639171234567',
-      smsConsent: true,
+function buildTestInbox(): Record<string, unknown> {
+  const publicRef = 'e2e-' + crypto.randomUUID().slice(0, 8)
+  const secretHash = crypto.randomUUID().replace(/-/g, '').slice(0, 64).padEnd(64, '0')
+
+  return {
+    reporterUid: 'test-citizen-uid',
+    clientCreatedAt: Date.now(),
+    idempotencyKey: crypto.randomUUID(),
+    publicRef,
+    secretHash,
+    correlationId: crypto.randomUUID(),
+    payload: {
+      reportType: 'flood',
+      description: 'Test flood report from E2E script',
+      severity: 'high',
+      source: 'web',
+      clientDraftRef: 'test-draft-ref-12345',
+      municipalityId: 'daet',
+      barangayId: 'brgy-daet-1',
+      nearestLandmark: 'Near central plaza',
+      publicLocation: { lat: 14.1122, lng: 122.9553 },
+      contact: {
+        phone: '+639171234567',
+        smsConsent: true,
+      },
     },
-  },
+  }
 }
 
 async function main() {
-  console.log('🧪 E2E test: creating report_inbox item on emulator...\n')
+  const TEST_INBOX = buildTestInbox()
+  let reportId: string | undefined
+  let docId: string | undefined
 
-  const docId = 'test-e2e-' + Date.now()
-  await db.collection('report_inbox').doc(docId).set(TEST_INBOX)
-  console.log(`✅ Created report_inbox/${docId}`)
+  try {
+    console.log('🧪 E2E test: creating report_inbox item on emulator...\n')
 
-  console.log('\n🔧 Processing inbox item...')
-  const result = await processInboxItemCore({ db, inboxId: docId })
-  console.log(
-    `  ✅ Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}\n`,
-  )
+    docId = 'test-e2e-' + Date.now()
+    await db.collection('report_inbox').doc(docId).set(TEST_INBOX)
+    console.log(`✅ Created report_inbox/${docId}`)
 
-  // Verify the report was materialized
-  const reportDoc = await db.collection('reports').doc(result.reportId).get()
-  if (reportDoc.exists) {
-    console.log(`✅ Report ${result.reportId} exists in 'reports' collection`)
-  } else {
-    console.log(`❌ Report ${result.reportId} NOT found in 'reports'`)
-    process.exit(1)
+    console.log('\n🔧 Processing inbox item...')
+    const result = await processInboxItemCore({ db, inboxId: docId })
+    console.log(
+      `  ✅ Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}\n`,
+    )
+    reportId = result.reportId
+
+    // Verify the report was materialized
+    const reportDoc = await db.collection('reports').doc(reportId).get()
+    if (reportDoc.exists) {
+      console.log(`✅ Report ${reportId} exists in 'reports' collection`)
+    } else {
+      console.log(`❌ Report ${reportId} NOT found in 'reports'`)
+      process.exit(1)
+    }
+
+    console.log('\n🎉 E2E test passed!')
+  } finally {
+    console.log('\n🧹 Cleaning up...')
+    if (docId) {
+      try {
+        await db.collection('report_inbox').doc(docId).delete()
+      } catch {
+        // Inbox doc may already be deleted by materialization
+      }
+    }
+    if (reportId) {
+      try {
+        await db.collection('reports').doc(reportId).delete()
+      } catch {
+        // Report doc may not exist if materialization failed
+      }
+    }
+    console.log('✅ Cleanup complete.')
   }
-
-  console.log('\n🧹 Cleaning up...')
-  await db.collection('report_inbox').doc(docId).delete()
-  await db.collection('reports').doc(result.reportId).delete()
-  console.log('✅ Cleanup complete.')
-
-  console.log('\n🎉 E2E test passed!')
 }
 
 main().catch((err) => {

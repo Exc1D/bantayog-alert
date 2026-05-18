@@ -4,7 +4,7 @@
 
 **E2E Report Flow Fix — Citizen PWA → Admin Desktop**
 
-A user reported that submitting a report from the Citizen PWA did not appear in the admin-desktop app. Systematic debugging identified five independent root causes — all now fixed.
+A user reported that submitting a report from the Citizen PWA did not appear in the admin-desktop app. Systematic debugging identified five independent root causes — four fixed, one mitigated via manual fallback due to an upstream emulator bug.
 
 ### Root Cause 1: emulator `onDocumentCreated` trigger permanently broken (upstream bug)
 

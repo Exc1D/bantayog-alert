@@ -33,7 +33,7 @@ export const MAX_RETRIES = 3
 function isValidContact(contact: { phone?: string; smsConsent?: boolean }): boolean {
   return (
     typeof contact.phone === 'string' &&
-    contact.phone.length > 0 &&
+    contact.phone.trim().length > 0 &&
     typeof contact.smsConsent === 'boolean'
   )
 }
@@ -289,7 +289,7 @@ async function writeWithTimeout(draft: Draft, reporterUid: string, ms: number): 
       ...(draft.contact && isValidContact(draft.contact)
         ? {
             contact: {
-              phone: draft.contact.phone,
+              phone: draft.contact.phone.trim(),
               smsConsent: draft.contact.smsConsent,
             },
           }
