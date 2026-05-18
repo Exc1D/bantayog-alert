@@ -182,4 +182,43 @@ describe('createDraft', () => {
       }),
     )
   })
+
+  it('preserves non-empty description passed to createDraft', async () => {
+    const { draft } = await createDraft({
+      reportType: 'flood',
+      barangay: 'Daet',
+      description: 'Report submitted via Bantayog Alert.',
+      severity: 'medium',
+      location: { lat: 14.1, lng: 122.9 },
+      clientDraftRef: 'client-ref-desc-test',
+    })
+
+    expect(draft.description).toBe('Report submitted via Bantayog Alert.')
+    expect(mockDraftStoreSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Report submitted via Bantayog Alert.',
+      }),
+    )
+  })
+
+  it('passes empty description through (caller must provide fallback before createDraft)', async () => {
+    // createDraft is a pass-through for description; the fallback is applied
+    // in SubmitReportForm before calling createDraft. This test documents that
+    // behavior so future edits don't accidentally add transformation here.
+    const { draft } = await createDraft({
+      reportType: 'flood',
+      barangay: 'Daet',
+      description: '',
+      severity: 'medium',
+      location: { lat: 14.1, lng: 122.9 },
+      clientDraftRef: 'client-ref-empty-desc',
+    })
+
+    expect(draft.description).toBe('')
+    expect(mockDraftStoreSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: '',
+      }),
+    )
+  })
 })

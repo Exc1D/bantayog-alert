@@ -12,9 +12,7 @@ export interface Draft {
   severity: Severity
   location?: { lat: number; lng: number }
   nearestLandmark?: string
-  reporterName?: string
-  /** SHA-256 only — never plaintext MSISDN */
-  reporterMsisdnHash?: string
+  contact?: { phone: string; smsConsent: true }
   /** Stable ID generated once at creation, used for deduplication */
   clientDraftRef: string
   /** 8-char lowercase alphanumeric public tracking reference */

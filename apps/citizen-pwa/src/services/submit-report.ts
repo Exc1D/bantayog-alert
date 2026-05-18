@@ -45,8 +45,6 @@ export interface CreateDraftInput {
   severity: Draft['severity']
   location?: { lat: number; lng: number }
   nearestLandmark?: string
-  reporterName?: string
-  reporterMsisdnHash?: string
   clientDraftRef: string
   municipalityId?: string
   photo?: Blob
@@ -135,8 +133,6 @@ export async function createDraft(
     ...(input.municipalityId ? { municipalityId: input.municipalityId } : {}),
     ...(input.location ? { location: input.location } : {}),
     ...(input.nearestLandmark ? { nearestLandmark: input.nearestLandmark } : {}),
-    ...(input.reporterName ? { reporterName: input.reporterName } : {}),
-    ...(input.reporterMsisdnHash ? { reporterMsisdnHash: input.reporterMsisdnHash } : {}),
   }
 
   if (input.photo) {

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType } from '@bantayog/shared-types'
 import { createDraft } from '../../services/submit-report.js'
 import type { Draft } from '../../services/draft-store.js'
@@ -114,9 +113,6 @@ function WizardContainer() {
     setDraftError(null)
 
     try {
-      const msisdnHash = formData.step2.reporterMsisdn
-        ? await hashPhone(formData.step2.reporterMsisdn)
-        : undefined
       let photo: Blob | undefined
       if (formData.step1.photoFile) {
         try {
@@ -132,11 +128,11 @@ function WizardContainer() {
         // barangayId holds the barangay name when selected; fall back to municipality label
         barangay: formData.step2.barangayId ?? formData.step2.municipalityLabel ?? '',
         description:
-          formData.step2.patientCount > 0 ? `Patients: ${String(formData.step2.patientCount)}` : '',
+          formData.step2.patientCount > 0
+            ? `Patients: ${String(formData.step2.patientCount)}`
+            : 'Report submitted via Bantayog Alert.',
         severity: 'medium',
         location: formData.step2.location,
-        reporterName: formData.step2.reporterName,
-        ...(msisdnHash ? { reporterMsisdnHash: msisdnHash } : {}),
         clientDraftRef: crypto.randomUUID(),
         ...(formData.step2.municipalityId ? { municipalityId: formData.step2.municipalityId } : {}),
         ...(formData.step2.barangayId ? { barangayId: formData.step2.barangayId } : {}),
@@ -359,13 +355,4 @@ function SubmissionPanel({
       )}
     </div>
   )
-}
-
-async function hashPhone(phone: string): Promise<string> {
-  const normalized = normalizeMsisdn(phone)
-  const buf = new TextEncoder().encode(normalized)
-  const digest = await crypto.subtle.digest('SHA-256', buf)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
 }

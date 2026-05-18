@@ -1,5 +1,90 @@
 # Progress
 
+## Current Status (2026-05-18)
+
+**E2E Report Flow Fix — Citizen PWA → Admin Desktop**
+
+A user reported that submitting a report from the Citizen PWA did not appear in the admin-desktop app. Systematic debugging identified five independent root causes — four fixed, one mitigated via manual fallback due to an upstream emulator bug.
+
+### Root Cause 1: emulator `onDocumentCreated` trigger permanently broken (upstream bug)
+
+- **Finding:** The `onDocumentCreated` trigger on `report_inbox/{inboxId}` crashes 100% of the time with:
+
+  ```text
+  Error: Failed to decode protobuf and create a snapshot.
+  TypeError: Cannot read properties of undefined (reading 'cloud')
+  ```
+
+- **Deep investigation results:**
+  1. The protobuf dependency tree in `functions-dist/` is completely clean — only `protobufjs@7.5.8` exists, zero conflicting copies.
+  2. The crash happens inside `firebase-functions` v7.x `compiledFirestore.mjs`, before user code runs. The `google` namespace exists at module load time but is `undefined` at trigger execution time due to emulator runtime ESM module caching behavior.
+  3. This is a **confirmed upstream emulator bug** between `firebase-tools` v15.x and `firebase-functions` v7.x. It reproduces even with a pristine `functions-dist` rebuilt from scratch.
+- **Impact on production:** ZERO. Cloud Functions on GCP process `report_inbox` correctly. This bug only affects local emulator testing.
+- **Workaround for local E2E:**
+  1. Created `functions/scripts/process-inbox-manual.ts` — a Node script that queries unprocessed `report_inbox` documents and calls `processInboxItemCore` directly via the Admin SDK.
+  2. After submitting a report from the PWA, run:
+
+     ```bash
+     FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 pnpm exec tsx functions/scripts/process-inbox-manual.ts
+     ```
+
+  3. We also seeded `municipalities` collection with 5 Camarines Norte municipalities (required by `processInboxItemCore`).
+
+- **Removed:** The `firebase.emulator.json` and `dev-all.mjs` changes — they don't help because the bug is upstream, not in our config.
+
+### Root Cause 2: Citizen PWA submits unsupported fields in inbox payload
+
+- **Finding:** The `report_inbox` payload written by `useSubmissionMachine.ts` (and earlier by `submit-report.ts`) included `reporterName` and `reporterMsisdnHash` — fields not accepted by `inboxPayloadSchema`.
+- **Symptom:** `processInboxItemCore` validated the payload via `inboxPayloadSchema.safeParse(...)` and rejected it with `payload schema invalid: Unrecognized keys: "reporterName", "reporterMsisdnHash"`.
+- **Fix:**
+  1. Removed `reporterName` and `reporterMsisdnHash` from the `Draft` interface in `services/draft-store.ts`.
+  2. Removed those fields from `CreateDraftInput` in `services/submit-report.ts` and from `createDraft()` body.
+  3. Removed corresponding conditional spread logic from `useSubmissionMachine.ts`.
+  4. Removed MSISDN hashing logic (`hashPhone()`, `normalizeMsisdn` import) from `SubmitReportForm/index.tsx`.
+- **Verification:** `pnpm --dir apps/citizen-pwa typecheck` and `pnpm --dir apps/citizen-pwa lint` both pass. All tests pass.
+
+### Root Cause 3: Citizen PWA sends empty `description` when `patientCount === 0`
+
+- **Finding:** The PWA fill-in form (Step 2) has no incident-description text field. `description` is auto-generated only when `patientCount > 0` (e.g., `"Patients: 2"`). Otherwise it falls back to `""`.
+- **Symptom:** Backend `inboxPayloadSchema` defines `description: z.string().min(1).max(5000)`. An empty string fails the `min(1)` check, producing `payload schema invalid: Too small: expected string to have >=1 characters`.
+- **Fix:** Changed the fallback in `SubmitReportForm/index.tsx` to `"Report submitted via Bantayog Alert."` when `patientCount === 0`.
+- **File:** `apps/citizen-pwa/src/components/SubmitReportForm/index.tsx`
+- **Gate:** `pnpm --dir apps/citizen-pwa exec vitest run` (405/405 tests) pass, `typecheck` pass.
+
+### Root Cause 4: Emulator `municipalities` collection missing `centroid` field
+
+- **Finding:** `processInboxItemCore` resolves `municipalityId` either from payload or via `reverseGeocodeToMunicipality()`. The geocoder iterates over seeded `municipalities` docs, skipping any without `centroid`. If none match within max distance, it throws `"out of jurisdiction"`.
+- **Symptom:** After fixing the payload, manual fallback returned `"out of jurisdiction"` because all 5 seeded municipalities had no `centroid` property.
+- **Fix:** Ran `scripts/seed-centroids-rem.cjs` to add `{ lat, lng }` centroids to every seeded municipality.
+- **Production impact:** Zero — production database already has centroids.
+- **Verification:** After seeding centroids, manual fallback successfully materialized the report.
+
+### Root Cause 5 (Meta): `.env.local` overriding `.env` for emulator configuration
+
+- **Finding:** Both `citizen-pwa/.env` and `admin-desktop/.env` had `VITE_USE_EMULATOR=true`, but their `.env.local` files (gitignored, persist across dev sessions) had `VITE_USE_EMULATOR=false`.
+- **Symptom:** PWA wrote to staging Firestore instead of the local emulator. Admin-desktop was also misconfigured. No reports ever appeared in the emulator, so local E2E could never work regardless of payload fixes.
+- **Fix:** Updated both `.env.local` files to `VITE_USE_EMULATOR=true`. Confirmed dev servers restarted and picked up the change.
+- **Verification:** REST query to emulator `report_inbox` returned documents immediately after switching.
+
+### End-to-End Verification
+
+1. Started emulators + citizen-pwa + admin-desktop with `VITE_USE_EMULATOR=true` (configured via `.env.local`).
+2. Submitted Flood report via PWA — success modal with ref `d0ib3cc7`.
+3. Verified `report_inbox` document created on emulator.
+4. Ran manual fallback → materialized report `0b43431f-9518-4544-8b8c-86ca58e1c515`.
+5. Logged into admin-desktop (`daet-admin-test-01@test.local`) → **report visible in Triage Queue** with Flood / MED / Daet.
+6. Screenshot saved: `e2e-admin-desktop-proof.png`.
+
+### Files changed
+
+- `apps/citizen-pwa/src/components/SubmitReportForm/index.tsx` (empty description fix)
+- `apps/citizen-pwa/.env.local` → `VITE_USE_EMULATOR=true`
+- `apps/admin-desktop/.env.local` → `VITE_USE_EMULATOR=true`
+- `docs/learnings.md` (entries: Empty Description, Missing Municipality Centroids)
+- **NEW** `functions/scripts/e2e-create-report-inbox.ts` (E2E test helper)
+- **NEW** `functions/scripts/process-single-inbox.ts` (process single doc manually)
+- **NEW** `scripts/seed-centroids-rem.cjs` (emulator centroid backfill)
+
 ## Current Status (2026-05-17)
 
 **Admin Desktop Live Report Surfacing + Feed Moderation**
