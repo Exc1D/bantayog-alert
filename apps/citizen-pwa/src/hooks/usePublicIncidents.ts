@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
+import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { PublicIncident, Filters } from '../components/MapTab/types.js'
 
@@ -59,20 +60,49 @@ export function usePublicIncidents(filters: Filters): {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const all = snap.docs.flatMap((d) => {
-          const data: unknown = d.data()
-          if (!isPublicIncidentData(data)) {
-            console.error('Skipping invalid public incident document', d.id)
-            return []
+        async function buildIncidents() {
+          const all: PublicIncident[] = []
+          for (const d of snap.docs) {
+            const raw: unknown = d.data()
+            if (!isPublicIncidentData(raw)) {
+              console.error('Skipping invalid public incident document', d.id)
+              continue
+            }
+            const doc = raw as Record<string, unknown>
+            let featuredMediaUrls: string[] | undefined
+            const mediaRefs = doc.mediaRefs
+            if (Array.isArray(mediaRefs) && mediaRefs.length > 0) {
+              const urls: string[] = []
+              for (const path of mediaRefs.slice(0, 3)) {
+                if (typeof path !== 'string') continue
+                try {
+                  const url = await getDownloadURL(ref(getStorage(), path))
+                  urls.push(url)
+                } catch {
+                  /* skip failed URLs */
+                }
+              }
+              if (urls.length > 0) {
+                featuredMediaUrls = urls
+              }
+            }
+            const incident: PublicIncident = {
+              id: d.id,
+              ...raw,
+            }
+            if (featuredMediaUrls) {
+              incident.featuredMediaUrls = featuredMediaUrls
+            }
+            all.push(incident)
           }
-          return [{ id: d.id, ...data }]
-        })
-        const filtered = filters.municipality
-          ? all.filter((i) => i.municipalityLabel === filters.municipality)
-          : all
-        setError(null)
-        setIncidents(filtered)
-        setLoading(false)
+          const filtered = filters.municipality
+            ? all.filter((i) => i.municipalityLabel === filters.municipality)
+            : all
+          setError(null)
+          setIncidents(filtered)
+          setLoading(false)
+        }
+        void buildIncidents()
       },
       (err) => {
         setError(err)

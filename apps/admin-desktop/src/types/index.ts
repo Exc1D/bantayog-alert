@@ -30,6 +30,7 @@ export interface Report {
   resolvedAt?: string
   assignedAgency?: string
   responderCount?: number
+  featuredMediaIds?: string[]
 }
 
 export interface ReportPrivate {
