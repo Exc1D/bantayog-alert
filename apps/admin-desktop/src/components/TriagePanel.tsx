@@ -18,6 +18,7 @@ interface Props {
   onVerify: (id: string) => void
   onReject: (id: string) => void
   onDispatch: (id: string, agency: string, responder: string) => void
+  onDeclareAlert?: (reportId: string) => void
 }
 
 const AGENCIES = ['BFP', 'PNP', 'MDRRMO', 'Coast Guard'] as const
@@ -29,6 +30,7 @@ export function TriagePanel({
   onVerify,
   onReject,
   onDispatch,
+  onDeclareAlert,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -264,6 +266,19 @@ export function TriagePanel({
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {canDispatch && onDeclareAlert && (
+            <div className="border-t border-white/10 pt-4">
+              <button
+                onClick={() => {
+                  onDeclareAlert(report.id)
+                }}
+                className="w-full rounded-md bg-[var(--color-danger)] py-2 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
+              >
+                Declare Alert
+              </button>
             </div>
           )}
 

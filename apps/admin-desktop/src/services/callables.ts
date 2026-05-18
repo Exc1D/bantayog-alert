@@ -115,14 +115,15 @@ export const callables = {
       functions,
       'bulkAvailabilityOverride',
     )(payload).then((r) => r.data),
-  declareEmergency: (payload: {
+  declareAlert: (payload: {
     hazardType: string
     affectedMunicipalityIds: string[]
     message: string
+    reportId?: string
   }) =>
     httpsCallable<typeof payload, { alertId: string }>(
       functions,
-      'declareEmergency',
+      'declareAlert',
     )(payload).then((r) => r.data),
   declareDataIncident: (payload: {
     incidentType: string
