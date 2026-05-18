@@ -30,21 +30,25 @@ export function AnomalyAlertBanner({ alerts, onDismissAll }: Props) {
 
   return (
     <div
-      className="mb-4 flex items-center gap-3 rounded-lg border px-4 py-3"
+      className="relative mb-4 flex items-center gap-3 overflow-hidden rounded-lg border px-4 py-3"
       style={{
         borderColor: color,
-        backgroundColor: `${color}15`,
       }}
       role="alert"
     >
-      <Icon className="h-5 w-5 shrink-0" style={{ color }} aria-hidden="true" />
-      <p className="flex-1 text-sm" style={{ color }}>
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.08]"
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      <Icon className="relative z-10 h-5 w-5 shrink-0" style={{ color }} aria-hidden="true" />
+      <p className="relative z-10 flex-1 text-sm" style={{ color }}>
         {summary}
       </p>
       <button
         type="button"
         onClick={onDismissAll}
-        className="rounded p-1 hover:bg-white/10"
+        className="relative z-10 rounded p-1 hover:bg-white/10"
         aria-label="Dismiss all alerts"
       >
         <X className="h-4 w-4" style={{ color }} aria-hidden="true" />

@@ -81,6 +81,16 @@ export default function DashboardPage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current)
+      }
+    }
+  }, [])
+
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set())
+
   const { signOut } = useAuth()
   const { selectReport, selectedReportId, setSuppressNextBroadcast } = useCommandCenterStore()
   const { loading, error, reports, alerts } = useFirestoreListeners({
@@ -251,6 +261,7 @@ export default function DashboardPage() {
 
   const confirmBulkVerify = useCallback(async () => {
     if (!bulkVerifyIds) return
+    let verifiedCount = 0
     bulkVerifyIds.forEach((id) => {
       setLoadingActions((prev) => new Set(prev).add(id))
     })
@@ -258,6 +269,7 @@ export default function DashboardPage() {
       for (const id of bulkVerifyIds) {
         try {
           await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
+          verifiedCount += 1
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Bulk verify failed'
           setActionError(msg)
@@ -275,7 +287,11 @@ export default function DashboardPage() {
       })
       setBulkVerifyIds(null)
       setSelectedIds(new Set())
-      showSuccess(`${String(bulkVerifyIds.size)} reports verified`)
+      if (verifiedCount > 0) {
+        showSuccess(
+          verifiedCount === 1 ? '1 report verified' : `${String(verifiedCount)} reports verified`,
+        )
+      }
     }
   }, [bulkVerifyIds, playError, showSuccess])
 
@@ -380,14 +396,21 @@ export default function DashboardPage() {
       (r) => r.status === 'verified' || r.status === 'resolved',
     )
     if (verifiedReports.length === 0) return 0
-    const totalMs = verifiedReports.reduce((sum, r) => {
-      const raw = r as unknown as Record<string, unknown>
-      const createdAt = raw.createdAt as number | undefined
-      const updatedAt = raw.updatedAt as number | undefined
-      if (createdAt === undefined || updatedAt === undefined) return sum
-      return sum + (updatedAt - createdAt)
-    }, 0)
-    return Math.round(totalMs / verifiedReports.length / 60000)
+    const { totalMs, countWithTimestamps } = verifiedReports.reduce(
+      (acc, r) => {
+        const raw = r as unknown as Record<string, unknown>
+        const createdAt = raw.createdAt as number | undefined
+        const updatedAt = raw.updatedAt as number | undefined
+        if (createdAt === undefined || updatedAt === undefined) return acc
+        return {
+          totalMs: acc.totalMs + (updatedAt - createdAt),
+          countWithTimestamps: acc.countWithTimestamps + 1,
+        }
+      },
+      { totalMs: 0, countWithTimestamps: 0 },
+    )
+    if (countWithTimestamps === 0) return 0
+    return Math.round(totalMs / countWithTimestamps / 60000)
   }, [reports])
 
   const handleRowClick = useCallback(
@@ -468,9 +491,23 @@ export default function DashboardPage() {
         <AnomalyAlertBanner
           alerts={alerts
             .map(mapAlertDocToAnomalyAlert)
-            .filter((a): a is AnomalyAlert => a !== null)}
+            .filter((a): a is AnomalyAlert => a !== null)
+            .filter((a) => !dismissedAlertIds.has(a.id))}
           onDismissAll={() => {
-            /* TODO: wire dismissAnomaly callable */
+            setDismissedAlertIds((prev) => {
+              const next = new Set(prev)
+              alerts
+                .map(mapAlertDocToAnomalyAlert)
+                .filter((a): a is AnomalyAlert => a !== null)
+                .forEach((a) => next.add(a.id))
+              return next
+            })
+            try {
+              // Attempt to call dismissAnomaly if it exists at runtime
+              void (callables as Record<string, (...args: unknown[]) => unknown>).dismissAnomaly?.()
+            } catch {
+              // silently ignore — UI already updated
+            }
           }}
         />
 

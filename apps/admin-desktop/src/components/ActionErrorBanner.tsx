@@ -10,7 +10,11 @@ export function ActionErrorBanner({ message, onDismiss }: Props) {
       role="alert"
     >
       {message}
-      <button onClick={onDismiss} className="ml-2 underline">
+      <button
+        onClick={onDismiss}
+        className="ml-2 rounded p-1 underline hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+        aria-label="Dismiss"
+      >
         Dismiss
       </button>
     </div>
