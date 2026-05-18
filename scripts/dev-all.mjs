@@ -83,7 +83,7 @@ process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 
 // ── Start emulators ──────────────────────────────────────────────
-start('emulators', colors.emulators, 'firebase', ['emulators:start'], {
+start('emulators', colors.emulators, 'pnpm', ['exec', 'firebase', 'emulators:start'], {
   cwd: rootDir,
 })
 

@@ -45,7 +45,10 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
     setSubmitting(false)
     const next = new Set<string>()
     if (prefill?.municipalityId) {
-      next.add(prefill.municipalityId)
+      const allowedIds = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
+      if (allowedIds.has(prefill.municipalityId)) {
+        next.add(prefill.municipalityId)
+      }
     }
     setSelectedMunicipalityIds(next)
   }, [open, prefill?.municipalityId])

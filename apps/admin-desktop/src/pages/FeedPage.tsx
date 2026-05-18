@@ -32,6 +32,7 @@ export default function FeedPage() {
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
   const [unpublishingIds, setUnpublishingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
+  const [pendingFeaturedIds, setPendingFeaturedIds] = useState<Record<string, string[]>>({})
   const [mediaUrlsByReport, setMediaUrlsByReport] = useState<
     Record<string, { uploadId: string; url: string }[]>
   >({})
@@ -69,20 +70,27 @@ export default function FeedPage() {
       for (const { report } of feedReports) {
         try {
           const mediaSnap = await getDocs(collection(db, 'reports', report.id, 'media'))
-          const entries: { uploadId: string; url: string }[] = []
-          for (const d of mediaSnap.docs) {
+          const promises = mediaSnap.docs.map(async (d) => {
             const data = d.data()
-            if (typeof data.storagePath === 'string') {
-              try {
-                const url = await getDownloadURL(ref(getStorage(), data.storagePath))
-                entries.push({ uploadId: d.id, url })
-              } catch {
-                /* skip */
-              }
+            if (typeof data.storagePath !== 'string') return null
+            try {
+              const url = await getDownloadURL(ref(getStorage(), data.storagePath))
+              return { uploadId: d.id, url }
+            } catch (e) {
+              console.error(`Failed to resolve media URL for report ${report.id}, media ${d.id}`, e)
+              return null
             }
-          }
-          urls[report.id] = entries
-        } catch {
+          })
+          const settled = await Promise.allSettled(promises)
+          urls[report.id] = settled
+            .filter(
+              (r): r is PromiseFulfilledResult<{ uploadId: string; url: string } | null> =>
+                r.status === 'fulfilled',
+            )
+            .map((r) => r.value)
+            .filter((v): v is { uploadId: string; url: string } => v !== null)
+        } catch (e) {
+          console.error(`Failed to fetch media for report ${report.id}`, e)
           urls[report.id] = []
         }
       }
@@ -147,6 +155,11 @@ export default function FeedPage() {
       })
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to save featured media')
+      setPendingFeaturedIds((prev) => {
+        const { [reportId]: _removed, ...rest } = prev
+        void _removed
+        return rest
+      })
     }
   }
 
@@ -272,9 +285,11 @@ export default function FeedPage() {
                           <p className="mb-1 text-xs text-[var(--color-text-muted)]">Photos:</p>
                           <div className="flex gap-2 flex-wrap">
                             {reportMedia.map(({ uploadId, url }, idx) => {
-                              const currentIds = Array.isArray(raw.featuredMediaIds)
-                                ? raw.featuredMediaIds
+                              const firestoreIds = Array.isArray(raw.featuredMediaIds)
+                                ? (raw.featuredMediaIds as string[])
                                 : []
+                              const pending = pendingFeaturedIds[report.id]
+                              const currentIds = pending ?? firestoreIds
                               const isSelected = currentIds.includes(uploadId)
                               return (
                                 <label
@@ -287,15 +302,15 @@ export default function FeedPage() {
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={(e) => {
-                                      const currentIds: string[] = Array.isArray(
-                                        raw.featuredMediaIds,
-                                      )
-                                        ? (raw.featuredMediaIds as string[])
-                                        : []
-                                      const next = e.target.checked
-                                        ? [...currentIds, uploadId]
-                                        : currentIds.filter((id) => id !== uploadId)
-                                      void saveFeaturedMedia(report.id, next)
+                                      setPendingFeaturedIds((prev) => {
+                                        const base = prev[report.id] ?? firestoreIds
+                                        const next = e.target.checked
+                                          ? [...base, uploadId]
+                                          : base.filter((id) => id !== uploadId)
+                                        const updated = { ...prev, [report.id]: next }
+                                        void saveFeaturedMedia(report.id, next)
+                                        return updated
+                                      })
                                     }}
                                     className="absolute top-1 left-1 z-10"
                                     aria-label={`Select photo ${String(idx + 1)}`}

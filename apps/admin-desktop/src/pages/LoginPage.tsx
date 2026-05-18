@@ -33,7 +33,9 @@ export function LoginPage() {
         setError('This account does not have admin privileges.')
         return
       }
-      void navigate('/dashboard', { replace: true })
+      // Navigation is handled by the useEffect that watches [user, authLoading]
+      // Do NOT call navigate here — it fires before onAuthStateChanged updates
+      // React state, causing AuthLayout to see user=null and redirect back.
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign in failed')
     } finally {

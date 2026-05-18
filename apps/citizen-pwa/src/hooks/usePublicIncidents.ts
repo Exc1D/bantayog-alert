@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
@@ -37,6 +37,7 @@ export function usePublicIncidents(filters: Filters): {
   const [incidents, setIncidents] = useState<PublicIncident[]>([])
   const [loading, setLoading] = useState(firebaseConfigured)
   const [error, setError] = useState<unknown>(null)
+  const versionRef = useRef(0)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -57,6 +58,8 @@ export function usePublicIncidents(filters: Filters): {
       orderBy('submittedAt', 'desc'),
       limit(100),
     )
+
+    const currentVersion = ++versionRef.current
     const unsub = onSnapshot(
       q,
       (snap) => {
@@ -70,20 +73,45 @@ export function usePublicIncidents(filters: Filters): {
             }
             const doc = raw as Record<string, unknown>
             let featuredMediaUrls: string[] | undefined
-            const mediaRefs = doc.mediaRefs
-            if (Array.isArray(mediaRefs) && mediaRefs.length > 0) {
+            const featuredMediaIds = doc.featuredMediaIds
+            if (Array.isArray(featuredMediaIds) && featuredMediaIds.length > 0) {
               const urls: string[] = []
-              for (const path of mediaRefs.slice(0, 3)) {
-                if (typeof path !== 'string') continue
+              for (const id of (featuredMediaIds as unknown[]).slice(0, 3)) {
+                if (typeof id !== 'string') continue
                 try {
-                  const url = await getDownloadURL(ref(getStorage(), path))
+                  const url = await getDownloadURL(ref(getStorage(), id))
                   urls.push(url)
-                } catch {
-                  /* skip failed URLs */
+                } catch (e) {
+                  console.error(
+                    `Failed to resolve featured media URL for incident ${d.id}, media ${id}`,
+                    e,
+                  )
                 }
               }
               if (urls.length > 0) {
                 featuredMediaUrls = urls
+              }
+            }
+            // Fallback to legacy mediaRefs only when featuredMediaIds yields nothing
+            if (!featuredMediaUrls) {
+              const mediaRefs = doc.mediaRefs
+              if (Array.isArray(mediaRefs) && mediaRefs.length > 0) {
+                const urls: string[] = []
+                for (const path of mediaRefs.slice(0, 3)) {
+                  if (typeof path !== 'string') continue
+                  try {
+                    const url = await getDownloadURL(ref(getStorage(), path))
+                    urls.push(url)
+                  } catch (e) {
+                    console.error(
+                      `Failed to resolve media URL for incident ${d.id}, path ${path}`,
+                      e,
+                    )
+                  }
+                }
+                if (urls.length > 0) {
+                  featuredMediaUrls = urls
+                }
               }
             }
             const incident: PublicIncident = {
@@ -98,6 +126,8 @@ export function usePublicIncidents(filters: Filters): {
           const filtered = filters.municipality
             ? all.filter((i) => i.municipalityLabel === filters.municipality)
             : all
+          // Ignore stale snapshots
+          if (versionRef.current !== currentVersion) return
           setError(null)
           setIncidents(filtered)
           setLoading(false)
@@ -105,6 +135,7 @@ export function usePublicIncidents(filters: Filters): {
         void buildIncidents()
       },
       (err) => {
+        if (versionRef.current !== currentVersion) return
         setError(err)
         setLoading(false)
       },
