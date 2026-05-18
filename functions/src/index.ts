@@ -133,7 +133,7 @@ export { analyticsSnapshotWriter } from './scheduled/analytics-snapshot-writer.j
 export { costSnapshotWriter } from './triggers/cost-snapshot-writer.js'
 export { auditExportBatch } from './triggers/audit-export-batch.js'
 export { auditExportHealthCheck } from './triggers/audit-export-health-check.js'
-export { declareEmergency } from './callables/declare-emergency.js'
+export { declareAlert } from './callables/declare-alert.js'
 export { declareDataIncident } from './callables/declare-data-incident.js'
 export { recordIncidentResponseEvent } from './callables/record-incident-response-event.js'
 export { setRetentionExempt } from './callables/set-retention-exempt.js'
