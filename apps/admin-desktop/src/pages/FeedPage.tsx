@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { getStorage, ref, getDownloadURL } from 'firebase/storage'
@@ -33,6 +33,7 @@ export default function FeedPage() {
   const [unpublishingIds, setUnpublishingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [pendingFeaturedIds, setPendingFeaturedIds] = useState<Record<string, string[]>>({})
+  const writeQueues = useRef(new Map<string, Promise<void>>())
   const [mediaUrlsByReport, setMediaUrlsByReport] = useState<
     Record<string, { uploadId: string; url: string }[]>
   >({})
@@ -302,15 +303,22 @@ export default function FeedPage() {
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={(e) => {
-                                      setPendingFeaturedIds((prev) => {
-                                        const base = prev[report.id] ?? firestoreIds
-                                        const next = e.target.checked
-                                          ? [...base, uploadId]
-                                          : base.filter((id) => id !== uploadId)
-                                        const updated = { ...prev, [report.id]: next }
-                                        void saveFeaturedMedia(report.id, next)
-                                        return updated
-                                      })
+                                      const checked = e.target.checked
+                                      const base = pendingFeaturedIds[report.id] ?? firestoreIds
+                                      const next = checked
+                                        ? [...base, uploadId]
+                                        : base.filter((id) => id !== uploadId)
+                                      setPendingFeaturedIds((prev) => ({
+                                        ...prev,
+                                        [report.id]: next,
+                                      }))
+                                      // Serialize writes per report to prevent out-of-order persistence
+                                      const prevWrite =
+                                        writeQueues.current.get(report.id) ?? Promise.resolve()
+                                      const chained = prevWrite.then(() =>
+                                        saveFeaturedMedia(report.id, next),
+                                      )
+                                      writeQueues.current.set(report.id, chained)
                                     }}
                                     className="absolute top-1 left-1 z-10"
                                     aria-label={`Select photo ${String(idx + 1)}`}

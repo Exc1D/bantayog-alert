@@ -317,10 +317,10 @@ describe('report_media read — public_alertable', () => {
   )
 
   itif(false)(
-    '[SKIP: emulator lacks get() support] unauthenticated read of public_alertable report_media fails',
+    '[SKIP: emulator lacks get() support] unauthenticated read of public_alertable report_media succeeds',
     async () => {
       const storage = getTestEnv().unauthenticatedContext().storage()
-      await assertFails(storage.ref('report_media/daet/public-report/photo.jpg').getMetadata())
+      await assertSucceeds(storage.ref('report_media/daet/public-report/photo.jpg').getMetadata())
     },
   )
 })

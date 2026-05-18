@@ -22,7 +22,10 @@ service firebase.storage {
     match /report_media/{municipalityId}/{reportId}/{filename} {
       allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
                   || (isSuperadmin() && municipalityId in permittedMunis())
-                  || get(/databases/(default)/documents/reports/$(reportId)).data.visibilityClass == 'public_alertable';
+                  || (
+                       get(/databases/(default)/documents/reports/$(reportId)).data.visibilityClass == 'public_alertable'
+                       && get(/databases/(default)/documents/reports/$(reportId)).data.municipalityId == municipalityId
+                     );
       allow write: if false;
     }
 
