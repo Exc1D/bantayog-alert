@@ -6,9 +6,13 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { ConfirmationModal } from '../components/ConfirmationModal'
 import { TrendAnalysisPanel } from '../components/TrendAnalysisPanel'
 import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
-import { AnomalyAlertPanel } from '../components/AnomalyAlertPanel'
+import { AnomalyAlertBanner } from '../components/AnomalyAlertBanner'
+import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { ActiveIncidentsTable } from '../components/ActiveIncidentsTable'
+import { AllClearState } from '../components/AllClearState'
 import { DeclareAlertModal } from '../components/DeclareAlertModal'
+import { HelpModal } from '../components/HelpModal'
+import { SuccessBanner } from '../components/SuccessBanner'
 import { useAuth } from '@bantayog/shared-ui'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
@@ -19,15 +23,8 @@ import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
+import { generateIdempotencyKey } from '../utils/generate-idempotency-key'
 import type { Report, MunicipalPerformance, AnomalyAlert, ReportStatus } from '../types'
-
-function generateIdempotencyKey(): string {
-  try {
-    return crypto.randomUUID()
-  } catch {
-    return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
-  }
-}
 
 interface FirestoreAlertDoc {
   id: string
@@ -79,6 +76,20 @@ export default function DashboardPage() {
   const [bulkVerifyIds, setBulkVerifyIds] = useState<Set<string> | null>(null)
   const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set())
   const [popupBlocked, setPopupBlocked] = useState(false)
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false)
+  const [verifyTargetId, setVerifyTargetId] = useState<string | null>(null)
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null)
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current)
+      }
+    }
+  }, [])
+
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set())
 
   const { signOut } = useAuth()
   const { selectReport, selectedReportId, setSuppressNextBroadcast } = useCommandCenterStore()
@@ -118,6 +129,14 @@ export default function DashboardPage() {
     setActionError(null)
   }, [])
 
+  const showSuccess = useCallback((message: string) => {
+    setActionSuccess(message)
+    if (successTimerRef.current) clearTimeout(successTimerRef.current)
+    successTimerRef.current = setTimeout(() => {
+      setActionSuccess(null)
+    }, 4000)
+  }, [])
+
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -143,11 +162,17 @@ export default function DashboardPage() {
     )
   }, [triageReports])
 
-  const handleVerify = useCallback(
+  const handleVerify = useCallback((id: string) => {
+    setVerifyTargetId(id)
+    setVerifyModalOpen(true)
+  }, [])
+
+  const confirmVerify = useCallback(
     async (id: string) => {
       setLoadingActions((prev) => new Set(prev).add(id))
       try {
         await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
+        showSuccess('Report verified')
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Verify failed'
         setActionError(msg)
@@ -160,7 +185,7 @@ export default function DashboardPage() {
         })
       }
     },
-    [playError],
+    [playError, showSuccess],
   )
 
   const handleReject = useCallback((id: string) => {
@@ -211,6 +236,7 @@ export default function DashboardPage() {
       setRejectTargetId(null)
       setBulkRejectIds(null)
       setSelectedIds(new Set())
+      showSuccess(ids.length === 1 ? 'Report rejected' : `${String(ids.length)} reports rejected`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Reject failed'
       setActionError(msg)
@@ -226,7 +252,7 @@ export default function DashboardPage() {
         }
       })
     }
-  }, [rejectTargetId, rejectReason, rejectNotes, playError, bulkRejectIds])
+  }, [rejectTargetId, rejectReason, rejectNotes, playError, bulkRejectIds, showSuccess])
 
   const handleBulkVerify = useCallback((ids: Set<string>) => {
     if (ids.size === 0) return
@@ -235,6 +261,7 @@ export default function DashboardPage() {
 
   const confirmBulkVerify = useCallback(async () => {
     if (!bulkVerifyIds) return
+    let verifiedCount = 0
     bulkVerifyIds.forEach((id) => {
       setLoadingActions((prev) => new Set(prev).add(id))
     })
@@ -242,6 +269,7 @@ export default function DashboardPage() {
       for (const id of bulkVerifyIds) {
         try {
           await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
+          verifiedCount += 1
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Bulk verify failed'
           setActionError(msg)
@@ -259,8 +287,13 @@ export default function DashboardPage() {
       })
       setBulkVerifyIds(null)
       setSelectedIds(new Set())
+      if (verifiedCount > 0) {
+        showSuccess(
+          verifiedCount === 1 ? '1 report verified' : `${String(verifiedCount)} reports verified`,
+        )
+      }
     }
-  }, [bulkVerifyIds, playError])
+  }, [bulkVerifyIds, playError, showSuccess])
 
   const handleBulkReject = useCallback((ids: Set<string>) => {
     if (ids.size === 0) return
@@ -283,16 +316,15 @@ export default function DashboardPage() {
         if (!selectedReportId) return
         const focused = reports.find((r) => r.id === selectedReportId)
         if (focused?.status !== 'new' && focused?.status !== 'awaiting_verify') return
-        void handleVerify(selectedReportId)
+        handleVerify(selectedReportId)
       },
     },
     {
       key: 'v',
       shift: true,
       handler: () => {
-        selectedIds.forEach((id) => {
-          void handleVerify(id)
-        })
+        if (selectedIds.size === 0) return
+        handleBulkVerify(selectedIds)
       },
     },
     {
@@ -311,6 +343,7 @@ export default function DashboardPage() {
         setSelectedIds(new Set())
         setRejectModalOpen(false)
         setHelpModalOpen(false)
+        setVerifyModalOpen(false)
       },
     },
     {
@@ -328,6 +361,21 @@ export default function DashboardPage() {
     ACTIVE_REPORT_STATUSES.includes(r.status as ReportStatus),
   ).length
 
+  const lastReportAt = useMemo(() => {
+    if (reports.length === 0) return undefined
+    const latest = reports.reduce((max, r) => {
+      const raw = r as unknown as Record<string, unknown>
+      const ts = raw.createdAt as number | undefined
+      return ts !== undefined && ts > max ? ts : max
+    }, 0)
+    if (!latest) return undefined
+    return new Date(latest).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+  }, [reports])
+
   const municipalData: MunicipalPerformance[] = useMemo(() => {
     const byMuni = new Map<string, Report[]>()
     reports.forEach((r) => {
@@ -341,6 +389,28 @@ export default function DashboardPage() {
       municipality,
       activeIncidents: muniReports.filter((r) => ACTIVE_REPORT_STATUSES.includes(r.status)).length,
     }))
+  }, [reports])
+
+  const avgResponseTime = useMemo(() => {
+    const verifiedReports = reports.filter(
+      (r) => r.status === 'verified' || r.status === 'resolved',
+    )
+    if (verifiedReports.length === 0) return 0
+    const { totalMs, countWithTimestamps } = verifiedReports.reduce(
+      (acc, r) => {
+        const raw = r as unknown as Record<string, unknown>
+        const createdAt = raw.createdAt as number | undefined
+        const updatedAt = raw.updatedAt as number | undefined
+        if (createdAt === undefined || updatedAt === undefined) return acc
+        return {
+          totalMs: acc.totalMs + (updatedAt - createdAt),
+          countWithTimestamps: acc.countWithTimestamps + 1,
+        }
+      },
+      { totalMs: 0, countWithTimestamps: 0 },
+    )
+    if (countWithTimestamps === 0) return 0
+    return Math.round(totalMs / countWithTimestamps / 60000)
   }, [reports])
 
   const handleRowClick = useCallback(
@@ -371,7 +441,6 @@ export default function DashboardPage() {
         windowRole="dashboard"
         lastUpdatedAt={lastUpdatedAt}
         notificationCount={3}
-        onOpenMap={openMapWindow}
         audioEnabled={audioEnabled}
         onToggleAudio={toggleAudio}
         onDeclareAlert={() => {
@@ -384,19 +453,21 @@ export default function DashboardPage() {
           void signOut()
         }}
       />
-      <StatusBar activeIncidents={activeCount} avgResponseTime={12} pendingTriage={pendingCount} />
-      <main className="flex-1 overflow-auto p-4">
-        {actionError && (
-          <div
-            className="mb-4 border border-[var(--color-danger)] bg-[var(--color-danger)]/20 px-4 py-2 text-sm text-[var(--color-danger)]"
-            role="alert"
-          >
-            {actionError}
-            <button onClick={clearActionError} className="ml-2 underline">
-              Dismiss
-            </button>
-          </div>
+      <StatusBar
+        activeIncidents={activeCount}
+        avgResponseTime={avgResponseTime}
+        pendingTriage={pendingCount}
+      />
+      <main className="flex-1 overflow-auto px-6 py-5">
+        {actionSuccess && (
+          <SuccessBanner
+            message={actionSuccess}
+            onDismiss={() => {
+              setActionSuccess(null)
+            }}
+          />
         )}
+        {actionError && <ActionErrorBanner message={actionError} onDismiss={clearActionError} />}
         {popupBlocked && (
           <div
             className="mb-4 border border-[var(--color-warning)] bg-[var(--color-warning)]/15 px-4 py-2 text-sm text-[var(--color-text-primary)]"
@@ -417,84 +488,133 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
-          <div className="min-w-0">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-                Triage Queue
-              </h2>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {triageReports.length} report{triageReports.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] shadow-sm">
-              <TriageQueueTable
-                reports={triageReports.map((r) =>
-                  mapReportDocToReportLoose(r as unknown as Record<string, unknown>),
-                )}
-                selectedIds={selectedIds}
-                loadingIds={loadingActions}
-                onToggleSelect={toggleSelect}
-                onSelectAll={selectAll}
-                onVerify={(id) => {
-                  void handleVerify(id)
-                }}
-                onReject={(id) => {
-                  handleReject(id)
-                }}
-                onBulkVerify={(ids) => {
-                  handleBulkVerify(ids)
-                }}
-                onBulkReject={handleBulkReject}
-                onDispatch={() => {
-                  openMapWindow()
-                }}
-                onRowClick={handleRowClick}
-              />
-            </div>
-            {trackingReports.length > 0 && (
-              <div className="mt-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-                    Active &amp; Recent Incidents
+        <AnomalyAlertBanner
+          alerts={alerts
+            .map(mapAlertDocToAnomalyAlert)
+            .filter((a): a is AnomalyAlert => a !== null)
+            .filter((a) => !dismissedAlertIds.has(a.id))}
+          onDismissAll={() => {
+            setDismissedAlertIds((prev) => {
+              const next = new Set(prev)
+              alerts
+                .map(mapAlertDocToAnomalyAlert)
+                .filter((a): a is AnomalyAlert => a !== null)
+                .forEach((a) => next.add(a.id))
+              return next
+            })
+            try {
+              // Attempt to call dismissAnomaly if it exists at runtime
+              void (callables as Record<string, (...args: unknown[]) => unknown>).dismissAnomaly?.()
+            } catch {
+              // silently ignore — UI already updated
+            }
+          }}
+        />
+
+        {triageReports.length === 0 && trackingReports.length === 0 ? (
+          <AllClearState lastReportAt={lastReportAt} />
+        ) : (
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_280px]">
+            <div className="min-w-0 space-y-8">
+              <section>
+                <div className="mb-2 flex items-baseline justify-between">
+                  <h2 className="text-lg font-semibold tracking-tight text-[var(--color-text-primary)]">
+                    Triage Queue
                   </h2>
-                  <span className="text-xs text-[var(--color-text-muted)]">
-                    {trackingReports.length} report{trackingReports.length !== 1 ? 's' : ''}
+                  <span className="text-xs font-mono text-[var(--color-text-muted)]">
+                    {triageReports.length}
                   </span>
                 </div>
-                <ActiveIncidentsTable
-                  reports={trackingReports.map((r) =>
-                    mapReportDocToReportLoose(r as unknown as Record<string, unknown>),
-                  )}
-                  onRowClick={handleRowClick}
-                />
+                <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)]">
+                  <TriageQueueTable
+                    reports={triageReports.map((r) =>
+                      mapReportDocToReportLoose(r as unknown as Record<string, unknown>),
+                    )}
+                    selectedIds={selectedIds}
+                    loadingIds={loadingActions}
+                    onToggleSelect={toggleSelect}
+                    onSelectAll={selectAll}
+                    onVerify={(id) => {
+                      handleVerify(id)
+                    }}
+                    onReject={(id) => {
+                      handleReject(id)
+                    }}
+                    onBulkVerify={(ids) => {
+                      handleBulkVerify(ids)
+                    }}
+                    onBulkReject={handleBulkReject}
+                    onDispatch={() => {
+                      openMapWindow()
+                    }}
+                    onRowClick={handleRowClick}
+                  />
+                </div>
+              </section>
+
+              {trackingReports.length > 0 && (
+                <section>
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h2 className="text-base font-semibold tracking-tight text-[var(--color-text-primary)]">
+                      Active &amp; Recent Incidents
+                    </h2>
+                    <span className="text-xs font-mono text-[var(--color-text-muted)]">
+                      {trackingReports.length}
+                    </span>
+                  </div>
+                  <ActiveIncidentsTable
+                    reports={trackingReports.map((r) =>
+                      mapReportDocToReportLoose(r as unknown as Record<string, unknown>),
+                    )}
+                    onRowClick={handleRowClick}
+                  />
+                </section>
+              )}
+
+              <section>
+                <TrendAnalysisPanel reports={reports} />
+              </section>
+            </div>
+
+            <aside className="min-w-0">
+              <div className="mb-2">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  Municipalities
+                </h2>
               </div>
-            )}
+              <MunicipalPerformanceTable
+                data={municipalData}
+                onSelectMunicipality={(m) => {
+                  setSuppressNextBroadcast(true)
+                  sendSync({ type: 'select:municipality', municipalityId: m, source: 'dashboard' })
+                }}
+              />
+            </aside>
           </div>
-          <div className="flex min-w-0 flex-col gap-6">
-            <AnomalyAlertPanel
-              alerts={alerts
-                .map(mapAlertDocToAnomalyAlert)
-                .filter((a): a is AnomalyAlert => a !== null)}
-              onDismiss={() => {
-                /* TODO: wire dismissAnomaly callable */
-              }}
-            />
-            <MunicipalPerformanceTable
-              data={municipalData}
-              onSelectMunicipality={(m) => {
-                setSuppressNextBroadcast(true)
-                sendSync({ type: 'select:municipality', municipalityId: m, source: 'dashboard' })
-              }}
-            />
-            <TrendAnalysisPanel reports={reports} />
-          </div>
-        </div>
+        )}
       </main>
       <ConfirmationModal
+        open={verifyModalOpen}
+        title="Verify report?"
+        message="This will mark the report as confirmed and make it visible to the public."
+        confirmLabel="Verify"
+        confirmVariant="primary"
+        onConfirm={() => {
+          if (verifyTargetId) {
+            void confirmVerify(verifyTargetId)
+          }
+          setVerifyModalOpen(false)
+          setVerifyTargetId(null)
+        }}
+        onCancel={() => {
+          setVerifyModalOpen(false)
+          setVerifyTargetId(null)
+        }}
+      />
+      <ConfirmationModal
         open={rejectModalOpen}
-        title="Reject Report"
-        message="This will permanently remove the report from the queue. The citizen will be notified."
+        title="Reject report?"
+        message="This will permanently remove the report from the queue. The reporter will be notified."
         confirmLabel="Reject"
         confirmVariant="danger"
         onConfirm={() => {
@@ -515,10 +635,10 @@ export default function DashboardPage() {
               className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
             >
               <option value="">Select reason</option>
-              <option value="obviously_false">Obviously False</option>
+              <option value="obviously_false">Obviously false</option>
               <option value="duplicate">Duplicate</option>
-              <option value="test_submission">Test Submission</option>
-              <option value="insufficient_detail">Insufficient Detail</option>
+              <option value="test_submission">Test submission</option>
+              <option value="insufficient_detail">Insufficient detail</option>
             </select>
           </label>
           <label className="block text-sm text-[var(--color-text-secondary)]">
@@ -536,8 +656,8 @@ export default function DashboardPage() {
       </ConfirmationModal>
       <ConfirmationModal
         open={bulkVerifyIds !== null}
-        title="Bulk Verify Reports"
-        message={`This will verify ${String(bulkVerifyIds?.size ?? 0)} selected report(s). Continue?`}
+        title="Verify reports?"
+        message={`This will confirm ${String(bulkVerifyIds?.size ?? 0)} reports and make them visible to the public.`}
         confirmLabel="Verify"
         confirmVariant="primary"
         onConfirm={() => {
@@ -547,18 +667,19 @@ export default function DashboardPage() {
           setBulkVerifyIds(null)
         }}
       />
-      <ConfirmationModal
+      <HelpModal
         open={helpModalOpen}
-        title="Keyboard Shortcuts"
-        message="M — Open map window | V — Verify focused report | Shift+V — Verify selected | R — Reject focused | Escape — Clear selection | ? — Show this help"
-        confirmLabel="Got it"
-        confirmVariant="primary"
-        onConfirm={() => {
+        onClose={() => {
           setHelpModalOpen(false)
         }}
-        onCancel={() => {
-          setHelpModalOpen(false)
-        }}
+        shortcuts={[
+          { key: 'M', description: 'Open map window' },
+          { key: 'V', description: 'Verify focused report' },
+          { key: 'Shift+V', description: 'Verify selected reports' },
+          { key: 'R', description: 'Reject focused report' },
+          { key: 'Esc', description: 'Clear selection' },
+          { key: '?', description: 'Show this help' },
+        ]}
       />
       <DeclareAlertModal
         open={alertModalOpen}

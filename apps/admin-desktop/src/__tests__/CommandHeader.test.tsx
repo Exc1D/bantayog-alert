@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { CommandHeader } from '../components/CommandHeader'
 
@@ -32,18 +31,6 @@ describe('CommandHeader', () => {
     expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute('href', '/map')
     expect(screen.getByRole('link', { name: 'Feed' })).toHaveAttribute('href', '/feed')
     expect(screen.getByRole('link', { name: 'Feed' })).toHaveAttribute('aria-current', 'page')
-  })
-
-  it('opens map window when clicked', async () => {
-    const user = userEvent.setup()
-    const onOpenMap = vi.fn()
-    render(
-      <MemoryRouter>
-        <CommandHeader title="Test" lastUpdatedAt={Date.now()} onOpenMap={onOpenMap} />
-      </MemoryRouter>,
-    )
-    await user.click(screen.getByRole('button', { name: /open map/i }))
-    expect(onOpenMap).toHaveBeenCalled()
   })
 
   it('shows a Dashboard role chip and danger-toned accent when windowRole is "dashboard"', () => {
