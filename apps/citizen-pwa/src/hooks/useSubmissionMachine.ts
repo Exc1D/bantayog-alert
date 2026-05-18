@@ -278,8 +278,14 @@ async function writeWithTimeout(draft: Draft, reporterUid: string, ms: number): 
       ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
       ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),
       ...(draft.nearestLandmark ? { nearestLandmark: draft.nearestLandmark } : {}),
-      ...(draft.reporterName ? { reporterName: draft.reporterName } : {}),
-      ...(draft.reporterMsisdnHash ? { reporterMsisdnHash: draft.reporterMsisdnHash } : {}),
+      ...(draft.contact
+        ? {
+            contact: {
+              phone: draft.contact.phone,
+              smsConsent: draft.contact.smsConsent,
+            },
+          }
+        : {}),
     },
   }
   return new Promise((resolve, reject) => {

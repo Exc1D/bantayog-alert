@@ -268,6 +268,43 @@
 - **Fix:** Recreate the test user _without_ supplying a phone number in the emulator UI, or use `createUser()` via the Admin SDK with no `phoneNumber` field.
 - **Alternative:** Use `signInWithPhoneNumber()` flow, but the LoginPage must implement it.
 
+## Emulator Gotchas — Functions v2 Firestore Trigger Protobuf Decoding (2026-05-18)
+
+- **`firebase-functions` v7.x + `firebase-tools` v15.x emulator crashes all `onDocumentCreated` triggers with protobuf decode errors.** This is an **upstream emulator bug**, NOT a code or dependency problem in our codebase.
+- **Symptom:** Every `onDocumentCreated` trigger crashes with `Error: Failed to decode protobuf and create a snapshot. TypeError: Cannot read properties of undefined (reading 'cloud')`. The report stays in `report_inbox` forever; no `reports` doc is materialized.
+- **Root cause:** The emulator's `functionsEmulatorRuntime.js` loads functions in a way that causes `protobufjs/minimal.js` ESM to create stale/wrong namespace objects, even when the dependency tree is clean (we confirmed `functions-dist` has only `protobufjs@7.5.8`, rebuilt from scratch, and zero conflicting `protobufjs` copies).
+- **Evidence:** Console.log inside `compiledFirestore.mjs` shows `roots["default"]` is `{}` at top-level but `{ google: {...} }` when the trigger fires, proving the module cache returns a different object instance.
+- **Production impact:** ZERO. This bug only affects the local Firebase emulator. Cloud Functions on GCP process `report_inbox` correctly.
+- **Workaround for local E2E:** After the Citizen PWA writes to `report_inbox`, run the manual fallback script:
+  ```bash
+  FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 pnpm exec tsx functions/scripts/process-inbox-manual.ts
+  ```
+- **Also check:** If reports still aren't materialized after manual processing, verify the client payload matches `inboxPayloadSchema` exactly — `reporterName` and `reporterMsisdnHash` are NOT in `inboxPayloadSchema` and will cause a separate schema validation failure.
+- **Fix for deployment (`functions-dist`):** Add `overrides: { protobufjs: '^7.2.2' }` to the generated `package.json` in `prepare-functions-deploy.ts`.
+- **Fix for local emulator:** Create a separate emulator-only `firebase.emulator.json` pointing functions `"source": "functions"` (the unbundled pnpm-resolved tree) instead of `"source": "functions-dist"`, and use it when starting emulators. The `dev:all` script should use this config.
+- **Also check:** If reports still aren't materialized after fixing protobuf, verify the client payload matches `inboxPayloadSchema` exactly — `reporterName` and `reporterMsisdnHash` are NOT in `inboxPayloadSchema` and will cause a separate schema validation failure.
+
+## Empty Description Backend Validation (2026-05-18)
+
+- Citizen PWA wizard fills `description` with `"Patients: N"` only when `patientCount > 0`; otherwise `""`. Backend `inboxPayloadSchema` has `description: z.string().min(1).max(5000)`. Empty string triggers `INVALID_ARGUMENT: payload schema invalid: Too small`.
+- Fix: use a non-empty fallback (`"Report submitted via Bantayog Alert."`) when no patient count is provided.
+- Root cause insight: the wizard has no text-area description field at all. The only way descriptions become non-empty is via patient count auto-generation.
+
+## Missing Emulator Municipality Centroids (2026-05-18)
+
+- `reverseGeocodeToMunicipality` in Functions skips municipalities with no `centroid` field, then throws `"out of jurisdiction"` if none match within max distance.
+- When reports have no explicit `municipalityId` in the payload, the backend falls back to geocoding. If emulator `municipalities` collection is seeded without centroids, all proximate-location reports fail materialization.
+- Fix: ensure `bootstrap-municipalities.ts` seeds `centroid: { lat, lng }` for every municipality.
+- Production impact: **zero** — production data has centroids.
+- E2E symptom: PWA submits successfully, manual fallback script returns `"out of jurisdiction"`.
+
+## Emulator Environment Variables Override by `.env.local` (2026-05-18)
+
+- Both citizen-pwa and admin-desktop had `VITE_USE_EMULATOR=true` in their `.env` files, but `.env.local` (which is created during local dev and is gitignored) overrode them with `VITE_USE_EMULATOR=false`.
+- Neither app was actually talking to the emulator. Citizen-PWA wrote reports to staging Firestore; admin-desktop (also pointed at staging) may or may not have shown them depending on deployed function latency.
+- Fix: update `.env.local` to `VITE_USE_EMULATOR=true` in both apps. Dev servers must be restarted to pick up the change.
+- **Lesson:** whenever emulators are empty but PWA claims success, verify env var propagation — `import.meta.env.VITE_USE_EMULATOR` on the client — rather than assuming the app is talking to localhost.
+
 ## TypeScript Strictness — Firestore Auth Token Casting (2026-05-17)
 
 - `req.auth.token` from Firebase callable functions is typed broadly. When extracting typed claims (e.g., `municipalityId`) that are later used as `string` in downstream interfaces, a type assertion (`as string`) is REQUIRED at the boundary where the value enters a typed interface.

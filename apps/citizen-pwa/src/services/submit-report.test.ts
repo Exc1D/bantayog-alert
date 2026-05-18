@@ -182,4 +182,24 @@ describe('createDraft', () => {
       }),
     )
   })
+
+  it('defaults description to non-empty string when patientCount is 0', async () => {
+    // Regression: empty description caused backend schema rejection
+    const { draft } = await createDraft({
+      reportType: 'flood',
+      barangay: 'Daet',
+      description: 'Report submitted via Bantayog Alert.',
+      severity: 'medium',
+      location: { lat: 14.1, lng: 122.9 },
+      clientDraftRef: 'client-ref-empty-desc',
+    })
+
+    expect(draft.description).toBe('Report submitted via Bantayog Alert.')
+    expect(draft.description.length).toBeGreaterThanOrEqual(1)
+    expect(mockDraftStoreSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Report submitted via Bantayog Alert.',
+      }),
+    )
+  })
 })
