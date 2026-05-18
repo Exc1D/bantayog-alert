@@ -16,9 +16,9 @@ function parseMinutes(value: string): number {
 
 function responseTimeToken(avgResponseTime: string): string {
   const minutes = parseMinutes(avgResponseTime)
-  if (minutes < 12) return 'var(--color-norm)'
-  if (minutes <= 20) return 'var(--color-warn)'
-  return 'var(--color-crit)'
+  if (minutes < 12) return 'var(--color-success)'
+  if (minutes <= 20) return 'var(--color-warning)'
+  return 'var(--color-danger)'
 }
 
 export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props) {
@@ -169,7 +169,7 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
                     <span className="inline-flex items-center gap-1.5">
                       <span
                         className="h-1.5 w-1.5 rounded-full"
-                        style={{ backgroundColor: 'var(--color-norm)' }}
+                        style={{ backgroundColor: 'var(--color-success)' }}
                         aria-hidden="true"
                       />
                       On Duty

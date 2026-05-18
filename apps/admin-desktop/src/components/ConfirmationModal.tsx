@@ -42,11 +42,11 @@ export function ConfirmationModal({
   if (!open) return null
 
   const confirmBg =
-    confirmVariant === 'danger' ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-sienna)]'
+    confirmVariant === 'danger' ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-success)]'
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-surface)]/80"
       role="presentation"
       onClick={handleBackdropClick}
       onKeyDown={(e) => {
@@ -67,7 +67,11 @@ export function ConfirmationModal({
           <h2 id="confirm-title" className="text-lg font-semibold text-[var(--color-text-primary)]">
             {title}
           </h2>
-          <button onClick={onCancel} className="rounded p-1 hover:bg-white/10" aria-label="Close">
+          <button
+            onClick={onCancel}
+            className="rounded p-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            aria-label="Close"
+          >
             <X className="h-4 w-4 text-[var(--color-text-secondary)]" />
           </button>
         </div>
@@ -76,13 +80,13 @@ export function ConfirmationModal({
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10"
+            className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90`}
+            className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50`}
           >
             {confirmLabel}
           </button>

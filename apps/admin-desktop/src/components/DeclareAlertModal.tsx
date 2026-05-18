@@ -105,7 +105,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-surface)]/80"
       role="presentation"
       onClick={handleBackdropClick}
       onKeyDown={(e) => {
@@ -246,8 +246,10 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
             Cancel
           </button>
           <button
+            type="button"
             onClick={() => {
-              void handleSubmit()
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              handleSubmit().catch(() => {})
             }}
             disabled={!isValid || submitting}
             className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-4 py-2 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"

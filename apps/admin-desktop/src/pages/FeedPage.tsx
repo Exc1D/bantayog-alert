@@ -8,15 +8,8 @@ import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
+import { generateIdempotencyKey } from '../utils/generate-idempotency-key'
 import type { Report } from '../types'
-
-function generateIdempotencyKey(): string {
-  try {
-    return crypto.randomUUID()
-  } catch {
-    return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
-  }
-}
 
 function visibilityLabel(doc: Record<string, unknown>, report: Report): string {
   if (doc.visibilityClass === 'public_alertable') return 'Published'

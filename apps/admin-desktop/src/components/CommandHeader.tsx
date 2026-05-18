@@ -21,7 +21,6 @@ interface Props {
   audioEnabled?: boolean
   onToggleAudio?: () => void
   onDeclareAlert?: () => void
-  onOpenMap?: () => void
   onShowNotifications?: () => void
   onShowKeyboardShortcuts?: () => void
   onSignOut?: () => void
@@ -53,7 +52,6 @@ export function CommandHeader({
   audioEnabled,
   onToggleAudio,
   onDeclareAlert,
-  onOpenMap,
   onShowNotifications,
   onShowKeyboardShortcuts,
   onSignOut,
@@ -166,15 +164,6 @@ export function CommandHeader({
             title="Sign out"
           >
             <LogOut className="h-4 w-4 text-[var(--color-text-muted)]" />
-          </button>
-        )}
-        {onOpenMap && (
-          <button
-            onClick={onOpenMap}
-            className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
-          >
-            <Map className="h-4 w-4" />
-            Open Map Window
           </button>
         )}
       </div>

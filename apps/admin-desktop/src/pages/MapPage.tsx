@@ -14,15 +14,8 @@ import { callables } from '../services/callables'
 import { db, rtdb } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
+import { generateIdempotencyKey } from '../utils/generate-idempotency-key'
 import type { Report, MunicipalPerformance } from '../types'
-
-function generateIdempotencyKey(): string {
-  try {
-    return crypto.randomUUID()
-  } catch {
-    return `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
-  }
-}
 
 function responderEntries(responders: [string, unknown][]): {
   uid: string
