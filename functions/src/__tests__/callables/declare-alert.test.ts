@@ -2,9 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Firestore } from 'firebase-admin/firestore'
 
 const mockStreamAuditEvent = vi.hoisted(() => vi.fn())
+const mockSend = vi.hoisted(() => vi.fn().mockResolvedValue('test-msg-id'))
 
 vi.mock('../../services/audit-stream.js', () => ({
   streamAuditEvent: mockStreamAuditEvent,
+}))
+vi.mock('firebase-admin', () => ({
+  messaging: vi.fn(() => ({
+    send: mockSend,
+  })),
 }))
 vi.mock('firebase-functions/v2/https', () => ({
   onCall: vi.fn((_opts: unknown, fn: unknown) => fn),
@@ -17,7 +23,7 @@ vi.mock('firebase-functions/v2/https', () => ({
   },
 }))
 
-import { declareEmergencyCore } from '../../callables/declare-emergency.js'
+import { declareAlertCore } from '../../callables/declare-alert.js'
 import { ZodError } from 'zod'
 
 function createMockDb() {
@@ -62,13 +68,14 @@ const validInput = {
   message: 'Signal no. 3 raised',
 }
 
-describe('declareEmergencyCore', () => {
+describe('declareAlertCore', () => {
   let mockDb: ReturnType<typeof createMockDb>
   const originalNodeEnv = process.env.NODE_ENV
 
   beforeEach(() => {
     mockDb = createMockDb()
     mockStreamAuditEvent.mockClear()
+    mockSend.mockClear()
     process.env.NODE_ENV = 'development'
   })
 
@@ -82,7 +89,7 @@ describe('declareEmergencyCore', () => {
   })
 
   it('writes alert doc with correct fields', async () => {
-    const result = await declareEmergencyCore(mockDb, validInput, { uid: 'admin-1' })
+    const result = await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
 
     expect(result.alertId).toBeDefined()
     expect(typeof result.alertId).toBe('string')
@@ -92,7 +99,7 @@ describe('declareEmergencyCore', () => {
     const calls = mockDb._setFn.mock.calls
     expect(calls.length).toBeGreaterThan(0)
     const setArg = (calls[0] as [Record<string, unknown>])[0]
-    expect(setArg.alertType).toBe('emergency')
+    expect(setArg.alertType).toBe('alert')
     expect(setArg.hazardType).toBe('typhoon')
     expect(setArg.affectedMunicipalityIds).toEqual(['daet', 'san-vicente'])
     expect(setArg.message).toBe('Signal no. 3 raised')
@@ -103,28 +110,24 @@ describe('declareEmergencyCore', () => {
 
   it('throws ZodError for empty hazardType', async () => {
     await expect(
-      declareEmergencyCore(mockDb, { ...validInput, hazardType: '' }, { uid: 'admin-1' }),
+      declareAlertCore(mockDb, { ...validInput, hazardType: '' }, { uid: 'admin-1' }),
     ).rejects.toThrow(ZodError)
   })
 
   it('throws ZodError for empty municipalityIds', async () => {
     await expect(
-      declareEmergencyCore(
-        mockDb,
-        { ...validInput, affectedMunicipalityIds: [] },
-        { uid: 'admin-1' },
-      ),
+      declareAlertCore(mockDb, { ...validInput, affectedMunicipalityIds: [] }, { uid: 'admin-1' }),
     ).rejects.toThrow(ZodError)
   })
 
   it('streams audit event', async () => {
     const before = Date.now()
-    const result = await declareEmergencyCore(mockDb, validInput, { uid: 'admin-1' })
+    const result = await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
     const after = Date.now()
 
     expect(mockStreamAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventType: 'emergency_declared',
+        eventType: 'alert_declared',
         actorUid: 'admin-1',
         targetDocumentId: result.alertId,
         metadata: expect.objectContaining({ hazardType: 'typhoon' }),
@@ -135,5 +138,47 @@ describe('declareEmergencyCore', () => {
     const callArg = (calls[0] as [{ occurredAt: number }])[0]
     expect(callArg.occurredAt).toBeGreaterThanOrEqual(before)
     expect(callArg.occurredAt).toBeLessThanOrEqual(after)
+  })
+
+  it('stores reportId when provided', async () => {
+    const inputWithReportId = {
+      ...validInput,
+      reportId: '550e8400-e29b-41d4-a716-446655440000',
+    }
+    const result = await declareAlertCore(mockDb, inputWithReportId, { uid: 'admin-1' })
+
+    expect(result.alertId).toBeDefined()
+    const calls = mockDb._setFn.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+    const setArg = (calls[0] as [Record<string, unknown>])[0]
+    expect(setArg.reportId).toBe('550e8400-e29b-41d4-a716-446655440000')
+  })
+
+  it('sends FCM push to alerts topic', async () => {
+    const result = await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
+
+    expect(mockSend).toHaveBeenCalledTimes(1)
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'alerts',
+        notification: expect.objectContaining({
+          title: 'Alert Issued',
+          body: validInput.message,
+        }),
+        data: expect.objectContaining({
+          alertId: result.alertId,
+          hazardType: validInput.hazardType,
+        }),
+      }),
+    )
+  })
+
+  it('does not fail alert creation if FCM push fails', async () => {
+    mockSend.mockRejectedValueOnce(new Error('FCM down'))
+
+    const result = await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
+
+    expect(result.alertId).toBeDefined()
+    expect(mockDb._setFn).toHaveBeenCalledTimes(1)
   })
 })

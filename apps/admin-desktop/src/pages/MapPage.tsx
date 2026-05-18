@@ -6,6 +6,7 @@ import { TriagePanel } from '../components/TriagePanel'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { MapOverlayControls } from '../components/MapOverlayControls'
 import { MunicipalDrillDown } from '../components/MunicipalDrillDown'
+import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
@@ -147,6 +148,10 @@ export default function MapPage() {
   )
 
   const [lastUpdatedAt] = useState(() => Date.now())
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [alertPrefill, setAlertPrefill] = useState<
+    { municipalityId: string | undefined; reportId: string | undefined } | undefined
+  >(undefined)
 
   if (loading) {
     return (
@@ -201,6 +206,13 @@ export default function MapPage() {
           onDispatch={(reportId, agency, responderUid) =>
             void handleDispatch(reportId, agency, responderUid)
           }
+          onDeclareAlert={(reportId) => {
+            setAlertPrefill({
+              reportId,
+              municipalityId: selectedReport?.municipality ?? undefined,
+            })
+            setAlertModalOpen(true)
+          }}
         />
         {municipalityData && (
           <div className="absolute bottom-4 left-4 z-20 max-w-xs">
@@ -212,6 +224,21 @@ export default function MapPage() {
             />
           </div>
         )}
+        <DeclareAlertModal
+          open={alertModalOpen}
+          prefill={alertPrefill}
+          onClose={() => {
+            setAlertModalOpen(false)
+            setAlertPrefill(undefined)
+          }}
+          onSuccess={() => {
+            setAlertModalOpen(false)
+            setAlertPrefill(undefined)
+          }}
+          onError={(msg) => {
+            setActionError(msg)
+          }}
+        />
       </div>
     </div>
   )

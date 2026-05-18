@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
+import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { PublicIncident, Filters } from '../components/MapTab/types.js'
 
@@ -36,6 +37,7 @@ export function usePublicIncidents(filters: Filters): {
   const [incidents, setIncidents] = useState<PublicIncident[]>([])
   const [loading, setLoading] = useState(firebaseConfigured)
   const [error, setError] = useState<unknown>(null)
+  const versionRef = useRef(0)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -56,25 +58,84 @@ export function usePublicIncidents(filters: Filters): {
       orderBy('submittedAt', 'desc'),
       limit(100),
     )
+
+    const currentVersion = ++versionRef.current
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const all = snap.docs.flatMap((d) => {
-          const data: unknown = d.data()
-          if (!isPublicIncidentData(data)) {
-            console.error('Skipping invalid public incident document', d.id)
-            return []
+        async function buildIncidents() {
+          const all: PublicIncident[] = []
+          for (const d of snap.docs) {
+            const raw: unknown = d.data()
+            if (!isPublicIncidentData(raw)) {
+              console.error('Skipping invalid public incident document', d.id)
+              continue
+            }
+            const doc = raw as Record<string, unknown>
+            let featuredMediaUrls: string[] | undefined
+            const featuredMediaIds = doc.featuredMediaIds
+            if (Array.isArray(featuredMediaIds) && featuredMediaIds.length > 0) {
+              const urls: string[] = []
+              for (const id of (featuredMediaIds as unknown[]).slice(0, 3)) {
+                if (typeof id !== 'string') continue
+                try {
+                  const url = await getDownloadURL(ref(getStorage(), id))
+                  urls.push(url)
+                } catch (e) {
+                  console.error(
+                    `Failed to resolve featured media URL for incident ${d.id}, media ${id}`,
+                    e,
+                  )
+                }
+              }
+              if (urls.length > 0) {
+                featuredMediaUrls = urls
+              }
+            }
+            // Fallback to legacy mediaRefs only when featuredMediaIds yields nothing
+            if (!featuredMediaUrls) {
+              const mediaRefs = doc.mediaRefs
+              if (Array.isArray(mediaRefs) && mediaRefs.length > 0) {
+                const urls: string[] = []
+                for (const path of mediaRefs.slice(0, 3)) {
+                  if (typeof path !== 'string') continue
+                  try {
+                    const url = await getDownloadURL(ref(getStorage(), path))
+                    urls.push(url)
+                  } catch (e) {
+                    console.error(
+                      `Failed to resolve media URL for incident ${d.id}, path ${path}`,
+                      e,
+                    )
+                  }
+                }
+                if (urls.length > 0) {
+                  featuredMediaUrls = urls
+                }
+              }
+            }
+            const incident: PublicIncident = {
+              id: d.id,
+              ...raw,
+            }
+            if (featuredMediaUrls) {
+              incident.featuredMediaUrls = featuredMediaUrls
+            }
+            all.push(incident)
           }
-          return [{ id: d.id, ...data }]
-        })
-        const filtered = filters.municipality
-          ? all.filter((i) => i.municipalityLabel === filters.municipality)
-          : all
-        setError(null)
-        setIncidents(filtered)
-        setLoading(false)
+          const filtered = filters.municipality
+            ? all.filter((i) => i.municipalityLabel === filters.municipality)
+            : all
+          // Ignore stale snapshots
+          if (versionRef.current !== currentVersion) return
+          setError(null)
+          setIncidents(filtered)
+          setLoading(false)
+        }
+        void buildIncidents()
       },
       (err) => {
+        if (versionRef.current !== currentVersion) return
         setError(err)
         setLoading(false)
       },

@@ -10,6 +10,7 @@ export interface PublicIncident {
   publicLocation: { lat: number; lng: number }
   submittedAt: number
   verifiedAt?: number
+  featuredMediaUrls?: string[]
 }
 
 export interface MyReport {

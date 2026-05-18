@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
+import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
@@ -30,6 +32,11 @@ export default function FeedPage() {
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
   const [unpublishingIds, setUnpublishingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
+  const [pendingFeaturedIds, setPendingFeaturedIds] = useState<Record<string, string[]>>({})
+  const writeQueues = useRef(new Map<string, Promise<void>>())
+  const [mediaUrlsByReport, setMediaUrlsByReport] = useState<
+    Record<string, { uploadId: string; url: string }[]>
+  >({})
   const lastUpdatedAt = useMemo(() => {
     if (reports.length === 0) return 0
     return Math.max(
@@ -55,6 +62,47 @@ export default function FeedPage() {
         ),
     [reports],
   )
+
+  const reportIdsKey = feedReports.map(({ report }) => report.id).join(',')
+  useEffect(() => {
+    let cancelled = false
+    async function fetchMedia() {
+      const urls: Record<string, { uploadId: string; url: string }[]> = {}
+      for (const { report } of feedReports) {
+        try {
+          const mediaSnap = await getDocs(collection(db, 'reports', report.id, 'media'))
+          const promises = mediaSnap.docs.map(async (d) => {
+            const data = d.data()
+            if (typeof data.storagePath !== 'string') return null
+            try {
+              const url = await getDownloadURL(ref(getStorage(), data.storagePath))
+              return { uploadId: d.id, url }
+            } catch (e) {
+              console.error(`Failed to resolve media URL for report ${report.id}, media ${d.id}`, e)
+              return null
+            }
+          })
+          const settled = await Promise.allSettled(promises)
+          urls[report.id] = settled
+            .filter(
+              (r): r is PromiseFulfilledResult<{ uploadId: string; url: string } | null> =>
+                r.status === 'fulfilled',
+            )
+            .map((r) => r.value)
+            .filter((v): v is { uploadId: string; url: string } => v !== null)
+        } catch (e) {
+          console.error(`Failed to fetch media for report ${report.id}`, e)
+          urls[report.id] = []
+        }
+      }
+      if (!cancelled) setMediaUrlsByReport(urls)
+    }
+    void fetchMedia()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportIdsKey])
 
   async function publishScrubbed(report: Report) {
     const scrubbedDescription = (drafts[report.id] ?? report.description).trim()
@@ -97,6 +145,21 @@ export default function FeedPage() {
         const next = new Set(prev)
         next.delete(report.id)
         return next
+      })
+    }
+  }
+
+  async function saveFeaturedMedia(reportId: string, selectedIds: string[]) {
+    try {
+      await updateDoc(doc(db, 'reports', reportId), {
+        featuredMediaIds: selectedIds,
+      })
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to save featured media')
+      setPendingFeaturedIds((prev) => {
+        const { [reportId]: _removed, ...rest } = prev
+        void _removed
+        return rest
       })
     }
   }
@@ -214,6 +277,68 @@ export default function FeedPage() {
                         </button>
                       )}
                     </div>
+                    {/* Photo gallery */}
+                    {(() => {
+                      const reportMedia = mediaUrlsByReport[report.id]
+                      if (!reportMedia || reportMedia.length === 0) return null
+                      return (
+                        <div className="col-span-full">
+                          <p className="mb-1 text-xs text-[var(--color-text-muted)]">Photos:</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {reportMedia.map(({ uploadId, url }, idx) => {
+                              const firestoreIds = Array.isArray(raw.featuredMediaIds)
+                                ? (raw.featuredMediaIds as string[])
+                                : []
+                              const pending = pendingFeaturedIds[report.id]
+                              const currentIds = pending ?? firestoreIds
+                              const isSelected = currentIds.includes(uploadId)
+                              return (
+                                <label
+                                  key={uploadId}
+                                  className={`relative cursor-pointer rounded border-2 overflow-hidden ${
+                                    isSelected ? 'border-[var(--color-success)]' : 'border-white/10'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked
+                                      const base = pendingFeaturedIds[report.id] ?? firestoreIds
+                                      const next = checked
+                                        ? [...base, uploadId]
+                                        : base.filter((id) => id !== uploadId)
+                                      setPendingFeaturedIds((prev) => ({
+                                        ...prev,
+                                        [report.id]: next,
+                                      }))
+                                      // Serialize writes per report to prevent out-of-order persistence
+                                      const prevWrite =
+                                        writeQueues.current.get(report.id) ?? Promise.resolve()
+                                      const chained = prevWrite.then(() =>
+                                        saveFeaturedMedia(report.id, next),
+                                      )
+                                      writeQueues.current.set(report.id, chained)
+                                    }}
+                                    className="absolute top-1 left-1 z-10"
+                                    aria-label={`Select photo ${String(idx + 1)}`}
+                                  />
+                                  <span className="sr-only">
+                                    Photo {String(idx + 1)}{' '}
+                                    {isSelected ? '(selected)' : '(unselected)'}
+                                  </span>
+                                  <img
+                                    src={url}
+                                    alt=""
+                                    className="h-[60px] w-[80px] object-cover"
+                                  />
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </article>
                 )
               })}
