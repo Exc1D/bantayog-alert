@@ -128,7 +128,14 @@ service cloud.firestore {
       allow update: if adminOf(resource.data.municipalityId)
                    && request.resource.data.diff(resource.data)
                       .affectedKeys()
-                      .hasOnly(['status', 'updatedAt', 'verifiedAt', 'assignedAt', 'closedAt', 'rejectedAt', 'rejectedReason', 'barangayId', 'severity', 'mediaRefs', 'hazardTagList']);
+                      .hasOnly(['status', 'updatedAt', 'verifiedAt', 'assignedAt', 'closedAt', 'rejectedAt', 'rejectedReason', 'barangayId', 'severity', 'mediaRefs', 'hazardTagList', 'featuredMediaIds'])
+                  && (
+                       !('featuredMediaIds' in request.resource.data.diff(resource.data).affectedKeys())
+                       || (
+                            request.resource.data.featuredMediaIds is list
+                            && request.resource.data.featuredMediaIds.every(id, id is string)
+                          )
+                     );
       allow delete: if false;
 
       match /status_log/{e} {

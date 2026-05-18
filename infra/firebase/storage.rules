@@ -21,7 +21,11 @@ service firebase.storage {
     // Admin SDK uploads; admin-of-muni reads. Citizen read removed per QA-S1.
     match /report_media/{municipalityId}/{reportId}/{filename} {
       allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
-                  || (isSuperadmin() && municipalityId in permittedMunis());
+                  || (isSuperadmin() && municipalityId in permittedMunis())
+                  || (
+                       get(/databases/(default)/documents/reports/$(reportId)).data.visibilityClass == 'public_alertable'
+                       && get(/databases/(default)/documents/reports/$(reportId)).data.municipalityId == municipalityId
+                     );
       allow write: if false;
     }
 

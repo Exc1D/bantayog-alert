@@ -51,6 +51,21 @@ function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => 
           </p>
         </div>
       </div>
+
+      {incident.featuredMediaUrls && incident.featuredMediaUrls.length > 0 && (
+        <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto">
+          {incident.featuredMediaUrls.slice(0, 3).map((url, idx) => (
+            <img
+              key={String(idx)}
+              loading="lazy"
+              src={url}
+              alt=""
+              className="h-[60px] w-[100px] rounded-lg object-cover flex-shrink-0 bg-surface-100"
+            />
+          ))}
+        </div>
+      )}
+
       {/* Footer action row */}
       <div className="border-t border-surface-100 px-4 py-2 flex items-center gap-4">
         <span

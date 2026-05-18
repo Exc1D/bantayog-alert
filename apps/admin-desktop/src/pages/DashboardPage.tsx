@@ -8,6 +8,7 @@ import { TrendAnalysisPanel } from '../components/TrendAnalysisPanel'
 import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
 import { AnomalyAlertPanel } from '../components/AnomalyAlertPanel'
 import { ActiveIncidentsTable } from '../components/ActiveIncidentsTable'
+import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { useAuth } from '@bantayog/shared-ui'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
@@ -72,6 +73,7 @@ export default function DashboardPage() {
   const [rejectNotes, setRejectNotes] = useState('')
   const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [lastUpdatedAt] = useState(() => Date.now())
   const [bulkRejectIds, setBulkRejectIds] = useState<string[] | null>(null)
   const [bulkVerifyIds, setBulkVerifyIds] = useState<Set<string> | null>(null)
@@ -372,6 +374,9 @@ export default function DashboardPage() {
         onOpenMap={openMapWindow}
         audioEnabled={audioEnabled}
         onToggleAudio={toggleAudio}
+        onDeclareAlert={() => {
+          setAlertModalOpen(true)
+        }}
         onShowKeyboardShortcuts={() => {
           setHelpModalOpen(true)
         }}
@@ -553,6 +558,18 @@ export default function DashboardPage() {
         }}
         onCancel={() => {
           setHelpModalOpen(false)
+        }}
+      />
+      <DeclareAlertModal
+        open={alertModalOpen}
+        onClose={() => {
+          setAlertModalOpen(false)
+        }}
+        onSuccess={() => {
+          setAlertModalOpen(false)
+        }}
+        onError={(msg) => {
+          setActionError(msg)
         }}
       />
     </div>

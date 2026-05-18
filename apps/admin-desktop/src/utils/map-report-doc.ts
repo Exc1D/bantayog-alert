@@ -102,6 +102,9 @@ function mapCommonFields(doc: Record<string, unknown>): Omit<Report, 'latitude' 
     reporterName: '',
     reporterPhone: '',
     updatedAt: '',
+    ...(Array.isArray(doc.featuredMediaIds)
+      ? { featuredMediaIds: doc.featuredMediaIds as string[] }
+      : {}),
   }
 }
 

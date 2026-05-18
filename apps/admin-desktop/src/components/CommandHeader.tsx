@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   Bell,
   Keyboard,
   LayoutDashboard,
@@ -19,6 +20,7 @@ interface Props {
   notificationCount?: number
   audioEnabled?: boolean
   onToggleAudio?: () => void
+  onDeclareAlert?: () => void
   onOpenMap?: () => void
   onShowNotifications?: () => void
   onShowKeyboardShortcuts?: () => void
@@ -50,6 +52,7 @@ export function CommandHeader({
   notificationCount = 0,
   audioEnabled,
   onToggleAudio,
+  onDeclareAlert,
   onOpenMap,
   onShowNotifications,
   onShowKeyboardShortcuts,
@@ -108,6 +111,15 @@ export function CommandHeader({
           </nav>
         )}
         <LiveIndicator lastUpdatedAt={lastUpdatedAt} />
+        {onDeclareAlert && (
+          <button
+            onClick={onDeclareAlert}
+            className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            Declare Alert
+          </button>
+        )}
         {onToggleAudio && (
           <button
             onClick={onToggleAudio}
