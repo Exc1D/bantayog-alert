@@ -261,6 +261,13 @@
 - Sticky z-index layering: sticky bulk-action bar above sticky thead needs `z-20` vs `z-10` so it overlays headers when pinned.
 - Window-sync dedup via `crypto.randomUUID()` + in-memory `Map` with TTL. Both BroadcastChannel and localStorage can deliver the same message twice. Auto-assign `id` in `sendSync`, record locally before posting, prune seen-set by `MESSAGE_TTL_MS`.
 
+## Emulator Gotchas — Auth MFA (2026-05-18)
+
+- **Firebase Auth Emulator UI auto-enables MFA when creating a user with a phone number.** If you add a phone number field during "Add Account" in the Auth emulator UI, the emulator silently enrolls the user in MFA with SMS. The `signInWithEmailAndPassword()` SDK call then returns `mfaPendingCredential` instead of an ID token.
+- **Symptom:** `400 Bad Request` from `:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword` with no visible MFA UI. The page login spinner hangs or silently reloads.
+- **Fix:** Recreate the test user _without_ supplying a phone number in the emulator UI, or use `createUser()` via the Admin SDK with no `phoneNumber` field.
+- **Alternative:** Use `signInWithPhoneNumber()` flow, but the LoginPage must implement it.
+
 ## TypeScript Strictness — Firestore Auth Token Casting (2026-05-17)
 
 - `req.auth.token` from Firebase callable functions is typed broadly. When extracting typed claims (e.g., `municipalityId`) that are later used as `string` in downstream interfaces, a type assertion (`as string`) is REQUIRED at the boundary where the value enters a typed interface.
