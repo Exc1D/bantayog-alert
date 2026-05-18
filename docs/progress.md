@@ -4,15 +4,17 @@
 
 **E2E Report Flow Fix — Citizen PWA → Admin Desktop**
 
-A user reported that submitting a report from the Citizen PWA did not appear in the admin-desktop app. Systematic debugging identified four independent root causes — all now fixed.
+A user reported that submitting a report from the Citizen PWA did not appear in the admin-desktop app. Systematic debugging identified five independent root causes — all now fixed.
 
 ### Root Cause 1: emulator `onDocumentCreated` trigger permanently broken (upstream bug)
 
 - **Finding:** The `onDocumentCreated` trigger on `report_inbox/{inboxId}` crashes 100% of the time with:
-  ```
+
+  ```text
   Error: Failed to decode protobuf and create a snapshot.
   TypeError: Cannot read properties of undefined (reading 'cloud')
   ```
+
 - **Deep investigation results:**
   1. The protobuf dependency tree in `functions-dist/` is completely clean — only `protobufjs@7.5.8` exists, zero conflicting copies.
   2. The crash happens inside `firebase-functions` v7.x `compiledFirestore.mjs`, before user code runs. The `google` namespace exists at module load time but is `undefined` at trigger execution time due to emulator runtime ESM module caching behavior.
@@ -21,10 +23,13 @@ A user reported that submitting a report from the Citizen PWA did not appear in 
 - **Workaround for local E2E:**
   1. Created `functions/scripts/process-inbox-manual.ts` — a Node script that queries unprocessed `report_inbox` documents and calls `processInboxItemCore` directly via the Admin SDK.
   2. After submitting a report from the PWA, run:
+
      ```bash
      FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 pnpm exec tsx functions/scripts/process-inbox-manual.ts
      ```
+
   3. We also seeded `municipalities` collection with 5 Camarines Norte municipalities (required by `processInboxItemCore`).
+
 - **Removed:** The `firebase.emulator.json` and `dev-all.mjs` changes — they don't help because the bug is upstream, not in our config.
 
 ### Root Cause 2: Citizen PWA submits unsupported fields in inbox payload
@@ -44,7 +49,7 @@ A user reported that submitting a report from the Citizen PWA did not appear in 
 - **Symptom:** Backend `inboxPayloadSchema` defines `description: z.string().min(1).max(5000)`. An empty string fails the `min(1)` check, producing `payload schema invalid: Too small: expected string to have >=1 characters`.
 - **Fix:** Changed the fallback in `SubmitReportForm/index.tsx` to `"Report submitted via Bantayog Alert."` when `patientCount === 0`.
 - **File:** `apps/citizen-pwa/src/components/SubmitReportForm/index.tsx`
-- **Gate:** `pnpm --dir apps/citizen-pwa exec vitest run` (404 tests) pass, `typecheck` pass.
+- **Gate:** `pnpm --dir apps/citizen-pwa exec vitest run` (405/405 tests) pass, `typecheck` pass.
 
 ### Root Cause 4: Emulator `municipalities` collection missing `centroid` field
 

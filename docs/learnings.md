@@ -276,13 +276,14 @@
 - **Evidence:** Console.log inside `compiledFirestore.mjs` shows `roots["default"]` is `{}` at top-level but `{ google: {...} }` when the trigger fires, proving the module cache returns a different object instance.
 - **Production impact:** ZERO. This bug only affects the local Firebase emulator. Cloud Functions on GCP process `report_inbox` correctly.
 - **Workaround for local E2E:** After the Citizen PWA writes to `report_inbox`, run the manual fallback script:
+
   ```bash
   FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 pnpm exec tsx functions/scripts/process-inbox-manual.ts
   ```
+
 - **Also check:** If reports still aren't materialized after manual processing, verify the client payload matches `inboxPayloadSchema` exactly — `reporterName` and `reporterMsisdnHash` are NOT in `inboxPayloadSchema` and will cause a separate schema validation failure.
 - **Fix for deployment (`functions-dist`):** Add `overrides: { protobufjs: '^7.2.2' }` to the generated `package.json` in `prepare-functions-deploy.ts`.
 - **Fix for local emulator:** Create a separate emulator-only `firebase.emulator.json` pointing functions `"source": "functions"` (the unbundled pnpm-resolved tree) instead of `"source": "functions-dist"`, and use it when starting emulators. The `dev:all` script should use this config.
-- **Also check:** If reports still aren't materialized after fixing protobuf, verify the client payload matches `inboxPayloadSchema` exactly — `reporterName` and `reporterMsisdnHash` are NOT in `inboxPayloadSchema` and will cause a separate schema validation failure.
 
 ## Empty Description Backend Validation (2026-05-18)
 

@@ -16,6 +16,13 @@ import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { processInboxItemCore } from '../src/triggers/process-inbox-item.js'
 
+if (!process.env.FIRESTORE_EMULATOR_HOST) {
+  console.error(
+    'ERROR: FIRESTORE_EMULATOR_HOST is not set. This script must run against the emulator.',
+  )
+  process.exit(1)
+}
+
 const PROJECT_ID = 'bantayog-alert-staging'
 
 if (getApps().length === 0) {
@@ -33,9 +40,10 @@ async function main() {
   // where the field is absent.
   const snapshot = await db.collection('report_inbox').get()
 
-  const unprocessedDocs = snapshot.docs.filter(
-    (d) => d.data().processedAt === undefined || d.data().processedAt === null,
-  )
+  const unprocessedDocs = snapshot.docs.filter((d) => {
+    const data = d.data()
+    return data.processedAt === undefined || data.processedAt === null
+  })
 
   if (unprocessedDocs.length === 0) {
     console.log('No unprocessed report_inbox items found.')

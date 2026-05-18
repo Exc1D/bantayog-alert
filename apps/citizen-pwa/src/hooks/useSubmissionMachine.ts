@@ -30,6 +30,14 @@ export interface UseSubmissionMachineReturn {
 const SUBMIT_TIMEOUT_MS = 10_000
 export const MAX_RETRIES = 3
 
+function isValidContact(contact: { phone?: string; smsConsent?: boolean }): boolean {
+  return (
+    typeof contact.phone === 'string' &&
+    contact.phone.length > 0 &&
+    typeof contact.smsConsent === 'boolean'
+  )
+}
+
 // Exponential backoff between retries when the network was the problem.
 // Capped at 30s so a long flaky window doesn't push retries hours apart.
 const BACKOFF_BASE_MS = 2_000
@@ -278,7 +286,7 @@ async function writeWithTimeout(draft: Draft, reporterUid: string, ms: number): 
       ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
       ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),
       ...(draft.nearestLandmark ? { nearestLandmark: draft.nearestLandmark } : {}),
-      ...(draft.contact
+      ...(draft.contact && isValidContact(draft.contact)
         ? {
             contact: {
               phone: draft.contact.phone,

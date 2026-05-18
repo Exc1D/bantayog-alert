@@ -5,6 +5,13 @@ import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { processInboxItemCore } from '../src/triggers/process-inbox-item.js'
 
+if (!process.env.FIRESTORE_EMULATOR_HOST) {
+  console.error(
+    'ERROR: FIRESTORE_EMULATOR_HOST is not set. This script must run against the emulator.',
+  )
+  process.exit(1)
+}
+
 const PROJECT_ID = 'bantayog-alert-staging'
 
 if (getApps().length === 0) {

@@ -92,7 +92,7 @@ No rate limiting added — MFA + role-gating (`PRIVILEGED_ROLES`) is considered 
 
 ### Data Flow
 
-```
+```text
 Admin clicks "Declare Alert" → fills form → submit
   → declareAlert callable (MFA required, privileged roles only)
     → validates input
@@ -179,7 +179,7 @@ Add to each report row:
 
 Add `featuredMediaIds` to the allowed keys in `firestore.rules` line 131:
 
-```
+```rules
 .hasOnly(['status', 'updatedAt', 'verifiedAt', 'assignedAt', 'closedAt',
           'rejectedAt', 'rejectedReason', 'barangayId', 'severity',
           'mediaRefs', 'hazardTagList', 'featuredMediaIds'])
@@ -220,7 +220,7 @@ Modify `FeedCard` component:
 
 **Solution:** Add a storage rule allowing public read for finalized (non-pending) images:
 
-```
+```rules
 match /report_media/{municipalityId}/{reportId}/{filename} {
   allow read: if true;  // Public read for finalized citizen-visible images
 }

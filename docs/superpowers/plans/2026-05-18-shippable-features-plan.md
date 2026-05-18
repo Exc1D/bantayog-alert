@@ -197,7 +197,7 @@ Add a new test after the existing ones:
 it('stores reportId when provided', async () => {
   const inputWithReportId = {
     ...validInput,
-    reportId: 'test-report-uuid-1234-5678-abcdef',
+    reportId: '550e8400-e29b-41d4-a716-446655440000',
   }
   const result = await declareAlertCore(mockDb, inputWithReportId, { uid: 'admin-1' })
 
@@ -205,7 +205,7 @@ it('stores reportId when provided', async () => {
   const calls = mockDb._setFn.mock.calls
   expect(calls.length).toBeGreaterThan(0)
   const setArg = (calls[0] as [Record<string, unknown>])[0]
-  expect(setArg.reportId).toBe('test-report-uuid-1234-5678-abcdef')
+  expect(setArg.reportId).toBe('550e8400-e29b-41d4-a716-446655440000')
 })
 ```
 
@@ -825,7 +825,7 @@ In the appropriate report interface, add:
 
 In `infra/firebase/firestore.rules`, find line 131 (the `affectedKeys().hasOnly([...])` for report updates) and add `featuredMediaIds` to the list:
 
-```
+```rules
       allow update: if adminOf(resource.data.municipalityId)
                    && request.resource.data.diff(resource.data)
                       .affectedKeys()
@@ -848,7 +848,7 @@ ls infra/firebase/
 
 Add a rule that allows public read for finalized (non-pending) report media:
 
-```
+```rules
 match /report_media/{municipalityId}/{reportId}/{filename} {
   allow read: if true;
 }
