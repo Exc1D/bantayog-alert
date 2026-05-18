@@ -2,9 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Firestore } from 'firebase-admin/firestore'
 
 const mockStreamAuditEvent = vi.hoisted(() => vi.fn())
+const mockSend = vi.hoisted(() => vi.fn().mockResolvedValue('test-msg-id'))
 
 vi.mock('../../services/audit-stream.js', () => ({
   streamAuditEvent: mockStreamAuditEvent,
+}))
+vi.mock('firebase-admin', () => ({
+  messaging: vi.fn(() => ({
+    send: mockSend,
+  })),
 }))
 vi.mock('firebase-functions/v2/https', () => ({
   onCall: vi.fn((_opts: unknown, fn: unknown) => fn),
@@ -69,6 +75,7 @@ describe('declareAlertCore', () => {
   beforeEach(() => {
     mockDb = createMockDb()
     mockStreamAuditEvent.mockClear()
+    mockSend.mockClear()
     process.env.NODE_ENV = 'development'
   })
 
@@ -145,5 +152,33 @@ describe('declareAlertCore', () => {
     expect(calls.length).toBeGreaterThan(0)
     const setArg = (calls[0] as [Record<string, unknown>])[0]
     expect(setArg.reportId).toBe('550e8400-e29b-41d4-a716-446655440000')
+  })
+
+  it('sends FCM push to alerts topic', async () => {
+    const result = await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
+
+    expect(mockSend).toHaveBeenCalledTimes(1)
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'alerts',
+        notification: expect.objectContaining({
+          title: 'Alert Issued',
+          body: validInput.message,
+        }),
+        data: expect.objectContaining({
+          alertId: result.alertId,
+          hazardType: validInput.hazardType,
+        }),
+      }),
+    )
+  })
+
+  it('does not fail alert creation if FCM push fails', async () => {
+    mockSend.mockRejectedValueOnce(new Error('FCM down'))
+
+    const result = await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
+
+    expect(result.alertId).toBeDefined()
+    expect(mockDb._setFn).toHaveBeenCalledTimes(1)
   })
 })
