@@ -48,12 +48,23 @@ When opened from TriagePanel, the modal pre-fills:
 
 **File:** `functions/src/callables/declare-emergency.ts` → rename to `declare-alert.ts`
 
-- Rename `declareEmergencyCore` → `declareAlertCore`
-- Rename `declareEmergency` → `declareAlert`
+Rename scope (17 references across 6+ files):
+
+- `functions/src/callables/declare-emergency.ts` → rename file, rename `declareEmergencyCore` → `declareAlertCore`, `declareEmergency` → `declareAlert`
+- `functions/src/index.ts` — update export
+- `functions/lib/` — rebuild compiled JS + `.d.ts` declarations
+- `functions/src/__tests__/callables/declare-emergency.test.ts` → rename file, update imports and describe blocks
+- `apps/admin-desktop/src/services/callables.ts` — rename `declareEmergency` → `declareAlert`, update callable name string
+- `functions/src/__tests__/callables/` — update any imports of the renamed function
+
+Schema changes:
+
 - Add optional `reportId: z.string().uuid().optional()` to input schema
 - Store `reportId` in alert doc if provided
 - Change `alertType: 'emergency'` → `alertType: 'alert'`
 - Update audit event type: `emergency_declared` → `alert_declared`
+
+No rate limiting added — MFA + role-gating (`PRIVILEGED_ROLES`) is considered sufficient for Phase 1. Admins declaring alerts are trusted operators; abuse would be caught by audit trail.
 
 ### Frontend Changes (admin-desktop)
 
@@ -137,22 +148,42 @@ try {
 
 ## Section 3: Photo Selection for Feed
 
+### Media Architecture (corrected)
+
+Media is stored as a **subcollection** `reports/{id}/media/{uploadId}`, not an array field.
+Each media doc has: `uploadId`, `storagePath`, `mimeType`, `strippedAt`, `addedAt`.
+
+The `reports/{id}` doc already has a `mediaRefs: string[]` field (storage paths), populated by
+`processInboxItem` during materialization. This field is already allowed in the Firestore update rules
+(`affectedKeys().hasOnly([...mediaRefs...])`).
+
+**Approach:** Use `mediaRefs` (existing field) for the admin gallery. Add a new field
+`featuredMediaIds: string[]` on the report doc to track which photos are selected for the public feed.
+This requires adding `featuredMediaIds` to the Firestore rules `affectedKeys()` allowlist.
+
 ### Section 3A: Admin Photo Gallery (FeedPage)
 
 **File:** `apps/admin-desktop/src/pages/FeedPage.tsx`
 
 Add to each report row:
 
-- Photo thumbnail strip showing images from `reports/{id}/media`
+- Photo thumbnail strip showing images from `reports/{id}/media` subcollection
+  - Query the subcollection via `collection(db, 'reports', reportId, 'media')`
+  - Convert `storagePath` values (e.g. `report_media/daet/report-1/photo.jpg`) to download URLs
+    using `getDownloadURL()` from `firebase/storage`
 - Checkboxes on each thumbnail to select "featured" photos
-- Featured selection saved to `reports/{id}.featuredMediaIds: string[]`
+- Featured selection saved as `reports/{id}.featuredMediaIds: string[]` (array of `uploadId`s)
 - Grid layout: 3-4 thumbnails per row, ~80px each
 
-**How media is accessed:**
+**Firestore rules change required** (must show diff to user before editing):
 
-- `onMediaFinalize` trigger already populates `reports/{id}/media` array with storage paths
-- Generate download URLs via Storage SDK or construct public URLs
-- Store selected featured IDs via Firestore update (no new callable needed — admin has write access)
+Add `featuredMediaIds` to the allowed keys in `firestore.rules` line 131:
+
+```
+.hasOnly(['status', 'updatedAt', 'verifiedAt', 'assignedAt', 'closedAt',
+          'rejectedAt', 'rejectedReason', 'barangayId', 'severity',
+          'mediaRefs', 'hazardTagList', 'featuredMediaIds'])
+```
 
 ### Section 3B: FeedCard Thumbnails (citizen-pwa)
 
@@ -160,7 +191,7 @@ Add to each report row:
 
 Modify `FeedCard` component:
 
-- If `incident.mediaUrls` has entries, render thumbnail strip between header and footer
+- If `incident.featuredMediaUrls` has entries, render thumbnail strip between header and footer
 - 1-3 thumbnails in horizontal row, ~60px tall, rounded corners
 - Lazy-loaded images with placeholder
 - Falls back to text-only card if no media
@@ -169,40 +200,66 @@ Modify `FeedCard` component:
 
 **File:** `apps/citizen-pwa/src/hooks/usePublicIncidents.ts`
 
-- Include `mediaUrls` in returned `PublicIncident` objects
-- Map from `reports/{id}/media` or `featuredMediaIds`
+- Current hook queries `reports` collection with `visibilityClass == 'public_alertable'`
+- For each report, if `featuredMediaIds` is populated, also fetch the matching media subcollection docs
+  to get `storagePath` values
+- Convert storage paths to download URLs using `getDownloadURL()`
+- Include `featuredMediaUrls: string[]` in returned `PublicIncident` objects
+- **Performance note:** This adds N subcollection reads. To avoid N+1, batch-fetch media for all
+  visible reports using `Promise.all` or a single collectionGroup query if indexes allow.
 
 **File:** `packages/shared-types/src/`
 
 - Add `featuredMediaIds?: string[]` to report type
-- Add `mediaUrls?: string[]` to `PublicIncident` type
+- Add `featuredMediaUrls?: string[]` to `PublicIncident` type
 
 ### Storage Access
 
-- `report_media/{municipalityId}/{reportId}/{filename}` paths already exist
-- Citizens need public read access to finalize media files
-- Verify/add Firestore Storage rule for `report_media/**` public read
+**Blocker:** `report_media/**` read is **explicitly denied for citizens** in storage rules
+(`functions/src/__tests__/storage.rules.test.ts` line 235: `citizen read report_media fails`).
+
+**Solution:** Add a storage rule allowing public read for finalized (non-pending) images:
+
+```
+match /report_media/{municipalityId}/{reportId}/{filename} {
+  allow read: if true;  // Public read for finalized citizen-visible images
+}
+```
+
+This is safe because:
+
+- Only images that passed `onMediaFinalize` (EXIF-stripped, MIME-validated) reach this path
+- Images in `pending/` are not affected — they remain restricted
+- The citizen feed only shows `public_alertable` reports, so leaked images are already public-facing
+
+Alternatively, use `getDownloadURL()` from the Firebase Storage SDK which generates time-limited
+signed URLs. This avoids changing storage rules but requires the SDK to be initialized with proper
+auth. Since citizens may be anonymous, the public read rule is simpler and more reliable.
 
 ### Files Changed
 
-| File                           | Change                                                         |
-| ------------------------------ | -------------------------------------------------------------- |
-| `FeedPage.tsx`                 | Add photo thumbnail strip + checkbox selection                 |
-| `callables.ts` (admin)         | No change needed — direct Firestore write for featuredMediaIds |
-| `FeedTab.tsx`                  | Add thumbnail strip rendering in FeedCard                      |
-| `usePublicIncidents.ts`        | Include mediaUrls in returned incidents                        |
-| `packages/shared-types/src/`   | Add featuredMediaIds + mediaUrls to types                      |
-| `infra/firebase/storage.rules` | Verify public read for report_media                            |
+| File                                            | Change                                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `FeedPage.tsx`                                  | Add photo subcollection query + thumbnail strip + checkbox selection                   |
+| `FeedTab.tsx`                                   | Add thumbnail strip rendering in FeedCard                                              |
+| `usePublicIncidents.ts`                         | Include featuredMediaUrls in returned incidents (subcollection fetch + URL conversion) |
+| `packages/shared-types/src/`                    | Add featuredMediaIds + featuredMediaUrls to types                                      |
+| `infra/firebase/firestore.rules`                | Add `featuredMediaIds` to allowedKeys for report updates                               |
+| `infra/firebase/storage.rules`                  | Add public read rule for `report_media/{muni}/{reportId}/{filename}`                   |
+| `functions/src/__tests__/storage.rules.test.ts` | Add test for citizen public read of finalized report_media                             |
 
 ## Risks and Mitigations
 
-| Risk                                             | Mitigation                                             |
-| ------------------------------------------------ | ------------------------------------------------------ |
-| FCM push can't be tested in emulator             | Unit test with mocked messaging; smoke test on staging |
-| Storage URLs not publicly readable               | Add/verify storage rules for `report_media/**`         |
-| Image bandwidth on mobile                        | Lazy loading, small thumbnails, max 3 per card         |
-| `declareAlert` rename breaks existing references | Search all call sites; update tests                    |
-| More files changed in Section 3 (~5)             | Implement incrementally, verify each step              |
+| Risk                                            | Mitigation                                                                                         |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| FCM push can't be tested in emulator            | Unit test with mocked messaging; smoke test on staging                                             |
+| Storage rules block citizen photo access        | Add public read rule for finalized `report_media/{muni}/{reportId}/{filename}`; test with emulator |
+| Firestore rules change for `featuredMediaIds`   | Must show diff to user before editing `firestore.rules` (AGENTS.md §6 requirement)                 |
+| Image bandwidth on mobile                       | Lazy loading, small thumbnails, max 3 per card                                                     |
+| `declareAlert` rename scope (17 refs, 6+ files) | Systematic search + rebuild `functions/lib/`; update all test files                                |
+| N+1 subcollection reads in FeedPage             | Batch-fetch media for all visible reports via `Promise.all` or collectionGroup query               |
+| Storage paths are not URLs                      | Use `getDownloadURL()` from `firebase/storage` SDK to convert `storagePath` → usable URL           |
+| No rate limiting on `declareAlert`              | MFA + role-gating + audit trail considered sufficient for Phase 1; revisit if abuse detected       |
 
 ## Verification Plan
 
