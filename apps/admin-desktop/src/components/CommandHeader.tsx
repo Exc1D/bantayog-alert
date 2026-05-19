@@ -6,13 +6,14 @@ import {
   LogOut,
   Map,
   Newspaper,
+  Radio,
   Volume2,
   VolumeX,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { LiveIndicator } from './LiveIndicator'
 
-type WindowRole = 'dashboard' | 'map' | 'feed'
+type WindowRole = 'dashboard' | 'map' | 'feed' | 'dispatches'
 
 interface Props {
   title: string
@@ -31,18 +32,21 @@ const ROLE_ACCENT: Record<WindowRole, string> = {
   dashboard: 'var(--color-danger)',
   map: 'var(--color-info)',
   feed: 'var(--color-success)',
+  dispatches: 'var(--color-warning)',
 } as const
 
 const ROLE_LABEL: Record<WindowRole, string> = {
   dashboard: 'Dashboard',
   map: 'Map',
   feed: 'Feed',
+  dispatches: 'Dispatches',
 } as const
 
 const NAV_ITEMS = [
   { role: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { role: 'map', href: '/map', label: 'Map', icon: Map },
   { role: 'feed', href: '/feed', label: 'Feed', icon: Newspaper },
+  { role: 'dispatches', href: '/dispatches', label: 'Dispatches', icon: Radio },
 ] as const
 
 export function CommandHeader({
