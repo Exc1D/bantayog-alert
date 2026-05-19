@@ -110,11 +110,79 @@ export async function dispatchResponderCore(
           },
         })
 
-        return { dispatchId, status: 'pending' as const, reportId: deps.reportId, correlationId }
+        return {
+          dispatchId,
+          status: 'pending' as const,
+          reportId: deps.reportId,
+          correlationId,
+          responder,
+        }
       })
     },
   )
-  return result
+
+  // FCM tracking — AFTER transaction commits (result is known)
+  const fcm = await sendFcmToResponder({
+    uid: deps.responderUid,
+    title: 'New dispatch',
+    body: `Report ${deps.reportId.slice(0, 8)} — see app for details`,
+    data: {
+      dispatchId: result.dispatchId,
+      reportId: deps.reportId,
+      correlationId: result.correlationId,
+    },
+  })
+
+  const fcmResult: 'sent' | 'no_token' | 'network_error' | 'sent_with_invalid_tokens' =
+    fcm.warnings.includes('fcm_no_token')
+      ? 'no_token'
+      : fcm.warnings.includes('fcm_network_error')
+        ? 'network_error'
+        : fcm.warnings.length > 0
+          ? 'sent_with_invalid_tokens'
+          : 'sent'
+
+  // Write notification_attempted event
+  await db.collection('dispatch_events').add({
+    type: 'notification_attempted',
+    dispatchId: result.dispatchId,
+    responderUid: deps.responderUid,
+    agencyId: result.responder.agencyId,
+    municipalityId: result.responder.municipalityId,
+    fcmResult,
+    fcmWarnings: fcm.warnings,
+    at: deps.now.toMillis(),
+    correlationId: result.correlationId,
+    schemaVersion: 1,
+  })
+
+  // Update dispatch doc with fcm result
+  await db.collection('dispatches').doc(result.dispatchId).update({
+    fcmResult,
+    fcmWarnings: fcm.warnings,
+  })
+
+  // If network error, queue for retry
+  if (fcmResult === 'network_error') {
+    await db.collection('fcm_retry_queue').add({
+      dispatchId: result.dispatchId,
+      responderUid: deps.responderUid,
+      attemptCount: 0,
+      lastAttemptAt: deps.now.toMillis(),
+      nextAttemptAt: deps.now.toMillis() + 30000,
+      originalError: 'fcm_network_error',
+      status: 'pending',
+    })
+  }
+
+  return {
+    dispatchId: result.dispatchId,
+    status: result.status,
+    reportId: result.reportId,
+    correlationId: result.correlationId,
+    fcmResult,
+    fcmWarnings: fcm.warnings,
+  }
 }
 
 export const dispatchResponder = onCall(
@@ -171,19 +239,7 @@ export const dispatchResponder = onCall(
         now: Timestamp.now(),
       })
 
-      // Best-effort FCM push — does not fail the callable.
-      const fcm = await sendFcmToResponder({
-        uid: parsed.data.responderUid,
-        title: 'New dispatch',
-        body: `Report ${parsed.data.reportId.slice(0, 8)} — see app for details`,
-        data: {
-          dispatchId: result.dispatchId,
-          reportId: parsed.data.reportId,
-          correlationId: result.correlationId,
-        },
-      })
-
-      return { ...result, warnings: fcm.warnings }
+      return result
     } catch (err: unknown) {
       if (err instanceof BantayogError) {
         throw bantayogErrorToHttps(err)
