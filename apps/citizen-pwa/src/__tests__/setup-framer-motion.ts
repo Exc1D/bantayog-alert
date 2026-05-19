@@ -1,3 +1,4 @@
+/// <reference types="@testing-library/jest-dom" />
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { createElement, forwardRef } from 'react'
 import type { ReactNode } from 'react'
