@@ -13,7 +13,23 @@ All Phase 1 backend tasks from `docs/superpowers/plans/2026-05-19-dispatch-harde
 - ✅ **Task 5:** `escalateDispatch` callable — municipal_admin (own municipality) or provincial_superadmin, validates responder active + not previously notified, updates `assignedTo` with `admin_override` reason, writes `escalation_attempted` event. TDD with 4 tests.
 - ✅ **Task 6:** `getOpsMetrics` callable — server-derived scope (municipality/agency/province), reads counter docs (`metrics_daily/{scopeId}_{date}`), returns aggregated metrics + `avgAcceptSeconds` + `fcmSuccessRate`.
 - ✅ **Task 7:** `retryFcmDelivery` — 30s scheduled function, polls `fcm_retry_queue`, exponential backoff (30s/60s/120s), max 3 attempts, marks permanent failure on exhaustion.
-- **Next:** Task 8 (Firestore rules + composite indexes), then Phase 2 responder-app admin visibility.
+- ✅ **Task 8:** Firestore rules + composite indexes — agency_admin paths, legacy event fallback, `fcm_retry_queue` + `system_config/monitor` rules, composite index for monitor query.
+
+**PR:** https://github.com/Exc1D/bantayog-alert/pull/149
+
+### Remaining Phases (from plan)
+
+- **Phase 2:** Frontend — Responder app FCM background receipt (`notification_received` events). **Deferred to Phase 4 per architecture note** ("Two-phase FCM tracking ... device received, latter deferred to Phase 4").
+
+- **Phase 3:** Admin Desktop — DispatchMonitorPage, EscalationQueueSection, OpsDashboard, useDispatchLifecycle hook.
+
+- **Phase 4:** Emulator E2E integration tests + responder background FCM handler.
+
+- **Phase 5:** Cloud Monitoring / BigQuery external dashboards.
+
+### Next Step
+
+Proceed with Phase 3 admin-desktop frontend (Task 10: `useDispatchLifecycle` hook, Task 11: DispatchMonitorPage, Task 12: EscalationQueueSection, Task 13: OpsDashboard).
 
 ## Current Status (2026-05-19)
 
@@ -28,7 +44,8 @@ All Phase 1 backend tasks from `docs/superpowers/plans/2026-05-19-dispatch-harde
 - ✅ **Task 5:** `escalateDispatch` callable — municipal_admin (own municipality) or provincial_superadmin, validates responder active + not previously notified, updates `assignedTo` with `admin_override` reason, writes `escalation_attempted` event.
 - ✅ **Task 6:** `getOpsMetrics` callable — server-derived scope (municipality/agency/province), reads counter docs (`metrics_daily/{scopeId}_{date}`), returns aggregated metrics + `avgAcceptSeconds` + `fcmSuccessRate`.
 - ✅ **Task 7:** `retryFcmDelivery` — 30s scheduled function, polls `fcm_retry_queue`, exponential backoff (30s/60s/120s), max 3 attempts, marks permanent failure on exhaustion.
-- **Remaining: Task 8** — Firestore rules + composite indexes. Phase 2+ (admin-desktop UI) deferred.
+- ✅ **Task 8:** Firestore rules + composite indexes — agency_admin paths, legacy event fallback, `fcm_retry_queue` + `system_config/monitor` rules, composite index for monitor query.
+- **Remaining Phases:** Phase 3 (admin-desktop frontend), Phase 4 (emulator E2E + responder background handler), Phase 5 (Cloud Monitoring/BigQuery).
 
 ## Current Status (2026-05-18)
 
