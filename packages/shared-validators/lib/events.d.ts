@@ -74,6 +74,8 @@ export declare const dispatchEventSchema: z.ZodObject<{
         timed_out: "timed_out";
         superseded: "superseded";
         unable_to_complete: "unable_to_complete";
+        needs_admin: "needs_admin";
+        escalated: "escalated";
     }>;
     toStatus: z.ZodEnum<{
         pending: "pending";
@@ -87,6 +89,8 @@ export declare const dispatchEventSchema: z.ZodObject<{
         timed_out: "timed_out";
         superseded: "superseded";
         unable_to_complete: "unable_to_complete";
+        needs_admin: "needs_admin";
+        escalated: "escalated";
     }>;
     reason: z.ZodOptional<z.ZodString>;
     createdAt: z.ZodNumber;

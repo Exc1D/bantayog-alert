@@ -73,6 +73,8 @@ service cloud.firestore {
           ||       (from == 'pending' && to == 'cancelled')
           ||       (from == 'pending' && to == 'timed_out')
           ||       (from == 'pending' && to == 'superseded')
+          ||       (from == 'pending' && to == 'needs_admin')
+          ||       (from == 'pending' && to == 'escalated')
           ||       (from == 'accepted' && to == 'acknowledged')
           ||       (from == 'accepted' && to == 'cancelled')
           ||       (from == 'accepted' && to == 'superseded')
@@ -89,6 +91,12 @@ service cloud.firestore {
           ||       (from == 'on_scene' && to == 'cancelled')
           ||       (from == 'on_scene' && to == 'superseded')
           ||       (from == 'on_scene' && to == 'unable_to_complete')
+          ||       (from == 'escalated' && to == 'accepted')
+          ||       (from == 'escalated' && to == 'declined')
+          ||       (from == 'escalated' && to == 'cancelled')
+          ||       (from == 'escalated' && to == 'timed_out')
+          ||       (from == 'escalated' && to == 'superseded')
+          ||       (from == 'escalated' && to == 'needs_admin')
           || false;
     }
 

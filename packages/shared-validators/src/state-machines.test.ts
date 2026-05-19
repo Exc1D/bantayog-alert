@@ -52,17 +52,17 @@ describe('report state machine', () => {
 // Dispatch state machine: only responder-direct transitions live in the rules
 // layer (spec §5.4). Server-authoritative transitions are enforced in callables.
 describe('dispatch state machine', () => {
-  it('DISPATCH_STATES has 11 members (Phase 6: unable_to_complete)', () => {
-    expect(DISPATCH_STATES).toHaveLength(11)
+  it('DISPATCH_STATES has 13 members (needs_admin + escalated)', () => {
+    expect(DISPATCH_STATES).toHaveLength(13)
   })
 
-  it('DISPATCH_TRANSITIONS declares 21 transitions', () => {
+  it('DISPATCH_TRANSITIONS declares 29 transitions', () => {
     // Count entries across all states
     const total = DISPATCH_STATES.reduce<number>(
       (sum, state) => sum + (DISPATCH_TRANSITIONS[state] as readonly string[]).length,
       0,
     )
-    expect(total).toBe(21)
+    expect(total).toBe(29)
   })
 
   it('every declared responder-direct transition is valid', () => {

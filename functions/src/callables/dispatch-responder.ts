@@ -9,7 +9,7 @@ import { bantayogErrorToHttps } from './https-error.js'
 import { isAccountActive } from './admin-auth.js'
 import { getAdminCallableCorsOrigins } from './callable-config.js'
 import { shouldEnforceAppCheck } from './app-check-config.js'
-import { sendFcmToResponder } from '../services/fcm-send.js'
+import { sendFcmToResponder, type FcmSendResult } from '../services/fcm-send.js'
 import {
   validateDispatchTransaction,
   type DispatchResponderCoreDeps,
@@ -26,10 +26,10 @@ const InputSchema = z
   .strict()
 
 const DEADLINE_BY_SEVERITY: Record<'critical' | 'high' | 'low' | 'medium', number> = {
-  critical: 5 * 60 * 1000,
-  high: 5 * 60 * 1000,
-  medium: 15 * 60 * 1000,
-  low: 30 * 60 * 1000,
+  critical: 5 * 60 * 1_000,
+  high: 5 * 60 * 1_000,
+  medium: 15 * 60 * 1_000,
+  low: 30 * 60 * 1_000,
 }
 
 function isValidSeverity(s: unknown): s is keyof typeof DEADLINE_BY_SEVERITY {
@@ -37,6 +37,69 @@ function isValidSeverity(s: unknown): s is keyof typeof DEADLINE_BY_SEVERITY {
 }
 
 export type { DispatchResponderCoreDeps } from './dispatch-responder-validation.js'
+
+type FcmResult = 'sent' | 'no_token' | 'network_error' | 'sent_with_invalid_tokens'
+
+function mapFcmResult(fcm: FcmSendResult): FcmResult {
+  if (fcm.warnings.includes('fcm_no_token')) return 'no_token'
+  if (fcm.warnings.includes('fcm_network_error')) return 'network_error'
+  if (fcm.warnings.length > 0) return 'sent_with_invalid_tokens'
+  return 'sent'
+}
+
+async function writeFcmTracking(
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  responderUid: string,
+  agencyId: string,
+  municipalityId: string,
+  fcmResult: FcmResult,
+  fcmWarnings: string[],
+  nowMillis: number,
+  correlationId: string,
+): Promise<void> {
+  await db.collection('dispatch_events').add({
+    type: 'notification_attempted',
+    dispatchId,
+    responderUid,
+    agencyId,
+    municipalityId,
+    fcmResult,
+    fcmWarnings,
+    at: nowMillis,
+    correlationId,
+    schemaVersion: 1,
+  })
+}
+
+async function updateDispatchFcmResult(
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  fcmResult: FcmResult,
+  fcmWarnings: string[],
+): Promise<void> {
+  await db.collection('dispatches').doc(dispatchId).update({
+    fcmResult,
+    fcmWarnings,
+  })
+}
+
+async function queueFcmRetry(
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  responderUid: string,
+  nowMillis: number,
+): Promise<void> {
+  await db.collection('fcm_retry_queue').add({
+    dispatchId,
+    responderUid,
+    attemptCount: 0,
+    lastAttemptAt: nowMillis,
+    nextAttemptAt: nowMillis + 30_000,
+    originalError: 'fcm_network_error',
+    status: 'pending',
+  })
+}
 
 export async function dispatchResponderCore(
   db: FirebaseFirestore.Firestore,
@@ -72,9 +135,7 @@ export async function dispatchResponderCore(
         })
 
         const severity = isValidSeverity(report.severityDerived) ? report.severityDerived : 'medium'
-        const deadlineMs =
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
+        const deadlineMs = DEADLINE_BY_SEVERITY[severity]
 
         const dispatchId = deps.reportId + '_' + deps.responderUid
         const dispatchRef = db.collection('dispatches').doc(dispatchId)
@@ -110,11 +171,57 @@ export async function dispatchResponderCore(
           },
         })
 
-        return { dispatchId, status: 'pending' as const, reportId: deps.reportId, correlationId }
+        return {
+          dispatchId,
+          status: 'pending' as const,
+          reportId: deps.reportId,
+          correlationId,
+          responder,
+        }
       })
     },
   )
-  return result
+
+  const fcm = await sendFcmToResponder({
+    uid: deps.responderUid,
+    title: 'New dispatch',
+    body: `Report ${deps.reportId.slice(0, 8)} — see app for details`,
+    data: {
+      dispatchId: result.dispatchId,
+      reportId: deps.reportId,
+      correlationId: result.correlationId,
+    },
+  })
+
+  const fcmResult = mapFcmResult(fcm)
+  const nowMillis = deps.now.toMillis()
+
+  await writeFcmTracking(
+    db,
+    result.dispatchId,
+    deps.responderUid,
+    result.responder.agencyId,
+    result.responder.municipalityId,
+    fcmResult,
+    fcm.warnings,
+    nowMillis,
+    result.correlationId,
+  )
+
+  await updateDispatchFcmResult(db, result.dispatchId, fcmResult, fcm.warnings)
+
+  if (fcmResult === 'network_error') {
+    await queueFcmRetry(db, result.dispatchId, deps.responderUid, nowMillis)
+  }
+
+  return {
+    dispatchId: result.dispatchId,
+    status: result.status,
+    reportId: result.reportId,
+    correlationId: result.correlationId,
+    fcmResult,
+    fcmWarnings: fcm.warnings,
+  }
 }
 
 export const dispatchResponder = onCall(
@@ -171,19 +278,7 @@ export const dispatchResponder = onCall(
         now: Timestamp.now(),
       })
 
-      // Best-effort FCM push — does not fail the callable.
-      const fcm = await sendFcmToResponder({
-        uid: parsed.data.responderUid,
-        title: 'New dispatch',
-        body: `Report ${parsed.data.reportId.slice(0, 8)} — see app for details`,
-        data: {
-          dispatchId: result.dispatchId,
-          reportId: parsed.data.reportId,
-          correlationId: result.correlationId,
-        },
-      })
-
-      return { ...result, warnings: fcm.warnings }
+      return result
     } catch (err: unknown) {
       if (err instanceof BantayogError) {
         throw bantayogErrorToHttps(err)

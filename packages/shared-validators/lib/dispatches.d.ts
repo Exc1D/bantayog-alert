@@ -11,6 +11,8 @@ export declare const dispatchStatusSchema: z.ZodEnum<{
     timed_out: "timed_out";
     superseded: "superseded";
     unable_to_complete: "unable_to_complete";
+    needs_admin: "needs_admin";
+    escalated: "escalated";
 }>;
 export type DispatchStatus = z.infer<typeof dispatchStatusSchema>;
 export declare const dispatchDocSchema: z.ZodObject<{
@@ -38,6 +40,8 @@ export declare const dispatchDocSchema: z.ZodObject<{
         timed_out: "timed_out";
         superseded: "superseded";
         unable_to_complete: "unable_to_complete";
+        needs_admin: "needs_admin";
+        escalated: "escalated";
     }>;
     statusUpdatedAt: z.ZodNumber;
     acknowledgementDeadlineAt: z.ZodNumber;

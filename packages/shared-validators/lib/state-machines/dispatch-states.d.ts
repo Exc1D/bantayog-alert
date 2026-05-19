@@ -7,13 +7,14 @@
  * the full business logic is available.
  */
 import type { DispatchStatus } from '../dispatches.js';
-export declare const DISPATCH_STATES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene", "resolved", "declined", "timed_out", "cancelled", "superseded", "unable_to_complete"];
+export declare const DISPATCH_STATES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene", "resolved", "declined", "timed_out", "cancelled", "superseded", "unable_to_complete", "needs_admin", "escalated"];
 /**
  * Valid dispatch state transitions.
  *
  * Responder progression: pending → accepted → acknowledged → en_route → on_scene → resolved
  * Admin actions: cancel from mid-lifecycle states, supersede by dispatching another responder
- * Terminal states: resolved, declined, timed_out, cancelled, superseded, unable_to_complete
+ * Server-only: pending → needs_admin (deadline exceeded, no candidates), pending → escalated (re-assigned)
+ * Terminal states: resolved, declined, timed_out, cancelled, superseded, unable_to_complete, needs_admin
  */
 export declare const DISPATCH_TRANSITIONS: Readonly<Record<DispatchStatus, readonly DispatchStatus[]>>;
 export declare function isValidDispatchTransition(from: DispatchStatus, to: DispatchStatus): boolean;

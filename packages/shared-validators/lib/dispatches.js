@@ -23,6 +23,8 @@ export const dispatchStatusSchema = z.enum([
     'cancelled',
     'superseded',
     'unable_to_complete',
+    'needs_admin',
+    'escalated',
 ]);
 export const dispatchDocSchema = z
     .object({
