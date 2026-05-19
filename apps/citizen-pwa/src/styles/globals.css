@@ -34,6 +34,24 @@
   --color-em-bg: #eaf4fb;
   --color-em-bg-warn: #fff5f5;
 
+  /* Additional tokens for hard-coded colors */
+  --color-text-dim: #43474f;
+  --color-text-deep: #191c1e;
+  --color-primary-hover: #032038;
+  --color-danger-deep: #b91c1c;
+  --color-success-deep: #166534;
+  --color-surface-muted: #d1d5db;
+  --color-warm-light: #ffeee6;
+  --color-queued-light: #fef9e7;
+  --color-queued-border: #f3d57b;
+  --color-failed-border: #f5a8a8;
+  --color-map-bg: #e8eef4;
+  --color-counter-border: #e0c5b5;
+  --color-consent-text: #3d1300;
+  --color-consent-accent: #d4522a;
+  --color-dot-inactive: #e0e3e5;
+  --color-body-bg: #f7f9fb;
+
   font-family:
     'Inter',
     -apple-system,
@@ -42,7 +60,7 @@
   font-size: 16px;
   line-height: 1.5;
   color: var(--color-text-primary);
-  background: #f7f9fb;
+  background: var(--color-body-bg);
 }
 
 *,
@@ -77,7 +95,7 @@ body {
 .step-indicator {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #43474f;
+  color: var(--color-text-dim);
 }
 
 .progress-dots {
@@ -96,7 +114,7 @@ body {
   background: var(--color-primary);
 }
 .progress-dot--inactive {
-  background: #e0e3e5;
+  background: var(--color-dot-inactive);
 }
 
 /* === Buttons === */
@@ -117,7 +135,7 @@ body {
 .btn:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
@@ -131,7 +149,7 @@ body {
   color: var(--color-text-inverse);
 }
 .btn--primary:hover:not(:disabled) {
-  background: #032038;
+  background: var(--color-primary-hover);
 }
 
 .btn--secondary {
@@ -139,7 +157,7 @@ body {
   color: var(--color-primary);
 }
 .btn--secondary:hover:not(:disabled) {
-  background: #e5e7eb;
+  background: var(--color-border);
 }
 
 .btn--amber {
@@ -147,15 +165,15 @@ body {
   color: var(--color-text-inverse);
 }
 .btn--amber:hover:not(:disabled) {
-  background: #92400e;
+  background: var(--color-queued-fg);
 }
 
 .btn--red {
-  background: #b91c1c;
+  background: var(--color-danger-deep);
   color: var(--color-text-inverse);
 }
 .btn--red:hover:not(:disabled) {
-  background: #991b1b;
+  background: var(--color-failed-fg);
 }
 
 .btn--full {
@@ -182,7 +200,7 @@ body {
 .back-btn:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
@@ -197,7 +215,7 @@ body {
 
 .status-banner--success {
   background: var(--color-success-bg);
-  color: #166534;
+  color: var(--color-success-deep);
 }
 
 .status-banner--queued {
@@ -211,8 +229,8 @@ body {
 }
 
 .status-banner--danger {
-  background: #b91c1c;
-  color: #ffffff;
+  background: var(--color-danger-deep);
+  color: var(--color-text-inverse);
 }
 
 .status-icon {
@@ -223,7 +241,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-text-inverse);
   font-size: 0.875rem;
   font-weight: 600;
 }
@@ -303,15 +321,15 @@ body {
 }
 
 .timeline-line--queued {
-  background: #f59e0b;
+  background: var(--warning-400);
 }
 
 .timeline-line--failed {
-  background: #dc2626;
+  background: var(--danger-500);
 }
 
 .timeline-line--pending {
-  background: #d1d5db;
+  background: var(--color-surface-muted);
 }
 
 .timeline-label {
@@ -356,14 +374,14 @@ body {
   border-radius: 0.5rem;
   padding: 0.75rem;
   text-align: center;
-  background: white;
+  background: var(--color-card);
   cursor: pointer;
 }
 
 .fallback-card:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
@@ -377,7 +395,7 @@ body {
   height: 2rem;
   border-radius: 9999px;
   background: var(--color-primary);
-  color: white;
+  color: var(--color-text-inverse);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,7 +438,7 @@ body {
   right: 0;
   max-height: 90svh;
   overflow-y: auto;
-  background: white;
+  background: var(--color-card);
   border-radius: 1.5rem 1.5rem 0 0;
   padding: 1.25rem;
   pointer-events: auto;
@@ -431,7 +449,7 @@ body {
 .reveal-handle {
   width: 3rem;
   height: 0.25rem;
-  background: #d1d5db;
+  background: var(--color-surface-muted);
   border-radius: 9999px;
   margin-left: auto;
   margin-right: auto;
@@ -446,7 +464,7 @@ body {
 }
 
 .reveal-ref-box {
-  background: linear-gradient(to bottom, #fff5ef, #ffeee6);
+  background: linear-gradient(to bottom, var(--color-surface-warn), var(--color-warm-light));
   border: 1px solid var(--color-border-warn);
   border-radius: 0.75rem;
   padding: 0.875rem;
@@ -455,13 +473,13 @@ body {
 }
 
 .reveal-ref-box--queued {
-  background: linear-gradient(to bottom, #fef9e7, #fef3c7);
-  border-color: #f3d57b;
+  background: linear-gradient(to bottom, var(--color-queued-light), var(--color-queued-bg));
+  border-color: var(--color-queued-border);
 }
 
 .reveal-ref-box--failed {
-  background: linear-gradient(to bottom, #fff5f5, #fee2e2);
-  border-color: #f5a8a8;
+  background: linear-gradient(to bottom, var(--color-em-bg-warn), var(--color-failed-bg));
+  border-color: var(--color-failed-border);
 }
 
 .reveal-ref-label {
@@ -502,7 +520,7 @@ body {
 }
 
 .reveal-receiver-dot--queued {
-  background: #f59e0b;
+  background: var(--warning-400);
   animation: pulse 2s infinite;
 }
 .reveal-receiver-dot--success {
@@ -561,12 +579,12 @@ body {
 
 .step-subtitle {
   font-size: 0.75rem;
-  color: #43474f;
+  color: var(--color-text-dim);
   margin-bottom: 1rem;
 }
 
 .camera-viewfinder {
-  background: linear-gradient(to bottom, #032038, var(--color-primary));
+  background: linear-gradient(to bottom, var(--color-primary-hover), var(--color-primary));
   border-radius: 0.75rem;
   aspect-ratio: 4/5;
   position: relative;
@@ -581,7 +599,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 .camera-placeholder-text {
@@ -615,7 +633,7 @@ body {
 .camera-capture-btn {
   width: 3rem;
   height: 3rem;
-  background: white;
+  background: var(--color-card);
   border-radius: 9999px;
   border: none;
   cursor: pointer;
@@ -627,7 +645,7 @@ body {
 .camera-capture-btn:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
@@ -707,7 +725,7 @@ body {
   border: none;
   cursor: pointer;
   background: var(--color-surface-alt);
-  color: #191c1e;
+  color: var(--color-text-deep);
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -716,13 +734,13 @@ body {
 .type-btn:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
 .type-btn--selected {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 /* === Step2WhoWhere === */
@@ -742,7 +760,7 @@ body {
 .location-btn:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
@@ -754,7 +772,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-text-inverse);
   font-size: 0.875rem;
 }
 
@@ -766,12 +784,12 @@ body {
 .location-primary {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #191c1e;
+  color: var(--color-text-deep);
 }
 
 .location-secondary {
   font-size: 0.5625rem;
-  color: #43474f;
+  color: var(--color-text-dim);
 }
 
 .location-change {
@@ -782,12 +800,12 @@ body {
 
 .field-error {
   font-size: 0.75rem;
-  color: #dc2626;
+  color: var(--danger-500);
   margin-bottom: 0.5rem;
 }
 
 .map-preview {
-  background: #e8eef4;
+  background: var(--color-map-bg);
   border-radius: 0.5rem;
   height: 3.25rem;
   position: relative;
@@ -801,8 +819,8 @@ body {
   transform: translate(-50%, -50%);
   width: 0.625rem;
   height: 0.625rem;
-  background: #a73400;
-  border: 2px solid white;
+  background: var(--color-severity-medium-fg);
+  border: 2px solid var(--color-card);
   border-radius: 9999px;
 }
 
@@ -814,7 +832,7 @@ body {
   border-radius: 0.5rem 0.5rem 0 0;
   padding: 0.625rem;
   font-size: 0.875rem;
-  color: #191c1e;
+  color: var(--color-text-deep);
 }
 
 .text-input:focus {
@@ -837,19 +855,19 @@ body {
   border: none;
   cursor: pointer;
   background: var(--color-surface-alt);
-  color: #191c1e;
+  color: var(--color-text-deep);
 }
 
 .toggle-btn:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
 .toggle-btn--selected {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 .patient-advisory {
@@ -889,10 +907,10 @@ body {
 .counter-btn {
   width: 1.75rem;
   height: 1.75rem;
-  background: white;
+  background: var(--color-card);
   color: var(--color-amber-strong);
   border-radius: 0.5rem;
-  border: 1px solid #e0c5b5;
+  border: 1px solid var(--color-counter-border);
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 700;
@@ -908,7 +926,7 @@ body {
 
 .counter-display {
   flex: 1;
-  background: white;
+  background: var(--color-card);
   padding: 0.5rem;
   border-radius: 0.5rem;
   text-align: center;
@@ -920,7 +938,7 @@ body {
   width: 1.75rem;
   height: 1.75rem;
   background: var(--color-amber-strong);
-  color: white;
+  color: var(--color-text-inverse);
   border-radius: 0.5rem;
   border: none;
   cursor: pointer;
@@ -933,7 +951,7 @@ body {
 
 .phone-hint {
   font-size: 0.625rem;
-  color: #43474f;
+  color: var(--color-text-dim);
   margin-top: 0.25rem;
 }
 
@@ -976,7 +994,7 @@ body {
 .location-picker-btn:focus {
   outline: none;
   box-shadow:
-    0 0 0 2px white,
+    0 0 0 2px var(--color-card),
     0 0 0 4px var(--color-primary);
 }
 
@@ -1019,7 +1037,7 @@ body {
   border-radius: 0.5rem 0.5rem 0 0;
   padding: 0.625rem;
   font-size: 0.875rem;
-  color: #191c1e;
+  color: var(--color-text-deep);
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2325292A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -1035,7 +1053,7 @@ body {
 
 /* === Step3Review === */
 .consent-banner {
-  background: linear-gradient(to bottom right, var(--color-surface-warn), #ffeee6);
+  background: linear-gradient(to bottom right, var(--color-surface-warn), var(--color-warm-light));
   border: 1px solid var(--color-border-warn);
   border-radius: 0.75rem;
   padding: 1rem;
@@ -1063,24 +1081,28 @@ body {
 .consent-heart {
   width: 2rem;
   height: 2rem;
-  background: linear-gradient(to bottom right, #a73400, #d4522a);
+  background: linear-gradient(
+    to bottom right,
+    var(--color-severity-medium-fg),
+    var(--color-consent-accent)
+  );
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-text-inverse);
   flex-shrink: 0;
 }
 
 .consent-text {
   font-size: 0.875rem;
-  color: #3d1300;
+  color: var(--color-consent-text);
   line-height: 1.4;
 }
 
 .consent-text strong {
   font-weight: 700;
-  color: #3d1300;
+  color: var(--color-consent-text);
 }
 
 .review-card {
@@ -1096,7 +1118,7 @@ body {
 
 .review-label {
   font-size: 0.5625rem;
-  color: #43474f;
+  color: var(--color-text-dim);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1106,12 +1128,12 @@ body {
 .review-value {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #191c1e;
+  color: var(--color-text-deep);
 }
 
 .review-subvalue {
   font-size: 0.625rem;
-  color: #43474f;
+  color: var(--color-text-dim);
   margin-top: 0.125rem;
 }
 
@@ -1130,7 +1152,7 @@ body {
   width: 1rem;
   height: 1rem;
   border: 2px solid var(--color-border-strong);
-  background: white;
+  background: var(--color-card);
   border-radius: 0.25rem;
   margin-right: 0.5rem;
   flex-shrink: 0;
