@@ -34,6 +34,7 @@
 - Idempotency hashing in callable code must be async and Web Crypto-safe; `node:crypto` fallback fails under ESM/browser bundling.
 - Verify functions region before chasing auth/App Check issues; region mismatch produces misleading unauthenticated errors.
 - **Stale `functions/lib/` binary is the #1 cause of `FirebaseError: internal` in E2E.** Rebuild after source changes.
+- **Stale `functions-dist/` bundle causes CORS errors in emulator.** `firebase.json` points emulators to `functions-dist`, not `functions/lib`. If `getOpsMetrics` (or any new callable) is missing from the bundle, the emulator returns a 404 without CORS headers on the preflight, which Chrome reports as a CORS policy violation. Fix: `pnpm exec tsx scripts/prepare-functions-deploy.ts` before `pnpm dev:all`.
 - `createTestEnv()` requires Firestore, Database, and Storage emulators all running.
 - Strict Zod schemas: strip transitional fields before validation rather than widening the schema.
 - Ops-facing schemas should use ops-specific enums, not broader public enums.
