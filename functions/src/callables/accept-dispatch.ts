@@ -58,10 +58,15 @@ export async function acceptDispatchCore(
         if (!snap.exists) {
           throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found')
         }
-        const d = snap.data() as { status: string; assignedTo?: { uid: string } }
-        if (!d.assignedTo?.uid || d.assignedTo.uid !== deps.actor.uid) {
+        const d = snap.data() as {
+          status: string
+          assignedTo?: { uid: string; agencyId: string; municipalityId: string }
+        }
+        // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+        if (d.assignedTo === undefined || d.assignedTo.uid !== deps.actor.uid) {
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Not assigned to this responder')
         }
+        const assignedTo = d.assignedTo
         if (d.status !== 'pending') {
           throw new BantayogError(
             BantayogErrorCode.CONFLICT,
@@ -75,13 +80,32 @@ export async function acceptDispatchCore(
           lastStatusAt: deps.now.toMillis(),
         })
 
+        const agencyId = assignedTo.agencyId
+        const municipalityId = assignedTo.municipalityId
+
         const evRef = db.collection('dispatch_events').doc()
         tx.set(evRef, {
+          type: 'status_changed',
           dispatchId: deps.dispatchId,
           from: 'pending',
           to: 'accepted',
           actorUid: deps.actor.uid,
           actorRole: 'responder',
+          agencyId,
+          municipalityId,
+          at: deps.now.toMillis(),
+          correlationId,
+          schemaVersion: 1,
+        })
+
+        const deliveredRef = db.collection('dispatch_events').doc()
+        tx.set(deliveredRef, {
+          type: 'notification_delivered',
+          dispatchId: deps.dispatchId,
+          responderUid: deps.actor.uid,
+          agencyId,
+          municipalityId,
+          action: 'accepted',
           at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,
