@@ -139,6 +139,15 @@
       ]
     },
     {
+      "collectionGroup": "dispatches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "acknowledgementDeadlineAt", "order": "ASCENDING" },
+        { "fieldPath": "monitorLeaseAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "alerts",
       "queryScope": "COLLECTION",
       "fields": [

@@ -44,7 +44,7 @@ service cloud.firestore {
     function canReadEventDoc(data) {
       return isActivePrivileged()
           && (isMuniAdmin() || isSuperadmin()
-              || (isAgencyAdmin() && data.agencyId == myAgency()));
+              || (isAgencyAdmin() && (!('agencyId' in data) || data.agencyId == myAgency())));
     }
     function canReadReportOps(data) {
       return adminOf(data.municipalityId)
@@ -272,8 +272,13 @@ service cloud.firestore {
       allow get: if isActivePrivileged() && canReadDispatch(resource.data);
       allow list: if isActivePrivileged() && (
                     (isResponder() && ('assignedTo' in resource.data) && resource.data.assignedTo is map && ('uid' in resource.data.assignedTo) && resource.data.assignedTo.uid == uid())
-                    || adminOf(resource.data.municipalityId)
-                  );
+        || adminOf(resource.data.municipalityId)
+        || (isAgencyAdmin()
+            && ('assignedTo' in resource.data)
+            && resource.data.assignedTo is map
+            && ('agencyId' in resource.data.assignedTo)
+            && resource.data.assignedTo.agencyId == myAgency())
+      );
 
       function isAssignedResponder() {
         return isResponder()
@@ -366,6 +371,15 @@ service cloud.firestore {
 
     match /rate_limits/{rateKey} {
       allow read, write: if false;
+    }
+
+    match /fcm_retry_queue/{doc} {
+      allow read, write: if false;
+    }
+
+    match /system_config/monitor {
+      allow get: if isSuperadmin() && isActivePrivileged();
+      allow update: if isSuperadmin() && isActivePrivileged();
     }
 
     // ================================================================
