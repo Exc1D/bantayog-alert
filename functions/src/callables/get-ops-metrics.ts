@@ -23,24 +23,34 @@ function deriveScope(claims: GetOpsMetricsCoreDeps['actor']['claims']): Scope {
   throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'unknown role')
 }
 
-export async function getOpsMetricsCore(db: Firestore, deps: GetOpsMetricsCoreDeps) {
-  const scope = deriveScope(deps.actor.claims)
-
+function collectDatesForRange(timeRange: '1h' | '24h' | '7d'): string[] {
   const now = new Date()
-  const dates: string[] = []
-  if (deps.timeRange === '1h') {
-    dates.push(now.toISOString().slice(0, 10))
-  } else if (deps.timeRange === '24h') {
-    dates.push(now.toISOString().slice(0, 10))
-  } else {
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now)
-      d.setDate(d.getDate() - i)
-      dates.push(d.toISOString().slice(0, 10))
-    }
+  if (timeRange === '1h' || timeRange === '24h') {
+    return [now.toISOString().slice(0, 10)]
   }
+  const dates: string[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    dates.push(d.toISOString().slice(0, 10))
+  }
+  return dates
+}
 
-  const metrics = {
+interface DailyMetrics {
+  totalDispatches: number
+  acceptedCount: number
+  declinedCount: number
+  escalatedCount: number
+  needsAdminCount: number
+  fcmSuccessCount: number
+  fcmFailureCount: number
+  totalAcceptSeconds: number
+  acceptCountWithTimestamps: number
+}
+
+function createEmptyMetrics(): DailyMetrics {
+  return {
     totalDispatches: 0,
     acceptedCount: 0,
     declinedCount: 0,
@@ -51,40 +61,53 @@ export async function getOpsMetricsCore(db: Firestore, deps: GetOpsMetricsCoreDe
     totalAcceptSeconds: 0,
     acceptCountWithTimestamps: 0,
   }
+}
+
+function accumulateMetrics(accum: DailyMetrics, data: Partial<DailyMetrics>): void {
+  accum.totalDispatches += data.totalDispatches ?? 0
+  accum.acceptedCount += data.acceptedCount ?? 0
+  accum.declinedCount += data.declinedCount ?? 0
+  accum.escalatedCount += data.escalatedCount ?? 0
+  accum.needsAdminCount += data.needsAdminCount ?? 0
+  accum.fcmSuccessCount += data.fcmSuccessCount ?? 0
+  accum.fcmFailureCount += data.fcmFailureCount ?? 0
+  accum.totalAcceptSeconds += data.totalAcceptSeconds ?? 0
+  accum.acceptCountWithTimestamps += data.acceptCountWithTimestamps ?? 0
+}
+
+export async function getOpsMetricsCore(db: Firestore, deps: GetOpsMetricsCoreDeps) {
+  const scope = deriveScope(deps.actor.claims)
+  const dates = collectDatesForRange(deps.timeRange)
+  const metrics = createEmptyMetrics()
 
   for (const date of dates) {
-    const docId = scope.type === 'province' ? 'province_' + date : scope.id + '_' + date
+    const docId = scope.type === 'province' ? `province_${date}` : `${scope.id}_${date}`
     const snap = await db.collection('metrics_daily').doc(docId).get()
     if (snap.exists) {
-      const data = snap.data() as Partial<typeof metrics>
-      metrics.totalDispatches += data.totalDispatches ?? 0
-      metrics.acceptedCount += data.acceptedCount ?? 0
-      metrics.declinedCount += data.declinedCount ?? 0
-      metrics.escalatedCount += data.escalatedCount ?? 0
-      metrics.needsAdminCount += data.needsAdminCount ?? 0
-      metrics.fcmSuccessCount += data.fcmSuccessCount ?? 0
-      metrics.fcmFailureCount += data.fcmFailureCount ?? 0
-      metrics.totalAcceptSeconds += data.totalAcceptSeconds ?? 0
-      metrics.acceptCountWithTimestamps += data.acceptCountWithTimestamps ?? 0
+      accumulateMetrics(metrics, snap.data() as Partial<DailyMetrics>)
     }
   }
+
+  const avgAcceptSeconds =
+    metrics.acceptCountWithTimestamps > 0
+      ? Math.round(metrics.totalAcceptSeconds / metrics.acceptCountWithTimestamps)
+      : null
+
+  const totalFcmAttempts = metrics.fcmSuccessCount + metrics.fcmFailureCount
+  const fcmSuccessRate = totalFcmAttempts > 0 ? metrics.fcmSuccessCount / totalFcmAttempts : 0
 
   return {
     timeRange: deps.timeRange,
     scope,
     metrics: {
       ...metrics,
-      avgAcceptSeconds:
-        metrics.acceptCountWithTimestamps > 0
-          ? Math.round(metrics.totalAcceptSeconds / metrics.acceptCountWithTimestamps)
-          : null,
-      fcmSuccessRate:
-        metrics.fcmSuccessCount + metrics.fcmFailureCount > 0
-          ? metrics.fcmSuccessCount / (metrics.fcmSuccessCount + metrics.fcmFailureCount)
-          : 0,
+      avgAcceptSeconds,
+      fcmSuccessRate,
     },
   }
 }
+
+const ADMIN_ROLES = ['municipal_admin', 'agency_admin', 'provincial_superadmin'] as const
 
 export const getOpsMetrics = onCall(
   {
@@ -95,20 +118,17 @@ export const getOpsMetrics = onCall(
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token
-    if (
-      claims.role !== 'municipal_admin' &&
-      claims.role !== 'agency_admin' &&
-      claims.role !== 'provincial_superadmin'
-    ) {
+    if (!ADMIN_ROLES.includes(claims.role as (typeof ADMIN_ROLES)[number])) {
       throw new HttpsError('permission-denied', 'admin required')
     }
 
+    const data = req.data as Record<string, unknown> | null
+    if (typeof data !== 'object' || data === null) {
+      throw new HttpsError('invalid-argument', 'malformed payload')
+    }
+    const timeRange = data.timeRange as '1h' | '24h' | '7d'
+
     try {
-      const data = req.data as Record<string, unknown>
-      if (typeof data !== 'object') {
-        throw new HttpsError('invalid-argument', 'malformed payload')
-      }
-      const timeRange = data.timeRange as '1h' | '24h' | '7d'
       return await getOpsMetricsCore(adminDb, {
         timeRange,
         actor: {

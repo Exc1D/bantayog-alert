@@ -19,7 +19,7 @@
 | `functions/src/scheduled/monitor-dispatch-deadlines.ts` | 1-min cron: query pending past-deadline dispatches, auto-escalate once per doc, flip to needs_admin |
 | `functions/src/callables/escalate-dispatch.ts`          | Admin manual re-dispatch for needs_admin dispatches                                                 |
 | `functions/src/callables/get-ops-metrics.ts`            | Returns pre-aggregated metrics from counter docs                                                    |
-| `functions/src/callables/retry-fcm-delivery.ts`         | Scheduled function: polls fcm_retry_queue, retries with backoff                                     |
+| `functions/src/scheduled/retry-fcm-delivery.ts`         | Scheduled function: polls fcm_retry_queue, retries with backoff                                     |
 | `functions/src/services/fcm-send-batch.ts`              | Batch FCM send utility (wraps sendEachForMulticast with per-dispatch result mapping)                |
 | `functions/src/services/dispatch-counter.ts`            | Increment daily counter docs in transactions                                                        |
 | `functions/src/services/monitor-config.ts`              | Read system_config/monitor with in-memory caching and defaults                                      |
@@ -215,15 +215,17 @@ return {
 import { vi, describe, it, expect } from 'vitest'
 import { dispatchResponderCore } from '../../callables/dispatch-responder.js'
 
-vi.hoisted(() => {
-  vi.mock('../../services/fcm-send.js', () => ({
-    sendFcmToResponder: vi.fn().mockResolvedValue({
-      warnings: [],
-      sentCount: 1,
-      failedCount: 0,
-    }),
-  }))
-})
+const mockSendFcm = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    warnings: [],
+    sentCount: 1,
+    failedCount: 0,
+  }),
+)
+
+vi.mock('../../services/fcm-send.js', () => ({
+  sendFcmToResponder: mockSendFcm,
+}))
 
 describe('dispatchResponder FCM tracking', () => {
   it('writes notification_attempted event after FCM succeeds', async () => {
@@ -809,7 +811,7 @@ export const escalateDispatch = onCall(
     })
     if (!rl.allowed) throw new HttpsError('resource-exhausted', 'rate limit')
 
-    return adminDb.runTransaction(async (tx) => {
+    const txResult = await adminDb.runTransaction(async (tx) => {
       const dispatchRef = adminDb.collection('dispatches').doc(parsed.data.dispatchId)
       const dispatchSnap = await tx.get(dispatchRef)
       if (!dispatchSnap.exists) throw new HttpsError('not-found', 'dispatch not found')
@@ -877,27 +879,32 @@ export const escalateDispatch = onCall(
         schemaVersion: 1,
       })
 
-      // Send FCM
-      const fcm = await sendFcmToResponder({
-        uid: parsed.data.newResponderUid,
-        title: 'New dispatch (reassigned)',
-        body: `Report ${dispatch.reportId.slice(0, 8)} — see app for details`,
-        data: { dispatchId: parsed.data.dispatchId, reportId: dispatch.reportId },
-      })
-
       return {
         dispatchId: parsed.data.dispatchId,
         status: 'pending',
         reportId: dispatch.reportId,
-        fcmResult: fcm.warnings.includes('fcm_no_token')
-          ? 'no_token'
-          : fcm.warnings.includes('fcm_network_error')
-            ? 'network_error'
-            : fcm.warnings.length > 0
-              ? 'sent_with_invalid_tokens'
-              : 'sent',
+        newResponderUid: parsed.data.newResponderUid,
       }
     })
+
+    // Send FCM AFTER transaction commits to avoid duplicate sends on retry
+    const fcm = await sendFcmToResponder({
+      uid: txResult.newResponderUid,
+      title: 'New dispatch (reassigned)',
+      body: `Report ${txResult.reportId.slice(0, 8)} — see app for details`,
+      data: { dispatchId: txResult.dispatchId, reportId: txResult.reportId },
+    })
+
+    return {
+      ...txResult,
+      fcmResult: fcm.warnings.includes('fcm_no_token')
+        ? 'no_token'
+        : fcm.warnings.includes('fcm_network_error')
+          ? 'network_error'
+          : fcm.warnings.length > 0
+            ? 'sent_with_invalid_tokens'
+            : 'sent',
+    }
   },
 )
 ```
@@ -1169,7 +1176,7 @@ git commit -m "feat(dispatch): add retryFcmDelivery scheduled function"
 
 - [ ] **Step 1: Update rules for agency_admin access**
 
-```
+```rules
 // infra/firebase/firestore.rules — dispatches list
 allow list: if isActivePrivileged() && (
   (isResponder() && assignedTo.uid == uid())

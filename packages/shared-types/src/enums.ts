@@ -51,6 +51,8 @@ export type DispatchStatus =
   | 'cancelled'
   | 'superseded'
   | 'unable_to_complete'
+  | 'needs_admin'
+  | 'escalated'
 
 export type Severity = 'low' | 'medium' | 'high'
 

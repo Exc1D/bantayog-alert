@@ -9,7 +9,7 @@ import { bantayogErrorToHttps } from './https-error.js'
 import { isAccountActive } from './admin-auth.js'
 import { getAdminCallableCorsOrigins } from './callable-config.js'
 import { shouldEnforceAppCheck } from './app-check-config.js'
-import { sendFcmToResponder } from '../services/fcm-send.js'
+import { sendFcmToResponder, type FcmSendResult } from '../services/fcm-send.js'
 import {
   validateDispatchTransaction,
   type DispatchResponderCoreDeps,
@@ -26,10 +26,10 @@ const InputSchema = z
   .strict()
 
 const DEADLINE_BY_SEVERITY: Record<'critical' | 'high' | 'low' | 'medium', number> = {
-  critical: 5 * 60 * 1000,
-  high: 5 * 60 * 1000,
-  medium: 15 * 60 * 1000,
-  low: 30 * 60 * 1000,
+  critical: 5 * 60 * 1_000,
+  high: 5 * 60 * 1_000,
+  medium: 15 * 60 * 1_000,
+  low: 30 * 60 * 1_000,
 }
 
 function isValidSeverity(s: unknown): s is keyof typeof DEADLINE_BY_SEVERITY {
@@ -37,6 +37,69 @@ function isValidSeverity(s: unknown): s is keyof typeof DEADLINE_BY_SEVERITY {
 }
 
 export type { DispatchResponderCoreDeps } from './dispatch-responder-validation.js'
+
+type FcmResult = 'sent' | 'no_token' | 'network_error' | 'sent_with_invalid_tokens'
+
+function mapFcmResult(fcm: FcmSendResult): FcmResult {
+  if (fcm.warnings.includes('fcm_no_token')) return 'no_token'
+  if (fcm.warnings.includes('fcm_network_error')) return 'network_error'
+  if (fcm.warnings.length > 0) return 'sent_with_invalid_tokens'
+  return 'sent'
+}
+
+async function writeFcmTracking(
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  responderUid: string,
+  agencyId: string,
+  municipalityId: string,
+  fcmResult: FcmResult,
+  fcmWarnings: string[],
+  nowMillis: number,
+  correlationId: string,
+): Promise<void> {
+  await db.collection('dispatch_events').add({
+    type: 'notification_attempted',
+    dispatchId,
+    responderUid,
+    agencyId,
+    municipalityId,
+    fcmResult,
+    fcmWarnings,
+    at: nowMillis,
+    correlationId,
+    schemaVersion: 1,
+  })
+}
+
+async function updateDispatchFcmResult(
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  fcmResult: FcmResult,
+  fcmWarnings: string[],
+): Promise<void> {
+  await db.collection('dispatches').doc(dispatchId).update({
+    fcmResult,
+    fcmWarnings,
+  })
+}
+
+async function queueFcmRetry(
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  responderUid: string,
+  nowMillis: number,
+): Promise<void> {
+  await db.collection('fcm_retry_queue').add({
+    dispatchId,
+    responderUid,
+    attemptCount: 0,
+    lastAttemptAt: nowMillis,
+    nextAttemptAt: nowMillis + 30_000,
+    originalError: 'fcm_network_error',
+    status: 'pending',
+  })
+}
 
 export async function dispatchResponderCore(
   db: FirebaseFirestore.Firestore,
@@ -72,9 +135,7 @@ export async function dispatchResponderCore(
         })
 
         const severity = isValidSeverity(report.severityDerived) ? report.severityDerived : 'medium'
-        const deadlineMs =
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
+        const deadlineMs = DEADLINE_BY_SEVERITY[severity]
 
         const dispatchId = deps.reportId + '_' + deps.responderUid
         const dispatchRef = db.collection('dispatches').doc(dispatchId)
@@ -121,7 +182,6 @@ export async function dispatchResponderCore(
     },
   )
 
-  // FCM tracking — AFTER transaction commits (result is known)
   const fcm = await sendFcmToResponder({
     uid: deps.responderUid,
     title: 'New dispatch',
@@ -133,46 +193,25 @@ export async function dispatchResponderCore(
     },
   })
 
-  const fcmResult: 'sent' | 'no_token' | 'network_error' | 'sent_with_invalid_tokens' =
-    fcm.warnings.includes('fcm_no_token')
-      ? 'no_token'
-      : fcm.warnings.includes('fcm_network_error')
-        ? 'network_error'
-        : fcm.warnings.length > 0
-          ? 'sent_with_invalid_tokens'
-          : 'sent'
+  const fcmResult = mapFcmResult(fcm)
+  const nowMillis = deps.now.toMillis()
 
-  // Write notification_attempted event
-  await db.collection('dispatch_events').add({
-    type: 'notification_attempted',
-    dispatchId: result.dispatchId,
-    responderUid: deps.responderUid,
-    agencyId: result.responder.agencyId,
-    municipalityId: result.responder.municipalityId,
+  await writeFcmTracking(
+    db,
+    result.dispatchId,
+    deps.responderUid,
+    result.responder.agencyId,
+    result.responder.municipalityId,
     fcmResult,
-    fcmWarnings: fcm.warnings,
-    at: deps.now.toMillis(),
-    correlationId: result.correlationId,
-    schemaVersion: 1,
-  })
+    fcm.warnings,
+    nowMillis,
+    result.correlationId,
+  )
 
-  // Update dispatch doc with fcm result
-  await db.collection('dispatches').doc(result.dispatchId).update({
-    fcmResult,
-    fcmWarnings: fcm.warnings,
-  })
+  await updateDispatchFcmResult(db, result.dispatchId, fcmResult, fcm.warnings)
 
-  // If network error, queue for retry
   if (fcmResult === 'network_error') {
-    await db.collection('fcm_retry_queue').add({
-      dispatchId: result.dispatchId,
-      responderUid: deps.responderUid,
-      attemptCount: 0,
-      lastAttemptAt: deps.now.toMillis(),
-      nextAttemptAt: deps.now.toMillis() + 30000,
-      originalError: 'fcm_network_error',
-      status: 'pending',
-    })
+    await queueFcmRetry(db, result.dispatchId, deps.responderUid, nowMillis)
   }
 
   return {

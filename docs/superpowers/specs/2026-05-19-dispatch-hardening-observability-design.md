@@ -136,15 +136,15 @@ In a real disaster, a firefighter's phone being off cannot be a silent failure. 
 
 ### 4.2 New / Modified Cloud Functions
 
-| Function                   | Type                                       | Change     | Purpose                                                                                                                                                                                                                                                                                                                          |
-| -------------------------- | ------------------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dispatchResponder`        | `onCall`                                   | **Extend** | After transaction commits, call FCM, THEN write `notification_attempted` event. Return FCM API result in response.                                                                                                                                                                                                               |
-| `monitorDispatchDeadlines` | `onSchedule` (1 min)                       | **New**    | Replaces `dispatchTimeoutSweep`. Reads `system_config/monitor` kill switch. Queries with `LIMIT 50` + lease. Processes each dispatch in a single Firestore transaction that mutates the SAME dispatch doc (updates `assignedTo`, appends to `previouslyNotifiedResponderUids`, increments `escalationCount`). Batches FCM sends. |
-| `escalateDispatch`         | `onCall`                                   | **New**    | Admin manually triggers re-dispatch for `needs_admin` dispatches. Finds next available responder (excludes previously notified). Mutates SAME dispatch doc.                                                                                                                                                                      |
-| `acceptDispatch`           | `onCall`                                   | **Extend** | Write `notification_delivered` event with `action: 'accepted'`.                                                                                                                                                                                                                                                                  |
-| `declineDispatch`          | `onCall`                                   | **Extend** | Write `notification_delivered` event with `action: 'declined'`.                                                                                                                                                                                                                                                                  |
-| `getOpsMetrics`            | `onCall`                                   | **New**    | Returns pre-aggregated counts from **counter documents** (not raw Firestore scans). Server-derived scope from auth claims; rejects client-provided scope. Rate-limited.                                                                                                                                                          |
-| `retryFcmDelivery`         | `onDocumentCreated` (on `fcm_retry_queue`) | **New**    | Lightweight worker that retries FCM sends with exponential backoff.                                                                                                                                                                                                                                                              |
+| Function                   | Type                     | Change     | Purpose                                                                                                                                                                                                                                                                                                                          |
+| -------------------------- | ------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dispatchResponder`        | `onCall`                 | **Extend** | After transaction commits, call FCM, THEN write `notification_attempted` event. Return FCM API result in response.                                                                                                                                                                                                               |
+| `monitorDispatchDeadlines` | `onSchedule` (1 min)     | **New**    | Replaces `dispatchTimeoutSweep`. Reads `system_config/monitor` kill switch. Queries with `LIMIT 50` + lease. Processes each dispatch in a single Firestore transaction that mutates the SAME dispatch doc (updates `assignedTo`, appends to `previouslyNotifiedResponderUids`, increments `escalationCount`). Batches FCM sends. |
+| `escalateDispatch`         | `onCall`                 | **New**    | Admin manually triggers re-dispatch for `needs_admin` dispatches. Finds next available responder (excludes previously notified). Mutates SAME dispatch doc.                                                                                                                                                                      |
+| `acceptDispatch`           | `onCall`                 | **Extend** | Write `notification_delivered` event with `action: 'accepted'`.                                                                                                                                                                                                                                                                  |
+| `declineDispatch`          | `onCall`                 | **Extend** | Write `notification_delivered` event with `action: 'declined'`.                                                                                                                                                                                                                                                                  |
+| `getOpsMetrics`            | `onCall`                 | **New**    | Returns pre-aggregated counts from **counter documents** (not raw Firestore scans). Server-derived scope from auth claims; rejects client-provided scope. Rate-limited.                                                                                                                                                          |
+| `retryFcmDelivery`         | `onSchedule` (every 30s) | **New**    | Polls `fcm_retry_queue` for pending items, retries FCM sends with exponential backoff, deletes succeeded docs, increments `retryCount` on failures.                                                                                                                                                                              |
 
 ### 4.3 Data Model
 
@@ -286,7 +286,7 @@ When `dispatchResponder` or `monitorDispatchDeadlines` encounters a `network_err
 
 ### 4.4 Escalation Logic (monitorDispatchDeadlines)
 
-```
+```text
 1. Read system_config/monitor. If autoEscalationEnabled == false, exit.
 
 2. Query dispatches:
@@ -397,7 +397,7 @@ function deriveScope(claims: Record<string, unknown>) {
 
 ### 5.1 `dispatches` collection
 
-```
+```rules
 allow list: if isActivePrivileged() && (
   (isResponder() && assignedTo.uid == uid())
   || adminOf(municipalityId)
@@ -411,7 +411,7 @@ allow create, update, delete: if false;  // WARNING: CALLABLES USE ADMIN SDK AND
 
 **Rules fallback for legacy events missing `agencyId`:**
 
-```
+```rules
 allow list: if isActivePrivileged() && (
   (isResponder() && data.assignedTo.uid == uid())
   || adminOf(data.municipalityId)
@@ -426,7 +426,7 @@ allow create, update, delete: if false;  // WARNING: CALLABLES USE ADMIN SDK AND
 
 ### 5.3 `alerts` collection
 
-```
+```rules
 allow list, get: if isActivePrivileged() && (
   adminOf(data.municipalityId)
   || (isAgencyAdmin() && data.agencyId == myAgency())
@@ -440,7 +440,7 @@ allow create, update, delete: if false;  // callable-only
 
 ### 5.4 `system_config/monitor`
 
-```
+```rules
 allow get: if isProvincialSuperadmin();
 allow update: if isProvincialSuperadmin();
 ```
@@ -655,7 +655,7 @@ function useDispatchLifecycle() {
 
 Instead of scanning raw `dispatches` and `dispatch_events`, maintain pre-computed counter documents:
 
-```
+```text
 metrics_daily/{municipalityId}_{YYYYMMDD}
 metrics_daily/{agencyId}_{YYYYMMDD}
 metrics_daily/province_{YYYYMMDD}
@@ -958,7 +958,7 @@ function useResponderFleet(): {
 4. Create `monitorDispatchDeadlines` scheduled function with lease + pagination + batching
 5. Create `escalateDispatch` callable with ownership checks
 6. Create `getOpsMetrics` callable using counter pattern
-7. Create `retryFcmDelivery` trigger on `fcm_retry_queue`
+7. Create `retryFcmDelivery` scheduled function (polls `fcm_retry_queue` every 30s)
 8. Update `dispatchStatusSchema` with `needs_admin` and `escalated`
 9. Update Firestore rules for `agency_admin` access
 10. Add composite indexes to `firestore.indexes.json`

@@ -1,15 +1,172 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, Transaction } from 'firebase-admin/firestore'
 import { adminDb } from '../admin-init.js'
 import { getMonitorConfig } from '../services/monitor-config.js'
 import { logDimension } from '@bantayog/shared-validators'
 
 const log = logDimension('monitorDispatchDeadlines')
-const LEASE_EXPIRY_MS = 120000 // 2 minutes
+const LEASE_EXPIRY_MS = 120_000 // 2 minutes
+const RESPONDER_CAP = 200
+const RECENT_WINDOW_MS = 30 * 60 * 1_000 // 30 min
+const FALLBACK_WINDOW_MS = 2 * 60 * 60 * 1_000 // 2 hours
+const MUNICIPALITY_CHUNK_SIZE = 10
+
+interface ResponderDoc {
+  id: string
+  agencyId: string
+  municipalityId: string
+  lastSeenAt: number
+}
+
+interface DispatchData {
+  status?: string
+  reportId?: string
+  assignedTo?: { uid: string; agencyId: string; municipalityId: string }
+  escalationCount?: number
+  previouslyNotifiedResponderUids?: string[]
+  municipalityId?: string
+  acknowledgementDeadlineAt?: number
+}
 
 export interface MonitorDispatchDeadlinesDeps {
   now: number
   config: Awaited<ReturnType<typeof getMonitorConfig>>
+}
+
+function markDispatchNeedsAdmin(
+  tx: Transaction,
+  dispatchRef: FirebaseFirestore.DocumentReference,
+  dispatchId: string,
+  now: number,
+  monitorRunId: string,
+): void {
+  tx.update(dispatchRef, {
+    status: 'needs_admin',
+    monitorLeaseAt: now,
+    monitorRunId,
+  })
+}
+
+function writeDeadlineExceededEvent(
+  tx: Transaction,
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  assignedTo: { uid: string; agencyId: string; municipalityId: string },
+  escalationCount: number,
+  now: number,
+): void {
+  tx.set(db.collection('dispatch_events').doc(), {
+    type: 'deadline_exceeded',
+    dispatchId,
+    responderUid: assignedTo.uid,
+    agencyId: assignedTo.agencyId,
+    municipalityId: assignedTo.municipalityId,
+    escalationCount,
+    at: now,
+    correlationId: crypto.randomUUID(),
+    schemaVersion: 1,
+  })
+}
+
+function writeEscalationAttemptedEvent(
+  tx: Transaction,
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  fromResponder: { uid: string; agencyId: string; municipalityId: string },
+  toResponder: ResponderDoc,
+  escalationCount: number,
+  now: number,
+): void {
+  tx.set(db.collection('dispatch_events').doc(), {
+    type: 'escalation_attempted',
+    dispatchId,
+    fromResponderUid: fromResponder.uid,
+    toResponderUid: toResponder.id,
+    agencyId: toResponder.agencyId,
+    municipalityId: toResponder.municipalityId,
+    reason: 'deadline_exceeded',
+    at: now,
+    correlationId: crypto.randomUUID(),
+    schemaVersion: 1,
+  })
+}
+
+async function queryAvailableResponders(
+  db: FirebaseFirestore.Firestore,
+  municipalityIds: string[],
+  now: number,
+  windowMs: number,
+): Promise<ResponderDoc[]> {
+  const chunks: string[][] = []
+  for (let i = 0; i < municipalityIds.length; i += MUNICIPALITY_CHUNK_SIZE) {
+    chunks.push(municipalityIds.slice(i, i + MUNICIPALITY_CHUNK_SIZE))
+  }
+
+  const snapPromises = chunks.map((chunk) =>
+    db
+      .collection('responders')
+      .where('availabilityStatus', '==', 'available')
+      .where('accountStatus', '==', 'active')
+      .where('lastSeenAt', '>', now - windowMs)
+      .where('municipalityId', 'in', chunk)
+      .get(),
+  )
+
+  const snaps = await Promise.all(snapPromises)
+  return snaps.flatMap((snap) =>
+    snap.docs.map((doc) => {
+      const data = doc.data() as {
+        agencyId: string
+        municipalityId: string
+        lastSeenAt: number
+      }
+      return {
+        id: doc.id,
+        agencyId: data.agencyId,
+        municipalityId: data.municipalityId,
+        lastSeenAt: data.lastSeenAt,
+      }
+    }),
+  )
+}
+
+function findCandidateResponder(
+  allResponders: ResponderDoc[],
+  dispatchData: DispatchData,
+): ResponderDoc | undefined {
+  const assignedTo = dispatchData.assignedTo
+  if (!assignedTo) return undefined
+
+  const excluded = new Set(dispatchData.previouslyNotifiedResponderUids ?? [])
+  excluded.add(assignedTo.uid)
+
+  return allResponders
+    .filter(
+      (r) =>
+        !excluded.has(r.id) &&
+        (r.municipalityId === dispatchData.municipalityId || r.agencyId === assignedTo.agencyId),
+    )
+    .sort((a, b) => b.lastSeenAt - a.lastSeenAt)[0]
+}
+
+async function updateNeedsAdminAlerts(
+  municipalityIds: string[],
+  now: number,
+  count: number,
+): Promise<void> {
+  const dateStr = new Date(now).toISOString().slice(0, 10)
+  for (const muniId of municipalityIds) {
+    const alertRef = adminDb.collection('alerts').doc(muniId + '_' + dateStr)
+    await alertRef.set(
+      {
+        type: 'dispatch_deadline_exceeded',
+        municipalityId: muniId,
+        count: FieldValue.increment(count),
+        lastUpdatedAt: now,
+      },
+      { merge: true },
+    )
+  }
 }
 
 export async function monitorDispatchDeadlinesCore(
@@ -29,7 +186,6 @@ export async function monitorDispatchDeadlinesCore(
 
   const monitorRunId = crypto.randomUUID()
 
-  // Query pending dispatches past deadline with expired lease
   const snap = await db
     .collection('dispatches')
     .where('status', '==', 'pending')
@@ -39,197 +195,103 @@ export async function monitorDispatchDeadlinesCore(
     .limit(config.maxDispatchesPerRun)
     .get()
 
-  const dispatches = snap.docs
+  const dispatchDocs = snap.docs
 
-  if (dispatches.length > config.circuitBreakerThreshold) {
+  if (dispatchDocs.length > config.circuitBreakerThreshold) {
     log({
       severity: 'WARNING',
       code: 'monitor.circuit_opened',
       message:
         'Found ' +
-        String(dispatches.length) +
+        String(dispatchDocs.length) +
         ' dispatches exceeding threshold ' +
         String(config.circuitBreakerThreshold),
     })
     return
   }
 
-  // Collect unique municipality IDs
   const municipalityIds = [
-    ...new Set(dispatches.map((d) => (d.data() as { municipalityId: string }).municipalityId)),
+    ...new Set(dispatchDocs.map((d) => (d.data() as { municipalityId: string }).municipalityId)),
   ]
 
-  // Chunk municipalityIds into groups of 10 (Firestore in limit)
-  const chunks: string[][] = []
-  for (let i = 0; i < municipalityIds.length; i += 10) {
-    chunks.push(municipalityIds.slice(i, i + 10))
-  }
+  let allResponders = await queryAvailableResponders(db, municipalityIds, now, RECENT_WINDOW_MS)
 
-  interface Responder {
-    id: string
-    agencyId: string
-    municipalityId: string
-    lastSeenAt: number
-    availabilityStatus?: string
-    accountStatus?: string
-  }
-
-  // Query responders for all chunks
-  const responderPromises = chunks.map((chunk) =>
-    db
-      .collection('responders')
-      .where('availabilityStatus', '==', 'available')
-      .where('accountStatus', '==', 'active')
-      .where('lastSeenAt', '>', now - 30 * 60 * 1000)
-      .where('municipalityId', 'in', chunk)
-      .get(),
-  )
-
-  const responderSnaps = await Promise.all(responderPromises)
-  let allResponders: Responder[] = responderSnaps.flatMap((s) =>
-    s.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }) as Responder),
-  )
-
-  // Fallback: if strict query returns empty, try 2h window
   if (allResponders.length === 0) {
-    const fallbackPromises = chunks.map((chunk) =>
-      db
-        .collection('responders')
-        .where('availabilityStatus', '==', 'available')
-        .where('accountStatus', '==', 'active')
-        .where('lastSeenAt', '>', now - 2 * 60 * 60 * 1000)
-        .where('municipalityId', 'in', chunk)
-        .get(),
-    )
-    const fallbackSnaps = await Promise.all(fallbackPromises)
-    allResponders = fallbackSnaps.flatMap((s) =>
-      s.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }) as Responder),
-    )
+    allResponders = await queryAvailableResponders(db, municipalityIds, now, FALLBACK_WINDOW_MS)
   }
 
-  // Cap at 200 responders in memory
-  if (allResponders.length > 200) {
+  if (allResponders.length > RESPONDER_CAP) {
     log({
       severity: 'WARNING',
       code: 'monitor.responder_cap',
-      message: 'Capped responders from ' + String(allResponders.length) + ' to 200',
+      message:
+        'Capped responders from ' + String(allResponders.length) + ' to ' + String(RESPONDER_CAP),
     })
-    allResponders = allResponders.sort((a, b) => b.lastSeenAt - a.lastSeenAt).slice(0, 200)
+    allResponders = allResponders
+      .sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+      .slice(0, RESPONDER_CAP)
   }
 
   let escalatedCount = 0
   let needsAdminCount = 0
 
-  for (const dispatchDoc of dispatches) {
+  for (const dispatchDoc of dispatchDocs) {
     try {
       await db.runTransaction(async (tx) => {
-        const dRef = db.collection('dispatches').doc(dispatchDoc.id)
-        const dSnap = await tx.get(dRef)
-        if (!dSnap.exists) return
-        const d = dSnap.data() as {
-          status?: string
-          reportId?: string
-          assignedTo?: { uid: string; agencyId: string; municipalityId: string }
-          escalationCount?: number
-          previouslyNotifiedResponderUids?: string[]
-          municipalityId?: string
-          acknowledgementDeadlineAt?: number
-        }
+        const dispatchRef = db.collection('dispatches').doc(dispatchDoc.id)
+        const freshSnap = await tx.get(dispatchRef)
+        if (!freshSnap.exists) return
 
-        // Re-check conditions inside transaction
-        if (d.assignedTo === undefined) return
+        const data = freshSnap.data() as DispatchData
+        const assignedTo = data.assignedTo
+        if (!assignedTo) return
+
         if (
-          d.status !== 'pending' ||
-          d.acknowledgementDeadlineAt === undefined ||
-          d.acknowledgementDeadlineAt >= now
-        )
-          return
-        const assignedTo = d.assignedTo
-
-        // CHECK CAP FIRST
-        if ((d.escalationCount ?? 0) >= 1) {
-          tx.update(dRef, {
-            status: 'needs_admin',
-            monitorLeaseAt: now,
-            monitorRunId,
-          })
-          tx.set(db.collection('dispatch_events').doc(), {
-            type: 'deadline_exceeded',
-            dispatchId: dispatchDoc.id,
-            responderUid: assignedTo.uid,
-            agencyId: assignedTo.agencyId,
-            municipalityId: assignedTo.municipalityId,
-            escalationCount: d.escalationCount ?? 0,
-            at: now,
-            correlationId: crypto.randomUUID(),
-            schemaVersion: 1,
-          })
-          needsAdminCount++
+          data.status !== 'pending' ||
+          data.acknowledgementDeadlineAt === undefined ||
+          data.acknowledgementDeadlineAt >= now
+        ) {
           return
         }
 
-        // Check if assigned responder is still active
-        const responderRef = db.collection('responders').doc(assignedTo.uid)
-        const responderSnap = await tx.get(responderRef)
-        const responderData = responderSnap.exists
-          ? (responderSnap.data() as { accountStatus?: string } | undefined)
-          : null
-        if (responderData === null || responderData === undefined) {
-          tx.update(dRef, {
-            status: 'needs_admin',
-            monitorLeaseAt: now,
-            monitorRunId,
-          })
-          needsAdminCount++
-          return
-        }
-        if (responderData.accountStatus !== 'active') {
-          tx.update(dRef, {
-            status: 'needs_admin',
-            monitorLeaseAt: now,
-            monitorRunId,
-          })
-          needsAdminCount++
-          return
-        }
-
-        // Find next candidate
-        const excluded = new Set(d.previouslyNotifiedResponderUids ?? [])
-        excluded.add(assignedTo.uid)
-        const candidates = allResponders
-          .filter((r) => !excluded.has(r.id))
-          .filter(
-            (r) => r.municipalityId === d.municipalityId || r.agencyId === assignedTo.agencyId,
+        if ((data.escalationCount ?? 0) >= 1) {
+          markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
+          writeDeadlineExceededEvent(
+            tx,
+            db,
+            dispatchDoc.id,
+            assignedTo,
+            data.escalationCount ?? 0,
+            now,
           )
-          .sort((a, b) => b.lastSeenAt - a.lastSeenAt)
-
-        if (candidates.length === 0) {
-          tx.update(dRef, {
-            status: 'needs_admin',
-            monitorLeaseAt: now,
-            monitorRunId,
-          })
           needsAdminCount++
           return
         }
 
-        const nextResponder = candidates[0]
-        if (!nextResponder) {
-          tx.update(dRef, {
-            status: 'needs_admin',
-            monitorLeaseAt: now,
-            monitorRunId,
-          })
+        const responderSnap = await tx.get(db.collection('responders').doc(assignedTo.uid))
+        if (
+          !responderSnap.exists ||
+          (responderSnap.data() as { accountStatus?: string }).accountStatus !== 'active'
+        ) {
+          markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
           needsAdminCount++
           return
         }
 
-        // ESCALATE: update same dispatch doc
-        tx.update(dRef, {
+        const candidate = findCandidateResponder(allResponders, data)
+        if (!candidate) {
+          markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
+          needsAdminCount++
+          return
+        }
+
+        const newEscalationCount = (data.escalationCount ?? 0) + 1
+
+        tx.update(dispatchRef, {
           assignedTo: {
-            uid: nextResponder.id,
-            agencyId: nextResponder.agencyId,
-            municipalityId: nextResponder.municipalityId,
+            uid: candidate.id,
+            agencyId: candidate.agencyId,
+            municipalityId: candidate.municipalityId,
           },
           escalationCount: FieldValue.increment(1),
           previouslyNotifiedResponderUids: FieldValue.arrayUnion(assignedTo.uid),
@@ -239,30 +301,16 @@ export async function monitorDispatchDeadlinesCore(
           status: 'pending',
         })
 
-        tx.set(db.collection('dispatch_events').doc(), {
-          type: 'deadline_exceeded',
-          dispatchId: dispatchDoc.id,
-          responderUid: assignedTo.uid,
-          agencyId: assignedTo.agencyId,
-          municipalityId: assignedTo.municipalityId,
-          escalationCount: (d.escalationCount ?? 0) + 1,
-          at: now,
-          correlationId: crypto.randomUUID(),
-          schemaVersion: 1,
-        })
-
-        tx.set(db.collection('dispatch_events').doc(), {
-          type: 'escalation_attempted',
-          dispatchId: dispatchDoc.id,
-          fromResponderUid: assignedTo.uid,
-          toResponderUid: nextResponder.id,
-          agencyId: nextResponder.agencyId,
-          municipalityId: nextResponder.municipalityId,
-          reason: 'deadline_exceeded',
-          at: now,
-          correlationId: crypto.randomUUID(),
-          schemaVersion: 1,
-        })
+        writeDeadlineExceededEvent(tx, db, dispatchDoc.id, assignedTo, newEscalationCount, now)
+        writeEscalationAttemptedEvent(
+          tx,
+          db,
+          dispatchDoc.id,
+          assignedTo,
+          candidate,
+          newEscalationCount,
+          now,
+        )
 
         escalatedCount++
       })
@@ -275,22 +323,8 @@ export async function monitorDispatchDeadlinesCore(
     }
   }
 
-  // Update grouped alert for needs_admin dispatches
   if (needsAdminCount > 0) {
-    for (const muniId of municipalityIds) {
-      const alertRef = adminDb
-        .collection('alerts')
-        .doc(muniId + '_' + new Date(now).toISOString().slice(0, 10))
-      await alertRef.set(
-        {
-          type: 'dispatch_deadline_exceeded',
-          municipalityId: muniId,
-          count: FieldValue.increment(needsAdminCount),
-          lastUpdatedAt: now,
-        },
-        { merge: true },
-      )
-    }
+    await updateNeedsAdminAlerts(municipalityIds, now, needsAdminCount)
   }
 
   log({
@@ -298,7 +332,7 @@ export async function monitorDispatchDeadlinesCore(
     code: 'monitor.done',
     message:
       'Processed ' +
-      String(dispatches.length) +
+      String(dispatchDocs.length) +
       ' dispatches: ' +
       String(escalatedCount) +
       ' escalated, ' +
