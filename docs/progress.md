@@ -2,6 +2,24 @@
 
 ## Current Status (2026-05-19)
 
+**Phase 3 OpsDashboard — Complete**
+
+All 7 tasks from `docs/superpowers/plans/2026-05-19-opsdashboard-plan.md` complete. Branch `feat/ops-dashboard` on `.worktrees/feat/ops-dashboard`.
+
+- ✅ **Task 1:** `DispatchVolumeChart` — 24-hour bar chart, empty/skeleton/stale-rows states. 5 tests.
+- ✅ **Task 2:** `RecentEventsFeed` — sorted cross-row timeline events, maxEvents limit, empty state, time buckets. 14 tests.
+- ✅ **Task 3:** `MunicipalPerformanceTable` — avgResponseTime column verified; already existed. 11 tests pass.
+- ✅ **Task 4:** `DispatchStatsCards` — redesigned: border-t-[3px] top accent + bg-white/[0.03], trend arrow for avgAcceptSeconds (>10% change). 10 tests.
+- ✅ **Task 5:** `EscalationQueueSection` — replaced null return with all-clear banner + "View Details" drill-down link per card. 7 tests.
+- ✅ **Task 6:** `DashboardPage` rewrite — removed all triage logic (DeclareAlertModal, TriagePanel, StatusBar, etc.), composed 6 ops widgets, loading spinner / AllClearState / OfflineBanner states, sr-only h1, keyboard shortcuts (?, Esc) with HelpModal. 3 tests. Lint, typecheck, and 349/349 admin-desktop tests pass.
+- ✅ **Task 7:** Full verification — lint clean, typecheck clean, 349/349 tests pass.
+
+**Key design decisions:** All 5 non-DashboardPage widgets (Tasks 1–5) built with TDD (red→green). DashboardPage test required non-empty mock data to avoid AllClearState short-circuit. `noop` pattern for empty callback props (`onReDispatch`, `onSelectMunicipality`) to satisfy `@typescript-eslint/no-empty-function`. Used `import { db } from '../app/firebase'` (existing pattern) over `getFirestoreInstance()` from plan.
+
+**PR:** Pending push to origin.
+
+## Current Status (2026-05-19)
+
 **Phase 3 Admin Desktop Frontend — In Progress**
 
 - ✅ **Task 12:** `EscalationQueueSection.tsx` — high-contrast red section for `needs_admin` dispatches. Returns null when empty; horizontal scrolling stalled dispatch cards with report ID (first 8 chars), responder name, amber escalation count, and red Re-dispatch button. TDD with 6 unit tests (red→green→simplify). Committed to `feat/dispatch-hardening-observability`.
