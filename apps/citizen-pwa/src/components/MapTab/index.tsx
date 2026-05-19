@@ -249,11 +249,11 @@ export function MapTab() {
         </>
       ) : null}
 
-      {/* Location FAB */}
+      {/* Location FAB — shifts up when sheet is visible to avoid overlap */}
       <button
         type="button"
         onClick={handleRecenter}
-        className="absolute bottom-4 right-3 z-[800] w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-surface-900 active:scale-95 transition-transform"
+        className={`absolute z-[800] w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-surface-900 active:scale-95 transition-transform ${sheetPhase === 'hidden' ? 'bottom-4 right-3' : 'bottom-[10rem] right-3'}`}
         aria-label="Recenter map"
       >
         <Crosshair size={20} />

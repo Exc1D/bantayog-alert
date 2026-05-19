@@ -86,4 +86,13 @@ describe('DeleteAccountFlow', () => {
       expect(onGoodbye).toHaveBeenCalled()
     })
   })
+
+  it('uses themed overlay background instead of pure black', async () => {
+    const user = userEvent.setup()
+    render(<DeleteAccountFlow onGoodbye={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /delete my account/i }))
+    const overlay = screen.getByRole('presentation')
+    expect(overlay.className).toContain('bg-surface-950')
+    expect(overlay.className).not.toContain('bg-black')
+  })
 })
