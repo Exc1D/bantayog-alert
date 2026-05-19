@@ -27,6 +27,7 @@ export function DispatchStatsCards({
   useEffect(() => {
     if (avgAcceptSeconds === null || prevRef.current === null) {
       prevRef.current = avgAcceptSeconds
+      setTrend(null)
       return
     }
     const diff = avgAcceptSeconds - prevRef.current

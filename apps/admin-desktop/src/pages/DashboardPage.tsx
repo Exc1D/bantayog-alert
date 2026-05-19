@@ -36,7 +36,7 @@ export default function DashboardPage() {
   })
 
   const [helpModalOpen, setHelpModalOpen] = useState(false)
-  const [lastUpdatedAt] = useState(() => Date.now())
+  const [pageLoadedAt] = useState(() => Date.now())
 
   const isLoading = lifecycleLoading || fleetLoading || metricsLoading || reportsLoading
   const error = lifecycleError ?? fleetError ?? metricsError ?? reportsError
@@ -55,7 +55,7 @@ export default function DashboardPage() {
   const municipalData: MunicipalPerformance[] = useMemo(() => {
     const byMuni = new Map<string, Report[]>()
     reports.forEach((r) => {
-      const mapped = mapReportDocToReportLoose(r as unknown as Record<string, unknown>)
+      const mapped = mapReportDocToReportLoose(r)
       const key = mapped.municipality || 'Unknown'
       const list = byMuni.get(key) ?? []
       list.push(mapped)
@@ -69,7 +69,7 @@ export default function DashboardPage() {
 
   const navigate = useNavigate()
 
-  // TODO: wire to responder-selection modal; redispatchReport requires newResponderUid + idempotencyKey
+  // TODO [PR#151-followup]: wire to responder-selection modal; redispatchReport requires newResponderUid + idempotencyKey
   const handleReDispatch = useCallback((dispatchId: string) => {
     void dispatchId
   }, [])
@@ -99,7 +99,7 @@ export default function DashboardPage() {
   if (isLoading && rows.length === 0 && reports.length === 0) {
     return (
       <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-        <CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={lastUpdatedAt} />
+        <CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={pageLoadedAt} />
         {error && <OfflineBanner error={error} />}
         <div className="flex flex-1 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
@@ -112,7 +112,7 @@ export default function DashboardPage() {
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <CommandHeader
         title="PDRRMO Camarines Norte"
-        lastUpdatedAt={lastUpdatedAt}
+        lastUpdatedAt={pageLoadedAt}
         windowRole="dashboard"
         onShowKeyboardShortcuts={() => {
           setHelpModalOpen(true)

@@ -40,7 +40,7 @@ export function EscalationQueueSection({ stalledDispatches, onReDispatch }: Prop
             <div className="flex items-center justify-between">
               <div className="text-xs text-gray-400">Report ID</div>
               <a
-                href={`/dispatches?highlight=${d.dispatchId}`}
+                href={`/dispatches?highlight=${encodeURIComponent(d.dispatchId)}`}
                 className="text-xs text-blue-400 hover:underline"
               >
                 View Details

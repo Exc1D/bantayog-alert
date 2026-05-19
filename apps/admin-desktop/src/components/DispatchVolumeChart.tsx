@@ -13,8 +13,15 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
   const now = Date.now()
   const oneDayAgo = now - 24 * 60 * 60 * 1000
   for (const row of rows) {
-    if (row.dispatchedAt < oneDayAgo) continue
-    const hour = new Date(row.dispatchedAt).getHours()
+    const raw = row.dispatchedAt
+    if (typeof raw !== 'number') continue
+    if (!Number.isFinite(raw) || raw > now || raw < 0) {
+      continue
+    }
+    const date = new Date(raw)
+    if (Number.isNaN(date.getTime())) continue
+    if (raw < oneDayAgo) continue
+    const hour = date.getHours()
     counts[hour] = (counts[hour] ?? 0) + 1
   }
 
