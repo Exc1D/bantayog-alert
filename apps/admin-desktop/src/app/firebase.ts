@@ -37,6 +37,9 @@ if (!useEmulator) {
 }
 
 export const db = getFirestore(firebaseApp)
+export function useFirestore() {
+  return db
+}
 export const auth = getAuth(firebaseApp)
 export const functions = getFunctions(firebaseApp, 'asia-southeast1')
 export const rtdb = getDatabase(firebaseApp)

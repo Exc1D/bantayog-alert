@@ -2,6 +2,23 @@
 
 ## Current Status (2026-05-19)
 
+**Phase 3 Admin Desktop Frontend — In Progress**
+
+- ✅ **Task 12:** `EscalationQueueSection.tsx` — high-contrast red section for `needs_admin` dispatches. Returns null when empty; horizontal scrolling stalled dispatch cards with report ID (first 8 chars), responder name, amber escalation count, and red Re-dispatch button. TDD with 6 unit tests (red→green→simplify). Committed to `feat/dispatch-hardening-observability`.
+- ✅ **Task 11:** `DispatchMonitorPage.tsx` — main dispatch monitor page composing `DispatchStatsCards`, `EscalationQueueSection`, `DispatchLifecycleTable`, `ResponderAvailabilityPanel`, and `ReDispatchModal`. Includes `useFirestore()` singleton hook in `app/firebase.ts`. State-managed re-dispatch flow with `callables.escalateDispatch`, loading spinner, error banners, and dismissible dispatch-error state. TDD with 9 unit tests (red→green→simplify). Typecheck and lint clean.
+
+### Remaining Tasks
+
+- **Task 13:** `OpsDashboard`
+
+### Next Step
+
+Continue Phase 3 admin-desktop frontend with `OpsDashboard`.
+
+---
+
+## Current Status (2026-05-19)
+
 **Dispatch Hardening + Observability Backend (Phase 1 Complete)**
 
 All Phase 1 backend tasks from `docs/superpowers/plans/2026-05-19-dispatch-hardening-observability-plan.md` now complete and committed.
