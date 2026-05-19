@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { List } from 'react-window'
-import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
+import type { DispatchLifecycleRow, DispatchEvent } from '../hooks/useDispatchLifecycle'
 import { FcmStatusIcon } from './FcmStatusIcon'
 import { DispatchTimeline } from './DispatchTimeline'
 
@@ -36,89 +36,73 @@ const ROW_HEIGHT = 40
 interface RowRendererProps {
   index: number
   style: React.CSSProperties
-  ariaAttributes: {
-    'aria-posinset': number
-    'aria-setsize': number
-    role: 'listitem'
-  }
   rows: DispatchLifecycleRow[]
-  expandedIds: Set<string>
+  expandedId: string | null
   onToggle: (id: string) => void
 }
 
-function RowRenderer({ index, style, rows, expandedIds, onToggle }: RowRendererProps) {
+function RowRenderer({ index, style, rows, expandedId, onToggle }: RowRendererProps) {
   const row = rows[index]
   if (!row) return null
-  const expanded = expandedIds.has(row.dispatchId)
+  const expanded = expandedId === row.dispatchId
 
   return (
     <div style={style}>
-      <div className="border-b">
-        <div
-          className="flex cursor-pointer items-center px-3 py-2 hover:bg-gray-50"
-          role="row"
-          tabIndex={0}
-          onClick={() => {
+      <div
+        className={`flex cursor-pointer items-center border-b px-3 py-2 hover:bg-gray-50 ${expanded ? 'bg-blue-50' : ''}`}
+        role="row"
+        tabIndex={0}
+        onClick={() => {
+          onToggle(row.dispatchId)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle(row.dispatchId)
+          }
+        }}
+      >
+        <span className="w-28 truncate">{row.reportId.slice(0, 8)}</span>
+        <span className="flex-1">
+          <div>{row.responderName}</div>
+          <div className="text-xs text-gray-500">{row.responderAgency}</div>
+        </span>
+        <span className="w-24">
+          <StatusBadge status={row.status} />
+        </span>
+        <span className="w-12">
+          <FcmStatusIcon result={row.fcmResult} />
+        </span>
+        <span className="w-16 text-center">{row.escalationCount}</span>
+        <button
+          type="button"
+          className="w-8"
+          aria-label={expanded ? 'Collapse row' : 'Expand row'}
+          onClick={(e) => {
+            e.stopPropagation()
             onToggle(row.dispatchId)
           }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onToggle(row.dispatchId)
-            }
-          }}
         >
-          <span className="w-28 truncate">{row.reportId.slice(0, 8)}</span>
-          <span className="flex-1">
-            <div>{row.responderName}</div>
-            <div className="text-xs text-gray-500">{row.responderAgency}</div>
-          </span>
-          <span className="w-24">
-            <StatusBadge status={row.status} />
-          </span>
-          <span className="w-12">
-            <FcmStatusIcon result={row.fcmResult} />
-          </span>
-          <span className="w-16 text-center">{row.escalationCount}</span>
-          <button
-            type="button"
-            className="w-8"
-            aria-label={expanded ? 'Collapse row' : 'Expand row'}
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggle(row.dispatchId)
-            }}
-          >
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-        </div>
-        {expanded && (
-          <div className="bg-gray-50 px-3 py-2">
-            <DispatchTimeline events={row.timeline} />
-          </div>
-        )}
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
       </div>
     </div>
   )
 }
 
 export function DispatchLifecycleTable({ rows }: Props) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const toggleExpandedRow = useCallback((id: string) => {
-    setExpandedIds((prev) => {
-      if (prev.has(id)) {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      }
-      return new Set([...prev, id])
-    })
+  const toggleRow = useCallback((id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id))
   }, [])
 
   if (rows.length === 0) {
     return <p>No active dispatches</p>
   }
+
+  const expandedRow = expandedId ? rows.find((r) => r.dispatchId === expandedId) : null
+  const expandedTimeline: DispatchEvent[] = expandedRow?.timeline ?? []
 
   return (
     <div>
@@ -138,11 +122,19 @@ export function DispatchLifecycleTable({ rows }: Props) {
         // @ts-expect-error rowProps excludes index/style/ariaAttributes at runtime
         rowProps={{
           rows,
-          expandedIds,
-          onToggle: toggleExpandedRow,
+          expandedId,
+          onToggle: toggleRow,
         }}
         rowComponent={RowRenderer}
       />
+      {expandedRow && (
+        <div className="mt-2 rounded-md border bg-gray-50 p-3">
+          <div className="mb-1 text-xs font-medium text-gray-500">
+            Timeline — {expandedRow.reportId.slice(0, 8)}
+          </div>
+          <DispatchTimeline events={expandedTimeline} />
+        </div>
+      )}
     </div>
   )
 }

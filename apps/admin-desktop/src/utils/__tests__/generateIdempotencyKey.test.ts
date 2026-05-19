@@ -36,7 +36,7 @@ describe('generateIdempotencyKey', () => {
     const key2 = generateIdempotencyKey()
 
     expect(key1).not.toBe(key2)
-    expect(key1).toMatch(/^[0-9a-f]+-[0-9a-f]+$/)
+    expect(key1).toMatch(/^[0-9a-f]+-[0-9a-f]+-[0-9a-f]+$/)
   })
 
   it('generates unique keys in fallback mode', () => {

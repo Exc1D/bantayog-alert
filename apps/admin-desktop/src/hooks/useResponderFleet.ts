@@ -70,6 +70,7 @@ export function useResponderFleet(db: Firestore) {
     }
 
     setError(null)
+    setResponders([])
 
     const respondersCol = collection(db, 'responders')
     let respondersRef: Query = respondersCol
@@ -113,6 +114,7 @@ export function useResponderFleet(db: Firestore) {
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
+        setResponders([])
         setError(message)
       },
     )

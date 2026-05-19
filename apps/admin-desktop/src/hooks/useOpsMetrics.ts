@@ -52,14 +52,22 @@ export function useOpsMetrics(timeRange: '1h' | '24h' | '7d' = '24h') {
       }
     }
 
-    void fetchMetrics()
-    const timer = setInterval(() => {
-      void fetchMetrics()
-    }, POLL_INTERVAL_MS)
+    const pollLoop = async () => {
+      if (cancelled) return
+      await fetchMetrics()
+      // cancelled may have been set to true during the await
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!cancelled) {
+        setTimeout(() => {
+          void pollLoop()
+        }, POLL_INTERVAL_MS)
+      }
+    }
+
+    void pollLoop()
 
     return () => {
       cancelled = true
-      clearInterval(timer)
     }
   }, [timeRange])
 

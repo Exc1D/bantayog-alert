@@ -224,6 +224,12 @@ export function useDispatchLifecycle(db: Firestore) {
       unsubscribers.forEach((unsub) => {
         unsub()
       })
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+      dispatchDataRef.current.clear()
+      eventsDataRef.current.clear()
     }
   }, [db, authLoading, role, municipalityId, agencyId, scheduleMerge])
 

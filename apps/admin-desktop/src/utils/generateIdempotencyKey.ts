@@ -5,6 +5,7 @@
  */
 
 let counter = 0
+const sessionSalt = Math.random().toString(16).slice(2, 10)
 
 export function generateIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -23,7 +24,7 @@ export function generateIdempotencyKey(): string {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
   }
 
-  // Last resort: timestamp + counter (not cryptographically random but unique per session)
+  // Last resort: timestamp + counter + session salt (unique per tab)
   counter += 1
-  return `${Date.now().toString(16)}-${counter.toString(16).padStart(8, '0')}`
+  return `${sessionSalt}-${Date.now().toString(16)}-${counter.toString(16).padStart(8, '0')}`
 }

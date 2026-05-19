@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 
 const mockGetOpsMetrics = vi.hoisted(() => vi.fn())
 
@@ -81,16 +81,12 @@ describe('useOpsMetrics', () => {
 
     renderHook(() => useOpsMetrics('24h'))
 
-    await act(async () => {
-      await Promise.resolve()
-    })
+    // Wait for initial fetch
+    await vi.advanceTimersByTimeAsync(0)
     expect(mockGetOpsMetrics).toHaveBeenCalledTimes(1)
 
-    await act(async () => {
-      vi.advanceTimersByTime(60_000)
-      await Promise.resolve()
-    })
-
+    // Advance past the poll interval
+    await vi.advanceTimersByTimeAsync(60_000)
     expect(mockGetOpsMetrics).toHaveBeenCalledTimes(2)
   })
 
@@ -130,17 +126,14 @@ describe('useOpsMetrics', () => {
 
     const { unmount } = renderHook(() => useOpsMetrics('24h'))
 
-    await act(async () => {
-      await Promise.resolve()
-    })
+    // Wait for initial fetch to complete
+    await vi.advanceTimersByTimeAsync(0)
     expect(mockGetOpsMetrics).toHaveBeenCalledTimes(1)
 
     unmount()
 
-    await act(async () => {
-      vi.advanceTimersByTime(60_000)
-      await Promise.resolve()
-    })
+    // Advance past the poll interval — should not trigger another fetch
+    await vi.advanceTimersByTimeAsync(60_000)
 
     expect(mockGetOpsMetrics).toHaveBeenCalledTimes(1)
   })
