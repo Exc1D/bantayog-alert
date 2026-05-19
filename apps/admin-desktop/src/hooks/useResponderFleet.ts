@@ -47,16 +47,13 @@ export function useResponderFleet(db: Firestore) {
   const agencyId = typeof claims?.agencyId === 'string' ? claims.agencyId : null
 
   const [responders, setResponders] = useState<ResponderFleetMember[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Derive loading from authLoading — no setState in effect
+  const loading = authLoading
+
   useEffect(() => {
-    if (authLoading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(true)
-      setError(null)
-      return
-    }
+    if (authLoading) return
 
     const isSupportedRole = role !== null && ALLOWED_ADMIN_ROLES.has(role)
 
@@ -65,12 +62,12 @@ export function useResponderFleet(db: Firestore) {
       (role === 'municipal_admin' && !municipalityId) ||
       (role === 'agency_admin' && !agencyId)
     ) {
-      setLoading(false)
+      // One-time error derivation from auth claims — not a cascading render
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('unauthorized')
       return
     }
 
-    setLoading(true)
     setError(null)
 
     const fiveMinutesAgo = Date.now() - FIVE_MINUTES_MS
@@ -114,13 +111,11 @@ export function useResponderFleet(db: Firestore) {
           return member
         })
         setResponders(data)
-        setLoading(false)
         setError(null)
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
-        setLoading(false)
       },
     )
 

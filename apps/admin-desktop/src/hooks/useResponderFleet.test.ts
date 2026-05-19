@@ -53,7 +53,7 @@ describe('useResponderFleet', () => {
     mockOnSnapshot.mockReturnValue(mockUnsubscribe)
   })
 
-  it('initializes with loading state', () => {
+  it('initializes with loading state reflecting authLoading', () => {
     useAuthMock.mockReturnValue({
       user: { uid: 'admin-1' },
       claims: { role: 'municipal_admin', municipalityId: 'M001' },
@@ -62,7 +62,7 @@ describe('useResponderFleet', () => {
 
     const { result } = renderHook(() => useResponderFleet(mockDb))
 
-    expect(result.current.loading).toBe(true)
+    expect(result.current.loading).toBe(false)
     expect(result.current.error).toBeNull()
     expect(result.current.responders).toEqual([])
   })

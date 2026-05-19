@@ -11,6 +11,17 @@ const mockEscalateDispatch = vi.hoisted(() =>
 vi.mock('../services/callables', () => ({
   callables: {
     escalateDispatch: mockEscalateDispatch,
+    getOpsMetrics: vi.fn().mockResolvedValue({
+      metrics: {
+        avgAcceptSeconds: 42,
+        fcmSuccessRate: 0.95,
+        totalDispatches: 100,
+        acceptedCount: 80,
+        declinedCount: 10,
+        escalatedCount: 5,
+        needsAdminCount: 5,
+      },
+    }),
   },
 }))
 
@@ -22,6 +33,7 @@ vi.mock('../app/firebase', () => ({
 
 const mockUseDispatchLifecycle = vi.hoisted(() => vi.fn())
 const mockUseResponderFleet = vi.hoisted(() => vi.fn())
+const mockUseOpsMetrics = vi.hoisted(() => vi.fn())
 
 vi.mock('../hooks/useDispatchLifecycle', () => ({
   useDispatchLifecycle: mockUseDispatchLifecycle,
@@ -29,6 +41,10 @@ vi.mock('../hooks/useDispatchLifecycle', () => ({
 
 vi.mock('../hooks/useResponderFleet', () => ({
   useResponderFleet: mockUseResponderFleet,
+}))
+
+vi.mock('../hooks/useOpsMetrics', () => ({
+  useOpsMetrics: mockUseOpsMetrics,
 }))
 
 function makeRow(overrides: Record<string, unknown> = {}) {
@@ -70,6 +86,19 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
+    mockUseOpsMetrics.mockReturnValue({
+      metrics: {
+        avgAcceptSeconds: 42,
+        fcmSuccessRate: 0.95,
+        totalDispatches: 100,
+        acceptedCount: 80,
+        declinedCount: 10,
+        escalatedCount: 5,
+        needsAdminCount: 5,
+      },
+      loading: false,
+      error: null,
+    })
   })
 
   it('shows loading spinner when dispatch lifecycle is loading', () => {
@@ -87,7 +116,7 @@ describe('DispatchMonitorPage', () => {
   it('renders all sections when data is loaded', () => {
     render(<DispatchMonitorPage />)
     expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
-    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.getByText('Report')).toBeInTheDocument()
     expect(screen.getByText(/responders/i)).toBeInTheDocument()
   })
 

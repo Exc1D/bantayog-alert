@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   collection,
   onSnapshot,
@@ -51,6 +51,38 @@ interface DispatchDoc {
 
 const ALLOWED_STATUSES = ['pending', 'accepted', 'declined', 'needs_admin']
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
+const DEBOUNCE_MS = 100
+
+function buildRows(
+  dispatchMap: Map<string, DispatchDoc>,
+  eventsMap: Map<string, DispatchEvent[]>,
+): DispatchLifecycleRow[] {
+  const result: DispatchLifecycleRow[] = []
+  for (const [dispatchId, doc] of dispatchMap) {
+    const events = eventsMap.get(dispatchId) ?? []
+    const row: DispatchLifecycleRow = {
+      dispatchId,
+      reportId: doc.reportId ?? '',
+      status: doc.status ?? '',
+      responderName: doc.responderName ?? '',
+      responderAgency: doc.responderAgency ?? '',
+      dispatchedAt: doc.dispatchedAt ?? 0,
+      deadlineAt: doc.deadlineAt ?? 0,
+      escalationCount: doc.escalationCount ?? 0,
+      fcmResult: doc.fcmResult ?? null,
+      fcmWarnings: doc.fcmWarnings ?? null,
+      timeline: events,
+    }
+    if (doc.assignedTo) {
+      row.assignedTo = doc.assignedTo
+    }
+    if (doc.previouslyNotifiedResponderUids) {
+      row.previouslyNotifiedResponderUids = doc.previouslyNotifiedResponderUids
+    }
+    result.push(row)
+  }
+  return result
+}
 
 export function useDispatchLifecycle(db: Firestore) {
   const { claims, loading: authLoading } = useAuth()
@@ -59,54 +91,41 @@ export function useDispatchLifecycle(db: Firestore) {
   const agencyId = typeof claims?.agencyId === 'string' ? claims.agencyId : null
 
   const [rows, setRows] = useState<DispatchLifecycleRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const dispatchDataRef = useRef<Map<string, DispatchDoc>>(new Map())
   const eventsDataRef = useRef<Map<string, DispatchEvent[]>>(new Map())
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const mergeRows = useMemo(
-    () =>
-      (
-        dispatchMap: Map<string, DispatchDoc>,
-        eventsMap: Map<string, DispatchEvent[]>,
-      ): DispatchLifecycleRow[] => {
-        const result: DispatchLifecycleRow[] = []
-        for (const [dispatchId, doc] of dispatchMap) {
-          const events = eventsMap.get(dispatchId) ?? []
-          const row: DispatchLifecycleRow = {
-            dispatchId,
-            reportId: doc.reportId ?? '',
-            status: doc.status ?? '',
-            responderName: doc.responderName ?? '',
-            responderAgency: doc.responderAgency ?? '',
-            dispatchedAt: doc.dispatchedAt ?? 0,
-            deadlineAt: doc.deadlineAt ?? 0,
-            escalationCount: doc.escalationCount ?? 0,
-            fcmResult: doc.fcmResult ?? null,
-            fcmWarnings: doc.fcmWarnings ?? null,
-            timeline: events,
-          }
-          if (doc.assignedTo) {
-            row.assignedTo = doc.assignedTo
-          }
-          if (doc.previouslyNotifiedResponderUids) {
-            row.previouslyNotifiedResponderUids = doc.previouslyNotifiedResponderUids
-          }
-          result.push(row)
-        }
-        return result
-      },
-    [],
-  )
+  const flushMerge = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
+    setRows(buildRows(dispatchDataRef.current, eventsDataRef.current))
+  }, [])
+
+  const scheduleMerge = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = setTimeout(flushMerge, DEBOUNCE_MS)
+  }, [flushMerge])
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
+
+  // Derive loading from authLoading — no setState in effect
+  const loading = authLoading
 
   useEffect(() => {
-    if (authLoading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(true)
-      setError(null)
-      return
-    }
+    if (authLoading) return
 
     const isSupportedRole =
       role === 'provincial_superadmin' || role === 'municipal_admin' || role === 'agency_admin'
@@ -116,12 +135,12 @@ export function useDispatchLifecycle(db: Firestore) {
       (role === 'municipal_admin' && !municipalityId) ||
       (role === 'agency_admin' && !agencyId)
     ) {
-      setLoading(false)
+      // One-time error derivation from auth claims — not a cascading render
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('unauthorized')
       return
     }
 
-    setLoading(true)
     setError(null)
 
     const unsubscribers: (() => void)[] = []
@@ -152,14 +171,12 @@ export function useDispatchLifecycle(db: Firestore) {
           newMap.set(d.id, data)
         }
         dispatchDataRef.current = newMap
-        setRows(mergeRows(dispatchDataRef.current, eventsDataRef.current))
-        setLoading(false)
+        scheduleMerge()
         setError(null)
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
-        setLoading(false)
       },
     )
     unsubscribers.push(unsubDispatches)
@@ -188,19 +205,16 @@ export function useDispatchLifecycle(db: Firestore) {
           list.push(event)
           newMap.set(event.dispatchId, list)
         }
-        // Sort timelines descending (newest → oldest) to match query order
         for (const list of newMap.values()) {
           list.sort((a, b) => b.at - a.at)
         }
         eventsDataRef.current = newMap
-        setRows(mergeRows(dispatchDataRef.current, eventsDataRef.current))
-        setLoading(false)
+        scheduleMerge()
         setError(null)
       },
       (err) => {
         const message = err instanceof Error ? err.message : String(err)
         setError(message)
-        setLoading(false)
       },
     )
     unsubscribers.push(unsubEvents)
@@ -210,7 +224,7 @@ export function useDispatchLifecycle(db: Firestore) {
         unsub()
       })
     }
-  }, [db, authLoading, role, municipalityId, agencyId, mergeRows])
+  }, [db, authLoading, role, municipalityId, agencyId, scheduleMerge])
 
   return { rows, loading, error }
 }

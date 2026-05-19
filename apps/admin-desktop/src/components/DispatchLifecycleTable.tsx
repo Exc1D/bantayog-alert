@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { List } from 'react-window'
 import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
 import { FcmStatusIcon } from './FcmStatusIcon'
 import { DispatchTimeline } from './DispatchTimeline'
@@ -30,36 +31,58 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-interface DispatchRowProps {
-  row: DispatchLifecycleRow
-  expanded: boolean
+const ROW_HEIGHT = 40
+
+interface RowRendererProps {
+  index: number
+  style: React.CSSProperties
+  ariaAttributes: {
+    'aria-posinset': number
+    'aria-setsize': number
+    role: 'listitem'
+  }
+  rows: DispatchLifecycleRow[]
+  expandedIds: Set<string>
   onToggle: (id: string) => void
 }
 
-function DispatchRow({ row, expanded, onToggle }: DispatchRowProps) {
+function RowRenderer({ index, style, rows, expandedIds, onToggle }: RowRendererProps) {
+  const row = rows[index]
+  if (!row) return null
+  const expanded = expandedIds.has(row.dispatchId)
+
   return (
-    <>
-      <tr
-        className="border-b cursor-pointer hover:bg-gray-50"
-        onClick={() => {
-          onToggle(row.dispatchId)
-        }}
-      >
-        <td className="px-3 py-2">{row.reportId.slice(0, 8)}</td>
-        <td className="px-3 py-2">
-          <div>{row.responderName}</div>
-          <div className="text-xs text-gray-500">{row.responderAgency}</div>
-        </td>
-        <td className="px-3 py-2">
-          <StatusBadge status={row.status} />
-        </td>
-        <td className="px-3 py-2">
-          <FcmStatusIcon result={row.fcmResult} warnings={row.fcmWarnings} />
-        </td>
-        <td className="px-3 py-2">{row.escalationCount}</td>
-        <td className="px-3 py-2">
+    <div style={style}>
+      <div className="border-b">
+        <div
+          className="flex cursor-pointer items-center px-3 py-2 hover:bg-gray-50"
+          role="row"
+          tabIndex={0}
+          onClick={() => {
+            onToggle(row.dispatchId)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onToggle(row.dispatchId)
+            }
+          }}
+        >
+          <span className="w-28 truncate">{row.reportId.slice(0, 8)}</span>
+          <span className="flex-1">
+            <div>{row.responderName}</div>
+            <div className="text-xs text-gray-500">{row.responderAgency}</div>
+          </span>
+          <span className="w-24">
+            <StatusBadge status={row.status} />
+          </span>
+          <span className="w-12">
+            <FcmStatusIcon result={row.fcmResult} warnings={row.fcmWarnings} />
+          </span>
+          <span className="w-16 text-center">{row.escalationCount}</span>
           <button
             type="button"
+            className="w-8"
             aria-label={expanded ? 'Collapse row' : 'Expand row'}
             onClick={(e) => {
               e.stopPropagation()
@@ -68,16 +91,14 @@ function DispatchRow({ row, expanded, onToggle }: DispatchRowProps) {
           >
             {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
-        </td>
-      </tr>
-      {expanded && (
-        <tr>
-          <td colSpan={6} className="px-3 py-2 bg-gray-50">
+        </div>
+        {expanded && (
+          <div className="bg-gray-50 px-3 py-2">
             <DispatchTimeline events={row.timeline} />
-          </td>
-        </tr>
-      )}
-    </>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -100,27 +121,28 @@ export function DispatchLifecycleTable({ rows }: Props) {
   }
 
   return (
-    <table className="w-full text-sm" role="table">
-      <thead>
-        <tr className="border-b text-left">
-          <th className="px-3 py-2">Report</th>
-          <th className="px-3 py-2">Responder</th>
-          <th className="px-3 py-2">Status</th>
-          <th className="px-3 py-2">FCM</th>
-          <th className="px-3 py-2">Escalations</th>
-          <th className="px-3 py-2"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <DispatchRow
-            key={row.dispatchId}
-            row={row}
-            expanded={expandedIds.has(row.dispatchId)}
-            onToggle={toggleExpandedRow}
-          />
-        ))}
-      </tbody>
-    </table>
+    <div>
+      <div className="mb-2 flex text-sm font-medium text-left">
+        <span className="w-28 px-3 py-2">Report</span>
+        <span className="flex-1 px-3 py-2">Responder</span>
+        <span className="w-24 px-3 py-2">Status</span>
+        <span className="w-12 px-3 py-2">FCM</span>
+        <span className="w-16 px-3 py-2 text-center">Escalations</span>
+        <span className="w-8 px-3 py-2"></span>
+      </div>
+      <List
+        style={{ height: Math.min(rows.length * ROW_HEIGHT, 600), width: '100%' }}
+        rowCount={rows.length}
+        rowHeight={ROW_HEIGHT}
+        // react-window v2 types expect forbidden keys as `never` in rowProps
+        // @ts-expect-error rowProps excludes index/style/ariaAttributes at runtime
+        rowProps={{
+          rows,
+          expandedIds,
+          onToggle: toggleExpandedRow,
+        }}
+        rowComponent={RowRenderer}
+      />
+    </div>
   )
 }

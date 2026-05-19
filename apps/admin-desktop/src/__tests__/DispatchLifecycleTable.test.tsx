@@ -3,10 +3,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DispatchLifecycleTable } from '../components/DispatchLifecycleTable'
 import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
+import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 
 function makeRow(overrides: Partial<DispatchLifecycleRow> = {}): DispatchLifecycleRow {
   return {
-    dispatchId: overrides.dispatchId ?? crypto.randomUUID(),
+    dispatchId: overrides.dispatchId ?? generateIdempotencyKey(),
     reportId: overrides.reportId ?? 'rep-12345-abcde',
     status: overrides.status ?? 'pending',
     responderName: overrides.responderName ?? 'Juan Dela Cruz',
@@ -26,18 +27,15 @@ describe('DispatchLifecycleTable', () => {
     expect(screen.getByText('No active dispatches')).toBeInTheDocument()
   })
 
-  it('renders table with report, responder, status, fcm, escalation columns', () => {
+  it('renders header row with report, responder, status, fcm, escalation columns', () => {
     const rows: DispatchLifecycleRow[] = [makeRow()]
     render(<DispatchLifecycleTable rows={rows} />)
 
-    const table = screen.getByRole('table')
-    expect(table).toBeInTheDocument()
-
-    const headers = screen.getAllByRole('columnheader')
-    const headerTexts = headers.map((h) => h.textContent || '')
-    expect(headerTexts).toEqual(
-      expect.arrayContaining(['Report', 'Responder', 'Status', 'FCM', 'Escalations']),
-    )
+    expect(screen.getByText('Report')).toBeInTheDocument()
+    expect(screen.getByText('Responder')).toBeInTheDocument()
+    expect(screen.getByText('Status')).toBeInTheDocument()
+    expect(screen.getByText('FCM')).toBeInTheDocument()
+    expect(screen.getByText('Escalations')).toBeInTheDocument()
   })
 
   it('shows reportId first 8 characters in Report column', () => {
@@ -97,5 +95,21 @@ describe('DispatchLifecycleTable', () => {
     render(<DispatchLifecycleTable rows={rows} />)
     expect(screen.getByText('Maria Santos')).toBeInTheDocument()
     expect(screen.getByText('PNP')).toBeInTheDocument()
+  })
+
+  it('uses List for virtualization', () => {
+    const rows: DispatchLifecycleRow[] = [makeRow(), makeRow(), makeRow()]
+    render(<DispatchLifecycleTable rows={rows} />)
+
+    const list = screen.getByRole('list')
+    expect(list).toBeInTheDocument()
+  })
+
+  it('caps list height at 600px for many rows', () => {
+    const manyRows = Array.from({ length: 50 }, () => makeRow())
+    render(<DispatchLifecycleTable rows={manyRows} />)
+
+    const list = screen.getByRole('list')
+    expect(list).toHaveStyle({ height: '600px' })
   })
 })

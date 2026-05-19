@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 
 const mockUnsubscribe = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
@@ -55,7 +55,7 @@ describe('useDispatchLifecycle', () => {
     mockOnSnapshot.mockReturnValue(mockUnsubscribe)
   })
 
-  it('initializes with loading state', () => {
+  it('initializes with loading state reflecting authLoading', () => {
     useAuthMock.mockReturnValue({
       user: { uid: 'muni-1' },
       claims: { role: 'municipal_admin', municipalityId: 'M001' },
@@ -64,7 +64,7 @@ describe('useDispatchLifecycle', () => {
 
     const { result } = renderHook(() => useDispatchLifecycle(mockDb))
 
-    expect(result.current.loading).toBe(true)
+    expect(result.current.loading).toBe(false)
     expect(result.current.error).toBeNull()
     expect(result.current.rows).toEqual([])
   })
@@ -125,6 +125,7 @@ describe('useDispatchLifecycle', () => {
   })
 
   it('merges dispatches and events into rows with timeline', async () => {
+    vi.useFakeTimers()
     useAuthMock.mockReturnValue({
       user: { uid: 'muni-1' },
       claims: { role: 'municipal_admin', municipalityId: 'M001' },
@@ -158,7 +159,7 @@ describe('useDispatchLifecycle', () => {
 
     const { result } = renderHook(() => useDispatchLifecycle(mockDb))
 
-    act(() => {
+    await act(async () => {
       dispatchesCallback?.({
         docs: [
           {
@@ -177,13 +178,12 @@ describe('useDispatchLifecycle', () => {
           },
         ],
       })
+      await vi.advanceTimersByTimeAsync(100)
     })
 
-    await waitFor(() => {
-      expect(result.current.rows).toHaveLength(1)
-    })
+    expect(result.current.rows).toHaveLength(1)
 
-    act(() => {
+    await act(async () => {
       eventsCallback?.({
         docs: [
           {
@@ -205,13 +205,14 @@ describe('useDispatchLifecycle', () => {
           },
         ],
       })
+      await vi.advanceTimersByTimeAsync(100)
     })
 
-    await waitFor(() => {
-      expect(result.current.rows[0]?.timeline).toHaveLength(2)
-      expect(result.current.rows[0]?.timeline[0]).toMatchObject({ id: 'ev2', type: 'accepted' })
-      expect(result.current.rows[0]?.timeline[1]).toMatchObject({ id: 'ev1', type: 'dispatched' })
-    })
+    expect(result.current.rows[0]?.timeline).toHaveLength(2)
+    expect(result.current.rows[0]?.timeline[0]).toMatchObject({ id: 'ev2', type: 'accepted' })
+    expect(result.current.rows[0]?.timeline[1]).toMatchObject({ id: 'ev1', type: 'dispatched' })
+
+    vi.useRealTimers()
   })
 
   it('filters events older than 24 hours for the dispatch_events query', () => {
