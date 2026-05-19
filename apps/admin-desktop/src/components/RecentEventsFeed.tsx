@@ -59,7 +59,8 @@ export function RecentEventsFeed({ rows, maxEvents = 20 }: Props) {
         {events.length === 0 ? (
           <div className="py-4 text-center text-sm text-gray-400">No events recorded</div>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-2" role="list">
+            {/* eslint-disable-line jsx-a11y/no-redundant-roles */}
             {events.map((event) => {
               const label = EVENT_LABELS[event.type] ?? event.type
               const { color, shape } = getEventIndicator(event.type)
