@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
@@ -114,8 +114,8 @@ describe('DashboardPage', () => {
   it('renders header and status bar', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
-    // Both active (2 awaiting_verify reports are active) and pending (2 awaiting_verify) show 2
-    expect(screen.getAllByText('2')).toHaveLength(2)
+    // Active (2 awaiting_verify), pending (2 awaiting_verify), and municipal active incidents (2 for Daet)
+    expect(screen.getAllByText('2')).toHaveLength(3)
   })
 
   it('opens map window when M key pressed', () => {
@@ -138,13 +138,17 @@ describe('DashboardPage', () => {
     openSpy.mockRestore()
   })
 
-  it('verifies focused report when V key pressed', () => {
+  it('verifies focused report when V key pressed', async () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     // Click a row to focus it (use barangay since it's unique to triage table)
     fireEvent.click(screen.getByText('Camambugan'))
     fireEvent.keyDown(window, { key: 'v' })
-    // Verify callable was invoked (async, but we can check it was called)
-    expect(mockVerifyReport).toHaveBeenCalledWith(expect.objectContaining({ reportId: 'r1' }))
+    // V opens confirmation modal - click Verify inside the dialog
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Verify' }))
+    await waitFor(() => {
+      expect(mockVerifyReport).toHaveBeenCalledWith(expect.objectContaining({ reportId: 'r1' }))
+    })
   })
 
   it('bulk verifies selected reports when Shift+V pressed', async () => {
@@ -152,7 +156,9 @@ describe('DashboardPage', () => {
     // Select all via checkbox
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
     fireEvent.keyDown(window, { key: 'V', shiftKey: true })
-    // Bulk verify calls verifyReport for each selected report
+    // Shift+V opens confirmation modal - click Verify inside the dialog
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Verify' }))
     await waitFor(() => {
       expect(mockVerifyReport).toHaveBeenCalledTimes(2)
     })
@@ -194,11 +200,10 @@ describe('DashboardPage', () => {
   it('does not stack help modal on top of an open bulk-verify modal when ? is pressed', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     // Open the bulk-verify confirmation modal by selecting all + Shift+V handler path:
-    // simulate via the bulk-verify control surfaced when items are selected.
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
     fireEvent.click(screen.getByRole('button', { name: 'Verify Selected' }))
     // Confirmation modal should be open
-    expect(screen.getByText('Bulk Verify Reports')).toBeInTheDocument()
+    expect(screen.getByText('Verify reports?')).toBeInTheDocument()
     // Pressing ? must NOT open the help modal on top
     fireEvent.keyDown(window, { key: '?' })
     expect(screen.queryByText('Keyboard Shortcuts')).not.toBeInTheDocument()

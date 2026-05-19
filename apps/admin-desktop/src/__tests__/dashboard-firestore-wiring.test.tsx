@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
@@ -95,6 +95,9 @@ describe('DashboardPage Firestore wiring', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
     // TriageQueueTable uses aria-label="Verify" on the check button
     fireEvent.click(screen.getByLabelText('Verify'))
+    // Verify opens confirmation modal - click Verify inside the dialog
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Verify' }))
     await waitFor(() => {
       expect(mockVerifyReport).toHaveBeenCalledTimes(1)
     })
@@ -114,6 +117,9 @@ describe('DashboardPage Firestore wiring', () => {
     mockVerifyReport.mockRejectedValueOnce(new Error('network'))
     render(<DashboardPage />, { wrapper: BrowserRouter })
     fireEvent.click(screen.getByLabelText('Verify'))
+    // Verify opens confirmation modal - click Verify inside the dialog
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Verify' }))
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('network')
     })

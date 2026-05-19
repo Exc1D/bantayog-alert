@@ -94,8 +94,8 @@ describe('MunicipalPerformanceTable', () => {
     const goodCell = screen.getByText('8 min').closest('td')
     const warningCell = screen.getByText('18 min').closest('td')
     // happy-dom doesn't resolve CSS custom properties in toHaveStyle, so check the inline style directly
-    expect(goodCell?.style.color).toBe('var(--color-norm)')
-    expect(warningCell?.style.color).toBe('var(--color-warn)')
+    expect(goodCell?.style.color).toBe('var(--color-success)')
+    expect(warningCell?.style.color).toBe('var(--color-warning)')
   })
 
   it('renders em-dash placeholders when synthesized fields are undefined', () => {

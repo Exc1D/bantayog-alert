@@ -10,26 +10,15 @@ const defaultProps = {
 }
 
 describe('TrendAnalysisPanel', () => {
-  it('renders chart tabs', () => {
+  it('renders incident volume heading and time range dropdown', () => {
     render(<TrendAnalysisPanel {...defaultProps} />)
-    expect(screen.getByRole('button', { name: 'Volume' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Response' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Resources' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Comparison' })).toBeInTheDocument()
+    expect(screen.getByText('Incident Volume')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /last 7 days/i })).toBeInTheDocument()
   })
 
   it('shows default 7d time range', () => {
     render(<TrendAnalysisPanel {...defaultProps} />)
     expect(screen.getByRole('button', { name: /last 7 days/i })).toBeInTheDocument()
-  })
-
-  it('switches active tab when clicked', async () => {
-    const user = userEvent.setup()
-    render(<TrendAnalysisPanel {...defaultProps} />)
-    const responseTab = screen.getByRole('button', { name: 'Response' })
-    await user.click(responseTab)
-    expect(responseTab).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Volume' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('switches time range when clicked', async () => {
@@ -59,6 +48,8 @@ describe('TrendAnalysisPanel', () => {
       },
     ]
     render(<TrendAnalysisPanel {...defaultProps} reports={reports} />)
-    expect(screen.getByRole('status')).toHaveTextContent('Volume · Last 7 days (1 reports)')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Incident Volume · Last 7 days (1 reports)',
+    )
   })
 })
