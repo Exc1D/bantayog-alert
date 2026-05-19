@@ -306,6 +306,26 @@
 - Fix: update `.env.local` to `VITE_USE_EMULATOR=true` in both apps. Dev servers must be restarted to pick up the change.
 - **Lesson:** whenever emulators are empty but PWA claims success, verify env var propagation — `import.meta.env.VITE_USE_EMULATOR` on the client — rather than assuming the app is talking to localhost.
 
+## Strict TypeScript Lint — Ternary Template Literals and `no-unnecessary-condition` (2026-05-19)
+
+- @typescript-eslint/restrict-template-expressions: Cannot interpolate `number` into template literals. Use string concatenation: `'Capped ' + String(count) + ' responders'`.
+- @typescript-eslint/prefer-optional-chain: `a && a.b` is flagged in favor of `a?.b`. If the conditional is intentional (e.g., we want to distinguish `undefined` from falsy explicitly), extract the optional value first: `const assignedTo = d.assignedTo; if (assignedTo?.uid !== actorUid) ...`.
+- `const { now: _now, ...rest } = deps` with `_now` unused triggers `@typescript-eslint/no-unused-vars`. Prefix with `_` is not enough — add `// eslint-disable-next-line @typescript-eslint/no-unused-vars` or destructure differently.
+- `candidates[0]` after `.length === 0` check still reports TS18048 possibly-undefined. Type narrowing doesn't carry across statements. Use a local const with explicit non-null check: `const next = candidates[0]; if (!next) { ... }` — or keep the `?.` access pattern.
+- `dispatchStatusSchema` type union in `z.enum` includes new `needs_admin` + `escalated` states. Any downstream TypeScript that narrows on `z.enum(...)` values must be rebuilt (or re-typechecked) to pick up the new literal types.
+
+## `vi.mock()` at Top-Level with Template Literals in `esbuild/vitest` (2026-05-19)
+
+- `vi.mock('../../services/fcm-send.js', () => ({ sendFcmToResponder: ... }))` at module top level triggers `esbuild` parse error when used inside `vi.hoisted()` — both are hoisted, so `vi.hoisted(() => { vi.mock(...) })` fails with "Expected `,` or `}` but found `)`".
+- Fix: move `vi.mock()` to module top level OUTSIDE `vi.hoisted()`, OR use `vi.doMock()` inside test setup. Top-level `vi.mock` is sufficient if the module is imported after the mock.
+
+## Dispatch Monitor — Lease + Circuit Breaker + Responder Chunking (2026-05-19)
+
+- Firestore `in` array queries are capped at 10 values. Monitor must chunk municipality IDs into groups of <=10 before querying responders.
+- Lease pattern (`monitorLeaseAt` + 120s expiry) prevents overlapping cron runs. The query filters by `monitorLeaseAt < now - LEASE_EXPIRY_MS`, so even if a cold start runs the lease past the next cron tick, only one instance processes the same dispatch.
+- Circuit breaker: if query returns more records than threshold, skip processing and log warning. This prevents thundering herd on DB scan errors.
+- Single-dispatch-doc escalation is correct: mutate `assignedTo` on same doc, increment `escalationCount`, and push old UID to `previouslyNotifiedResponderUids`. This avoids duplicate active dispatches and makes `escalationCount` meaningful.
+
 ## TypeScript Strictness — Firestore Auth Token Casting (2026-05-17)
 
 - `req.auth.token` from Firebase callable functions is typed broadly. When extracting typed claims (e.g., `municipalityId`) that are later used as `string` in downstream interfaces, a type assertion (`as string`) is REQUIRED at the boundary where the value enters a typed interface.
