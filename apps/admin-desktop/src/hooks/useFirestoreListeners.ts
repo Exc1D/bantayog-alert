@@ -16,7 +16,7 @@ interface Props {
   rtdb?: Database
 }
 
-interface ReportDoc {
+export interface ReportDoc {
   id: string
   reportType?: string
   type?: string
@@ -30,6 +30,11 @@ interface ReportDoc {
   createdAt?: number | string | { toDate(): Date }
   status: string
   description: string
+  publicLocation?: unknown
+  location?: unknown
+  latitude?: number
+  longitude?: number
+  featuredMediaIds?: string[]
 }
 
 export interface ReportOpsDoc {

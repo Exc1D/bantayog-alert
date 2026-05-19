@@ -55,3 +55,12 @@
     color: var(--color-text-primary);
   }
 }
+
+@layer utilities {
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  .clip-diamond {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+}

@@ -1,4 +1,5 @@
 import { normalizeReportType, normalizeSeverity, normalizeReportStatus } from '../constants/report'
+import type { ReportDoc } from '../hooks/useFirestoreListeners'
 import type { Report } from '../types'
 
 function extractCreatedAt(doc: Record<string, unknown>): string {
@@ -117,10 +118,11 @@ export function mapReportDocToReport(doc: Record<string, unknown>): Report | nul
   }
 }
 
-export function mapReportDocToReportLoose(doc: Record<string, unknown>): Report {
-  const coords = getValidCoords(doc) ?? { latitude: 0, longitude: 0 }
+export function mapReportDocToReportLoose(doc: ReportDoc | Record<string, unknown>): Report {
+  const d = doc as Record<string, unknown>
+  const coords = getValidCoords(d) ?? { latitude: 0, longitude: 0 }
   return {
-    ...mapCommonFields(doc),
+    ...mapCommonFields(d),
     ...coords,
   }
 }

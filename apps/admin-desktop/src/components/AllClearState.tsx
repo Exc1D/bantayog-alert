@@ -12,7 +12,7 @@ export function AllClearState({ lastReportAt }: Props) {
       </div>
       <h3 className="text-2xl font-semibold text-[var(--color-success)]">All Clear</h3>
       <p className="mt-2 max-w-sm text-sm text-[var(--color-text-secondary)]">
-        No reports require triage. System monitoring is active.
+        No active incidents. System monitoring is active.
       </p>
       {lastReportAt && (
         <p className="mt-3 text-xs font-mono text-[var(--color-text-muted)]">
