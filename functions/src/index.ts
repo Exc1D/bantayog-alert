@@ -126,7 +126,6 @@ export const onMediaFinalize = onObjectFinalized(
 export { onMediaRelocate } from './triggers/on-media-relocate.js'
 export { inboxReconciliationSweep } from './triggers/inbox-reconciliation-sweep.js'
 export { dispatchMirrorToReport } from './triggers/dispatch-mirror-to-report.js'
-export { dispatchTimeoutSweep } from './triggers/dispatch-timeout-sweep.js'
 export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js'
 export { projectResponderLocations } from './scheduled/project-responder-locations.js'
 export { analyticsSnapshotWriter } from './scheduled/analytics-snapshot-writer.js'
