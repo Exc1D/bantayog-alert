@@ -8,7 +8,7 @@ import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
-import { generateIdempotencyKey } from '../utils/generate-idempotency-key'
+import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import type { Report } from '../types'
 
 function visibilityLabel(doc: Record<string, unknown>, report: Report): string {

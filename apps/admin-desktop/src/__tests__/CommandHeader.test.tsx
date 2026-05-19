@@ -33,6 +33,22 @@ describe('CommandHeader', () => {
     expect(screen.getByRole('link', { name: 'Feed' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('renders command-center tabs including Dispatches', () => {
+    render(
+      <MemoryRouter>
+        <CommandHeader
+          title="PDRRMO Camarines Norte"
+          lastUpdatedAt={Date.now()}
+          windowRole="dispatches"
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Dispatches' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Dispatches' })).toHaveAttribute('href', '/dispatches')
+    expect(screen.getByRole('link', { name: 'Dispatches' })).toHaveAttribute('aria-current', 'page')
+  })
+
   it('shows a Dashboard role chip and danger-toned accent when windowRole is "dashboard"', () => {
     const { container } = render(
       <MemoryRouter>

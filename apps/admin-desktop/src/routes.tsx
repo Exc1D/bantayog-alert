@@ -3,6 +3,7 @@ import { useAuth } from '@bantayog/shared-ui'
 import DashboardPage from './pages/DashboardPage'
 import MapPage from './pages/MapPage'
 import FeedPage from './pages/FeedPage'
+import { DispatchMonitorPage } from './pages/DispatchMonitorPage'
 import MobileGate from './pages/MobileGate'
 import { LoginPage } from './pages/LoginPage'
 import { WindowSyncProvider } from './providers/WindowSyncProvider'
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/map', element: <MapPage /> },
       { path: '/feed', element: <FeedPage /> },
+      { path: '/dispatches', element: <DispatchMonitorPage /> },
       { path: '*', element: <Navigate to="/dashboard" replace /> },
     ],
   },

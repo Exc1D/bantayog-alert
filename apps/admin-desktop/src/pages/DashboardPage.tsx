@@ -23,7 +23,7 @@ import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
-import { generateIdempotencyKey } from '../utils/generate-idempotency-key'
+import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import type { Report, MunicipalPerformance, AnomalyAlert, ReportStatus } from '../types'
 
 interface FirestoreAlertDoc {

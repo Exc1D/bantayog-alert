@@ -252,4 +252,44 @@ export const callables = {
       functions,
       'reopenReport',
     )(payload).then((r) => r.data),
+  escalateDispatch: (payload: {
+    dispatchId: string
+    newResponderUid: string
+    idempotencyKey: string
+    forceOverride?: boolean
+  }) =>
+    httpsCallable<
+      typeof payload,
+      {
+        dispatchId: string
+        status: DispatchStatus
+        reportId: string
+        fcmResult: string
+      }
+    >(
+      functions,
+      'escalateDispatch',
+    )(payload).then((r) => r.data),
+  getOpsMetrics: (payload: { timeRange: '1h' | '24h' | '7d' }) =>
+    httpsCallable<
+      typeof payload,
+      {
+        timeRange: string
+        scope: { type: string; id: string }
+        metrics: {
+          totalDispatches: number
+          acceptedCount: number
+          declinedCount: number
+          escalatedCount: number
+          needsAdminCount: number
+          fcmSuccessCount: number
+          fcmFailureCount: number
+          avgAcceptSeconds: number | null
+          fcmSuccessRate: number
+        }
+      }
+    >(
+      functions,
+      'getOpsMetrics',
+    )(payload).then((r) => r.data),
 }
