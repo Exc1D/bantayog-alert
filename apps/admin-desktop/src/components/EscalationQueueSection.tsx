@@ -13,7 +13,13 @@ interface Props {
 }
 
 export function EscalationQueueSection({ stalledDispatches, onReDispatch }: Props) {
-  if (stalledDispatches.length === 0) return null
+  if (stalledDispatches.length === 0) {
+    return (
+      <div className="rounded border border-green-500/20 bg-green-500/5 px-4 py-2">
+        <span className="text-sm text-green-400">All clear — no stalled dispatches</span>
+      </div>
+    )
+  }
 
   return (
     <section
@@ -31,7 +37,15 @@ export function EscalationQueueSection({ stalledDispatches, onReDispatch }: Prop
             key={d.dispatchId}
             className="min-w-[220px] rounded-md border border-red-500/20 bg-gray-900/40 p-3 space-y-1"
           >
-            <div className="text-xs text-gray-400">Report ID</div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-gray-400">Report ID</div>
+              <a
+                href={`/dispatches?highlight=${d.dispatchId}`}
+                className="text-xs text-blue-400 hover:underline"
+              >
+                View Details
+              </a>
+            </div>
             <div className="text-sm font-mono text-white">{d.reportId.slice(0, 8)}</div>
 
             <div className="text-xs text-gray-400">Assigned to: {d.responderName}</div>
