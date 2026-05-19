@@ -1,6 +1,8 @@
 import { Firestore, Timestamp, FieldValue } from 'firebase-admin/firestore'
+import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
+import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 
 const InputSchema = z
@@ -29,9 +31,8 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
     idempotencyKey: deps.idempotencyKey,
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
-
-  void _now
   const { result } = await withIdempotency(
     db,
     {
@@ -114,7 +115,7 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
         tx.set(db.collection('dispatch_events').doc(), {
           type: 'escalation_attempted',
           dispatchId: parsed.dispatchId,
-          fromResponderUid: dispatch.assignedTo?.uid,
+          fromResponderUid: dispatch.assignedTo?.uid ?? '',
           toResponderUid: parsed.newResponderUid,
           agencyId: responder.agencyId,
           municipalityId: responder.municipalityId,
@@ -134,3 +135,32 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
 
   return result
 }
+
+export const escalateDispatch = onCall(
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: true,
+    maxInstances: 100,
+  },
+  async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
+    const claims = req.auth.token as Record<string, unknown> | null
+    if (!claims) throw new HttpsError('unauthenticated', 'token required')
+    const parsed = InputSchema.safeParse(req.data)
+    if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
+
+    return await escalateDispatchCore(adminDb, {
+      dispatchId: parsed.data.dispatchId,
+      newResponderUid: parsed.data.newResponderUid,
+      idempotencyKey: parsed.data.idempotencyKey,
+      actor: {
+        uid: req.auth.uid,
+        claims: {
+          role: claims.role as string,
+          municipalityId: claims.municipalityId as string,
+        },
+      },
+      now: Timestamp.now(),
+    })
+  },
+)
