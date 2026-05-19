@@ -54,6 +54,7 @@ export function EscalationQueueSection({ stalledDispatches, onReDispatch }: Prop
 
             <button
               type="button"
+              aria-label={`Re-dispatch ${d.dispatchId}`}
               onClick={() => {
                 onReDispatch(d.dispatchId)
               }}
