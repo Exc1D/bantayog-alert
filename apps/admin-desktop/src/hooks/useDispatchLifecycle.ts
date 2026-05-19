@@ -49,7 +49,7 @@ interface DispatchDoc {
   previouslyNotifiedResponderUids?: string[]
 }
 
-const ALLOWED_STATUSES = ['pending', 'accepted', 'declined', 'needs_admin']
+const ALLOWED_STATUSES = ['pending', 'accepted', 'declined', 'needs_admin', 'escalated']
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 const DEBOUNCE_MS = 100
 
@@ -135,8 +135,9 @@ export function useDispatchLifecycle(db: Firestore) {
       (role === 'municipal_admin' && !municipalityId) ||
       (role === 'agency_admin' && !agencyId)
     ) {
-      // One-time error derivation from auth claims — not a cascading render
+      // Clear stale data and set error — one-time derivation from auth claims
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRows([])
       setError('unauthorized')
       return
     }

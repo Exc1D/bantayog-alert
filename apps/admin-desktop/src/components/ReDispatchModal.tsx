@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ResponderFleetMember } from '../hooks/useResponderFleet'
 
 interface Props {
@@ -21,11 +21,21 @@ export function ReDispatchModal({
   const [selectedUid, setSelectedUid] = useState<string | null>(null)
   const [showForceDialog, setShowForceDialog] = useState(false)
 
+  // Reset modal state when closed
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedUid(null)
+      setShowForceDialog(false)
+    }
+  }, [isOpen])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   if (!isOpen) return null
 
   const available = responders.filter((r) => !previouslyNotified.includes(r.uid))
 
-  const suggested = available.sort((a, b) => b.lastSeenAt - a.lastSeenAt).slice(0, 3)
+  const suggested = [...available].sort((a, b) => b.lastSeenAt - a.lastSeenAt).slice(0, 3)
 
   const hasCandidates = suggested.length > 0
 
@@ -34,7 +44,7 @@ export function ReDispatchModal({
   }
 
   const handleDispatch = () => {
-    if (!selectedUid) return
+    if (!selectedUid || isLoading) return
     onDispatch(selectedUid, undefined)
   }
 
@@ -43,7 +53,8 @@ export function ReDispatchModal({
   }
 
   const handleConfirmForce = () => {
-    const best = responders.sort((a, b) => b.lastSeenAt - a.lastSeenAt)[0]
+    if (isLoading) return
+    const best = [...responders].sort((a, b) => b.lastSeenAt - a.lastSeenAt)[0]
     if (best) {
       onDispatch(best.uid, true)
     }
@@ -113,7 +124,8 @@ export function ReDispatchModal({
               <button
                 type="button"
                 onClick={handleForceClick}
-                className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                disabled={isLoading}
+                className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ⚡ Force Re-notify
               </button>

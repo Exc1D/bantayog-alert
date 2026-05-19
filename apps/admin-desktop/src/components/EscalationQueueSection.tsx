@@ -21,7 +21,7 @@ export function EscalationQueueSection({ stalledDispatches, onReDispatch }: Prop
       className="border border-red-500/30 bg-red-500/5 rounded-lg p-4 space-y-3"
     >
       <h2 className="flex items-center gap-2 text-red-400 font-semibold text-sm uppercase tracking-wide">
-        <AlertTriangle className="h-4 w-4" aria-label="Alert icon" role="img" />
+        <AlertTriangle className="h-4 w-4" aria-hidden="true" />
         Needs Admin Attention ({stalledDispatches.length})
       </h2>
 

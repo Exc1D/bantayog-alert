@@ -334,7 +334,13 @@ describe('useDispatchLifecycle', () => {
     const statusCall = calls.find((c) => c.field === 'status')
     expect(statusCall).toBeDefined()
     expect(statusCall?.op).toBe('in')
-    expect(statusCall?.value).toEqual(['pending', 'accepted', 'declined', 'needs_admin'])
+    expect(statusCall?.value).toEqual([
+      'pending',
+      'accepted',
+      'declined',
+      'needs_admin',
+      'escalated',
+    ])
   })
 
   it('orders dispatches by dispatchedAt DESC with limit 100', () => {

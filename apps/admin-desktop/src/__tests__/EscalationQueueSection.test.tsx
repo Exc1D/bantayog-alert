@@ -29,7 +29,8 @@ describe('EscalationQueueSection', () => {
   it('renders header with AlertTriangle and count when there are stalled dispatches', () => {
     render(<EscalationQueueSection stalledDispatches={mockDispatches} onReDispatch={vi.fn()} />)
     expect(screen.getByText('Needs Admin Attention (2)')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /alert/i })).toBeInTheDocument()
+    const heading = screen.getByRole('heading', { level: 2 })
+    expect(heading.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('applies red-themed border and background classes to the section', () => {

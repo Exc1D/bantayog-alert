@@ -62,15 +62,14 @@ export function useResponderFleet(db: Firestore) {
       (role === 'municipal_admin' && !municipalityId) ||
       (role === 'agency_admin' && !agencyId)
     ) {
-      // One-time error derivation from auth claims — not a cascading render
+      // Clear stale data and set error — one-time derivation from auth claims
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResponders([])
       setError('unauthorized')
       return
     }
 
     setError(null)
-
-    const fiveMinutesAgo = Date.now() - FIVE_MINUTES_MS
 
     const respondersCol = collection(db, 'responders')
     let respondersRef: Query = respondersCol
@@ -85,7 +84,6 @@ export function useResponderFleet(db: Firestore) {
       respondersRef,
       where('availabilityStatus', '==', 'available'),
       where('accountStatus', '==', 'active'),
-      where('lastSeenAt', '>', fiveMinutesAgo),
       orderBy('lastSeenAt', 'desc'),
     )
 

@@ -2,7 +2,6 @@ import { AlertCircle, CheckCircle, HelpCircle, XCircle } from 'lucide-react'
 
 interface Props {
   result: string | null
-  warnings: string[] | null
 }
 
 const STATUS_CONFIG: Record<

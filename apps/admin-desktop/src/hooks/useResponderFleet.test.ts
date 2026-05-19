@@ -147,24 +147,19 @@ describe('useResponderFleet', () => {
     expect(calls).toContainEqual({ field: 'accountStatus', op: '==', value: 'active' })
   })
 
-  it('filters by lastSeenAt > now - 5 minutes', () => {
+  it('orders by lastSeenAt DESC without filtering', () => {
     useAuthMock.mockReturnValue({
       user: { uid: 'admin-1' },
       claims: { role: 'municipal_admin', municipalityId: 'M001' },
       loading: false,
     })
 
-    const beforeMount = Date.now()
     renderHook(() => useResponderFleet(mockDb))
-    const afterMount = Date.now()
 
+    expect(mockOrderBy).toHaveBeenCalledWith('lastSeenAt', 'desc')
     const calls = whereCalls()
     const lastSeenCall = calls.find((c) => c.field === 'lastSeenAt')
-    expect(lastSeenCall).toBeDefined()
-    expect(lastSeenCall?.op).toBe('>')
-    const value = lastSeenCall?.value as number
-    expect(value).toBeGreaterThanOrEqual(beforeMount - 5 * 60 * 1000)
-    expect(value).toBeLessThanOrEqual(afterMount - 5 * 60 * 1000)
+    expect(lastSeenCall).toBeUndefined()
   })
 
   it('orders by lastSeenAt DESC', () => {

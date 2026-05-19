@@ -14,7 +14,7 @@ import { callables } from '../services/callables'
 import { db, rtdb } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
-import { generateIdempotencyKey } from '../utils/generate-idempotency-key'
+import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import type { Report, MunicipalPerformance } from '../types'
 
 function responderEntries(responders: [string, unknown][]): {

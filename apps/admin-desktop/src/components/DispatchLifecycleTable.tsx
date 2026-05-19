@@ -77,7 +77,7 @@ function RowRenderer({ index, style, rows, expandedIds, onToggle }: RowRendererP
             <StatusBadge status={row.status} />
           </span>
           <span className="w-12">
-            <FcmStatusIcon result={row.fcmResult} warnings={row.fcmWarnings} />
+            <FcmStatusIcon result={row.fcmResult} />
           </span>
           <span className="w-16 text-center">{row.escalationCount}</span>
           <button

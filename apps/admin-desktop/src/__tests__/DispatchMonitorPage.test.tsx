@@ -25,10 +25,10 @@ vi.mock('../services/callables', () => ({
   },
 }))
 
-const mockUseFirestore = vi.hoisted(() => vi.fn(() => ({})))
+const mockGetFirestoreInstance = vi.hoisted(() => vi.fn(() => ({})))
 
 vi.mock('../app/firebase', () => ({
-  useFirestore: mockUseFirestore,
+  getFirestoreInstance: mockGetFirestoreInstance,
 }))
 
 const mockUseDispatchLifecycle = vi.hoisted(() => vi.fn())

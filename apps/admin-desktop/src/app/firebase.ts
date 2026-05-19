@@ -37,7 +37,7 @@ if (!useEmulator) {
 }
 
 export const db = getFirestore(firebaseApp)
-export function useFirestore() {
+export function getFirestoreInstance() {
   return db
 }
 export const auth = getAuth(firebaseApp)

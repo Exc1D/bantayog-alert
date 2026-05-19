@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useFirestore } from '../app/firebase'
+import { getFirestoreInstance } from '../app/firebase'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
 import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
@@ -13,7 +13,7 @@ import { callables } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 
 export function DispatchMonitorPage() {
-  const db = useFirestore()
+  const db = getFirestoreInstance()
   const { rows, loading, error } = useDispatchLifecycle(db)
   const { responders } = useResponderFleet(db)
   const { metrics: opsMetrics } = useOpsMetrics('24h')
