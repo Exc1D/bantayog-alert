@@ -252,4 +252,22 @@ export const callables = {
       functions,
       'reopenReport',
     )(payload).then((r) => r.data),
+  escalateDispatch: (payload: {
+    dispatchId: string
+    newResponderUid: string
+    idempotencyKey: string
+    forceOverride?: boolean
+  }) =>
+    httpsCallable<
+      typeof payload,
+      {
+        dispatchId: string
+        status: DispatchStatus
+        reportId: string
+        fcmResult: string
+      }
+    >(
+      functions,
+      'escalateDispatch',
+    )(payload).then((r) => r.data),
 }
