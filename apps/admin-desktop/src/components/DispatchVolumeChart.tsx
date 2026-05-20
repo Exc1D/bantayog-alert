@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
 
 const TIME_AXIS_LABELS = ['00:00', '06:00', '12:00', '18:00', 'Now'] as const
@@ -8,25 +9,29 @@ interface Props {
 }
 
 export function DispatchVolumeChart({ rows, isLoading }: Props) {
-  const counts: number[] = new Array(24).fill(0)
-  // eslint-disable-next-line react-hooks/purity -- intentionally impure: reads current time on each render for a real-time dashboard
-  const now = Date.now()
-  const oneDayAgo = now - 24 * 60 * 60 * 1000
-  for (const row of rows) {
-    const raw = row.dispatchedAt
-    if (typeof raw !== 'number') continue
-    if (!Number.isFinite(raw) || raw > now || raw < 0) {
-      continue
+  const { counts, maxCount, hasData } = useMemo(() => {
+    const c: number[] = new Array(24).fill(0)
+    // eslint-disable-next-line react-hooks/purity -- intentionally impure: reads current time inside useMemo for real-time chart
+    const now = Date.now()
+    const oneDayAgo = now - 24 * 60 * 60 * 1000
+    for (const row of rows) {
+      const raw = row.dispatchedAt
+      if (typeof raw !== 'number') continue
+      if (!Number.isFinite(raw) || raw > now || raw < 0) {
+        continue
+      }
+      const date = new Date(raw)
+      if (Number.isNaN(date.getTime())) continue
+      if (raw < oneDayAgo) continue
+      const hour = date.getHours()
+      c[hour] = (c[hour] ?? 0) + 1
     }
-    const date = new Date(raw)
-    if (Number.isNaN(date.getTime())) continue
-    if (raw < oneDayAgo) continue
-    const hour = date.getHours()
-    counts[hour] = (counts[hour] ?? 0) + 1
-  }
-
-  const maxCount = Math.max(...counts, 1)
-  const hasData = counts.some((c) => c > 0)
+    return {
+      counts: c,
+      maxCount: Math.max(...c, 1),
+      hasData: c.some((x) => x > 0),
+    }
+  }, [rows])
 
   return (
     <section aria-label="Dispatch volume last 24 hours">

@@ -59,24 +59,29 @@ export function RecentEventsFeed({ rows, maxEvents = 20 }: Props) {
         {events.length === 0 ? (
           <div className="py-4 text-center text-sm text-gray-400">No events recorded</div>
         ) : (
-          <ul className="space-y-2">
-            {events.map((event) => {
-              const label = EVENT_LABELS[event.type] ?? event.type
-              const { color, shape } = getEventIndicator(event.type)
-              const relativeTime = formatRelativeTime(event.at)
-              return (
-                <li
-                  key={event.id}
-                  className="flex items-center gap-3"
-                  aria-label={`${label} — ${relativeTime}`}
-                >
-                  <div className={`h-2 w-2 flex-shrink-0 ${color} ${shape}`} aria-hidden="true" />
-                  <span className="flex-1 text-sm text-[var(--color-text-secondary)]">{label}</span>
-                  <span className="text-xs text-gray-500 font-mono">{relativeTime}</span>
-                </li>
-              )
-            })}
-          </ul>
+          <>
+            {/* eslint-disable-next-line jsx-a11y/no-redundant-roles -- Safari/VoiceOver requires explicit role when CSS removes list-style */}
+            <ul className="space-y-2" role="list">
+              {events.map((event) => {
+                const label = EVENT_LABELS[event.type] ?? event.type
+                const { color, shape } = getEventIndicator(event.type)
+                const relativeTime = formatRelativeTime(event.at)
+                return (
+                  <li
+                    key={event.id}
+                    className="flex items-center gap-3"
+                    aria-label={`${label} — ${relativeTime}`}
+                  >
+                    <div className={`h-2 w-2 flex-shrink-0 ${color} ${shape}`} aria-hidden="true" />
+                    <span className="flex-1 text-sm text-[var(--color-text-secondary)]">
+                      {label}
+                    </span>
+                    <span className="text-xs text-gray-500 font-mono">{relativeTime}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
         )}
       </div>
     </section>

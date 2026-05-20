@@ -42,6 +42,8 @@ describe('RecentEventsFeed', () => {
       row('d2', [event('e3', 'escalation_attempted', 2500)]),
     ]
     render(<RecentEventsFeed rows={rows} />)
+    const list = screen.getByRole('list')
+    expect(list).toHaveAttribute('role', 'list')
     const items = screen.getAllByRole('listitem')
     expect(items).toHaveLength(3)
     expect(items[0]).toHaveTextContent('FCM Sent')

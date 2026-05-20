@@ -83,6 +83,25 @@ export default function DashboardPage() {
 
   useKeyboardShortcuts([
     {
+      key: 'r',
+      handler: () => {
+        const first = document.querySelector<HTMLElement>('[aria-label^="Re-dispatch"]')
+        first?.focus()
+      },
+    },
+    {
+      key: 'd',
+      handler: () => {
+        void navigate('/dispatches')
+      },
+    },
+    {
+      key: 'f',
+      handler: () => {
+        void navigate('/feed')
+      },
+    },
+    {
       key: '?',
       handler: () => {
         setHelpModalOpen(true)
@@ -160,6 +179,9 @@ export default function DashboardPage() {
           setHelpModalOpen(false)
         }}
         shortcuts={[
+          { key: 'R', description: 'Focus first Re-dispatch button' },
+          { key: 'D', description: 'Navigate to Dispatch Monitor' },
+          { key: 'F', description: 'Navigate to Feed' },
           { key: '?', description: 'Show keyboard shortcuts' },
           { key: 'Esc', description: 'Close help' },
         ]}

@@ -10,11 +10,12 @@ const DEFAULT_PROPS = {
 }
 
 describe('DispatchStatsCards', () => {
-  it('renders Active Now card with top accent', () => {
+  it('renders Active Now card with top accent and role region', () => {
     render(<DispatchStatsCards {...DEFAULT_PROPS} />)
     const card = screen.getByLabelText('Active Now')
     expect(card).toHaveTextContent('5')
     expect(card).toHaveClass('border-t-blue-400')
+    expect(card).toHaveAttribute('role', 'region')
   })
 
   it('renders Stalled card with red accent when > 0', () => {

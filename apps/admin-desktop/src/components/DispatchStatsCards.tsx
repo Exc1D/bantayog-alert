@@ -48,6 +48,7 @@ export function DispatchStatsCards({
       <div
         aria-label="Active Now"
         className="rounded-lg border-t-[3px] border-t-blue-400 bg-white/[0.03] p-4"
+        role="region"
       >
         <div className="text-xs text-gray-400">Active Now</div>
         <div className="text-2xl font-bold text-white">{activeCount}</div>

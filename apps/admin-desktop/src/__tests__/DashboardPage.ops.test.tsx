@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
+
+const mockNavigate = vi.fn()
 
 function renderWithRouter(ui: React.ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>)
@@ -20,7 +22,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   }
 })
 
@@ -44,6 +46,19 @@ vi.mock('../hooks/useDispatchLifecycle', () => ({
         dispatchedAt: Date.now(),
         deadlineAt: Date.now() + 300000,
         escalationCount: 0,
+        fcmResult: null,
+        fcmWarnings: null,
+        timeline: [],
+      },
+      {
+        dispatchId: 'd2',
+        reportId: 'r2',
+        status: 'needs_admin',
+        responderName: 'B',
+        responderAgency: 'MDRRMO',
+        dispatchedAt: Date.now(),
+        deadlineAt: Date.now() + 300000,
+        escalationCount: 2,
         fcmResult: null,
         fcmWarnings: null,
         timeline: [],
@@ -122,5 +137,25 @@ describe('DashboardPage ops redesign', () => {
     const h1 = screen.getByRole('heading', { level: 1 })
     expect(h1).toHaveClass('sr-only')
     expect(h1).toHaveTextContent('Operations Dashboard')
+  })
+
+  it('navigates to /dispatches on D key', () => {
+    renderWithRouter(<DashboardPage />)
+    fireEvent.keyDown(window, { key: 'd' })
+    expect(mockNavigate).toHaveBeenCalledWith('/dispatches')
+  })
+
+  it('navigates to /feed on F key', () => {
+    renderWithRouter(<DashboardPage />)
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(mockNavigate).toHaveBeenCalledWith('/feed')
+  })
+
+  it('focuses first re-dispatch button on R key', () => {
+    renderWithRouter(<DashboardPage />)
+    const button = screen.getByRole('button', { name: /^Re-dispatch/ })
+    const focusSpy = vi.spyOn(button, 'focus')
+    fireEvent.keyDown(window, { key: 'r' })
+    expect(focusSpy).toHaveBeenCalled()
   })
 })

@@ -1,5 +1,17 @@
 # Progress
 
+## Current Status (2026-05-20)
+
+**Phase 3 OpsDashboard — Verified Complete**
+
+Post-implementation review confirms all 7 tasks from `docs/superpowers/plans/2026-05-19-opsdashboard-plan.md` are correctly implemented. 50/50 new tests pass; 363/363 total admin-desktop tests pass; lint and typecheck clean.
+
+All minor gaps from post-impl review addressed in PR #152: R/D/F shortcuts wired, `role="list"` on RecentEventsFeed `<ul>`, `role="region"` on DispatchStatsCards "Active Now" card.
+
+**CORS finding:** `getOpsMetrics` callable fails in `pnpm dev:all` with a CORS error. Root cause is stale `functions-dist` bundle (built May 18; `getOpsMetrics` added May 19). Emulator returns 404 without CORS headers → Chrome reports CORS violation. Fix: run `pnpm exec tsx scripts/prepare-functions-deploy.ts` before starting emulators. Added to `docs/learnings.md`.
+
+---
+
 ## Current Status (2026-05-19)
 
 **Phase 3 OpsDashboard — Complete**
