@@ -5,6 +5,7 @@ import { adminDb } from '../admin-init.js';
 import { advanceDispatchRequestSchema, BantayogError, BantayogErrorCode, invalidTransitionError, } from '@bantayog/shared-validators';
 import { withIdempotency } from '../idempotency/guard.js';
 import { requireAuth, bantayogErrorToHttps } from './https-error.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 export const advanceDispatchCore = async (db, req) => {
     const { dispatchId, to, resolutionSummary, idempotencyKey, actor, now } = req;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -71,7 +72,7 @@ export const advanceDispatchCore = async (db, req) => {
 };
 export const advanceDispatch = onCall({
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     consumeAppCheckToken: false,
     cors: ['http://localhost:5174', 'http://localhost:5175'],
 }, async (request) => {

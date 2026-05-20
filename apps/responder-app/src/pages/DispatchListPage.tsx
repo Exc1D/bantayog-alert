@@ -59,6 +59,7 @@ function DispatchCard({
 
   return (
     <div
+      data-testid={`dispatch-card-${row.dispatchId}`}
       className={[styles.card, variant === 'pending' ? styles.cardPending : styles.cardActive]
         .filter(Boolean)
         .join(' ')}

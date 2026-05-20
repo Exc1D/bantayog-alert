@@ -5,6 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { randomUUID } from 'node:crypto';
 import { requireAuth } from './https-error.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com';
 const SIGNED_URL_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RATE_LIMIT_MS = 60 * 1000; // 1 per minute
@@ -143,7 +144,7 @@ export async function requestDataExportImpl(db, auth, storage, actor) {
     });
     return { downloadUrl, expiresAt, reportCount: reports.length, mediaCount: mediaItems.length };
 }
-export const requestDataExport = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
+export const requestDataExport = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
     const { uid } = requireAuth(request, ['citizen']);
     try {
         return await requestDataExportImpl(getFirestore(), getAuth(), getStorage(), { uid });

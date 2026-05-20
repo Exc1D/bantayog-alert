@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { BantayogError, BantayogErrorCode, logEvent } from '@bantayog/shared-validators';
+import { BantayogError, BantayogErrorCode, canonicalPayloadHash, logEvent, } from '@bantayog/shared-validators';
 import { adminDb, rtdb as adminRtdb } from '../admin-init.js';
 import { withIdempotency } from '../idempotency/guard.js';
 import { checkRateLimit } from '../services/rate-limit.js';
@@ -20,18 +20,59 @@ const InputSchema = z
 })
     .strict();
 const DEADLINE_BY_SEVERITY = {
-    critical: 5 * 60 * 1000,
-    high: 5 * 60 * 1000,
-    medium: 15 * 60 * 1000,
-    low: 30 * 60 * 1000,
+    critical: 5 * 60 * 1_000,
+    high: 5 * 60 * 1_000,
+    medium: 15 * 60 * 1_000,
+    low: 30 * 60 * 1_000,
 };
 function isValidSeverity(s) {
     return typeof s === 'string' && Object.hasOwn(DEADLINE_BY_SEVERITY, s);
+}
+function mapFcmResult(fcm) {
+    if (fcm.warnings.includes('fcm_no_token'))
+        return 'no_token';
+    if (fcm.warnings.includes('fcm_network_error'))
+        return 'network_error';
+    if (fcm.warnings.length > 0)
+        return 'sent_with_invalid_tokens';
+    return 'sent';
+}
+async function writeFcmTracking(db, dispatchId, responderUid, agencyId, municipalityId, fcmResult, fcmWarnings, nowMillis, correlationId) {
+    await db.collection('dispatch_events').add({
+        type: 'notification_attempted',
+        dispatchId,
+        responderUid,
+        agencyId,
+        municipalityId,
+        fcmResult,
+        fcmWarnings,
+        at: nowMillis,
+        correlationId,
+        schemaVersion: 1,
+    });
+}
+async function updateDispatchFcmResult(db, dispatchId, fcmResult, fcmWarnings) {
+    await db.collection('dispatches').doc(dispatchId).update({
+        fcmResult,
+        fcmWarnings,
+    });
+}
+async function queueFcmRetry(db, dispatchId, responderUid, nowMillis) {
+    await db.collection('fcm_retry_queue').add({
+        dispatchId,
+        responderUid,
+        attemptCount: 0,
+        lastAttemptAt: nowMillis,
+        nextAttemptAt: nowMillis + 30_000,
+        originalError: 'fcm_network_error',
+        status: 'pending',
+    });
 }
 export async function dispatchResponderCore(db, rtdb, deps) {
     const correlationId = crypto.randomUUID();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { now: _now, ...idempotentPayload } = deps;
+    const idempotencyPayloadHash = await canonicalPayloadHash(JSON.parse(JSON.stringify(idempotentPayload)));
     const { result } = await withIdempotency(db, {
         key: `dispatchResponder:${deps.actor.uid}:${deps.idempotencyKey}`,
         payload: idempotentPayload,
@@ -51,9 +92,7 @@ export async function dispatchResponderCore(db, rtdb, deps) {
                 responderRef,
             });
             const severity = isValidSeverity(report.severityDerived) ? report.severityDerived : 'medium';
-            const deadlineMs = 
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high;
+            const deadlineMs = DEADLINE_BY_SEVERITY[severity];
             const dispatchId = deps.reportId + '_' + deps.responderUid;
             const dispatchRef = db.collection('dispatches').doc(dispatchId);
             const reportEvRef = db.collection('report_events').doc();
@@ -68,6 +107,7 @@ export async function dispatchResponderCore(db, rtdb, deps) {
                 responder,
                 deadlineMs,
                 correlationId,
+                idempotencyPayloadHash,
                 from,
                 to: 'assigned',
             });
@@ -84,10 +124,40 @@ export async function dispatchResponderCore(db, rtdb, deps) {
                     severity_report: severity,
                 },
             });
-            return { dispatchId, status: 'pending', reportId: deps.reportId, correlationId };
+            return {
+                dispatchId,
+                status: 'pending',
+                reportId: deps.reportId,
+                correlationId,
+                responder,
+            };
         });
     });
-    return result;
+    const fcm = await sendFcmToResponder({
+        uid: deps.responderUid,
+        title: 'New dispatch',
+        body: `Report ${deps.reportId.slice(0, 8)} — see app for details`,
+        data: {
+            dispatchId: result.dispatchId,
+            reportId: deps.reportId,
+            correlationId: result.correlationId,
+        },
+    });
+    const fcmResult = mapFcmResult(fcm);
+    const nowMillis = deps.now.toMillis();
+    await writeFcmTracking(db, result.dispatchId, deps.responderUid, result.responder.agencyId, result.responder.municipalityId, fcmResult, fcm.warnings, nowMillis, result.correlationId);
+    await updateDispatchFcmResult(db, result.dispatchId, fcmResult, fcm.warnings);
+    if (fcmResult === 'network_error') {
+        await queueFcmRetry(db, result.dispatchId, deps.responderUid, nowMillis);
+    }
+    return {
+        dispatchId: result.dispatchId,
+        status: result.status,
+        reportId: result.reportId,
+        correlationId: result.correlationId,
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+    };
 }
 export const dispatchResponder = onCall({
     region: 'asia-southeast1',
@@ -142,18 +212,7 @@ export const dispatchResponder = onCall({
             },
             now: Timestamp.now(),
         });
-        // Best-effort FCM push — does not fail the callable.
-        const fcm = await sendFcmToResponder({
-            uid: parsed.data.responderUid,
-            title: 'New dispatch',
-            body: `Report ${parsed.data.reportId.slice(0, 8)} — see app for details`,
-            data: {
-                dispatchId: result.dispatchId,
-                reportId: parsed.data.reportId,
-                correlationId: result.correlationId,
-            },
-        });
-        return { ...result, warnings: fcm.warnings };
+        return result;
     }
     catch (err) {
         if (err instanceof BantayogError) {

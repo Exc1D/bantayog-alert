@@ -107,6 +107,7 @@ describe('DispatchListPage', () => {
     expect(screen.getAllByText(/Flood/)).toHaveLength(2)
     expect(screen.getByText(/high/i)).toBeInTheDocument()
     expect(screen.getByText(/Daet/)).toBeInTheDocument()
+    expect(screen.getByTestId('dispatch-card-d-1')).toBeInTheDocument()
   })
 
   it('shows both pending and active sections when both exist', () => {
@@ -199,6 +200,7 @@ describe('DispatchListPage', () => {
 
     expect(screen.getByRole('alert', { name: /accept in/i })).toHaveAccessibleName(/urgent/i)
     expect(screen.getByRole('button', { name: /view & accept/i })).toBeInTheDocument()
+    expect(screen.getByTestId('dispatch-card-d-1')).toBeInTheDocument()
   })
 
   it('renders active dispatch progress ring and next action label', () => {
@@ -221,5 +223,6 @@ describe('DispatchListPage', () => {
 
     expect(screen.getByRole('img', { name: /progress 60 percent/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /mark on scene/i })).toBeInTheDocument()
+    expect(screen.getByTestId('dispatch-card-d-2')).toBeInTheDocument()
   })
 })

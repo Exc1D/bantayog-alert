@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { requireAuth, requireMfaAuth } from './https-error.js';
 import { PRIVILEGED_ROLES } from '../constants/roles.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 const inputSchema = z.object({
     erasureRequestId: z.string().min(1),
     approved: z.boolean(),
@@ -95,7 +96,7 @@ export async function approveErasureRequestCore(db, auth, input, actor) {
         occurredAt: Date.now(),
     });
 }
-export const approveErasureRequest = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
+export const approveErasureRequest = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_ROLES);
     requireMfaAuth(request);
     await approveErasureRequestCore(getFirestore(), getAuth(), request.data, { uid });

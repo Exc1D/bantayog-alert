@@ -74,6 +74,8 @@ describe('TriageQueueTable', () => {
   it('renders report rows', () => {
     renderTable()
     expect(screen.getByText('Daet')).toBeInTheDocument()
+    expect(screen.getByTestId('report-row-r1')).toBeInTheDocument()
+    expect(screen.getByTestId('report-row-r2')).toBeInTheDocument()
   })
 
   it('calls onVerify when verify clicked', async () => {

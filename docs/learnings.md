@@ -44,6 +44,7 @@
 - `queueMicrotask()` around state resets in `useEffect` is a race-condition smell. Reset state synchronously inside the effect body with explicit `eslint-disable`.
 - Programmatic focus in modals: `useRef` on container (not backdrop), `tabIndex={-1}`, call `.focus()` in `useEffect` keyed on open boolean. Pair with `role="dialog"`, `aria-modal="true"`, `aria-labelledby`.
 - After TOTP/MFA enrollment, Firebase's ID token does NOT auto-refresh. Call `getIdToken(true)` immediately after `multiFactor().enroll()` so downstream listeners and custom claims are visible on the next route guard check.
+- **admin-desktop emulator mode must call `initializeAppCheck()` with a `CustomProvider`.** Setting `FIREBASE_APPCHECK_DEBUG_TOKEN` global alone is insufficient; the Firebase Web SDK needs an explicit `initializeAppCheck` call even in emulator mode. Use `CustomProvider` with a dummy token (same pattern as `responder-app/src/app/firebase.ts`).
 - Route param names must be consistent across parent and child routes. Inconsistent names cause `useParams()` to return `undefined` in child components.
 - `encodeURIComponent()` required when interpolating user-controlled strings into Google Storage direct-download URLs.
 - Normalize phone numbers at the data-boundary (hook level), not at each consumer. Strip non-digit/non-plus chars, ensure leading `+`, validate with shared MSISDN validator.
@@ -57,6 +58,8 @@
 - Collection query rules differ from per-document rules; use `getDoc` if `getDocs` fails on `resource.data` checks.
 - Seed documents via `env.withSecurityRulesDisabled()`, not unauthenticated context, when `create` is `false`.
 - Rules transition tests must match the actual transition table in `firestore.rules`.
+- Cross-app proof harnesses need a staging preflight before any browser flow writes data. Verify required proof account env vars, Auth users, active account docs, role scope, and absence of emulator env leakage up front; otherwise App Check/Auth/scope failures surface as ambiguous UI timeouts.
+- Cleanup for staging proof runs must discover related IDs from durable anchors (`publicRef`, `testRunId`, `reportId`) and attempt every delete with `Promise.allSettled`. A single failed delete must not prevent cleanup of the remaining test artifacts.
 
 ## Firestore
 
@@ -340,3 +343,12 @@
 - **Nullish coalescing for error combos:** When combining multiple `error` values from hooks (`lifecycleError ?? fleetError ?? metricsError ?? reportsError`), `??` is safer than `||` because it only falls through on `null`/`undefined` (not other falsy values). The lint rule `@typescript-eslint/prefer-nullish-coalescing` enforces this.
 - **`useCallback` was unused** after removing triage event handlers. Keep imports minimal; add them as needed during implementation.
 - **`Date.now()` in test mocks:** Mock data for `DispatchedAt`, `lastSeenAt`, etc. needs real timestamps. Use `Date.now()` in mock factory values — unlike in component render paths, test mocks are not subject to `react-hooks/purity` restrictions.
+
+## Reliability Spine — Cross-App Proof Gotchas (2026-05-20)
+
+- **Dispatch docs must satisfy both responder schema and Firestore rules.** Responder listeners reject dispatch docs missing `dispatchedByRole`, `statusUpdatedAt`, `idempotencyKey`, `idempotencyPayloadHash`, and rules require top-level `municipalityId`. If admin dispatch creates a doc the responder cannot parse/read, the UI shows no actionable dispatch even though the write "succeeded."
+- **Responder accept supports two active-claim eras.** Some callables check `accountStatus: 'active'`; older paths check `active: true`. Use `isAccountActive()` for callable guards so current responder accounts can accept dispatches.
+- **Callable optional fields must be omitted, not sent as undefined/null.** `advanceDispatch` rejects `resolutionSummary: null` on non-resolution transitions. Build payloads conditionally so optional fields are absent unless intentionally present.
+- **Responder UI labels are not raw backend states.** `accepted`, `acknowledged`, and `en_route` all map to the "En Route" UI state. E2E proof should assert exact Firestore state transitions, then assert the next action button is visible.
+- **Materialized reports do not store `publicRef` on `reports/{reportId}`.** The correlation contract is `report_lookup/{publicRef}.reportId -> reports/{reportId}`. Idempotency checks should prove the lookup remains stable and the target report exists.
+- **Local Auth emulator can emit transient `auth/network-request-failed` refresh noise.** Do not treat that specific console line as proof-blocking when deterministic listener/doc assertions still pass; keep `permission-denied`, `unauthenticated`, App Check, region, and internal errors fatal.

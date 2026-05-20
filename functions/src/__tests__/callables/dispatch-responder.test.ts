@@ -97,10 +97,23 @@ describe('dispatchResponderCore', () => {
 
         const dispatch = (await db.collection('dispatches').doc(result.dispatchId).get()).data()
         expect(dispatch).toMatchObject({
+          dispatchId: result.dispatchId,
           reportId,
           status: 'pending',
+          municipalityId: 'daet',
           assignedTo: { uid: 'r1', agencyId: 'bfp-daet', municipalityId: 'daet' },
+          dispatchedBy: 'admin-1',
+          dispatchedByRole: 'municipal_admin',
+          schemaVersion: 1,
         })
+        expect(dispatch.dispatchedAt).toBeDefined()
+        expect(dispatch.statusUpdatedAt).toBe(dispatch.dispatchedAt)
+        expect(dispatch.lastStatusAt).toBe(dispatch.dispatchedAt)
+        expect(dispatch.acknowledgementDeadlineAt - dispatch.dispatchedAt).toBe(5 * 60 * 1000)
+        expect(dispatch.idempotencyKey).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+        )
+        expect(dispatch.idempotencyPayloadHash).toMatch(/^[0-9a-f]{64}$/)
 
         const report = (await db.collection('reports').doc(reportId).get()).data()
         expect(report.status).toBe('assigned')

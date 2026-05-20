@@ -1,0 +1,74 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { processInboxManualSummary, runManualInboxProcessor } from './process-inbox-manual.js'
+
+function createDb(candidates: Array<{ id: string; processedAt?: number | null }>) {
+  return {
+    collection: vi.fn(() => ({
+      get: vi.fn().mockResolvedValue({
+        docs: candidates.map((candidate) => ({
+          id: candidate.id,
+          data: () => ({ processedAt: candidate.processedAt }),
+        })),
+      }),
+    })),
+  }
+}
+
+describe('processInboxManualSummary', () => {
+  beforeEach(() => {
+    process.exitCode = undefined
+  })
+
+  afterEach(() => {
+    process.exitCode = undefined
+  })
+
+  it('returns a structured summary for processed inbox docs', async () => {
+    const db = createDb([{ id: 'draft-1' }])
+    const logger = { log: vi.fn() }
+    const processInboxItem = vi.fn().mockResolvedValue({
+      materialized: true,
+      replayed: false,
+      reportId: 'report-1',
+      publicRef: 'public-1',
+    })
+
+    const summary = await processInboxManualSummary({ db: db as never, writeLine: logger.log, processInboxItem })
+
+    expect(summary).toMatchObject({
+      scanned: 1,
+      candidates: 1,
+      processed: 1,
+      replayed: 0,
+      failed: 0,
+      exitCode: 0,
+    })
+    expect(summary.failures).toEqual([])
+    expect(processInboxItem).toHaveBeenCalledWith({ db: db as never, inboxId: 'draft-1' })
+    expect(logger.log).toHaveBeenCalledWith('Found 1 unprocessed inbox item(s).')
+    expect(logger.log).toHaveBeenCalledWith(
+      '  ✅ Materialized: true, Report ID: report-1, Public Ref: public-1',
+    )
+    expect(logger.log).toHaveBeenCalledWith(JSON.stringify(summary))
+  })
+
+  it('sets a failing exit code when processing throws', async () => {
+    const db = createDb([{ id: 'draft-2' }])
+    const logger = { log: vi.fn() }
+    const processInboxItem = vi.fn().mockRejectedValue(new Error('boom'))
+
+    const summary = await runManualInboxProcessor(db as never, logger.log, processInboxItem)
+
+    expect(summary).toMatchObject({
+      scanned: 1,
+      candidates: 1,
+      processed: 0,
+      replayed: 0,
+      failed: 1,
+      exitCode: 1,
+    })
+    expect(summary.failures).toEqual([{ inboxId: 'draft-2', error: 'boom' }])
+    expect(process.exitCode).toBe(1)
+    expect(logger.log).toHaveBeenCalledWith(JSON.stringify(summary))
+  })
+})

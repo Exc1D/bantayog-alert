@@ -10,6 +10,7 @@ import { ResponderAvailabilityPanel } from '../components/ResponderAvailabilityP
 import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
 import { AllClearState } from '../components/AllClearState'
 import { HelpModal } from '../components/HelpModal'
+import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { useAuth } from '@bantayog/shared-ui'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
 import { useResponderFleet } from '../hooks/useResponderFleet'
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   })
 
   const [helpModalOpen, setHelpModalOpen] = useState(false)
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [pageLoadedAt] = useState(() => Date.now())
 
   const isLoading = lifecycleLoading || fleetLoading || metricsLoading || reportsLoading
@@ -133,6 +135,9 @@ export default function DashboardPage() {
         title="PDRRMO Camarines Norte"
         lastUpdatedAt={pageLoadedAt}
         windowRole="dashboard"
+        onDeclareAlert={() => {
+          setAlertModalOpen(true)
+        }}
         onShowKeyboardShortcuts={() => {
           setHelpModalOpen(true)
         }}
@@ -185,6 +190,18 @@ export default function DashboardPage() {
           { key: '?', description: 'Show keyboard shortcuts' },
           { key: 'Esc', description: 'Close help' },
         ]}
+      />
+      <DeclareAlertModal
+        open={alertModalOpen}
+        onClose={() => {
+          setAlertModalOpen(false)
+        }}
+        onSuccess={() => {
+          setAlertModalOpen(false)
+        }}
+        onError={(msg) => {
+          console.error('Alert declaration failed:', msg)
+        }}
       />
     </div>
   )

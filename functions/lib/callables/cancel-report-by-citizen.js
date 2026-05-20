@@ -7,6 +7,7 @@ import { adminDb } from '../admin-init.js';
 import { withIdempotency } from '../idempotency/guard.js';
 import { checkRateLimit } from '../services/rate-limit.js';
 import { bantayogErrorToHttps } from './https-error.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 const InputSchema = z
     .object({
     reportId: z.string().min(1).max(128),
@@ -91,7 +92,7 @@ export async function cancelReportByCitizenCore(db, deps) {
     }
     return result;
 }
-export const cancelReportByCitizen = onCall({ region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 }, async (req) => {
+export const cancelReportByCitizen = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 100 }, async (req) => {
     if (!req.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');
     const claims = req.auth.token;

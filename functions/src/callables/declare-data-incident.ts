@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { requireAuth, requireMfaAuth } from './https-error.js'
 import { PRIVILEGED_ROLES } from '../constants/roles.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 const dataIncidentInputSchema = z.object({
   incidentType: z.enum([
@@ -63,7 +64,7 @@ export async function declareDataIncidentCore(
 }
 
 export const declareDataIncident = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_ROLES)
     requireMfaAuth(request)

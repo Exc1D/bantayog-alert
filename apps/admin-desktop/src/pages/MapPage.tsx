@@ -167,6 +167,10 @@ export default function MapPage() {
         onSignOut={() => {
           void signOut()
         }}
+        onDeclareAlert={() => {
+          setAlertPrefill(undefined)
+          setAlertModalOpen(true)
+        }}
       />
       {actionError && (
         <div

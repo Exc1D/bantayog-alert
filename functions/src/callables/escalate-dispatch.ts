@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 const InputSchema = z
   .object({
@@ -139,7 +140,7 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
 export const escalateDispatch = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 100,
   },
   async (req) => {

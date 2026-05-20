@@ -105,7 +105,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-surface)]/80"
+      className="fixed inset-0 z-[1100] flex items-center justify-center bg-[var(--color-surface)]/80"
       role="presentation"
       onClick={handleBackdropClick}
       onKeyDown={(e) => {

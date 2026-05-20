@@ -46,6 +46,7 @@ interface WriteDispatchDocsArgs {
   responder: { agencyId: string; municipalityId: string } & Record<string, unknown>
   deadlineMs: number
   correlationId: string
+  idempotencyPayloadHash: string
   from: 'verified'
   to: 'assigned'
 }
@@ -61,31 +62,39 @@ export function writeDispatchDocs(args: WriteDispatchDocsArgs): void {
     responder,
     deadlineMs,
     correlationId,
+    idempotencyPayloadHash,
     from,
     to,
   } = args
   const dispatchId = dispatchRef.id
+  const nowMillis = deps.now.toMillis()
+  const actorRole = deps.actor.claims.role === 'agency_admin' ? 'agency_admin' : 'municipal_admin'
 
   tx.set(dispatchRef, {
     dispatchId,
     reportId: deps.reportId,
     status: 'pending',
+    municipalityId: responder.municipalityId,
     assignedTo: {
       uid: deps.responderUid,
       agencyId: responder.agencyId,
       municipalityId: responder.municipalityId,
     },
-    dispatchedAt: deps.now.toMillis(),
+    dispatchedAt: nowMillis,
     dispatchedBy: deps.actor.uid,
-    lastStatusAt: deps.now.toMillis(),
-    acknowledgementDeadlineAt: deps.now.toMillis() + deadlineMs,
+    dispatchedByRole: actorRole,
+    statusUpdatedAt: nowMillis,
+    lastStatusAt: nowMillis,
+    acknowledgementDeadlineAt: nowMillis + deadlineMs,
     correlationId,
+    idempotencyKey: deps.idempotencyKey,
+    idempotencyPayloadHash,
     schemaVersion: 1,
   })
 
   tx.update(reportRef, {
     status: to,
-    lastStatusAt: deps.now.toMillis(),
+    lastStatusAt: nowMillis,
     lastStatusBy: deps.actor.uid,
     currentDispatchId: dispatchId,
   })
@@ -96,8 +105,8 @@ export function writeDispatchDocs(args: WriteDispatchDocsArgs): void {
     from,
     to,
     actor: deps.actor.uid,
-    actorRole: deps.actor.claims.role ?? 'municipal_admin',
-    at: deps.now.toMillis(),
+    actorRole,
+    at: nowMillis,
     correlationId,
     schemaVersion: 1,
   })
@@ -109,8 +118,8 @@ export function writeDispatchDocs(args: WriteDispatchDocsArgs): void {
     from: null,
     to: 'pending',
     actor: deps.actor.uid,
-    actorRole: deps.actor.claims.role ?? 'municipal_admin',
-    at: deps.now.toMillis(),
+    actorRole,
+    at: nowMillis,
     correlationId,
     schemaVersion: 1,
   })

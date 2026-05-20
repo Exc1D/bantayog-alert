@@ -133,5 +133,7 @@ describe('AlertsTab', () => {
     render(<AlertsTab />)
     expect(screen.getByText('Low Alert')).toBeInTheDocument()
     expect(screen.getByText('High Alert')).toBeInTheDocument()
+    expect(screen.getByTestId('alert-card-a1')).toBeInTheDocument()
+    expect(screen.getByTestId('alert-card-a2')).toBeInTheDocument()
   })
 })

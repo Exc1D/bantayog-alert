@@ -12,6 +12,7 @@ import {
 } from '@bantayog/shared-validators'
 import { withIdempotency } from '../idempotency/guard.js'
 import { requireAuth, bantayogErrorToHttps } from './https-error.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 export const advanceDispatchCore = async (
   db: FirebaseFirestore.Firestore,
@@ -106,7 +107,7 @@ export const advanceDispatchCore = async (
 export const advanceDispatch = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     consumeAppCheckToken: false,
     cors: ['http://localhost:5174', 'http://localhost:5175'],
   },

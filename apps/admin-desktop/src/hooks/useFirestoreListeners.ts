@@ -239,6 +239,33 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     )
     unsubscribers.push(unsubAlerts)
 
+    if (windowType === 'map') {
+      const respondersCol = collection(db, 'responders')
+      let respondersRef: Query = query(
+        respondersCol,
+        where('isActive', '==', true),
+      )
+      if (role === 'municipal_admin' && municipalityId) {
+        respondersRef = query(respondersRef, where('municipalityId', '==', municipalityId))
+      } else if (role === 'agency_admin' && agencyId) {
+        respondersRef = query(respondersRef, where('agencyId', '==', agencyId))
+      }
+      const unsubResponderAccounts = onSnapshot(
+        respondersRef,
+        (snapshot) => {
+          setResponders(snapshot.docs.map((d) => [d.id, d.data()]))
+          setError(null)
+          resetRetryBudget()
+        },
+        (err) => {
+          const message = err instanceof Error ? err.message : String(err)
+          setError(message)
+          scheduleRetry()
+        },
+      )
+      unsubscribers.push(unsubResponderAccounts)
+    }
+
     if (windowType === 'map' && rtdb) {
       // Listen to responder locations in RTDB
       const locationsRef = ref(rtdb, 'responder_locations')

@@ -39,6 +39,7 @@ describe('useAdvanceDispatch', () => {
         idempotencyKey: expect.any(String),
       }),
     )
+    expect(mockCallable.mock.calls[0]?.[0]).not.toHaveProperty('resolutionSummary')
     expect(result.current.loading).toBe(false)
     expect(result.current.error).toBeUndefined()
   })

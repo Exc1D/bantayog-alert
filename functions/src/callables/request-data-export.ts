@@ -5,6 +5,7 @@ import { getStorage, type Storage } from 'firebase-admin/storage'
 import { randomUUID } from 'node:crypto'
 import { requireAuth } from './https-error.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com'
 const SIGNED_URL_TTL_MS = 60 * 60 * 1000 // 1 hour
@@ -222,7 +223,7 @@ export async function requestDataExportImpl(
 }
 
 export const requestDataExport = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (request) => {
     const { uid } = requireAuth(request, ['citizen'])
     try {

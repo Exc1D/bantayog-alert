@@ -1,10 +1,11 @@
-import { onCall } from 'firebase-functions/v2/https'
+import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { requireAuth, requireMfaAuth } from './https-error.js'
-import { PRIVILEGED_ROLES } from '../constants/roles.js'
+import { PDRRMO, PROVINCIAL_SUPERADMIN } from '../constants/roles.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 const declareAlertInputSchema = z.object({
   hazardType: z.string().min(1).max(100),
@@ -16,9 +17,21 @@ const declareAlertInputSchema = z.object({
 export async function declareAlertCore(
   db: Firestore,
   input: unknown,
-  actor: { uid: string },
+  actor: { uid: string; claims?: Record<string, unknown> },
 ): Promise<{ alertId: string }> {
   const validated = declareAlertInputSchema.parse(input)
+  if (actor.claims?.role === 'municipal_admin') {
+    const municipalityId = actor.claims.municipalityId
+    if (
+      typeof municipalityId !== 'string' ||
+      validated.affectedMunicipalityIds.some((id) => id !== municipalityId)
+    ) {
+      throw new HttpsError(
+        'permission-denied',
+        'municipal_admin can only declare alerts for their municipality',
+      )
+    }
+  }
   const alertId = randomUUID()
   const now = Date.now()
 
@@ -30,6 +43,7 @@ export async function declareAlertCore(
     message: validated.message,
     declaredBy: actor.uid,
     declaredAt: now,
+    publishedAt: now,
     schemaVersion: 1,
   }
 
@@ -69,10 +83,14 @@ export async function declareAlertCore(
 }
 
 export const declareAlert = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (request) => {
-    const { uid } = requireAuth(request, PRIVILEGED_ROLES)
+    const { uid, claims } = requireAuth(request, [
+      PROVINCIAL_SUPERADMIN,
+      PDRRMO,
+      'municipal_admin',
+    ])
     requireMfaAuth(request)
-    return declareAlertCore(getFirestore(), request.data, { uid })
+    return declareAlertCore(getFirestore(), request.data, { uid, claims })
   },
 )

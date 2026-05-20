@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { requireAuth } from './https-error.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 export async function requestDataErasureCore(db, auth, actor) {
     const sentinelRef = db.collection('erasure_active').doc(actor.uid);
     const requestRef = db.collection('erasure_requests').doc();
@@ -46,7 +47,7 @@ export async function requestDataErasureCore(db, auth, actor) {
         occurredAt: now,
     });
 }
-export const requestDataErasure = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
+export const requestDataErasure = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
     const { uid } = requireAuth(request, ['citizen']);
     await requestDataErasureCore(getFirestore(), getAuth(), { uid });
 });

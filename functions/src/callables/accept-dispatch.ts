@@ -6,6 +6,8 @@ import { adminDb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { bantayogErrorToHttps } from './https-error.js'
 import { checkRateLimit } from '../services/rate-limit.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
+import { isAccountActive } from './admin-auth.js'
 
 export const acceptDispatchRequestSchema = z
   .object({
@@ -122,7 +124,7 @@ export async function acceptDispatchCore(
 export const acceptDispatch = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
     cors: ['http://localhost:5174', 'http://localhost:5175'],
@@ -134,7 +136,7 @@ export const acceptDispatch = onCall(
     if (claims.role !== 'responder') {
       throw new HttpsError('permission-denied', 'responder role required')
     }
-    if (claims.active !== true) throw new HttpsError('permission-denied', 'account is not active')
+    if (!isAccountActive(claims)) throw new HttpsError('permission-denied', 'account is not active')
 
     const parsed = acceptDispatchRequestSchema.safeParse(request.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')

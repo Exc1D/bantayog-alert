@@ -105,6 +105,8 @@ describe('declareAlertCore', () => {
     expect(setArg.message).toBe('Signal no. 3 raised')
     expect(setArg.declaredBy).toBe('admin-1')
     expect(setArg.declaredAt).toBeDefined()
+    expect(setArg.publishedAt).toBeDefined()
+    expect(setArg.publishedAt).toBe(setArg.declaredAt)
     expect(setArg.schemaVersion).toBe(1)
   })
 
@@ -152,6 +154,26 @@ describe('declareAlertCore', () => {
     expect(calls.length).toBeGreaterThan(0)
     const setArg = (calls[0] as [Record<string, unknown>])[0]
     expect(setArg.reportId).toBe('550e8400-e29b-41d4-a716-446655440000')
+  })
+
+  it('allows municipal admins to declare alerts for their municipality', async () => {
+    const result = await declareAlertCore(
+      mockDb,
+      { ...validInput, affectedMunicipalityIds: ['daet'] },
+      { uid: 'admin-1', claims: { role: 'municipal_admin', municipalityId: 'daet' } },
+    )
+
+    expect(result.alertId).toBeDefined()
+    expect(mockDb._setFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects municipal admins declaring alerts outside their municipality', async () => {
+    await expect(
+      declareAlertCore(mockDb, validInput, {
+        uid: 'admin-1',
+        claims: { role: 'municipal_admin', municipalityId: 'daet' },
+      }),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 
   it('sends FCM push to alerts topic', async () => {

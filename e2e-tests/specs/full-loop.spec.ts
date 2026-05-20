@@ -1,45 +1,463 @@
-import { test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import {
+  cleanupProofRun,
+  createProofLedger,
+  getProofAuth,
+  getProofEnvironment,
+  getProofFirestore,
+  getProofRealtimeDatabase,
+  logCheckpoint,
+  preflightProofServices,
+  runManualInboxProcessor,
+  seedLocalProofAccounts,
+  waitForDoc,
+  waitForQueryExactlyOne,
+} from '../fixtures/reliability-spine.js'
 
-/**
- * full-loop.spec.ts — End-to-end test for the complete citizen → admin → responder loop.
- *
- * ALL TESTS STUBBED: requires all three apps working with Firebase Auth + Firestore.
- * Blocked by:
- * - Firebase module-level init in admin/responder (no render without emulator)
- * - Citizen PWA: ensureSignedIn() redirects to Firebase Auth on submit
- *
- * When emulator setup is resolved, implement and run:
- *   firebase emulators:exec --only auth,firestore,pubsub "pnpm test:e2e"
- *
- * Full loop requires (per docs/progress.md Phase 3b staging verification):
- * - Seeded citizen account: citizen-test-01@test.local / test123456
- * - Seeded admin account: daet-admin-test-01@test.local / test123456
- * - Seeded responder account: bfp-responder-test-01@test.local / test123456
- * - Verified report in inbox at 'new' status
- * - Responder on shift in Daet municipality
- */
+const ADMIN_EMAIL = process.env.BANTAYOG_ADMIN_EMAIL ?? 'daet-admin-test-01@test.local'
+const ADMIN_PASSWORD = process.env.BANTAYOG_ADMIN_PASSWORD ?? 'test123456'
+const RESPONDER_EMAIL = process.env.BANTAYOG_RESPONDER_EMAIL ?? 'bfp-responder-test-01@test.local'
+const RESPONDER_PASSWORD = process.env.BANTAYOG_RESPONDER_PASSWORD ?? 'test123456'
 
-test.describe('full responder loop', () => {
-  test.skip('citizen submits → admin verifies → responder accepts → progresses → resolves', async () => {
-    // 1. Citizen: submit report with location
-    // 2. Admin: sign in → verify report
-    // 3. Admin: dispatch to responder
-    // 4. Responder: sign in → accept dispatch
-    // 5. Responder: acknowledge → en_route → on_scene
-    // 6. Responder: resolve dispatch
-    // 7. Verify: report status reflected correctly
+function monitorPage(page: Page, label: string) {
+  const messages: string[] = []
+  page.on('pageerror', (error) => {
+    messages.push(`[pageerror] ${error.message}`)
+  })
+  page.on('console', (message) => {
+    if (message.type() === 'error') messages.push(`[console] ${message.text()}`)
   })
 
-  test.skip('admin rejects report after citizen submission', async () => {
-    // 1. Citizen: submit report
-    // 2. Admin: sign in → reject report with reason
-    // 3. Verify: report no longer appears in queue
-  })
+  function assertHealthy(stage: string) {
+    const bad = messages.filter(
+      (message) =>
+        !message.includes('auth/network-request-failed') &&
+        /app-check|auth\/|functions\/internal|wrong region|unauthenticated|permission-denied/i.test(
+          message,
+        ),
+    )
+    if (bad.length > 0) {
+      throw new Error(`${label} ${stage} encountered proof-blocking errors:\n${bad.join('\n')}`)
+    }
+  }
 
-  test.skip('admin cancels dispatch after responder accepts', async () => {
-    // 1. Citizen: submit → Admin: verify → Admin: dispatch
-    // 2. Responder: sign in → accept dispatch
-    // 3. Admin: cancel dispatch
-    // 4. Responder: sees cancelled screen
+  return { assertHealthy }
+}
+
+async function signInAdmin(page: Page, baseUrl: string): Promise<void> {
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+  await page.getByLabel(/email/i).fill(ADMIN_EMAIL)
+  await page.getByLabel(/password/i).fill(ADMIN_PASSWORD)
+  await page.getByRole('button', { name: /sign in/i }).click()
+  await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 15_000 })
+}
+
+async function signInResponder(page: Page, baseUrl: string): Promise<void> {
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+  await page.getByLabel(/email/i).fill(RESPONDER_EMAIL)
+  await page.getByLabel(/password/i).fill(RESPONDER_PASSWORD)
+  await page.getByRole('button', { name: /sign in/i }).click()
+  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15_000 })
+  await dismissResponderPrivacyNoticeIfPresent(page)
+}
+
+async function dismissResponderPrivacyNoticeIfPresent(page: Page): Promise<void> {
+  const agreeButton = page.getByRole('button', { name: /i agree/i })
+  if (!(await agreeButton.isVisible({ timeout: 2_000 }).catch(() => false))) return
+
+  await agreeButton.click()
+  await expect(agreeButton).toBeHidden({ timeout: 10_000 })
+}
+
+async function createCitizenReport(page: Page, testRunId: string): Promise<string> {
+  await page.goto('/report', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('.z-splash')).toBeHidden({ timeout: 10_000 })
+  await page.getByRole('button', { name: /flood/i }).click()
+  await page.getByRole('button', { name: /continue/i }).click()
+  await page.getByRole('button', { name: /pick my municipality manually/i }).click({ force: true })
+  await page.locator('#report-municipality').selectOption('daet')
+  await page.locator('#reporter-name').fill(`Reliability Spine ${testRunId}`)
+  await page.locator('#reporter-msisdn').fill('+63 912 345 6789')
+  await page.getByRole('button', { name: /no/i }).click()
+  await page.getByRole('button', { name: /review report/i }).click()
+  await page.getByRole('checkbox', { name: /i confirm this report is accurate/i }).check()
+  await page.getByRole('checkbox', { name: /yes, this is a real emergency/i }).check()
+  await page.getByRole('button', { name: /submit report/i }).click()
+
+  await expect(page.getByText(/we heard you\. we are here\./i)).toBeVisible({ timeout: 20_000 })
+  const publicRef = (await page.locator('.reveal-ref-code').textContent())?.trim() ?? ''
+  expect(publicRef).toMatch(/^[a-z0-9]{8}$/)
+  return publicRef
+}
+
+async function openExactReportOnMap(page: Page, reportId: string): Promise<void> {
+  const markers = page.locator('.leaflet-marker-icon')
+  await expect(markers.first()).toBeVisible({ timeout: 20_000 })
+  const markerCount = await markers.count()
+  for (let index = 0; index < markerCount; index += 1) {
+    await markers.nth(index).click({ force: true })
+    const panel = page.getByRole('dialog', { name: /report detail/i })
+    await expect(panel).toBeVisible({ timeout: 10_000 })
+    if (await panel.getByText(new RegExp(`Report #${reportId.slice(0, 8)}`)).isVisible().catch(() => false)) {
+      return
+    }
+  }
+  throw new Error(`Could not find report ${reportId} on the admin map`)
+}
+
+async function chooseResponderAndDispatch(page: Page, responderUid: string): Promise<void> {
+  await page.getByRole('button', { name: /advance to review/i }).click()
+  await expect(page.getByRole('button', { name: /^verify$/i })).toBeVisible({ timeout: 10_000 })
+  await page.getByRole('button', { name: /^verify$/i }).click()
+  await expect(page.getByRole('button', { name: /dispatch responder/i })).toBeVisible({
+    timeout: 10_000,
+  })
+  await page.getByRole('button', { name: /dispatch responder/i }).click()
+  await page.getByLabel(/select agency/i).selectOption('BFP')
+  await page.getByLabel(/select responder/i).selectOption(responderUid)
+  const holdButton = page.getByRole('button', { name: /hold to dispatch responder/i })
+  await holdButton.focus()
+  await page.keyboard.down('Space')
+  await page.waitForTimeout(1200)
+  await page.keyboard.up('Space')
+}
+
+async function declareAlert(page: Page, testRunId: string): Promise<void> {
+  await page.getByRole('button', { name: /declare alert/i }).click()
+  const modal = page.getByRole('dialog', { name: /declare alert/i })
+  await expect(modal).toBeVisible({ timeout: 10_000 })
+  await modal.getByLabel(/hazard type/i).selectOption('flood')
+  await modal.getByRole('checkbox', { name: /daet/i }).check()
+  await modal.getByLabel(/message/i).fill(`[TEST:${testRunId}] Flood proof alert`)
+  await modal.getByRole('button', { name: /^declare alert$/i }).click()
+}
+
+test.describe.configure({ mode: 'serial' })
+
+test.describe('reliability spine', () => {
+  test('proves the core citizen → admin → responder loop', async ({ browser }, testInfo) => {
+    const env = getProofEnvironment()
+    const ledger = createProofLedger()
+    const db = getProofFirestore()
+    const auth = getProofAuth()
+    const rtdb = getProofRealtimeDatabase()
+    const cleanupContext = { db, auth, rtdb }
+    await preflightProofServices({ env, db, auth })
+
+    const citizenContext = await browser.newContext({ reducedMotion: 'reduce' })
+    await citizenContext.addInitScript(() => {
+      window.localStorage.setItem('bantayog_onboarding_complete', 'true')
+    })
+    const adminContext = await browser.newContext()
+    const responderContext = await browser.newContext()
+    const citizenPage = await citizenContext.newPage()
+    const adminPage = await adminContext.newPage()
+    const responderPage = await responderContext.newPage()
+    const citizenGuard = monitorPage(citizenPage, 'citizen')
+    const adminGuard = monitorPage(adminPage, 'admin')
+    const responderGuard = monitorPage(responderPage, 'responder')
+    let currentCheckpoint = 'C00'
+
+    try {
+      if (env.target === 'local') {
+        const accounts = await seedLocalProofAccounts()
+        ledger.adminUid = accounts.admin.uid
+        ledger.responderUid = accounts.responder.uid
+      } else {
+        ledger.adminUid = process.env.BANTAYOG_ADMIN_UID ?? 'daet-admin-test-01'
+        ledger.responderUid = process.env.BANTAYOG_RESPONDER_UID ?? 'bfp-responder-test-01'
+      }
+
+      ledger.clientDraftRef = undefined
+      ledger.publicRef = undefined
+      ledger.reportId = undefined
+      ledger.alertId = undefined
+      ledger.dispatchId = undefined
+
+      await citizenPage.goto(env.citizenBaseUrl, { waitUntil: 'domcontentloaded' })
+      await adminPage.goto(env.adminBaseUrl, { waitUntil: 'domcontentloaded' })
+      await responderPage.goto(env.responderBaseUrl, { waitUntil: 'domcontentloaded' })
+      await expect(citizenPage.getByRole('navigation', { name: /main navigation/i })).toBeVisible(
+        { timeout: 15_000 },
+      )
+      await expect(adminPage.getByRole('heading', { name: /bantayog alert/i })).toBeVisible({
+        timeout: 15_000,
+      })
+      await expect(responderPage.getByRole('heading', { name: /bantayog alert/i })).toBeVisible({
+        timeout: 15_000,
+      })
+      citizenGuard.assertHealthy('C00')
+      adminGuard.assertHealthy('C00')
+      responderGuard.assertHealthy('C00')
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C00',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Citizen, admin, and responder apps load in the configured proof environments',
+        observed: {
+          citizenUrl: env.citizenBaseUrl,
+          adminUrl: env.adminBaseUrl,
+          responderUrl: env.responderBaseUrl,
+          projectId: env.projectId,
+        },
+      })
+
+      currentCheckpoint = 'C01'
+      ledger.publicRef = await createCitizenReport(citizenPage, ledger.testRunId)
+      const inboxQuery = await waitForQueryExactlyOne(
+        () =>
+          db.collection('report_inbox').where('publicRef', '==', ledger.publicRef ?? '').get(),
+        15_000,
+        'report_inbox entry',
+      )
+      ledger.clientDraftRef = inboxQuery.id
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C01',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'report_inbox/{clientDraftRef} exists with exact report payload metadata',
+        observed: {
+          clientDraftRef: ledger.clientDraftRef,
+          publicRef: ledger.publicRef,
+          reporterUid: inboxQuery.data().reporterUid,
+          idempotencyKey: inboxQuery.data().idempotencyKey,
+          correlationId: inboxQuery.data().correlationId,
+        },
+      })
+
+      currentCheckpoint = 'C02'
+      const firstSummary = await runManualInboxProcessor()
+      expect(firstSummary.exitCode, JSON.stringify(firstSummary, null, 2)).toBe(0)
+      expect(firstSummary.failedCount, JSON.stringify(firstSummary, null, 2)).toBe(0)
+      expect(firstSummary.candidateCount).toBeGreaterThan(0)
+
+      const lookup = await waitForDoc(
+        db.collection('report_lookup').doc(ledger.publicRef),
+        30_000,
+      )
+      ledger.reportId = String(lookup.data()?.reportId ?? '')
+      expect(ledger.reportId).not.toBe('')
+      await waitForDoc(db.collection('reports').doc(ledger.reportId), 30_000)
+      await waitForDoc(db.collection('report_ops').doc(ledger.reportId), 30_000)
+      await waitForDoc(db.collection('report_private').doc(ledger.reportId), 30_000)
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C02',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'reports/report_ops/report_lookup materialize exactly once',
+        observed: {
+          reportId: ledger.reportId,
+          publicRef: ledger.publicRef,
+          reportLookupId: lookup.id,
+          reportOpsStatus: (await db.collection('report_ops').doc(ledger.reportId).get()).data()?.status,
+        },
+      })
+
+      currentCheckpoint = 'C03'
+      await signInAdmin(adminPage, env.adminBaseUrl)
+      await adminPage.goto(`${env.adminBaseUrl}/map`, { waitUntil: 'domcontentloaded' })
+      await openExactReportOnMap(adminPage, ledger.reportId)
+      const reportPanel = adminPage.getByRole('dialog', { name: /report detail/i })
+      await expect(reportPanel).toContainText(new RegExp(`Report #${ledger.reportId.slice(0, 8)}`))
+      citizenGuard.assertHealthy('C03')
+      adminGuard.assertHealthy('C03')
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C03',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Admin map listener surfaces the exact report row/card for the proof run',
+        observed: {
+          reportId: ledger.reportId,
+          panelVisible: true,
+        },
+      })
+
+      currentCheckpoint = 'C04'
+      await declareAlert(adminPage, ledger.testRunId)
+      const alertDoc = await waitForQueryExactlyOne(
+        () =>
+          db.collection('alerts').where('message', '==', `[TEST:${ledger.testRunId}] Flood proof alert`).get(),
+        15_000,
+        'declared alert',
+      )
+      ledger.alertId = alertDoc.id
+      expect(alertDoc.data().publishedAt).toBeDefined()
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C04',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'alerts/{alertId} includes publishedAt and the testRunId prefix in message',
+        observed: {
+          alertId: ledger.alertId,
+          hazardType: alertDoc.data().hazardType,
+          affectedMunicipalityIds: alertDoc.data().affectedMunicipalityIds,
+          publishedAt: alertDoc.data().publishedAt,
+        },
+      })
+
+      currentCheckpoint = 'C05'
+      await citizenPage.goto(`${env.citizenBaseUrl}/alerts`, { waitUntil: 'domcontentloaded' })
+      await expect(citizenPage.getByText(`[TEST:${ledger.testRunId}] Flood proof alert`)).toBeVisible({
+        timeout: 15_000,
+      })
+      citizenGuard.assertHealthy('C05')
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C05',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Citizen alerts surface the exact declared message from Firestore',
+        observed: {
+          alertId: ledger.alertId,
+          alertMessage: `[TEST:${ledger.testRunId}] Flood proof alert`,
+        },
+      })
+
+      currentCheckpoint = 'C06'
+      await chooseResponderAndDispatch(adminPage, ledger.responderUid ?? '')
+      const dispatchDoc = await waitForQueryExactlyOne(
+        () => db.collection('dispatches').where('reportId', '==', ledger.reportId ?? '').get(),
+        15_000,
+        'dispatch document',
+      )
+      ledger.dispatchId = dispatchDoc.id
+      expect(dispatchDoc.data().status).toBe('pending')
+      expect(dispatchDoc.data().assignedTo?.uid).toBe(ledger.responderUid)
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C06',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'dispatches/{dispatchId} contains exact reportId, responder uid, and pending status',
+        observed: {
+          dispatchId: ledger.dispatchId,
+          reportId: dispatchDoc.data().reportId,
+          status: dispatchDoc.data().status,
+          assignedTo: dispatchDoc.data().assignedTo,
+        },
+      })
+
+      currentCheckpoint = 'C07'
+      await signInResponder(responderPage, env.responderBaseUrl)
+      await responderPage.goto(`${env.responderBaseUrl}/dispatches/${ledger.dispatchId}`, {
+        waitUntil: 'domcontentloaded',
+      })
+      await expect(responderPage).toHaveURL(new RegExp(`/dispatches/${ledger.dispatchId}$`))
+      await expect(responderPage.getByRole('button', { name: /^✓ accept$/i })).toBeVisible({
+        timeout: 15_000,
+      })
+      responderGuard.assertHealthy('C07')
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C07',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Responder detail page shows the exact dispatch and accept action',
+        observed: {
+          dispatchId: ledger.dispatchId,
+          reportId: ledger.reportId,
+          responderUid: ledger.responderUid,
+        },
+      })
+
+      currentCheckpoint = 'C08'
+      const dispatchId = ledger.dispatchId
+      if (!dispatchId) throw new Error('Missing dispatchId before responder progression')
+      await dismissResponderPrivacyNoticeIfPresent(responderPage)
+      await responderPage.getByRole('button', { name: /^✓ accept$/i }).click()
+      await expect
+        .poll(async () => (await db.collection('dispatches').doc(dispatchId).get()).data()?.status)
+        .toBe('acknowledged')
+      const enRouteButton = responderPage.getByRole('button', { name: /en route/i })
+      await expect(enRouteButton).toBeVisible({ timeout: 15_000 })
+      await enRouteButton.click()
+      await expect
+        .poll(async () => (await db.collection('dispatches').doc(dispatchId).get()).data()?.status)
+        .toBe('en_route')
+      const onSceneButton = responderPage.getByRole('button', { name: /on scene/i })
+      await expect(onSceneButton).toBeVisible({ timeout: 15_000 })
+      await onSceneButton.click()
+      await expect
+        .poll(async () => (await db.collection('dispatches').doc(dispatchId).get()).data()?.status)
+        .toBe('on_scene')
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C08',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Responder progression advances through accepted, acknowledged, en_route, and on_scene',
+        observed: {
+          dispatchId: ledger.dispatchId,
+          finalStatus: (await db.collection('dispatches').doc(ledger.dispatchId).get()).data()?.status,
+        },
+      })
+
+      currentCheckpoint = 'C09'
+      const replaySummary = await runManualInboxProcessor()
+      expect(replaySummary.exitCode).toBe(0)
+      expect(replaySummary.candidateCount).toBe(0)
+      expect(replaySummary.processedCount).toBe(0)
+      await expect
+        .poll(async () =>
+          (await db.collection('report_lookup').doc(ledger.publicRef ?? '').get()).data()?.reportId,
+        )
+        .toBe(ledger.reportId)
+      const reportAfterReplay = await db.collection('reports').doc(ledger.reportId ?? '').get()
+      expect(reportAfterReplay.exists).toBe(true)
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C09',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Replaying local materialization does not duplicate the report',
+        observed: {
+          publicRef: ledger.publicRef,
+          reportId: ledger.reportId,
+          candidateCount: replaySummary.candidateCount,
+          processedCount: replaySummary.processedCount,
+          reportStillExists: reportAfterReplay.exists,
+        },
+      })
+
+      citizenGuard.assertHealthy('C09')
+      adminGuard.assertHealthy('C09')
+      responderGuard.assertHealthy('C09')
+    } catch (error) {
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: currentCheckpoint,
+        status: 'failed',
+        target: ledger.target,
+        expected: `Checkpoint ${currentCheckpoint} completes without app-check/auth/region drift`,
+        observed: {
+          error: error instanceof Error ? error.message : String(error),
+          ledger,
+          testFile: testInfo.file,
+        },
+        nextHint: 'Inspect the first failing checkpoint and the exact Firestore ids on the ledger.',
+      })
+      throw error
+    } finally {
+      await cleanupProofRun(cleanupContext, ledger).catch((cleanupError: unknown) => {
+        console.error(
+          JSON.stringify({
+            event: 'reliability-spine-cleanup-required',
+            testRunId: ledger.testRunId,
+            ledger,
+            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+          }),
+        )
+      })
+      await Promise.all([
+        citizenContext.close(),
+        adminContext.close(),
+        responderContext.close(),
+      ])
+    }
   })
 })

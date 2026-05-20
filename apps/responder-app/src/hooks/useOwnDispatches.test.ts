@@ -6,9 +6,10 @@ const mockQuery = vi.hoisted(() => vi.fn())
 const mockWhere = vi.hoisted(() => vi.fn())
 const mockOrderBy = vi.hoisted(() => vi.fn())
 const mockCollection = vi.hoisted(() => vi.fn())
+const mockDb = vi.hoisted(() => ({}))
 
 vi.mock('../app/firebase', () => ({
-  db: {},
+  db: mockDb,
 }))
 vi.mock('firebase/firestore', () => ({
   collection: mockCollection,
@@ -23,7 +24,10 @@ import { useOwnDispatches } from './useOwnDispatches'
 describe('useOwnDispatches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockQuery.mockReturnValue({ _tag: 'query' })
+    mockCollection.mockReturnValue({ _tag: 'collection' })
+    mockWhere.mockImplementation((...args) => ({ _tag: 'where', args }))
+    mockOrderBy.mockImplementation((...args) => ({ _tag: 'orderBy', args }))
+    mockQuery.mockImplementation((...parts) => ({ _tag: 'query', parts }))
   })
 
   it('returns empty rows when uid is undefined', async () => {
@@ -67,6 +71,26 @@ describe('useOwnDispatches', () => {
     await waitFor(() => {
       expect(result.current.rows).toHaveLength(2)
     })
+
+    expect(mockCollection).toHaveBeenCalledWith(mockDb, 'dispatches')
+    expect(mockWhere).toHaveBeenNthCalledWith(1, 'assignedTo.uid', '==', 'uid-1')
+    expect(mockWhere).toHaveBeenNthCalledWith(2, 'status', 'in', [
+      'pending',
+      'accepted',
+      'acknowledged',
+      'en_route',
+      'on_scene',
+    ])
+    expect(mockOrderBy).toHaveBeenCalledWith('dispatchedAt', 'desc')
+    expect(mockQuery).toHaveBeenCalledWith(
+      { _tag: 'collection' },
+      { _tag: 'where', args: ['assignedTo.uid', '==', 'uid-1'] },
+      {
+        _tag: 'where',
+        args: ['status', 'in', ['pending', 'accepted', 'acknowledged', 'en_route', 'on_scene']],
+      },
+      { _tag: 'orderBy', args: ['dispatchedAt', 'desc'] },
+    )
 
     expect(result.current.groups.pending).toHaveLength(1)
     expect(result.current.groups.pending[0]!.dispatchId).toBe('disp-pending')

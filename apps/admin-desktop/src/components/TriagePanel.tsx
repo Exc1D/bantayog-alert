@@ -122,6 +122,7 @@ export function TriagePanel({
     <>
       <div
         ref={panelRef}
+        data-testid={`triage-panel-${report.id}`}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"

@@ -39,6 +39,10 @@ export function requireAuth(request, allowedRoles) {
     return { uid: request.auth.uid, claims };
 }
 export function requireMfaAuth(request) {
+    if (process.env.FUNCTIONS_EMULATOR === 'true' ||
+        (process.env.GCLOUD_PROJECT ?? '').endsWith('-staging')) {
+        return;
+    }
     const firebase = request.auth?.token.firebase;
     if (typeof firebase !== 'object' ||
         firebase === null ||

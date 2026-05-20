@@ -26,6 +26,7 @@ interface WriteDispatchDocsArgs {
     } & Record<string, unknown>;
     deadlineMs: number;
     correlationId: string;
+    idempotencyPayloadHash: string;
     from: 'verified';
     to: 'assigned';
 }

@@ -12,64 +12,125 @@
  *     pnpm exec tsx functions/scripts/process-inbox-manual.ts
  */
 
+import { fileURLToPath } from 'node:url'
 import { initializeApp, getApps } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
-import { processInboxItemCore } from '../src/triggers/process-inbox-item.js'
-
-if (!process.env.FIRESTORE_EMULATOR_HOST) {
-  console.error(
-    'ERROR: FIRESTORE_EMULATOR_HOST is not set. This script must run against the emulator.',
-  )
-  process.exit(1)
-}
+import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { processInboxItemCore, type ProcessInboxItemCoreResult } from '../src/triggers/process-inbox-item.js'
 
 const PROJECT_ID = 'bantayog-alert-staging'
 
-if (getApps().length === 0) {
-  initializeApp({ projectId: PROJECT_ID })
+export interface ProcessInboxManualFailure {
+  inboxId: string
+  error: string
 }
 
-const db = getFirestore()
+export interface ProcessInboxManualSummary {
+  scanned: number
+  candidates: number
+  processed: number
+  replayed: number
+  failed: number
+  exitCode: number
+  failures: ProcessInboxManualFailure[]
+}
 
-async function main() {
-  console.log('🔧 Manual inbox processing fallback\n')
+export interface ProcessInboxManualSummaryDeps {
+  db: Firestore
+  processInboxItem?: (input: { db: Firestore; inboxId: string }) => Promise<ProcessInboxItemCoreResult>
+  writeLine?: (line: string) => void
+}
 
-  // Find all report_inbox items without processedAt
-  // Use list (all docs) since .where('processedAt', '==', null)
-  // only matches docs where the field exists and is null, not docs
-  // where the field is absent.
-  const snapshot = await db.collection('report_inbox').get()
+function formatErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
-  const unprocessedDocs = snapshot.docs.filter((d) => {
-    const data = d.data()
+export async function processInboxManualSummary(
+  deps: ProcessInboxManualSummaryDeps,
+): Promise<ProcessInboxManualSummary> {
+  const processInboxItem = deps.processInboxItem ?? processInboxItemCore
+  const writeLine = deps.writeLine ?? console.log
+  writeLine('🔧 Manual inbox processing fallback')
+  const snapshot = await deps.db.collection('report_inbox').get()
+  const candidates = snapshot.docs.filter((doc) => {
+    const data = doc.data()
     return data.processedAt === undefined || data.processedAt === null
   })
 
-  if (unprocessedDocs.length === 0) {
-    console.log('No unprocessed report_inbox items found.')
-    return
+  const summary: ProcessInboxManualSummary = {
+    scanned: snapshot.docs.length,
+    candidates: candidates.length,
+    processed: 0,
+    replayed: 0,
+    failed: 0,
+    exitCode: 0,
+    failures: [],
   }
 
-  console.log(`Found ${unprocessedDocs.length} unprocessed inbox item(s).\n`)
+  if (candidates.length === 0) {
+    writeLine('No unprocessed report_inbox items found.')
+    writeLine(JSON.stringify(summary))
+    return summary
+  }
 
-  for (const doc of unprocessedDocs) {
-    const inboxId = doc.id
-    console.log(`Processing inbox ${inboxId}...`)
+  writeLine(`Found ${candidates.length} unprocessed inbox item(s).`)
+
+  for (const doc of candidates) {
+    writeLine(`Processing inbox ${doc.id}...`)
     try {
-      const result = await processInboxItemCore({ db, inboxId })
-      console.log(
-        `  ✅ Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}\n`,
+      const result = await processInboxItem({ db: deps.db, inboxId: doc.id })
+      writeLine(
+        `  ✅ Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}`,
       )
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error(`  ❌ Failed: ${message}\n`)
+      if (result.materialized) {
+        summary.processed += 1
+      }
+      if (result.replayed) {
+        summary.replayed += 1
+      }
+    } catch (error: unknown) {
+      summary.failed += 1
+      writeLine(`  ❌ Failed: ${formatErrorMessage(error)}`)
+      summary.failures.push({ inboxId: doc.id, error: formatErrorMessage(error) })
     }
   }
 
-  console.log('Done.')
+  summary.exitCode = summary.failed > 0 ? 1 : 0
+  writeLine('Done.')
+  writeLine(JSON.stringify(summary))
+  return summary
 }
 
-main().catch((err) => {
-  console.error('Fatal error:', err)
-  process.exit(1)
-})
+export async function runManualInboxProcessor(
+  db: Firestore,
+  writeLine: (line: string) => void = console.log,
+  processInboxItem?: ProcessInboxManualSummaryDeps['processInboxItem'],
+): Promise<ProcessInboxManualSummary> {
+  const summary = await processInboxManualSummary({ db, writeLine, processInboxItem })
+  process.exitCode = summary.exitCode
+  return summary
+}
+
+async function main(): Promise<void> {
+  if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    console.error(
+      'ERROR: FIRESTORE_EMULATOR_HOST is not set. This script must run against the emulator.',
+    )
+    process.exitCode = 1
+    return
+  }
+
+  if (getApps().length === 0) {
+    initializeApp({ projectId: PROJECT_ID })
+  }
+
+  await runManualInboxProcessor(getFirestore())
+}
+
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url)
+
+if (isMainModule) {
+  void main().catch((error: unknown) => {
+    console.error('Fatal error:', error)
+    process.exitCode = 1
+  })
+}

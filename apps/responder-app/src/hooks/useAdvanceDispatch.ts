@@ -28,12 +28,15 @@ export function useAdvanceDispatch(dispatchId: string) {
           functions,
           'advanceDispatch',
         )
-        await advanceDispatch({
+        const payload: AdvanceDispatchRequest = {
           dispatchId,
           to,
-          resolutionSummary: extras?.resolutionSummary,
           idempotencyKey: keyRef.current,
-        })
+        }
+        if (typeof extras?.resolutionSummary === 'string') {
+          payload.resolutionSummary = extras.resolutionSummary
+        }
+        await advanceDispatch(payload)
         keyRef.current = crypto.randomUUID()
       } catch (err: unknown) {
         console.error('[useAdvanceDispatch] advance failed:', err)

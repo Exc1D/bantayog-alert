@@ -80,18 +80,30 @@ export async function declineDispatchCore(db, deps) {
                 lastStatusAt: now.toMillis(),
             });
             transaction.set(db.collection('dispatch_events').doc(), {
+                type: 'status_changed',
                 dispatchId,
                 reportId: dispatch.reportId,
-                actor: actor.uid,
+                from: dispatch.status,
+                to: 'declined',
+                actorUid: actor.uid,
                 actorRole: actor.claims.role,
-                fromStatus: dispatch.status,
-                toStatus: 'declined',
-                reason: normalizedDeclineReason,
-                createdAt: now.toMillis(),
-                correlationId,
-                schemaVersion: 1,
                 agencyId: assignedTo.agencyId,
                 municipalityId: assignedTo.municipalityId,
+                reason: normalizedDeclineReason,
+                at: now.toMillis(),
+                correlationId,
+                schemaVersion: 1,
+            });
+            transaction.set(db.collection('dispatch_events').doc(), {
+                type: 'notification_delivered',
+                dispatchId,
+                responderUid: actor.uid,
+                agencyId: assignedTo.agencyId,
+                municipalityId: assignedTo.municipalityId,
+                action: 'declined',
+                at: now.toMillis(),
+                correlationId,
+                schemaVersion: 1,
             });
             return { status: 'declined' };
         });

@@ -5,6 +5,7 @@ import { requireAuth, requireMfaAuth } from './https-error.js'
 import { PRIVILEGED_ROLES } from '../constants/roles.js'
 import { RETENTION_EXEMPT_COLLECTIONS } from '../constants/retention.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 const inputSchema = z.object({
   collection: z.enum(RETENTION_EXEMPT_COLLECTIONS),
@@ -50,7 +51,7 @@ export async function setRetentionExemptCore(
 }
 
 export const setRetentionExempt = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (request) => {
     const { uid, claims } = requireAuth(request, PRIVILEGED_ROLES)
     requireMfaAuth(request)

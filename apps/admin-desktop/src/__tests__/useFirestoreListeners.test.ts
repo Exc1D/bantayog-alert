@@ -60,8 +60,8 @@ describe('useFirestoreListeners', () => {
 
   it('sets up map listeners on mount', () => {
     renderHook(() => useFirestoreListeners({ windowType: 'map', db: mockDb, rtdb: mockRtdb }))
-    // Map: reports, report_ops, alerts = 3 onSnapshot + 1 onValue for responder_locations
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
+    // Map: reports, report_ops, alerts, responder roster = 4 onSnapshot + RTDB locations.
+    expect(mockOnSnapshot).toHaveBeenCalledTimes(4)
     expect(mockOnValue).toHaveBeenCalled()
   })
 

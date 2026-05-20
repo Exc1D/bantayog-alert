@@ -119,6 +119,7 @@ describe('TriagePanel', () => {
     const panel = screen.getByRole('dialog')
     expect(panel).toHaveAttribute('aria-modal', 'true')
     expect(panel).toHaveAttribute('aria-labelledby', 'triage-panel-title')
+    expect(screen.getByTestId('triage-panel-r1')).toBeInTheDocument()
   })
 
   it('shows agency allowlist in dispatch form', async () => {

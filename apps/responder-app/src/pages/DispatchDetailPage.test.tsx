@@ -164,6 +164,7 @@ describe('DispatchDetailPage', () => {
 
     expect(detailState.mockAdvance).toHaveBeenCalledWith('acknowledged')
     expect(screen.getByRole('status')).toHaveTextContent(/acknowledg/i)
+    expect(screen.getByTestId('dispatch-status-d-1')).toBeInTheDocument()
   })
 
   it('shows pending state with Accept and Decline buttons', () => {
@@ -192,6 +193,7 @@ describe('DispatchDetailPage', () => {
     renderPage()
 
     expect(screen.getByRole('button', { name: /en route/i })).toBeInTheDocument()
+    expect(screen.getByTestId('dispatch-status-d-1')).toBeInTheDocument()
   })
 
   it('shows On Scene button when status is en_route', () => {
@@ -200,6 +202,7 @@ describe('DispatchDetailPage', () => {
     renderPage()
 
     expect(screen.getByRole('button', { name: /on scene/i })).toBeInTheDocument()
+    expect(screen.getByTestId('dispatch-status-d-1')).toBeInTheDocument()
   })
 
   it('disables Mark Resolved when resolution summary is empty', () => {

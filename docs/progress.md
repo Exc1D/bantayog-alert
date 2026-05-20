@@ -2,6 +2,38 @@
 
 ## Current Status (2026-05-20)
 
+**Reliability Spine review follow-ups in progress.**
+
+- Added normal Vitest discovery for reliability proof fixture tests and root script guard tests.
+- Added staging preflight in the Playwright proof harness: required proof account env vars, Auth users, active account docs, municipality scope, and emulator-env leakage are checked before browser contexts write data.
+- Hardened proof cleanup so it can discover report/dispatch/alert IDs from ledger anchors and attempts every delete before reporting cleanup failures.
+- Manual inbox processor tests now run through the normal functions Vitest config instead of a one-off config.
+
+---
+
+## Current Status (2026-05-20)
+
+**Emulator bug fixes complete.**
+
+### What was fixed
+1. **Dashboard Declare Alert button restored.** Accidentally removed in PR #151 redesign (`DashboardPage` no longer passed `onDeclareAlert` to `CommandHeader` and didn't render `<DeclareAlertModal>`). Fixed by adding back the state, prop, and modal. Test added. 364/364 admin-desktop tests pass.
+2. **Admin-desktop AppCheck emulator initialization fixed.** `firebase.ts` only set a debug token global but never called `initializeAppCheck()`. Added `CustomProvider`-based emulator init matching the `responder-app` pattern.
+3. **16 callable files normalized to `shouldEnforceAppCheck()`.** `getOpsMetrics` was the only callable hardcoding `enforceAppCheck: true` instead of using the project-aware helper. Extended the fix to all other callables with the same bug to prevent future 401s on *any* admin action in the emulator. `decline-dispatch` was already correct.
+4. **`functions-dist` rebuilt** via `pnpm exec tsx scripts/prepare-functions-deploy.ts` so the emulator bundle is fresh.
+
+### Report submission still requires manual processing
+- The upstream Firebase Functions emulator bug (`onDocumentCreated` trigger fails with protobuf decode error) is **not our bug** and affects only local emulator. **Workaround:** after each citizen PWA submission, run:
+  ```bash
+  FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 pnpm exec tsx functions/scripts/process-inbox-manual.ts
+  ```
+
+### Admin `agencyId` vs `agencyIds` discrepancy (discovered, not fixed)
+- Dashboard queries filter `reports` on `agencyId` but the trigger writes `agencyIds` to `report_ops`. This would cause empty dashboards for `agency_admin` users. Since your tested role is `provincial_superadmin`, this wasn't hit.
+
+---
+
+## Current Status (2026-05-20)
+
 **Phase 3 OpsDashboard — Verified Complete**
 
 Post-implementation review confirms all 7 tasks from `docs/superpowers/plans/2026-05-19-opsdashboard-plan.md` are correctly implemented. 50/50 new tests pass; 363/363 total admin-desktop tests pass; lint and typecheck clean.
@@ -578,3 +610,12 @@ All 7 clusters complete:
 - ✅ Warm-black shell styling and amber active tab state preserved in `Shell.module.css`
 - ✅ Updated shell-focused Vitest coverage for the new header and navigation contract
 - **Gate:** `pnpm --dir apps/responder-app exec vitest run src/components/Shell.test.tsx` pass · `pnpm --dir apps/responder-app typecheck` pass · `pnpm --dir apps/responder-app lint` pass
+
+**Reliability Spine — Local cross-app proof green (2026-05-20)**
+
+- ✅ Local proof now exercises Citizen report submit → manual materialization → Admin report visibility → Admin alert declaration → Citizen alert visibility → Admin dispatch → Responder accept/advance → manual replay idempotency.
+- ✅ C00-C09 pass locally with exact Firestore assertions and UI action assertions.
+- ✅ Fixed responder dispatch creation/read contract: dispatch docs now include schema/rules-required fields.
+- ✅ Fixed municipal admin alert declaration and alert mapping so declared alerts include `publishedAt` and render in Citizen PWA.
+- ✅ Fixed responder progression blockers: privacy notice dismissal in proof, `acceptDispatch` active-claim compatibility, and `advanceDispatch` optional payload omission.
+- **Gate:** `CI=true BANTAYOG_FIREBASE_PROJECT_ID=bantayog-alert-staging pnpm --dir e2e-tests proof:local` pass (C00-C09, 10.7s) · focused functions/responder/admin/shared tests and typechecks passed during hardening.

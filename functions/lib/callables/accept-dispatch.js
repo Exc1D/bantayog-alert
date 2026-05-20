@@ -6,6 +6,8 @@ import { adminDb } from '../admin-init.js';
 import { withIdempotency } from '../idempotency/guard.js';
 import { bantayogErrorToHttps } from './https-error.js';
 import { checkRateLimit } from '../services/rate-limit.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
+import { isAccountActive } from './admin-auth.js';
 export const acceptDispatchRequestSchema = z
     .object({
     dispatchId: z.string().min(1).max(128),
@@ -40,9 +42,11 @@ export async function acceptDispatchCore(db, deps) {
                 throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found');
             }
             const d = snap.data();
-            if (!d.assignedTo?.uid || d.assignedTo.uid !== deps.actor.uid) {
+            // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+            if (d.assignedTo === undefined || d.assignedTo.uid !== deps.actor.uid) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Not assigned to this responder');
             }
+            const assignedTo = d.assignedTo;
             if (d.status !== 'pending') {
                 throw new BantayogError(BantayogErrorCode.CONFLICT, `Dispatch is no longer pending (current status: ${d.status})`);
             }
@@ -51,13 +55,30 @@ export async function acceptDispatchCore(db, deps) {
                 acceptedAt: deps.now.toMillis(),
                 lastStatusAt: deps.now.toMillis(),
             });
+            const agencyId = assignedTo.agencyId;
+            const municipalityId = assignedTo.municipalityId;
             const evRef = db.collection('dispatch_events').doc();
             tx.set(evRef, {
+                type: 'status_changed',
                 dispatchId: deps.dispatchId,
                 from: 'pending',
                 to: 'accepted',
                 actorUid: deps.actor.uid,
                 actorRole: 'responder',
+                agencyId,
+                municipalityId,
+                at: deps.now.toMillis(),
+                correlationId,
+                schemaVersion: 1,
+            });
+            const deliveredRef = db.collection('dispatch_events').doc();
+            tx.set(deliveredRef, {
+                type: 'notification_delivered',
+                dispatchId: deps.dispatchId,
+                responderUid: deps.actor.uid,
+                agencyId,
+                municipalityId,
+                action: 'accepted',
                 at: deps.now.toMillis(),
                 correlationId,
                 schemaVersion: 1,
@@ -69,7 +90,7 @@ export async function acceptDispatchCore(db, deps) {
 }
 export const acceptDispatch = onCall({
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
     cors: ['http://localhost:5174', 'http://localhost:5175'],
@@ -82,7 +103,7 @@ export const acceptDispatch = onCall({
     if (claims.role !== 'responder') {
         throw new HttpsError('permission-denied', 'responder role required');
     }
-    if (claims.active !== true)
+    if (!isAccountActive(claims))
         throw new HttpsError('permission-denied', 'account is not active');
     const parsed = acceptDispatchRequestSchema.safeParse(request.data);
     if (!parsed.success)

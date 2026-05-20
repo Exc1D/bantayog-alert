@@ -8,11 +8,14 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:staging": "playwright test --config=playwright.staging.config.ts",
+    "proof:local": "BANTAYOG_PROOF_TARGET=local playwright test specs/full-loop.spec.ts",
+    "proof:staging": "BANTAYOG_PROOF_TARGET=staging playwright test --config=playwright.staging.config.ts specs/full-loop.spec.ts",
     "postinstall": "playwright install chromium"
   },
   "devDependencies": {
     "@bantayog/shared-validators": "workspace:*",
     "@playwright/test": "^1.49.0",
+    "firebase-admin": "^13.10.0",
     "typescript": "^6.0.3"
   }
 }

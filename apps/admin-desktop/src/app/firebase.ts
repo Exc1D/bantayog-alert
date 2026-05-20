@@ -3,7 +3,7 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
 import { getDatabase, connectDatabaseEmulator } from 'firebase/database'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check'
 
 const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true'
 
@@ -32,8 +32,16 @@ if (!useEmulator) {
     )
   }
 } else if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- Firebase App Check debug token is a browser global
-  ;(self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN ?? true
+  initializeAppCheck(firebaseApp, {
+    provider: new CustomProvider({
+      getToken: () =>
+        Promise.resolve({
+          token: import.meta.env.VITE_APPCHECK_DEBUG_TOKEN ?? 'admin-desktop-emulator-app-check',
+          expireTimeMillis: Date.now() + 60 * 60 * 1000,
+        }),
+    }),
+    isTokenAutoRefreshEnabled: false,
+  })
 }
 
 export const db = getFirestore(firebaseApp)

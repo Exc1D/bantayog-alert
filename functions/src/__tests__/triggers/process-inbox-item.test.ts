@@ -106,6 +106,8 @@ describe('processInboxItemCore', () => {
 
         const opsSnap = await getDoc(doc(ctx.firestore(), 'report_ops', result.reportId))
         expect(opsSnap.exists()).toBe(true)
+        expect(opsSnap.data()?.status).toBe('new')
+        expect(opsSnap.data()?.municipalityId).toBe('daet')
         expect(opsSnap.data()?.reportType).toBe('flood')
 
         const lookupSnap = await getDoc(doc(ctx.firestore(), 'report_lookup', 'a1b2c3d4'))
@@ -142,6 +144,7 @@ describe('processInboxItemCore', () => {
         now: () => 1713350401000,
       })
       expect(first.materialized).toBe(true)
+      expect(first.replayed).toBe(false)
 
       const second = await processInboxItemCore({
         db,
@@ -151,6 +154,9 @@ describe('processInboxItemCore', () => {
       expect(second.materialized).toBe(true)
       expect(second.replayed).toBe(true)
       expect(second.reportId).toBe(first.reportId)
+
+      const reports = await getDocs(collection(ctx.firestore(), 'reports'))
+      expect(reports.docs).toHaveLength(1)
     })
   })
 

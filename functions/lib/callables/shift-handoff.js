@@ -8,6 +8,7 @@ import { withIdempotency, IdempotencyInProgressError, IdempotencyMismatchError, 
 import { checkRateLimit } from '../services/rate-limit.js';
 import { BantayogError, logDimension } from '@bantayog/shared-validators';
 import {} from '@bantayog/shared-types';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 const log = logDimension('shiftHandoff');
 const initiateSchema = z.object({
     notes: z.string().max(2000),
@@ -157,7 +158,7 @@ export async function acceptShiftHandoffCore(db, input, actor, correlationId) {
     });
     return cached;
 }
-export const initiateShiftHandoff = onCall({ region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 }, async (req) => {
+export const initiateShiftHandoff = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 100 }, async (req) => {
     if (!req.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');
     const claims = req.auth.token;
@@ -212,7 +213,7 @@ export const initiateShiftHandoff = onCall({ region: 'asia-southeast1', enforceA
         throw err;
     }
 });
-export const acceptShiftHandoff = onCall({ region: 'asia-southeast1', enforceAppCheck: true, maxInstances: 100 }, async (req) => {
+export const acceptShiftHandoff = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 100 }, async (req) => {
     if (!req.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');
     const claims = req.auth.token;

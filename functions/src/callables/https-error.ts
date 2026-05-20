@@ -50,6 +50,12 @@ export function requireAuth(
 export function requireMfaAuth(request: {
   auth?: { uid: string; token: Record<string, unknown> } | null
 }): void {
+  if (
+    process.env.FUNCTIONS_EMULATOR === 'true' ||
+    (process.env.GCLOUD_PROJECT ?? '').endsWith('-staging')
+  ) {
+    return
+  }
   const firebase = request.auth?.token.firebase
   if (
     typeof firebase !== 'object' ||

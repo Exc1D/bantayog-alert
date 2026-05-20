@@ -9,8 +9,8 @@
  *   - Firebase emulators (auth 9099, firestore 8081, db 9000, storage 9199,
  *                        functions 5001, hosting 5000, pubsub 8085)
  *   - citizen-pwa       http://localhost:5173
- *   - admin-desktop     http://localhost:4173
- *   - responder-app     http://localhost:3001
+ *   - admin-desktop     http://localhost:5175
+ *   - responder-app     http://localhost:5174
  *
  * Run bootstrap script to seed test accounts after emulators are ready.
  *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 \
@@ -99,7 +99,7 @@ setTimeout(() => {
   })
 
   // ── Start admin-desktop ────────────────────────────────────────
-  start('admin-desktop', colors.admin, 'pnpm', ['dev', '--port', '4173'], {
+  start('admin-desktop', colors.admin, 'pnpm', ['dev', '--port', '5175'], {
     cwd: path.join(rootDir, 'apps', 'admin-desktop'),
     env: {
       ...process.env,
@@ -108,7 +108,7 @@ setTimeout(() => {
   })
 
   // ── Start responder-app ────────────────────────────────────────
-  start('responder-app', colors.responder, 'pnpm', ['dev', '--port', '3001'], {
+  start('responder-app', colors.responder, 'pnpm', ['dev', '--port', '5174'], {
     cwd: path.join(rootDir, 'apps', 'responder-app'),
     env: {
       ...process.env,
@@ -118,8 +118,8 @@ setTimeout(() => {
 
   console.log(`\n${colors.bold}All services starting...${colors.reset}`)
   console.log(`${colors.citizen}  citizen-pwa   → http://localhost:5173${colors.reset}`)
-  console.log(`${colors.admin}  admin-desktop → http://localhost:4173${colors.reset}`)
-  console.log(`${colors.responder}  responder-app → http://localhost:3001${colors.reset}`)
+  console.log(`${colors.admin}  admin-desktop → http://localhost:5175${colors.reset}`)
+  console.log(`${colors.responder}  responder-app → http://localhost:5174${colors.reset}`)
   console.log(`${colors.emulators}  Emulator UI   → http://127.0.0.1:4000${colors.reset}`)
   console.log(`\nTo bootstrap test accounts, run in another terminal:`)
   console.log(

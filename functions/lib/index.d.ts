@@ -12,6 +12,8 @@ export { rejectReport } from './callables/reject-report.js';
 export { acceptDispatch } from './callables/accept-dispatch.js';
 export { advanceDispatch } from './callables/advance-dispatch.js';
 export { declineDispatch } from './callables/decline-dispatch.js';
+export { escalateDispatch } from './callables/escalate-dispatch.js';
+export { getOpsMetrics } from './callables/get-ops-metrics.js';
 export { closeReport } from './callables/close-report.js';
 export { submitResponderWitnessedReport } from './callables/submit-responder-witnessed-report.js';
 export { triggerSOS } from './callables/trigger-sos.js';
@@ -36,7 +38,6 @@ export declare const onMediaFinalize: import("firebase-functions").CloudFunction
 export { onMediaRelocate } from './triggers/on-media-relocate.js';
 export { inboxReconciliationSweep } from './triggers/inbox-reconciliation-sweep.js';
 export { dispatchMirrorToReport } from './triggers/dispatch-mirror-to-report.js';
-export { dispatchTimeoutSweep } from './triggers/dispatch-timeout-sweep.js';
 export { adminOperationsSweep } from './scheduled/admin-operations-sweep.js';
 export { projectResponderLocations } from './scheduled/project-responder-locations.js';
 export { analyticsSnapshotWriter } from './scheduled/analytics-snapshot-writer.js';
@@ -59,5 +60,7 @@ export { createUser } from './callables/create-user.js';
 export { createResponder } from './callables/create-responder.js';
 export { redispatchReport } from './callables/redispatch-report.js';
 export { reopenReport } from './callables/reopen-report.js';
+export { monitorDispatchDeadlines } from './scheduled/monitor-dispatch-deadlines.js';
+export { retryFcmDelivery } from './scheduled/retry-fcm-delivery.js';
 export { suspendUser, revokeUser, resetUserTotp } from './callables/user-management.js';
 //# sourceMappingURL=index.d.ts.map

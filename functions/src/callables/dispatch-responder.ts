@@ -1,7 +1,12 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import { BantayogError, BantayogErrorCode, logEvent } from '@bantayog/shared-validators'
+import {
+  BantayogError,
+  BantayogErrorCode,
+  canonicalPayloadHash,
+  logEvent,
+} from '@bantayog/shared-validators'
 import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
 import { withIdempotency } from '../idempotency/guard.js'
 import { checkRateLimit } from '../services/rate-limit.js'
@@ -110,6 +115,9 @@ export async function dispatchResponderCore(
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
+  const idempotencyPayloadHash = await canonicalPayloadHash(
+    JSON.parse(JSON.stringify(idempotentPayload)) as unknown,
+  )
   const { result } = await withIdempotency(
     db,
     {
@@ -153,6 +161,7 @@ export async function dispatchResponderCore(
           responder,
           deadlineMs,
           correlationId,
+          idempotencyPayloadHash,
           from,
           to: 'assigned',
         })

@@ -6,6 +6,8 @@ export default defineConfig({
     include: [
       'packages/shared-validators/src/**/*.test.ts',
       'packages/shared-firebase/src/**/*.test.ts',
+      'e2e-tests/fixtures/**/*.test.ts',
+      'scripts/*.test.ts',
     ],
     exclude: ['functions/**', 'apps/citizen-pwa/**', '**/node_modules/**'],
   },

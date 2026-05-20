@@ -3,6 +3,7 @@ import { Firestore } from 'firebase-admin/firestore'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../admin-init.js'
 import { bantayogErrorToHttps } from './https-error.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 export interface GetOpsMetricsCoreDeps {
   timeRange: '1h' | '24h' | '7d'
@@ -112,7 +113,7 @@ const ADMIN_ROLES = ['municipal_admin', 'agency_admin', 'provincial_superadmin']
 export const getOpsMetrics = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: true,
+    enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 100,
   },
   async (req: CallableRequest<unknown>) => {

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireAuth } from './https-error.js';
 import { PRIVILEGED_WITH_PDRRMO } from '../constants/roles.js';
 import { streamAuditEvent } from '../services/audit-stream.js';
+import { shouldEnforceAppCheck } from './app-check-config.js';
 const inputSchema = z.object({
     agencyId: z.string().min(1),
     visible: z.boolean(),
@@ -31,7 +32,7 @@ export async function toggleMutualAidVisibilityCore(db, input, actor) {
         occurredAt: Date.now(),
     });
 }
-export const toggleMutualAidVisibility = onCall({ region: 'asia-southeast1', enforceAppCheck: true }, async (request) => {
+export const toggleMutualAidVisibility = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO);
     await toggleMutualAidVisibilityCore(getFirestore(), request.data, { uid });
 });

@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { requireAuth } from './https-error.js'
 import { streamAuditEvent } from '../services/audit-stream.js'
+import { shouldEnforceAppCheck } from './app-check-config.js'
 
 export async function requestDataErasureCore(
   db: Firestore,
@@ -55,7 +56,7 @@ export async function requestDataErasureCore(
 }
 
 export const requestDataErasure = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: true },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (request) => {
     const { uid } = requireAuth(request, ['citizen'])
     await requestDataErasureCore(getFirestore(), getAuth(), { uid })
