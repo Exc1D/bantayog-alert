@@ -8,6 +8,7 @@ import { bantayogErrorToHttps } from './https-error.js';
 import { checkRateLimit } from '../services/rate-limit.js';
 import { shouldEnforceAppCheck } from './app-check-config.js';
 import { isAccountActive } from './admin-auth.js';
+import { mirrorDispatchStatusToReportInTransaction } from './dispatch-report-mirror.js';
 export const acceptDispatchRequestSchema = z
     .object({
     dispatchId: z.string().min(1).max(128),
@@ -50,10 +51,22 @@ export async function acceptDispatchCore(db, deps) {
             if (d.status !== 'pending') {
                 throw new BantayogError(BantayogErrorCode.CONFLICT, `Dispatch is no longer pending (current status: ${d.status})`);
             }
+            const nowMillis = deps.now.toMillis();
+            await mirrorDispatchStatusToReportInTransaction({
+                db,
+                tx,
+                dispatchId: deps.dispatchId,
+                reportId: d.reportId,
+                afterStatus: 'accepted',
+                actorUid: deps.actor.uid,
+                actorRole: 'responder',
+                nowMillis,
+                correlationId,
+            });
             tx.update(dispatchRef, {
                 status: 'accepted',
-                acceptedAt: deps.now.toMillis(),
-                lastStatusAt: deps.now.toMillis(),
+                acceptedAt: nowMillis,
+                lastStatusAt: nowMillis,
             });
             const agencyId = assignedTo.agencyId;
             const municipalityId = assignedTo.municipalityId;
@@ -67,7 +80,7 @@ export async function acceptDispatchCore(db, deps) {
                 actorRole: 'responder',
                 agencyId,
                 municipalityId,
-                at: deps.now.toMillis(),
+                at: nowMillis,
                 correlationId,
                 schemaVersion: 1,
             });
@@ -79,7 +92,7 @@ export async function acceptDispatchCore(db, deps) {
                 agencyId,
                 municipalityId,
                 action: 'accepted',
-                at: deps.now.toMillis(),
+                at: nowMillis,
                 correlationId,
                 schemaVersion: 1,
             });

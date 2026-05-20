@@ -6,6 +6,7 @@ import { advanceDispatchRequestSchema, BantayogError, BantayogErrorCode, invalid
 import { withIdempotency } from '../idempotency/guard.js';
 import { requireAuth, bantayogErrorToHttps } from './https-error.js';
 import { shouldEnforceAppCheck } from './app-check-config.js';
+import { mirrorDispatchStatusToReportInTransaction } from './dispatch-report-mirror.js';
 export const advanceDispatchCore = async (db, req) => {
     const { dispatchId, to, resolutionSummary, idempotencyKey, actor, now } = req;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -41,21 +42,33 @@ export const advanceDispatchCore = async (db, req) => {
         if (to === 'resolved' && !resolutionSummary) {
             throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'resolutionSummary required');
         }
+        const nowMillis = now.toMillis();
         const patch = {
             status: to,
-            statusUpdatedAt: now.toMillis(),
-            lastStatusAt: now.toMillis(),
+            statusUpdatedAt: nowMillis,
+            lastStatusAt: nowMillis,
         };
         if (to === 'acknowledged')
-            patch.acknowledgedAt = now.toMillis();
+            patch.acknowledgedAt = nowMillis;
         if (to === 'en_route')
-            patch.enRouteAt = now.toMillis();
+            patch.enRouteAt = nowMillis;
         if (to === 'on_scene')
-            patch.onSceneAt = now.toMillis();
+            patch.onSceneAt = nowMillis;
         if (to === 'resolved') {
-            patch.resolvedAt = now.toMillis();
+            patch.resolvedAt = nowMillis;
             patch.resolutionSummary = resolutionSummary;
         }
+        await mirrorDispatchStatusToReportInTransaction({
+            db,
+            tx: transaction,
+            dispatchId,
+            reportId: dispatch.reportId,
+            afterStatus: to,
+            actorUid: actor.uid,
+            actorRole: 'responder',
+            nowMillis,
+            correlationId: crypto.randomUUID(),
+        });
         transaction.update(dispatchRef, patch);
         const evRef = db.collection('dispatch_events').doc();
         transaction.set(evRef, {
@@ -64,7 +77,7 @@ export const advanceDispatchCore = async (db, req) => {
             to,
             actorUid: actor.uid,
             actorRole: actor.claims.role,
-            createdAt: now.toMillis(),
+            createdAt: nowMillis,
         });
         return { status: to };
     }));

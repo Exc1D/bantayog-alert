@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
-const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 
 // Mock rtdb before importing callable modules that depend on firebase-admin.ts
@@ -23,7 +22,7 @@ beforeAll(async () => {
   const guarded = await guardInitTestEnvironment(
     {
       projectId: 'accept-dispatch-test',
-      firestore: { host: 'localhost', port: 8081 },
+      firestore: { host: '127.0.0.1', port: 8081 },
     },
     'accept-dispatch',
   )
@@ -106,8 +105,10 @@ async function seedDispatchJS(
   })
 }
 
-describe('acceptDispatchCore', () => {
-  itif(available)(
+const describeWithFirestore = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip
+
+describeWithFirestore('acceptDispatchCore', () => {
+  it(
     'transitions a pending dispatch to accepted for the assigned responder',
     async () => {
       await seedReportAtStatusJS(testEnv!, 'report-1', 'assigned')
@@ -134,17 +135,27 @@ describe('acceptDispatchCore', () => {
         const dispatchSnap = await db.collection('dispatches').doc('dispatch-1').get()
         expect(dispatchSnap.data()?.status).toBe('accepted')
 
+        const reportSnap = await db.collection('reports').doc('report-1').get()
+        expect(reportSnap.data()?.status).toBe('acknowledged')
+
         const events = await db
           .collection('dispatch_events')
           .where('dispatchId', '==', 'dispatch-1')
           .get()
         const eventTos: string[] = events.docs.map((d) => (d.data() as { to: string }).to)
         expect(eventTos).toContain('accepted')
+
+        const reportEvents = await db
+          .collection('report_events')
+          .where('reportId', '==', 'report-1')
+          .where('to', '==', 'acknowledged')
+          .get()
+        expect(reportEvents.docs).toHaveLength(1)
       })
     },
   )
 
-  itif(available)('denies when caller is not the assigned responder', async () => {
+  it('denies when caller is not the assigned responder', async () => {
     await seedReportAtStatusJS(testEnv!, 'report-1', 'assigned')
     await seedDispatchJS(testEnv!, 'dispatch-1', 'report-1', 'responder-1', 'pending')
     await seedActiveAccount(testEnv!, {
@@ -166,7 +177,7 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  itif(available)('rejects when dispatch is not found (NOT_FOUND)', async () => {
+  it('rejects when dispatch is not found (NOT_FOUND)', async () => {
     await seedActiveAccount(testEnv!, {
       uid: 'responder-1',
       role: 'responder',
@@ -186,7 +197,7 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  itif(available)('returns ALREADY_EXISTS when dispatch is no longer pending', async () => {
+  it('returns ALREADY_EXISTS when dispatch is no longer pending', async () => {
     await seedReportAtStatusJS(testEnv!, 'report-3', 'assigned')
     await seedDispatchJS(testEnv!, 'dispatch-3', 'report-3', 'responder-1', 'cancelled')
     await seedActiveAccount(testEnv!, {
@@ -208,7 +219,7 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  itif(available)('is idempotent on same key', async () => {
+  it('is idempotent on same key', async () => {
     await seedReportAtStatusJS(testEnv!, 'report-4', 'assigned')
     await seedDispatchJS(testEnv!, 'dispatch-4', 'report-4', 'responder-1', 'pending')
     await seedActiveAccount(testEnv!, {
@@ -238,7 +249,7 @@ describe('acceptDispatchCore', () => {
     })
   })
 
-  itif(available)(
+  it(
     'returns RESOURCE_EXHAUSTED when responder exceeds 30 accepts/minute',
     async () => {
       await seedActiveAccount(testEnv!, {

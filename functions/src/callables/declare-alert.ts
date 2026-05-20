@@ -53,22 +53,24 @@ export async function declareAlertCore(
 
   await db.collection('alerts').doc(alertId).set(alertDoc)
 
-  // Best-effort FCM push — don't fail alert creation if push fails
-  try {
-    const { messaging } = await import('firebase-admin')
-    await messaging().send({
-      topic: 'alerts',
-      notification: {
-        title: 'Alert Issued',
-        body: validated.message,
-      },
-      data: {
-        alertId,
-        hazardType: validated.hazardType,
-      },
-    })
-  } catch (err: unknown) {
-    console.error('FCM push failed:', err)
+  if (process.env.FUNCTIONS_EMULATOR !== 'true') {
+    // Best-effort FCM push — don't fail alert creation if push fails
+    try {
+      const { messaging } = await import('firebase-admin')
+      await messaging().send({
+        topic: 'alerts',
+        notification: {
+          title: 'Alert Issued',
+          body: validated.message,
+        },
+        data: {
+          alertId,
+          hazardType: validated.hazardType,
+        },
+      })
+    } catch (err: unknown) {
+      console.error('FCM push failed:', err)
+    }
   }
 
   void streamAuditEvent({

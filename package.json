@@ -12,6 +12,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:all": "node scripts/dev-all.mjs",
+    "proof:local": "node scripts/proof-local.mjs",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "vitest run",

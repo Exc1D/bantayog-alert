@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
-const itif = (condition: boolean) => (condition ? it : it.skip)
 import { Timestamp } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({
@@ -19,7 +18,7 @@ beforeAll(async () => {
   const guarded = await guardInitTestEnvironment(
     {
       projectId: 'advance-dispatch-test',
-      firestore: { host: 'localhost', port: 8081 },
+      firestore: { host: '127.0.0.1', port: 8081 },
     },
     'advance-dispatch',
   )
@@ -37,11 +36,13 @@ afterAll(async () => {
   await testEnv?.cleanup()
 })
 
-describe('advanceDispatchCore', () => {
-  itif(available)('advances dispatch from accepted to acknowledged and creates event', async () => {
+const describeWithFirestore = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip
+
+describeWithFirestore('advanceDispatchCore', () => {
+  it('advances dispatch from accepted to acknowledged and creates event', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
-      const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
+      const { reportId } = await seedReportAtStatus(db, 'on_scene', { municipalityId: 'daet' })
       const { dispatchId } = await seedDispatch(db, {
         reportId,
         responderUid: 'r1',
@@ -68,6 +69,9 @@ describe('advanceDispatchCore', () => {
       expect(dispatch.status).toBe('acknowledged')
       expect(dispatch.acknowledgedAt).toBeDefined()
 
+      const report = (await db.collection('reports').doc(reportId).get()).data()
+      expect(report.status).toBe('acknowledged')
+
       const evts = await db
         .collection('dispatch_events')
         .where('dispatchId', '==', dispatchId)
@@ -78,10 +82,17 @@ describe('advanceDispatchCore', () => {
         to: 'acknowledged',
         actorUid: 'r1',
       })
+
+      const reportEvents = await db
+        .collection('report_events')
+        .where('reportId', '==', reportId)
+        .where('to', '==', 'acknowledged')
+        .get()
+      expect(reportEvents.docs).toHaveLength(1)
     })
   })
 
-  itif(available)(
+  it(
     'rejects INVALID_STATUS_TRANSITION for backward steps (en_route -> acknowledged)',
     async () => {
       await testEnv!.withSecurityRulesDisabled(async (ctx) => {
@@ -112,7 +123,7 @@ describe('advanceDispatchCore', () => {
     },
   )
 
-  itif(available)('rejects when dispatch is NOT_FOUND', async () => {
+  it('rejects when dispatch is NOT_FOUND', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await seedActiveAccount(testEnv!, {
@@ -133,10 +144,10 @@ describe('advanceDispatchCore', () => {
     })
   })
 
-  itif(available)('rejects when resolutionSummary is missing for resolved transition', async () => {
+  it('rejects when resolutionSummary is missing for resolved transition', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
-      const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
+      const { reportId } = await seedReportAtStatus(db, 'on_scene', { municipalityId: 'daet' })
       const { dispatchId } = await seedDispatch(db, {
         reportId,
         responderUid: 'r1',
@@ -161,7 +172,7 @@ describe('advanceDispatchCore', () => {
     })
   })
 
-  itif(available)('advances to resolved with resolutionSummary and lastStatusAt', async () => {
+  it('advances to resolved with resolutionSummary and lastStatusAt', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
@@ -193,6 +204,16 @@ describe('advanceDispatchCore', () => {
       expect(dispatch.resolutionSummary).toBe('Fire extinguished')
       expect(dispatch.lastStatusAt).toBeDefined()
       expect(dispatch.resolvedAt).toBeDefined()
+
+      const report = (await db.collection('reports').doc(reportId).get()).data()
+      expect(report.status).toBe('resolved')
+
+      const reportEvents = await db
+        .collection('report_events')
+        .where('reportId', '==', reportId)
+        .where('to', '==', 'resolved')
+        .get()
+      expect(reportEvents.docs).toHaveLength(1)
     })
   })
 })

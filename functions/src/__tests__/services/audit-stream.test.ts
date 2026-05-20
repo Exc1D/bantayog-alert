@@ -32,6 +32,27 @@ beforeEach(() => {
 })
 
 describe('streamAuditEvent', () => {
+  it('skips BigQuery and dead letters in the functions emulator', async () => {
+    const originalFunctionsEmulator = process.env.FUNCTIONS_EMULATOR
+    process.env.FUNCTIONS_EMULATOR = 'true'
+    try {
+      await streamAuditEvent({
+        eventType: 'test_event',
+        actorUid: 'uid-1',
+        occurredAt: 1713350400000,
+      })
+
+      expect(mockInsert).not.toHaveBeenCalled()
+      expect(mockAdd).not.toHaveBeenCalled()
+    } finally {
+      if (originalFunctionsEmulator === undefined) {
+        delete process.env.FUNCTIONS_EMULATOR
+      } else {
+        process.env.FUNCTIONS_EMULATOR = originalFunctionsEmulator
+      }
+    }
+  })
+
   it('inserts the event into BigQuery without throwing on success', async () => {
     mockInsert.mockResolvedValueOnce(undefined)
     await streamAuditEvent({

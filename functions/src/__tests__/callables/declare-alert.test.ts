@@ -71,12 +71,14 @@ const validInput = {
 describe('declareAlertCore', () => {
   let mockDb: ReturnType<typeof createMockDb>
   const originalNodeEnv = process.env.NODE_ENV
+  const originalFunctionsEmulator = process.env.FUNCTIONS_EMULATOR
 
   beforeEach(() => {
     mockDb = createMockDb()
     mockStreamAuditEvent.mockClear()
     mockSend.mockClear()
     process.env.NODE_ENV = 'development'
+    delete process.env.FUNCTIONS_EMULATOR
   })
 
   afterEach(() => {
@@ -85,6 +87,11 @@ describe('declareAlertCore', () => {
       delete process.env.NODE_ENV
     } else {
       process.env.NODE_ENV = originalNodeEnv
+    }
+    if (originalFunctionsEmulator === undefined) {
+      delete process.env.FUNCTIONS_EMULATOR
+    } else {
+      process.env.FUNCTIONS_EMULATOR = originalFunctionsEmulator
     }
   })
 
@@ -193,6 +200,15 @@ describe('declareAlertCore', () => {
         }),
       }),
     )
+  })
+
+  it('skips FCM push in the functions emulator', async () => {
+    process.env.FUNCTIONS_EMULATOR = 'true'
+
+    const result = await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
+
+    expect(result.alertId).toBeDefined()
+    expect(mockSend).not.toHaveBeenCalled()
   })
 
   it('does not fail alert creation if FCM push fails', async () => {

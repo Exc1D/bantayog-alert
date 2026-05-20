@@ -26,12 +26,18 @@ export const DEAD_LETTER_STATUS_STREAMED = 'streamed'
 const bq = new BigQuery()
 const table = bq.dataset('bantayog_audit').table('streaming_events')
 
+function shouldSkipExternalAuditStream(): boolean {
+  return process.env.FUNCTIONS_EMULATOR === 'true'
+}
+
 /** Attempts to stream an audit event; throws on BigQuery failure (for callers that need to know). */
 export async function streamAuditEventOrThrow(event: AuditStreamEvent): Promise<void> {
+  if (shouldSkipExternalAuditStream()) return
   await table.insert([event])
 }
 
 export async function streamAuditEvent(event: AuditStreamEvent): Promise<void> {
+  if (shouldSkipExternalAuditStream()) return
   try {
     await streamAuditEventOrThrow(event)
   } catch (err) {

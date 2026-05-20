@@ -72,6 +72,44 @@ export const callables = {
       functions,
       'closeReport',
     )(payload).then((r) => r.data),
+  shareReport: (payload: {
+    reportId: string
+    targetMunicipalityId: string
+    reason?: string
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { status: 'shared' }>(
+      functions,
+      'shareReport',
+    )(payload).then((r) => r.data),
+  mergeDuplicates: (payload: {
+    primaryReportId: string
+    duplicateReportIds: string[]
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { success: true; mergedCount: number } | { success: false; errorCode: string }>(
+      functions,
+      'mergeDuplicates',
+    )(payload).then((r) => r.data),
+  addCommandChannelMessage: (payload: {
+    threadId: string
+    body: string
+    idempotencyKey: IdempotencyKey
+  }) =>
+    httpsCallable<typeof payload, { status: 'sent' }>(
+      functions,
+      'addCommandChannelMessage',
+    )(payload).then((r) => r.data),
+  enterFieldMode: () =>
+    httpsCallable<Record<string, never>, { status: 'entered'; expiresAt: number }>(
+      functions,
+      'enterFieldMode',
+    )({}).then((r) => r.data),
+  exitFieldMode: () =>
+    httpsCallable<Record<string, never>, { status: 'exited' }>(
+      functions,
+      'exitFieldMode',
+    )({}).then((r) => r.data),
   acceptAgencyAssistance: (payload: { requestId: string; idempotencyKey: IdempotencyKey }) =>
     httpsCallable<typeof payload, { status: 'accepted' }>(
       functions,
@@ -148,6 +186,15 @@ export const callables = {
     exempt: boolean
     reason: string
   }) => httpsCallable<typeof payload>(functions, 'setRetentionExempt')(payload).then((r) => r.data),
+  setErasureLegalHold: (payload: {
+    erasureRequestId: string
+    hold: boolean
+    reason: string
+  }) =>
+    httpsCallable<typeof payload>(
+      functions,
+      'setErasureLegalHold',
+    )(payload).then((r) => r.data),
   approveErasureRequest: (payload: {
     erasureRequestId: string
     approved: boolean

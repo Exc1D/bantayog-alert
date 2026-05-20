@@ -4,13 +4,15 @@ import { render, screen, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockDivIcon = vi.hoisted(() => vi.fn(() => ({ _kind: 'divIcon' })))
+const mockUseOwnDispatches = vi.hoisted(() => vi.fn())
+const mockUseReport = vi.hoisted(() => vi.fn())
 
 vi.mock('@bantayog/shared-ui', () => ({ useAuth: () => ({ user: { uid: 'uid-1' } }) }))
 vi.mock('../hooks/useOwnDispatches', () => ({
-  useOwnDispatches: () => ({ groups: { active: [], pending: [] }, rows: [], error: null }),
+  useOwnDispatches: mockUseOwnDispatches,
 }))
 vi.mock('../hooks/useReport', () => ({
-  useReport: () => ({ report: null, loading: false }),
+  useReport: mockUseReport,
 }))
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: React.ReactNode }) => (
@@ -30,6 +32,15 @@ vi.mock('leaflet', () => ({
 import { MapPage } from './MapPage'
 
 describe('MapPage', () => {
+  beforeEach(() => {
+    mockUseOwnDispatches.mockReturnValue({
+      groups: { active: [], pending: [] },
+      rows: [],
+      error: null,
+    })
+    mockUseReport.mockReturnValue({ report: null, loading: false })
+  })
+
   it('renders map container', () => {
     render(
       <MemoryRouter>
@@ -58,6 +69,42 @@ describe('MapPage', () => {
     // divIcon uses inline HTML — no remote iconUrl
     expect(config.html).toBeDefined()
     expect(config.iconUrl).toBeUndefined()
+  })
+
+  it('builds admin-style circular incident markers with semantic severity color', () => {
+    const initialIconCalls = mockDivIcon.mock.calls.length
+    mockUseOwnDispatches.mockReturnValue({
+      groups: { active: [{ dispatchId: 'disp-1', reportId: 'report-1' }], pending: [] },
+      rows: [],
+      error: null,
+    })
+    mockUseReport.mockReturnValue({
+      report: {
+        publicLocation: { latitude: 14.1, longitude: 122.9 },
+        reportType: 'flood',
+        severity: 'high',
+        municipalityId: 'daet',
+        municipalityLabel: 'Daet',
+      },
+      loading: false,
+    })
+
+    render(
+      <MemoryRouter>
+        <MapPage />
+      </MemoryRouter>,
+    )
+
+    const newIconHtml = mockDivIcon.mock.calls
+      .slice(initialIconCalls)
+      .map((call) => {
+        const [config] = call as unknown as { html?: unknown }[]
+        return typeof config?.html === 'string' ? config.html : ''
+      })
+      .join('\n')
+    expect(newIconHtml).toContain('data-pin-role="incident"')
+    expect(newIconHtml).toContain('var(--red-urgent)')
+    expect(newIconHtml).not.toContain('transform:rotate(45deg)')
   })
 
   it('renders a Recenter button so the user can re-pan back to their GPS fix', () => {

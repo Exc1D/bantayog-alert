@@ -59,7 +59,7 @@ The responder app listens to `dispatches` where `assignedTo.uid` matches the res
 
 ### 4.5 Test Harness Drift
 
-`scripts/dev-all.mjs` starts Admin Desktop on `4173` and Responder App on `3001`, while the E2E Playwright config expects `5175` and `5174`. Any proof command must remove or document this drift so engineers do not test the wrong server.
+Resolved locally: `scripts/dev-all.mjs`, Playwright local config, and the root `pnpm proof:local` runner now agree on Citizen `5173`, Responder `5174`, and Admin Desktop `5175`. Any future proof command must reuse these values or fail loudly before browser tests start.
 
 ## 5. Design
 
@@ -74,7 +74,7 @@ The proof harness should assert each checkpoint separately:
 5. Citizen PWA renders the alert from Firestore.
 6. `dispatches/{dispatchId}` exists with `assignedTo.uid`, `status`, `reportId`, and `dispatchedAt`.
 7. Responder App renders the dispatch.
-8. Responder callable actions can accept and progress the dispatch.
+8. Responder callable actions can accept/progress the dispatch and synchronously mirror the parent report status.
 
 The failure output should name the first failed checkpoint. A timeout without context is a bug in the proof harness.
 
@@ -82,11 +82,12 @@ The failure output should name the first failed checkpoint. A timeout without co
 
 Local mode should:
 
-1. Start Firebase emulators and all three app dev servers with `VITE_USE_EMULATOR=true`.
-2. Seed municipalities, admin user, citizen auth path, responder user, and responder availability.
-3. Submit a report through the Citizen PWA or a browser-level equivalent that exercises the same client write path.
-4. Run the manual inbox processor because the local Firestore trigger is known to be unreliable in the emulator.
-5. Verify Admin Desktop, Citizen PWA alerts, and Responder App through the UI or explicit Firestore-backed assertions.
+1. Run through `pnpm proof:local` so `functions-dist` is rebuilt before emulators boot, the app/emulator ports are preflighted, and teardown is owned by one process.
+2. Start Firebase emulators and all three app dev servers with `VITE_USE_EMULATOR=true`.
+3. Seed municipalities, admin user, citizen auth path, responder user, and responder availability.
+4. Submit a report through the Citizen PWA or a browser-level equivalent that exercises the same client write path.
+5. Run the manual inbox processor because the local Firestore trigger is known to be unreliable in the emulator.
+6. Verify Admin Desktop, Citizen PWA alerts, and Responder App through the UI or explicit Firestore-backed assertions.
 
 ### 5.3 Staging Mode
 

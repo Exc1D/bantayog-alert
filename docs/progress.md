@@ -2,12 +2,30 @@
 
 ## Current Status (2026-05-20)
 
-**Reliability Spine review follow-ups in progress.**
+**Frontend map pin and callable parity polish complete locally.**
+
+- Responder Map incident pins now match the Admin Desktop ops language: circular offline-safe `L.divIcon` markers, type icons, and semantic high/medium/low severity colors. Citizen PWA dot/ring pins were verified and left intentionally distinct.
+- Added missing production frontend callable counterparts for the remaining backend `onCall` exports: admin wrappers for command-channel message, field mode enter/exit, duplicate merge, legal hold, and report share; responder hook for accepting responder shift handoffs.
+- Callable parity AST audit is now clean both ways: 55 backend callables, 55 production frontend callable names, 0 backend-only gaps, 0 frontend-only gaps.
+- **Gate:** responder map/handoff tests pass · admin callable tests pass · citizen map layer tests pass · responder/admin typecheck pass · targeted responder/admin lint pass · responder/admin production builds pass with `VITE_USE_EMULATOR=false`.
+
+---
+
+## Current Status (2026-05-20)
+
+**Reliability Spine review follow-ups complete locally.**
 
 - Added normal Vitest discovery for reliability proof fixture tests and root script guard tests.
 - Added staging preflight in the Playwright proof harness: required proof account env vars, Auth users, active account docs, municipality scope, and emulator-env leakage are checked before browser contexts write data.
 - Hardened proof cleanup so it can discover report/dispatch/alert IDs from ledger anchors and attempts every delete before reporting cleanup failures.
 - Manual inbox processor tests now run through the normal functions Vitest config instead of a one-off config.
+- Added root `pnpm proof:local` as the single local proof command: prepares `functions-dist`, starts `pnpm dev:all`, waits for emulators/apps, runs C00-C09, and tears the stack down.
+- Tightened proof teardown by closing browser contexts before cleanup deletes test data, preventing cleanup-only listener errors from looking like app failures.
+- Moved critical dispatch-to-report status mirroring into responder callable transactions (`acceptDispatch`, `advanceDispatch`) so report state no longer depends on an async Firestore trigger under load or in local proof.
+- C08 now asserts both `dispatches/{dispatchId}.status` and parent `reports/{reportId}.status` reach `on_scene`.
+- Local emulator mode now skips external FCM alert push and BigQuery audit streaming instead of letting proof runs touch real Google APIs.
+- Root proof preflights every port owned by `pnpm dev:all`, including Emulator UI, Hosting, Pub/Sub, Storage, and the three Vite apps, so stale local processes fail before half-starting the stack.
+- **Gate:** callable mirror tests pass under Firestore emulator · alert/audit external-sink tests pass · functions lint/typecheck pass · `pnpm exec vitest run scripts/proof-local.test.ts` pass · `pnpm proof:local` pass with managed startup/shutdown and synchronous C08 report-status assertion.
 
 ---
 

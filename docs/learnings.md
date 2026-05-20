@@ -60,6 +60,7 @@
 - Rules transition tests must match the actual transition table in `firestore.rules`.
 - Cross-app proof harnesses need a staging preflight before any browser flow writes data. Verify required proof account env vars, Auth users, active account docs, role scope, and absence of emulator env leakage up front; otherwise App Check/Auth/scope failures surface as ambiguous UI timeouts.
 - Cleanup for staging proof runs must discover related IDs from durable anchors (`publicRef`, `testRunId`, `reportId`) and attempt every delete with `Promise.allSettled`. A single failed delete must not prevent cleanup of the remaining test artifacts.
+- Callable parity must be checked from both directions: every production `httpsCallable()` name must map to a backend `onCall`, and every exported backend `onCall` needs a production frontend wrapper or hook. Use an AST check instead of regex, because response string literals create false positives.
 
 ## Firestore
 
@@ -214,6 +215,7 @@
 - Routes bypassing the shell need their own `<main id="main-content">` so the skip-link stays consistent.
 - Severity colors MUST be consistent across ALL views. Centralize in one constant and import everywhere.
 - `React.lazy()` components FAIL when offline. Eager import for states shown offline, or provide inline fallback UI.
+- Ops map pins should not drift by app. Admin Desktop and Responder App use offline-safe `L.divIcon` circular incident pins with type icons and semantic severity colors; Citizen PWA intentionally keeps its distinct dot/ring citizen-facing pin language.
 
 ## Wizard / Multi-step Forms
 
@@ -352,3 +354,10 @@
 - **Responder UI labels are not raw backend states.** `accepted`, `acknowledged`, and `en_route` all map to the "En Route" UI state. E2E proof should assert exact Firestore state transitions, then assert the next action button is visible.
 - **Materialized reports do not store `publicRef` on `reports/{reportId}`.** The correlation contract is `report_lookup/{publicRef}.reportId -> reports/{reportId}`. Idempotency checks should prove the lookup remains stable and the target report exists.
 - **Local Auth emulator can emit transient `auth/network-request-failed` refresh noise.** Do not treat that specific console line as proof-blocking when deterministic listener/doc assertions still pass; keep `permission-denied`, `unauthenticated`, App Check, region, and internal errors fatal.
+- **Use the root proof runner for local cross-app verification.** `pnpm proof:local` prepares `functions-dist`, starts emulators plus the three app dev servers, waits on the managed ports, runs C00-C09, and tears the stack down. This removes the old operator-memory failure mode of starting services in the wrong order or against stale functions.
+- **Preflight every port owned by `dev:all`, not only ports the E2E directly calls.** Pub/Sub `8085`, Storage `9199`, Hosting `5002/5007/5008`, and Emulator UI `4000` can block Firebase emulator startup even though Playwright never connects to them directly.
+- **Vite readiness is host-sensitive.** The app dev servers advertise `http://localhost:*` and may not answer `127.0.0.1:*` on every machine. Managed readiness checks should use `localhost` for Vite apps and `127.0.0.1` for Firebase emulators.
+- **Close proof browser contexts before deleting proof data.** If cleanup deletes dispatch/report docs while pages are still open, live Firestore listeners can log `permission-denied`/null-rule errors during teardown. That is harness noise, not product behavior.
+- **The local Firebase v2 Firestore trigger protobuf bug also hits `onDocumentWritten`.** `dispatchMirrorToReport` can log `Failed to decode protobuf and create a before snapshot` in the emulator before our trigger code runs. Keep critical report-state transitions in the responder callable transaction path so local and staging proof do not depend on async trigger mirroring.
+- **Do not use `itif(available)` when `available` is assigned in `beforeAll`.** Vitest registers tests before hooks run, so `const itif = (available ? it : it.skip)` makes the suite permanently skipped. Gate emulator-backed suites on static env (`FIRESTORE_EMULATOR_HOST`) and let the hook initialize the test environment.
+- **Local proof must not call external sinks.** When `FUNCTIONS_EMULATOR=true`, FCM alert push and BigQuery audit streaming should no-op instead of relying on caught failures. A local reliability command that reaches real Google APIs is not isolated enough to trust.

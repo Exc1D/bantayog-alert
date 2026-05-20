@@ -8,6 +8,7 @@ import { bantayogErrorToHttps } from './https-error.js'
 import { checkRateLimit } from '../services/rate-limit.js'
 import { shouldEnforceAppCheck } from './app-check-config.js'
 import { isAccountActive } from './admin-auth.js'
+import { mirrorDispatchStatusToReportInTransaction } from './dispatch-report-mirror.js'
 
 export const acceptDispatchRequestSchema = z
   .object({
@@ -62,6 +63,7 @@ export async function acceptDispatchCore(
         }
         const d = snap.data() as {
           status: string
+          reportId?: string
           assignedTo?: { uid: string; agencyId: string; municipalityId: string }
         }
         // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
@@ -76,10 +78,23 @@ export async function acceptDispatchCore(
           )
         }
 
+        const nowMillis = deps.now.toMillis()
+        await mirrorDispatchStatusToReportInTransaction({
+          db,
+          tx,
+          dispatchId: deps.dispatchId,
+          reportId: d.reportId,
+          afterStatus: 'accepted',
+          actorUid: deps.actor.uid,
+          actorRole: 'responder',
+          nowMillis,
+          correlationId,
+        })
+
         tx.update(dispatchRef, {
           status: 'accepted',
-          acceptedAt: deps.now.toMillis(),
-          lastStatusAt: deps.now.toMillis(),
+          acceptedAt: nowMillis,
+          lastStatusAt: nowMillis,
         })
 
         const agencyId = assignedTo.agencyId
@@ -95,7 +110,7 @@ export async function acceptDispatchCore(
           actorRole: 'responder',
           agencyId,
           municipalityId,
-          at: deps.now.toMillis(),
+          at: nowMillis,
           correlationId,
           schemaVersion: 1,
         })
@@ -108,7 +123,7 @@ export async function acceptDispatchCore(
           agencyId,
           municipalityId,
           action: 'accepted',
-          at: deps.now.toMillis(),
+          at: nowMillis,
           correlationId,
           schemaVersion: 1,
         })

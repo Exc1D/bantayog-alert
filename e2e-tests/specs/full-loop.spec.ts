@@ -385,15 +385,20 @@ test.describe('reliability spine', () => {
       await expect
         .poll(async () => (await db.collection('dispatches').doc(dispatchId).get()).data()?.status)
         .toBe('on_scene')
+      await expect
+        .poll(async () => (await db.collection('reports').doc(ledger.reportId ?? '').get()).data()?.status)
+        .toBe('on_scene')
       logCheckpoint({
         testRunId: ledger.testRunId,
         checkpoint: 'C08',
         status: 'passed',
         target: ledger.target,
-        expected: 'Responder progression advances through accepted, acknowledged, en_route, and on_scene',
+        expected:
+          'Responder progression advances dispatch and parent report through acknowledged, en_route, and on_scene',
         observed: {
           dispatchId: ledger.dispatchId,
           finalStatus: (await db.collection('dispatches').doc(ledger.dispatchId).get()).data()?.status,
+          reportStatus: (await db.collection('reports').doc(ledger.reportId ?? '').get()).data()?.status,
         },
       })
 
@@ -443,6 +448,11 @@ test.describe('reliability spine', () => {
       })
       throw error
     } finally {
+      await Promise.all([
+        citizenContext.close(),
+        adminContext.close(),
+        responderContext.close(),
+      ])
       await cleanupProofRun(cleanupContext, ledger).catch((cleanupError: unknown) => {
         console.error(
           JSON.stringify({
@@ -453,11 +463,6 @@ test.describe('reliability spine', () => {
           }),
         )
       })
-      await Promise.all([
-        citizenContext.close(),
-        adminContext.close(),
-        responderContext.close(),
-      ])
     }
   })
 })

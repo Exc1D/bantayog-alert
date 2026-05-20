@@ -48,3 +48,52 @@ describe('callables.escalateDispatch', () => {
     })
   })
 })
+
+describe('callables backend/frontend coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const coveredBackendOnlyCallables = {
+    addCommandChannelMessage: {
+      threadId: 'thread-1',
+      body: 'Need status update',
+      idempotencyKey: 'a1b2c3d4-0000-4000-8000-000000000001',
+    },
+    enterFieldMode: undefined,
+    exitFieldMode: undefined,
+    mergeDuplicates: {
+      primaryReportId: 'report-1',
+      duplicateReportIds: ['report-2'],
+      idempotencyKey: 'a1b2c3d4-0000-4000-8000-000000000002',
+    },
+    setErasureLegalHold: {
+      erasureRequestId: 'erase-1',
+      hold: true,
+      reason: 'Pending counsel review',
+    },
+    shareReport: {
+      reportId: 'report-1',
+      targetMunicipalityId: 'labo',
+      reason: 'Border incident',
+      idempotencyKey: 'a1b2c3d4-0000-4000-8000-000000000003',
+    },
+  } as const
+
+  it.each(Object.entries(coveredBackendOnlyCallables))(
+    'exposes %s through the admin frontend callable surface',
+    async (name, payload) => {
+      const callable = callables[name as keyof typeof callables] as (
+        ...args: unknown[]
+      ) => Promise<unknown>
+
+      if (payload === undefined) {
+        await callable()
+      } else {
+        await callable(payload)
+      }
+
+      expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), name)
+    },
+  )
+})

@@ -1,7 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import { Crosshair } from 'lucide-react'
+import {
+  AlertTriangle,
+  Building,
+  Car,
+  CloudLightning,
+  Crosshair,
+  Flame,
+  HeartPulse,
+  Mountain,
+  ShieldAlert,
+  Waves,
+  Wind,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { renderToString } from 'react-dom/server'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
@@ -10,27 +24,72 @@ import { getReportTypeLabel } from '../lib/incident-labels'
 import styles from './MapPage.module.css'
 
 // Inline SVG / HTML markers so the responder app stays usable offline
-// (no unpkg/cdn dependency). Mirrors apps/citizen-pwa IncidentLayer pattern.
+// (no unpkg/cdn dependency). Mirrors admin-desktop's ops marker language.
 const responderIcon = L.divIcon({
   className: 'bantayog-responder-marker',
-  html: '<div style="width:18px;height:18px;border-radius:50%;background:#1d4ed8;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+  html: '<div data-pin-role="responder" style="width:12px;height:12px;border-radius:50%;background:var(--blue-responder);border:2px solid var(--text-primary);box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>',
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
 })
 
 function getSeverityColor(severity: 'low' | 'medium' | 'high' | undefined): string {
-  if (severity === 'high') return '#991b1b'
-  if (severity === 'medium') return '#92400e'
-  return '#065f46'
+  if (severity === 'high') return 'var(--red-urgent)'
+  if (severity === 'medium') return 'var(--amber-accent)'
+  return '#334155'
 }
 
-function buildIncidentIcon(severity: 'low' | 'medium' | 'high' | undefined): L.DivIcon {
+const REPORT_TYPE_ICONS: Record<string, LucideIcon> = {
+  flood: Waves,
+  fire: Flame,
+  earthquake: CloudLightning,
+  typhoon: Wind,
+  landslide: Mountain,
+  storm_surge: Waves,
+  medical: HeartPulse,
+  accident: Car,
+  structural: Building,
+  security: ShieldAlert,
+  other: AlertTriangle,
+}
+
+function getReportTypeIcon(reportType: string | undefined): LucideIcon {
+  if (!reportType) return AlertTriangle
+  return REPORT_TYPE_ICONS[reportType] ?? AlertTriangle
+}
+
+function buildIncidentIcon(
+  severity: 'low' | 'medium' | 'high' | undefined,
+  reportType: string | undefined,
+): L.DivIcon {
   const fill = getSeverityColor(severity)
+  const Icon = getReportTypeIcon(reportType)
+  const html = renderToString(
+    <div
+      data-pin-role="incident"
+      style={{
+        width: 24,
+        height: 24,
+        backgroundColor: fill,
+        borderRadius: '50%',
+        border: '2px solid var(--text-primary)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      }}
+    >
+      <Icon
+        aria-hidden="true"
+        strokeWidth={2.5}
+        style={{ width: 13, height: 13, color: 'var(--text-primary)' }}
+      />
+    </div>,
+  )
   return L.divIcon({
     className: 'bantayog-incident-marker',
-    html: `<div style="width:22px;height:22px;border-radius:4px;background:${fill};border:2px solid var(--text-primary);box-shadow:0 1px 4px rgba(0,0,0,0.3);transform:rotate(45deg);"></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    html,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
   })
 }
 
@@ -67,7 +126,7 @@ function ActiveDispatchMarker({ reportId }: { reportId: string }) {
   const lat = report.publicLocation.latitude
   const lng = report.publicLocation.longitude
   return (
-    <Marker position={[lat, lng]} icon={buildIncidentIcon(report.severity)}>
+    <Marker position={[lat, lng]} icon={buildIncidentIcon(report.severity, report.reportType)}>
       <Popup>
         <strong>{getReportTypeLabel(report.reportType)}</strong>
         <br />
