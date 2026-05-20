@@ -51,6 +51,6 @@ describe('DashboardPage Firestore wiring', () => {
 
   it('renders reports from Firestore hook', () => {
     render(<DashboardPage />, { wrapper: BrowserRouter })
-    expect(screen.getAllByText('Daet').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Daet')).toBeInTheDocument()
   })
 })

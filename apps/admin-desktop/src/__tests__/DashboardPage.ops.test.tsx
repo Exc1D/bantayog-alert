@@ -50,6 +50,19 @@ vi.mock('../hooks/useDispatchLifecycle', () => ({
         fcmWarnings: null,
         timeline: [],
       },
+      {
+        dispatchId: 'd2',
+        reportId: 'r2',
+        status: 'needs_admin',
+        responderName: 'B',
+        responderAgency: 'MDRRMO',
+        dispatchedAt: Date.now(),
+        deadlineAt: Date.now() + 300000,
+        escalationCount: 2,
+        fcmResult: null,
+        fcmWarnings: null,
+        timeline: [],
+      },
     ],
     loading: false,
     error: null,
@@ -140,15 +153,9 @@ describe('DashboardPage ops redesign', () => {
 
   it('focuses first re-dispatch button on R key', () => {
     renderWithRouter(<DashboardPage />)
-    const button = document.createElement('button')
-    button.setAttribute('aria-label', 'Re-dispatch d1')
-    document.body.appendChild(button)
+    const button = screen.getByRole('button', { name: /^Re-dispatch/ })
     const focusSpy = vi.spyOn(button, 'focus')
-    const qsSpy = vi.spyOn(document, 'querySelector').mockReturnValueOnce(button)
     fireEvent.keyDown(window, { key: 'r' })
-    expect(qsSpy).toHaveBeenCalledWith('[aria-label^="Re-dispatch"]')
     expect(focusSpy).toHaveBeenCalled()
-    document.body.removeChild(button)
-    vi.restoreAllMocks()
   })
 })

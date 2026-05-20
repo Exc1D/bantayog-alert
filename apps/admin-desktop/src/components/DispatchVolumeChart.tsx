@@ -9,10 +9,10 @@ interface Props {
 }
 
 export function DispatchVolumeChart({ rows, isLoading }: Props) {
-  // eslint-disable-next-line react-hooks/purity -- intentionally impure: reads current time on each render for a real-time dashboard
-  const now = Date.now()
   const { counts, maxCount, hasData } = useMemo(() => {
     const c: number[] = new Array(24).fill(0)
+    // eslint-disable-next-line react-hooks/purity -- intentionally impure: reads current time inside useMemo for real-time chart
+    const now = Date.now()
     const oneDayAgo = now - 24 * 60 * 60 * 1000
     for (const row of rows) {
       const raw = row.dispatchedAt
@@ -31,7 +31,7 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
       maxCount: Math.max(...c, 1),
       hasData: c.some((x) => x > 0),
     }
-  }, [rows, now])
+  }, [rows])
 
   return (
     <section aria-label="Dispatch volume last 24 hours">
