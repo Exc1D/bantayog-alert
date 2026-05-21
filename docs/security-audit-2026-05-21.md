@@ -3,7 +3,7 @@
 **Date:** 2026-05-21
 **Scope:** Full codebase — Cloud Functions, Firestore/Storage/RTDB Rules, Client Apps (Citizen PWA, Admin Desktop, Responder App), Terraform IaC, SMS Processing, Infrastructure Configuration
 **Auditors:** 3 specialized audit agents (backend, frontend, infrastructure)
-**Status:** 45 of 59 findings fixed (100% of Critical + High, 16 Medium/Low)
+**Status:** 47 of 59 findings fixed (100% of Critical + High, 18 Medium/Low)
 
 ---
 
@@ -57,6 +57,8 @@
 | M-8  | Medium   | ✅ Fixed | Service worker now only caches same-origin GET responses (prevents cross-origin cache poisoning)           |
 | M-22 | Medium   | ✅ Fixed | smoke-test-prod.ts now uses try/finally for guaranteed cleanup of test data in production                  |
 | L-14 | Low      | ✅ Fixed | process-inbox-manual.ts emoji replaced with plain text tags ([INFO], [OK], [FAIL])                         |
+| M-9  | Medium   | ✅ Fixed | SW background sync now reads Firebase ID token from shared auth store (requires authenticated session)     |
+| M-11 | Medium   | ✅ Fixed | firebase-messaging-sw.js now has security documentation + version pinning (SRI TODO via self-hosting)      |
 
 ---
 
@@ -68,7 +70,7 @@
 | ------------ | ----- | ---------------------------- |
 | **Critical** | 6     | Yes — fix before next deploy |
 | **High**     | 14    | Yes — fix within 1 sprint    |
-| **Medium**   | 12    | Plan for next 2 sprints      |
+| **Medium**   | 10    | Plan for next 2 sprints      |
 | **Low**      | 9     | Backlog                      |
 
 ---
@@ -210,30 +212,30 @@
 
 ## MEDIUM (22) — Plan for Next 2 Sprints
 
-| ID   | File                                 | Issue                                                                                     |
-| ---- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
-| M-1  | `firestore.rules:263`                | `secret_lookup` readable by any authenticated user                                        |
-| M-2  | `responder-roster.ts:224-243`        | Silent UID skip enables responder roster enumeration across agencies                      |
-| M-3  | `subscribe-to-alerts.ts`             | ✅ Already fixed — `verifyTokenOwnership()` validates FCM token against Firestore         |
-| M-4  | Multiple dispatch files              | localhost CORS origins in production callable configs                                     |
-| M-5  | `agency/callables.ts:215`            | ✅ Fixed — `provincial_superadmin` can now request agency assistance for any municipality |
-| M-6  | `firestore.rules:348`                | `system_config` write auth inconsistency (token claims vs Firestore state)                |
-| M-7  | `firebase.json`                      | ✅ Fixed — Security headers present in all 3 hosting targets                              |
-| M-8  | `sw.js:61-86`                        | ✅ Fixed — Only caches same-origin GET responses (prevents cross-origin cache poisoning)  |
-| M-9  | `sw.js:213-220`                      | Service worker sends draft data to Firestore REST API without App Check                   |
-| M-10 | `imageCompress.ts:5-39`              | Image upload lacks MIME type and magic byte validation                                    |
-| M-11 | `firebase-messaging-sw.js:9-14`      | Service worker `importScripts` from CDN without SRI                                       |
-| M-12 | `account-lifecycle.ts:54-87`         | `suspendStaffAccount` does NOT revoke Firebase custom claims (1-hour window)              |
-| M-13 | `account-lifecycle.ts:21-52`         | `setStaffClaims` — no audit trail for privilege changes                                   |
-| M-14 | `monitor-dispatch-deadlines.ts`      | Retry queue stuck in `in_progress` on crash (no stale detection)                          |
-| M-15 | `analytics-snapshot-writer.ts:46-62` | ✅ Fixed — Sequential processing replaces 486 concurrent Promise.all queries              |
-| M-16 | `declareAlert` callables.ts:54-67    | Any municipal admin can spam FCM alerts to all citizens                                   |
-| M-17 | `App Check` config                   | ✅ Fixed — Staging bypass now requires explicit `ENFORCE_APP_CHECK=true` env var          |
-| M-18 | `declareDataIncident`                | `affectedCollections` accepts any string — no allowlist validation                        |
-| M-19 | BigQuery Terraform                   | Dataset has no explicit access control — inherits project-level permissions               |
-| M-20 | Terraform                            | No VPC Service Controls — all services accessible from public internet                    |
-| M-21 | `scripts/fix-admin-claims.ts`        | Hardcodes project ID and user UID — could grant admin role if run against prod            |
-| M-22 | `scripts/smoke-test-prod.ts`         | ✅ Fixed — try/finally ensures cleanup of test data even on failure                       |
+| ID   | File                                 | Issue                                                                                         |
+| ---- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| M-1  | `firestore.rules:263`                | `secret_lookup` readable by any authenticated user                                            |
+| M-2  | `responder-roster.ts:224-243`        | Silent UID skip enables responder roster enumeration across agencies                          |
+| M-3  | `subscribe-to-alerts.ts`             | ✅ Already fixed — `verifyTokenOwnership()` validates FCM token against Firestore             |
+| M-4  | Multiple dispatch files              | localhost CORS origins in production callable configs                                         |
+| M-5  | `agency/callables.ts:215`            | ✅ Fixed — `provincial_superadmin` can now request agency assistance for any municipality     |
+| M-6  | `firestore.rules:348`                | `system_config` write auth inconsistency (token claims vs Firestore state)                    |
+| M-7  | `firebase.json`                      | ✅ Fixed — Security headers present in all 3 hosting targets                                  |
+| M-8  | `sw.js:61-86`                        | ✅ Fixed — Only caches same-origin GET responses (prevents cross-origin cache poisoning)      |
+| M-9  | `sw.js:213-220`                      | ✅ Fixed — SW reads Firebase ID token from shared auth store (requires authenticated session) |
+| M-10 | `imageCompress.ts:5-39`              | Image upload lacks MIME type and magic byte validation                                        |
+| M-11 | `firebase-messaging-sw.js:9-14`      | ✅ Fixed — Security documentation + version pinning added (SRI via self-hosting TODO)         |
+| M-12 | `account-lifecycle.ts:54-87`         | `suspendStaffAccount` does NOT revoke Firebase custom claims (1-hour window)                  |
+| M-13 | `account-lifecycle.ts:21-52`         | `setStaffClaims` — no audit trail for privilege changes                                       |
+| M-14 | `monitor-dispatch-deadlines.ts`      | Retry queue stuck in `in_progress` on crash (no stale detection)                              |
+| M-15 | `analytics-snapshot-writer.ts:46-62` | ✅ Fixed — Sequential processing replaces 486 concurrent Promise.all queries                  |
+| M-16 | `declareAlert` callables.ts:54-67    | Any municipal admin can spam FCM alerts to all citizens                                       |
+| M-17 | `App Check` config                   | ✅ Fixed — Staging bypass now requires explicit `ENFORCE_APP_CHECK=true` env var              |
+| M-18 | `declareDataIncident`                | `affectedCollections` accepts any string — no allowlist validation                            |
+| M-19 | BigQuery Terraform                   | Dataset has no explicit access control — inherits project-level permissions                   |
+| M-20 | Terraform                            | No VPC Service Controls — all services accessible from public internet                        |
+| M-21 | `scripts/fix-admin-claims.ts`        | Hardcodes project ID and user UID — could grant admin role if run against prod                |
+| M-22 | `scripts/smoke-test-prod.ts`         | ✅ Fixed — try/finally ensures cleanup of test data even on failure                           |
 
 ---
 

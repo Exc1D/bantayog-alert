@@ -7,6 +7,7 @@ const CACHE_NAME = 'bantayog_shell_v2'
 // when the app explicitly writes sync-state metadata for the SW.
 const DB_NAME = 'bantayog-drafts'
 const DB_STORE = 'drafts'
+const AUTH_STORE = 'auth' // Stores { firebaseIdToken, expiresAt }
 
 // Precache the app shell so a cold offline navigation falls back to
 // index.html instead of the browser's default offline page. Vite's hashed
@@ -114,8 +115,31 @@ async function openDraftsDB() {
       if (!store.indexNames.contains('syncState')) {
         store.createIndex('syncState', 'syncState', { unique: false })
       }
+      // Auth store for Firebase ID tokens (shared with main app)
+      if (!db.objectStoreNames.contains(AUTH_STORE)) {
+        db.createObjectStore(AUTH_STORE, { keyPath: 'key' })
+      }
     }
     req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+/** Reads the current Firebase ID token from the auth store. */
+async function getFirebaseIdToken() {
+  const db = await openDraftsDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(AUTH_STORE, 'readonly')
+    const store = tx.objectStore(AUTH_STORE)
+    const req = store.get('firebaseIdToken')
+    req.onsuccess = () => {
+      const entry = req.result
+      if (!entry || typeof entry.expiresAt !== 'number' || Date.now() >= entry.expiresAt) {
+        resolve(null) // Token missing or expired
+      } else {
+        resolve(entry.token)
+      }
+    }
     req.onerror = () => reject(req.error)
   })
 }
@@ -161,6 +185,14 @@ async function submitDraft(draft) {
         : typeof draft.reporterId === 'string'
           ? draft.reporterId
           : undefined
+
+  // Auth token is read from the shared auth store — the main app refreshes
+  // it periodically. Background sync without a valid Firebase ID token will
+  // be rejected by Firestore security rules (report_inbox requires isAuthed()).
+  const idToken = await getFirebaseIdToken()
+  if (!idToken) {
+    throw new Error('No valid auth token — background sync requires authenticated session')
+  }
 
   const inboxDoc = {
     ...(reporterUid ? { reporterUid } : {}),
@@ -220,7 +252,10 @@ async function submitDraft(draft) {
     `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/report_inbox?documentId=${draft.id}`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
       body: JSON.stringify(firestoreDoc),
     },
   )

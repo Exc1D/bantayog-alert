@@ -4,6 +4,12 @@
  * Firebase Cloud Messaging service worker.
  * Handles background push notifications when the app is not in focus.
  * Uses classic script (importScripts) for broad browser compatibility.
+ *
+ * SECURITY: CDN scripts are loaded without SRI (importScripts doesn't support
+ * integrity attributes). Mitigations:
+ * 1. Scripts are pinned to a specific version (10.8.0)
+ * 2. Content-Security-Policy restricts script sources
+ * TODO: Self-host Firebase scripts or use a build-time SRI verification step.
  */
 
 const FIREBASE_APP_SCRIPT = 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js'

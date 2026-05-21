@@ -295,3 +295,5 @@
 - Service worker fetch handler must only cache same-origin GET responses — caching cross-origin or non-GET responses enables cache poisoning attacks.
 - Smoke test scripts that write to production must use try/finally for cleanup — delete failures leave test data in production collections.
 - CLI scripts should use plain text log tags ([INFO], [OK], [FAIL]) instead of emoji — emoji can cause encoding issues in log aggregators and CI pipelines.
+- Service worker background sync must include a valid Firebase ID token — read from a shared IndexedDB auth store that the main app refreshes periodically. Without auth, Firestore rules reject the write.
+- Service workers using `importScripts` from CDN cannot use SRI integrity attributes — mitigate by pinning versions, documenting the risk, and planning to self-host critical scripts.
