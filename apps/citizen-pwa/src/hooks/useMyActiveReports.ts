@@ -30,6 +30,7 @@ function baseFromStored(entry: StoredReport): MyReport {
     lng: entry.lng,
     submittedAt: entry.submittedAt,
     status: 'queued',
+    ...(entry.municipalityLabel ? { municipalityLabel: entry.municipalityLabel } : {}),
     ...(entry.reportId ? { id: entry.reportId } : {}),
   }
 }
