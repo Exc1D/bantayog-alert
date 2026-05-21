@@ -127,7 +127,7 @@ export const requestLookup = onCall(
     maxInstances: 10,
   },
   async (request) => {
-    const rlKey = request.auth?.uid ?? `anon:${String(request.ip ?? 'unknown')}`
+    const rlKey = request.auth?.uid ?? `anon:${request.rawRequest.ip ?? 'unknown'}`
     const rl = await checkRateLimit(getFirestore(), {
       key: `requestLookup:${rlKey}`,
       limit: 30,

@@ -237,7 +237,6 @@ export const initiateResponderHandoff = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
-    maxInstances: 10,
     maxInstances: 100,
   },
   async (req: CallableRequest<unknown>) => {
@@ -289,7 +288,6 @@ export const acceptResponderHandoff = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
-    maxInstances: 10,
     maxInstances: 100,
   },
   async (req: CallableRequest<unknown>) => {

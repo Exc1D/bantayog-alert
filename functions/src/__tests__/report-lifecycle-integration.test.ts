@@ -1,4 +1,4 @@
-import { describe, expect, afterAll } from 'vitest'
+import { describe, expect, it, afterAll } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
@@ -160,7 +160,9 @@ async function seedResponder() {
 
 async function getDoc(path: string) {
   const snap = await adminDb.doc(path).get()
-  return snap.exists ? { id: snap.id, data: snap.data() } : null
+  if (!snap.exists) return null
+  const data = snap.data()!
+  return { id: snap.id, data }
 }
 
 // ===========================================================================
@@ -217,9 +219,7 @@ describe(`Report lifecycle integration [${SLUG}]`, { timeout: 60000 }, () => {
         claims: { role: 'provincial_superadmin', municipalityId: MUNICIPALITY_ID },
       },
       now: TIMESTAMP,
-      correlationId: CORRELATION_ID,
       scrubbedDescription: `Verified report ${SLUG}`,
-      visibilityClass: 'public_alertable',
       idempotencyKey: randomUUID(),
     })
 
@@ -230,9 +230,7 @@ describe(`Report lifecycle integration [${SLUG}]`, { timeout: 60000 }, () => {
         claims: { role: 'provincial_superadmin', municipalityId: MUNICIPALITY_ID },
       },
       now: Timestamp.fromMillis(NOW + 1),
-      correlationId: CORRELATION_ID,
       scrubbedDescription: `Verified report ${SLUG}`,
-      visibilityClass: 'public_alertable',
       idempotencyKey: randomUUID(),
     })
 
@@ -252,12 +250,8 @@ describe(`Report lifecycle integration [${SLUG}]`, { timeout: 60000 }, () => {
         claims: { role: 'provincial_superadmin', municipalityId: MUNICIPALITY_ID },
       },
       reportId: state.reportId,
-      taskType: 'flood',
       responderUid: UID_RESPONDER,
-      agencyId: AGENCY_ID,
-      municipalityId: MUNICIPALITY_ID,
       now: TIMESTAMP,
-      correlationId: CORRELATION_ID,
       idempotencyKey: randomUUID(),
     })
 
@@ -279,7 +273,7 @@ describe(`Report lifecycle integration [${SLUG}]`, { timeout: 60000 }, () => {
 
     await acceptDispatchCore(adminDb, {
       dispatchId: state.dispatchId,
-      actor: { uid: UID_RESPONDER, claims: { role: 'responder', municipalityId: MUNICIPALITY_ID } },
+      actor: { uid: UID_RESPONDER },
       now: TIMESTAMP,
       idempotencyKey: randomUUID(),
     })
