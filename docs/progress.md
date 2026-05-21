@@ -2,7 +2,9 @@
 
 ## Current Status (2026-05-21)
 
-**Architecture refactoring complete — functions/src/ reorganized by domain.**
+**Architecture refactoring complete — functions/src/ reorganized by domain. Phase 2 + 3 done.**
+
+**Phase 1 — Domain reorg:**
 
 - `functions/src/callables/` (53 files) → 8 domain directories under `functions/src/domains/`
 - `functions/src/triggers/` (13 files) → moved to respective domains
@@ -12,9 +14,25 @@
 - `index.ts` updated incrementally — all 55 exports now point to domain paths
 - `vitest.config.ts` extended to discover `src/domains/**/__tests__/**/*.test.ts`
 - **121 domain files** organized by business domain (media, users, alerts, agency, ops, reports, dispatches, erasure)
-- **Cross-cutting utilities** retained: `callables/` (https-error, callable-config, app-check-config), `services/` (geocode, municipality-lookup, rate-limit, responder-eligibility), `idempotency/`, `constants/`
-- **Design spec**: `docs/superpowers/specs/2026-05-20-architecture-refactoring-design.md`
-- **Gate**: `pnpm --dir functions typecheck` clean · `pnpm --dir functions lint` clean · 98 domain tests pass (same emulator-dependent skips/failures as before — no regressions)
+
+**Phase 2 — shared-state-machines extraction:**
+
+- New `@bantayog/shared-state-machines` package created at `packages/shared-state-machines/`
+- Extracted from `packages/shared-validators/src/state-machines/`: 3 transition-table state machine files + 2 test files
+- No xstate — hand-rolled `REPORT_TRANSITIONS` (22), `DISPATCH_TRANSITIONS` (29)
+- `shared-validators` re-exports from new package; `scripts/build-rules.ts` path updated
+- Removed stale `shared-types/src/states.ts` (duplicate of canonical version)
+
+**Phase 3 — Cross-cutting to domains/shared/:**
+
+- Moved 7 files from `callables/` and `services/` into `functions/src/domains/shared/`:
+  `https-error`, `app-check-config`, `callable-config`, `geocode`, `municipality-lookup`, `rate-limit`, `responder-eligibility`
+- ~100 import paths updated across 43 domain files + 6 test files
+- Empty `callables/` and `services/` directories removed
+- Duplicate test removed (`callables/__tests__/close-report.unit.test.ts`)
+
+**Design spec**: `docs/superpowers/specs/2026-05-20-architecture-refactoring-design.md`
+**Gate**: `pnpm --dir functions typecheck` clean · `pnpm --dir functions lint` clean · 98 domain tests pass (same emulator-dependent skips/failures as before — no regressions) · `@bantayog/shared-state-machines` typecheck + test + build clean
 
 ## Current Status (2026-05-20)
 
