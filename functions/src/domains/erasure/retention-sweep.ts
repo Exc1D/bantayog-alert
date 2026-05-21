@@ -8,6 +8,13 @@ const log = logDimension('retentionSweep')
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000
 const ACTIVE_STATUSES = ['pending_review', 'approved_pending_anonymization', 'executing']
+const ACTIVE_DISPATCH_STATUSES = new Set([
+  'pending',
+  'dispatched',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+])
 
 export interface RetentionSweepInput {
   db: Firestore
@@ -106,6 +113,15 @@ export async function retentionSweepCore(
     const data = doc.data()
     // Skip reports belonging to citizens with active erasure requests
     if (activeErasureUids.has(data.submittedBy as string)) continue
+
+    // Skip reports with active dispatches — orphaning responders on scene is unsafe.
+    const activeDispatchSnap = await input.db
+      .collection('dispatches')
+      .where('reportId', '==', doc.id)
+      .where('status', 'in', [...ACTIVE_DISPATCH_STATUSES])
+      .limit(1)
+      .get()
+    if (!activeDispatchSnap.empty) continue
 
     try {
       await input.db.collection('report_private').doc(doc.id).delete()

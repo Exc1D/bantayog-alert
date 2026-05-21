@@ -2,7 +2,7 @@
 
 ## Current Status (2026-05-21)
 
-**Security audit complete. ALL Critical + High findings fixed (22 of 22). 30 Medium/Low remain. 37 total fixed.**
+**Security audit complete. ALL Critical + High findings fixed (22 of 22). 27 Medium/Low remain. 40 total fixed.**
 
 **Phase 1 — Domain reorg:**
 
@@ -97,6 +97,10 @@
 - **L-13 Fixed**: Removed dead code `onMediaRelocate` trigger (feature flag with no implementation, exported but never used)
 - **M-3 Confirmed already fixed**: `subscribe-to-alerts` has `verifyTokenOwnership()` validating FCM tokens against Firestore
 - **L-9 Confirmed already safe**: `admin-init.ts` malformed FIREBASE_CONFIG catch returns undefined without logging
+- **M-7 Confirmed already fixed**: Security headers (CSP, X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy) present in all 3 Firebase Hosting targets
+- **M-5 Fixed**: `requestAgencyAssistance` now allows `provincial_superadmin` to request agency assistance for any municipality
+- **M-15 Fixed**: `analytics-snapshot-writer` now processes municipalities sequentially (was 486 concurrent Promise.all queries)
+- **L-12 Fixed**: `retention-sweep` now skips reports with active dispatches before hard-delete (prevents orphaning responders on scene)
 - **Tests updated**: `https-error.test.ts` extended with account status + MFA bypass test cases; `callable-config.test.ts` rewritten for environment-aware testing; `callables.test.ts` updated for user-bound storage path; `imageCompress.test.ts` extended with MIME type validation tests
 - **Gate**: `pnpm typecheck` clean (20/20) · `pnpm lint` clean (20/20) · 408 citizen-pwa tests pass · 80+ functions tests pass in changed areas
 - **Audit report**: `docs/security-audit-2026-05-21.md`

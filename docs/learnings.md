@@ -287,3 +287,6 @@
 - Dead code triggers (feature flags with no implementation) should be removed, not left as no-ops — they confuse audit trails and waste cold-start time.
 - `console.warn/error` in Cloud Functions should be replaced with `logDimension` structured logger — enables Cloud Logging filtering and alerting.
 - BroadcastChannel messages should be validated against a known type allowlist before dispatch — prevents malformed messages from reaching listeners in XSS scenarios.
+- `provincial_superadmin` should be able to request agency assistance for any municipality — use the report's `municipalityId` (not the actor's) for `requestedByMunicipalId` field.
+- Scheduled functions with nested loops (municipalities × statuses × severities) must process sequentially — `Promise.all` with 486 concurrent Firestore count queries causes contention and rate limiting.
+- `retention-sweep` must check for active dispatches before hard-deleting reports — orphaning responders on scene is a safety hazard. Query `dispatches` where `reportId == X` and `status in [pending, dispatched, acknowledged, en_route, on_scene]`.

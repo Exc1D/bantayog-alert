@@ -3,7 +3,7 @@
 **Date:** 2026-05-21
 **Scope:** Full codebase — Cloud Functions, Firestore/Storage/RTDB Rules, Client Apps (Citizen PWA, Admin Desktop, Responder App), Terraform IaC, SMS Processing, Infrastructure Configuration
 **Auditors:** 3 specialized audit agents (backend, frontend, infrastructure)
-**Status:** 37 of 59 findings fixed (100% of Critical + High, 8 Medium/Low)
+**Status:** 40 of 59 findings fixed (100% of Critical + High, 11 Medium/Low)
 
 ---
 
@@ -48,6 +48,10 @@
 | L-10 | Low      | ✅ Fixed | `audit-stream.ts` now uses structured `logDimension` logger instead of `console.warn/error`                |
 | L-13 | Low      | ✅ Fixed | Removed dead code `onMediaRelocate` trigger (no-op feature flag with no implementation)                    |
 | L-3  | Low      | ✅ Fixed | `declareAlert.hazardType` constrained to enum (was unconstrained string)                                   |
+| M-5  | Medium   | ✅ Fixed | `requestAgencyAssistance` now allows `provincial_superadmin` to request for any municipality               |
+| M-15 | Medium   | ✅ Fixed | `analytics-snapshot-writer` now processes municipalities sequentially (was 486 concurrent queries)         |
+| L-12 | Low      | ✅ Fixed | `retention-sweep` now skips reports with active dispatches (prevents orphaning responders on scene)        |
+| M-7  | Medium   | ✅ Fixed | Security headers (CSP, X-Content-Type-Options, X-Frame-Options, HSTS) present in all 3 hosting targets     |
 
 ---
 
@@ -59,8 +63,8 @@
 | ------------ | ----- | ---------------------------- |
 | **Critical** | 6     | Yes — fix before next deploy |
 | **High**     | 14    | Yes — fix within 1 sprint    |
-| **Medium**   | 18    | Plan for next 2 sprints      |
-| **Low**      | 12    | Backlog                      |
+| **Medium**   | 15    | Plan for next 2 sprints      |
+| **Low**      | 11    | Backlog                      |
 
 ---
 
@@ -201,30 +205,30 @@
 
 ## MEDIUM (22) — Plan for Next 2 Sprints
 
-| ID   | File                                 | Issue                                                                             |
-| ---- | ------------------------------------ | --------------------------------------------------------------------------------- |
-| M-1  | `firestore.rules:263`                | `secret_lookup` readable by any authenticated user                                |
-| M-2  | `responder-roster.ts:224-243`        | Silent UID skip enables responder roster enumeration across agencies              |
-| M-3  | `subscribe-to-alerts.ts`             | ✅ Already fixed — `verifyTokenOwnership()` validates FCM token against Firestore |
-| M-4  | Multiple dispatch files              | localhost CORS origins in production callable configs                             |
-| M-5  | `agency/callables.ts:215`            | `provincial_superadmin` excluded from agency assistance                           |
-| M-6  | `firestore.rules:348`                | `system_config` write auth inconsistency (token claims vs Firestore state)        |
-| M-7  | `firebase.json`                      | No security headers (CSP, X-Content-Type-Options, X-Frame-Options, HSTS)          |
-| M-8  | `sw.js:61-86`                        | Service worker caches ALL GET responses — cache poisoning risk                    |
-| M-9  | `sw.js:213-220`                      | Service worker sends draft data to Firestore REST API without App Check           |
-| M-10 | `imageCompress.ts:5-39`              | Image upload lacks MIME type and magic byte validation                            |
-| M-11 | `firebase-messaging-sw.js:9-14`      | Service worker `importScripts` from CDN without SRI                               |
-| M-12 | `account-lifecycle.ts:54-87`         | `suspendStaffAccount` does NOT revoke Firebase custom claims (1-hour window)      |
-| M-13 | `account-lifecycle.ts:21-52`         | `setStaffClaims` — no audit trail for privilege changes                           |
-| M-14 | `monitor-dispatch-deadlines.ts`      | Retry queue stuck in `in_progress` on crash (no stale detection)                  |
-| M-15 | `analytics-snapshot-writer.ts:46-62` | Unbounded parallel Firestore queries (440+ concurrent)                            |
-| M-16 | `declareAlert` callables.ts:54-67    | Any municipal admin can spam FCM alerts to all citizens                           |
-| M-17 | `App Check` config                   | App Check disabled for staging — any client can call functions                    |
-| M-18 | `declareDataIncident`                | `affectedCollections` accepts any string — no allowlist validation                |
-| M-19 | BigQuery Terraform                   | Dataset has no explicit access control — inherits project-level permissions       |
-| M-20 | Terraform                            | No VPC Service Controls — all services accessible from public internet            |
-| M-21 | `scripts/fix-admin-claims.ts`        | Hardcodes project ID and user UID — could grant admin role if run against prod    |
-| M-22 | `scripts/smoke-test-prod.ts`         | Writes test data to production Firestore — delete failure leaves test data        |
+| ID   | File                                 | Issue                                                                                     |
+| ---- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| M-1  | `firestore.rules:263`                | `secret_lookup` readable by any authenticated user                                        |
+| M-2  | `responder-roster.ts:224-243`        | Silent UID skip enables responder roster enumeration across agencies                      |
+| M-3  | `subscribe-to-alerts.ts`             | ✅ Already fixed — `verifyTokenOwnership()` validates FCM token against Firestore         |
+| M-4  | Multiple dispatch files              | localhost CORS origins in production callable configs                                     |
+| M-5  | `agency/callables.ts:215`            | ✅ Fixed — `provincial_superadmin` can now request agency assistance for any municipality |
+| M-6  | `firestore.rules:348`                | `system_config` write auth inconsistency (token claims vs Firestore state)                |
+| M-7  | `firebase.json`                      | ✅ Fixed — Security headers present in all 3 hosting targets                              |
+| M-8  | `sw.js:61-86`                        | Service worker caches ALL GET responses — cache poisoning risk                            |
+| M-9  | `sw.js:213-220`                      | Service worker sends draft data to Firestore REST API without App Check                   |
+| M-10 | `imageCompress.ts:5-39`              | Image upload lacks MIME type and magic byte validation                                    |
+| M-11 | `firebase-messaging-sw.js:9-14`      | Service worker `importScripts` from CDN without SRI                                       |
+| M-12 | `account-lifecycle.ts:54-87`         | `suspendStaffAccount` does NOT revoke Firebase custom claims (1-hour window)              |
+| M-13 | `account-lifecycle.ts:21-52`         | `setStaffClaims` — no audit trail for privilege changes                                   |
+| M-14 | `monitor-dispatch-deadlines.ts`      | Retry queue stuck in `in_progress` on crash (no stale detection)                          |
+| M-15 | `analytics-snapshot-writer.ts:46-62` | ✅ Fixed — Sequential processing replaces 486 concurrent Promise.all queries              |
+| M-16 | `declareAlert` callables.ts:54-67    | Any municipal admin can spam FCM alerts to all citizens                                   |
+| M-17 | `App Check` config                   | App Check disabled for staging — any client can call functions                            |
+| M-18 | `declareDataIncident`                | `affectedCollections` accepts any string — no allowlist validation                        |
+| M-19 | BigQuery Terraform                   | Dataset has no explicit access control — inherits project-level permissions               |
+| M-20 | Terraform                            | No VPC Service Controls — all services accessible from public internet                    |
+| M-21 | `scripts/fix-admin-claims.ts`        | Hardcodes project ID and user UID — could grant admin role if run against prod            |
+| M-22 | `scripts/smoke-test-prod.ts`         | Writes test data to production Firestore — delete failure leaves test data                |
 
 ---
 
@@ -243,7 +247,7 @@
 | L-9  | `admin-init.ts:14`               | ✅ Already safe — malformed FIREBASE_CONFIG catch returns undefined without logging |
 | L-10 | `audit-stream.ts:38-44`          | Uses `console.warn/error` instead of structured logger                              |
 | L-11 | `firebase.json:73-76`            | Predeploy scripts could fail silently                                               |
-| L-12 | `retention-sweep.ts:92-107`      | Deletes reports without checking for active dispatches                              |
+| L-12 | `retention-sweep.ts:92-107`      | ✅ Fixed — Skips reports with active dispatches before hard-delete                  |
 | L-13 | `triggers.ts:10-32`              | `onMediaRelocate` is a no-op (dead code)                                            |
 | L-14 | `process-inbox-manual.ts:47`     | Emoji in log output (encoding issues in some aggregators)                           |
 | L-15 | `declare-data-incident.ts:63-69` | No rate limiting on `declareDataIncident`                                           |
