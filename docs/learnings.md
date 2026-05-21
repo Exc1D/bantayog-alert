@@ -292,3 +292,6 @@
 - `retention-sweep` must check for active dispatches before hard-deleting reports — orphaning responders on scene is a safety hazard. Query `dispatches` where `reportId == X` and `status in [pending, dispatched, acknowledged, en_route, on_scene]`.
 - App Check staging bypass must be explicit (`ENFORCE_APP_CHECK=true`), not automatic for any project ending in `-staging`. Automatic bypass means any staging clone can call functions without App Check.
 - Firebase auth error codes must be mapped to user-friendly messages at the UI boundary — never expose raw `error.message` which can contain project IDs, API endpoints, or internal details.
+- Service worker fetch handler must only cache same-origin GET responses — caching cross-origin or non-GET responses enables cache poisoning attacks.
+- Smoke test scripts that write to production must use try/finally for cleanup — delete failures leave test data in production collections.
+- CLI scripts should use plain text log tags ([INFO], [OK], [FAIL]) instead of emoji — emoji can cause encoding issues in log aggregators and CI pipelines.

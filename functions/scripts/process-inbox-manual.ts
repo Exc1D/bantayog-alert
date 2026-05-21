@@ -55,7 +55,7 @@ export async function processInboxManualSummary(
 ): Promise<ProcessInboxManualSummary> {
   const processInboxItem = deps.processInboxItem ?? processInboxItemCore
   const writeLine = deps.writeLine ?? console.log
-  writeLine('🔧 Manual inbox processing fallback')
+  writeLine('[INFO] Manual inbox processing fallback')
   const snapshot = await deps.db.collection('report_inbox').get()
   const candidates = snapshot.docs.filter((doc) => {
     const data = doc.data()
@@ -85,7 +85,7 @@ export async function processInboxManualSummary(
     try {
       const result = await processInboxItem({ db: deps.db, inboxId: doc.id })
       writeLine(
-        `  ✅ Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}`,
+        `  [OK] Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}`,
       )
       if (result.materialized) {
         summary.processed += 1
@@ -95,7 +95,7 @@ export async function processInboxManualSummary(
       }
     } catch (error: unknown) {
       summary.failed += 1
-      writeLine(`  ❌ Failed: ${formatErrorMessage(error)}`)
+      writeLine(`  [FAIL] Failed: ${formatErrorMessage(error)}`)
       summary.failures.push({ inboxId: doc.id, error: formatErrorMessage(error) })
     }
   }

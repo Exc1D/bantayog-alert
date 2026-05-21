@@ -59,10 +59,16 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  // Only cache same-origin GET responses to prevent cache poisoning
+  // from cross-origin or non-GET requests.
+  const requestUrl = new URL(event.request.url)
+  const isSameOrigin = requestUrl.origin === self.location.origin
+  const isGet = event.request.method === 'GET'
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        if (response.status === 200 && event.request.method === 'GET') {
+        if (response.status === 200 && isGet && isSameOrigin) {
           const clone = response.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
         }
@@ -76,7 +82,7 @@ self.addEventListener('fetch', (event) => {
           const shell = await caches.match('/index.html')
           if (shell) return shell
         }
-        if (event.request.method === 'GET') {
+        if (isGet) {
           const cached = await caches.match(event.request)
           if (cached) return cached
         }

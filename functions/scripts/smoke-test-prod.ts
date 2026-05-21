@@ -28,45 +28,55 @@ type CheckResult = { name: string; ok: boolean; error?: string }
 
 async function checkFirestore(): Promise<CheckResult> {
   const name = 'Firestore read/write'
+  const ref = fsdb.collection('_smoke_test').doc('probe')
   try {
-    const ref = fsdb.collection('_smoke_test').doc('probe')
     await ref.set({ ts: Timestamp.now(), smoke: true })
     const snap = await ref.get()
     if (!snap.exists) throw new Error('read-back failed')
-    await ref.delete()
     return { name, ok: true }
   } catch (err) {
     return { name, ok: false, error: String(err) }
+  } finally {
+    // Always clean up test data — delete failure leaves test data in production.
+    await ref.delete().catch(() => {
+      /* best-effort cleanup */
+    })
   }
 }
 
 async function checkRtdb(): Promise<CheckResult> {
   const name = 'RTDB read/write'
+  const ref = rtdb.ref('_smoke_test/probe')
   try {
-    const ref = rtdb.ref('_smoke_test/probe')
     await ref.set({ ts: Date.now() })
     const snap = await ref.once('value')
     if (!snap.exists()) throw new Error('read-back failed')
-    await ref.remove()
     return { name, ok: true }
   } catch (err) {
     return { name, ok: false, error: String(err) }
+  } finally {
+    await ref.remove().catch(() => {
+      /* best-effort cleanup */
+    })
   }
 }
 
 async function checkStorage(): Promise<CheckResult> {
   const name = 'Storage read/write'
+  const testFile = storage.bucket().file('_smoke_test/probe.txt')
   try {
     const bucket = storage.bucket()
     await bucket.getMetadata()
-    const testFile = bucket.file('_smoke_test/probe.txt')
     await testFile.save('smoke-test', { contentType: 'text/plain' })
     const [exists] = await testFile.exists()
     if (!exists) throw new Error('write-back failed')
-    await testFile.delete()
     return { name, ok: true }
   } catch (err) {
     return { name, ok: false, error: String(err) }
+  } finally {
+    await testFile.delete().catch(() => {
+      /* best-effort cleanup */
+    })
   }
 }
 

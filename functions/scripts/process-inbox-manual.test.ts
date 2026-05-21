@@ -33,7 +33,11 @@ describe('processInboxManualSummary', () => {
       publicRef: 'public-1',
     })
 
-    const summary = await processInboxManualSummary({ db: db as never, writeLine: logger.log, processInboxItem })
+    const summary = await processInboxManualSummary({
+      db: db as never,
+      writeLine: logger.log,
+      processInboxItem,
+    })
 
     expect(summary).toMatchObject({
       scanned: 1,
@@ -47,7 +51,7 @@ describe('processInboxManualSummary', () => {
     expect(processInboxItem).toHaveBeenCalledWith({ db: db as never, inboxId: 'draft-1' })
     expect(logger.log).toHaveBeenCalledWith('Found 1 unprocessed inbox item(s).')
     expect(logger.log).toHaveBeenCalledWith(
-      '  ✅ Materialized: true, Report ID: report-1, Public Ref: public-1',
+      '  [OK] Materialized: true, Report ID: report-1, Public Ref: public-1',
     )
     expect(logger.log).toHaveBeenCalledWith(JSON.stringify(summary))
   })

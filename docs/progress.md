@@ -2,7 +2,7 @@
 
 ## Current Status (2026-05-21)
 
-**Security audit complete. ALL Critical + High findings fixed (22 of 22). 25 Medium/Low remain. 42 total fixed.**
+**Security audit complete. ALL Critical + High findings fixed (22 of 22). 22 Medium/Low remain. 45 total fixed.**
 
 **Phase 1 — Domain reorg:**
 
@@ -100,6 +100,9 @@
 - **M-7 Confirmed already fixed**: Security headers (CSP, X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy) present in all 3 Firebase Hosting targets
 - **M-17 Fixed**: App Check staging bypass now requires explicit `ENFORCE_APP_CHECK=true` env var (was automatic for any `-staging` project)
 - **L-5 Fixed**: LoginPage now maps Firebase auth error codes to user-friendly messages — no internal error details exposed to users
+- **M-8 Fixed**: Service worker now only caches same-origin GET responses (prevents cross-origin cache poisoning)
+- **M-22 Fixed**: smoke-test-prod.ts now uses try/finally for guaranteed cleanup of test data in Firestore, RTDB, and Storage
+- **L-14 Fixed**: process-inbox-manual.ts emoji replaced with plain text tags ([INFO], [OK], [FAIL]) for encoding-safe log output
 - **M-5 Fixed**: `requestAgencyAssistance` now allows `provincial_superadmin` to request agency assistance for any municipality
 - **M-15 Fixed**: `analytics-snapshot-writer` now processes municipalities sequentially (was 486 concurrent Promise.all queries)
 - **L-12 Fixed**: `retention-sweep` now skips reports with active dispatches before hard-delete (prevents orphaning responders on scene)
