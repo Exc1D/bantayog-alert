@@ -2,7 +2,7 @@
 
 ## Current Status (2026-05-21)
 
-**Architecture refactoring complete — functions/src/ reorganized by domain. Phase 2 + 3 done.**
+**Architecture refactoring complete. Polish follow-up: municipalityLabel fencepost fixed.**
 
 **Phase 1 — Domain reorg:**
 
@@ -33,6 +33,16 @@
 
 **Design spec**: `docs/superpowers/specs/2026-05-20-architecture-refactoring-design.md`
 **Gate**: `pnpm --dir functions typecheck` clean · `pnpm --dir functions lint` clean · 98 domain tests pass (same emulator-dependent skips/failures as before — no regressions) · `@bantayog/shared-state-machines` typecheck + test + build clean
+
+**Test migration:**
+
+- 15 test files moved from `functions/src/__tests__/` to their respective domain `__tests__/` directories (35 import paths updated)
+- 31 infrastructure/rules tests remain in `__tests__/` (not domain-specific)
+- Empty `__tests__/{callables,services,scheduled,triggers}/` directories removed
+
+**municipalityLabel fencepost fix:**
+
+- `baseFromStored()` in `useMyActiveReports.ts` now reads `municipalityLabel` from localForage on initial seed — "Areas Helped" stat no longer waits for Firestore subscription to resolve
 
 ## Current Status (2026-05-20)
 
