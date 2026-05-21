@@ -136,6 +136,7 @@ export const shareReport = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     memory: '512MiB',
   },
   async (req: CallableRequest) => {

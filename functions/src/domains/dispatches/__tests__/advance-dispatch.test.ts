@@ -40,10 +40,10 @@ afterAll(async () => {
   await testEnv?.cleanup()
 })
 
-const describeWithFirestore = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip
+const itif = (condition: boolean) => (condition ? it : it.skip)
 
-describeWithFirestore('advanceDispatchCore', () => {
-  it('advances dispatch from accepted to acknowledged and creates event', async () => {
+describe('advanceDispatchCore', () => {
+  itif(available)('advances dispatch from accepted to acknowledged and creates event', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'on_scene', { municipalityId: 'daet' })
@@ -96,35 +96,38 @@ describeWithFirestore('advanceDispatchCore', () => {
     })
   })
 
-  it('rejects INVALID_STATUS_TRANSITION for backward steps (en_route -> acknowledged)', async () => {
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
-      const { dispatchId } = await seedDispatch(db, {
-        reportId,
-        responderUid: 'r1',
-        municipalityId: 'daet',
-        status: 'en_route',
-      })
-      await seedActiveAccount(testEnv!, {
-        uid: 'r1',
-        role: 'responder',
-        municipalityId: 'daet',
-      })
+  itif(available)(
+    'rejects INVALID_STATUS_TRANSITION for backward steps (en_route -> acknowledged)',
+    async () => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as any
+        const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })
+        const { dispatchId } = await seedDispatch(db, {
+          reportId,
+          responderUid: 'r1',
+          municipalityId: 'daet',
+          status: 'en_route',
+        })
+        await seedActiveAccount(testEnv!, {
+          uid: 'r1',
+          role: 'responder',
+          municipalityId: 'daet',
+        })
 
-      await expect(
-        advanceDispatchCore(db, {
-          dispatchId,
-          to: 'acknowledged',
-          idempotencyKey: crypto.randomUUID(),
-          actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
-          now: Timestamp.now(),
-        }),
-      ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
-    })
-  })
+        await expect(
+          advanceDispatchCore(db, {
+            dispatchId,
+            to: 'acknowledged',
+            idempotencyKey: crypto.randomUUID(),
+            actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+            now: Timestamp.now(),
+          }),
+        ).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' })
+      })
+    },
+  )
 
-  it('rejects when dispatch is NOT_FOUND', async () => {
+  itif(available)('rejects when dispatch is NOT_FOUND', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await seedActiveAccount(testEnv!, {
@@ -145,7 +148,7 @@ describeWithFirestore('advanceDispatchCore', () => {
     })
   })
 
-  it('rejects when resolutionSummary is missing for resolved transition', async () => {
+  itif(available)('rejects when resolutionSummary is missing for resolved transition', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'on_scene', { municipalityId: 'daet' })
@@ -173,7 +176,7 @@ describeWithFirestore('advanceDispatchCore', () => {
     })
   })
 
-  it('advances to resolved with resolutionSummary and lastStatusAt', async () => {
+  itif(available)('advances to resolved with resolutionSummary and lastStatusAt', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' })

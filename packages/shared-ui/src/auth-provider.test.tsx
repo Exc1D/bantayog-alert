@@ -6,9 +6,8 @@ let mockOnAuthStateChanged = vi.fn()
 let mockSignOut = vi.fn()
 
 vi.mock('firebase/auth', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   onAuthStateChanged: (...args: unknown[]) => mockOnAuthStateChanged(...args),
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
   signOut: (...args: unknown[]) => mockSignOut(...args),
 }))
 

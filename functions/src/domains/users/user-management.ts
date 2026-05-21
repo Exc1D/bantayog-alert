@@ -405,6 +405,7 @@ export const suspendUser = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -432,6 +433,7 @@ export const revokeUser = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -459,6 +461,7 @@ export const resetUserTotp = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
   },

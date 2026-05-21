@@ -15,7 +15,10 @@
 import { fileURLToPath } from 'node:url'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
-import { processInboxItemCore, type ProcessInboxItemCoreResult } from '../src/triggers/process-inbox-item.js'
+import {
+  processInboxItemCore,
+  type ProcessInboxItemCoreResult,
+} from '../src/domains/reports/process-inbox-item.js'
 
 const PROJECT_ID = 'bantayog-alert-staging'
 
@@ -36,7 +39,10 @@ export interface ProcessInboxManualSummary {
 
 export interface ProcessInboxManualSummaryDeps {
   db: Firestore
-  processInboxItem?: (input: { db: Firestore; inboxId: string }) => Promise<ProcessInboxItemCoreResult>
+  processInboxItem?: (input: {
+    db: Firestore
+    inboxId: string
+  }) => Promise<ProcessInboxItemCoreResult>
   writeLine?: (line: string) => void
 }
 

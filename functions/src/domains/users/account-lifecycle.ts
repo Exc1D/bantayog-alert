@@ -17,6 +17,7 @@ export const setStaffClaims = onCall(
   {
     cors: getAdminCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
   },
   async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {
@@ -52,6 +53,7 @@ export const suspendStaffAccount = onCall(
   {
     cors: getAdminCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
   },
   async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {

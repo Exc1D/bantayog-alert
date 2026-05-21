@@ -84,7 +84,7 @@ export async function addCommandChannelMessageCore(
 }
 
 export const addCommandChannelMessage = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 },
   async (req: CallableRequest) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin'])
     try {

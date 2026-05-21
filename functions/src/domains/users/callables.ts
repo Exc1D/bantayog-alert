@@ -1,6 +1,8 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { adminAuth, adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { Timestamp } from 'firebase-admin/firestore'
+import { checkRateLimit } from '../shared/rate-limit.js'
 
 export const registerCitizen = onCall(
   {
@@ -10,10 +12,20 @@ export const registerCitizen = onCall(
       'https://bantayog-citizen-dev.web.app',
     ],
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
   },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Must be signed in to register.')
+    }
+    const rl = await checkRateLimit(adminDb, {
+      key: `registerCitizen:${request.auth.uid}`,
+      limit: 5,
+      windowSeconds: 300,
+      now: Timestamp.now(),
+    })
+    if (!rl.allowed) {
+      throw new HttpsError('resource-exhausted', 'rate limit exceeded')
     }
 
     const uid = request.auth.uid

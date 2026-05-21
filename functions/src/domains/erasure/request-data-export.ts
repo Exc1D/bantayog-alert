@@ -223,7 +223,7 @@ export async function requestDataExportImpl(
 }
 
 export const requestDataExport = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 },
   async (request) => {
     const { uid } = requireAuth(request, ['citizen'])
     try {

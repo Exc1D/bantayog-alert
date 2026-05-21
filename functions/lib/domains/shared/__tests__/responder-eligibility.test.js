@@ -1,0 +1,96 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {} from '@firebase/rules-unit-testing';
+import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
+const itif = (condition) => (condition ? it : it.skip);
+import { getEligibleResponders } from '../responder-eligibility.js';
+import { seedResponderDoc, seedResponderShift } from '../../../__tests__/helpers/seed-factories.js';
+let testEnv;
+let available = false;
+beforeEach(async () => {
+    const guarded = await guardInitTestEnvironment({
+        projectId: 'eligibility-test',
+        firestore: { host: 'localhost', port: 8081 },
+        database: { host: 'localhost', port: 9000 },
+    }, 'responder-eligibility');
+    testEnv = guarded.env;
+    available = guarded.available;
+    if (!available || !testEnv)
+        return;
+    await testEnv.clearFirestore();
+    await Promise.race([
+        testEnv.clearDatabase(),
+        new Promise((_, reject) => setTimeout(() => {
+            reject(new Error('clearDatabase timeout'));
+        }, 2000)),
+    ]).catch((err) => {
+        if (err instanceof Error && err.message !== 'clearDatabase timeout') {
+            console.warn('[beforeEach] clearDatabase failed:', err.message);
+        }
+    });
+});
+afterEach(async () => {
+    await testEnv?.cleanup();
+});
+describe('getEligibleResponders', () => {
+    itif(available)('returns only active responders in the target municipality who are on shift', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            const rtdb = ctx.database();
+            await seedResponderDoc(db, {
+                uid: 'r1',
+                municipalityId: 'daet',
+                agencyId: 'bfp-daet',
+                isActive: true,
+            });
+            await seedResponderDoc(db, {
+                uid: 'r2',
+                municipalityId: 'daet',
+                agencyId: 'bfp-daet',
+                isActive: true,
+            });
+            await seedResponderDoc(db, {
+                uid: 'r3',
+                municipalityId: 'daet',
+                agencyId: 'bfp-daet',
+                isActive: false,
+            });
+            await seedResponderDoc(db, {
+                uid: 'r4',
+                municipalityId: 'mercedes',
+                agencyId: 'bfp-mercedes',
+                isActive: true,
+            });
+            await seedResponderShift(rtdb, 'daet', 'r1', true);
+            await seedResponderShift(rtdb, 'daet', 'r2', false);
+            await seedResponderShift(rtdb, 'mercedes', 'r4', true);
+            const result = await getEligibleResponders(db, rtdb, { municipalityId: 'daet' });
+            expect(result.map((r) => r.uid).sort()).toEqual(['r1']);
+        });
+    });
+    itif(available)('filters by agency when provided', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            const rtdb = ctx.database();
+            await seedResponderDoc(db, {
+                uid: 'bfp1',
+                municipalityId: 'daet',
+                agencyId: 'bfp-daet',
+                isActive: true,
+            });
+            await seedResponderDoc(db, {
+                uid: 'mdrrmo1',
+                municipalityId: 'daet',
+                agencyId: 'mdrrmo-daet',
+                isActive: true,
+            });
+            await seedResponderShift(rtdb, 'daet', 'bfp1', true);
+            await seedResponderShift(rtdb, 'daet', 'mdrrmo1', true);
+            const result = await getEligibleResponders(db, rtdb, {
+                municipalityId: 'daet',
+                agencyId: 'bfp-daet',
+            });
+            expect(result.map((r) => r.uid)).toEqual(['bfp1']);
+        });
+    });
+});
+//# sourceMappingURL=responder-eligibility.test.js.map

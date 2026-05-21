@@ -367,7 +367,7 @@ export function DispatchDetailPage() {
           </div>
         )}
 
-        {isActive && dispatch.status !== 'pending' && (
+        {isActive && dispatchId !== undefined && dispatch.status !== 'pending' && (
           <div className={styles.statusSection} data-testid={`dispatch-status-${dispatchId}`}>
             <p className={styles.statusTitle}>
               Status: {statusLabel(dispatch.uiStatus, dispatch.status)}

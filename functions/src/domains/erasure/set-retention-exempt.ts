@@ -51,7 +51,7 @@ export async function setRetentionExemptCore(
 }
 
 export const setRetentionExempt = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 },
   async (request) => {
     const { uid, claims } = requireAuth(request, PRIVILEGED_ROLES)
     requireMfaAuth(request)

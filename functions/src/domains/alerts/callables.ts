@@ -88,6 +88,7 @@ export const declareAlert = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     memory: '512MiB',
   },
   async (request) => {

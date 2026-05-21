@@ -11,11 +11,11 @@ const mockUpdate = vi.hoisted(() => vi.fn())
 const mockSet = vi.hoisted(() => vi.fn())
 const mockGet = vi.hoisted(() => vi.fn())
 
-vi.mock('../../services/fcm-send.js', () => ({
+vi.mock('../../ops/fcm-send.js', () => ({
   sendFcmToResponder: mockSendFcm,
 }))
 
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   adminDb: {
     collection: mockDbCollection,
     doc: mockDbDoc,
@@ -24,11 +24,11 @@ vi.mock('../../admin-init.js', () => ({
   rtdb: {},
 }))
 
-vi.mock('../../services/rate-limit.js', () => ({
+vi.mock('../../shared/rate-limit.js', () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
 }))
 
-vi.mock('../../idempotency/guard.js', () => ({
+vi.mock('../../../idempotency/guard.js', () => ({
   withIdempotency: vi.fn().mockImplementation(async (_db, _key, fn) => {
     const result = await fn()
     return { result, fromCache: false }
@@ -36,7 +36,7 @@ vi.mock('../../idempotency/guard.js', () => ({
   IdempotencyMismatchError: class extends Error {},
 }))
 
-vi.mock('../../callables/dispatch-responder-validation.js', () => ({
+vi.mock('../dispatch-responder-validation.js', () => ({
   validateDispatchTransaction: vi.fn().mockResolvedValue({
     report: { severityDerived: 'high' },
     responder: {
@@ -44,16 +44,17 @@ vi.mock('../../callables/dispatch-responder-validation.js', () => ({
       agencyId: 'bfp',
       municipalityId: 'daet',
       displayName: 'Test Responder',
+      isActive: true,
     },
     from: 'pending',
   }),
 }))
 
-vi.mock('../../callables/dispatch-responder-writes.js', () => ({
+vi.mock('../dispatch-responder-writes.js', () => ({
   writeDispatchDocs: vi.fn(),
 }))
 
-vi.mock('../../callables/admin-auth.js', () => ({
+vi.mock('../../ops/admin-auth.js', () => ({
   isAccountActive: vi.fn().mockReturnValue(true),
 }))
 

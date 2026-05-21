@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "export VITE_USE_EMULATOR=false && tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",

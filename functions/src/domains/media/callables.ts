@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getStorage } from 'firebase-admin/storage'
+import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { adminDb } from '../../admin-init.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_SIZE_BYTES = 10 * 1024 * 1024
@@ -97,11 +100,24 @@ export const requestUploadUrl = onCall(
       'https://bantayog-citizen-dev.web.app',
     ],
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
   },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Must be signed in to request upload URL.')
+    }
+    const rl = await checkRateLimit(adminDb, {
+      key: `requestUploadUrl:${request.auth.uid}`,
+      limit: 20,
+      windowSeconds: 60,
+      now: Timestamp.now(),
+    })
+    if (!rl.allowed) {
+      throw new HttpsError('resource-exhausted', 'rate limit exceeded')
+    }
     try {
       return await requestUploadUrlImpl({
-        auth: request.auth ?? undefined,
+        auth: request.auth,
         data: request.data,
         bucket: process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com',
       })

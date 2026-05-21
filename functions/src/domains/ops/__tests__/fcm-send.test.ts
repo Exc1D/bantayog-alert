@@ -24,7 +24,7 @@ vi.mock('firebase-admin/messaging', () => ({
   })),
 }))
 
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   adminDb: {
     collection: mockCollection.mockReturnValue({
       doc: mockDoc.mockReturnValue({

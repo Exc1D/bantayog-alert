@@ -195,6 +195,9 @@ export declare const reportInboxDocSchema: z.ZodObject<{
     correlationId: z.ZodUUID;
     payload: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     processedAt: z.ZodOptional<z.ZodNumber>;
+    processingStartedAt: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    lastProcessingFailedAt: z.ZodOptional<z.ZodNumber>;
+    lastProcessingError: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;
 export type HazardTag = z.infer<typeof hazardTagSchema>;
 export type ReportDoc = z.infer<typeof reportDocSchema>;

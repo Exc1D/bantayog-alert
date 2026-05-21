@@ -5,10 +5,10 @@ import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-gu
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import { erasureSweepCore } from '../erasure-sweep.js'
 
-const mockUpdateUser = vi.fn()
-const mockDeleteUser = vi.fn()
-const mockGetFiles = vi.fn().mockResolvedValue([[]])
-const mockDeleteFile = vi.fn().mockResolvedValue(undefined)
+const mockUpdateUser = vi.hoisted(() => vi.fn())
+const mockDeleteUser = vi.hoisted(() => vi.fn())
+const mockGetFiles = vi.hoisted(() => vi.fn().mockResolvedValue([[]]))
+const mockDeleteFile = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 
 vi.mock('firebase-admin/auth', () => ({
   getAuth: () => ({ updateUser: mockUpdateUser, deleteUser: mockDeleteUser }),

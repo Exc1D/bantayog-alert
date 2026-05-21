@@ -4,7 +4,7 @@ import type { Firestore } from 'firebase-admin/firestore'
 const mockStreamAuditEvent = vi.hoisted(() => vi.fn())
 const mockSend = vi.hoisted(() => vi.fn().mockResolvedValue('test-msg-id'))
 
-vi.mock('../../../services/audit-stream.js', () => ({
+vi.mock('../../ops/audit-stream.js', () => ({
   streamAuditEvent: mockStreamAuditEvent,
 }))
 vi.mock('firebase-admin', () => ({

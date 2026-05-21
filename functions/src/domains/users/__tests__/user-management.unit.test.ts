@@ -31,7 +31,7 @@ vi.mock('../../../idempotency/guard.js', () => ({
   withIdempotency: vi.fn(async (_db, _opts, op) => ({ result: await op(), fromCache: false })),
 }))
 
-vi.mock('../../domains/shared/rate-limit.js', () => ({
+vi.mock('../../shared/rate-limit.js', () => ({
   checkRateLimit: vi.fn(() =>
     Promise.resolve({ allowed: true, remaining: 59, retryAfterSeconds: 0 }),
   ),

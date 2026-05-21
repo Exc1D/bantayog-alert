@@ -274,6 +274,7 @@ export const redispatchReport = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 15,
     memory: '512MiB',
     minInstances: 1,

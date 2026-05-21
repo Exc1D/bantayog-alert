@@ -15,7 +15,7 @@ vi.mock('@google-cloud/bigquery', () => ({
   },
 }))
 
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   adminDb: {
     collection: vi.fn(() => ({
       add: mockAdd,

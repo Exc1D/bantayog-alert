@@ -141,6 +141,7 @@ export const markDispatchUnableToComplete = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
   },

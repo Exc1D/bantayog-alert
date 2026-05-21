@@ -77,7 +77,7 @@ export async function recordIncidentResponseEventCore(
 }
 
 export const recordIncidentResponseEvent = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 },
   async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_ROLES)
     requireMfaAuth(request)

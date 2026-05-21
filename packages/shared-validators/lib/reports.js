@@ -195,6 +195,9 @@ export const reportInboxDocSchema = z
     correlationId: z.uuid(),
     payload: z.record(z.string(), z.unknown()),
     processedAt: z.number().int().optional(),
+    processingStartedAt: z.number().int().nullable().optional(),
+    lastProcessingFailedAt: z.number().int().optional(),
+    lastProcessingError: z.string().optional(),
 })
     .strict();
 export const inboxPayloadSchema = z

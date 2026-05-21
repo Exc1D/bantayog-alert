@@ -9,7 +9,7 @@ const mockWithIdempotency = vi.hoisted(() =>
 const mockLogDimension = vi.hoisted(() => vi.fn(() => vi.fn()))
 const mockIsValidReportTransition = vi.hoisted(() => vi.fn(() => true))
 
-vi.mock('../../idempotency/guard.js', () => ({
+vi.mock('../../../idempotency/guard.js', () => ({
   withIdempotency: mockWithIdempotency,
 }))
 vi.mock('@bantayog/shared-validators', async () => {

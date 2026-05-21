@@ -196,6 +196,7 @@ export const declineDispatch = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     cors: ['http://localhost:5174', 'http://localhost:5175'],
     timeoutSeconds: 10,
     minInstances: 1,

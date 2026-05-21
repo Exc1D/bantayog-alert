@@ -165,8 +165,8 @@ describe('useFirestoreListeners error handling', () => {
     )
 
     unmount()
-    // Map: 3 onSnapshot + 1 onValue = 4 unsubscribes
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(4)
+    // Map: 4 onSnapshot (reports, report_ops, alerts, responders) + 1 onValue (responder_locations) = 5 unsubscribes
+    expect(mockUnsubscribe).toHaveBeenCalledTimes(5)
   })
 
   it('clears retry timer on unmount', async () => {

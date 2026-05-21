@@ -40,6 +40,7 @@ describe('admin-init', () => {
     }))
 
     delete process.env.VITEST
+    delete process.env.FIREBASE_DATABASE_EMULATOR_HOST
 
     await import('../admin-init.js')
 
@@ -65,7 +66,7 @@ describe('admin-init', () => {
     }))
 
     process.env.VITEST = 'true'
-    process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000'
+    delete process.env.FIREBASE_DATABASE_EMULATOR_HOST
 
     await import('../admin-init.js')
 

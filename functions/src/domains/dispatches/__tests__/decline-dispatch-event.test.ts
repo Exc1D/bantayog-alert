@@ -22,7 +22,7 @@ vi.mock('../../services/rate-limit.js', () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
 }))
 
-vi.mock('../../idempotency/guard.js', () => ({
+vi.mock('../../../idempotency/guard.js', () => ({
   withIdempotency: vi.fn().mockImplementation(async (_db, _key, fn) => {
     const result = await fn()
     return { result, fromCache: false }

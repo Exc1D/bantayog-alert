@@ -7,7 +7,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 import { inboxReconciliationSweepCore } from '../inbox-reconciliation-sweep.js'
 
-const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/firestore.rules')
+const RULES_PATH = resolve(import.meta.dirname, '../../../../../infra/firebase/firestore.rules')
 
 let env: RulesTestEnvironment | undefined
 let emulatorAvailable = false
