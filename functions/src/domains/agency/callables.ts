@@ -9,8 +9,8 @@ import {
 } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { IdempotencyMismatchError, withIdempotency } from '../../idempotency/guard.js'
-import { bantayogErrorToHttps, requireAuth } from '../../callables/https-error.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
+import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 
 const TERMINAL_STATUSES = new Set([
   'closed',

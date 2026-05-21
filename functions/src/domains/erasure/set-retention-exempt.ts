@@ -1,11 +1,11 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import { requireAuth, requireMfaAuth } from '../../callables/https-error.js'
+import { requireAuth, requireMfaAuth } from '../shared/https-error.js'
 import { PRIVILEGED_ROLES } from '../../constants/roles.js'
 import { RETENTION_EXEMPT_COLLECTIONS } from '../../constants/retention.js'
 import { streamAuditEvent } from '../ops/audit-stream.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const inputSchema = z.object({
   collection: z.enum(RETENTION_EXEMPT_COLLECTIONS),

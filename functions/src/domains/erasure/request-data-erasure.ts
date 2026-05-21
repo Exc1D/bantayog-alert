@@ -1,9 +1,9 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth } from 'firebase-admin/auth'
-import { requireAuth } from '../../callables/https-error.js'
+import { requireAuth } from '../shared/https-error.js'
 import { streamAuditEvent } from '../ops/audit-stream.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 export async function requestDataErasureCore(
   db: Firestore,

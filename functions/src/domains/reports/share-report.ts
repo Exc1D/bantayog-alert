@@ -3,7 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { bantayogErrorToHttps, requireAuth } from '../../callables/https-error.js'
+import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 
 const requestSchema = z
   .object({

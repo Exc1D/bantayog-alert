@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
 import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
+import { checkRateLimit } from '../../domains/shared/rate-limit.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 

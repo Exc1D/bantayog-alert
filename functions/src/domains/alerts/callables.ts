@@ -2,10 +2,10 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { requireAuth, requireMfaAuth } from '../../callables/https-error.js'
+import { requireAuth, requireMfaAuth } from '../shared/https-error.js'
 import { PDRRMO, PROVINCIAL_SUPERADMIN } from '../../constants/roles.js'
 import { streamAuditEvent } from '../ops/audit-stream.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const declareAlertInputSchema = z.object({
   hazardType: z.string().min(1).max(100),

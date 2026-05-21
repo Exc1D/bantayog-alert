@@ -2,8 +2,8 @@ import { onCall, HttpsError, type CallableRequest } from 'firebase-functions/v2/
 import { Firestore } from 'firebase-admin/firestore'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
-import { bantayogErrorToHttps } from '../../callables/https-error.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { bantayogErrorToHttps } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 export interface GetOpsMetricsCoreDeps {
   timeRange: '1h' | '24h' | '7d'

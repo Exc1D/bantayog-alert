@@ -4,7 +4,7 @@ import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import type { Firestore } from 'firebase-admin/firestore'
 import type { Database } from 'firebase-admin/database'
-import { getEligibleResponders } from '../../services/responder-eligibility.js'
+import { getEligibleResponders } from '../../domains/shared/responder-eligibility.js'
 import { seedResponderDoc, seedResponderShift } from '../helpers/seed-factories.js'
 
 let testEnv: RulesTestEnvironment | undefined

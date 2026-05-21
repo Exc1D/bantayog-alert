@@ -2,10 +2,10 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { requireAuth } from '../../callables/https-error.js'
+import { requireAuth } from '../shared/https-error.js'
 import { PRIVILEGED_WITH_PDRRMO } from '../../constants/roles.js'
 import { streamAuditEvent } from './audit-stream.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const upsertSchema = z.object({
   id: z.string().min(1).optional(),

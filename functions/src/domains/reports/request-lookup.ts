@@ -3,7 +3,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
-import { bantayogErrorToHttps } from '../../callables/https-error.js'
+import { bantayogErrorToHttps } from '../shared/https-error.js'
 
 const payloadSchema = z.union([
   z

@@ -3,9 +3,9 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { getStorage, type Storage } from 'firebase-admin/storage'
 import { randomUUID } from 'node:crypto'
-import { requireAuth } from '../../callables/https-error.js'
+import { requireAuth } from '../shared/https-error.js'
 import { streamAuditEvent } from '../ops/audit-stream.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com'
 const SIGNED_URL_TTL_MS = 60 * 60 * 1000 // 1 hour

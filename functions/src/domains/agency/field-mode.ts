@@ -2,7 +2,7 @@ import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '../../admin-init.js'
 import { BantayogError } from '@bantayog/shared-validators'
-import { bantayogErrorToHttps, requireAuth } from '../../callables/https-error.js'
+import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 
 const ALLOWED_ROLES = new Set(['municipal_admin', 'agency_admin', 'provincial_superadmin'])
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000

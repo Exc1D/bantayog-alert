@@ -5,8 +5,8 @@ import {
   type ScopedOperationsMapIncidentPayload,
 } from '@bantayog/shared-types'
 import { adminDb } from '../../admin-init.js'
-import { getAdminCallableCorsOrigins } from '../../callables/callable-config.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const listScopedOperationsMapSchema = z.object({}).strict()
 

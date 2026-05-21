@@ -8,7 +8,7 @@ import {
   reportInboxDocSchema,
   inboxPayloadSchema,
 } from '@bantayog/shared-validators'
-import { reverseGeocodeToMunicipality } from '../../services/geocode.js'
+import { reverseGeocodeToMunicipality } from '../shared/geocode.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 
 const log = logDimension('processInboxItem')

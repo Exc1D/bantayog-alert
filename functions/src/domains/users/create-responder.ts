@@ -4,8 +4,8 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminAuth, adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
-import { bantayogErrorToHttps, requireAuth } from '../../callables/https-error.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
+import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import {
   buildActiveAccountDoc,
   buildClaimRevocationDoc,

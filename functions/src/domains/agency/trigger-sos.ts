@@ -3,8 +3,8 @@ import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
-import { bantayogErrorToHttps, requireAuth } from '../../callables/https-error.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
+import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 
 export const triggerSosSchema = z
   .object({

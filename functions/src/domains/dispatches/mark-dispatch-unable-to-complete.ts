@@ -4,8 +4,8 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { bantayogErrorToHttps, requireAuth } from '../../callables/https-error.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
+import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 
 export const markDispatchUnableToCompleteSchema = z
   .object({

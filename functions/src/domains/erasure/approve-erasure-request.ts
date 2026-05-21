@@ -2,10 +2,10 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { z } from 'zod'
-import { requireAuth, requireMfaAuth } from '../../callables/https-error.js'
+import { requireAuth, requireMfaAuth } from '../shared/https-error.js'
 import { PRIVILEGED_ROLES } from '../../constants/roles.js'
 import { streamAuditEvent } from '../ops/audit-stream.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const inputSchema = z.object({
   erasureRequestId: z.string().min(1),

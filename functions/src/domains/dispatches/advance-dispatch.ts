@@ -11,8 +11,8 @@ import {
 } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { requireAuth, bantayogErrorToHttps } from '../../callables/https-error.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { requireAuth, bantayogErrorToHttps } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { mirrorDispatchStatusToReportInTransaction } from '../reports/dispatch-report-mirror.js'
 
 export const advanceDispatchCore = async (

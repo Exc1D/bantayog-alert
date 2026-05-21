@@ -7,13 +7,13 @@ import {
   isValidReportTransition,
   type ReportStatus,
 } from '@bantayog/shared-validators'
-import { bantayogErrorToHttps } from '../../callables/https-error.js'
+import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { adminDb } from '../../admin-init.js'
 import { isAccountActive } from '../ops/admin-auth.js'
-import { getAdminCallableCorsOrigins } from '../../callables/callable-config.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 import { logDimension } from '@bantayog/shared-validators'
 
 const InputSchema = z

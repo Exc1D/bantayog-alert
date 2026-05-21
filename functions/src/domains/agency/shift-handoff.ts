@@ -8,16 +8,16 @@ import {
 } from 'firebase-functions/v2/https'
 import { z } from 'zod'
 import { adminDb } from '../../admin-init.js'
-import { bantayogErrorToHttps } from '../../callables/https-error.js'
+import { bantayogErrorToHttps } from '../shared/https-error.js'
 import {
   withIdempotency,
   IdempotencyInProgressError,
   IdempotencyMismatchError,
 } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 import { BantayogError, logDimension, type ReportStatus } from '@bantayog/shared-validators'
 import { type UserRole } from '@bantayog/shared-types'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 interface ShiftHandoff {
   fromUid: string

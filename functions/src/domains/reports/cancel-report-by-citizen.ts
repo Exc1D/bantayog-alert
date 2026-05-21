@@ -5,9 +5,9 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../../services/rate-limit.js'
-import { bantayogErrorToHttps } from '../../callables/https-error.js'
-import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
+import { bantayogErrorToHttps } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const InputSchema = z
   .object({
