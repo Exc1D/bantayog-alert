@@ -13,8 +13,9 @@ Read @.claude/ @docs/learnings.md and @docs/progress.md
 ### Layout (pnpm + Turborepo monorepo)
 
 - `apps/citizen-pwa/` · `apps/admin-desktop/` · `apps/responder-app/`
-- `packages/shared-{data,firebase,sms-parser,types,ui,validators}/` (`@bantayog/*`)
+- `packages/shared-{data,firebase,sms-parser,types,ui,validators,state-machines}/` (`@bantayog/*`)
 - `functions/` — Cloud Functions, region `asia-southeast1` (`@bantayog/functions`)
+- `functions/src/domains/` — business domain modules: `agency/`, `alerts/`, `dispatches/`, `erasure/`, `media/`, `ops/`, `reports/`, `shared/`, `users/`
 - `infra/firebase/` — `firestore.rules`, `database.rules.json`, `storage.rules`, `firestore.indexes.json` (NOT root)
 - `docs/learnings.md` + `docs/progress.md` are auto-loaded — append, don't rewrite.
 
