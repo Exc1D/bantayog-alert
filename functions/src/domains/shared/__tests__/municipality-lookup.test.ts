@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMunicipalityLookup } from '../../domains/shared/municipality-lookup.js'
+import { createMunicipalityLookup } from '../municipality-lookup.js'
 
 const mockGet = vi.fn()
 const mockCollection = vi.fn()

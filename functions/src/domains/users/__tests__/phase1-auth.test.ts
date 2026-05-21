@@ -3,8 +3,8 @@ import {
   buildActiveAccountDoc,
   buildClaimRevocationDoc,
   buildStaffClaims,
-} from '../domains/users/custom-claims.js'
-import { buildPhase1SeedDocs } from '../bootstrap/phase1-seed.js'
+} from '../custom-claims.js'
+import { buildPhase1SeedDocs } from '../../../bootstrap/phase1-seed.js'
 
 describe('buildStaffClaims', () => {
   it('builds municipal admin claims with scoped municipality access', () => {

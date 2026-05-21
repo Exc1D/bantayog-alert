@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { shouldEnforceAppCheck } from '../../domains/shared/app-check-config.js'
+import { shouldEnforceAppCheck } from '../app-check-config.js'
 
 describe('shouldEnforceAppCheck', () => {
   const originalEnv = process.env

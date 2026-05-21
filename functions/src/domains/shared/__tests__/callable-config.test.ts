@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAdminCallableCorsOrigins } from '../../domains/shared/callable-config.js'
+import { getAdminCallableCorsOrigins } from '../callable-config.js'
 
 describe('getAdminCallableCorsOrigins', () => {
   it('includes localhost dev origin', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
@@ -8,13 +8,13 @@ import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
 let adminDb: Firestore
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   get adminDb() {
     return adminDb
   },
 }))
 
-import { duplicateClusterTriggerCore } from '../../domains/reports/duplicate-cluster-trigger.js'
+import { duplicateClusterTriggerCore } from '../duplicate-cluster-trigger.js'
 
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment | undefined

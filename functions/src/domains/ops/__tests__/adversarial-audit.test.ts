@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Timestamp, FieldValue } from 'firebase-admin/firestore'
-import { adminDb, rtdb as adminRtdb } from '../admin-init.js'
-import { dispatchResponderCore } from '../domains/dispatches/dispatch-responder.js'
-import { dispatchMirrorToReportCore } from '../domains/reports/dispatch-mirror-to-report.js'
-import { acceptDispatchCore } from '../domains/dispatches/accept-dispatch.js'
-import { verifyReportCore } from '../domains/reports/verify-report.js'
+import { adminDb, rtdb as adminRtdb } from '../../../admin-init.js'
+import { dispatchResponderCore } from '../../../domains/dispatches/dispatch-responder.js'
+import { dispatchMirrorToReportCore } from '../../../domains/reports/dispatch-mirror-to-report.js'
+import { acceptDispatchCore } from '../../../domains/dispatches/accept-dispatch.js'
+import { verifyReportCore } from '../../../domains/reports/verify-report.js'
 
 // ---------------------------------------------------------------------------
 // Test environment

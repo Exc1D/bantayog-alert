@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import type { Firestore } from 'firebase-admin/firestore'
 import type { Database } from 'firebase-admin/database'
-import { getEligibleResponders } from '../../domains/shared/responder-eligibility.js'
-import { seedResponderDoc, seedResponderShift } from '../helpers/seed-factories.js'
+import { getEligibleResponders } from '../responder-eligibility.js'
+import { seedResponderDoc, seedResponderShift } from '../../../__tests__/helpers/seed-factories.js'
 
 let testEnv: RulesTestEnvironment | undefined
 let available = false

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore, Timestamp } from 'firebase-admin/firestore'
@@ -8,7 +8,7 @@ import { type Firestore, Timestamp } from 'firebase-admin/firestore'
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
 let adminDb: Firestore
 let collectionSpy: ReturnType<typeof vi.spyOn>
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   get adminDb() {
     return adminDb
   },
@@ -17,7 +17,7 @@ vi.mock('firebase-functions/v2/scheduler', () => ({
   onSchedule: vi.fn((_opts: unknown, fn: unknown) => fn),
 }))
 
-import { analyticsSnapshotWriterCore } from '../../domains/ops/analytics-snapshot-writer.js'
+import { analyticsSnapshotWriterCore } from '../analytics-snapshot-writer.js'
 
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment | undefined

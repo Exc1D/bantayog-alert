@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
@@ -22,7 +22,7 @@ vi.mock('firebase-functions/v2/https', async () => {
 })
 
 let adminDb: Firestore
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   get adminDb() {
     return adminDb
   },
@@ -33,7 +33,7 @@ import {
   exitFieldMode,
   enterFieldModeCore,
   exitFieldModeCore,
-} from '../../domains/agency/field-mode.js'
+} from '../field-mode.js'
 
 const ts = 1713350400000
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000

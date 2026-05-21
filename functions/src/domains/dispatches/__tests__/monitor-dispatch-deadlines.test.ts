@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
+import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import { setDoc, doc } from 'firebase/firestore'
 import { type Firestore } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
 let adminDb: Firestore
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   get adminDb() {
     return adminDb
   },
 }))
 
-import { monitorDispatchDeadlinesCore } from '../../domains/dispatches/monitor-dispatch-deadlines.js'
+import { monitorDispatchDeadlinesCore } from '../monitor-dispatch-deadlines.js'
 
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment | undefined

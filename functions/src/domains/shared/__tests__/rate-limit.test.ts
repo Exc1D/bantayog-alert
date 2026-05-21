@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { Timestamp } from 'firebase-admin/firestore'
-import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
-import { checkRateLimit } from '../../domains/shared/rate-limit.js'
+import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
+import { checkRateLimit } from '../rate-limit.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/firestore.rules')
+const RULES_PATH = resolve(import.meta.dirname, '../../../../../infra/firebase/firestore.rules')
 
 const guarded = await guardInitTestEnvironment(
   {

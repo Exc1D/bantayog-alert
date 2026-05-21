@@ -5,7 +5,7 @@ import {
   bantayogErrorToHttps,
   requireAuth,
   requireMfaAuth,
-} from '../../domains/shared/https-error.js'
+} from '../https-error.js'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 
 describe('BANTAYOG_TO_HTTPS_CODE', () => {

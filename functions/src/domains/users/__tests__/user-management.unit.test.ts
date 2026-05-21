@@ -27,11 +27,11 @@ vi.mock('firebase-admin/firestore', () => ({
   },
 }))
 
-vi.mock('../idempotency/guard.js', () => ({
+vi.mock('../../../idempotency/guard.js', () => ({
   withIdempotency: vi.fn(async (_db, _opts, op) => ({ result: await op(), fromCache: false })),
 }))
 
-vi.mock('../services/rate-limit.js', () => ({
+vi.mock('../../domains/shared/rate-limit.js', () => ({
   checkRateLimit: vi.fn(() =>
     Promise.resolve({ allowed: true, remaining: 59, retryAfterSeconds: 0 }),
   ),
@@ -45,7 +45,7 @@ import {
   suspendUserCore,
   revokeUserCore,
   resetUserTotpCore,
-} from '../domains/users/user-management.js'
+} from '../user-management.js'
 
 function mockDb(userDoc?: {
   role?: string
