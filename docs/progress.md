@@ -1,5 +1,21 @@
 # Progress
 
+## Current Status (2026-05-21)
+
+**Architecture refactoring complete — functions/src/ reorganized by domain.**
+
+- `functions/src/callables/` (53 files) → 8 domain directories under `functions/src/domains/`
+- `functions/src/triggers/` (13 files) → moved to respective domains
+- `functions/src/scheduled/` (5 files) → moved to respective domains
+- `functions/src/services/` (8 files) → domain-specific moved, cross-cutting retained
+- `functions/src/auth/` (2 files) → moved to `domains/users/`
+- `index.ts` updated incrementally — all 55 exports now point to domain paths
+- `vitest.config.ts` extended to discover `src/domains/**/__tests__/**/*.test.ts`
+- **121 domain files** organized by business domain (media, users, alerts, agency, ops, reports, dispatches, erasure)
+- **Cross-cutting utilities** retained: `callables/` (https-error, callable-config, app-check-config), `services/` (geocode, municipality-lookup, rate-limit, responder-eligibility), `idempotency/`, `constants/`
+- **Design spec**: `docs/superpowers/specs/2026-05-20-architecture-refactoring-design.md`
+- **Gate**: `pnpm --dir functions typecheck` clean · `pnpm --dir functions lint` clean · 98 domain tests pass (same emulator-dependent skips/failures as before — no regressions)
+
 ## Current Status (2026-05-20)
 
 **Frontend map pin and callable parity polish complete locally.**
@@ -34,18 +50,21 @@
 **Emulator bug fixes complete.**
 
 ### What was fixed
+
 1. **Dashboard Declare Alert button restored.** Accidentally removed in PR #151 redesign (`DashboardPage` no longer passed `onDeclareAlert` to `CommandHeader` and didn't render `<DeclareAlertModal>`). Fixed by adding back the state, prop, and modal. Test added. 364/364 admin-desktop tests pass.
 2. **Admin-desktop AppCheck emulator initialization fixed.** `firebase.ts` only set a debug token global but never called `initializeAppCheck()`. Added `CustomProvider`-based emulator init matching the `responder-app` pattern.
-3. **16 callable files normalized to `shouldEnforceAppCheck()`.** `getOpsMetrics` was the only callable hardcoding `enforceAppCheck: true` instead of using the project-aware helper. Extended the fix to all other callables with the same bug to prevent future 401s on *any* admin action in the emulator. `decline-dispatch` was already correct.
+3. **16 callable files normalized to `shouldEnforceAppCheck()`.** `getOpsMetrics` was the only callable hardcoding `enforceAppCheck: true` instead of using the project-aware helper. Extended the fix to all other callables with the same bug to prevent future 401s on _any_ admin action in the emulator. `decline-dispatch` was already correct.
 4. **`functions-dist` rebuilt** via `pnpm exec tsx scripts/prepare-functions-deploy.ts` so the emulator bundle is fresh.
 
 ### Report submission still requires manual processing
+
 - The upstream Firebase Functions emulator bug (`onDocumentCreated` trigger fails with protobuf decode error) is **not our bug** and affects only local emulator. **Workaround:** after each citizen PWA submission, run:
   ```bash
   FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 pnpm exec tsx functions/scripts/process-inbox-manual.ts
   ```
 
 ### Admin `agencyId` vs `agencyIds` discrepancy (discovered, not fixed)
+
 - Dashboard queries filter `reports` on `agencyId` but the trigger writes `agencyIds` to `report_ops`. This would cause empty dashboards for `agency_admin` users. Since your tested role is `provincial_superadmin`, this wasn't hit.
 
 ---

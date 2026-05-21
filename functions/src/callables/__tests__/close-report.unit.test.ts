@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { closeReportRequestSchema } from '../../callables/close-report.js'
+import { closeReportRequestSchema } from '../../domains/reports/close-report.js'
 
 describe('closeReportRequestSchema', () => {
   it('accepts well-formed request', () => {

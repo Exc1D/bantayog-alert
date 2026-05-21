@@ -19,7 +19,7 @@ vi.mock('firebase-functions/v2/https', async () => {
 
 vi.mock('../../admin-init.js', () => ({ adminDb: {} }))
 
-import { unsubscribeFromAlertsCore } from '../../callables/unsubscribe-from-alerts.js'
+import { unsubscribeFromAlertsCore } from '../../domains/alerts/unsubscribe-to-alerts.js'
 
 describe('unsubscribeFromAlertsCore', () => {
   beforeEach(() => {

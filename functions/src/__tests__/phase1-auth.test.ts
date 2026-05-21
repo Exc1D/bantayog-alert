@@ -3,7 +3,7 @@ import {
   buildActiveAccountDoc,
   buildClaimRevocationDoc,
   buildStaffClaims,
-} from '../auth/custom-claims.js'
+} from '../domains/users/custom-claims.js'
 import { buildPhase1SeedDocs } from '../bootstrap/phase1-seed.js'
 
 describe('buildStaffClaims', () => {

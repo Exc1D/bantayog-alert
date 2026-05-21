@@ -14,7 +14,7 @@ vi.mock('../../admin-init.js', () => ({
   },
 }))
 
-import { duplicateClusterTriggerCore } from '../../triggers/duplicate-cluster-trigger.js'
+import { duplicateClusterTriggerCore } from '../../domains/reports/duplicate-cluster-trigger.js'
 
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment | undefined

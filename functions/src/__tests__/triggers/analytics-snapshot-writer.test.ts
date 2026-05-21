@@ -17,7 +17,7 @@ vi.mock('firebase-functions/v2/scheduler', () => ({
   onSchedule: vi.fn((_opts: unknown, fn: unknown) => fn),
 }))
 
-import { analyticsSnapshotWriterCore } from '../../scheduled/analytics-snapshot-writer.js'
+import { analyticsSnapshotWriterCore } from '../../domains/ops/analytics-snapshot-writer.js'
 
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment | undefined

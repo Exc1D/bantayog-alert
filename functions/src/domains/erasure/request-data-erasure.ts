@@ -1,0 +1,64 @@
+import { onCall, HttpsError } from 'firebase-functions/v2/https'
+import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { getAuth, type Auth } from 'firebase-admin/auth'
+import { requireAuth } from '../../callables/https-error.js'
+import { streamAuditEvent } from '../ops/audit-stream.js'
+import { shouldEnforceAppCheck } from '../../callables/app-check-config.js'
+
+export async function requestDataErasureCore(
+  db: Firestore,
+  auth: Auth,
+  actor: { uid: string },
+): Promise<void> {
+  const sentinelRef = db.collection('erasure_active').doc(actor.uid)
+  const requestRef = db.collection('erasure_requests').doc()
+  const now = Date.now()
+
+  // Atomic: read-then-write sentinel + request doc.
+  // Duplicate prevention is application-level (see sentinel.exists check below);
+  // Firestore transaction read-set tracking retries on concurrent writes,
+  // at which point the re-read sentinel will be present and the check will throw.
+  await db.runTransaction(async (tx) => {
+    const sentinel = await tx.get(sentinelRef)
+    if (sentinel.exists) {
+      throw new HttpsError('already-exists', 'erasure_request_already_active')
+    }
+    tx.set(sentinelRef, { citizenUid: actor.uid, createdAt: now })
+    tx.set(requestRef, {
+      citizenUid: actor.uid,
+      status: 'pending_review',
+      legalHold: false,
+      requestedAt: now,
+    })
+  })
+
+  // Disable Auth after successful doc write. Rollback docs if Auth fails.
+  try {
+    await auth.updateUser(actor.uid, { disabled: true })
+  } catch (err: unknown) {
+    const reason = err instanceof Error ? err.message : String(err)
+    const results = await Promise.allSettled([requestRef.delete(), sentinelRef.delete()])
+    for (const r of results) {
+      if (r.status === 'rejected') {
+        console.error('CRITICAL: erasure rollback failed for', actor.uid, r.reason)
+      }
+    }
+    throw new HttpsError('internal', `auth_disable_failed: ${reason}`)
+  }
+
+  void streamAuditEvent({
+    eventType: 'erasure_request_submitted',
+    actorUid: actor.uid,
+    targetDocumentId: requestRef.id,
+    metadata: {},
+    occurredAt: now,
+  })
+}
+
+export const requestDataErasure = onCall(
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
+  async (request) => {
+    const { uid } = requireAuth(request, ['citizen'])
+    await requestDataErasureCore(getFirestore(), getAuth(), { uid })
+  },
+)

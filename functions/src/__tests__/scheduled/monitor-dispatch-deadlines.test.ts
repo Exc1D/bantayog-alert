@@ -13,7 +13,7 @@ vi.mock('../../admin-init.js', () => ({
   },
 }))
 
-import { monitorDispatchDeadlinesCore } from '../../scheduled/monitor-dispatch-deadlines.js'
+import { monitorDispatchDeadlinesCore } from '../../domains/dispatches/monitor-dispatch-deadlines.js'
 
 const ts = 1713350400000
 let testEnv: RulesTestEnvironment | undefined

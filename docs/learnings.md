@@ -361,3 +361,15 @@
 - **The local Firebase v2 Firestore trigger protobuf bug also hits `onDocumentWritten`.** `dispatchMirrorToReport` can log `Failed to decode protobuf and create a before snapshot` in the emulator before our trigger code runs. Keep critical report-state transitions in the responder callable transaction path so local and staging proof do not depend on async trigger mirroring.
 - **Do not use `itif(available)` when `available` is assigned in `beforeAll`.** Vitest registers tests before hooks run, so `const itif = (available ? it : it.skip)` makes the suite permanently skipped. Gate emulator-backed suites on static env (`FIRESTORE_EMULATOR_HOST`) and let the hook initialize the test environment.
 - **Local proof must not call external sinks.** When `FUNCTIONS_EMULATOR=true`, FCM alert push and BigQuery audit streaming should no-op instead of relying on caught failures. A local reliability command that reaches real Google APIs is not isolated enough to trust.
+
+## Architecture Refactoring — Domain-Driven Reorganization (2026-05-21)
+
+- **Domain over layer.** Organize `functions/src/` by business domain (reports/, dispatches/, users/, etc.) not by technical layer (callables/, triggers/, services/). Adding a feature means touching one directory, not four.
+- **Incremental migration is the only sane path.** Move 5 files → verify → move 12 → verify → move 31 → verify → move 73 → verify. Big-bang reorg = unreviewable diff + impossible rollback.
+- **`git mv` preserves history.** GitHub tracks renames in diff. Use it for every file move.
+- **Update `index.ts` incrementally.** Don't rewrite from scratch — change one export path at a time.
+- **Cross-domain imports use relative paths.** `../ops/audit-stream.js`, not `../../domains/ops/audit-stream.js`. The `domains/` prefix is an implementation detail.
+- **Cross-cutting utilities stay put.** `https-error`, `callable-config`, `app-check-config`, `idempotency/guard`, `constants` — all domains reference these. Don't move them until there's a clear boundary.
+- **`vitest.config.ts` `include` must cover new test locations.** Add `src/domains/**/__tests__/**/*.test.ts` to the glob.
+- **Don't mix package extraction with directory reorg.** They're orthogonal. If something breaks, you'll have two variables to debug. Finish the reorg, let it bake, then extract.
+- **39 files in a shared package isn't automatically too big.** Ask: what's the concrete pain? Slow imports? Broken tree-shaking? If it's just "it feels wrong," YAGNI.

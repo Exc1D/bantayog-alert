@@ -45,7 +45,7 @@ import {
   suspendUserCore,
   revokeUserCore,
   resetUserTotpCore,
-} from '../callables/user-management.js'
+} from '../domains/users/user-management.js'
 
 function mockDb(userDoc?: {
   role?: string
