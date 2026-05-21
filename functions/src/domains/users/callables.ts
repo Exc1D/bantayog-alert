@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { adminAuth, adminDb } from '../../admin-init.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 export const registerCitizen = onCall(
   {
@@ -8,6 +9,7 @@ export const registerCitizen = onCall(
       'https://bantayog-citizen-staging.web.app',
       'https://bantayog-citizen-dev.web.app',
     ],
+    enforceAppCheck: shouldEnforceAppCheck(),
   },
   async (request) => {
     if (!request.auth) {

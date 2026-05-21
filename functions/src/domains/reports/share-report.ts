@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const requestSchema = z
   .object({
@@ -132,7 +133,11 @@ export async function shareReportCore(
 }
 
 export const shareReport = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: process.env.NODE_ENV === 'production' },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: shouldEnforceAppCheck(),
+    memory: '512MiB',
+  },
   async (req: CallableRequest) => {
     const actor = requireAuth(req, ['municipal_admin', 'provincial_superadmin'])
     const input = requestSchema.parse(req.data)

@@ -210,8 +210,8 @@ describe('enterFieldMode callable', () => {
     auth?: { uid: string; token: Record<string, unknown> }
   }) => Promise<{ status: 'entered'; expiresAt: number }>
 
-  itif(available)('wires App Check config from NODE_ENV', () => {
-    const shouldEnforce = process.env.NODE_ENV === 'production'
+  itif(available)('wires App Check config from shouldEnforceAppCheck', () => {
+    const shouldEnforce = true
     expect(onCallMock).toHaveBeenCalledWith(
       expect.objectContaining({
         region: 'asia-southeast1',
@@ -249,8 +249,8 @@ describe('exitFieldMode callable', () => {
     auth?: { uid: string; token: Record<string, unknown> }
   }) => Promise<{ status: 'exited' }>
 
-  itif(available)('wires App Check config from NODE_ENV', () => {
-    const shouldEnforce = process.env.NODE_ENV === 'production'
+  itif(available)('wires App Check config from shouldEnforceAppCheck', () => {
+    const shouldEnforce = true
     // Find calls for exitFieldMode (second call)
     const calls = onCallMock.mock.calls.filter(([, handler]) => handler != null)
     expect(calls.length).toBeGreaterThanOrEqual(2)

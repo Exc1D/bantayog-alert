@@ -9,7 +9,7 @@
     },
     "responder_index": {
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid && auth.token.role === 'responder' && auth.token.accountStatus === 'active' && root.child('responders').child(auth.uid).child('active').val() === true",
+        ".write": "auth != null && auth.uid === $uid && auth.token.role === 'responder' && auth.token.accountStatus === 'active'",
         ".read": false,
         ".validate": "newData.hasChildren(['municipalityId','agencyId']) && newData.child('municipalityId').isString() && newData.child('agencyId').isString()"
       }

@@ -4,23 +4,26 @@ import {
   suspendStaffAccountInputSchema,
 } from '@bantayog/shared-validators'
 import { adminAuth, adminDb } from '../../admin-init.js'
+import { isAccountActive } from '../ops/admin-auth.js'
 import {
   buildActiveAccountDoc,
   buildClaimRevocationDoc,
   buildStaffClaims,
 } from './custom-claims.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
 
 export const setStaffClaims = onCall(
   {
-    cors: [
-      'http://localhost:5173',
-      'https://bantayog-citizen-staging.web.app',
-      'https://bantayog-citizen-dev.web.app',
-    ],
+    cors: getAdminCallableCorsOrigins(),
+    enforceAppCheck: shouldEnforceAppCheck(),
   },
   async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'Only superadmins can set staff claims.')
+    }
+    if (!isAccountActive(request.auth.token)) {
+      throw new HttpsError('permission-denied', 'Account is not active.')
     }
 
     const parsed = setStaffClaimsInputSchema.parse(request.data)
@@ -47,15 +50,15 @@ export const setStaffClaims = onCall(
 
 export const suspendStaffAccount = onCall(
   {
-    cors: [
-      'http://localhost:5173',
-      'https://bantayog-citizen-staging.web.app',
-      'https://bantayog-citizen-dev.web.app',
-    ],
+    cors: getAdminCallableCorsOrigins(),
+    enforceAppCheck: shouldEnforceAppCheck(),
   },
   async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'Only superadmins can suspend accounts.')
+    }
+    if (!isAccountActive(request.auth.token)) {
+      throw new HttpsError('permission-denied', 'Account is not active.')
     }
 
     const input = suspendStaffAccountInputSchema.parse(request.data)

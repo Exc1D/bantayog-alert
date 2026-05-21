@@ -11,6 +11,7 @@ import { adminDb } from '../../admin-init.js'
 import { IdempotencyMismatchError, withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const TERMINAL_STATUSES = new Set([
   'closed',
@@ -245,7 +246,7 @@ export async function requestAgencyAssistanceHandler(
 export const requestAgencyAssistance = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -396,7 +397,7 @@ export async function acceptAgencyAssistanceHandler(
 export const acceptAgencyAssistance = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -572,7 +573,7 @@ export async function declineAgencyAssistanceHandler(
 export const declineAgencyAssistance = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },

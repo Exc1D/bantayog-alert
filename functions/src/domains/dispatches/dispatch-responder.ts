@@ -237,6 +237,7 @@ export const dispatchResponder = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    memory: '512MiB',
     maxInstances: 100,
     cors: getAdminCallableCorsOrigins(),
     secrets: [],

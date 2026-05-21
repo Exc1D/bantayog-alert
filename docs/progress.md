@@ -37,6 +37,17 @@
 
 - `baseFromStored()` in `useMyActiveReports.ts` now reads `municipalityLabel` from localForage on initial seed
 
+**Architecture hardening sweep (2026-05-21):**
+
+- **Suspended superadmin fix**: `isAccountActive()` guard added to `setStaffClaims` + `suspendStaffAccount` in `users/account-lifecycle.ts`
+- **Arbitrary FCM subscription fix**: `verifyTokenOwnership()` added to `subscribeToAlerts` + `unsubscribeFromAlerts` in `alerts/` domain
+- **App Check normalization**: 18 files migrated from `process.env.NODE_ENV === 'production'` to `shouldEnforceAppCheck()` helper; 6 callables that completely lacked `enforceAppCheck` now have it
+- **CORS fix**: `users/account-lifecycle.ts` superadmin callables now use `getAdminCallableCorsOrigins()` instead of citizen PWA origins
+- **RTDB rule fix**: Removed broken `root.child('responders')` lookup from `responder_index/$uid/.write` (Firestore data does not exist in RTDB)
+- **Memory config**: 7 heavy callables upgraded to `memory: '512MiB'` (`createResponder`, `createUser`, `getOpsMetrics`, `shareReport`, `dispatchResponder`, `redispatchReport`, `declareAlert`)
+- **Admin-desktop code splitting**: Added `manualChunks` (vendor + firebase) in `vite.config.ts`
+- **Legacy claim migration**: `cancelReportByCitizen` now uses `isAccountActive()` instead of raw `claims.active === true`
+
 **Design spec**: `docs/superpowers/specs/2026-05-20-architecture-refactoring-design.md`
 **Gate**: `pnpm --dir functions typecheck` clean · `pnpm --dir functions lint` clean · 98 domain tests pass · `@bantayog/shared-state-machines` typecheck + test + build clean
 

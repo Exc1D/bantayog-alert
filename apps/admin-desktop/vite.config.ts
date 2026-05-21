@@ -16,6 +16,18 @@ export default defineConfig(({ command, mode }) => {
       sourcemap: true,
       cssMinify: 'esbuild',
       minify: 'esbuild',
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes('node_modules/react') || id.includes('node_modules/react-router')) {
+              return 'vendor'
+            }
+            if (id.includes('node_modules/firebase')) {
+              return 'firebase'
+            }
+          },
+        },
+      },
     },
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),

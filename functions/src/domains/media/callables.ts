@@ -4,6 +4,7 @@ import { getStorage } from 'firebase-admin/storage'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_SIZE_BYTES = 10 * 1024 * 1024
@@ -95,6 +96,7 @@ export const requestUploadUrl = onCall(
       'https://bantayog-citizen-staging.web.app',
       'https://bantayog-citizen-dev.web.app',
     ],
+    enforceAppCheck: shouldEnforceAppCheck(),
   },
   async (request) => {
     try {

@@ -6,6 +6,7 @@ import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 export const redispatchReportSchema = z
   .object({
@@ -272,8 +273,9 @@ export async function redispatchReportCore(
 export const redispatchReport = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 15,
+    memory: '512MiB',
     minInstances: 1,
   },
   async (request: CallableRequest<unknown>) => {

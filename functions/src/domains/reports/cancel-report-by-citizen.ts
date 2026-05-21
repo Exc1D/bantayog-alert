@@ -8,6 +8,7 @@ import { withIdempotency } from '../../idempotency/guard.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { isAccountActive } from '../ops/admin-auth.js'
 
 const InputSchema = z
   .object({
@@ -138,7 +139,7 @@ export const cancelReportByCitizen = onCall(
     if (claims.role !== 'citizen') {
       throw new HttpsError('permission-denied', 'citizen role required')
     }
-    if (claims.active !== true) {
+    if (!isAccountActive(claims)) {
       throw new HttpsError('permission-denied', 'account is not active')
     }
     const parsed = InputSchema.safeParse(req.data)

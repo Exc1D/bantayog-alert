@@ -6,6 +6,7 @@ import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const log = logDimension('responderRoster')
 
@@ -123,7 +124,7 @@ async function suspendOrRevokeResponderCore(
 export const suspendResponder = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -159,7 +160,7 @@ export const suspendResponder = onCall(
 export const revokeResponder = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -277,7 +278,7 @@ export async function bulkAvailabilityOverrideCore(
 export const bulkAvailabilityOverride = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },

@@ -135,6 +135,17 @@
 - `navigator.clipboard` in happy-dom needs to be defined as own property before spying.
 - `navigator.storage` is undefined in happy-dom; mock with `Object.defineProperty`.
 
+## Security / Functions
+
+- Always use `isAccountActive(request.auth.token)` to check account status; never check `claims.active === true` directly. The helper handles both legacy `active: true` and new `accountStatus: 'active'` claims.
+- Always use `shouldEnforceAppCheck()` from `app-check-config.js` for callable `enforceAppCheck`; never use `process.env.NODE_ENV === 'production'`. The helper exempts the staging project so emulator tests work without a reCAPTCHA key.
+- FCM token ownership must be verified against Firestore (`users/{uid}.fcmToken` and `responders/{uid}.fcmTokens`) before subscribing/unsubscribing to topics.
+- RTDB security rules cannot reference Firestore data. `root.child('responders')` in RTDB rules silently returns nothing because the data lives in Firestore, not RTDB.
+
+## Vite / Build
+
+- Vite 8+ (Rolldown backend) requires `manualChunks` to be a **function**, not an object. Object form throws `TypeError: manualChunks is not a function` at build time.
+
 ## Refactoring / Monorepo
 
 - When renaming files, remove stale build artifacts (`lib/*.js`, `.d.ts`, `.map`) manually.

@@ -457,7 +457,7 @@ describe('declineDispatch callable', () => {
   itif(available)(
     'wires App Check config and accepts an authenticated responder request',
     async () => {
-      const shouldEnforce = process.env.NODE_ENV === 'production'
+      const shouldEnforce = true
       expect(onCallMock).toHaveBeenCalledWith(
         expect.objectContaining({
           region: 'asia-southeast1',

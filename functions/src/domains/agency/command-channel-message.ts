@@ -5,6 +5,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const requestSchema = z
   .object({
@@ -83,7 +84,7 @@ export async function addCommandChannelMessageCore(
 }
 
 export const addCommandChannelMessage = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: process.env.NODE_ENV === 'production' },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (req: CallableRequest) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin'])
     try {

@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '../../admin-init.js'
 import { BantayogError } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const ALLOWED_ROLES = new Set(['municipal_admin', 'agency_admin', 'provincial_superadmin'])
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
@@ -78,7 +79,7 @@ export async function exitFieldModeCore(
 export const enterFieldMode = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
   },
   async (req: CallableRequest<unknown>) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin'])
@@ -119,7 +120,7 @@ export const enterFieldMode = onCall(
 export const exitFieldMode = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
   },
   async (req: CallableRequest<unknown>) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin'])

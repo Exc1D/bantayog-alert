@@ -15,6 +15,7 @@ import {
   IdempotencyMismatchError,
 } from '../../idempotency/guard.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import {
   BantayogError,
   logDimension,
@@ -235,7 +236,7 @@ export async function acceptResponderHandoffCore(
 export const initiateResponderHandoff = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 100,
   },
   async (req: CallableRequest<unknown>) => {
@@ -286,7 +287,7 @@ export const initiateResponderHandoff = onCall(
 export const acceptResponderHandoff = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 100,
   },
   async (req: CallableRequest<unknown>) => {

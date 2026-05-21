@@ -1,5 +1,8 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
+import { type Firestore } from 'firebase-admin/firestore'
 import { z } from 'zod'
+import { adminDb } from '../../admin-init.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const unsubscribeSchema = z.object({
   token: z.string().min(1),
@@ -10,9 +13,27 @@ export interface UnsubscribeFromAlertsDeps {
   actor: { uid: string }
 }
 
+async function verifyTokenOwnership(db: Firestore, uid: string, token: string): Promise<void> {
+  const userSnap = await db.collection('users').doc(uid).get()
+  if (userSnap.exists && userSnap.data()?.fcmToken === token) {
+    return
+  }
+
+  const responderSnap = await db.collection('responders').doc(uid).get()
+  const tokens = responderSnap.data()?.fcmTokens
+  if (Array.isArray(tokens) && tokens.includes(token)) {
+    return
+  }
+
+  throw new HttpsError('permission-denied', 'Token does not belong to caller')
+}
+
 export async function unsubscribeFromAlertsCore(
+  db: Firestore,
   deps: UnsubscribeFromAlertsDeps,
 ): Promise<{ success: true }> {
+  await verifyTokenOwnership(db, deps.actor.uid, deps.token)
+
   const { messaging } = await import('firebase-admin')
   const response = await messaging().unsubscribeFromTopic([deps.token], 'alerts')
   if (response.failureCount > 0 && response.errors.length > 0) {
@@ -25,7 +46,7 @@ export async function unsubscribeFromAlertsCore(
 }
 
 export const unsubscribeFromAlerts = onCall(
-  { region: 'asia-southeast1' },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (request: CallableRequest<unknown>) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Must be signed in')
@@ -37,7 +58,7 @@ export const unsubscribeFromAlerts = onCall(
     }
 
     try {
-      return await unsubscribeFromAlertsCore({
+      return await unsubscribeFromAlertsCore(adminDb, {
         token: parsed.data.token,
         actor: { uid: request.auth.uid },
       })

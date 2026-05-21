@@ -3,6 +3,7 @@ import { type Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { adminDb } from '../../admin-init.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const subscribeSchema = z.object({
   token: z.string().min(1),
@@ -14,11 +15,28 @@ export interface SubscribeToAlertsCoreDeps {
   now: Timestamp
 }
 
+async function verifyTokenOwnership(db: Firestore, uid: string, token: string): Promise<void> {
+  const userSnap = await db.collection('users').doc(uid).get()
+  if (userSnap.exists && userSnap.data()?.fcmToken === token) {
+    return
+  }
+
+  const responderSnap = await db.collection('responders').doc(uid).get()
+  const tokens = responderSnap.data()?.fcmTokens
+  if (Array.isArray(tokens) && tokens.includes(token)) {
+    return
+  }
+
+  throw new HttpsError('permission-denied', 'Token does not belong to caller')
+}
+
 export async function subscribeToAlertsCore(
   db: Firestore,
   deps: SubscribeToAlertsCoreDeps,
 ): Promise<{ success: true }> {
   const { token, actor, now } = deps
+
+  await verifyTokenOwnership(db, actor.uid, token)
 
   const { result } = await withIdempotency(
     db,
@@ -42,7 +60,7 @@ export async function subscribeToAlertsCore(
 }
 
 export const subscribeToAlerts = onCall(
-  { region: 'asia-southeast1' },
+  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
   async (request: CallableRequest<unknown>) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Must be signed in')

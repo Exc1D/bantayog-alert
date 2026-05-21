@@ -114,6 +114,7 @@ export const getOpsMetrics = onCall(
   {
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    memory: '512MiB',
     maxInstances: 100,
   },
   async (req: CallableRequest<unknown>) => {

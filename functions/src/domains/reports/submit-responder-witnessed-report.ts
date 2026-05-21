@@ -7,6 +7,7 @@ import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { randomBytes, createHash, randomInt } from 'node:crypto'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 export const submitResponderWitnessedReportSchema = z
   .object({
@@ -213,7 +214,7 @@ export async function submitResponderWitnessedReportCore(
 export const submitResponderWitnessedReport = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },

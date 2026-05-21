@@ -7,6 +7,7 @@ import { withIdempotency } from '../../idempotency/guard.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { getAuth } from 'firebase-admin/auth'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const log = logDimension('userManagement')
 
@@ -403,7 +404,7 @@ export async function resetUserTotpCore(
 export const suspendUser = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -430,7 +431,7 @@ export const suspendUser = onCall(
 export const revokeUser = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },
@@ -457,7 +458,7 @@ export const revokeUser = onCall(
 export const resetUserTotp = onCall(
   {
     region: 'asia-southeast1',
-    enforceAppCheck: process.env.NODE_ENV === 'production',
+    enforceAppCheck: shouldEnforceAppCheck(),
     timeoutSeconds: 10,
     minInstances: 1,
   },

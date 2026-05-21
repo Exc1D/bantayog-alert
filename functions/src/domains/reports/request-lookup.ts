@@ -4,6 +4,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
+import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const payloadSchema = z.union([
   z
@@ -119,7 +120,10 @@ export async function requestLookupImpl(input: RequestLookupInput): Promise<Requ
 }
 
 export const requestLookup = onCall(
-  { cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app'] },
+  {
+    cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app'],
+    enforceAppCheck: shouldEnforceAppCheck(),
+  },
   async (request) => {
     try {
       return await requestLookupImpl({

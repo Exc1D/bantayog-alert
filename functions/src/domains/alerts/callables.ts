@@ -85,7 +85,11 @@ export async function declareAlertCore(
 }
 
 export const declareAlert = onCall(
-  { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() },
+  {
+    region: 'asia-southeast1',
+    enforceAppCheck: shouldEnforceAppCheck(),
+    memory: '512MiB',
+  },
   async (request) => {
     const { uid, claims } = requireAuth(request, [PROVINCIAL_SUPERADMIN, PDRRMO, 'municipal_admin'])
     requireMfaAuth(request)
