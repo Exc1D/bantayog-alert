@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dispatchDocSchema, dispatchStatusSchema } from './dispatches.js';
-import { isValidDispatchTransition } from './state-machines/dispatch-states.js';
+import { isValidDispatchTransition } from '@bantayog/shared-state-machines';
 const ts = 1713350400000;
 describe('dispatchDocSchema', () => {
     it('accepts a canonical pending dispatch', () => {

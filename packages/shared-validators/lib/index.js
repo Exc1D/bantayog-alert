@@ -22,9 +22,7 @@ export { deadLetterDocSchema } from './dead-letters.js';
 export { renderTemplate, renderBroadcastTemplate, SmsTemplateError } from './sms-templates.js';
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js';
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js';
-export { dispatchToReportState } from './state-machines/dispatch-to-report.js';
-export { REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, } from './state-machines/report-states.js';
-export { DISPATCH_STATES, DISPATCH_TRANSITIONS, isValidDispatchTransition, } from './state-machines/dispatch-states.js';
+export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, isValidDispatchTransition, } from '@bantayog/shared-state-machines';
 export { BantayogErrorCode, isBantayogErrorCode, isTerminalReportStatus, isTerminalDispatchStatus, BantayogError, notFoundError, invalidTransitionError, } from './errors.js';
 export { logEvent, logDimension, LOG_DIMENSION_MAX } from './logging.js';
 //# sourceMappingURL=index.js.map
