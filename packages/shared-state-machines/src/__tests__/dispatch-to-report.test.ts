@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dispatchToReportState } from '../dispatch-to-report.js'
-import type { DispatchStatus } from '../../dispatches.js'
+import type { DispatchStatus } from '@bantayog/shared-types'
 
 describe('dispatchToReportState', () => {
   const cases: [DispatchStatus, ReturnType<typeof dispatchToReportState>][] = [

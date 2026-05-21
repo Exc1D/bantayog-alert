@@ -10,6 +10,6 @@ export {
   DISPATCH_TRANSITIONS,
   isValidDispatchTransition,
 } from './dispatch-states.js'
-export type { DispatchStatus } from '../dispatches.js'
+export type { DispatchStatus } from '@bantayog/shared-types'
 
 export { dispatchToReportState } from './dispatch-to-report.js'

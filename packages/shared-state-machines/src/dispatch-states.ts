@@ -7,7 +7,7 @@
  * the full business logic is available.
  */
 
-import type { DispatchStatus } from '../dispatches.js'
+import type { DispatchStatus } from '@bantayog/shared-types'
 
 // Spec §5.4 — dispatch lifecycle states (Phase 3c: en_route + on_scene, hardened: needs_admin + escalated)
 export const DISPATCH_STATES = [

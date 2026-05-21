@@ -1,5 +1,5 @@
 {
-  "name": "@bantayog/shared-validators",
+  "name": "@bantayog/shared-state-machines",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bantayog/shared-state-machines": "workspace:*",
-    "@bantayog/shared-types": "workspace:*",
-    "zod": "^4.3.6"
+    "@bantayog/shared-types": "workspace:*"
   }
 }

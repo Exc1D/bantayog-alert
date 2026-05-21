@@ -114,19 +114,16 @@ export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
 export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'
 export type { MunicipalityDoc } from './municipalities.js'
-export { dispatchToReportState } from './state-machines/dispatch-to-report.js'
 export {
+  dispatchToReportState,
   REPORT_STATES,
   REPORT_TRANSITIONS,
   isValidReportTransition,
-} from './state-machines/report-states.js'
-export {
   DISPATCH_STATES,
   DISPATCH_TRANSITIONS,
   isValidDispatchTransition,
-} from './state-machines/dispatch-states.js'
-export type { ReportStatus } from './state-machines/report-states.js'
-export type { DispatchStatus } from './dispatches.js'
+} from '@bantayog/shared-state-machines'
+export type { ReportStatus, DispatchStatus } from '@bantayog/shared-state-machines'
 export {
   BantayogErrorCode,
   isBantayogErrorCode,

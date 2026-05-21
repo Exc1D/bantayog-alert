@@ -396,6 +396,9 @@ importers:
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.59.1
+      firebase-admin:
+        specifier: ^13.10.0
+        version: 13.10.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -512,6 +515,12 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
+  packages/shared-state-machines:
+    dependencies:
+      '@bantayog/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+
   packages/shared-types: {}
 
   packages/shared-ui:
@@ -553,6 +562,9 @@ importers:
 
   packages/shared-validators:
     dependencies:
+      '@bantayog/shared-state-machines':
+        specifier: workspace:*
+        version: link:../shared-state-machines
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../shared-types
@@ -9763,7 +9775,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(happy-dom@20.9.0)(msw@2.14.6(@types/node@25.8.0)(typescript@6.0.3))(vite@8.0.13(@types/node@25.8.0)(esbuild@0.27.7)(jiti@1.21.7)(tsx@4.21.0)(yaml@2.8.3))
+      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@20.19.39)(@vitest/coverage-v8@4.1.6)(happy-dom@20.9.0)(msw@2.14.6(@types/node@20.19.39)(typescript@6.0.3))(vite@8.0.13(@types/node@20.19.39)(esbuild@0.27.7)(jiti@1.21.7)(tsx@4.21.0)(yaml@2.8.3))
 
   '@vitest/expect@4.1.6':
     dependencies:

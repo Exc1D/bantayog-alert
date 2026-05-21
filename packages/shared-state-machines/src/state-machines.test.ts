@@ -6,8 +6,8 @@ import {
   DISPATCH_TRANSITIONS,
   isValidReportTransition,
   isValidDispatchTransition,
-} from './state-machines/index.js'
-import type { ReportStatus, DispatchStatus } from './state-machines/index.js'
+} from './index.js'
+import type { ReportStatus, DispatchStatus } from './index.js'
 
 // Report state machine: exhaustive matrix — every declared transition valid, all
 // others invalid. This is the codegen source-of-truth for both TypeScript and

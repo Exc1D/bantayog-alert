@@ -6,7 +6,6 @@
  * declared set must be rejected at the rules layer.
  */
 
-// Re-export enums so consumers don't need a direct dependency on shared-types.
 import type { ReportStatus, DispatchStatus } from '@bantayog/shared-types'
 export type { ReportStatus, DispatchStatus }
 

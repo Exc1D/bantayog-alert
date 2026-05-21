@@ -9,8 +9,7 @@
  * by the cancelDispatch callable or require explicit admin action.
  */
 
-import type { DispatchStatus } from '../dispatches.js'
-import type { ReportStatus } from './report-states.js'
+import type { DispatchStatus, ReportStatus } from '@bantayog/shared-types'
 
 export function dispatchToReportState(dispatchStatus: DispatchStatus): ReportStatus | null {
   switch (dispatchStatus) {
