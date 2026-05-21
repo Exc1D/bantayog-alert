@@ -18,13 +18,16 @@ service firebase.storage {
     function isCitizen()     { return isAuthed() && role() == 'citizen'; }
 
     // Report media: path is report_media/{municipalityId}/{reportId}/{filename}
-    // Admin SDK uploads; admin-of-muni reads. Citizen read removed per QA-S1.
+    // Admin SDK uploads; admin-of-muni reads.
+    // Public access restricted to verified reports only — unverified public reports
+    // do not expose media. TODO: replace with signed URLs for time-limited access.
     match /report_media/{municipalityId}/{reportId}/{filename} {
       allow read: if (isMuniAdmin() && myMunicipality() == municipalityId)
                   || (isSuperadmin() && municipalityId in permittedMunis())
                   || (
                        get(/databases/(default)/documents/reports/$(reportId)).data.visibilityClass == 'public_alertable'
                        && get(/databases/(default)/documents/reports/$(reportId)).data.municipalityId == municipalityId
+                       && get(/databases/(default)/documents/reports/$(reportId)).data.status == 'verified'
                      );
       allow write: if false;
     }

@@ -8,6 +8,9 @@
 
 import { BigQuery } from '@google-cloud/bigquery'
 import { adminDb } from '../../admin-init.js'
+import { logDimension } from '@bantayog/shared-validators'
+
+const log = logDimension('auditStream')
 
 export interface AuditStreamEvent {
   eventType: string
@@ -41,7 +44,12 @@ export async function streamAuditEvent(event: AuditStreamEvent): Promise<void> {
   try {
     await streamAuditEventOrThrow(event)
   } catch (err) {
-    console.warn('[audit-stream] failed to stream event', event.eventType, err)
+    log({
+      severity: 'WARNING',
+      code: 'audit_stream.bigquery_failed',
+      message: `Failed to stream audit event: ${event.eventType}`,
+      data: { eventType: event.eventType, error: err instanceof Error ? err.message : String(err) },
+    })
     try {
       await adminDb.collection('dead_letters').add({
         category: DEAD_LETTER_CATEGORY_AUDIT_STREAM,
@@ -51,7 +59,12 @@ export async function streamAuditEvent(event: AuditStreamEvent): Promise<void> {
         error: err instanceof Error ? err.message : String(err),
       })
     } catch (dlErr) {
-      console.error('[audit-stream] failed to write dead letter', dlErr)
+      log({
+        severity: 'ERROR',
+        code: 'audit_stream.dead_letter_failed',
+        message: 'Failed to write dead letter for audit event',
+        data: { error: dlErr instanceof Error ? dlErr.message : String(dlErr) },
+      })
     }
   }
 }

@@ -10,8 +10,8 @@ function getConfiguredProjectId(): string | undefined {
   try {
     const config = JSON.parse(process.env.FIREBASE_CONFIG) as { projectId?: unknown }
     return typeof config.projectId === 'string' ? config.projectId : undefined
-  } catch (err) {
-    console.warn('[admin-init] Ignoring malformed FIREBASE_CONFIG project id.', err)
+  } catch {
+    // Malformed FIREBASE_CONFIG — fall through to undefined
     return undefined
   }
 }
@@ -30,6 +30,21 @@ function getFallbackAppConfig() {
 }
 
 const app = getApps()[0] ?? initializeApp(getFallbackAppConfig())
+
+// Fail fast if project ID is missing or mismatched in production.
+// Skipped in emulator, vitest, and test environments to allow ADC fallback.
+const projectId = getConfiguredProjectId()
+if (
+  process.env.FUNCTIONS_EMULATOR !== 'true' &&
+  !process.env.VITEST &&
+  process.env.NODE_ENV !== 'test' &&
+  !projectId
+) {
+  throw new Error(
+    '[admin-init] CRITICAL: GCLOUD_PROJECT is not set and FIREBASE_CONFIG has no projectId. ' +
+      'Refusing to initialize — this could connect to the wrong project.',
+  )
+}
 
 export const adminAuth = getAuth(app)
 export const adminDb = getFirestore(app)

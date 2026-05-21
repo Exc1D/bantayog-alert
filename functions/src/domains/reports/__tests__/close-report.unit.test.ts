@@ -31,17 +31,39 @@ interface MockTx {
   set: ReturnType<typeof vi.fn>
 }
 
-function createMockDb(seedReport?: {
-  reportId: string
-  status: string
-  municipalityId: string
+interface MockDbSeed {
+  report?: { reportId: string; status: string; municipalityId: string; [key: string]: unknown }
+  dispatch?: { dispatchId: string; status: string; [key: string]: unknown }
+  reportOps?: { reportId: string; [key: string]: unknown }
   [key: string]: unknown
-}) {
+}
+
+function createMockDb(seed?: MockDbSeed) {
+  const reportSeed =
+    seed?.report ??
+    (seed && typeof seed.reportId === 'string'
+      ? (Object.fromEntries(
+          Object.entries(seed).filter(([k]) => !['report', 'dispatch', 'reportOps'].includes(k)),
+        ) as MockDbSeed['report'])
+      : undefined)
+
   const txGetFn = vi.fn((ref: { path?: string }) => {
-    if (seedReport && ref.path === `reports/${seedReport.reportId}`) {
+    if (reportSeed && ref.path === `reports/${reportSeed.reportId}`) {
       return Promise.resolve({
         exists: true,
-        data: () => ({ ...seedReport }),
+        data: () => ({ ...reportSeed }),
+      })
+    }
+    if (seed?.dispatch && ref.path === `dispatches/${seed.dispatch.dispatchId}`) {
+      return Promise.resolve({
+        exists: true,
+        data: () => ({ ...seed.dispatch }),
+      })
+    }
+    if (seed?.reportOps && ref.path === `report_ops/${seed.reportOps.reportId}`) {
+      return Promise.resolve({
+        exists: true,
+        data: () => ({ ...seed.reportOps }),
       })
     }
     return Promise.resolve({ exists: false, data: () => null })
@@ -422,5 +444,133 @@ describe('closeReportCore', () => {
         (c[0] as { id?: string }).id?.startsWith('event-'),
     )
     expect((eventCall![1] as Record<string, unknown>).actorRole).toBe('municipal_admin')
+  })
+
+  it('cancels active dispatch and clears currentDispatchId', async () => {
+    mockDb = createMockDb({
+      report: {
+        reportId: 'rep-dispatch',
+        status: 'resolved',
+        municipalityId: 'daet',
+        currentDispatchId: 'disp-1',
+      },
+      dispatch: { dispatchId: 'disp-1', status: 'pending' },
+    })
+
+    await closeReportCore(mockDb, {
+      reportId: 'rep-dispatch',
+      idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+      actor: {
+        uid: 'admin-1',
+        claims: { role: 'municipal_admin', municipalityId: 'daet', active: true },
+      },
+      now: {
+        toMillis: () => 1713350400000,
+      } as unknown as import('firebase-admin/firestore').Timestamp,
+    })
+
+    const dispatchUpdate = mockDb._txUpdate.mock.calls.find(
+      (c: unknown[]) => (c[0] as { path?: string }).path === 'dispatches/disp-1',
+    )
+    expect(dispatchUpdate).toBeDefined()
+    expect((dispatchUpdate![1] as Record<string, unknown>).status).toBe('cancelled')
+    expect((dispatchUpdate![1] as Record<string, unknown>).cancelReason).toBe('report_closed')
+    expect((dispatchUpdate![1] as Record<string, unknown>).cancelledBy).toBe('admin-1')
+
+    const reportUpdate = mockDb._txUpdate.mock.calls.find(
+      (c: unknown[]) => (c[0] as { path?: string }).path === 'reports/rep-dispatch',
+    )
+    expect((reportUpdate![1] as Record<string, unknown>).currentDispatchId).toBeNull()
+  })
+
+  it('does not cancel dispatch already in terminal state', async () => {
+    mockDb = createMockDb({
+      report: {
+        reportId: 'rep-term',
+        status: 'resolved',
+        municipalityId: 'daet',
+        currentDispatchId: 'disp-2',
+      },
+      dispatch: { dispatchId: 'disp-2', status: 'resolved' },
+    })
+
+    await closeReportCore(mockDb, {
+      reportId: 'rep-term',
+      idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+      actor: {
+        uid: 'admin-1',
+        claims: { role: 'municipal_admin', municipalityId: 'daet', active: true },
+      },
+      now: {
+        toMillis: () => 1713350400000,
+      } as unknown as import('firebase-admin/firestore').Timestamp,
+    })
+
+    const dispatchUpdate = mockDb._txUpdate.mock.calls.find(
+      (c: unknown[]) => (c[0] as { path?: string }).path === 'dispatches/disp-2',
+    )
+    expect(dispatchUpdate).toBeUndefined()
+
+    const reportUpdate = mockDb._txUpdate.mock.calls.find(
+      (c: unknown[]) => (c[0] as { path?: string }).path === 'reports/rep-term',
+    )
+    expect(reportUpdate).toBeDefined()
+    expect((reportUpdate![1] as Record<string, unknown>).status).toBe('closed')
+  })
+
+  it('syncs report_ops status to closed when doc exists', async () => {
+    mockDb = createMockDb({
+      report: {
+        reportId: 'rep-ops',
+        status: 'resolved',
+        municipalityId: 'daet',
+      },
+      reportOps: { reportId: 'rep-ops', status: 'resolved', updatedAt: 1713340000000 },
+    })
+
+    await closeReportCore(mockDb, {
+      reportId: 'rep-ops',
+      idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+      actor: {
+        uid: 'admin-1',
+        claims: { role: 'municipal_admin', municipalityId: 'daet', active: true },
+      },
+      now: {
+        toMillis: () => 1713350400000,
+      } as unknown as import('firebase-admin/firestore').Timestamp,
+    })
+
+    const opsUpdate = mockDb._txUpdate.mock.calls.find(
+      (c: unknown[]) => (c[0] as { path?: string }).path === 'report_ops/rep-ops',
+    )
+    expect(opsUpdate).toBeDefined()
+    expect((opsUpdate![1] as Record<string, unknown>).status).toBe('closed')
+    expect((opsUpdate![1] as Record<string, unknown>).updatedAt).toBe(1713350400000)
+  })
+
+  it('allows provincial_superadmin to close without municipalityId', async () => {
+    mockDb = createMockDb({
+      reportId: 'rep-super',
+      status: 'resolved',
+      municipalityId: 'daet',
+    })
+
+    const result = await closeReportCore(mockDb, {
+      reportId: 'rep-super',
+      idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+      actor: {
+        uid: 'super-1',
+        claims: { role: 'provincial_superadmin', active: true },
+      },
+      now: {
+        toMillis: () => 1713350400000,
+      } as unknown as import('firebase-admin/firestore').Timestamp,
+    })
+
+    expect(result.status).toBe('closed')
+    const reportUpdate = mockDb._txUpdate.mock.calls.find(
+      (c: unknown[]) => (c[0] as { path?: string }).path === 'reports/rep-super',
+    )
+    expect(reportUpdate).toBeDefined()
   })
 })

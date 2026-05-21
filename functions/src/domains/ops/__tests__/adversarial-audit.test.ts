@@ -217,6 +217,7 @@ describe('Adversarial Audit — Proof of Concept', { timeout: 120000 }, () => {
         .set({
           dispatchId,
           status: 'pending',
+          reportId: 'report-idempotency-fixed',
           assignedTo: { uid: responderUid, agencyId: 'bfp-daet', municipalityId: 'daet' },
           schemaVersion: 1,
         })

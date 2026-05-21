@@ -239,7 +239,8 @@ export const initiateShiftHandoff = onCall(
     if (!ADMIN_ROLES.includes(claims.role as UserRole)) {
       throw new HttpsError('permission-denied', 'admin role required')
     }
-    if (claims.active !== true) {
+    const accountStatus = claims.accountStatus as string | undefined
+    if (claims.active !== true && accountStatus !== 'active') {
       throw new HttpsError('permission-denied', 'account is not active')
     }
     if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {
@@ -269,7 +270,7 @@ export const initiateShiftHandoff = onCall(
         ...(claims.municipalityId !== undefined
           ? { municipalityId: claims.municipalityId as string }
           : {}),
-        active: claims.active,
+        active: claims.active as boolean,
         auth_time: claims.auth_time as number,
       },
     }
@@ -296,7 +297,8 @@ export const acceptShiftHandoff = onCall(
     if (!ADMIN_ROLES.includes(claims.role as UserRole)) {
       throw new HttpsError('permission-denied', 'admin role required')
     }
-    if (claims.active !== true) {
+    const accountStatus = claims.accountStatus as string | undefined
+    if (claims.active !== true && accountStatus !== 'active') {
       throw new HttpsError('permission-denied', 'account is not active')
     }
     if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {
@@ -326,7 +328,7 @@ export const acceptShiftHandoff = onCall(
         ...(claims.municipalityId !== undefined
           ? { municipalityId: claims.municipalityId as string }
           : {}),
-        active: claims.active,
+        active: claims.active as boolean,
         auth_time: claims.auth_time as number,
       },
     }

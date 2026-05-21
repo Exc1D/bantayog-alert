@@ -1,7 +1,12 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
+import {
+  BantayogError,
+  BantayogErrorCode,
+  type ReportStatus,
+  isTerminalReportStatus,
+} from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
@@ -87,7 +92,8 @@ export async function markDispatchUnableToCompleteCore(
             `Report "${dispatch.reportId}" not found`,
           )
         }
-        const currentReportStatus = (reportSnap.data() as { status?: string }).status
+        const currentReportStatus = (reportSnap.data() as { status?: ReportStatus }).status
+        const isReportTerminal = currentReportStatus && isTerminalReportStatus(currentReportStatus)
 
         tx.update(dispatchRef, {
           status: 'unable_to_complete',
@@ -96,11 +102,13 @@ export async function markDispatchUnableToCompleteCore(
           lastStatusAt: now.toMillis(),
         })
 
-        tx.update(reportRef, {
-          status: 'verified',
-          currentDispatchId: null,
-          lastStatusAt: now.toMillis(),
-        })
+        if (!isReportTerminal) {
+          tx.update(reportRef, {
+            status: 'verified',
+            currentDispatchId: null,
+            lastStatusAt: now.toMillis(),
+          })
+        }
 
         const nowMs = now.toMillis()
         const correlationId = crypto.randomUUID()
@@ -118,16 +126,18 @@ export async function markDispatchUnableToCompleteCore(
           schemaVersion: 1,
         })
 
-        tx.set(db.collection('report_events').doc(), {
-          reportId: dispatch.reportId,
-          from: currentReportStatus ?? 'assigned',
-          to: 'verified',
-          actor: actor.uid,
-          actorRole: 'responder',
-          at: nowMs,
-          correlationId,
-          schemaVersion: 1,
-        })
+        if (!isReportTerminal) {
+          tx.set(db.collection('report_events').doc(), {
+            reportId: dispatch.reportId,
+            from: currentReportStatus ?? 'assigned',
+            to: 'verified',
+            actor: actor.uid,
+            actorRole: 'responder',
+            at: nowMs,
+            correlationId,
+            schemaVersion: 1,
+          })
+        }
 
         return { status: 'unable_to_complete' as const, dispatchId }
       })

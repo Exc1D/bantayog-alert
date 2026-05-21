@@ -1,11 +1,10 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { FieldValue, Transaction } from 'firebase-admin/firestore'
 import { adminDb } from '../../admin-init.js'
-import { getMonitorConfig } from './monitor-config.js'
+import { getMonitorConfig, LEASE_EXPIRY_MS } from './monitor-config.js'
 import { logDimension } from '@bantayog/shared-validators'
 
 const log = logDimension('monitorDispatchDeadlines')
-const LEASE_EXPIRY_MS = 120_000 // 2 minutes
 const RESPONDER_CAP = 200
 const RECENT_WINDOW_MS = 30 * 60 * 1_000 // 30 min
 const FALLBACK_WINDOW_MS = 2 * 60 * 60 * 1_000 // 2 hours

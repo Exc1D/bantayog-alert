@@ -22,7 +22,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('ErrorBoundary caught:', error, errorInfo)
+    // In production, log only the error name and message — component stack
+    // can expose internal structure useful to attackers.
+    if (import.meta.env.DEV) {
+      console.error('ErrorBoundary caught:', error, errorInfo.componentStack)
+    } else {
+      console.error(`ErrorBoundary: ${error.name}: ${error.message}`)
+    }
   }
 
   override render(): ReactNode {

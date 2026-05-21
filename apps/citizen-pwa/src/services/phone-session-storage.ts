@@ -1,38 +1,16 @@
-const KEY = 'bantayog.last-phone'
-const DEFAULT_PHONE = '+63'
+// In-memory phone storage — never persisted to disk.
+// Mitigates XSS data exfiltration: even if a malicious script runs,
+// it cannot read phone numbers from sessionStorage/localStorage.
+// CSP headers (firebase.json) provide additional XSS protection.
+// Trade-off: phone number is lost on page refresh (acceptable for emergency reporting flow).
 
-function isBenignStorageError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false
-  const name = err.name
-  const msg = err.message.toLowerCase()
-  return (
-    name === 'QuotaExceededError' ||
-    name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    name === 'SecurityError' ||
-    msg.includes('quota') ||
-    msg.includes('private') ||
-    msg.includes('denied')
-  )
-}
+const DEFAULT_PHONE = '+63'
+let storedPhone: string | null = null
 
 export function getStoredPhone(): string {
-  try {
-    return sessionStorage.getItem(KEY) ?? DEFAULT_PHONE
-  } catch (err: unknown) {
-    if (!isBenignStorageError(err)) {
-      console.warn('[phone-session-storage] Unexpected error reading last-phone:', err)
-    }
-    return DEFAULT_PHONE
-  }
+  return storedPhone ?? DEFAULT_PHONE
 }
 
 export function setStoredPhone(phone: string): void {
-  try {
-    sessionStorage.setItem(KEY, phone)
-  } catch (err: unknown) {
-    if (!isBenignStorageError(err)) {
-      console.warn('[phone-session-storage] Unexpected error writing last-phone:', err)
-    }
-    // Private mode / quota / security errors — best effort persistence.
-  }
+  storedPhone = phone
 }

@@ -20,6 +20,14 @@ export type MirrorAction =
   | { action: 'skip'; reason: string }
   | { action: 'update'; to: ReportStatus }
 
+const TERMINAL_REPORT_STATUSES: readonly ReportStatus[] = [
+  'closed',
+  'cancelled',
+  'cancelled_false_report',
+  'rejected',
+  'merged_as_duplicate',
+]
+
 /**
  * Pure decision function: given the before/after dispatch status and the
  * current report status, decide whether to skip or emit an update.
@@ -29,6 +37,7 @@ export type MirrorAction =
  * - `{ action: 'skip', reason: 'cancel_owned_by_callable' }` when after is 'cancelled'
  * - `{ action: 'skip', reason: 'no_mirror_for_<status>' }` when dispatchToReportState returns null
  * - `{ action: 'skip', reason: 'already_at_target' }` when mapped status === currentReportStatus
+ * - `{ action: 'skip', reason: 'report_terminal' }` when report is in a terminal state
  * - `{ action: 'update', to: ReportStatus }` when a status write is needed
  */
 export function computeMirrorAction(
@@ -37,6 +46,9 @@ export function computeMirrorAction(
   currentReportStatus: ReportStatus,
 ): MirrorAction {
   if (!after) return { action: 'skip', reason: 'deleted' }
+  if (TERMINAL_REPORT_STATUSES.includes(currentReportStatus)) {
+    return { action: 'skip', reason: 'report_terminal' }
+  }
   if (after === 'cancelled') return { action: 'skip', reason: 'cancel_owned_by_callable' }
   if (before === after) return { action: 'skip', reason: 'noop_same_status' }
 
@@ -101,6 +113,18 @@ export async function dispatchMirrorToReportCore(
     const currentStatus = (reportSnap.data() as { status: ReportStatus } | undefined)?.status
     const currentDispatchId = (reportSnap.data() as { currentDispatchId?: string } | undefined)
       ?.currentDispatchId
+
+    // Never touch a terminal report
+    if (currentStatus && TERMINAL_REPORT_STATUSES.includes(currentStatus)) {
+      logger.info({
+        event: 'dispatch_mirror.skip',
+        reason: 'report_terminal',
+        correlationId,
+        dispatchId,
+        reportId: after.reportId,
+      })
+      return
+    }
 
     // Only mirror state from the currently active dispatch
     if (currentDispatchId && currentDispatchId !== dispatchId) {

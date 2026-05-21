@@ -123,6 +123,9 @@ export const getOpsMetrics = onCall(
     if (!ADMIN_ROLES.includes(claims.role as (typeof ADMIN_ROLES)[number])) {
       throw new HttpsError('permission-denied', 'admin required')
     }
+    if (claims.accountStatus !== 'active') {
+      throw new HttpsError('permission-denied', 'account not active')
+    }
 
     const data = req.data as Record<string, unknown> | null
     if (typeof data !== 'object' || data === null) {

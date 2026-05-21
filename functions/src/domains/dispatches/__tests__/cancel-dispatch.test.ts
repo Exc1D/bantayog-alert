@@ -353,3 +353,44 @@ describe('cancelDispatch — widened from-state (3c)', () => {
     )
   }
 })
+
+describe('cancelDispatchCore — terminal report guard', () => {
+  itif(available)('cancels dispatch but leaves terminal report unchanged', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      const { reportId } = await seedReportAtStatus(db, 'closed', { municipalityId: 'daet' })
+      const { dispatchId } = await seedDispatch(db, {
+        reportId,
+        responderUid: 'r1',
+        municipalityId: 'daet',
+        status: 'pending',
+      })
+      await db.collection('reports').doc(reportId).update({ currentDispatchId: dispatchId })
+      await seedActiveAccount(testEnv!, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+
+      const result = await cancelDispatchCore(db, {
+        dispatchId,
+        reason: 'admin_error',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now: Timestamp.now(),
+      })
+
+      expect(result.status).toBe('cancelled')
+
+      const dispatch = (await db.collection('dispatches').doc(dispatchId).get()).data()!
+      expect(dispatch.status).toBe('cancelled')
+
+      const report = (await db.collection('reports').doc(reportId).get()).data()!
+      expect(report.status).toBe('closed')
+      expect(report.currentDispatchId).toBe(dispatchId)
+    })
+  })
+})

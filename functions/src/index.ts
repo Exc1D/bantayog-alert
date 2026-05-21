@@ -124,7 +124,6 @@ export const onMediaFinalize = onObjectFinalized(
   },
 )
 
-export { onMediaRelocate } from './domains/media/triggers.js'
 export { inboxReconciliationSweep } from './domains/reports/inbox-reconciliation-sweep.js'
 export { dispatchMirrorToReport } from './domains/reports/dispatch-mirror-to-report.js'
 export { adminOperationsSweep } from './domains/ops/admin-operations-sweep.js'
@@ -155,3 +154,4 @@ export { reopenReport } from './domains/reports/reopen-report.js'
 export { monitorDispatchDeadlines } from './domains/dispatches/monitor-dispatch-deadlines.js'
 export { retryFcmDelivery } from './domains/dispatches/retry-fcm-delivery.js'
 export { suspendUser, revokeUser, resetUserTotp } from './domains/users/user-management.js'
+export { smsDeliveryReport } from './http/sms-delivery-report.js'

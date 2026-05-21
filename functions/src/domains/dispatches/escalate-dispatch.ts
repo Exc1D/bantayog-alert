@@ -5,6 +5,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { sendFcmToResponder, type FcmSendResult } from '../ops/fcm-send.js'
 
 const InputSchema = z
   .object({
@@ -13,6 +14,15 @@ const InputSchema = z
     idempotencyKey: z.uuid(),
   })
   .strict()
+
+type FcmResult = 'sent' | 'no_token' | 'network_error' | 'sent_with_invalid_tokens'
+
+function mapFcmResult(fcm: FcmSendResult): FcmResult {
+  if (fcm.warnings.includes('fcm_no_token')) return 'no_token'
+  if (fcm.warnings.includes('fcm_network_error')) return 'network_error'
+  if (fcm.warnings.length > 0) return 'sent_with_invalid_tokens'
+  return 'sent'
+}
 
 export interface EscalateDispatchCoreDeps {
   dispatchId: string
@@ -26,6 +36,7 @@ export interface EscalateDispatchCoreDeps {
 }
 
 export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatchCoreDeps) {
+  const correlationId = crypto.randomUUID()
   const parsed = InputSchema.parse({
     dispatchId: deps.dispatchId,
     newResponderUid: deps.newResponderUid,
@@ -122,7 +133,7 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
           municipalityId: responder.municipalityId,
           reason: 'admin_override',
           at: deps.now.toMillis(),
-          correlationId: crypto.randomUUID(),
+          correlationId,
           schemaVersion: 1,
         })
 
@@ -130,11 +141,64 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
           dispatchId: parsed.dispatchId,
           status: 'pending' as const,
           reportId: dispatch.reportId ?? '',
+          responder: {
+            agencyId: responder.agencyId,
+            municipalityId: responder.municipalityId,
+          },
+          correlationId,
         }
       }),
   )
 
-  return result
+  const fcm = await sendFcmToResponder({
+    uid: parsed.newResponderUid,
+    title: 'Dispatch escalated',
+    body: `Report ${result.reportId.slice(0, 8)} — see app for details`,
+    data: {
+      dispatchId: result.dispatchId,
+      reportId: result.reportId,
+      correlationId: result.correlationId,
+    },
+  })
+
+  const fcmResult = mapFcmResult(fcm)
+  const nowMillis = deps.now.toMillis()
+
+  await db.collection('dispatch_events').add({
+    type: 'notification_attempted',
+    dispatchId: result.dispatchId,
+    responderUid: parsed.newResponderUid,
+    agencyId: result.responder.agencyId,
+    municipalityId: result.responder.municipalityId,
+    fcmResult,
+    fcmWarnings: fcm.warnings,
+    at: nowMillis,
+    correlationId: result.correlationId,
+    schemaVersion: 1,
+  })
+
+  await db.collection('dispatches').doc(result.dispatchId).update({
+    fcmResult,
+    fcmWarnings: fcm.warnings,
+  })
+
+  if (fcmResult === 'network_error') {
+    await db.collection('fcm_retry_queue').add({
+      dispatchId: result.dispatchId,
+      responderUid: parsed.newResponderUid,
+      attemptCount: 0,
+      lastAttemptAt: nowMillis,
+      nextAttemptAt: nowMillis + 30_000,
+      originalError: 'fcm_network_error',
+      status: 'pending',
+    })
+  }
+
+  return {
+    ...result,
+    fcmResult,
+    fcmWarnings: fcm.warnings,
+  }
 }
 
 export const escalateDispatch = onCall(
@@ -147,6 +211,13 @@ export const escalateDispatch = onCall(
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
     const claims = req.auth.token as Record<string, unknown> | null
     if (!claims) throw new HttpsError('unauthenticated', 'token required')
+    const role = claims.role as string | undefined
+    if (role !== 'municipal_admin' && role !== 'provincial_superadmin') {
+      throw new HttpsError('permission-denied', 'admin required')
+    }
+    if (claims.accountStatus !== 'active') {
+      throw new HttpsError('permission-denied', 'account not active')
+    }
     const parsed = InputSchema.safeParse(req.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 

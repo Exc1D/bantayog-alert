@@ -2,7 +2,7 @@
 
 ## Current Status (2026-05-21)
 
-**Architecture refactoring complete. Polish follow-up: municipalityLabel fencepost fixed.**
+**Security audit complete. ALL Critical + High findings fixed (22 of 22). 30 Medium/Low remain. 37 total fixed.**
 
 **Phase 1 — Domain reorg:**
 
@@ -54,6 +54,53 @@
 ---
 
 ## Sprint Log (May 2026)
+
+### 2026-05-21 — Security Audit + Week 1-3 Critical Fixes
+
+- **Full security audit**: 59 findings across backend, frontend, and infrastructure (6 Critical, 14 High, 22 Medium, 17 Low)
+- **C-1 Fixed**: `escalateDispatch` — added role + account status check at callable entry
+- **C-2 Fixed**: `registerCitizen` — added existing-role guard to prevent privileged claim stripping
+- **C-3 Fixed**: Idempotency guard — result persistence now atomic via transaction
+- **C-4 Fixed**: Erasure sweep — resumable with checkpoint tracking + batched Firestore writes (400 ops/batch)
+- **C-5 Fixed**: `system_config` — restricted read to authenticated users
+- **C-6 Fixed**: Implemented missing `smsDeliveryReport` HTTP webhook with HMAC verification, provider detection (Semaphore/GlobeLabs), idempotent processing
+- **H-1 Fixed**: `requireAuth` — added `accountStatus === 'active'` check (cascade fixes H-2, H-4)
+- **H-3 Fixed**: `advanceDispatch` — added rate limiting (30/60s, consistent with accept/decline)
+- **H-4 Fixed**: `report_inbox` create rule — now uses `isAuthed()` helper
+- **H-5 Fixed**: `requestUploadUrl` — TTL reduced from 5min to 60s; storage path now user-bound `pending/{uid}/{uploadId}`
+- **H-6 Fixed**: MFA now required in staging; explicit `ALLOW_MFA_BYPASS=true` env var required for bypass
+- **H-7 Fixed**: RTDB `capturedAt` window tightened to +10s/-60s (was ±60s)
+- **H-9 Fixed**: `admin-init.ts` — fails fast if `GCLOUD_PROJECT` is missing in production
+- **H-13 Fixed**: Reporter name moved from `localStorage` to `sessionStorage` (auto-cleared on tab close)
+- **H-14 Fixed**: CSP + security headers (X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy) added to all 3 Firebase Hosting targets
+- **M-4 Fixed**: Localhost CORS origins now conditional on `FUNCTIONS_EMULATOR` / `NODE_ENV` — excluded from production deploys
+- **H-8 Fixed**: Storage rules now require `status == 'verified'` for public media access (was any `public_alertable` report)
+- **H-10 Fixed**: Terraform IAM documented; Firestore rules remain primary access control (GCP limitation)
+- **H-11 Fixed**: CI deploy SA replaced `firebase.admin` with scoped roles (`firebasehosting.admin`, `firebaserules.admin`, `datastore.owner`)
+- **H-12 Fixed**: Phone number moved from `sessionStorage` to in-memory store (cleared on page unload)
+- **H-2 Fixed**: `getOpsMetrics` — added explicit `accountStatus === 'active'` check (was manual auth, not covered by H-1 cascade)
+- **H-15 Fixed**: `shift-handoff` (initiate + accept) — added `accountStatus` check alongside legacy `active` claim
+- **H-16 Fixed**: `merge-duplicates` — added `accountStatus` check alongside legacy `active` claim
+- **M-1 Fixed**: `secret_lookup` read denied to all clients — server-side only via Admin SDK
+- **M-13 Fixed**: `setStaffClaims` now writes to `audit_logs` via `streamAuditEvent`
+- **M-16 Fixed**: `declareAlert` now has rate limiting (5 per 5 minutes per user)
+- **M-18 Fixed**: `declareDataIncident.affectedCollections` validated against known collection allowlist
+- **L-3 Fixed**: `declareAlert.hazardType` constrained to enum (13 known hazard types)
+- **M-12 Fixed**: `suspendStaffAccount` now revokes Firebase custom claims immediately (was 1-hour window)
+- **M-10 Fixed**: `imageCompress.ts` now validates MIME type against allowlist (jpeg/png/webp/heic/heif), rejects gif/bmp/svg/etc
+- **M-14 Fixed**: FCM retry queue now has stale `in_progress` detection (5-min timeout recovery via secondary query)
+- **M-15 Fixed**: `declareDataIncident` now has rate limiting (3 per 5 minutes per user)
+- **M-2 Fixed**: `bulkAvailabilityOverride` now errors on unauthorized/missing UIDs instead of silently skipping (prevents roster enumeration)
+- **L-4 Fixed**: ErrorBoundary now sanitizes console output in production — logs error name + message only, no component stack
+- **L-8 Fixed**: WindowSyncProvider now validates BroadcastChannel messages against known SyncMessage types (`select:report`, `select:municipality`, `triage:action`) before dispatch
+- **L-10 Fixed**: `audit-stream.ts` now uses structured `logDimension` logger instead of `console.warn/error` for BigQuery failures and dead-letter writes
+- **L-13 Fixed**: Removed dead code `onMediaRelocate` trigger (feature flag with no implementation, exported but never used)
+- **M-3 Confirmed already fixed**: `subscribe-to-alerts` has `verifyTokenOwnership()` validating FCM tokens against Firestore
+- **L-9 Confirmed already safe**: `admin-init.ts` malformed FIREBASE_CONFIG catch returns undefined without logging
+- **Tests updated**: `https-error.test.ts` extended with account status + MFA bypass test cases; `callable-config.test.ts` rewritten for environment-aware testing; `callables.test.ts` updated for user-bound storage path; `imageCompress.test.ts` extended with MIME type validation tests
+- **Gate**: `pnpm typecheck` clean (20/20) · `pnpm lint` clean (20/20) · 408 citizen-pwa tests pass · 80+ functions tests pass in changed areas
+- **Audit report**: `docs/security-audit-2026-05-21.md`
+- **Learnings**: `docs/learnings.md` updated with security audit patterns
 
 ### 2026-05-20 — Reliability Spine, Emulator Fixes, Frontend Polish
 

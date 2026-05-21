@@ -93,7 +93,7 @@ export function Step2WhoWhere({
 
   useEffect(() => {
     try {
-      const savedName = localStorage.getItem('bantayog.reporter.name')
+      const savedName = sessionStorage.getItem('bantayog.reporter.name')
       const savedMsisdn = sessionStorage.getItem('bantayog.reporter.msisdn')
       if (savedName || savedMsisdn) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -141,7 +141,7 @@ export function Step2WhoWhere({
     }
 
     try {
-      localStorage.setItem('bantayog.reporter.name', reporterName)
+      sessionStorage.setItem('bantayog.reporter.name', reporterName)
       sessionStorage.setItem('bantayog.reporter.msisdn', reporterMsisdn)
     } catch (err: unknown) {
       if (isQuotaExceededError(err)) {

@@ -20,7 +20,7 @@ service cloud.firestore {
     function myMunicipality() { return request.auth.token.municipalityId; }
     function myAgency()       { return request.auth.token.agencyId; }
     function permittedMunis() {
-      return request.auth.token.permittedMunicipalityIds != null
+      return ('permittedMunicipalityIds' in request.auth.token)
         ? request.auth.token.permittedMunicipalityIds : [];
     }
     function isResponder()  { return isAuthed() && role() == 'responder'; }
@@ -104,10 +104,10 @@ service cloud.firestore {
     // Phase 2: citizen inbox + triptych
     // ================================================================
 
-    match /report_inbox/{inboxId} {
-      allow read: if false;
-      allow create: if request.auth != null
-          && request.resource.data.reporterUid == uid()
+  match /report_inbox/{inboxId} {
+   allow read: if false;
+   allow create: if isAuthed()
+     && request.resource.data.reporterUid == uid()
           && request.resource.data.keys().hasOnly([
             'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload',
             'publicRef', 'secretHash', 'correlationId'
@@ -260,10 +260,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /secret_lookup/{tokenHash} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
+  match /secret_lookup/{tokenHash} {
+   allow read: if false;
+   allow write: if false;
+}
 
     match /municipalities/{municipalityId} {
       allow get: if true;
@@ -343,10 +343,10 @@ service cloud.firestore {
     // claim_revocations, rate_limits.
     // ================================================================
 
-    match /system_config/{configId} {
-      allow read: if true;
-      allow write: if isSuperadmin() && isActivePrivileged();
-    }
+  match /system_config/{configId} {
+   allow read: if isAuthed();
+   allow write: if isSuperadmin() && isActivePrivileged();
+}
 
     match /active_accounts/{accountUid} {
       allow read: if isAuthed() && uid() == accountUid;

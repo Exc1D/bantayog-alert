@@ -12,6 +12,7 @@ import { IdempotencyMismatchError, withIdempotency } from '../../idempotency/gua
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { getResponderCallableCorsOrigins } from '../shared/callable-config.js'
 
 export const declineDispatchRequestSchema = z
   .object({
@@ -197,7 +198,7 @@ export const declineDispatch = onCall(
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,
-    cors: ['http://localhost:5174', 'http://localhost:5175'],
+    cors: getResponderCallableCorsOrigins(),
     timeoutSeconds: 10,
     minInstances: 1,
   },

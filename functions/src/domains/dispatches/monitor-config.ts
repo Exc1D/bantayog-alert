@@ -25,6 +25,8 @@ const DEFAULT_CONFIG: MonitorConfig = {
   updatedBy: 'system',
 }
 
+export const LEASE_EXPIRY_MS = 120_000 // 2 minutes
+
 let cachedConfig: MonitorConfig | null = null
 let cachedAt = 0
 const CACHE_TTL_MS = 30000 // 30s

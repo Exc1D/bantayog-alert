@@ -13,6 +13,12 @@ export interface SubmitReportInput {
   municipalityId?: string
   barangayId?: string
   nearestLandmark?: string
+  /** Reuse draft values for idempotency and deduplication */
+  idempotencyKey?: string
+  publicRef?: string
+  secret?: string
+  correlationId?: string
+  clientCreatedAt?: number
 }
 
 export interface SubmitReportDeps {
@@ -150,11 +156,12 @@ export async function submitReport(
 ): Promise<SubmitReportResult> {
   const reporterUid = await deps.ensureSignedIn()
   const reportType = canonicalizeReportType(input.reportType)
-  const correlationId = deps.randomUUID()
-  const publicRef = deps.randomPublicRef()
-  const secret = deps.randomSecret()
+  const correlationId = input.correlationId ?? deps.randomUUID()
+  const publicRef = input.publicRef ?? deps.randomPublicRef()
+  const secret = input.secret ?? deps.randomSecret()
   const secretHash = await deps.sha256Hex(secret)
-  const idempotencyKey = deps.randomUUID()
+  const idempotencyKey = input.idempotencyKey ?? deps.randomUUID()
+  const clientCreatedAt = input.clientCreatedAt ?? deps.now()
   const pendingMediaIds: string[] = []
 
   if (input.photo) {
@@ -170,7 +177,7 @@ export async function submitReport(
 
   await deps.writeInbox({
     reporterUid,
-    clientCreatedAt: deps.now(),
+    clientCreatedAt,
     idempotencyKey,
     publicRef,
     secretHash,

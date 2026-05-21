@@ -3,14 +3,11 @@ import { adminAuth, adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { Timestamp } from 'firebase-admin/firestore'
 import { checkRateLimit } from '../shared/rate-limit.js'
+import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 
 export const registerCitizen = onCall(
   {
-    cors: [
-      'http://localhost:5173',
-      'https://bantayog-citizen-staging.web.app',
-      'https://bantayog-citizen-dev.web.app',
-    ],
+    cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,
   },
@@ -29,6 +26,17 @@ export const registerCitizen = onCall(
     }
 
     const uid = request.auth.uid
+
+    // Prevent privileged users from stripping their own claims (audit evasion)
+    const existingUser = await adminAuth.getUser(uid)
+    const existingRole = existingUser.customClaims?.role as string | undefined
+    if (existingRole !== undefined && existingRole !== 'citizen') {
+      throw new HttpsError(
+        'failed-precondition',
+        `User already has role '${existingRole}' assigned. Contact an administrator to change roles.`,
+      )
+    }
+
     const now = Date.now()
 
     const claims = {

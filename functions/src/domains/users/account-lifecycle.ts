@@ -12,6 +12,7 @@ import {
 } from './custom-claims.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
+import { streamAuditEvent } from '../ops/audit-stream.js'
 
 export const setStaffClaims = onCall(
   {
@@ -45,6 +46,14 @@ export const setStaffClaims = onCall(
     )
     await batch.commit()
 
+    void streamAuditEvent({
+      eventType: 'claims_set',
+      actorUid: request.auth.uid,
+      targetDocumentId: uid,
+      metadata: { role: claims.role, municipalityId: claims.municipalityId },
+      occurredAt: updatedAt,
+    })
+
     return { uid, claims }
   },
 )
@@ -72,6 +81,14 @@ export const suspendStaffAccount = onCall(
 
     const current = snapshot.data() ?? {}
     const revokedAt = Date.now()
+
+    // Revoke Firebase Auth custom claims immediately — existing ID tokens
+    // carry claims for up to 1 hour. Without this, suspended users can
+    // still perform privileged operations until their token expires.
+    await adminAuth.setCustomUserClaims(input.uid, {
+      role: 'suspended',
+      accountStatus: 'suspended',
+    })
 
     await adminDb
       .collection('active_accounts')

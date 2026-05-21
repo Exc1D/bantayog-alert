@@ -6,6 +6,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
+import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 
 const payloadSchema = z.union([
   z
@@ -122,7 +123,7 @@ export async function requestLookupImpl(input: RequestLookupInput): Promise<Requ
 
 export const requestLookup = onCall(
   {
-    cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app'],
+    cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,
   },

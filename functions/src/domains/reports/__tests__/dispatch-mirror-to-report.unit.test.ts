@@ -91,6 +91,42 @@ describe('computeMirrorAction', () => {
     })
   })
 
+  // --- skip: terminal report status ---
+  it('skip when report is closed', () => {
+    expect(computeMirrorAction('accepted', 'resolved', 'closed')).toEqual({
+      action: 'skip',
+      reason: 'report_terminal',
+    })
+  })
+
+  it('skip when report is cancelled', () => {
+    expect(computeMirrorAction('en_route', 'resolved', 'cancelled')).toEqual({
+      action: 'skip',
+      reason: 'report_terminal',
+    })
+  })
+
+  it('skip when report is rejected', () => {
+    expect(computeMirrorAction('on_scene', 'resolved', 'rejected')).toEqual({
+      action: 'skip',
+      reason: 'report_terminal',
+    })
+  })
+
+  it('skip when report is cancelled_false_report', () => {
+    expect(computeMirrorAction('on_scene', 'resolved', 'cancelled_false_report')).toEqual({
+      action: 'skip',
+      reason: 'report_terminal',
+    })
+  })
+
+  it('skip when report is merged_as_duplicate', () => {
+    expect(computeMirrorAction('on_scene', 'resolved', 'merged_as_duplicate')).toEqual({
+      action: 'skip',
+      reason: 'report_terminal',
+    })
+  })
+
   // --- update: dispatchToReportState(after) differs from currentReportStatus ---
   it('update: accepted → acknowledged (current is assigned)', () => {
     expect(computeMirrorAction('pending', 'accepted', 'assigned')).toEqual({
@@ -142,6 +178,11 @@ describe('computeMirrorAction', () => {
       'en_route',
       'on_scene',
       'resolved',
+      'closed',
+      'cancelled',
+      'rejected',
+      'cancelled_false_report',
+      'merged_as_duplicate',
     ] as const
 
     it.each(dispatchStatuses)('should not throw for any before status: %s', (before) => {

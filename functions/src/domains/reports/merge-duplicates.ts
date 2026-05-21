@@ -235,7 +235,8 @@ export const mergeDuplicates = onCall(
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
       throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required')
     }
-    if (claims.active !== true) {
+    const accountStatus = claims.accountStatus as string | undefined
+    if (claims.active !== true && accountStatus !== 'active') {
       throw new HttpsError('permission-denied', 'account is not active')
     }
     if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {
@@ -261,7 +262,7 @@ export const mergeDuplicates = onCall(
       const correlationId = crypto.randomUUID()
       const actorClaims: MergeDuplicatesActor['claims'] = {
         role: claims.role,
-        active: claims.active,
+        active: claims.active as boolean,
         auth_time: claims.auth_time as number,
       }
       if (typeof claims.municipalityId === 'string') {

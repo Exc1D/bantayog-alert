@@ -247,3 +247,43 @@
 - `@google-cloud/bigquery` `.table.query()` doesn't exist; use `bq.query()` directly.
 - BigQuery results are untyped; cast with `as unknown as RowType[]`.
 - `@google-cloud/logging` must be explicit dependency when using Cloud Logging API in triggers.
+
+## Security Audit (2026-05-21)
+
+- `requireAuth` MUST check `accountStatus === 'active'` in addition to role. Suspended users with valid role claims can still access privileged functions.
+- Callable handlers that don't use `requireAuth` must manually check both role AND `accountStatus` (e.g., `escalateDispatch`).
+- `registerCitizen` must guard against existing privileged roles — any user can strip their own admin claims by calling it.
+- Idempotency guard result persistence must be atomic (within a transaction) — standalone `update()` after `op()` creates lost-result race condition.
+- `system_config` collection must never be world-readable (`allow read: if true`). Minimum: `isAuthed()`.
+- `report_inbox` create rule must use `isAuthed()` helper (which checks `accountStatus`), not raw `request.auth != null`.
+- SMS delivery report webhook needs HMAC signature verification — never trust provider callbacks without authentication.
+- Firestore rules `isAuthed()` helper already checks `accountStatus == 'active'` — use it consistently instead of `request.auth != null`.
+- Erasure sweep must be resumable with checkpoint tracking — crash mid-sweep leaves PII in storage. Use `checkpoint` field on erasure_request doc.
+- Batch Firestore writes (max 500 ops) for erasure to avoid transaction limits and enable partial progress.
+- MFA bypass must be explicit (`ALLOW_MFA_BYPASS=true`), not automatic for staging. Auto-bypass for any project name is a security gap.
+- PII (reporter name, phone) should use `sessionStorage` (tab-scoped, auto-cleared), NOT `localStorage` (persists indefinitely).
+- Firebase Hosting security headers (CSP, X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy) should be configured in `firebase.json` headers, not meta tags.
+- Signed URL TTL should be 60s (not 5min) and storage path should be user-bound (`pending/{uid}/{uploadId}`) to prevent cross-user access.
+- CORS origins must be environment-aware — localhost origins should only be included when `FUNCTIONS_EMULATOR=true` or `NODE_ENV=development`.
+- RTDB `capturedAt` timestamp window should be tight on the future side (+10s) to prevent fabricated location injection.
+- `suspendStaffAccount` must call `adminAuth.setCustomUserClaims()` to revoke claims immediately — existing ID tokens carry claims for up to 1 hour.
+- `admin-init.ts` must fail fast if `GCLOUD_PROJECT` is missing in production — prevents silent connection to wrong project.
+- Storage rules for `public_alertable` media should require `status == 'verified'` — prevents unverified report media from being publicly accessible.
+- CI deploy SA should NOT have `roles/firebase.admin` — use scoped roles: `firebasehosting.admin`, `firebaserules.admin`, `datastore.owner`.
+- Phone numbers should be stored in-memory (module-level variable), NOT in sessionStorage — CSP mitigates XSS but in-memory is defense-in-depth.
+- Firestore does not support collection-level IAM conditions — `roles/datastore.user` is project-wide. Rely on Firestore Security Rules as the primary access control layer.
+- `secret_lookup` collection should be server-side only — deny all client reads (`allow read: if false`). The callable uses Admin SDK which bypasses rules.
+- `setStaffClaims` must write to `audit_logs` — privilege changes are one of the most sensitive operations and need dedicated audit entries.
+- `declareAlert` needs rate limiting (5 per 5 minutes) — any municipal admin can spam FCM alerts to all citizens.
+- `declareAlert.hazardType` must be a Zod enum, not an unconstrained string — prevents arbitrary hazard types polluting the alerts collection.
+- `declareDataIncident.affectedCollections` must be validated against a known allowlist — prevents injection of arbitrary collection names that could confuse incident response.
+- Callables that do manual auth checks (not `requireAuth`) MUST check both `claims.active === true` (legacy) AND `claims.accountStatus === 'active'` (new). Found in `getOpsMetrics`, `shift-handoff`, `merge-duplicates`.
+- Audit sweep: grep for `req.auth.token` or `request.auth.token` without `accountStatus` or `isAccountActive` — catches all missed callables in one pass.
+- Image upload boundary must validate MIME type against an explicit allowlist (jpeg/png/webp/heic/heif) — reject gif/bmp/svg/etc before canvas processing.
+- FCM retry queue docs stuck in `in_progress` need stale detection — query `status == 'in_progress'` with `lastAttemptAt < now - 5min` and reset to `pending`.
+- `declareDataIncident` callable needs rate limiting (3 per 5 minutes) — privileged users can flood incident declarations.
+- `bulkAvailabilityOverride` must NOT silently skip unauthorized UIDs — throw error with `skippedUids` to prevent responder roster enumeration across agencies.
+- ErrorBoundary `componentDidCatch` must NOT log `errorInfo.componentStack` in production — exposes internal component structure. Log only error name + message.
+- Dead code triggers (feature flags with no implementation) should be removed, not left as no-ops — they confuse audit trails and waste cold-start time.
+- `console.warn/error` in Cloud Functions should be replaced with `logDimension` structured logger — enables Cloud Logging filtering and alerting.
+- BroadcastChannel messages should be validated against a known type allowlist before dispatch — prevents malformed messages from reaching listeners in XSS scenarios.

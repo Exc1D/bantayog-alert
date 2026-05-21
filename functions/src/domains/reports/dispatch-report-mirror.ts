@@ -5,6 +5,14 @@ import {
   type ReportStatus,
 } from '@bantayog/shared-validators'
 
+const TERMINAL_REPORT_STATUSES: readonly ReportStatus[] = [
+  'closed',
+  'cancelled',
+  'cancelled_false_report',
+  'rejected',
+  'merged_as_duplicate',
+]
+
 export interface MirrorDispatchStatusToReportArgs {
   db: Firestore
   tx: Transaction
@@ -34,6 +42,7 @@ export async function mirrorDispatchStatusToReportInTransaction(
 
   const from = report?.status ?? 'verified'
   if (from === targetStatus) return
+  if (TERMINAL_REPORT_STATUSES.includes(from)) return
 
   args.tx.update(reportRef, {
     status: targetStatus,

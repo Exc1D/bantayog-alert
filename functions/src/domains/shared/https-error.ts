@@ -44,16 +44,22 @@ export function requireAuth(
   if (typeof role !== 'string' || !allowedRoles.includes(role)) {
     throw new HttpsError('permission-denied', `role ${String(role)} is not allowed`)
   }
+  if (claims.accountStatus !== 'active') {
+    throw new HttpsError('permission-denied', 'account not active')
+  }
   return { uid: request.auth.uid, claims }
 }
 
 export function requireMfaAuth(request: {
   auth?: { uid: string; token: Record<string, unknown> } | null
 }): void {
-  if (
-    process.env.FUNCTIONS_EMULATOR === 'true' ||
-    (process.env.GCLOUD_PROJECT ?? '').endsWith('-staging')
-  ) {
+  // Emulator always bypasses (no MFA support in emulator)
+  if (process.env.FUNCTIONS_EMULATOR === 'true') {
+    return
+  }
+  // Staging requires MFA unless explicitly allowed via audited env var
+  const allowMfaBypass = process.env.ALLOW_MFA_BYPASS === 'true'
+  if (allowMfaBypass) {
     return
   }
   const firebase = request.auth?.token.firebase

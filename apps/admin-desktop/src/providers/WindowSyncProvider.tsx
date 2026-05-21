@@ -12,6 +12,14 @@ const CHANNEL_NAME = 'bantayog-admin-sync'
 const STORAGE_KEY = 'bantayog-sync-fallback'
 const MESSAGE_TTL_MS = 5000
 
+const VALID_MESSAGE_TYPES = new Set(['select:report', 'select:municipality', 'triage:action'])
+
+function isValidSyncMessage(data: unknown): data is SyncMessage {
+  if (typeof data !== 'object' || data === null) return false
+  const msg = data as Record<string, unknown>
+  return typeof msg.type === 'string' && VALID_MESSAGE_TYPES.has(msg.type)
+}
+
 export function WindowSyncProvider({ children }: { children: ReactNode }) {
   const bcRef = useRef<BroadcastChannel | null>(null)
   const listenersRef = useRef<Set<(msg: SyncMessage) => void>>(new Set())
@@ -36,10 +44,12 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
     try {
       bc = new BroadcastChannel(CHANNEL_NAME)
       bcRef.current = bc
-      bc.onmessage = (ev: MessageEvent<SyncMessage>) => {
-        if (isDuplicate(ev.data)) return
+      bc.onmessage = (ev: MessageEvent<unknown>) => {
+        const data = ev.data
+        if (!isValidSyncMessage(data)) return
+        if (isDuplicate(data)) return
         listenersRef.current.forEach((fn) => {
-          fn(ev.data)
+          fn(data)
         })
       }
     } catch {

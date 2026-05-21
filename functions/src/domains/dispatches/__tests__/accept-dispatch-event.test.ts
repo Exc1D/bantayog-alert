@@ -41,6 +41,7 @@ describe('acceptDispatch notification_delivered event', () => {
       exists: true,
       data: () => ({
         status: 'pending',
+        reportId: 'report-1',
         assignedTo: { uid: 'responder-1', agencyId: 'bfp', municipalityId: 'daet' },
         municipalityId: 'daet',
       }),

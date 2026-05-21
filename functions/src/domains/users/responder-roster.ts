@@ -206,7 +206,7 @@ interface BulkAvailabilityOverrideDeps {
 export async function bulkAvailabilityOverrideCore(
   db: Firestore,
   deps: BulkAvailabilityOverrideDeps,
-): Promise<{ updated: number }> {
+): Promise<{ updated: number; skipped: number; skippedUids: string[] }> {
   const { uids, status, idempotencyKey, actor, now } = deps
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -234,6 +234,7 @@ export async function bulkAvailabilityOverrideCore(
 
       const batch = db.batch()
       let updated = 0
+      const skippedUids: string[] = []
 
       // Firestore 'in' queries support up to 10 values per chunk
       const CHUNK_SIZE = 10
@@ -244,9 +245,19 @@ export async function bulkAvailabilityOverrideCore(
           .where(FieldPath.documentId(), 'in', chunk)
           .get()
 
+        const foundUids = new Set(chunkSnap.docs.map((d) => d.id))
+        for (const uid of chunk) {
+          if (!foundUids.has(uid)) {
+            skippedUids.push(uid)
+          }
+        }
+
         for (const doc of chunkSnap.docs) {
           const data = doc.data() as { agencyId?: string }
-          if (data.agencyId !== actor.claims.agencyId) continue
+          if (data.agencyId !== actor.claims.agencyId) {
+            skippedUids.push(doc.id)
+            continue
+          }
 
           batch.update(doc.ref, {
             availabilityStatus: status,
@@ -254,6 +265,16 @@ export async function bulkAvailabilityOverrideCore(
           })
           updated++
         }
+      }
+
+      if (skippedUids.length > 0) {
+        throw new BantayogError(
+          BantayogErrorCode.FORBIDDEN,
+          `${String(skippedUids.length)} responder(s) not found or belong to a different agency`,
+          {
+            skippedUids,
+          },
+        )
       }
 
       await batch.commit()
@@ -270,7 +291,7 @@ export async function bulkAvailabilityOverrideCore(
         },
       })
 
-      return { updated }
+      return { updated, skipped: skippedUids.length, skippedUids }
     },
   )
 

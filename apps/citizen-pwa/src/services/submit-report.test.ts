@@ -162,6 +162,49 @@ describe('submitReport', () => {
       .calls[0]![0]! as { payload: Record<string, unknown> }
     expect(inboxDoc.payload.contact).toBeUndefined()
   })
+
+  it('reuses draft idempotencyKey and correlationId when provided', async () => {
+    const deps: SubmitReportDeps = {
+      ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
+      requestUploadUrl: vi.fn(),
+      putBlob: vi.fn(),
+      writeInbox: vi.fn().mockResolvedValue('ibx-5'),
+      randomUUID: vi.fn().mockReturnValue('should-not-be-used'),
+      randomPublicRef: vi.fn().mockReturnValue('should-not-be-used'),
+      randomSecret: vi.fn().mockReturnValue('should-not-be-used'),
+      sha256Hex: vi.fn().mockResolvedValue('k'.repeat(64)),
+      now: () => 9999,
+    }
+    const result = await submitReport(deps, {
+      reportType: 'flood',
+      severity: 'low',
+      description: 'z',
+      publicLocation: { lat: 14.1, lng: 122.9 },
+      idempotencyKey: 'draft-key-123',
+      publicRef: 'draft-ref',
+      secret: 'draft-secret',
+      correlationId: 'draft-corr-456',
+      clientCreatedAt: 42,
+    })
+    expect(result.publicRef).toBe('draft-ref')
+    expect(result.secret).toBe('draft-secret')
+    expect(result.correlationId).toBe('draft-corr-456')
+    expect(deps.randomUUID).not.toHaveBeenCalled()
+    expect(deps.randomPublicRef).not.toHaveBeenCalled()
+    expect(deps.randomSecret).not.toHaveBeenCalled()
+    expect(deps.writeInbox).toHaveBeenCalledOnce()
+    const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0]![0]! as {
+      idempotencyKey: string
+      publicRef: string
+      correlationId: string
+      clientCreatedAt: number
+    }
+    expect(inboxDoc.idempotencyKey).toBe('draft-key-123')
+    expect(inboxDoc.publicRef).toBe('draft-ref')
+    expect(inboxDoc.correlationId).toBe('draft-corr-456')
+    expect(inboxDoc.clientCreatedAt).toBe(42)
+  })
 })
 
 describe('createDraft', () => {

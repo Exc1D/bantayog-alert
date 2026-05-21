@@ -7,6 +7,8 @@ import {
   isValidDispatchTransition,
   logDimension,
   type DispatchStatus,
+  type ReportStatus,
+  isTerminalReportStatus,
 } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
@@ -99,6 +101,13 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
           ? (reportSnap.data()?.currentDispatchId as string | undefined)
           : undefined
 
+        // Guard: do not revert a terminal report back to verified
+        const isReportTerminal =
+          reportSnap.exists &&
+          isTerminalReportStatus(
+            (reportSnap.data() as { status?: ReportStatus }).status ?? 'verified',
+          )
+
         tx.update(dispatchRef, {
           status: to,
           lastStatusAt: deps.now.toMillis(),
@@ -106,7 +115,7 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
           cancelReason: deps.reason,
         })
 
-        if (reportCurrentDispatchId === deps.dispatchId) {
+        if (!isReportTerminal && reportCurrentDispatchId === deps.dispatchId) {
           tx.update(reportRef, {
             status: 'verified',
             currentDispatchId: null,

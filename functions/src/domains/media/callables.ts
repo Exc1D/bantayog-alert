@@ -8,10 +8,11 @@ import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { adminDb } from '../../admin-init.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
+import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_SIZE_BYTES = 10 * 1024 * 1024
-const SIGNED_URL_TTL_MS = 5 * 60 * 1000
+const SIGNED_URL_TTL_MS = 60 * 1000 // 60 seconds — minimize interception window
 
 const payloadSchema = z
   .object({
@@ -73,7 +74,8 @@ export async function requestUploadUrlImpl(
 
   const storage = getStorage()
   const uploadId = randomUUID()
-  const storagePath = `pending/${uploadId}`
+  // Bind upload path to user UID to prevent cross-user access
+  const storagePath = `pending/${input.auth.uid}/${uploadId}`
   const bucket = storage.bucket(input.bucket)
   const file = bucket.file(storagePath)
 
@@ -94,11 +96,7 @@ export async function requestUploadUrlImpl(
 
 export const requestUploadUrl = onCall(
   {
-    cors: [
-      'http://localhost:5173',
-      'https://bantayog-citizen-staging.web.app',
-      'https://bantayog-citizen-dev.web.app',
-    ],
+    cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,
   },

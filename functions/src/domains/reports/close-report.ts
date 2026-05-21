@@ -7,6 +7,7 @@ import {
   isValidReportTransition,
   logDimension,
   type ReportStatus,
+  type DispatchStatus,
 } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
@@ -15,6 +16,16 @@ import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { isAccountActive } from '../ops/admin-auth.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+
+const DISPATCH_TERMINAL_STATES: readonly DispatchStatus[] = [
+  'resolved',
+  'declined',
+  'timed_out',
+  'cancelled',
+  'superseded',
+  'unable_to_complete',
+  'needs_admin',
+]
 
 export const closeReportRequestSchema = z.object({
   reportId: z.string().min(1).max(128),
@@ -76,7 +87,11 @@ export async function closeReportCore(
             reportId: deps.reportId,
           })
         }
-        if (reportData.municipalityId !== deps.actor.claims.municipalityId) {
+        const actorRole = deps.actor.claims.role ?? 'municipal_admin'
+        if (
+          actorRole !== 'provincial_superadmin' &&
+          reportData.municipalityId !== deps.actor.claims.municipalityId
+        ) {
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report is not in your municipality')
         }
 
@@ -102,15 +117,45 @@ export async function closeReportCore(
           )
         }
 
+        // Cancel any active dispatch so responders cannot advance it after closure.
+        const currentDispatchId = reportData.currentDispatchId as string | undefined
+        if (currentDispatchId) {
+          const dispatchRef = db.collection('dispatches').doc(currentDispatchId)
+          const dispatchSnap = await tx.get(dispatchRef)
+          if (dispatchSnap.exists) {
+            const dispatchStatus =
+              (dispatchSnap.data() as { status?: DispatchStatus }).status ?? 'pending'
+            if (!DISPATCH_TERMINAL_STATES.includes(dispatchStatus)) {
+              tx.update(dispatchRef, {
+                status: 'cancelled',
+                lastStatusAt: deps.now.toMillis(),
+                cancelledBy: deps.actor.uid,
+                cancelReason: 'report_closed',
+              })
+            }
+          }
+        }
+
         const updates: Record<string, unknown> = {
           status: to,
           lastStatusAt: deps.now.toMillis(),
           lastStatusBy: deps.actor.uid,
+          currentDispatchId: null,
         }
         if (deps.closureSummary !== undefined) {
           updates.closureSummary = deps.closureSummary
         }
         tx.update(reportRef, updates)
+
+        // Sync report_ops so downstream queries do not drift.
+        const reportOpsRef = db.collection('report_ops').doc(deps.reportId)
+        const reportOpsSnap = await tx.get(reportOpsRef)
+        if (reportOpsSnap.exists) {
+          tx.update(reportOpsRef, {
+            status: to,
+            updatedAt: deps.now.toMillis(),
+          })
+        }
 
         const eventRef = db.collection('report_events').doc()
         tx.set(eventRef, {
@@ -119,9 +164,7 @@ export async function closeReportCore(
           from,
           to,
           actor: deps.actor.uid,
-          // Falls back to 'municipal_admin' when role is undefined (should not happen for municipal_admin callers,
-          // but provincial_superadmin tokens may omit role)
-          actorRole: deps.actor.claims.role ?? 'municipal_admin',
+          actorRole,
           at: deps.now.toMillis(),
           correlationId,
           schemaVersion: 1,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compressImage } from '../imageCompress.js'
+import { compressImage, InvalidImageTypeError } from '../imageCompress.js'
 
 describe('compressImage', () => {
   it('passes through files smaller than 200KB without compression', async () => {
@@ -32,5 +32,25 @@ describe('compressImage', () => {
     // For small files, defaults don't matter — it passes through unchanged
     const result = await compressImage(smallFile)
     expect(result).toBe(smallFile)
+  })
+
+  it('rejects files with disallowed MIME types', async () => {
+    const gifFile = new File(['gif'], 'anim.gif', { type: 'image/gif' })
+    await expect(compressImage(gifFile)).rejects.toThrow(InvalidImageTypeError)
+
+    const bmpFile = new File(['bmp'], 'image.bmp', { type: 'image/bmp' })
+    await expect(compressImage(bmpFile)).rejects.toThrow(InvalidImageTypeError)
+
+    const svgFile = new File(['<svg/>'], 'icon.svg', { type: 'image/svg+xml' })
+    await expect(compressImage(svgFile)).rejects.toThrow(InvalidImageTypeError)
+  })
+
+  it('accepts allowed MIME types', async () => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    for (const type of allowedTypes) {
+      const file = new File(['tiny'], `test.${type.split('/')[1]}`, { type })
+      const result = await compressImage(file)
+      expect(result).toBe(file)
+    }
   })
 })
