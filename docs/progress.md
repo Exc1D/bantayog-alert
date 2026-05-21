@@ -2,7 +2,7 @@
 
 ## Current Status (2026-05-21)
 
-**Security audit complete. ALL Critical + High findings fixed (22 of 22). 27 Medium/Low remain. 40 total fixed.**
+**Security audit complete. ALL Critical + High findings fixed (22 of 22). 25 Medium/Low remain. 42 total fixed.**
 
 **Phase 1 — Domain reorg:**
 
@@ -98,6 +98,8 @@
 - **M-3 Confirmed already fixed**: `subscribe-to-alerts` has `verifyTokenOwnership()` validating FCM tokens against Firestore
 - **L-9 Confirmed already safe**: `admin-init.ts` malformed FIREBASE_CONFIG catch returns undefined without logging
 - **M-7 Confirmed already fixed**: Security headers (CSP, X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy) present in all 3 Firebase Hosting targets
+- **M-17 Fixed**: App Check staging bypass now requires explicit `ENFORCE_APP_CHECK=true` env var (was automatic for any `-staging` project)
+- **L-5 Fixed**: LoginPage now maps Firebase auth error codes to user-friendly messages — no internal error details exposed to users
 - **M-5 Fixed**: `requestAgencyAssistance` now allows `provincial_superadmin` to request agency assistance for any municipality
 - **M-15 Fixed**: `analytics-snapshot-writer` now processes municipalities sequentially (was 486 concurrent Promise.all queries)
 - **L-12 Fixed**: `retention-sweep` now skips reports with active dispatches before hard-delete (prevents orphaning responders on scene)

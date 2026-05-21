@@ -3,7 +3,7 @@
 **Date:** 2026-05-21
 **Scope:** Full codebase — Cloud Functions, Firestore/Storage/RTDB Rules, Client Apps (Citizen PWA, Admin Desktop, Responder App), Terraform IaC, SMS Processing, Infrastructure Configuration
 **Auditors:** 3 specialized audit agents (backend, frontend, infrastructure)
-**Status:** 40 of 59 findings fixed (100% of Critical + High, 11 Medium/Low)
+**Status:** 42 of 59 findings fixed (100% of Critical + High, 13 Medium/Low)
 
 ---
 
@@ -52,6 +52,8 @@
 | M-15 | Medium   | ✅ Fixed | `analytics-snapshot-writer` now processes municipalities sequentially (was 486 concurrent queries)         |
 | L-12 | Low      | ✅ Fixed | `retention-sweep` now skips reports with active dispatches (prevents orphaning responders on scene)        |
 | M-7  | Medium   | ✅ Fixed | Security headers (CSP, X-Content-Type-Options, X-Frame-Options, HSTS) present in all 3 hosting targets     |
+| M-17 | Medium   | ✅ Fixed | App Check staging bypass now requires explicit `ENFORCE_APP_CHECK=true` env var (was automatic)            |
+| L-5  | Low      | ✅ Fixed | LoginPage now maps Firebase auth error codes to user-friendly messages (no internal details exposed)       |
 
 ---
 
@@ -63,8 +65,8 @@
 | ------------ | ----- | ---------------------------- |
 | **Critical** | 6     | Yes — fix before next deploy |
 | **High**     | 14    | Yes — fix within 1 sprint    |
-| **Medium**   | 15    | Plan for next 2 sprints      |
-| **Low**      | 11    | Backlog                      |
+| **Medium**   | 14    | Plan for next 2 sprints      |
+| **Low**      | 10    | Backlog                      |
 
 ---
 
@@ -223,7 +225,7 @@
 | M-14 | `monitor-dispatch-deadlines.ts`      | Retry queue stuck in `in_progress` on crash (no stale detection)                          |
 | M-15 | `analytics-snapshot-writer.ts:46-62` | ✅ Fixed — Sequential processing replaces 486 concurrent Promise.all queries              |
 | M-16 | `declareAlert` callables.ts:54-67    | Any municipal admin can spam FCM alerts to all citizens                                   |
-| M-17 | `App Check` config                   | App Check disabled for staging — any client can call functions                            |
+| M-17 | `App Check` config                   | ✅ Fixed — Staging bypass now requires explicit `ENFORCE_APP_CHECK=true` env var          |
 | M-18 | `declareDataIncident`                | `affectedCollections` accepts any string — no allowlist validation                        |
 | M-19 | BigQuery Terraform                   | Dataset has no explicit access control — inherits project-level permissions               |
 | M-20 | Terraform                            | No VPC Service Controls — all services accessible from public internet                    |
@@ -234,25 +236,25 @@
 
 ## LOW (17) — Backlog
 
-| ID   | File                             | Issue                                                                               |
-| ---- | -------------------------------- | ----------------------------------------------------------------------------------- |
-| L-1  | `firestore.rules:259`            | `report_lookup` world-readable (acceptable risk — tracking references)              |
-| L-2  | `rate-limit.ts:17-40`            | Firestore transaction contention under load                                         |
-| L-3  | `alerts/callables.ts:11`         | `hazardType` unconstrained string (no enum validation)                              |
-| L-4  | `ErrorBoundary.tsx:25`           | Error boundary logs full error + component stack to console                         |
-| L-5  | `LoginPage.tsx:83,107`           | Firebase error messages propagated to user-facing toasts                            |
-| L-6  | `query-client.tsx:12-43`         | IndexedDB query cache stores full React Query data                                  |
-| L-7  | Multiple files                   | `window.location.href` used for navigation (open redirect pattern)                  |
-| L-8  | `WindowSyncProvider.tsx:39-43`   | BroadcastChannel messages not validated for origin                                  |
-| L-9  | `admin-init.ts:14`               | ✅ Already safe — malformed FIREBASE_CONFIG catch returns undefined without logging |
-| L-10 | `audit-stream.ts:38-44`          | Uses `console.warn/error` instead of structured logger                              |
-| L-11 | `firebase.json:73-76`            | Predeploy scripts could fail silently                                               |
-| L-12 | `retention-sweep.ts:92-107`      | ✅ Fixed — Skips reports with active dispatches before hard-delete                  |
-| L-13 | `triggers.ts:10-32`              | `onMediaRelocate` is a no-op (dead code)                                            |
-| L-14 | `process-inbox-manual.ts:47`     | Emoji in log output (encoding issues in some aggregators)                           |
-| L-15 | `declare-data-incident.ts:63-69` | No rate limiting on `declareDataIncident`                                           |
-| L-16 | `agency/callables.ts:91-98`      | `requestAgencyAssistance` queries users outside transaction                         |
-| L-17 | `border-auto-share.ts:53-79`     | O(n) municipality boundary iteration per report (performance/DoS)                   |
+| ID   | File                             | Issue                                                                                       |
+| ---- | -------------------------------- | ------------------------------------------------------------------------------------------- |
+| L-1  | `firestore.rules:259`            | `report_lookup` world-readable (acceptable risk — tracking references)                      |
+| L-2  | `rate-limit.ts:17-40`            | Firestore transaction contention under load                                                 |
+| L-3  | `alerts/callables.ts:11`         | `hazardType` unconstrained string (no enum validation)                                      |
+| L-4  | `ErrorBoundary.tsx:25`           | Error boundary logs full error + component stack to console                                 |
+| L-5  | `LoginPage.tsx:83,107`           | ✅ Fixed — Firebase auth error codes mapped to user-friendly messages (no internal details) |
+| L-6  | `query-client.tsx:12-43`         | IndexedDB query cache stores full React Query data                                          |
+| L-7  | Multiple files                   | `window.location.href` used for navigation (open redirect pattern)                          |
+| L-8  | `WindowSyncProvider.tsx:39-43`   | BroadcastChannel messages not validated for origin                                          |
+| L-9  | `admin-init.ts:14`               | ✅ Already safe — malformed FIREBASE_CONFIG catch returns undefined without logging         |
+| L-10 | `audit-stream.ts:38-44`          | Uses `console.warn/error` instead of structured logger                                      |
+| L-11 | `firebase.json:73-76`            | Predeploy scripts could fail silently                                                       |
+| L-12 | `retention-sweep.ts:92-107`      | ✅ Fixed — Skips reports with active dispatches before hard-delete                          |
+| L-13 | `triggers.ts:10-32`              | `onMediaRelocate` is a no-op (dead code)                                                    |
+| L-14 | `process-inbox-manual.ts:47`     | Emoji in log output (encoding issues in some aggregators)                                   |
+| L-15 | `declare-data-incident.ts:63-69` | No rate limiting on `declareDataIncident`                                                   |
+| L-16 | `agency/callables.ts:91-98`      | `requestAgencyAssistance` queries users outside transaction                                 |
+| L-17 | `border-auto-share.ts:53-79`     | O(n) municipality boundary iteration per report (performance/DoS)                           |
 
 ---
 

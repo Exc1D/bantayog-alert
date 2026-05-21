@@ -290,3 +290,5 @@
 - `provincial_superadmin` should be able to request agency assistance for any municipality — use the report's `municipalityId` (not the actor's) for `requestedByMunicipalId` field.
 - Scheduled functions with nested loops (municipalities × statuses × severities) must process sequentially — `Promise.all` with 486 concurrent Firestore count queries causes contention and rate limiting.
 - `retention-sweep` must check for active dispatches before hard-deleting reports — orphaning responders on scene is a safety hazard. Query `dispatches` where `reportId == X` and `status in [pending, dispatched, acknowledged, en_route, on_scene]`.
+- App Check staging bypass must be explicit (`ENFORCE_APP_CHECK=true`), not automatic for any project ending in `-staging`. Automatic bypass means any staging clone can call functions without App Check.
+- Firebase auth error codes must be mapped to user-friendly messages at the UI boundary — never expose raw `error.message` which can contain project IDs, API endpoints, or internal details.

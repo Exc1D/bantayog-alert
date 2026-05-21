@@ -49,6 +49,34 @@ export function LoginPage() {
 
   const PH_MOBILE_REGEX = /^\+63[89]\d{9}$/
 
+  /** Map Firebase auth error codes to user-friendly messages. */
+  function getAuthErrorMessage(error: unknown): string {
+    if (!(error instanceof Error)) return 'An unexpected error occurred'
+    // Firebase auth errors have codes like 'auth/invalid-phone-number'
+    const code = (error as { code?: string }).code ?? ''
+    if (code.startsWith('auth/')) {
+      switch (code) {
+        case 'auth/invalid-phone-number':
+          return 'Invalid phone number format'
+        case 'auth/too-many-requests':
+          return 'Too many attempts. Please try again later'
+        case 'auth/network-request-failed':
+          return 'Network error. Check your connection'
+        case 'auth/invalid-verification-code':
+          return 'Invalid verification code'
+        case 'auth/code-expired':
+          return 'Code expired. Please request a new one'
+        case 'auth/missing-verification-code':
+          return 'Please enter the verification code'
+        case 'auth/missing-verification-id':
+          return 'Session expired. Please try again'
+        default:
+          return 'Authentication failed. Please try again'
+      }
+    }
+    return 'An unexpected error occurred'
+  }
+
   const handlePhoneSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
@@ -80,7 +108,7 @@ export function LoginPage() {
       setStep('otp')
     } catch (error) {
       console.error('SMS send error:', error)
-      toast(error instanceof Error ? error.message : 'Failed to send verification code', 'error')
+      toast(getAuthErrorMessage(error), 'error')
       recaptchaVerifierRef.current.clear()
       recaptchaVerifierRef.current = null
     } finally {
@@ -104,7 +132,7 @@ export function LoginPage() {
       timeoutRef.current = setTimeout(() => void navigate('/profile'), 500)
     } catch (error) {
       console.error('OTP verification error:', error)
-      toast(error instanceof Error ? error.message : 'Invalid verification code', 'error')
+      toast(getAuthErrorMessage(error), 'error')
     } finally {
       setLoading(false)
     }
