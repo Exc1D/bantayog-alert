@@ -9,7 +9,7 @@ const PERMISSIVE_RULES =
   'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}'
 
 let env: RulesTestEnvironment | undefined
-let available = false
+let available = Boolean(process.env.FIRESTORE_EMULATOR_HOST)
 
 beforeAll(async () => {
   const guarded = await guardInitTestEnvironment(
@@ -453,14 +453,14 @@ describe('processInboxItemCore', () => {
     })
   })
 
-  itif(available)('throws CONFLICT when lookup doc exists with different reportId', async () => {
+  itif(available)('throws CONFLICT when lookup doc exists with different secret hash', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = ctx.firestore() as any
-      // Pre-write a conflicting lookup entry
+      // Pre-write a conflicting lookup entry with the same public ref but a different token.
       await setDoc(doc(ctx.firestore(), 'report_lookup', 'conf1234'), {
         reportId: 'some-other-report',
-        tokenHash: 'f'.repeat(64),
+        tokenHash: 'e'.repeat(64),
         expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
         createdAt: Date.now(),
         schemaVersion: 1,

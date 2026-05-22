@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Draft } from '../services/draft-store'
+import { submitDraftOnline } from '../hooks/useSubmissionMachine'
 
 // Minimal unit tests for submission state machine transitions.
 // These tests focus on state transition logic without Firebase mocks.
@@ -153,6 +154,55 @@ describe('useSubmissionMachine — state machine logic', () => {
       const isNetwork = isNetworkError(err)
       const derivedState = isNetwork ? 'queued' : 'failed_retryable'
       expect(derivedState).toBe('queued')
+    })
+  })
+
+  describe('submitDraftOnline', () => {
+    it('uses submitCitizenReport for online draft submission', async () => {
+      const draft = makeDraft({
+        location: { lat: 14.1, lng: 122.9 },
+        municipalityId: 'daet',
+        barangayId: 'bagasbas',
+        nearestLandmark: 'Bridge',
+        contact: { phone: '+639123456789', smsConsent: true },
+      })
+      const calls: unknown[] = []
+
+      const publicRef = await submitDraftOnline(draft, {
+        ensureSignedIn: () => Promise.resolve('citizen-1'),
+        submitCitizenReport: (input) => {
+          calls.push(input)
+          return Promise.resolve({
+            reportId: 'report-1',
+            publicRef: input.publicRef,
+            materialized: true,
+            replayed: false,
+          })
+        },
+      })
+
+      expect(publicRef).toBe('abc123de')
+      expect(calls).toEqual([
+        {
+          clientCreatedAt: draft.clientCreatedAt,
+          idempotencyKey: 'key-1',
+          publicRef: 'abc123de',
+          secretHash: 'a'.repeat(64),
+          correlationId: '11111111-1111-4111-8111-111111111111',
+          payload: {
+            reportType: 'flood',
+            description: 'Water rising',
+            severity: 'high',
+            source: 'web',
+            clientDraftRef: 'client-ref-1',
+            publicLocation: { lat: 14.1, lng: 122.9 },
+            municipalityId: 'daet',
+            barangayId: 'bagasbas',
+            nearestLandmark: 'Bridge',
+            contact: { phone: '+639123456789', smsConsent: true },
+          },
+        },
+      ])
     })
   })
 

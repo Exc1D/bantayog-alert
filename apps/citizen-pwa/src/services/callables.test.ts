@@ -11,7 +11,7 @@ vi.mock('./firebase.js', () => ({
   fns: () => 'mocked-functions',
 }))
 
-import { requestDataExport, registerCitizen } from './callables'
+import { requestDataExport, registerCitizen, submitCitizenReport } from './callables'
 
 describe('callables', () => {
   it('requestDataExport calls correct callable', async () => {
@@ -67,5 +67,78 @@ describe('registerCitizen', () => {
     const mockCall = vi.fn().mockRejectedValue(new Error('unavailable'))
     mockHttpsCallable.mockReturnValue(mockCall)
     await expect(registerCitizen()).rejects.toThrow('Citizen registration failed')
+  })
+})
+
+describe('submitCitizenReport', () => {
+  it('calls submitCitizenReport callable and validates the materialization response', async () => {
+    const mockCall = vi.fn().mockResolvedValue({
+      data: {
+        reportId: 'report-1',
+        publicRef: 'abcd1234',
+        materialized: true,
+        replayed: false,
+      },
+    })
+    mockHttpsCallable.mockReturnValue(mockCall)
+
+    const result = await submitCitizenReport({
+      clientCreatedAt: 1713350400000,
+      idempotencyKey: 'idem-1',
+      publicRef: 'abcd1234',
+      secretHash: 'a'.repeat(64),
+      correlationId: '11111111-1111-4111-8111-111111111111',
+      payload: {
+        reportType: 'flood',
+        description: 'Water rising',
+        severity: 'high',
+        source: 'web',
+        publicLocation: { lat: 14.1, lng: 122.9 },
+      },
+    })
+
+    expect(mockHttpsCallable).toHaveBeenCalledWith('mocked-functions', 'submitCitizenReport')
+    expect(mockCall).toHaveBeenCalledWith({
+      clientCreatedAt: 1713350400000,
+      idempotencyKey: 'idem-1',
+      publicRef: 'abcd1234',
+      secretHash: 'a'.repeat(64),
+      correlationId: '11111111-1111-4111-8111-111111111111',
+      payload: {
+        reportType: 'flood',
+        description: 'Water rising',
+        severity: 'high',
+        source: 'web',
+        publicLocation: { lat: 14.1, lng: 122.9 },
+      },
+    })
+    expect(result).toEqual({
+      reportId: 'report-1',
+      publicRef: 'abcd1234',
+      materialized: true,
+      replayed: false,
+    })
+  })
+
+  it('throws on invalid submitCitizenReport server response', async () => {
+    const mockCall = vi.fn().mockResolvedValue({ data: { publicRef: 'abcd1234' } })
+    mockHttpsCallable.mockReturnValue(mockCall)
+
+    await expect(
+      submitCitizenReport({
+        clientCreatedAt: 1713350400000,
+        idempotencyKey: 'idem-1',
+        publicRef: 'abcd1234',
+        secretHash: 'a'.repeat(64),
+        correlationId: '11111111-1111-4111-8111-111111111111',
+        payload: {
+          reportType: 'flood',
+          description: 'Water rising',
+          severity: 'high',
+          source: 'web',
+          publicLocation: { lat: 14.1, lng: 122.9 },
+        },
+      }),
+    ).rejects.toThrow('invalid server response')
   })
 })

@@ -75,9 +75,11 @@ async function createCitizenReport(page: Page, testRunId: string): Promise<strin
   await page.getByRole('button', { name: /flood/i }).click()
   await page.getByRole('button', { name: /continue/i }).click()
   await page.getByRole('button', { name: /pick my municipality manually/i }).click({ force: true })
-  await page.locator('#report-municipality').selectOption('daet')
+  const municipality = page.getByLabel('Municipality')
+  await municipality.selectOption({ label: 'Daet' })
+  await expect(municipality).toHaveValue('daet')
   await page.locator('#reporter-name').fill(`Reliability Spine ${testRunId}`)
-  await page.locator('#reporter-msisdn').fill('+63 912 345 6789')
+  await page.locator('#reporter-msisdn').fill('+639123456789')
   await page.getByRole('button', { name: /no/i }).click()
   await page.getByRole('button', { name: /review report/i }).click()
   await page.getByRole('checkbox', { name: /i confirm this report is accurate/i }).check()
@@ -98,7 +100,12 @@ async function openExactReportOnMap(page: Page, reportId: string): Promise<void>
     await markers.nth(index).click({ force: true })
     const panel = page.getByRole('dialog', { name: /report detail/i })
     await expect(panel).toBeVisible({ timeout: 10_000 })
-    if (await panel.getByText(new RegExp(`Report #${reportId.slice(0, 8)}`)).isVisible().catch(() => false)) {
+    if (
+      await panel
+        .getByText(new RegExp(`Report #${reportId.slice(0, 8)}`))
+        .isVisible()
+        .catch(() => false)
+    ) {
       return
     }
   }
@@ -177,9 +184,9 @@ test.describe('reliability spine', () => {
       await citizenPage.goto(env.citizenBaseUrl, { waitUntil: 'domcontentloaded' })
       await adminPage.goto(env.adminBaseUrl, { waitUntil: 'domcontentloaded' })
       await responderPage.goto(env.responderBaseUrl, { waitUntil: 'domcontentloaded' })
-      await expect(citizenPage.getByRole('navigation', { name: /main navigation/i })).toBeVisible(
-        { timeout: 15_000 },
-      )
+      await expect(citizenPage.getByRole('navigation', { name: /main navigation/i })).toBeVisible({
+        timeout: 15_000,
+      })
       await expect(adminPage.getByRole('heading', { name: /bantayog alert/i })).toBeVisible({
         timeout: 15_000,
       })
@@ -205,38 +212,7 @@ test.describe('reliability spine', () => {
 
       currentCheckpoint = 'C01'
       ledger.publicRef = await createCitizenReport(citizenPage, ledger.testRunId)
-      const inboxQuery = await waitForQueryExactlyOne(
-        () =>
-          db.collection('report_inbox').where('publicRef', '==', ledger.publicRef ?? '').get(),
-        15_000,
-        'report_inbox entry',
-      )
-      ledger.clientDraftRef = inboxQuery.id
-      logCheckpoint({
-        testRunId: ledger.testRunId,
-        checkpoint: 'C01',
-        status: 'passed',
-        target: ledger.target,
-        expected: 'report_inbox/{clientDraftRef} exists with exact report payload metadata',
-        observed: {
-          clientDraftRef: ledger.clientDraftRef,
-          publicRef: ledger.publicRef,
-          reporterUid: inboxQuery.data().reporterUid,
-          idempotencyKey: inboxQuery.data().idempotencyKey,
-          correlationId: inboxQuery.data().correlationId,
-        },
-      })
-
-      currentCheckpoint = 'C02'
-      const firstSummary = await runManualInboxProcessor()
-      expect(firstSummary.exitCode, JSON.stringify(firstSummary, null, 2)).toBe(0)
-      expect(firstSummary.failedCount, JSON.stringify(firstSummary, null, 2)).toBe(0)
-      expect(firstSummary.candidateCount).toBeGreaterThan(0)
-
-      const lookup = await waitForDoc(
-        db.collection('report_lookup').doc(ledger.publicRef),
-        30_000,
-      )
+      const lookup = await waitForDoc(db.collection('report_lookup').doc(ledger.publicRef), 30_000)
       ledger.reportId = String(lookup.data()?.reportId ?? '')
       expect(ledger.reportId).not.toBe('')
       await waitForDoc(db.collection('reports').doc(ledger.reportId), 30_000)
@@ -244,15 +220,35 @@ test.describe('reliability spine', () => {
       await waitForDoc(db.collection('report_private').doc(ledger.reportId), 30_000)
       logCheckpoint({
         testRunId: ledger.testRunId,
-        checkpoint: 'C02',
+        checkpoint: 'C01',
         status: 'passed',
         target: ledger.target,
-        expected: 'reports/report_ops/report_lookup materialize exactly once',
+        expected: 'submitCitizenReport materializes reports/report_ops/report_lookup directly',
         observed: {
           reportId: ledger.reportId,
           publicRef: ledger.publicRef,
           reportLookupId: lookup.id,
-          reportOpsStatus: (await db.collection('report_ops').doc(ledger.reportId).get()).data()?.status,
+          reportOpsStatus: (await db.collection('report_ops').doc(ledger.reportId).get()).data()
+            ?.status,
+        },
+      })
+
+      currentCheckpoint = 'C02'
+      const firstSummary = await runManualInboxProcessor()
+      expect(firstSummary.exitCode, JSON.stringify(firstSummary, null, 2)).toBe(0)
+      expect(firstSummary.failedCount, JSON.stringify(firstSummary, null, 2)).toBe(0)
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C02',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Manual inbox fallback can run after callable materialization without failures',
+        observed: {
+          reportId: ledger.reportId,
+          publicRef: ledger.publicRef,
+          candidateCount: firstSummary.candidateCount,
+          processedCount: firstSummary.processedCount,
+          failedCount: firstSummary.failedCount,
         },
       })
 
@@ -280,7 +276,10 @@ test.describe('reliability spine', () => {
       await declareAlert(adminPage, ledger.testRunId)
       const alertDoc = await waitForQueryExactlyOne(
         () =>
-          db.collection('alerts').where('message', '==', `[TEST:${ledger.testRunId}] Flood proof alert`).get(),
+          db
+            .collection('alerts')
+            .where('message', '==', `[TEST:${ledger.testRunId}] Flood proof alert`)
+            .get(),
         15_000,
         'declared alert',
       )
@@ -302,7 +301,9 @@ test.describe('reliability spine', () => {
 
       currentCheckpoint = 'C05'
       await citizenPage.goto(`${env.citizenBaseUrl}/alerts`, { waitUntil: 'domcontentloaded' })
-      await expect(citizenPage.getByText(`[TEST:${ledger.testRunId}] Flood proof alert`)).toBeVisible({
+      await expect(
+        citizenPage.getByText(`[TEST:${ledger.testRunId}] Flood proof alert`),
+      ).toBeVisible({
         timeout: 15_000,
       })
       citizenGuard.assertHealthy('C05')
@@ -321,7 +322,11 @@ test.describe('reliability spine', () => {
       currentCheckpoint = 'C06'
       await chooseResponderAndDispatch(adminPage, ledger.responderUid ?? '')
       const dispatchDoc = await waitForQueryExactlyOne(
-        () => db.collection('dispatches').where('reportId', '==', ledger.reportId ?? '').get(),
+        () =>
+          db
+            .collection('dispatches')
+            .where('reportId', '==', ledger.reportId ?? '')
+            .get(),
         15_000,
         'dispatch document',
       )
@@ -333,7 +338,8 @@ test.describe('reliability spine', () => {
         checkpoint: 'C06',
         status: 'passed',
         target: ledger.target,
-        expected: 'dispatches/{dispatchId} contains exact reportId, responder uid, and pending status',
+        expected:
+          'dispatches/{dispatchId} contains exact reportId, responder uid, and pending status',
         observed: {
           dispatchId: ledger.dispatchId,
           reportId: dispatchDoc.data().reportId,
@@ -386,7 +392,15 @@ test.describe('reliability spine', () => {
         .poll(async () => (await db.collection('dispatches').doc(dispatchId).get()).data()?.status)
         .toBe('on_scene')
       await expect
-        .poll(async () => (await db.collection('reports').doc(ledger.reportId ?? '').get()).data()?.status)
+        .poll(
+          async () =>
+            (
+              await db
+                .collection('reports')
+                .doc(ledger.reportId ?? '')
+                .get()
+            ).data()?.status,
+        )
         .toBe('on_scene')
       logCheckpoint({
         testRunId: ledger.testRunId,
@@ -397,8 +411,14 @@ test.describe('reliability spine', () => {
           'Responder progression advances dispatch and parent report through acknowledged, en_route, and on_scene',
         observed: {
           dispatchId: ledger.dispatchId,
-          finalStatus: (await db.collection('dispatches').doc(ledger.dispatchId).get()).data()?.status,
-          reportStatus: (await db.collection('reports').doc(ledger.reportId ?? '').get()).data()?.status,
+          finalStatus: (await db.collection('dispatches').doc(ledger.dispatchId).get()).data()
+            ?.status,
+          reportStatus: (
+            await db
+              .collection('reports')
+              .doc(ledger.reportId ?? '')
+              .get()
+          ).data()?.status,
         },
       })
 
@@ -408,11 +428,20 @@ test.describe('reliability spine', () => {
       expect(replaySummary.candidateCount).toBe(0)
       expect(replaySummary.processedCount).toBe(0)
       await expect
-        .poll(async () =>
-          (await db.collection('report_lookup').doc(ledger.publicRef ?? '').get()).data()?.reportId,
+        .poll(
+          async () =>
+            (
+              await db
+                .collection('report_lookup')
+                .doc(ledger.publicRef ?? '')
+                .get()
+            ).data()?.reportId,
         )
         .toBe(ledger.reportId)
-      const reportAfterReplay = await db.collection('reports').doc(ledger.reportId ?? '').get()
+      const reportAfterReplay = await db
+        .collection('reports')
+        .doc(ledger.reportId ?? '')
+        .get()
       expect(reportAfterReplay.exists).toBe(true)
       logCheckpoint({
         testRunId: ledger.testRunId,
@@ -448,11 +477,7 @@ test.describe('reliability spine', () => {
       })
       throw error
     } finally {
-      await Promise.all([
-        citizenContext.close(),
-        adminContext.close(),
-        responderContext.close(),
-      ])
+      await Promise.all([citizenContext.close(), adminContext.close(), responderContext.close()])
       await cleanupProofRun(cleanupContext, ledger).catch((cleanupError: unknown) => {
         console.error(
           JSON.stringify({

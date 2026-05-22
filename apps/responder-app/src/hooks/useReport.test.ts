@@ -75,4 +75,34 @@ describe('useReport', () => {
       expect(result.current.report?.severity).toBe('low')
     })
   })
+
+  it('accepts canonical publicLocation lat/lng shape', async () => {
+    mockOnSnapshot.mockImplementationOnce(
+      (_ref: unknown, onNext: (snap: { exists: () => boolean; data: () => unknown }) => void) => {
+        onNext({
+          exists: () => true,
+          data: () => ({
+            reportType: 'flood',
+            severity: 'high',
+            status: 'verified',
+            description: 'Rising water near bridge',
+            municipalityId: 'daet',
+            source: 'web',
+            submittedAt: { toMillis: () => 1700000000000 },
+            publicLocation: { lat: 14.112, lng: 122.955 },
+          }),
+        })
+        return () => undefined
+      },
+    )
+
+    const { result } = renderHook(() => useReport('report-with-lat-lng'))
+
+    await waitFor(() => {
+      expect(result.current.report?.publicLocation).toEqual({
+        latitude: 14.112,
+        longitude: 122.955,
+      })
+    })
+  })
 })
