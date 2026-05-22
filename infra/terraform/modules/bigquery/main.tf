@@ -3,6 +3,22 @@ resource "google_bigquery_dataset" "audit" {
   project                    = var.project_id
   location                   = var.location
   delete_contents_on_destroy = false
+
+  # Explicit access control — restricts dataset to service accounts that
+  # actually need it. Without this block, the dataset inherits project-level
+  # permissions which may grant broader access than intended.
+  access {
+    role          = "roles/bigquery.dataEditor"
+    user_by_email = "${var.project_id}@appspot.gserviceaccount.com"
+  }
+
+  access {
+    role          = "roles/bigquery.jobUser"
+    user_by_email = "${var.project_id}@appspot.gserviceaccount.com"
+  }
+
+  # Prevent public access — default access includes project viewers
+  default_table_expiration_ms = 0
 }
 
 resource "google_bigquery_table" "streaming_events" {

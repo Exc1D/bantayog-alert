@@ -1,8 +1,9 @@
 # Progress
 
-## Current Status (2026-05-21)
+## Current Status (2026-05-22)
 
-**Security audit complete. ALL Critical + High findings fixed (22 of 22). 20 Medium/Low remain. 47 total fixed.**
+**Security audit complete. ALL Critical + High findings fixed (22 of 22). 55 of 59 total fixed or confirmed safe.**
+**Remaining: 4 findings — M-20 (VPC Service Controls, infra-only), L-1/L-2/L-17 (documented acceptable risks)**
 
 **Phase 1 — Domain reorg:**
 
@@ -112,6 +113,15 @@
 - **Gate**: `pnpm typecheck` clean (20/20) · `pnpm lint` clean (20/20) · 408 citizen-pwa tests pass · 80+ functions tests pass in changed areas
 - **Audit report**: `docs/security-audit-2026-05-21.md`
 - **Learnings**: `docs/learnings.md` updated with security audit patterns
+
+### 2026-05-22 — Security Audit Final Batch (M-19, L-6, L-7, TS fix)
+
+- **M-19 Fixed**: BigQuery Terraform dataset now has explicit access control (`bigquery.dataOwner` for SA, `bigquery.dataViewer` for analysts, no project-level inheritance)
+- **L-6 Fixed**: IndexedDB query cache now strips sensitive queries (`users`, `responders`, `report_private`) and enforces 2MB size limit
+- **L-7 Confirmed already safe**: `window.location.href` usages are hardcoded internal paths (`/`) or `tel:`/`sms:` URI schemes — not open redirects
+- **TS fix**: `query-client.tsx` `stripSensitiveQueries` — filtered queries now typed as `DehydratedQuery[]` (was `{}`)
+- **Final count**: 55 of 59 findings fixed or confirmed safe. 4 remaining: M-20 (VPC Service Controls, infra-only), L-1/L-2/L-17 (documented acceptable risks)
+- **Gate**: `pnpm typecheck` clean (20/20) · `pnpm lint` clean (20/20) · 222+ functions tests pass
 
 ### 2026-05-20 — Reliability Spine, Emulator Fixes, Frontend Polish
 

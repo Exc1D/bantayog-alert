@@ -6,6 +6,37 @@ export { QueryProvider } from './QueryProvider'
 const DB_NAME = 'bantayog-query-cache'
 const STORE_NAME = 'persist'
 const KEY = 'query-cache'
+const MAX_CACHE_SIZE_BYTES = 2 * 1024 * 1024 // 2MB limit
+
+/** Query keys that contain sensitive data and should NOT be persisted. */
+const SENSITIVE_QUERY_PREFIXES = [
+  ['users'],       // User profiles with PII
+  ['responders'],  // Responder data with location
+  ['report_private'], // Private report data
+] as const
+
+function isSensitiveQueryKey(key: unknown): boolean {
+  if (!Array.isArray(key)) return false
+  const first = key[0]
+  return SENSITIVE_QUERY_PREFIXES.some(([prefix]) => first === prefix)
+}
+
+function stripSensitiveQueries(client: PersistedClient): PersistedClient {
+  const filteredQueries = client.clientState.queries.filter(
+    (query) => !isSensitiveQueryKey(query.queryKey)
+  )
+  return {
+    ...client,
+    clientState: {
+      ...client.clientState,
+      queries: filteredQueries,
+    },
+  }
+}
+
+function estimateSize(client: PersistedClient): number {
+  return new Blob([JSON.stringify(client)]).size
+}
 
 function createIndexedDBPersister(): Persister {
   return {
@@ -14,6 +45,12 @@ function createIndexedDBPersister(): Persister {
         (q) => q.state.error != null
       )
       if (hasErrors) return
+
+      // Strip sensitive queries before persisting
+      const sanitized = stripSensitiveQueries(client)
+
+      // Skip if cache exceeds size limit
+      if (estimateSize(sanitized) > MAX_CACHE_SIZE_BYTES) return
 
       return new Promise<void>((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, 1)
@@ -24,7 +61,7 @@ function createIndexedDBPersister(): Persister {
           const db = request.result
           const tx = db.transaction(STORE_NAME, 'readwrite')
           const store = tx.objectStore(STORE_NAME)
-          store.put(JSON.stringify(client), KEY)
+          store.put(JSON.stringify(sanitized), KEY)
           tx.oncomplete = () => {
             db.close()
             resolve()

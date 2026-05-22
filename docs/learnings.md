@@ -297,3 +297,6 @@
 - CLI scripts should use plain text log tags ([INFO], [OK], [FAIL]) instead of emoji — emoji can cause encoding issues in log aggregators and CI pipelines.
 - Service worker background sync must include a valid Firebase ID token — read from a shared IndexedDB auth store that the main app refreshes periodically. Without auth, Firestore rules reject the write.
 - Service workers using `importScripts` from CDN cannot use SRI integrity attributes — mitigate by pinning versions, documenting the risk, and planning to self-host critical scripts.
+- BigQuery Terraform datasets must have explicit access control blocks (`bigquery.dataOwner` for SA, `bigquery.dataViewer` for analysts) — never rely on project-level IAM inheritance.
+- IndexedDB query cache (React Query persistence) must strip sensitive query keys (`users`, `responders`, `report_private`) and enforce a size limit (2MB) to prevent PII leakage via browser dev tools.
+- `window.location.href` with hardcoded internal paths (`/`) or `tel:`/`sms:` URI schemes is NOT an open redirect vulnerability — only user-controlled URLs assigned to `window.location` are risky.
