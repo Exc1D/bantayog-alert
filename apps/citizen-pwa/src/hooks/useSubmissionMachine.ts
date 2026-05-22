@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { doc, setDoc } from 'firebase/firestore'
 import type { Draft } from '../services/draft-store'
 import { draftStore } from '../services/draft-store'
-import { db, ensureSignedIn } from '../services/firebase'
+import { ensureSignedIn } from '../services/firebase'
+import {
+  submitCitizenReport,
+  type SubmitCitizenReportInput,
+  type SubmitCitizenReportResult,
+} from '../services/callables'
 import { useOnlineStatus } from './useOnlineStatus'
 
 export type SubmissionState =
@@ -49,6 +53,69 @@ export function backoffDelay(retryCount: number): number {
 
 const logDraftError = (context: string, err: unknown) => {
   console.warn(`[draft-store] ${context}:`, err)
+}
+
+export interface SubmitDraftOnlineDeps {
+  ensureSignedIn(): Promise<string>
+  submitCitizenReport(input: SubmitCitizenReportInput): Promise<SubmitCitizenReportResult>
+  timeoutMs?: number
+}
+
+function buildSubmitCitizenReportInput(draft: Draft): SubmitCitizenReportInput {
+  return {
+    clientCreatedAt: draft.clientCreatedAt,
+    idempotencyKey: draft.idempotencyKey,
+    publicRef: draft.publicRef,
+    secretHash: draft.secretHash,
+    correlationId: draft.correlationId,
+    payload: {
+      reportType: draft.reportType,
+      description: draft.description,
+      severity: draft.severity,
+      source: 'web',
+      clientDraftRef: draft.clientDraftRef,
+      ...(draft.location ? { publicLocation: draft.location } : {}),
+      ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
+      ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),
+      ...(draft.nearestLandmark ? { nearestLandmark: draft.nearestLandmark } : {}),
+      ...(draft.contact && isValidContact(draft.contact)
+        ? {
+            contact: {
+              phone: draft.contact.phone.trim(),
+              smsConsent: draft.contact.smsConsent,
+            },
+          }
+        : {}),
+    },
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('timeout'))
+    }, ms)
+    promise
+      .then((result) => {
+        clearTimeout(timer)
+        resolve(result)
+      })
+      .catch((err: unknown) => {
+        clearTimeout(timer)
+        reject(err instanceof Error ? err : new Error(String(err)))
+      })
+  })
+}
+
+export async function submitDraftOnline(
+  draft: Draft,
+  deps: SubmitDraftOnlineDeps,
+): Promise<string> {
+  await deps.ensureSignedIn()
+  const submit = deps.submitCitizenReport(buildSubmitCitizenReportInput(draft))
+  const result =
+    deps.timeoutMs === undefined ? await submit : await withTimeout(submit, deps.timeoutMs)
+  return result.publicRef
 }
 
 function isNetworkError(err: unknown): boolean {
@@ -109,8 +176,6 @@ export function useSubmissionMachine({
       const attemptCount = currentRetryCount + 1
 
       try {
-        const reporterUid = await ensureSignedIn()
-
         await draftStore.save({
           ...d,
           syncState: 'syncing',
@@ -118,7 +183,11 @@ export function useSubmissionMachine({
           updatedAt: Date.now(),
         })
 
-        const ref = await writeWithTimeout(d, reporterUid, SUBMIT_TIMEOUT_MS)
+        const ref = await submitDraftOnline(d, {
+          ensureSignedIn,
+          submitCitizenReport,
+          timeoutMs: SUBMIT_TIMEOUT_MS,
+        })
         await draftStore
           .save({ ...d, syncState: 'synced', retryCount: attemptCount })
           .catch((e: unknown) => {
@@ -265,49 +334,4 @@ export function useSubmissionMachine({
     submit,
     sendSmsFallback,
   }
-}
-
-async function writeWithTimeout(draft: Draft, reporterUid: string, ms: number): Promise<string> {
-  const docId = draft.clientDraftRef
-  const inboxDoc = {
-    reporterUid,
-    clientCreatedAt: draft.clientCreatedAt,
-    idempotencyKey: draft.idempotencyKey,
-    publicRef: draft.publicRef,
-    secretHash: draft.secretHash,
-    correlationId: draft.correlationId,
-    payload: {
-      reportType: draft.reportType,
-      description: draft.description,
-      severity: draft.severity,
-      source: 'web',
-      clientDraftRef: draft.clientDraftRef,
-      ...(draft.location ? { publicLocation: draft.location } : {}),
-      ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
-      ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),
-      ...(draft.nearestLandmark ? { nearestLandmark: draft.nearestLandmark } : {}),
-      ...(draft.contact && isValidContact(draft.contact)
-        ? {
-            contact: {
-              phone: draft.contact.phone.trim(),
-              smsConsent: draft.contact.smsConsent,
-            },
-          }
-        : {}),
-    },
-  }
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('timeout'))
-    }, ms)
-    setDoc(doc(db(), 'report_inbox', docId), inboxDoc)
-      .then(() => {
-        clearTimeout(timer)
-        resolve(docId)
-      })
-      .catch((err: unknown) => {
-        clearTimeout(timer)
-        reject(err instanceof Error ? err : new Error(String(err)))
-      })
-  })
 }

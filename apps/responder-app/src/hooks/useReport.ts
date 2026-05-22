@@ -23,6 +23,26 @@ function parseSeverity(value: unknown): 'low' | 'medium' | 'high' {
   return 'low'
 }
 
+function parsePublicLocation(value: unknown): { latitude: number; longitude: number } | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const location = value as Record<string, unknown>
+  const latitude =
+    typeof location.latitude === 'number'
+      ? location.latitude
+      : typeof location.lat === 'number'
+        ? location.lat
+        : undefined
+  const longitude =
+    typeof location.longitude === 'number'
+      ? location.longitude
+      : typeof location.lng === 'number'
+        ? location.lng
+        : undefined
+
+  if (latitude == null || longitude == null) return undefined
+  return { latitude, longitude }
+}
+
 export function useReport(reportId: string | undefined) {
   const [report, setReport] = useState<ReportSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,7 +71,7 @@ export function useReport(reportId: string | undefined) {
         const d = snap.data()
         const submittedAt = toMillis(d.submittedAt) ?? Date.now()
         const verifiedAt = toMillis(d.verifiedAt)
-        const loc = d.publicLocation as { latitude?: number; longitude?: number } | undefined
+        const publicLocation = parsePublicLocation(d.publicLocation)
 
         const summary: ReportSummary = {
           reportType: String(d.reportType ?? 'other'),
@@ -68,8 +88,8 @@ export function useReport(reportId: string | undefined) {
         if (d.barangayId != null) {
           summary.barangayId = String(d.barangayId)
         }
-        if (loc?.latitude != null && loc.longitude != null) {
-          summary.publicLocation = { latitude: loc.latitude, longitude: loc.longitude }
+        if (publicLocation != null) {
+          summary.publicLocation = publicLocation
         }
         if (verifiedAt != null) {
           summary.verifiedAt = verifiedAt

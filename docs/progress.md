@@ -275,3 +275,31 @@
 - Citizen-PWA tests — 421 passed (1 unrelated timeout in `App.routes.test.tsx`)
 - Functions integration test — 5 passed (report lifecycle: submit → verify → dispatch)
 - Firestore rules tests — skipped (emulator not running locally; will run in CI)
+
+---
+
+## 2026-05-22 — Backend Reliability Spine
+
+**Implemented:**
+
+1. Added `submitCitizenReport` callable fast path for online Citizen PWA submissions. It requires Firebase Auth, validates the existing inbox payload shape, rate-limits by UID, and reuses the same materialization core as `processInboxItemCore`.
+2. Extracted shared report materialization so callable and `report_inbox` fallback both write `reports`, `report_private`, `report_ops`, `report_lookup`, `secret_lookup`, status log, event docs, and media subdocs consistently.
+3. Made `publicRef + secretHash` the replay key: same hash returns the existing `reportId`; different hash fails with conflict.
+4. Updated Citizen online submission to call `submitCitizenReport`, while network/timeout failures still queue the draft for the offline inbox path.
+5. Updated seed/proof data so seeded reports include canonical `municipalityId`, matching `report_ops`, and an active dispatch for `bfp-responder-test-01`.
+6. Updated Responder report decoding to accept canonical `publicLocation: { lat, lng }`, while keeping `{ latitude, longitude }` as a fallback.
+7. Updated the local proof to assert callable materialization directly instead of assuming an inbox-first online path.
+
+**Verification:**
+
+- Functions emulator tests — 17 passed (`process-inbox-item`, `submit-citizen-report`)
+- Citizen PWA targeted tests — 26 passed
+- Responder targeted tests — 11 passed
+- Seed companion tests — 3 passed
+- `pnpm typecheck` — 20/20 packages pass
+- `pnpm lint` — 20/20 tasks pass
+- `pnpm proof:local` — C00-C09 passed locally
+
+**Residual note:**
+
+- `proof:local` still logs non-fatal Firebase emulator protobuf decode errors from `dispatchMirrorToReport` during dispatch updates/shutdown. The proof exits 0 and report/dispatch state advances correctly, but the emulator log noise should be tracked separately so it does not hide a real trigger failure later.

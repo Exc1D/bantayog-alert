@@ -16,16 +16,16 @@
  *     pnpm exec tsx scripts/seed-staging-incidents.ts
  */
 
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { initializeApp, getApps } from 'firebase-admin/app'
-import { getFirestore, Timestamp } from 'firebase-admin/firestore'
+import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore'
 
 const PROJECT_ID = 'bantayog-alert-staging'
-
-if (getApps().length === 0) {
-  initializeApp({ projectId: PROJECT_ID })
-}
-
-const db = getFirestore()
+const TEST_RESPONDER_UID = 'bfp-responder-test-01'
+const TEST_RESPONDER_AGENCY_ID = 'bfp-daet'
+const TEST_RESPONDER_MUNICIPALITY_ID = 'daet'
+const TEST_RESPONDER_REPORT_ID = 'seed-report-002'
 
 const now = Date.now()
 const h = (n: number) => now - n * 60 * 60 * 1000 // n hours ago
@@ -35,12 +35,12 @@ const d = (n: number) => now - n * 24 * 60 * 60 * 1000 // n days ago
 const COORDS = {
   daet: { lat: 14.1162, lng: 122.9652 },
   capalonga: { lat: 14.3308, lng: 122.4961 },
-  jose_panganiban: { lat: 14.2956, lng: 122.6986 },
+  'jose-panganiban': { lat: 14.2956, lng: 122.6986 },
   labo: { lat: 14.0717, lng: 122.7619 },
   mercedes: { lat: 14.1125, lng: 122.8825 },
   paracale: { lat: 14.2789, lng: 122.7853 },
-  san_lorenzo_ruiz: { lat: 14.3828, lng: 122.5814 },
-  santa_elena: { lat: 14.2025, lng: 122.4153 },
+  'san-lorenzo-ruiz': { lat: 14.3828, lng: 122.5814 },
+  'santa-elena': { lat: 14.2025, lng: 122.4153 },
   talisay: { lat: 14.1603, lng: 122.9275 },
   vinzons: { lat: 14.175, lng: 122.9086 },
 } as const
@@ -53,11 +53,12 @@ function scatter(base: { lat: number; lng: number }, spread = 0.01) {
   }
 }
 
-interface ReportSeed {
+export interface ReportSeed {
   id: string
   reportType: string
   severity: 'low' | 'medium' | 'high'
   status: string
+  municipalityId: string
   barangayId: string
   municipalityLabel: string
   publicLocation: { lat: number; lng: number }
@@ -67,13 +68,14 @@ interface ReportSeed {
   source: string
 }
 
-const REPORTS: ReportSeed[] = [
+export const REPORTS: ReportSeed[] = [
   {
     id: 'seed-report-001',
     publicRef: 'SEED-001',
     reportType: 'flood',
     severity: 'high',
     status: 'verified',
+    municipalityId: 'daet',
     barangayId: 'Bagasbas',
     municipalityLabel: 'Daet',
     publicLocation: scatter(COORDS.daet),
@@ -87,6 +89,7 @@ const REPORTS: ReportSeed[] = [
     reportType: 'fire',
     severity: 'high',
     status: 'assigned',
+    municipalityId: 'daet',
     barangayId: 'Camambugan',
     municipalityLabel: 'Daet',
     publicLocation: scatter(COORDS.daet),
@@ -100,6 +103,7 @@ const REPORTS: ReportSeed[] = [
     reportType: 'typhoon',
     severity: 'high',
     status: 'new',
+    municipalityId: 'paracale',
     barangayId: 'Paracale Poblacion',
     municipalityLabel: 'Paracale',
     publicLocation: scatter(COORDS.paracale),
@@ -113,6 +117,7 @@ const REPORTS: ReportSeed[] = [
     reportType: 'landslide',
     severity: 'medium',
     status: 'awaiting_verify',
+    municipalityId: 'labo',
     barangayId: 'Sta. Cruz',
     municipalityLabel: 'Labo',
     publicLocation: scatter(COORDS.labo),
@@ -126,6 +131,7 @@ const REPORTS: ReportSeed[] = [
     reportType: 'accident',
     severity: 'medium',
     status: 'en_route',
+    municipalityId: 'mercedes',
     barangayId: 'Mercedes Poblacion',
     municipalityLabel: 'Mercedes',
     publicLocation: scatter(COORDS.mercedes),
@@ -139,6 +145,7 @@ const REPORTS: ReportSeed[] = [
     reportType: 'flood',
     severity: 'medium',
     status: 'on_scene',
+    municipalityId: 'talisay',
     barangayId: 'Talisay Poblacion',
     municipalityLabel: 'Talisay',
     publicLocation: scatter(COORDS.talisay),
@@ -152,6 +159,7 @@ const REPORTS: ReportSeed[] = [
     reportType: 'structural',
     severity: 'low',
     status: 'verified',
+    municipalityId: 'capalonga',
     barangayId: 'Capalonga Poblacion',
     municipalityLabel: 'Capalonga',
     publicLocation: scatter(COORDS.capalonga),
@@ -165,6 +173,7 @@ const REPORTS: ReportSeed[] = [
     reportType: 'medical',
     severity: 'low',
     status: 'resolved',
+    municipalityId: 'vinzons',
     barangayId: 'Vinzons Poblacion',
     municipalityLabel: 'Vinzons',
     publicLocation: scatter(COORDS.vinzons),
@@ -178,9 +187,10 @@ const REPORTS: ReportSeed[] = [
     reportType: 'storm_surge',
     severity: 'high',
     status: 'new',
+    municipalityId: 'jose-panganiban',
     barangayId: 'Jose Panganiban Poblacion',
     municipalityLabel: 'Jose Panganiban',
-    publicLocation: scatter(COORDS.jose_panganiban),
+    publicLocation: scatter(COORDS['jose-panganiban']),
     submittedAt: h(0.5),
     visibilityClass: 'public_alertable',
     source: 'sms',
@@ -191,9 +201,10 @@ const REPORTS: ReportSeed[] = [
     reportType: 'other',
     severity: 'low',
     status: 'awaiting_verify',
+    municipalityId: 'santa-elena',
     barangayId: 'Santa Elena Poblacion',
     municipalityLabel: 'Santa Elena',
-    publicLocation: scatter(COORDS.santa_elena),
+    publicLocation: scatter(COORDS['santa-elena']),
     submittedAt: d(2),
     visibilityClass: 'public_alertable',
     source: 'web',
@@ -252,7 +263,116 @@ const ALERTS: AlertSeed[] = [
   },
 ]
 
-async function seedReports() {
+export interface ReportOpsSeed {
+  id: string
+  data: {
+    reportId: string
+    municipalityId: string
+    status: string
+    severity: 'low' | 'medium' | 'high'
+    createdAt: number
+    agencyIds: string[]
+    activeResponderCount: number
+    requiresLocationFollowUp: boolean
+    reportType: string
+    visibility: { scope: 'municipality'; sharedWith: string[] }
+    updatedAt: number
+    schemaVersion: 1
+  }
+}
+
+export interface DispatchSeed {
+  id: string
+  data: {
+    dispatchId: string
+    reportId: string
+    status: 'pending'
+    municipalityId: string
+    assignedTo: {
+      uid: string
+      agencyId: string
+      municipalityId: string
+    }
+    dispatchedAt: number
+    dispatchedBy: string
+    dispatchedByRole: 'municipal_admin'
+    statusUpdatedAt: number
+    lastStatusAt: number
+    acknowledgementDeadlineAt: number
+    correlationId: string
+    idempotencyKey: string
+    schemaVersion: 1
+  }
+}
+
+export function buildReportOpsSeeds(reports: readonly ReportSeed[]): ReportOpsSeed[] {
+  return reports.map((report) => {
+    const isResponderSeed = report.id === TEST_RESPONDER_REPORT_ID
+    return {
+      id: report.id,
+      data: {
+        reportId: report.id,
+        municipalityId: report.municipalityId,
+        status: report.status,
+        severity: report.severity,
+        createdAt: report.submittedAt,
+        agencyIds: isResponderSeed ? [TEST_RESPONDER_AGENCY_ID] : [],
+        activeResponderCount: isResponderSeed ? 1 : 0,
+        requiresLocationFollowUp: false,
+        reportType: report.reportType,
+        visibility: { scope: 'municipality', sharedWith: [] },
+        updatedAt: report.submittedAt,
+        schemaVersion: 1,
+      },
+    }
+  })
+}
+
+export function buildDispatchSeeds(reports: readonly ReportSeed[]): DispatchSeed[] {
+  const report = reports.find(
+    (candidate) =>
+      candidate.id === TEST_RESPONDER_REPORT_ID &&
+      candidate.municipalityId === TEST_RESPONDER_MUNICIPALITY_ID,
+  )
+  if (!report) return []
+
+  const dispatchId = `${report.id}_${TEST_RESPONDER_UID}`
+  const dispatchedAt = report.submittedAt + 5 * 60 * 1000
+  return [
+    {
+      id: dispatchId,
+      data: {
+        dispatchId,
+        reportId: report.id,
+        status: 'pending',
+        municipalityId: report.municipalityId,
+        assignedTo: {
+          uid: TEST_RESPONDER_UID,
+          agencyId: TEST_RESPONDER_AGENCY_ID,
+          municipalityId: TEST_RESPONDER_MUNICIPALITY_ID,
+        },
+        dispatchedAt,
+        dispatchedBy: 'daet-admin-test-01',
+        dispatchedByRole: 'municipal_admin',
+        statusUpdatedAt: dispatchedAt,
+        lastStatusAt: dispatchedAt,
+        acknowledgementDeadlineAt: dispatchedAt + 10 * 60 * 1000,
+        correlationId: '11111111-1111-4111-8111-111111111111',
+        idempotencyKey: `seed:${dispatchId}`,
+        schemaVersion: 1,
+      },
+    },
+  ]
+}
+
+function getDb(): Firestore {
+  if (getApps().length === 0) {
+    initializeApp({ projectId: PROJECT_ID })
+  }
+  return getFirestore()
+}
+
+async function seedReports(db: Firestore) {
   console.log('Seeding reports...')
   const batch = db.batch()
   for (const report of REPORTS) {
@@ -261,11 +381,22 @@ async function seedReports() {
       createdAt: Timestamp.fromMillis(report.submittedAt),
     })
   }
+  const reportOpsSeeds = buildReportOpsSeeds(REPORTS)
+  for (const seed of reportOpsSeeds) {
+    batch.set(db.collection('report_ops').doc(seed.id), seed.data)
+  }
+  const dispatchSeeds = buildDispatchSeeds(REPORTS)
+  for (const seed of dispatchSeeds) {
+    batch.set(db.collection('dispatches').doc(seed.id), seed.data)
+  }
   await batch.commit()
-  console.log(`✓ ${String(REPORTS.length)} reports seeded`)
+  console.log(
+    `✓ ${String(REPORTS.length)} reports, ${String(reportOpsSeeds.length)} report_ops, ` +
+      `${String(dispatchSeeds.length)} dispatches seeded`,
+  )
 }
 
-async function seedAlerts() {
+async function seedAlerts(db: Firestore) {
   console.log('Seeding alerts...')
   const batch = db.batch()
   for (const alert of ALERTS) {
@@ -275,18 +406,21 @@ async function seedAlerts() {
   console.log(`✓ ${String(ALERTS.length)} alerts seeded`)
 }
 
-async function main() {
+export async function main(db = getDb()) {
   console.log(`\n🌱 Seeding staging incidents — ${new Date().toISOString()}\n`)
-  await seedReports()
-  await seedAlerts()
+  await seedReports(db)
+  await seedAlerts(db)
   console.log('\n✅ Done.')
   console.log('\nCoverage:')
   console.log('  Feed tab    — 10 reports across all severities and statuses')
   console.log('  Map tab     — same 10 reports with real Camarines Norte coordinates')
   console.log('  Alerts tab  — 5 alerts (critical → info)')
+  console.log('  Responder   — 1 active dispatch for bfp-responder-test-01')
 }
 
-main().catch((err) => {
-  console.error('\n❌ Seed failed:', err)
-  process.exit(1)
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((err: unknown) => {
+    console.error('\n❌ Seed failed:', err)
+    process.exit(1)
+  })
+}
