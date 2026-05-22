@@ -54,7 +54,7 @@ describe('requireAuth', () => {
         const request = {
             auth: {
                 uid: 'u1',
-                token: { role: 'citizen' },
+                token: { role: 'citizen', accountStatus: 'active' },
             },
         };
         expect(() => requireAuth(request, ['municipal_admin'])).toThrow('role citizen is not allowed');
@@ -70,7 +70,7 @@ describe('requireAuth', () => {
         const request = {
             auth: {
                 uid: 'u1',
-                token: {},
+                token: { accountStatus: 'active' },
             },
         };
         expect(() => requireAuth(request, ['municipal_admin'])).toThrow('role undefined is not allowed');
@@ -82,11 +82,36 @@ describe('requireAuth', () => {
             expect(err.code).toBe('permission-denied');
         }
     });
-    it('returns uid and claims when role is allowed', () => {
+    it('throws permission-denied when accountStatus is not active', () => {
         const request = {
             auth: {
                 uid: 'u1',
-                token: { role: 'municipal_admin', municipalityId: 'm1' },
+                token: { role: 'municipal_admin', accountStatus: 'suspended' },
+            },
+        };
+        expect(() => requireAuth(request, ['municipal_admin'])).toThrow('account not active');
+        try {
+            requireAuth(request, ['municipal_admin']);
+        }
+        catch (err) {
+            expect(err).toBeInstanceOf(HttpsError);
+            expect(err.code).toBe('permission-denied');
+        }
+    });
+    it('throws permission-denied when accountStatus is missing', () => {
+        const request = {
+            auth: {
+                uid: 'u1',
+                token: { role: 'municipal_admin' },
+            },
+        };
+        expect(() => requireAuth(request, ['municipal_admin'])).toThrow('account not active');
+    });
+    it('returns uid and claims when role is allowed and account is active', () => {
+        const request = {
+            auth: {
+                uid: 'u1',
+                token: { role: 'municipal_admin', municipalityId: 'm1', accountStatus: 'active' },
             },
         };
         const result = requireAuth(request, ['municipal_admin', 'superadmin']);
@@ -94,6 +119,7 @@ describe('requireAuth', () => {
         expect(result.claims).toEqual({
             role: 'municipal_admin',
             municipalityId: 'm1',
+            accountStatus: 'active',
         });
     });
 });
@@ -176,6 +202,39 @@ describe('requireMfaAuth', () => {
             expect(err).toBeInstanceOf(HttpsError);
             expect(err.code).toBe('unauthenticated');
         }
+    });
+    it('bypasses MFA in emulator mode', () => {
+        const prev = process.env.FUNCTIONS_EMULATOR;
+        process.env.FUNCTIONS_EMULATOR = 'true';
+        expect(() => {
+            requireMfaAuth({
+                auth: { uid: 'u1', token: {} },
+            });
+        }).not.toThrow();
+        process.env.FUNCTIONS_EMULATOR = prev;
+    });
+    it('bypasses MFA when ALLOW_MFA_BYPASS is explicitly set', () => {
+        const prev = process.env.ALLOW_MFA_BYPASS;
+        process.env.ALLOW_MFA_BYPASS = 'true';
+        expect(() => {
+            requireMfaAuth({
+                auth: { uid: 'u1', token: {} },
+            });
+        }).not.toThrow();
+        process.env.ALLOW_MFA_BYPASS = prev;
+    });
+    it('requires MFA in staging when ALLOW_MFA_BYPASS is not set', () => {
+        const prevProject = process.env.GCLOUD_PROJECT;
+        const prevBypass = process.env.ALLOW_MFA_BYPASS;
+        process.env.GCLOUD_PROJECT = 'bantayog-alert-staging';
+        process.env.ALLOW_MFA_BYPASS = 'false';
+        expect(() => {
+            requireMfaAuth({
+                auth: { uid: 'u1', token: {} },
+            });
+        }).toThrow('mfa_required');
+        process.env.GCLOUD_PROJECT = prevProject;
+        process.env.ALLOW_MFA_BYPASS = prevBypass;
     });
 });
 //# sourceMappingURL=https-error.test.js.map

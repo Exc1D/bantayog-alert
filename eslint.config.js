@@ -102,7 +102,7 @@ export default tseslint.config(
 
   // Test files — allow console, relax return types
   {
-    files: ['**/*.test.ts', '**/*.test.tsx', '**/test/**/*.ts'],
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/test/**/*.ts', 'e2e-tests/**/*.ts'],
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',

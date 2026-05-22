@@ -1,11 +1,33 @@
-import { onCall } from 'firebase-functions/v2/https';
-import { getFirestore } from 'firebase-admin/firestore';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth, requireMfaAuth } from '../shared/https-error.js';
 import { PRIVILEGED_ROLES } from '../../constants/roles.js';
 import { streamAuditEvent } from '../ops/audit-stream.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { checkRateLimit } from '../shared/rate-limit.js';
+// Allowlist of known Firestore collection names to prevent injection of
+// arbitrary collection names that could confuse incident response.
+const ALLOWED_COLLECTIONS = new Set([
+    'reports',
+    'report_private',
+    'report_contacts',
+    'report_inbox',
+    'dispatches',
+    'responders',
+    'users',
+    'active_accounts',
+    'alerts',
+    'agencies',
+    'municipalities',
+    'system_config',
+    'audit_logs',
+    'erasure_requests',
+    'sms_outbox',
+    'sms_inbox',
+    'data_incidents',
+]);
 const dataIncidentInputSchema = z.object({
     incidentType: z.enum([
         'unauthorized_access',
@@ -15,7 +37,13 @@ const dataIncidentInputSchema = z.object({
         'accidental_disclosure',
     ]),
     severity: z.enum(['critical', 'high', 'medium', 'low']),
-    affectedCollections: z.array(z.string().min(1)),
+    affectedCollections: z.array(z.string().min(1)).refine((collections) => {
+        const unknown = collections.filter((c) => !ALLOWED_COLLECTIONS.has(c));
+        if (unknown.length > 0) {
+            return false;
+        }
+        return true;
+    }, { message: `Unknown collections. Allowed: ${[...ALLOWED_COLLECTIONS].join(', ')}` }),
     affectedDataClasses: z.array(z.string().min(1)),
     estimatedAffectedSubjects: z.number().int().nonnegative().optional(),
     summary: z.string().min(1).max(2000),
@@ -53,9 +81,18 @@ export async function declareDataIncidentCore(db, input, actor) {
     });
     return { incidentId };
 }
-export const declareDataIncident = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const declareDataIncident = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_ROLES);
     requireMfaAuth(request);
+    const rl = await checkRateLimit(getFirestore(), {
+        key: `declareDataIncident:${uid}`,
+        limit: 3,
+        windowSeconds: 300,
+        now: Timestamp.now(),
+    });
+    if (!rl.allowed) {
+        throw new HttpsError('resource-exhausted', 'rate limit exceeded');
+    }
     return declareDataIncidentCore(getFirestore(), request.data, { uid });
 });
 //# sourceMappingURL=declare-data-incident.js.map

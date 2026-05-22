@@ -5,9 +5,11 @@ import { isAccountActive } from '../ops/admin-auth.js';
 import { buildActiveAccountDoc, buildClaimRevocationDoc, buildStaffClaims, } from './custom-claims.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js';
+import { streamAuditEvent } from '../ops/audit-stream.js';
 export const setStaffClaims = onCall({
     cors: getAdminCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
 }, async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {
         throw new HttpsError('permission-denied', 'Only superadmins can set staff claims.');
@@ -24,11 +26,19 @@ export const setStaffClaims = onCall({
     batch.set(adminDb.collection('active_accounts').doc(uid), buildActiveAccountDoc(uid, claims, updatedAt));
     batch.set(adminDb.collection('claim_revocations').doc(uid), buildClaimRevocationDoc(uid, updatedAt, 'claims_updated'));
     await batch.commit();
+    void streamAuditEvent({
+        eventType: 'claims_set',
+        actorUid: request.auth.uid,
+        targetDocumentId: uid,
+        metadata: { role: claims.role, municipalityId: claims.municipalityId },
+        occurredAt: updatedAt,
+    });
     return { uid, claims };
 });
 export const suspendStaffAccount = onCall({
     cors: getAdminCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
 }, async (request) => {
     if (request.auth?.token.role !== 'provincial_superadmin') {
         throw new HttpsError('permission-denied', 'Only superadmins can suspend accounts.');
@@ -43,6 +53,13 @@ export const suspendStaffAccount = onCall({
     }
     const current = snapshot.data() ?? {};
     const revokedAt = Date.now();
+    // Revoke Firebase Auth custom claims immediately — existing ID tokens
+    // carry claims for up to 1 hour. Without this, suspended users can
+    // still perform privileged operations until their token expires.
+    await adminAuth.setCustomUserClaims(input.uid, {
+        role: 'suspended',
+        accountStatus: 'suspended',
+    });
     await adminDb
         .collection('active_accounts')
         .doc(input.uid)

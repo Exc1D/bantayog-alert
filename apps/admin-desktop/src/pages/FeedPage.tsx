@@ -24,6 +24,7 @@ export default function FeedPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
   const [unpublishingIds, setUnpublishingIds] = useState<Set<string>>(new Set())
+  const [verifyingIds, setVerifyingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [pendingFeaturedIds, setPendingFeaturedIds] = useState<Record<string, string[]>>({})
   const writeQueues = useRef(new Map<string, Promise<void>>())
@@ -51,7 +52,8 @@ export default function FeedPage() {
         .filter(
           ({ raw, report }) =>
             raw.visibilityClass === 'public_alertable' ||
-            (report.status === 'awaiting_verify' && raw.visibilityClass !== 'public_alertable'),
+            report.status === 'awaiting_verify' ||
+            report.status === 'new',
         ),
     [reports],
   )
@@ -115,6 +117,25 @@ export default function FeedPage() {
       setActionError(err instanceof Error ? err.message : 'Publish failed')
     } finally {
       setPublishingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(report.id)
+        return next
+      })
+    }
+  }
+
+  async function sendToModeration(report: Report) {
+    setVerifyingIds((prev) => new Set(prev).add(report.id))
+    try {
+      await callables.verifyReport({
+        reportId: report.id,
+        idempotencyKey: generateIdempotencyKey(),
+      })
+      setActionError(null)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Send to moderation failed')
+    } finally {
+      setVerifyingIds((prev) => {
         const next = new Set(prev)
         next.delete(report.id)
         return next
@@ -243,6 +264,19 @@ export default function FeedPage() {
                       <span className="rounded-sm border border-white/10 px-2 py-1 text-xs uppercase text-[var(--color-text-secondary)]">
                         {label}
                       </span>
+                      {report.status === 'new' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void sendToModeration(report)
+                          }}
+                          disabled={verifyingIds.has(report.id)}
+                          className="rounded bg-[var(--color-info)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={`Send report ${report.id} to moderation`}
+                        >
+                          {verifyingIds.has(report.id) ? 'Sending…' : 'Send to moderation'}
+                        </button>
+                      )}
                       {canPublish && (
                         <button
                           type="button"

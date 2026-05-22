@@ -45,7 +45,8 @@ describe('requestUploadUrlImpl', () => {
         });
         expect(result.uploadUrl).toBe('https://signed.example/put');
         expect(result.uploadId).toMatch(/^[0-9a-f-]{36}$/);
-        expect(result.storagePath).toBe(`pending/${result.uploadId}`);
+        // Storage path is user-bound: pending/{uid}/{uploadId}
+        expect(result.storagePath).toBe(`pending/c1/${result.uploadId}`);
     });
 });
 //# sourceMappingURL=callables.test.js.map

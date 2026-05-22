@@ -45,6 +45,7 @@ export async function exitFieldModeCore(db, deps) {
 export const enterFieldMode = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
 }, async (req) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin']);
     // auth_time is stored as a Unix timestamp number in seconds within the Firebase token.
@@ -82,6 +83,7 @@ export const enterFieldMode = onCall({
 export const exitFieldMode = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
 }, async (req) => {
     const actor = requireAuth(req, ['municipal_admin', 'agency_admin', 'provincial_superadmin']);
     const actorClaims = {

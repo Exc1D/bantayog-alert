@@ -36,10 +36,13 @@ service cloud.firestore {
       return (isMuniAdmin() && myMunicipality() == muniId)
           || (isSuperadmin() && (permittedMunis().size() == 0 || muniId in permittedMunis()));
     }
-    function canReadReportDoc(data) {
+    function canReadReportDoc(data, reportId) {
       return ('visibilityClass' in data && data.visibilityClass == 'public_alertable')
           || adminOf(data.municipalityId)
-          || (isResponder() && isActivePrivileged() && exists(/databases/$(database)/documents/dispatches/$(data.reportId + '_' + uid())));
+          || (isAgencyAdmin()
+              && exists(/databases/$(database)/documents/report_ops/$(reportId))
+              && myAgency() in get(/databases/$(database)/documents/report_ops/$(reportId)).data.agencyIds)
+          || (isResponder() && isActivePrivileged() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid())));
     }
     function canReadEventDoc(data) {
       return isActivePrivileged()
@@ -106,25 +109,25 @@ service cloud.firestore {
 
   match /report_inbox/{inboxId} {
    allow read: if false;
-   allow create: if isAuthed()
-     && request.resource.data.reporterUid == uid()
-          && request.resource.data.keys().hasOnly([
-            'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload',
-            'publicRef', 'secretHash', 'correlationId'
-          ])
-          && request.resource.data.keys().hasAll([
-            'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload',
-            'publicRef', 'secretHash', 'correlationId'
-          ])
-          && request.resource.data.reporterUid is string
-          && request.resource.data.clientCreatedAt is number
-          && request.resource.data.idempotencyKey is string
-          && request.resource.data.payload is map;
-      allow update, delete: if false;
-    }
+   allow create: if request.auth != null
+      && request.resource.data.reporterUid == uid()
+           && request.resource.data.keys().hasOnly([
+             'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload',
+             'publicRef', 'secretHash', 'correlationId'
+           ])
+           && request.resource.data.keys().hasAll([
+             'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload',
+             'publicRef', 'secretHash', 'correlationId'
+           ])
+           && request.resource.data.reporterUid is string
+           && request.resource.data.clientCreatedAt is number
+           && request.resource.data.idempotencyKey is string
+           && request.resource.data.payload is map;
+       allow update, delete: if false;
+     }
 
     match /reports/{reportId} {
-      allow read: if canReadReportDoc(resource.data)
+      allow read: if canReadReportDoc(resource.data, reportId)
                   || (request.auth != null
                       && get(/databases/$(database)/documents/report_private/$(reportId)).data.reporterUid == request.auth.uid);
       allow create: if false;
@@ -147,11 +150,11 @@ service cloud.firestore {
       allow delete: if false;
 
       match /status_log/{e} {
-        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data, reportId);
         allow write: if false;
       }
       match /media/{m} {
-        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data, reportId);
         allow write: if false;
       }
       match /messages/{m} {

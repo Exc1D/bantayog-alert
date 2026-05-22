@@ -166,7 +166,7 @@ describe('FeedPage', () => {
     })
   })
 
-  it('does not show new or already-verified-internal reports in the feed', () => {
+  it('shows new reports in the feed and hides verified+internal reports', () => {
     render(
       <MemoryRouter>
         <FeedPage />
@@ -175,9 +175,9 @@ describe('FeedPage', () => {
 
     expect(screen.getByText('Needs swear word removed')).toBeInTheDocument()
     expect(screen.getByText('Public feed copy')).toBeInTheDocument()
-    // 'new' items should not appear in feed moderation
-    expect(screen.queryByText('New incoming report')).not.toBeInTheDocument()
-    // verified+internal items should not appear either
+    // 'new' items MUST appear so admins can send them to moderation
+    expect(screen.getByText('New incoming report')).toBeInTheDocument()
+    // verified+internal items should not appear
     expect(screen.queryByText('Hidden feed copy')).not.toBeInTheDocument()
   })
 })

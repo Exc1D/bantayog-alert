@@ -30,28 +30,28 @@ export async function analyticsSnapshotWriterCore(db, deps) {
     for (const municipalityId of CAMARINES_NORTE_MUNICIPALITY_IDS) {
         const reportsByStatus = {};
         const reportsBySeverity = {};
-        await Promise.all([
-            ...REPORT_STATUSES.map(async (status) => {
-                const snap = await db
-                    .collection('report_ops')
-                    .where('municipalityId', '==', municipalityId)
-                    .where('status', '==', status)
-                    .count()
-                    .get();
-                reportsByStatus[status] = snap.data().count;
-                provinceByStatus[status] = (provinceByStatus[status] ?? 0) + snap.data().count;
-            }),
-            ...SEVERITIES.map(async (severity) => {
-                const snap = await db
-                    .collection('report_ops')
-                    .where('municipalityId', '==', municipalityId)
-                    .where('severity', '==', severity)
-                    .count()
-                    .get();
-                reportsBySeverity[severity] = snap.data().count;
-                provinceBySeverity[severity] = (provinceBySeverity[severity] ?? 0) + snap.data().count;
-            }),
-        ]);
+        // Process status queries sequentially to avoid Firestore contention.
+        // 27 municipalities × 18 queries = 486 concurrent queries without limiting.
+        for (const status of REPORT_STATUSES) {
+            const snap = await db
+                .collection('report_ops')
+                .where('municipalityId', '==', municipalityId)
+                .where('status', '==', status)
+                .count()
+                .get();
+            reportsByStatus[status] = snap.data().count;
+            provinceByStatus[status] = (provinceByStatus[status] ?? 0) + snap.data().count;
+        }
+        for (const severity of SEVERITIES) {
+            const snap = await db
+                .collection('report_ops')
+                .where('municipalityId', '==', municipalityId)
+                .where('severity', '==', severity)
+                .count()
+                .get();
+            reportsBySeverity[severity] = snap.data().count;
+            provinceBySeverity[severity] = (provinceBySeverity[severity] ?? 0) + snap.data().count;
+        }
         await db
             .collection('analytics_snapshots')
             .doc(date)

@@ -7,10 +7,11 @@ const itif = (condition) => (condition ? it : it.skip);
 vi.mock('firebase-admin/database', () => ({
     getDatabase: vi.fn(() => ({})),
 }));
-vi.mock('../../services/fcm-send.js', () => ({
+vi.mock('../../ops/fcm-send.js', () => ({
     sendFcmToResponder: vi.fn().mockResolvedValue({ warnings: [] }),
 }));
 import { escalateDispatchCore } from '../escalate-dispatch.js';
+import { sendFcmToResponder } from '../../ops/fcm-send.js';
 import { seedActiveAccount, staffClaims } from '../../../__tests__/helpers/seed-factories.js';
 import { Timestamp } from 'firebase-admin/firestore';
 let testEnv;
@@ -106,6 +107,15 @@ describe('escalateDispatchCore', () => {
             expect(escalationEvent.data().fromResponderUid).toBe('responder-1');
             expect(escalationEvent.data().toResponderUid).toBe('responder-2');
             expect(escalationEvent.data().reason).toBe('admin_override');
+            expect(sendFcmToResponder).toHaveBeenCalledWith(expect.objectContaining({
+                uid: 'responder-2',
+                title: 'Dispatch escalated',
+            }));
+            const notificationEvent = events.docs.find((d) => d.data().type === 'notification_attempted');
+            expect(notificationEvent).toBeDefined();
+            expect(notificationEvent.data().fcmResult).toBe('sent');
+            const dispatchDoc = (await db.collection('dispatches').doc('d1').get()).data();
+            expect(dispatchDoc.fcmResult).toBe('sent');
         });
     });
     itif(available)('rejects municipal_admin escalating dispatch in other municipality', async () => {

@@ -43,7 +43,7 @@ export async function setRetentionExemptCore(db, input, actor) {
         occurredAt: Date.now(),
     });
 }
-export const setRetentionExempt = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const setRetentionExempt = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     const { uid, claims } = requireAuth(request, PRIVILEGED_ROLES);
     requireMfaAuth(request);
     const permittedMunicipalityIds = Array.isArray(claims.permittedMunicipalityIds)

@@ -144,7 +144,7 @@ export async function requestDataExportImpl(db, auth, storage, actor) {
     });
     return { downloadUrl, expiresAt, reportCount: reports.length, mediaCount: mediaItems.length };
 }
-export const requestDataExport = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const requestDataExport = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     const { uid } = requireAuth(request, ['citizen']);
     try {
         return await requestDataExportImpl(getFirestore(), getAuth(), getStorage(), { uid });

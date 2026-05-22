@@ -30,7 +30,7 @@ export async function unsubscribeFromAlertsCore(db, deps) {
     }
     return { success: true };
 }
-export const unsubscribeFromAlerts = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const unsubscribeFromAlerts = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Must be signed in');
     }

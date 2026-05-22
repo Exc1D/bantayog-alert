@@ -158,6 +158,7 @@ export async function submitResponderWitnessedReportCore(db, deps) {
 export const submitResponderWitnessedReport = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, async (request) => {

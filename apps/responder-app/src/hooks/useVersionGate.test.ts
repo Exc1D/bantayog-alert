@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
+import { FirebaseError } from 'firebase/app'
 import { renderHook, waitFor } from '@testing-library/react'
 
 // Vite define replacement — must be set before the module under test is imported
@@ -83,7 +84,7 @@ describe('useVersionGate', () => {
     expect(result.current.updateUrl).toBeNull()
   })
 
-  it('defaults to blocked=true on listener error', async () => {
+  it('defaults to blocked=true on non-permission listener error', async () => {
     mockOnSnapshot.mockImplementation((_ref, handlers) => {
       handlers.error(new Error('network_error'))
       return vi.fn()
@@ -93,6 +94,19 @@ describe('useVersionGate', () => {
 
     await waitFor(() => {
       expect(result.current.blocked).toBe(true)
+    })
+  })
+
+  it('does NOT block on permission-denied error (dev / emulator scenario)', async () => {
+    mockOnSnapshot.mockImplementation((_ref, handlers) => {
+      handlers.error(new FirebaseError('permission-denied', 'Missing or insufficient permissions.'))
+      return vi.fn()
+    })
+
+    const { result } = renderHook(() => useVersionGate())
+
+    await waitFor(() => {
+      expect(result.current.blocked).toBe(false)
     })
   })
 })

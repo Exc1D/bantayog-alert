@@ -167,7 +167,8 @@ export const initiateShiftHandoff = onCall({ region: 'asia-southeast1', enforceA
     if (!ADMIN_ROLES.includes(claims.role)) {
         throw new HttpsError('permission-denied', 'admin role required');
     }
-    if (claims.active !== true) {
+    const accountStatus = claims.accountStatus;
+    if (claims.active !== true && accountStatus !== 'active') {
         throw new HttpsError('permission-denied', 'account is not active');
     }
     if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {
@@ -222,7 +223,8 @@ export const acceptShiftHandoff = onCall({ region: 'asia-southeast1', enforceApp
     if (!ADMIN_ROLES.includes(claims.role)) {
         throw new HttpsError('permission-denied', 'admin role required');
     }
-    if (claims.active !== true) {
+    const accountStatus = claims.accountStatus;
+    if (claims.active !== true && accountStatus !== 'active') {
         throw new HttpsError('permission-denied', 'account is not active');
     }
     if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {

@@ -16,12 +16,28 @@ vi.mock('@bantayog/shared-validators', async () => {
     };
 });
 import { closeReportRequestSchema, closeReportCore } from '../close-report.js';
-function createMockDb(seedReport) {
+function createMockDb(seed) {
+    const reportSeed = seed?.report ??
+        (seed && typeof seed.reportId === 'string'
+            ? Object.fromEntries(Object.entries(seed).filter(([k]) => !['report', 'dispatch', 'reportOps'].includes(k)))
+            : undefined);
     const txGetFn = vi.fn((ref) => {
-        if (seedReport && ref.path === `reports/${seedReport.reportId}`) {
+        if (reportSeed && ref.path === `reports/${reportSeed.reportId}`) {
             return Promise.resolve({
                 exists: true,
-                data: () => ({ ...seedReport }),
+                data: () => ({ ...reportSeed }),
+            });
+        }
+        if (seed?.dispatch && ref.path === `dispatches/${seed.dispatch.dispatchId}`) {
+            return Promise.resolve({
+                exists: true,
+                data: () => ({ ...seed.dispatch }),
+            });
+        }
+        if (seed?.reportOps && ref.path === `report_ops/${seed.reportOps.reportId}`) {
+            return Promise.resolve({
+                exists: true,
+                data: () => ({ ...seed.reportOps }),
             });
         }
         return Promise.resolve({ exists: false, data: () => null });
@@ -325,6 +341,108 @@ describe('closeReportCore', () => {
         const eventCall = mockDb._txSet.mock.calls.find((c) => c[0].path?.startsWith('report_events/') ??
             c[0].id?.startsWith('event-'));
         expect(eventCall[1].actorRole).toBe('municipal_admin');
+    });
+    it('cancels active dispatch and clears currentDispatchId', async () => {
+        mockDb = createMockDb({
+            report: {
+                reportId: 'rep-dispatch',
+                status: 'resolved',
+                municipalityId: 'daet',
+                currentDispatchId: 'disp-1',
+            },
+            dispatch: { dispatchId: 'disp-1', status: 'pending' },
+        });
+        await closeReportCore(mockDb, {
+            reportId: 'rep-dispatch',
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+            actor: {
+                uid: 'admin-1',
+                claims: { role: 'municipal_admin', municipalityId: 'daet', active: true },
+            },
+            now: {
+                toMillis: () => 1713350400000,
+            },
+        });
+        const dispatchUpdate = mockDb._txUpdate.mock.calls.find((c) => c[0].path === 'dispatches/disp-1');
+        expect(dispatchUpdate).toBeDefined();
+        expect(dispatchUpdate[1].status).toBe('cancelled');
+        expect(dispatchUpdate[1].cancelReason).toBe('report_closed');
+        expect(dispatchUpdate[1].cancelledBy).toBe('admin-1');
+        const reportUpdate = mockDb._txUpdate.mock.calls.find((c) => c[0].path === 'reports/rep-dispatch');
+        expect(reportUpdate[1].currentDispatchId).toBeNull();
+    });
+    it('does not cancel dispatch already in terminal state', async () => {
+        mockDb = createMockDb({
+            report: {
+                reportId: 'rep-term',
+                status: 'resolved',
+                municipalityId: 'daet',
+                currentDispatchId: 'disp-2',
+            },
+            dispatch: { dispatchId: 'disp-2', status: 'resolved' },
+        });
+        await closeReportCore(mockDb, {
+            reportId: 'rep-term',
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+            actor: {
+                uid: 'admin-1',
+                claims: { role: 'municipal_admin', municipalityId: 'daet', active: true },
+            },
+            now: {
+                toMillis: () => 1713350400000,
+            },
+        });
+        const dispatchUpdate = mockDb._txUpdate.mock.calls.find((c) => c[0].path === 'dispatches/disp-2');
+        expect(dispatchUpdate).toBeUndefined();
+        const reportUpdate = mockDb._txUpdate.mock.calls.find((c) => c[0].path === 'reports/rep-term');
+        expect(reportUpdate).toBeDefined();
+        expect(reportUpdate[1].status).toBe('closed');
+    });
+    it('syncs report_ops status to closed when doc exists', async () => {
+        mockDb = createMockDb({
+            report: {
+                reportId: 'rep-ops',
+                status: 'resolved',
+                municipalityId: 'daet',
+            },
+            reportOps: { reportId: 'rep-ops', status: 'resolved', updatedAt: 1713340000000 },
+        });
+        await closeReportCore(mockDb, {
+            reportId: 'rep-ops',
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+            actor: {
+                uid: 'admin-1',
+                claims: { role: 'municipal_admin', municipalityId: 'daet', active: true },
+            },
+            now: {
+                toMillis: () => 1713350400000,
+            },
+        });
+        const opsUpdate = mockDb._txUpdate.mock.calls.find((c) => c[0].path === 'report_ops/rep-ops');
+        expect(opsUpdate).toBeDefined();
+        expect(opsUpdate[1].status).toBe('closed');
+        expect(opsUpdate[1].updatedAt).toBe(1713350400000);
+    });
+    it('allows provincial_superadmin to close without municipalityId', async () => {
+        mockDb = createMockDb({
+            reportId: 'rep-super',
+            status: 'resolved',
+            municipalityId: 'daet',
+        });
+        const result = await closeReportCore(mockDb, {
+            reportId: 'rep-super',
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+            actor: {
+                uid: 'super-1',
+                claims: { role: 'provincial_superadmin', active: true },
+            },
+            now: {
+                toMillis: () => 1713350400000,
+            },
+        });
+        expect(result.status).toBe('closed');
+        const reportUpdate = mockDb._txUpdate.mock.calls.find((c) => c[0].path === 'reports/rep-super');
+        expect(reportUpdate).toBeDefined();
     });
 });
 //# sourceMappingURL=close-report.unit.test.js.map

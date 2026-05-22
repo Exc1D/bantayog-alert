@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators';
 import { bantayogErrorToHttps } from '../shared/https-error.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { checkRateLimit } from '../shared/rate-limit.js';
+import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js';
 const payloadSchema = z.union([
     z
         .object({
@@ -79,9 +81,20 @@ export async function requestLookupImpl(input) {
     };
 }
 export const requestLookup = onCall({
-    cors: ['http://localhost:5173', 'https://bantayog-citizen-staging.web.app'],
+    cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
 }, async (request) => {
+    const rlKey = request.auth?.uid ?? `anon:${request.rawRequest.ip ?? 'unknown'}`;
+    const rl = await checkRateLimit(getFirestore(), {
+        key: `requestLookup:${rlKey}`,
+        limit: 30,
+        windowSeconds: 60,
+        now: Timestamp.now(),
+    });
+    if (!rl.allowed) {
+        throw new HttpsError('resource-exhausted', 'rate limit exceeded');
+    }
     try {
         return await requestLookupImpl({
             db: getFirestore(),

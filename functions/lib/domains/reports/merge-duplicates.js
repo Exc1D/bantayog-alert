@@ -177,7 +177,8 @@ export const mergeDuplicates = onCall({ region: 'asia-southeast1', enforceAppChe
     if (claims.role !== 'municipal_admin' && claims.role !== 'provincial_superadmin') {
         throw new HttpsError('permission-denied', 'municipal_admin or provincial_superadmin required');
     }
-    if (claims.active !== true) {
+    const accountStatus = claims.accountStatus;
+    if (claims.active !== true && accountStatus !== 'active') {
         throw new HttpsError('permission-denied', 'account is not active');
     }
     if (claims.role === 'municipal_admin' && claims.municipalityId === undefined) {

@@ -60,7 +60,7 @@ export async function upsertProvincialResourceCore(db, input, actor) {
     });
     return { id };
 }
-export const upsertProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const upsertProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO);
     return upsertProvincialResourceCore(getFirestore(), request.data, { uid });
 });
@@ -82,7 +82,7 @@ export async function archiveProvincialResourceCore(db, input, actor) {
         occurredAt: Date.now(),
     });
 }
-export const archiveProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const archiveProvincialResource = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_WITH_PDRRMO);
     const { id } = archiveSchema.parse(request.data);
     return archiveProvincialResourceCore(getFirestore(), { id }, { uid });

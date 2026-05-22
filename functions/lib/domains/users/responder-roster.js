@@ -85,6 +85,7 @@ async function suspendOrRevokeResponderCore(db, deps) {
 export const suspendResponder = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, async (request) => {
@@ -117,6 +118,7 @@ export const suspendResponder = onCall({
 export const revokeResponder = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, async (request) => {
@@ -168,6 +170,7 @@ export async function bulkAvailabilityOverrideCore(db, deps) {
         }
         const batch = db.batch();
         let updated = 0;
+        const skippedUids = [];
         // Firestore 'in' queries support up to 10 values per chunk
         const CHUNK_SIZE = 10;
         for (let i = 0; i < uids.length; i += CHUNK_SIZE) {
@@ -176,16 +179,29 @@ export async function bulkAvailabilityOverrideCore(db, deps) {
                 .collection('responders')
                 .where(FieldPath.documentId(), 'in', chunk)
                 .get();
+            const foundUids = new Set(chunkSnap.docs.map((d) => d.id));
+            for (const uid of chunk) {
+                if (!foundUids.has(uid)) {
+                    skippedUids.push(uid);
+                }
+            }
             for (const doc of chunkSnap.docs) {
                 const data = doc.data();
-                if (data.agencyId !== actor.claims.agencyId)
+                if (data.agencyId !== actor.claims.agencyId) {
+                    skippedUids.push(doc.id);
                     continue;
+                }
                 batch.update(doc.ref, {
                     availabilityStatus: status,
                     updatedAt: now.toMillis(),
                 });
                 updated++;
             }
+        }
+        if (skippedUids.length > 0) {
+            throw new BantayogError(BantayogErrorCode.FORBIDDEN, `${String(skippedUids.length)} responder(s) not found or belong to a different agency`, {
+                skippedUids,
+            });
         }
         await batch.commit();
         log({
@@ -199,13 +215,14 @@ export async function bulkAvailabilityOverrideCore(db, deps) {
                 actorUid: actor.uid,
             },
         });
-        return { updated };
+        return { updated, skipped: skippedUids.length, skippedUids };
     });
     return result;
 }
 export const bulkAvailabilityOverride = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, async (request) => {

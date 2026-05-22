@@ -1,11 +1,13 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { BantayogError, BantayogErrorCode, advanceDispatchRequestSchema, invalidTransitionError, } from '@bantayog/shared-validators';
+import { BantayogError, BantayogErrorCode, advanceDispatchRequestSchema, invalidTransitionError, isTerminalReportStatus, } from '@bantayog/shared-validators';
 import { adminDb } from '../../admin-init.js';
 import { withIdempotency } from '../../idempotency/guard.js';
 import { requireAuth, bantayogErrorToHttps } from '../shared/https-error.js';
+import { checkRateLimit } from '../shared/rate-limit.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { getResponderCallableCorsOrigins } from '../shared/callable-config.js';
 import { mirrorDispatchStatusToReportInTransaction } from '../reports/dispatch-report-mirror.js';
 export const advanceDispatchCore = async (db, req) => {
     const { dispatchId, to, resolutionSummary, idempotencyKey, actor, now } = req;
@@ -16,6 +18,18 @@ export const advanceDispatchCore = async (db, req) => {
         payload: idempotentPayload,
         now: () => now.toMillis(),
     }, async () => db.runTransaction(async (transaction) => {
+        // Rate limit: 30 advances per 60s per responder (same as accept/decline)
+        const rl = await checkRateLimit(db, {
+            key: `advanceDispatch::${actor.uid}`,
+            limit: 30,
+            windowSeconds: 60,
+            now,
+        });
+        if (!rl.allowed) {
+            throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
+                retryAfterSeconds: rl.retryAfterSeconds,
+            });
+        }
         const dispatchRef = db.collection('dispatches').doc(dispatchId);
         const dispatchSnap = await transaction.get(dispatchRef);
         if (!dispatchSnap.exists) {
@@ -25,6 +39,15 @@ export const advanceDispatchCore = async (db, req) => {
         // Access control
         if (actor.claims.role !== 'responder' || dispatch.assignedTo.uid !== actor.uid) {
             throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only assigned responder can advance');
+        }
+        // Guard: do not advance if the report is already terminal
+        const reportRef = db.collection('reports').doc(dispatch.reportId);
+        const reportSnap = await transaction.get(reportRef);
+        if (reportSnap.exists) {
+            const report = reportSnap.data();
+            if (report.status && isTerminalReportStatus(report.status)) {
+                throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'Report is already in a terminal state');
+            }
         }
         const from = dispatch.status;
         // Valid transitions
@@ -86,8 +109,9 @@ export const advanceDispatchCore = async (db, req) => {
 export const advanceDispatch = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     consumeAppCheckToken: false,
-    cors: ['http://localhost:5174', 'http://localhost:5175'],
+    cors: getResponderCallableCorsOrigins(),
 }, async (request) => {
     const actor = requireAuth(request, ['responder']);
     try {

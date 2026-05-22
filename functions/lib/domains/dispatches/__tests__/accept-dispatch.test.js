@@ -236,5 +236,25 @@ describe('acceptDispatchCore', () => {
             })).rejects.toMatchObject({ code: 'RATE_LIMITED' });
         });
     });
+    itif(available)('rejects when report is already closed', async () => {
+        await seedReportAtStatusJS(testEnv, 'report-5', 'closed');
+        await seedDispatchJS(testEnv, 'dispatch-5', 'report-5', 'responder-1', 'pending');
+        await seedActiveAccount(testEnv, {
+            uid: 'responder-1',
+            role: 'responder',
+            municipalityId: 'daet',
+        });
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await expect(acceptDispatchCore(db, {
+                dispatchId: 'dispatch-5',
+                idempotencyKey: crypto.randomUUID(),
+                actor: { uid: 'responder-1' },
+                now: Timestamp.now(),
+            })).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' });
+            const dispatchSnap = await db.collection('dispatches').doc('dispatch-5').get();
+            expect(dispatchSnap.data()?.status).toBe('pending');
+        });
+    });
 });
 //# sourceMappingURL=accept-dispatch.test.js.map

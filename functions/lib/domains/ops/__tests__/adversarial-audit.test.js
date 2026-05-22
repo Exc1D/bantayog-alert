@@ -11,7 +11,9 @@ import { verifyReportCore } from '../../../domains/reports/verify-report.js';
 async function probeFirestore(host, port) {
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => { controller.abort(); }, 2000);
+        const timeout = setTimeout(() => {
+            controller.abort();
+        }, 2000);
         const response = await fetch(`http://${host}:${String(port)}`, {
             signal: controller.signal,
         });
@@ -25,7 +27,9 @@ async function probeFirestore(host, port) {
 async function probeRtdb(host, port) {
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => { controller.abort(); }, 2000);
+        const timeout = setTimeout(() => {
+            controller.abort();
+        }, 2000);
         const response = await fetch(`http://${host}:${String(port)}/.json?ns=dummy`, {
             signal: controller.signal,
         });
@@ -180,6 +184,7 @@ describe('Adversarial Audit — Proof of Concept', { timeout: 120000 }, () => {
             .set({
             dispatchId,
             status: 'pending',
+            reportId: 'report-idempotency-fixed',
             assignedTo: { uid: responderUid, agencyId: 'bfp-daet', municipalityId: 'daet' },
             schemaVersion: 1,
         });

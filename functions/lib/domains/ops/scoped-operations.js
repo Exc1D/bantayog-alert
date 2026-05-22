@@ -99,6 +99,7 @@ export async function listScopedOperationsMapCore(db, actor) {
 export const listScopedOperationsMap = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     cors: getAdminCallableCorsOrigins(),
 }, async (req) => {
     if (!req.auth)

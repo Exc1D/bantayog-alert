@@ -128,3 +128,15 @@ export async function seedResponderDispatch(status: 'pending' | 'cancelled' = 'p
   await db.collection('dispatches').doc(dispatchId).set(doc)
   return { dispatchId, uid }
 }
+
+// Auto-seed when run directly via `npx tsx fixtures/responder-seed.ts`
+if (process.argv[1] === new URL(import.meta.url).pathname) {
+  seedAuthUsers()
+    .then(() => {
+      console.log('Responder/citizen accounts seeded')
+    })
+    .catch((err: unknown) => {
+      console.error('Seed failed:', err)
+      process.exit(1)
+    })
+}

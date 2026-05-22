@@ -6,8 +6,25 @@ import { requireAuth, requireMfaAuth } from '../shared/https-error.js';
 import { PDRRMO, PROVINCIAL_SUPERADMIN } from '../../constants/roles.js';
 import { streamAuditEvent } from '../ops/audit-stream.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { checkRateLimit } from '../shared/rate-limit.js';
+import { Timestamp } from 'firebase-admin/firestore';
+const HAZARD_TYPES = [
+    'flood',
+    'landslide',
+    'earthquake',
+    'fire',
+    'typhoon',
+    'storm_surge',
+    'volcanic_eruption',
+    'tsunami',
+    'drought',
+    'security',
+    'health',
+    'infrastructure',
+    'other',
+];
 const declareAlertInputSchema = z.object({
-    hazardType: z.string().min(1).max(100),
+    hazardType: z.enum(HAZARD_TYPES),
     affectedMunicipalityIds: z.array(z.string().min(1)).min(1),
     message: z.string().min(1).max(500),
     reportId: z.uuid().optional(),
@@ -70,10 +87,20 @@ export async function declareAlertCore(db, input, actor) {
 export const declareAlert = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     memory: '512MiB',
 }, async (request) => {
     const { uid, claims } = requireAuth(request, [PROVINCIAL_SUPERADMIN, PDRRMO, 'municipal_admin']);
     requireMfaAuth(request);
+    const rl = await checkRateLimit(getFirestore(), {
+        key: `declareAlert:${uid}`,
+        limit: 5,
+        windowSeconds: 300,
+        now: Timestamp.now(),
+    });
+    if (!rl.allowed) {
+        throw new HttpsError('resource-exhausted', 'rate limit exceeded');
+    }
     return declareAlertCore(getFirestore(), request.data, { uid, claims });
 });
 //# sourceMappingURL=callables.js.map

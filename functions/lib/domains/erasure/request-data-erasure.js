@@ -47,7 +47,7 @@ export async function requestDataErasureCore(db, auth, actor) {
         occurredAt: now,
     });
 }
-export const requestDataErasure = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const requestDataErasure = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     const { uid } = requireAuth(request, ['citizen']);
     await requestDataErasureCore(getFirestore(), getAuth(), { uid });
 });

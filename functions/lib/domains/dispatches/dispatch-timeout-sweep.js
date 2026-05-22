@@ -1,10 +1,9 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logDimension } from '@bantayog/shared-validators';
+import { LEASE_EXPIRY_MS } from './monitor-config.js';
 const log = logDimension('dispatchTimeoutSweep');
-export const dispatchTimeoutSweep = onSchedule({ schedule: 'every 1 minutes', region: 'asia-southeast1', timeoutSeconds: 60, maxInstances: 1 }, async () => {
-    const db = getFirestore();
-    const now = Timestamp.now();
+export async function dispatchTimeoutSweepCore(db, now) {
     // We fetch pending dispatches and filter in memory to avoid requiring a composite index
     // specifically for (status, acknowledgementDeadlineAt) if not strictly needed, or we can use it if indexed.
     // In practice, 'pending' dispatches at any given moment are a very small set.
@@ -16,6 +15,11 @@ export const dispatchTimeoutSweep = onSchedule({ schedule: 'every 1 minutes', re
     for (const doc of snap.docs) {
         const d = doc.data();
         const deadline = d.acknowledgementDeadlineAt;
+        const monitorLeaseAt = d.monitorLeaseAt;
+        // Respect the monitor lease so we don't race with monitor-dispatch-deadlines.ts
+        if (monitorLeaseAt !== undefined && monitorLeaseAt >= now.toMillis() - LEASE_EXPIRY_MS) {
+            continue;
+        }
         if (deadline && deadline.toMillis() <= now.toMillis()) {
             batch.update(doc.ref, {
                 status: 'timed_out',
@@ -56,5 +60,10 @@ export const dispatchTimeoutSweep = onSchedule({ schedule: 'every 1 minutes', re
             data: { timedOutCount },
         });
     }
+}
+export const dispatchTimeoutSweep = onSchedule({ schedule: 'every 1 minutes', region: 'asia-southeast1', timeoutSeconds: 60, maxInstances: 1 }, async () => {
+    const db = getFirestore();
+    const now = Timestamp.now();
+    await dispatchTimeoutSweepCore(db, now);
 });
 //# sourceMappingURL=dispatch-timeout-sweep.js.map

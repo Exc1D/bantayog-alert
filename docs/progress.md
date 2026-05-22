@@ -246,3 +246,32 @@
 2. **Deploy needed:** Staging redeploy required to verify many code fixes.
 3. **Phase 7.C:** Staff TOTP enrollment audit in progress.
 4. **Deferred to Phase 11:** 4 observability dashboards (Ops, Backend, Compliance, Cost).
+
+---
+
+## 2026-05-22 — Report Lifecycle End-to-End Fix
+
+**Root causes found via systematic debugging:**
+
+1. **Citizen PWA submission failing:** `isAuthed()` in `firestore.rules` required `accountStatus == 'active'`, but anonymous auth users have NO custom claims. The `report_inbox` create rule rejected all anonymous submissions with permission-denied.
+2. **Admin can't see new reports:** `FeedPage` filter intentionally excluded `status === 'new'` reports. Admins had no UI to find and verify them, stalling the lifecycle.
+3. **Responder can't read reports:** `canReadReportDoc(data)` used `data.reportId`, but `reports` documents don't store `reportId` in their data — the ID is only the document path. Responders with valid dispatches were permanently denied.
+4. **Agency admin query broken:** `useFirestoreListeners` queried `reports` by `agencyId`, a field that doesn't exist on report docs. Always returned empty.
+
+**Fixes applied (5 files):**
+
+| File                                                                     | Change                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `infra/firebase/firestore.rules`                                         | `report_inbox` create: `isAuthed()` → `request.auth != null`; `canReadReportDoc(data, reportId)` now accepts path variable and uses it for dispatch lookup; added agency_admin read via `report_ops.agencyIds` |
+| `apps/admin-desktop/src/pages/FeedPage.tsx`                              | Include `new` reports in feed; add "Send to moderation" button calling `verifyReport`                                                                                                                          |
+| `apps/admin-desktop/src/hooks/useFirestoreListeners.ts`                  | `agency_admin` reports query: removed broken `agencyId` filter, now queries full collection (rules gate access)                                                                                                |
+| `apps/admin-desktop/src/__tests__/feed-page.test.tsx`                    | Updated to expect `new` reports in feed                                                                                                                                                                        |
+| `apps/admin-desktop/src/__tests__/useFirestoreListeners.scoping.test.ts` | Updated to assert no `agencyId` query and correct `agencyIds` array-contains query                                                                                                                             |
+
+**Verification:**
+
+- `pnpm typecheck` — 20/20 packages pass
+- Admin-desktop tests — 371 passed (2 previously-failing tests now pass with updated assertions)
+- Citizen-PWA tests — 421 passed (1 unrelated timeout in `App.routes.test.tsx`)
+- Functions integration test — 5 passed (report lifecycle: submit → verify → dispatch)
+- Firestore rules tests — skipped (emulator not running locally; will run in CI)

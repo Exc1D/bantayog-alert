@@ -1,13 +1,14 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators';
+import { BantayogError, BantayogErrorCode, isTerminalReportStatus, } from '@bantayog/shared-validators';
 import { adminDb } from '../../admin-init.js';
 import { withIdempotency } from '../../idempotency/guard.js';
 import { bantayogErrorToHttps } from '../shared/https-error.js';
 import { checkRateLimit } from '../shared/rate-limit.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
 import { isAccountActive } from '../ops/admin-auth.js';
+import { getResponderCallableCorsOrigins } from '../shared/callable-config.js';
 import { mirrorDispatchStatusToReportInTransaction } from '../reports/dispatch-report-mirror.js';
 export const acceptDispatchRequestSchema = z
     .object({
@@ -48,6 +49,19 @@ export async function acceptDispatchCore(db, deps) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Not assigned to this responder');
             }
             const assignedTo = d.assignedTo;
+            // Guard: do not accept if the report is already terminal
+            const reportId = d.reportId;
+            if (!reportId) {
+                throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'Dispatch missing reportId');
+            }
+            const reportRef = db.collection('reports').doc(reportId);
+            const reportSnap = await tx.get(reportRef);
+            if (reportSnap.exists) {
+                const report = reportSnap.data();
+                if (report.status && isTerminalReportStatus(report.status)) {
+                    throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'Report is already in a terminal state');
+                }
+            }
             if (d.status !== 'pending') {
                 throw new BantayogError(BantayogErrorCode.CONFLICT, `Dispatch is no longer pending (current status: ${d.status})`);
             }
@@ -104,9 +118,10 @@ export async function acceptDispatchCore(db, deps) {
 export const acceptDispatch = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
-    cors: ['http://localhost:5174', 'http://localhost:5175'],
+    cors: getResponderCallableCorsOrigins(),
 }, async (request) => {
     if (!request.auth)
         throw new HttpsError('unauthenticated', 'sign-in required');

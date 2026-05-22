@@ -82,6 +82,7 @@ export async function requestBackupCore(db, deps) {
 export const requestBackup = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, async (request) => {

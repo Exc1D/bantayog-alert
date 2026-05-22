@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { BantayogError, BantayogErrorCode, isValidDispatchTransition, logDimension, } from '@bantayog/shared-validators';
+import { BantayogError, BantayogErrorCode, isValidDispatchTransition, logDimension, isTerminalReportStatus, } from '@bantayog/shared-validators';
 import { adminDb } from '../../admin-init.js';
 import { withIdempotency } from '../../idempotency/guard.js';
 import { checkRateLimit } from '../shared/rate-limit.js';
@@ -65,13 +65,16 @@ export async function cancelDispatchCore(db, deps) {
         const reportCurrentDispatchId = reportSnap.exists
             ? reportSnap.data()?.currentDispatchId
             : undefined;
+        // Guard: do not revert a terminal report back to verified
+        const isReportTerminal = reportSnap.exists &&
+            isTerminalReportStatus(reportSnap.data().status ?? 'verified');
         tx.update(dispatchRef, {
             status: to,
             lastStatusAt: deps.now.toMillis(),
             cancelledBy: deps.actor.uid,
             cancelReason: deps.reason,
         });
-        if (reportCurrentDispatchId === deps.dispatchId) {
+        if (!isReportTerminal && reportCurrentDispatchId === deps.dispatchId) {
             tx.update(reportRef, {
                 status: 'verified',
                 currentDispatchId: null,

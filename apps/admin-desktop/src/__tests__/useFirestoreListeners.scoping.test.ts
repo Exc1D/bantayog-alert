@@ -87,7 +87,7 @@ describe('useFirestoreListeners — role scoping', () => {
     expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
   })
 
-  it('agency_admin: reports filter by agencyId, report_ops use array-contains on agencyIds', () => {
+  it('agency_admin: reports are unfiltered (rules gate access), report_ops use array-contains on agencyIds', () => {
     useAuthMock.mockReturnValue({
       user: { uid: 'agency-1' },
       claims: { role: 'agency_admin', agencyId: 'A001' },
@@ -97,7 +97,9 @@ describe('useFirestoreListeners — role scoping', () => {
     renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
 
     const calls = whereCalls()
-    expect(calls).toContainEqual({ field: 'agencyId', op: '==', value: 'A001' })
+    // reports docs do not have agencyId; we query the full collection and
+    // let Firestore rules enforce access (public_alertable + agency-linked).
+    expect(calls).not.toContainEqual({ field: 'agencyId', op: '==', value: 'A001' })
     expect(calls).toContainEqual({ field: 'agencyIds', op: 'array-contains', value: 'A001' })
     expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
   })

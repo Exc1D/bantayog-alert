@@ -90,6 +90,9 @@ export const getOpsMetrics = onCall({
     if (!ADMIN_ROLES.includes(claims.role)) {
         throw new HttpsError('permission-denied', 'admin required');
     }
+    if (claims.accountStatus !== 'active') {
+        throw new HttpsError('permission-denied', 'account not active');
+    }
     const data = req.data;
     if (typeof data !== 'object' || data === null) {
         throw new HttpsError('invalid-argument', 'malformed payload');

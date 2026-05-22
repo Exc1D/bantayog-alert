@@ -69,8 +69,26 @@ export async function withIdempotency(db, opts, op) {
         await keyRef.update({ processing: false });
         throw err;
     }
-    // op() succeeded — persist result; leave processing=true on failure so callers back off
-    await keyRef.update({ resultPayload: result, processing: false, completedAt: now() });
+    // op() succeeded — persist result atomically via transaction to prevent
+    // lost-result if the process crashes between op() and the update.
+    await db.runTransaction(async (tx) => {
+        // Re-read to ensure the doc still exists and hasn't been corrupted
+        const snap = await tx.get(keyRef);
+        if (!snap.exists) {
+            // Should never happen — we set it in the first transaction
+            tx.set(keyRef, {
+                key: opts.key,
+                payloadHash: hash,
+                firstSeenAt: now(),
+                resultPayload: result,
+                processing: false,
+                completedAt: now(),
+            });
+        }
+        else {
+            tx.update(keyRef, { resultPayload: result, processing: false, completedAt: now() });
+        }
+    });
     return { result, fromCache: false };
 }
 //# sourceMappingURL=guard.js.map

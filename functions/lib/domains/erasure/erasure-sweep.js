@@ -114,47 +114,73 @@ export async function erasureSweepCore(input) {
 }
 async function executeErasure(input, citizenUid, requestId) {
     const db = input.db;
-    // Step 1: Collect report IDs
+    const erasureRef = db.collection('erasure_requests').doc(requestId);
+    // Step 1: Collect report IDs (always re-read — report set is idempotent)
     const reportsSnap = await db.collection('reports').where('submittedBy', '==', citizenUid).get();
     const reportIds = reportsSnap.docs.map((d) => d.id);
-    // Step 2: Anonymize reports
-    for (const reportId of reportIds) {
-        await db.collection('reports').doc(reportId).update({
-            submittedBy: 'citizen_deleted',
-            mediaRedacted: true,
-        });
-    }
-    // Step 4: Null report_private PII fields
-    for (const reportId of reportIds) {
-        await db.collection('report_private').doc(reportId).update({
-            citizenName: null,
-            rawPhone: null,
-            contactPhone: null,
-            gpsExact: null,
-            addressText: null,
-            exactLocation: null,
-        });
-    }
-    // Step 3: Null report_contacts content
-    for (const reportId of reportIds) {
-        const contactSnap = await db.collection('report_contacts').doc(reportId).get();
-        if (contactSnap.exists) {
-            const nulled = {};
-            for (const key of Object.keys(contactSnap.data() ?? {})) {
-                if (key !== 'reportId')
-                    nulled[key] = null;
+    // Step 2: Anonymize reports (batched, idempotent)
+    const checkpointSnap = await erasureRef.get();
+    const checkpointData = checkpointSnap.data();
+    const checkpoint = checkpointData?.checkpoint;
+    if (checkpoint !== 'reports_anonymized') {
+        const batchSize = 400; // Firestore batch limit is 500; leave headroom
+        for (let i = 0; i < reportIds.length; i += batchSize) {
+            const batch = db.batch();
+            const slice = reportIds.slice(i, i + batchSize);
+            for (const reportId of slice) {
+                const reportRef = db.collection('reports').doc(reportId);
+                batch.update(reportRef, { submittedBy: 'citizen_deleted', mediaRedacted: true });
             }
-            await db.collection('report_contacts').doc(reportId).update(nulled);
+            await batch.commit();
         }
+        await erasureRef.update({ checkpoint: 'reports_anonymized' });
     }
-    // Step 4: Delete Storage blobs for all citizen reports (verified and unverified)
-    for (const reportId of reportIds) {
-        const [files] = await input.storage.bucket().getFiles({ prefix: `report_media/${reportId}/` });
-        for (const file of files) {
-            await file.delete();
+    // Step 3: Null report_private PII fields (batched, idempotent)
+    if (checkpoint !== 'private_nulled') {
+        const batchSize = 400;
+        for (let i = 0; i < reportIds.length; i += batchSize) {
+            const batch = db.batch();
+            const slice = reportIds.slice(i, i + batchSize);
+            for (const reportId of slice) {
+                batch.update(db.collection('report_private').doc(reportId), {
+                    citizenName: null,
+                    rawPhone: null,
+                    contactPhone: null,
+                    gpsExact: null,
+                    addressText: null,
+                    exactLocation: null,
+                });
+            }
+            await batch.commit();
         }
+        await erasureRef.update({ checkpoint: 'private_nulled' });
     }
-    // Step 5: Hard-delete Firebase Auth account — LAST, non-reversible
+    // Step 4: Null report_contacts content (idempotent)
+    if (checkpoint !== 'contacts_nulled') {
+        for (const reportId of reportIds) {
+            const contactSnap = await db.collection('report_contacts').doc(reportId).get();
+            if (contactSnap.exists) {
+                const nulled = {};
+                for (const key of Object.keys(contactSnap.data() ?? {})) {
+                    if (key !== 'reportId')
+                        nulled[key] = null;
+                }
+                await db.collection('report_contacts').doc(reportId).update(nulled);
+            }
+        }
+        await erasureRef.update({ checkpoint: 'contacts_nulled' });
+    }
+    // Step 5: Delete Storage blobs (idempotent — deleted files are skipped)
+    if (checkpoint !== 'storage_deleted') {
+        for (const reportId of reportIds) {
+            const [files] = await input.storage.bucket().getFiles({ prefix: `report_media/${reportId}/` });
+            for (const file of files) {
+                await file.delete();
+            }
+        }
+        await erasureRef.update({ checkpoint: 'storage_deleted' });
+    }
+    // Step 6: Hard-delete Firebase Auth account — LAST, non-reversible
     await input.auth.deleteUser(citizenUid);
     // Sentinel deletion happens in the caller after this function returns
     log({

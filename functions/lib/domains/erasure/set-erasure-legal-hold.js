@@ -40,7 +40,7 @@ export async function setErasureLegalHoldCore(db, input, actor) {
         occurredAt: Date.now(),
     });
 }
-export const setErasureLegalHold = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck() }, async (request) => {
+export const setErasureLegalHold = onCall({ region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 10 }, async (request) => {
     const { uid } = requireAuth(request, PRIVILEGED_ROLES);
     requireMfaAuth(request);
     await setErasureLegalHoldCore(getFirestore(), request.data, { uid });

@@ -11,6 +11,7 @@ const DEFAULT_CONFIG = {
     updatedAt: 0,
     updatedBy: 'system',
 };
+export const LEASE_EXPIRY_MS = 120_000; // 2 minutes
 let cachedConfig = null;
 let cachedAt = 0;
 const CACHE_TTL_MS = 30000; // 30s

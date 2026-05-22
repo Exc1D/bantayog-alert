@@ -300,6 +300,10 @@
 - BigQuery Terraform datasets must have explicit access control blocks (`bigquery.dataOwner` for SA, `bigquery.dataViewer` for analysts) — never rely on project-level IAM inheritance.
 - IndexedDB query cache (React Query persistence) must strip sensitive query keys (`users`, `responders`, `report_private`) and enforce a size limit (2MB) to prevent PII leakage via browser dev tools.
 - `window.location.href` with hardcoded internal paths (`/`) or `tel:`/`sms:` URI schemes is NOT an open redirect vulnerability — only user-controlled URLs assigned to `window.location` are risky.
+- **2025-05-22: `isAuthed()` requiring `accountStatus == 'active'` broke anonymous citizen submissions.** Anonymous auth users have NO custom claims. The `report_inbox` create rule MUST use `request.auth != null` directly, not `isAuthed()`, to allow unregistered citizens to submit reports. All OTHER collections should keep `isAuthed()` to enforce account status on privileged operations.
+- **2025-05-22: `canReadReportDoc(data)` used `data.reportId` which does NOT exist in `reports` documents.** The document ID is the report ID; the document data does not contain a `reportId` field. Firestore rules `resource.data` only contains the stored fields, not the path variable. Pass the path variable `reportId` explicitly to helper functions that need it.
+- **2025-05-22: `FeedPage` filtering out `new` reports made them unverifiable.** Admins need to see `new` reports to call `verifyReport` (new → awaiting_verify). If the UI hides them, the report lifecycle stalls at the first step. The feed moderation view must include `new` status with a "Send to moderation" action.
+- **2025-05-22: Querying `reports` by `agencyId` always returns empty because the field doesn't exist.** `reports` docs have `municipalityId`; `report_ops` has `agencyIds`. Frontend queries must match the actual schema fields. When a role needs cross-cutting access (e.g. agency_admin seeing reports), either query `report_ops` and join, or query unfiltered and let rules enforce access.
 
 ## Acceptable Security Risks (Documented — Revisit on Change)
 

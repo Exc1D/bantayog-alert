@@ -180,5 +180,31 @@ describe('advanceDispatchCore', () => {
             expect(reportEvents.docs).toHaveLength(1);
         });
     });
+    itif(available)('rejects when report is already closed', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            const { reportId } = await seedReportAtStatus(db, 'closed', { municipalityId: 'daet' });
+            const { dispatchId } = await seedDispatch(db, {
+                reportId,
+                responderUid: 'r1',
+                municipalityId: 'daet',
+                status: 'accepted',
+            });
+            await seedActiveAccount(testEnv, {
+                uid: 'r1',
+                role: 'responder',
+                municipalityId: 'daet',
+            });
+            await expect(advanceDispatchCore(db, {
+                dispatchId,
+                to: 'acknowledged',
+                idempotencyKey: crypto.randomUUID(),
+                actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+                now: Timestamp.now(),
+            })).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' });
+            const dispatch = (await db.collection('dispatches').doc(dispatchId).get()).data();
+            expect(dispatch.status).toBe('accepted');
+        });
+    });
 });
 //# sourceMappingURL=advance-dispatch.test.js.map

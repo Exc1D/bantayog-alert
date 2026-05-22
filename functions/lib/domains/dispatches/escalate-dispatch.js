@@ -5,6 +5,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators';
 import { adminDb } from '../../admin-init.js';
 import { withIdempotency } from '../../idempotency/guard.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { sendFcmToResponder } from '../ops/fcm-send.js';
 const InputSchema = z
     .object({
     dispatchId: z.string().min(1).max(128),
@@ -12,7 +13,17 @@ const InputSchema = z
     idempotencyKey: z.uuid(),
 })
     .strict();
+function mapFcmResult(fcm) {
+    if (fcm.warnings.includes('fcm_no_token'))
+        return 'no_token';
+    if (fcm.warnings.includes('fcm_network_error'))
+        return 'network_error';
+    if (fcm.warnings.length > 0)
+        return 'sent_with_invalid_tokens';
+    return 'sent';
+}
 export async function escalateDispatchCore(db, deps) {
+    const correlationId = crypto.randomUUID();
     const parsed = InputSchema.parse({
         dispatchId: deps.dispatchId,
         newResponderUid: deps.newResponderUid,
@@ -84,16 +95,64 @@ export async function escalateDispatchCore(db, deps) {
             municipalityId: responder.municipalityId,
             reason: 'admin_override',
             at: deps.now.toMillis(),
-            correlationId: crypto.randomUUID(),
+            correlationId,
             schemaVersion: 1,
         });
         return {
             dispatchId: parsed.dispatchId,
             status: 'pending',
             reportId: dispatch.reportId ?? '',
+            responder: {
+                agencyId: responder.agencyId,
+                municipalityId: responder.municipalityId,
+            },
+            correlationId,
         };
     }));
-    return result;
+    const fcm = await sendFcmToResponder({
+        uid: parsed.newResponderUid,
+        title: 'Dispatch escalated',
+        body: `Report ${result.reportId.slice(0, 8)} — see app for details`,
+        data: {
+            dispatchId: result.dispatchId,
+            reportId: result.reportId,
+            correlationId: result.correlationId,
+        },
+    });
+    const fcmResult = mapFcmResult(fcm);
+    const nowMillis = deps.now.toMillis();
+    await db.collection('dispatch_events').add({
+        type: 'notification_attempted',
+        dispatchId: result.dispatchId,
+        responderUid: parsed.newResponderUid,
+        agencyId: result.responder.agencyId,
+        municipalityId: result.responder.municipalityId,
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+        at: nowMillis,
+        correlationId: result.correlationId,
+        schemaVersion: 1,
+    });
+    await db.collection('dispatches').doc(result.dispatchId).update({
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+    });
+    if (fcmResult === 'network_error') {
+        await db.collection('fcm_retry_queue').add({
+            dispatchId: result.dispatchId,
+            responderUid: parsed.newResponderUid,
+            attemptCount: 0,
+            lastAttemptAt: nowMillis,
+            nextAttemptAt: nowMillis + 30_000,
+            originalError: 'fcm_network_error',
+            status: 'pending',
+        });
+    }
+    return {
+        ...result,
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+    };
 }
 export const escalateDispatch = onCall({
     region: 'asia-southeast1',
@@ -105,6 +164,13 @@ export const escalateDispatch = onCall({
     const claims = req.auth.token;
     if (!claims)
         throw new HttpsError('unauthenticated', 'token required');
+    const role = claims.role;
+    if (role !== 'municipal_admin' && role !== 'provincial_superadmin') {
+        throw new HttpsError('permission-denied', 'admin required');
+    }
+    if (claims.accountStatus !== 'active') {
+        throw new HttpsError('permission-denied', 'account not active');
+    }
     const parsed = InputSchema.safeParse(req.data);
     if (!parsed.success)
         throw new HttpsError('invalid-argument', 'malformed payload');

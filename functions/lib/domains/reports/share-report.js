@@ -94,6 +94,7 @@ export async function shareReportCore(db, deps) {
 export const shareReport = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     memory: '512MiB',
 }, async (req) => {
     const actor = requireAuth(req, ['municipal_admin', 'provincial_superadmin']);

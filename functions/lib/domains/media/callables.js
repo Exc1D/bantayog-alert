@@ -1,13 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
+import { Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators';
 import { bantayogErrorToHttps } from '../shared/https-error.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { adminDb } from '../../admin-init.js';
+import { checkRateLimit } from '../shared/rate-limit.js';
+import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js';
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
-const SIGNED_URL_TTL_MS = 5 * 60 * 1000;
+const SIGNED_URL_TTL_MS = 60 * 1000; // 60 seconds — minimize interception window
 const payloadSchema = z
     .object({
     mimeType: z.string(),
@@ -38,7 +42,8 @@ export async function requestUploadUrlImpl(input) {
     }
     const storage = getStorage();
     const uploadId = randomUUID();
-    const storagePath = `pending/${uploadId}`;
+    // Bind upload path to user UID to prevent cross-user access
+    const storagePath = `pending/${input.auth.uid}/${uploadId}`;
     const bucket = storage.bucket(input.bucket);
     const file = bucket.file(storagePath);
     const expiresAt = Date.now() + SIGNED_URL_TTL_MS;
@@ -55,16 +60,25 @@ export async function requestUploadUrlImpl(input) {
     };
 }
 export const requestUploadUrl = onCall({
-    cors: [
-        'http://localhost:5173',
-        'https://bantayog-citizen-staging.web.app',
-        'https://bantayog-citizen-dev.web.app',
-    ],
+    cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
 }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Must be signed in to request upload URL.');
+    }
+    const rl = await checkRateLimit(adminDb, {
+        key: `requestUploadUrl:${request.auth.uid}`,
+        limit: 20,
+        windowSeconds: 60,
+        now: Timestamp.now(),
+    });
+    if (!rl.allowed) {
+        throw new HttpsError('resource-exhausted', 'rate limit exceeded');
+    }
     try {
         return await requestUploadUrlImpl({
-            auth: request.auth ?? undefined,
+            auth: request.auth,
             data: request.data,
             bucket: process.env.STORAGE_BUCKET ?? 'bantayog-alert.appspot.com',
         });

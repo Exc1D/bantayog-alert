@@ -77,11 +77,16 @@ export async function requestAgencyAssistanceCore(db, deps) {
                 throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found');
             }
             const reportOps = reportOpsSnap.data();
-            // Authorization: only municipal_admin in the same municipality
-            if (actor.claims.role !== 'municipal_admin') {
-                throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only municipal_admin can request agency assistance');
+            // Authorization: only municipal_admin in the same municipality, or
+            // provincial_superadmin (can request for any municipality in the province).
+            const isMunicipalAdmin = actor.claims.role === 'municipal_admin';
+            const isProvincialSuperadmin = actor.claims.role === 'provincial_superadmin';
+            if (!isMunicipalAdmin && !isProvincialSuperadmin) {
+                throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only municipal_admin or provincial_superadmin can request agency assistance');
             }
-            if (actor.claims.municipalityId !== reportOps.municipalityId) {
+            // Municipal admins can only request for their own municipality.
+            // Provincial superadmins can request for any municipality.
+            if (isMunicipalAdmin && actor.claims.municipalityId !== reportOps.municipalityId) {
                 throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Cannot request assistance for a report in another municipality');
             }
             // Terminal status check
@@ -98,12 +103,11 @@ export async function requestAgencyAssistanceCore(db, deps) {
             const expiresAt = nowMs + 24 * 60 * 60 * 1000; // 24 hours
             tx.set(requestRef, {
                 reportId,
-                requestedByMunicipalId: actor.claims.municipalityId,
+                // The municipality where the report belongs — for provincial_superadmin
+                // this is the report's municipality, not the actor's home municipality.
+                requestedByMunicipalId: reportOps.municipalityId,
                 // Label placeholder — municipality names lookup is out of scope for Phase 5.
-                // actor.claims.municipalityId is the stable identifier; the label is
-                // for display only and will be resolved when a municipal names collection
-                // is added in a later phase.
-                requestedByMunicipality: actor.claims.municipalityId ?? 'unknown',
+                requestedByMunicipality: reportOps.municipalityId,
                 targetAgencyId: canonicalAgencyId,
                 requestType: canonicalAgencyId,
                 message,
@@ -137,7 +141,7 @@ export async function requestAgencyAssistanceCore(db, deps) {
     return result;
 }
 export async function requestAgencyAssistanceHandler(request) {
-    const actor = requireAuth(request, ['municipal_admin']);
+    const actor = requireAuth(request, ['municipal_admin', 'provincial_superadmin']);
     if (actor.claims.accountStatus !== 'active') {
         throw new HttpsError('permission-denied', 'account is not active');
     }
@@ -171,6 +175,7 @@ export async function requestAgencyAssistanceHandler(request) {
 export const requestAgencyAssistance = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, requestAgencyAssistanceHandler);
@@ -268,6 +273,7 @@ export async function acceptAgencyAssistanceHandler(request) {
 export const acceptAgencyAssistance = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, acceptAgencyAssistanceHandler);
@@ -388,6 +394,7 @@ export async function declineAgencyAssistanceHandler(request) {
 export const declineAgencyAssistance = onCall({
     region: 'asia-southeast1',
     enforceAppCheck: shouldEnforceAppCheck(),
+    maxInstances: 10,
     timeoutSeconds: 10,
     minInstances: 1,
 }, declineAgencyAssistanceHandler);

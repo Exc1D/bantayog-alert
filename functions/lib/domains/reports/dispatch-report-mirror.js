@@ -1,4 +1,11 @@
 import { dispatchToReportState, } from '@bantayog/shared-validators';
+const TERMINAL_REPORT_STATUSES = [
+    'closed',
+    'cancelled',
+    'cancelled_false_report',
+    'rejected',
+    'merged_as_duplicate',
+];
 export async function mirrorDispatchStatusToReportInTransaction(args) {
     const targetStatus = dispatchToReportState(args.afterStatus);
     if (!targetStatus || !args.reportId)
@@ -12,6 +19,8 @@ export async function mirrorDispatchStatusToReportInTransaction(args) {
         return;
     const from = report?.status ?? 'verified';
     if (from === targetStatus)
+        return;
+    if (TERMINAL_REPORT_STATUSES.includes(from))
         return;
     args.tx.update(reportRef, {
         status: targetStatus,

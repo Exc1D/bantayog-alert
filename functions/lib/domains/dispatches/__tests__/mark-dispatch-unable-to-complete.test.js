@@ -205,6 +205,36 @@ describe('markDispatchUnableToCompleteCore', () => {
             })).rejects.toMatchObject({ code: 'FORBIDDEN' });
         });
     });
+    itif(available)('marks dispatch unable_to_complete but leaves terminal report unchanged', async () => {
+        await seedReport(testEnv, 'report-5', 'closed');
+        await seedDispatchActive({
+            env: testEnv,
+            dispatchId: 'dispatch-5',
+            reportId: 'report-5',
+            responderUid: 'r1',
+            status: 'on_scene',
+        });
+        await seedActiveAccount(testEnv, {
+            uid: 'r1',
+            role: 'responder',
+            municipalityId: 'daet',
+        });
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            const result = await markDispatchUnableToCompleteCore(db, {
+                dispatchId: 'dispatch-5',
+                reason: 'Equipment failure',
+                idempotencyKey: crypto.randomUUID(),
+                actor: { uid: 'r1', claims: { role: 'responder', municipalityId: 'daet' } },
+                now: Timestamp.now(),
+            });
+            expect(result.status).toBe('unable_to_complete');
+            const dispatch = (await db.collection('dispatches').doc('dispatch-5').get()).data();
+            expect(dispatch?.status).toBe('unable_to_complete');
+            const report = (await db.collection('reports').doc('report-5').get()).data();
+            expect(report?.status).toBe('closed');
+        });
+    });
 });
 describe('markDispatchUnableToComplete callable', () => {
     const callCallable = markDispatchUnableToComplete;

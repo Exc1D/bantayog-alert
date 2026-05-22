@@ -167,7 +167,11 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     if (role === 'municipal_admin' && municipalityId) {
       reportsRef = query(reportsCol, where('municipalityId', '==', municipalityId))
     } else if (role === 'agency_admin' && agencyId) {
-      reportsRef = query(reportsCol, where('agencyId', '==', agencyId))
+      // reports docs do not have agencyId. Agency admins see reports that
+      // are public_alertable or that their agency handles (enforced by
+      // Firestore rules), so we query the full collection and let rules
+      // filter. The responders listener below already scopes by agency.
+      reportsRef = reportsCol
     }
     const unsubReports = onSnapshot(
       reportsRef,
@@ -241,10 +245,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
 
     if (windowType === 'map') {
       const respondersCol = collection(db, 'responders')
-      let respondersRef: Query = query(
-        respondersCol,
-        where('isActive', '==', true),
-      )
+      let respondersRef: Query = query(respondersCol, where('isActive', '==', true))
       if (role === 'municipal_admin' && municipalityId) {
         respondersRef = query(respondersRef, where('municipalityId', '==', municipalityId))
       } else if (role === 'agency_admin' && agencyId) {

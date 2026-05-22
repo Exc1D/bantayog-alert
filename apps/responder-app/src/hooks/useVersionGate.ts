@@ -22,7 +22,10 @@ export function useVersionGate() {
       },
       error: (err) => {
         console.error('[VersionGate] Failed to listen to min_app_version:', err)
-        setBlocked(true)
+        // Don't block on permission errors — the app may still be valid
+        // (e.g. emulator not running, rules not yet deployed in dev)
+        const isPermissionError = (err as { code?: string }).code === 'permission-denied'
+        if (!isPermissionError) setBlocked(true)
       },
     })
 
