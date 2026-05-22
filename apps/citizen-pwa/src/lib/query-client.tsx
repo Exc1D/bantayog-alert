@@ -15,13 +15,13 @@ const SENSITIVE_QUERY_PREFIXES = [
   ['report_private'], // Private report data
 ] as const
 
-function isSensitiveQueryKey(key: unknown): boolean {
+export function isSensitiveQueryKey(key: unknown): boolean {
   if (!Array.isArray(key)) return false
   const first = key[0]
   return SENSITIVE_QUERY_PREFIXES.some(([prefix]) => first === prefix)
 }
 
-function stripSensitiveQueries(client: PersistedClient): PersistedClient {
+export function stripSensitiveQueries(client: PersistedClient): PersistedClient {
   const filteredQueries = client.clientState.queries.filter(
     (query) => !isSensitiveQueryKey(query.queryKey)
   )
@@ -41,7 +41,7 @@ function estimateSize(client: PersistedClient): number {
 function createIndexedDBPersister(): Persister {
   return {
     persistClient: async (client) => {
-      const hasErrors = Object.values(client.clientState.queries).some(
+      const hasErrors = client.clientState.queries.some(
         (q) => q.state.error != null
       )
       if (hasErrors) return

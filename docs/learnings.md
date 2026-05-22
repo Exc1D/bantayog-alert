@@ -300,3 +300,10 @@
 - BigQuery Terraform datasets must have explicit access control blocks (`bigquery.dataOwner` for SA, `bigquery.dataViewer` for analysts) — never rely on project-level IAM inheritance.
 - IndexedDB query cache (React Query persistence) must strip sensitive query keys (`users`, `responders`, `report_private`) and enforce a size limit (2MB) to prevent PII leakage via browser dev tools.
 - `window.location.href` with hardcoded internal paths (`/`) or `tel:`/`sms:` URI schemes is NOT an open redirect vulnerability — only user-controlled URLs assigned to `window.location` are risky.
+
+## Acceptable Security Risks (Documented — Revisit on Change)
+
+- **L-1: `report_lookup` world-readable** — Collection contains only anonymized tracking references (`publicRef`, `secretHash`, `status`). No PII, no user identifiers. Revisit if schema changes to include personal data.
+- **L-2: rate-limit transaction contention** — Uses single-document transactions (`rate_limits/{key}`). Contention only occurs under extreme load (>1000 req/s). Firestore handles ~10k single-doc writes/sec per document. Monitor via Cloud Logging `RATE_LIMIT_CONTENTION` alerts.
+- **L-17: O(n) municipality boundary iteration** — `border-auto-share.ts` iterates ≤50 municipality boundaries per report. Not exploitable for DoS (n is bounded by config, not user input). Revisit if municipality count grows beyond 200.
+- **M-20: No VPC Service Controls** — All GCP services accessible from public internet. Requires GCP organization-level policy change (not project-level). Coordinate with infra team. Mitigated by: (1) Firebase Security Rules as primary access control, (2) IAM least privilege on service accounts, (3) App Check enforcement, (4) HMAC-verified webhooks.
