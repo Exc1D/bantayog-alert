@@ -165,12 +165,12 @@ describe('FeedPage', () => {
     mockCollection.mockImplementation((...segments: unknown[]) => ({
       path: segments.join('/'),
     }))
-    mockGetDocs.mockImplementation((collectionRef?: unknown) => {
+    mockGetDocs.mockImplementation((collectionRef?: unknown): Promise<unknown> => {
       const path =
         typeof (collectionRef as { path?: unknown }).path === 'string'
           ? (collectionRef as { path: string }).path
           : ''
-      return {
+      return Promise.resolve({
         docs: path.includes('/r-public/media')
           ? [
               {
@@ -179,7 +179,7 @@ describe('FeedPage', () => {
               },
             ]
           : [],
-      }
+      })
     })
 
     render(
