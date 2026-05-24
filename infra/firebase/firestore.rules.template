@@ -331,7 +331,7 @@ service cloud.firestore {
                   && request.resource.data.consentVersion.size() >= 1
                   && request.resource.data.consentGivenAt is timestamp
                   && request.resource.data.method is string
-                  && request.resource.data.method in ['in_app_modal', 'web_form', 'sms'];
+                  && request.resource.data.method in ['in_app_modal', 'web_form'];
       allow update: if false;
       allow delete: if false;
     }
@@ -380,11 +380,6 @@ service cloud.firestore {
 
     match /moderation_incidents/{m} {
       allow read: if isActivePrivileged() && (isMuniAdmin() || isSuperadmin());
-      allow write: if false;
-    }
-
-    match /breakglass_events/{id} {
-      allow read: if isSuperadmin() && isActivePrivileged();
       allow write: if false;
     }
 
