@@ -53,8 +53,8 @@ export const functions = getFunctions(firebaseApp, 'asia-southeast1')
 export const rtdb = getDatabase(firebaseApp)
 
 if (useEmulator) {
-  connectFirestoreEmulator(db, 'localhost', 8081)
-  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
-  connectFunctionsEmulator(functions, 'localhost', 5001)
-  connectDatabaseEmulator(rtdb, 'localhost', 9000)
+  connectFirestoreEmulator(db, '127.0.0.1', 8081)
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+  connectDatabaseEmulator(rtdb, '127.0.0.1', 9000)
 }

@@ -57,8 +57,8 @@ export const rtdb = getDatabase(app)
 
 if (USE_EMULATOR) {
   const FIRESTORE_EMULATOR_PORT = import.meta.env.VITE_FIRESTORE_EMULATOR_PORT ?? '8081'
-  connectFirestoreEmulator(db, 'localhost', Number(FIRESTORE_EMULATOR_PORT))
-  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
-  connectFunctionsEmulator(functions, 'localhost', 5001)
-  connectDatabaseEmulator(rtdb, 'localhost', 9000)
+  connectFirestoreEmulator(db, '127.0.0.1', Number(FIRESTORE_EMULATOR_PORT))
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+  connectDatabaseEmulator(rtdb, '127.0.0.1', 9000)
 }

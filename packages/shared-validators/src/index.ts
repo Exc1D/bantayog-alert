@@ -47,43 +47,21 @@ export type { AgencyDoc } from './agencies.js'
 export { responderDocSchema, responderTelemetryPayloadSchema } from './responders.js'
 export type { ResponderDoc, ResponderTelemetryPayload } from './responders.js'
 export { userDocSchema } from './users.js'
-export { reportSmsConsentDocSchema } from './users.js'
-export type { UserDoc, ReportSmsConsentDoc } from './users.js'
-export {
-  smsInboxDocSchema,
-  smsOutboxDocSchema,
-  smsSessionDocSchema,
-  smsProviderHealthDocSchema,
-  smsProviderIdSchema,
-  smsReportInboxFieldsSchema,
-} from './sms.js'
-export type {
-  SmsInboxDoc,
-  SmsOutboxDoc,
-  SmsSessionDoc,
-  SmsProviderHealthDoc,
-  SmsReportInboxFields,
-} from './sms.js'
-export { detectEncoding } from './sms-encoding.js'
-export type { SmsEncoding, EncodingResult } from './sms-encoding.js'
+export type { UserDoc } from './users.js'
 export {
   agencyAssistanceRequestDocSchema,
   commandChannelThreadDocSchema,
   commandChannelMessageDocSchema,
-  massAlertRequestDocSchema,
   shiftHandoffDocSchema,
   responderShiftHandoffDocSchema,
-  breakglassEventDocSchema,
   fieldModeSessionDocSchema,
 } from './coordination.js'
 export type {
   AgencyAssistanceRequestDoc,
   CommandChannelThreadDoc,
   CommandChannelMessageDoc,
-  MassAlertRequestDoc,
   ShiftHandoffDoc,
   ResponderShiftHandoffDoc,
-  BreakglassEventDoc,
   FieldModeSessionDoc,
 } from './coordination.js'
 export {
@@ -108,8 +86,6 @@ export { idempotencyKeyDocSchema } from './idempotency-keys.js'
 export type { IdempotencyKeyDoc } from './idempotency-keys.js'
 export { deadLetterDocSchema } from './dead-letters.js'
 export type { DeadLetterDoc } from './dead-letters.js'
-export { renderTemplate, renderBroadcastTemplate, SmsTemplateError } from './sms-templates.js'
-export type { SmsPurpose, SmsLocale, DirectSmsPurpose } from './sms-templates.js'
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
 export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'

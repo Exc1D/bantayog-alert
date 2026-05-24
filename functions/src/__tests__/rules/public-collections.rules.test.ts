@@ -203,24 +203,6 @@ describe('public collections rules', () => {
     })
   })
 
-  describe('breakglass_events', () => {
-    itif(!!env)('breakglass events are callable-only reads', async () => {
-      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
-      await assertFails(getDocs(collection(db, 'breakglass_events')))
-    })
-
-    itif(!!env)('breakglass events are callable-only writes', async () => {
-      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
-      await assertFails(
-        addDoc(collection(db, 'breakglass_events'), {
-          triggerReason: 'test',
-          triggeredBy: 'admin',
-          triggeredAt: ts,
-        }),
-      )
-    })
-  })
-
   describe('rate_limits', () => {
     itif(!!env)('rate limits are callable-only reads', async () => {
       const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
@@ -290,15 +272,6 @@ describe('privileged read tests for callable collections', () => {
       staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
     )
     await assertSucceeds(getDocs(collection(db, 'moderation_incidents')))
-  })
-
-  itif(!!env)('superadmin with active privileged claim can read breakglass_events', async () => {
-    const db = authed(
-      env,
-      'super-1',
-      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-    )
-    await assertSucceeds(getDocs(collection(db, 'breakglass_events')))
   })
 
   itif(!!env)(

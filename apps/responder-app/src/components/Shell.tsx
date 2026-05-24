@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ClipboardList, Map, User } from 'lucide-react'
+import { Bell, ClipboardList, Map, Newspaper, User } from 'lucide-react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import { SosHoldButton } from './SosHoldButton'
@@ -26,6 +26,18 @@ export function Shell({ children }: Props) {
       exact: true,
     },
     { to: '/map', label: 'Map', icon: <Map size={20} aria-hidden="true" />, exact: false },
+    {
+      to: '/feed',
+      label: 'Feed',
+      icon: <Newspaper size={20} aria-hidden="true" />,
+      exact: false,
+    },
+    {
+      to: '/alerts',
+      label: 'Alerts',
+      icon: <Bell size={20} aria-hidden="true" />,
+      exact: false,
+    },
     { to: '/profile', label: 'Profile', icon: <User size={20} aria-hidden="true" />, exact: false },
   ]
 

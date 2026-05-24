@@ -124,4 +124,15 @@ describe('user_consents rules', () => {
     const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
     await assertFails(deleteDoc(doc(db, 'user_consents', 'uid-owner')))
   })
+
+  itif(!!env)('denies create with method sms', async () => {
+    const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
+    await assertFails(
+      setDoc(doc(db, 'user_consents', 'uid-owner'), {
+        consentVersion: '1.0',
+        consentGivenAt: Timestamp.now(),
+        method: 'sms',
+      }),
+    )
+  })
 })

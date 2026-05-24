@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   shiftHandoffDocSchema,
-  massAlertRequestDocSchema,
   commandChannelThreadDocSchema,
   commandChannelMessageDocSchema,
   agencyAssistanceRequestDocSchema,
@@ -10,6 +9,21 @@ import {
 } from './coordination'
 
 describe('Coordination Schemas', () => {
+  it('does not publish canceled validator contracts from the package index', async () => {
+    const validators = await import('./index.js')
+
+    expect(validators).not.toHaveProperty('smsInboxDocSchema')
+    expect(validators).not.toHaveProperty('smsOutboxDocSchema')
+    expect(validators).not.toHaveProperty('detectEncoding')
+    expect(validators).not.toHaveProperty('renderTemplate')
+    expect(validators).not.toHaveProperty('renderBroadcastTemplate')
+    expect(validators).not.toHaveProperty('SmsTemplateError')
+    expect(validators).not.toHaveProperty('massAlertRequestDocSchema')
+    expect(validators).not.toHaveProperty('breakglassEventDocSchema')
+    expect(validators).not.toHaveProperty('reportSmsConsentDocSchema')
+    expect(validators).not.toHaveProperty('ReportSmsConsentDoc')
+  })
+
   describe('shiftHandoffDocSchema', () => {
     it('accepts valid shift handoff document', () => {
       const validDoc = {
@@ -71,75 +85,6 @@ describe('Coordination Schemas', () => {
         unknownField: 'should not be allowed',
       }
       expect(() => shiftHandoffDocSchema.parse(docWithExtraKey)).toThrow()
-    })
-  })
-
-  describe('massAlertRequestDocSchema', () => {
-    it('accepts valid mass alert request document', () => {
-      const validDoc = {
-        requestedByMunicipality: 'Daet',
-        requestedByUid: 'admin-1',
-        severity: 'high' as const,
-        body: 'Evacuation alert for Barangay X',
-        targetType: 'municipality' as const,
-        estimatedReach: 5000,
-        status: 'queued' as const,
-        createdAt: 1713350400000,
-        forwardedAt: 1713350401000,
-        forwardMethod: 'sms',
-        ndrrmcRecipient: 'NDRRMC-ops',
-        sentAt: 1713350402000,
-        schemaVersion: 1,
-      }
-      expect(() => massAlertRequestDocSchema.parse(validDoc)).not.toThrow()
-    })
-
-    it('rejects invalid severity literal', () => {
-      const invalidDoc = {
-        requestedByMunicipality: 'Daet',
-        requestedByUid: 'admin-1',
-        severity: 'invalid-severity',
-        body: 'Test',
-        targetType: 'municipality' as const,
-        estimatedReach: 100,
-        status: 'queued' as const,
-        createdAt: 1713350400000,
-        schemaVersion: 1,
-      }
-      expect(() => massAlertRequestDocSchema.parse(invalidDoc)).toThrow()
-    })
-
-    it('rejects unknown keys via strict mode', () => {
-      const docWithExtraKey = {
-        requestedByMunicipality: 'Daet',
-        requestedByUid: 'admin-1',
-        severity: 'high' as const,
-        body: 'Test',
-        targetType: 'municipality' as const,
-        estimatedReach: 100,
-        status: 'queued' as const,
-        createdAt: 1713350400000,
-        schemaVersion: 1,
-        unknownField: 'should not be allowed',
-      }
-      expect(() => massAlertRequestDocSchema.parse(docWithExtraKey)).toThrow()
-    })
-
-    it('accepts the expanded review statuses', () => {
-      for (const status of ['sent', 'pending_ndrrmc_review', 'declined'] as const) {
-        const validDoc = {
-          requestedByMunicipality: 'Daet',
-          requestedByUid: 'admin-1',
-          severity: 'high' as const,
-          body: 'Evacuation alert for Barangay X',
-          targetType: 'municipality' as const,
-          estimatedReach: 5000,
-          status,
-          createdAt: 1713350400000,
-          schemaVersion: 1,
-        }
-        expect(() => massAlertRequestDocSchema.parse(validDoc)).not.toThrow()
-      }
     })
   })
 
