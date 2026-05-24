@@ -57,45 +57,6 @@ export const commandChannelMessageDocSchema = z
   })
   .strict()
 
-export const massAlertRequestDocSchema = z
-  .object({
-    requestedByMunicipality: z.string().min(1),
-    requestedByUid: z.string().min(1),
-    severity: z.enum(['low', 'medium', 'high']),
-    body: z.string().max(480),
-    targetType: z.enum(['municipality', 'polygon', 'province']),
-    targetGeometryRef: z.string().optional(),
-    estimatedReach: z.number().int().nonnegative(),
-    status: z.enum([
-      'queued',
-      'sent',
-      'pending_ndrrmc_review',
-      'submitted_to_pdrrmo',
-      'forwarded_to_ndrrmc',
-      'acknowledged_by_ndrrmc',
-      'declined',
-      'cancelled',
-    ]),
-    createdAt: z.number().int(),
-    forwardedAt: z.number().int().optional(),
-    forwardMethod: z.string().optional(),
-    ndrrmcRecipient: z.string().optional(),
-    acknowledgedAt: z.number().int().optional(),
-    cancelledAt: z.number().int().optional(),
-    sentAt: z.number().int().optional(),
-    evidencePack: z
-      .object({
-        linkedReportIds: z.array(z.string().min(1)),
-        pagasaSignalRef: z.string().optional(),
-        notes: z.string().max(2000).optional(),
-      })
-      .strict()
-      .optional(),
-    forwardedBy: z.string().min(1).optional(),
-    schemaVersion: z.number().int().positive(),
-  })
-  .strict()
-
 export const shiftHandoffDocSchema = z
   .object({
     fromUid: z.string().min(1),
@@ -114,20 +75,6 @@ export const shiftHandoffDocSchema = z
   .refine((d) => d.expiresAt > d.createdAt, {
     message: 'expiresAt must be after createdAt',
   })
-
-export const breakglassEventDocSchema = z
-  .object({
-    sessionId: z.string().min(1),
-    actor: z.string().min(1),
-    action: z.string().min(1),
-    resourceRef: z.string().optional(),
-    createdAt: z.number().int(),
-    correlationId: z.string().min(1),
-    expiresAt: z.number().int().optional(),
-    sessionStartedAt: z.number().int().optional(),
-    schemaVersion: z.number().int().positive(),
-  })
-  .strict()
 
 export const fieldModeSessionDocSchema = z
   .object({
@@ -164,8 +111,6 @@ export const responderShiftHandoffDocSchema = z
 export type AgencyAssistanceRequestDoc = z.infer<typeof agencyAssistanceRequestDocSchema>
 export type CommandChannelThreadDoc = z.infer<typeof commandChannelThreadDocSchema>
 export type CommandChannelMessageDoc = z.infer<typeof commandChannelMessageDocSchema>
-export type MassAlertRequestDoc = z.infer<typeof massAlertRequestDocSchema>
 export type ShiftHandoffDoc = z.infer<typeof shiftHandoffDocSchema>
-export type BreakglassEventDoc = z.infer<typeof breakglassEventDocSchema>
 export type FieldModeSessionDoc = z.infer<typeof fieldModeSessionDocSchema>
 export type ResponderShiftHandoffDoc = z.infer<typeof responderShiftHandoffDocSchema>

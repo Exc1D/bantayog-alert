@@ -19,6 +19,12 @@ vi.mock('./components/SosHoldButton', () => ({
 vi.mock('./pages/MapPage', () => ({
   MapPage: () => <div data-testid="map-page" />,
 }))
+vi.mock('./pages/FeedPage', () => ({
+  FeedPage: () => <div data-testid="feed-page" />,
+}))
+vi.mock('./pages/AlertsPage', () => ({
+  AlertsPage: () => <div data-testid="alerts-page" />,
+}))
 vi.mock('./pages/ProfilePage', () => ({
   ProfilePage: () => <div data-testid="profile-page" />,
 }))
@@ -83,6 +89,18 @@ describe('AppRouter', () => {
     await renderAt('/map')
     expect(screen.getByTestId('shell')).toBeInTheDocument()
     expect(screen.getByTestId('map-page')).toBeInTheDocument()
+  })
+
+  it('renders FeedPage at /feed wrapped in Shell', async () => {
+    await renderAt('/feed')
+    expect(screen.getByTestId('shell')).toBeInTheDocument()
+    expect(screen.getByTestId('feed-page')).toBeInTheDocument()
+  })
+
+  it('renders AlertsPage at /alerts wrapped in Shell', async () => {
+    await renderAt('/alerts')
+    expect(screen.getByTestId('shell')).toBeInTheDocument()
+    expect(screen.getByTestId('alerts-page')).toBeInTheDocument()
   })
 
   it('renders ProfilePage at /profile wrapped in Shell', async () => {

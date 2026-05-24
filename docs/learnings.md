@@ -34,6 +34,7 @@
 - Strict Zod schemas: strip transitional fields before validation rather than widening the schema.
 - Auth user creation + Firestore transaction is a two-phase commit with no native rollback. Wrap in `try/catch` and call `adminAuth.deleteUser(uid)` as compensating action before re-throwing.
 - `queueMicrotask()` around state resets in `useEffect` is a race-condition smell. Reset synchronously inside the effect body.
+- Superadmin seeding: run `pnpm exec tsx scripts/phase-4a/bootstrap.ts --emulator`. That script is the single source of truth for all seeded accounts (citizen, admin, responder, provincial_superadmin) plus municipality and `active_accounts` for superadmins. The old `scripts/fix-superadmin-claims.ts` hardcodes `bantayog-alert-staging` and assumes the user already exists — use the bootstrap instead.
 - Modal focus pattern: `useRef` on container (not backdrop), `tabIndex={-1}`, `.focus()` in `useEffect` keyed on open boolean. Pair with `role="dialog"`, `aria-modal="true"`, `aria-labelledby`.
 - After TOTP/MFA enrollment, Firebase's ID token does NOT auto-refresh. Call `getIdToken(true)` immediately.
 - **Admin-desktop emulator mode must call `initializeAppCheck()` with a `CustomProvider`.** Setting `FIREBASE_APPCHECK_DEBUG_TOKEN` alone is insufficient.
@@ -134,6 +135,7 @@
 - `navigator.geolocation === null` in happy-dom; keep the guard with `eslint-disable-nextline`.
 - `navigator.clipboard` in happy-dom needs to be defined as own property before spying.
 - `navigator.storage` is undefined in happy-dom; mock with `Object.defineProperty`.
+- **Firebase Auth Emulator isolates users by Project ID even in `singleProjectMode: true`.** Frontend apps configured with `VITE_FIREBASE_PROJECT_ID=bantayog-alert-staging` will not find users created under the default project ID `bantayog-alert-dev`. Ensure seed/bootstrap scripts are run with `FIREBASE_PROJECT_ID=bantayog-alert-staging` or `GCLOUD_PROJECT` matching the client config.
 
 ## Security / Functions
 

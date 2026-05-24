@@ -88,7 +88,8 @@ export function TriagePanel({
   const canAdvanceToReview = report.status === 'new'
   const canVerify = report.status === 'awaiting_verify'
   const canReject = report.status === 'awaiting_verify'
-  const canDispatch =
+  const canDispatch = report.status === 'verified'
+  const canDeclareAlert =
     report.status === 'verified' ||
     report.status === 'assigned' ||
     report.status === 'acknowledged' ||
@@ -270,7 +271,7 @@ export function TriagePanel({
             </div>
           )}
 
-          {canDispatch && onDeclareAlert && (
+          {canDeclareAlert && onDeclareAlert && (
             <div className="border-t border-white/10 pt-4">
               <button
                 onClick={() => {

@@ -53,7 +53,7 @@ describe('Shell', () => {
     expect(screen.getByTestId('sos-btn')).toBeDisabled()
   })
 
-  it('renders only the three operational tabs and keeps the pending badge', () => {
+  it('renders the five bottom tabs in operational order and keeps the pending badge', () => {
     render(
       <MemoryRouter>
         <Shell>
@@ -62,10 +62,13 @@ describe('Shell', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getAllByRole('link')).toHaveLength(3)
-    expect(screen.getByRole('link', { name: /dispatches/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /map/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /profile/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('link').map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Dispatches',
+      'Map',
+      'Feed',
+      'Alerts',
+      'Profile',
+    ])
     expect(screen.queryByRole('link', { name: /messages/i })).not.toBeInTheDocument()
     expect(screen.getByLabelText(/2 pending/i)).toBeInTheDocument()
   })

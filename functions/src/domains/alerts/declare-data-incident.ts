@@ -25,8 +25,6 @@ const ALLOWED_COLLECTIONS = new Set([
   'system_config',
   'audit_logs',
   'erasure_requests',
-  'sms_outbox',
-  'sms_inbox',
   'data_incidents',
 ])
 

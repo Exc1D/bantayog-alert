@@ -20,6 +20,8 @@ const mockReport = {
 }
 const awaitingReport = { ...mockReport, status: 'awaiting_verify' as const }
 const verifiedReport = { ...mockReport, status: 'verified' as const }
+const assignedReport = { ...mockReport, status: 'assigned' as const }
+const acknowledgedReport = { ...mockReport, status: 'acknowledged' as const }
 
 const verifiedReport2 = { ...mockReport, id: 'r2', status: 'verified' as const }
 
@@ -142,6 +144,27 @@ describe('TriagePanel', () => {
     expect(screen.getByText('PNP')).toBeInTheDocument()
     expect(screen.getByText('MDRRMO')).toBeInTheDocument()
     expect(screen.getByText('Coast Guard')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['assigned', assignedReport],
+    ['acknowledged', acknowledgedReport],
+  ])('does not expose dispatch controls for %s reports', (_status, report) => {
+    const onDispatch = vi.fn()
+    render(
+      <TriagePanel
+        report={report}
+        responders={mockResponders}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn()}
+        onDispatch={onDispatch}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Dispatch Responder' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /hold to dispatch/i })).not.toBeInTheDocument()
+    expect(onDispatch).not.toHaveBeenCalled()
   })
 
   it('filters responders by selected agency', async () => {

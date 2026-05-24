@@ -33,6 +33,11 @@ function responderEntries(responders: [string, unknown][]): {
     .filter((r) => r.uid)
 }
 
+function actionErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.trim()) return err.message
+  return fallback
+}
+
 export default function MapPage() {
   const { signOut } = useAuth()
   const {
@@ -100,12 +105,12 @@ export default function MapPage() {
   }, [])
 
   const handleVerify = useCallback(async (id: string) => {
+    setActionError(null)
     try {
       await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
       setActionError(null)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Verify failed'
-      setActionError(msg)
+      setActionError(actionErrorMessage(err, 'Verify failed'))
     }
   }, [])
 
@@ -125,6 +130,13 @@ export default function MapPage() {
 
   const handleDispatch = useCallback(
     async (reportId: string, _agency: string, responderUid: string) => {
+      await Promise.resolve()
+      setActionError(null)
+      const report = reports.find((r) => r.id === reportId)
+      if (report?.status !== 'verified') {
+        setActionError('Dispatch requires a verified report')
+        return
+      }
       try {
         await callables.dispatchResponder({
           reportId,
@@ -133,11 +145,10 @@ export default function MapPage() {
         })
         setActionError(null)
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Dispatch failed'
-        setActionError(msg)
+        setActionError(actionErrorMessage(err, 'Dispatch failed'))
       }
     },
-    [],
+    [reports],
   )
 
   const [lastUpdatedAt] = useState(() => Date.now())

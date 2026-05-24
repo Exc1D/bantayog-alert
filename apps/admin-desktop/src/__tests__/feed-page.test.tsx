@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import FeedPage from '../pages/FeedPage'
 
@@ -10,6 +10,26 @@ const mockUnpublishReport = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ visibilityClass: 'internal', reportId: 'r-public' }),
 )
 const mockSignOut = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockGetDocs = vi.hoisted(() => vi.fn(() => new Promise(() => undefined)))
+const mockCollection = vi.hoisted(() => vi.fn())
+const mockUpdateDoc = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockDoc = vi.hoisted(() => vi.fn())
+const mockGetDownloadURL = vi.hoisted(() => vi.fn().mockResolvedValue('mock-url'))
+
+vi.mock('../app/firebase', () => ({ db: {} }))
+
+vi.mock('firebase/firestore', () => ({
+  collection: mockCollection,
+  doc: mockDoc,
+  getDocs: mockGetDocs,
+  updateDoc: mockUpdateDoc,
+}))
+
+vi.mock('firebase/storage', () => ({
+  getDownloadURL: mockGetDownloadURL,
+  getStorage: vi.fn(() => ({})),
+  ref: vi.fn(),
+}))
 
 vi.mock('../services/callables', () => ({
   callables: {
@@ -49,6 +69,9 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
         submittedAt: 1713350500000,
         status: 'verified',
         description: 'Public feed copy',
+        reporterName: 'Maria Private',
+        reporterPhone: '0917PRIVATE',
+        reporterEmail: 'maria@example.test',
         publicLocation: { lat: 14.2, lng: 122.8 },
         visibilityClass: 'public_alertable',
         updatedAt: 1713350500001,
@@ -81,7 +104,16 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
       },
     ],
     reportOps: [],
-    alerts: [],
+    alerts: [
+      {
+        id: 'alert-1',
+        hazardType: 'flood',
+        message: 'Evacuate low-lying areas now.',
+        affectedMunicipalityIds: ['Daet'],
+        publishedAt: 1713350800000,
+        declaredAt: 1713350750000,
+      },
+    ],
     responders: [],
   }),
 }))
@@ -89,6 +121,9 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
 describe('FeedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCollection.mockReset()
+    mockGetDocs.mockImplementation(() => new Promise(() => undefined))
+    mockGetDownloadURL.mockResolvedValue('mock-url')
   })
 
   it('renders pending and public feed reports for moderation', () => {
@@ -99,14 +134,79 @@ describe('FeedPage', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Feed moderation' })).toBeInTheDocument()
-    expect(screen.getByText('Needs swear word removed')).toBeInTheDocument()
-    expect(screen.getByText('Public feed copy')).toBeInTheDocument()
-    expect(screen.getByText('Pending publication')).toBeInTheDocument()
-    expect(screen.getByText('Published')).toBeInTheDocument()
+    const moderationQueue = screen.getByRole('region', { name: 'Feed moderation queue' })
+    expect(within(moderationQueue).getByText('Needs swear word removed')).toBeInTheDocument()
+    expect(within(moderationQueue).getByText('Public feed copy')).toBeInTheDocument()
+    expect(within(moderationQueue).getByText('Pending publication')).toBeInTheDocument()
+    expect(within(moderationQueue).getByText('Published')).toBeInTheDocument()
 
     // verified+internal items are not feed-relevant and should be hidden
-    expect(screen.queryByText('Hidden feed copy')).not.toBeInTheDocument()
-    expect(screen.queryByText('Unpublished')).not.toBeInTheDocument()
+    expect(within(moderationQueue).queryByText('Hidden feed copy')).not.toBeInTheDocument()
+    expect(within(moderationQueue).queryByText('Unpublished')).not.toBeInTheDocument()
+  })
+
+  it('renders citizen-visible public feed cards without private reporter fields', () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    const publicFeed = screen.getByRole('region', { name: 'Citizen-visible public feed' })
+    expect(within(publicFeed).getByText('Public feed copy')).toBeInTheDocument()
+    expect(within(publicFeed).getByText(/Labo \/ San Roque/)).toBeInTheDocument()
+    expect(within(publicFeed).queryByText('Hidden feed copy')).not.toBeInTheDocument()
+    expect(within(publicFeed).queryByText('Maria Private')).not.toBeInTheDocument()
+    expect(within(publicFeed).queryByText('0917PRIVATE')).not.toBeInTheDocument()
+    expect(within(publicFeed).queryByText('maria@example.test')).not.toBeInTheDocument()
+  })
+
+  it('does not fall back to all report media in the public feed preview', async () => {
+    mockCollection.mockImplementation((...segments: unknown[]) => ({
+      path: segments.join('/'),
+    }))
+    mockGetDocs.mockImplementation((collectionRef?: unknown) => {
+      const path =
+        typeof (collectionRef as { path?: unknown }).path === 'string'
+          ? (collectionRef as { path: string }).path
+          : ''
+      return {
+        docs: path.includes('/r-public/media')
+          ? [
+              {
+                id: 'media-public-1',
+                data: () => ({ storagePath: 'reports/r-public/media-public-1.jpg' }),
+              },
+            ]
+          : [],
+      }
+    })
+
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(mockGetDownloadURL).toHaveBeenCalledTimes(1)
+    })
+    const publicFeed = screen.getByRole('region', { name: 'Citizen-visible public feed' })
+    await expect(
+      within(publicFeed).findByRole('img', { name: /public report media/i }, { timeout: 100 }),
+    ).rejects.toThrow()
+  })
+
+  it('renders recent official alerts from the alerts listener', () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    const alerts = screen.getByRole('region', { name: 'Recent official alerts' })
+    expect(within(alerts).getByText('Evacuate low-lying areas now.')).toBeInTheDocument()
+    expect(within(alerts).getByText(/flood/i)).toBeInTheDocument()
   })
 
   it('publishes scrubbed copy through verifyReport', async () => {
@@ -126,6 +226,24 @@ describe('FeedPage', () => {
         expect.objectContaining({
           reportId: 'r-awaiting',
           scrubbedDescription: 'Needs sensitive detail removed',
+        }),
+      )
+    })
+  })
+
+  it('sends new reports to moderation through verifyReport', async () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send report r-new to moderation' }))
+
+    await waitFor(() => {
+      expect(mockVerifyReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reportId: 'r-new',
         }),
       )
     })
@@ -173,11 +291,12 @@ describe('FeedPage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Needs swear word removed')).toBeInTheDocument()
-    expect(screen.getByText('Public feed copy')).toBeInTheDocument()
+    const moderationQueue = screen.getByRole('region', { name: 'Feed moderation queue' })
+    expect(within(moderationQueue).getByText('Needs swear word removed')).toBeInTheDocument()
+    expect(within(moderationQueue).getByText('Public feed copy')).toBeInTheDocument()
     // 'new' items MUST appear so admins can send them to moderation
-    expect(screen.getByText('New incoming report')).toBeInTheDocument()
+    expect(within(moderationQueue).getByText('New incoming report')).toBeInTheDocument()
     // verified+internal items should not appear
-    expect(screen.queryByText('Hidden feed copy')).not.toBeInTheDocument()
+    expect(within(moderationQueue).queryByText('Hidden feed copy')).not.toBeInTheDocument()
   })
 })
