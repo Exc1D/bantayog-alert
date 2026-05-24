@@ -1,5 +1,12 @@
 # Learnings — Durable Rules
 
+## MVP Reliability Spine (2026-05-24)
+
+- **Stale `functions/lib/` is worse than stale source —** `functions/lib/index.js` can still export old `smsDeliveryReport` paths and SMS provider constants even after the source files are deleted. Functions emulator loads from `lib/`, not `src/`. Rebuild via `pnpm --dir functions build` before trusting the emulator suite. **This is the #1 cause of ghost errors during SMS cleanup.** (supersedes prior note on `FirebaseError: internal`)
+- **`firestore.rules.template` and `firestore.rules` must be kept in sync.** A template-only edit passes the build script but never deploys. Always apply the same change to both files and verify `diff infra/firebase/firestore.rules infra/firebase/firestore.rules.template` before considering rules tasks done. (supersedes prior note on rules drift)
+- **Responder public feed must use `public_alertable` visibility-class filter.** Dispatch-only hooks (`useOwnDispatches`) would silently exclude unassigned verified reports. The public feed is a separate consumer from dispatch assignments.
+- **`vi.mock` parameter shadowing (`_collectionRef`) is lint-fail material.** Modern `@typescript-eslint` flags unused underscore-prefixed variables. Mock factories should drop the parameter name entirely (`vi.fn(() => ...)`) unless the parameter is genuinely used in that line.
+
 ## Citizen PWA / React Hooks
 
 - `loadReports` must filter invalid entries individually (`raw.filter(isStoredReport)`); discarding the whole array wipes all stored reports on one stale entry.

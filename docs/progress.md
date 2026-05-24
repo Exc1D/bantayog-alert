@@ -1,5 +1,53 @@
 # Progress
 
+## MVP Reliability Spine (2026-05-24)
+
+### Shipped
+
+- **Stale SMS / NDRRMC / break-glass source cleanup**:
+  - Removed `smsDeliveryReport` HTTP handler (deleted `functions/src/http/sms-delivery-report.ts`)
+  - Removed `buildSmsPayload`, `SmsPayload`, `report_sms_consent` reads from `dispatch-responder-writes.ts`
+  - Removed `sms_outbox` and `sms_inbox` from `declare-data-incident.ts` allow-list (with tests proving rejection)
+  - Deleted SMS-only validator source files and tests (`sms.ts`, `sms-encoding.ts`, `sms-templates.ts` + test files)
+  - Removed stale exports from `packages/shared-validators/src/index.ts` and `coordination.ts`
+- **Firebase rules cleanup**:
+  - Removed `breakglass_events` match block from both `firestore.rules` and `.template`
+  - Removed `'sms'` from `user_consents.method` allowlist
+  - Removed breakglass read/write/superadmin tests from `public-collections.rules.test.ts`
+  - Added `user-consents.rules.test.ts` assertion that `method: 'sms'` is rejected
+- **Admin Desktop public feed and official alerts**:
+  - `FeedPage` now splits into moderation queue (left) + public feed preview + recents alerts (right)
+  - Public feed renders `visibilityClass === 'public_alertable'` reports with `submittedAt` desc sort
+  - Hides private reporter/contact fields; renders `'Location pending'` and `'Report details pending'` fallbacks
+  - Recent alerts from `alerts` listener render with hazard type + municipality scope
+- **Responder `/feed` + `/alerts`**:
+  - `usePublicFeed` — Firestore subscription to `reports` with `visibilityClass === 'public_alertable'` + `orderBy('submittedAt', 'desc')` + `limit(50)`
+  - `useOfficialAlerts` — Firestore subscription to `alerts` with `orderBy('publishedAt', 'desc')` + `limit(20)`
+  - `FeedPage` and `AlertsPage` with loading / empty / error states, `timeAgo`, media grid, status chips
+  - Shell bottom nav reordered: **Dispatches · Map · Feed · Alerts · Profile** (5 tabs; CSS adjusted for 5-column grid)
+  - Routes updated with `/feed` and `/alerts` inside `<Shell>`; detail routes remain outside
+- **Dispatch error clarity on admin map**:
+  - `MapPage` now preserves specific `Error.message` text from `dispatchResponder` rejections
+  - Action-error banner clears before new dispatch/verify attempts
+  - `TriagePanel` dispatches only when `report.status === 'verified'`
+
+### Deferred (post-MVP)
+
+- Semaphore / Globe Labs SMS delivery layer
+- NDRRMC escalation queue (`requestMassAlertEscalation`, `massAlertReachPlanPreview`)
+- PAGASA scraper / hazard signal ingest (`hazard_signals` automated updates)
+- Break-glass session / dual-control unseal (`breakglass_events`, `sweep-expired-break-glass-sessions`)
+- Province-wide mass alert direct send >5k recipients (all routed to NDRRMC escalation)
+
+### Tests passing gate
+
+- Admin Desktop: 17/17 (`feed-page.test.tsx`, `map-firestore-wiring.test.tsx`)
+- Responder App: 31/31 (hooks + pages + routes + Shell)
+- Functions: unit + emulator-gated integration tests pass (`submit-citizen-report` and `dispatch-responder` emulator-bound suites skip cleanly when emulator is offline)
+- Rules: `public-collections.rules.test.ts` + `user-consents.rules.test.ts` updated and ready for emulator suite
+
+---
+
 ## Current Status (2026-05-22)
 
 **Security audit complete. ALL Critical + High findings fixed (22 of 22). 55 of 59 total fixed or confirmed safe.**
