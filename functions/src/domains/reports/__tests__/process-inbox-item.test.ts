@@ -1,28 +1,22 @@
-import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
 import { processInboxItemCore } from '../process-inbox-item.js'
 
 const PERMISSIVE_RULES =
   'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}'
 
-let env: RulesTestEnvironment | undefined
-let available = Boolean(process.env.FIRESTORE_EMULATOR_HOST)
+const { env, available } = await guardInitTestEnvironment(
+  {
+    projectId: 'demo-phase-3a-inbox',
+    firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
+  },
+  'process-inbox-item',
+)
 
-beforeAll(async () => {
-  const guarded = await guardInitTestEnvironment(
-    {
-      projectId: 'demo-phase-3a-inbox',
-      firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
-    },
-    'process-inbox-item',
-  )
-  env = guarded.env
-  available = guarded.available
-  if (!available) return
-  await env!.withSecurityRulesDisabled(async (ctx) => {
+if (available && env) {
+  await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
       id: 'daet',
       label: 'Daet',
@@ -31,7 +25,7 @@ beforeAll(async () => {
       schemaVersion: 1,
     })
   })
-})
+}
 
 afterAll(async () => {
   await env?.cleanup()

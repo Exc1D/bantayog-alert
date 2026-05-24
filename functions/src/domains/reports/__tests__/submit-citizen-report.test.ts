@@ -1,7 +1,6 @@
-import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
 import type { Firestore } from 'firebase-admin/firestore'
 import { processInboxItemCore } from '../process-inbox-item.js'
@@ -10,20 +9,13 @@ import { submitCitizenReportCore } from '../submit-citizen-report.js'
 const PERMISSIVE_RULES =
   'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}'
 
-let env: RulesTestEnvironment | undefined
-let available = Boolean(process.env.FIRESTORE_EMULATOR_HOST)
-
-beforeAll(async () => {
-  const guarded = await guardInitTestEnvironment(
-    {
-      projectId: 'submit-citizen-report-test',
-      firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
-    },
-    'submit-citizen-report',
-  )
-  env = guarded.env
-  available = guarded.available
-})
+const { env, available } = await guardInitTestEnvironment(
+  {
+    projectId: 'submit-citizen-report-test',
+    firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
+  },
+  'submit-citizen-report',
+)
 
 afterAll(async () => {
   await env?.cleanup()
