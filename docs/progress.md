@@ -43,8 +43,15 @@
 
 - Admin Desktop: 17/17 (`feed-page.test.tsx`, `map-firestore-wiring.test.tsx`)
 - Responder App: 31/31 (hooks + pages + routes + Shell)
-- Functions: unit + emulator-gated integration tests pass (`submit-citizen-report` and `dispatch-responder` emulator-bound suites skip cleanly when emulator is offline)
-- Rules: `public-collections.rules.test.ts` + `user-consents.rules.test.ts` updated and ready for emulator suite
+- Functions: typecheck clean
+- Rules: `public-collections.rules.test.ts` + `user-consents.rules.test.ts` updated
+
+### Browser verification (emulator + dev servers)
+
+- Admin `/feed` at 1280×800 — moderation queue + official alerts + public feed preview render correctly; no console errors
+- Responder `/feed` at 375×812 — "Public Feed" header + 5 bottom tabs (Dispatches · Map · Feed · Alerts · Profile) with no overlap; empty state readable
+- Responder `/alerts` at 375×812 — "Alerts" header + same 5-tab nav; no overlapping labels
+- Privacy notice modal appears for first-time responder login (expected behavior)
 
 ---
 
