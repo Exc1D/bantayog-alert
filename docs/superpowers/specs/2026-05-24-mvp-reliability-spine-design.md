@@ -2,49 +2,121 @@
 
 ## Purpose
 
-Ship a robust, investor-demo-ready MVP around the core Bantayog loop:
+Make the existing Bantayog MVP reliable and investor-demo-ready around the core loop:
 
 1. Citizens submit reports from the PWA.
-2. Municipal admins receive new reports reliably.
-3. Admins verify, publish, and dispatch responders.
-4. Responders see their dispatches plus the same public feed and alerts citizens see.
+2. Municipal admins receive new reports without manual refresh.
+3. Admins verify, publish, and dispatch eligible responders.
+4. Responders see dispatches plus the same public feed and official alerts citizens see.
 5. Municipal and provincial admins declare official alerts to citizens.
 
-The MVP deliberately defers SMS provider integrations, NDRRMC escalation, PAGASA weather
-automation, break-glass access, and mass-alert blast routing.
+This is not a greenfield feature spec. The online report materialization path already exists. The
+remaining work is cleanup, reliability proof, and missing role-facing UI.
 
-## Approved Approach
+## Current State Verified in Code
 
-Use Approach A: vertical slice first.
+- Online Citizen PWA submission already uses the `submitCitizenReport` callable fast path through
+  `apps/citizen-pwa/src/hooks/useSubmissionMachine.ts`.
+- `submitCitizenReport` already materializes `reports`, `report_private`, `report_ops`,
+  `report_lookup`, `secret_lookup`, status log entries, report events, and media subdocs through
+  the shared materialization core in `functions/src/domains/reports/process-inbox-item.ts`.
+- `report_inbox` remains the resilience path. It is written by offline replay paths, including the
+  in-app retry machine and the service worker Background Sync path in
+  `apps/citizen-pwa/public/sw.js` where the browser supports it.
+- Callable and inbox materialization are already deduped through `publicRef + secretHash`; matching
+  hashes replay the existing report and different hashes conflict.
+- Admin FeedPage already includes `new` reports and can advance `new -> awaiting_verify` through
+  `verifyReport`.
+- Citizen public feed already exists through `FeedTab` and `usePublicIncidents`.
+- Admin `declareAlert` already writes `alerts` and performs best-effort FCM without SMS routing.
+
+## Remaining MVP Work
+
+Use Approach A: vertical slices that prove the working loop before wider polish.
 
 Implementation order:
 
-1. Remove stale SMS, NDRRMC, PAGASA, mass-alert, and break-glass remnants from active backend,
-   rules, validators, app services, and architecture docs.
-2. Stabilize citizen online submission through the `submitCitizenReport` callable fast path,
-   keeping `report_inbox` only as the offline/background replay fallback.
-3. Add Facebook-familiar feed and alerts surfaces for admins and responders, using the same
-   public feed/alert data shape citizens already see.
-4. Stabilize admin verify-to-dispatch and responder dispatch visibility with focused tests.
+1. Remove stale deferred-feature remnants that still exist in active code and tests.
+2. Prove the current citizen submit path, admin live report visibility, and idempotent inbox fallback
+   with targeted tests.
+3. Add Facebook-familiar public feed and alert views for Admin Desktop and Responder App.
+4. Prove `new -> awaiting_verify -> verified` and `verified -> assigned` as two separate
+   callable-driven transitions.
+5. Update the architecture spec and progress/learnings docs so future work does not resurrect the
+   deferred features by accident.
 
-## Core Data Flow
+## Deferred-Feature Remnant Checklist
 
-Citizen online submission should call `submitCitizenReport`, which validates the existing inbox
-payload shape and writes the report triptych (`reports`, `report_private`, `report_ops`) in one
-server transaction. This avoids relying on local emulator `onDocumentCreated` behavior for the
-demo path. Offline/background replay may still write `report_inbox`, and the materializer must
-remain idempotent with the callable path by using `publicRef + secretHash` as the replay key.
+Remove only stale remnants with no active MVP caller. Keep offline report submission support.
 
-Admin Desktop listens to role-scoped `reports`, `report_ops`, `alerts`, and responders. A new
-report must appear without manual refresh. Admin actions should follow the current lifecycle:
-`new -> awaiting_verify -> verified -> assigned`. Dispatch remains server-authoritative through
-`dispatchResponder`.
+Known stale active surfaces:
 
-Responder App keeps the existing dispatch-first workflow, then adds read-only public feed and
-official alerts tabs/pages. These views must not expose citizen contact information or admin
-personal identities.
+- `functions/src/index.ts`: remove `smsDeliveryReport` export.
+- `functions/src/http/sms-delivery-report.ts`: delete if no longer exported or called.
+- `functions/src/domains/dispatches/dispatch-responder-writes.ts`: remove `buildSmsPayload`,
+  `SmsPayload`, `BuildSmsPayloadArgs`, and the `report_sms_consent` read if no tests or callers use
+  them.
+- `functions/src/domains/alerts/declare-data-incident.ts`: remove `sms_outbox` and `sms_inbox`
+  from the active incident collection allowlist unless they remain valid historical export targets.
+- `infra/firebase/firestore.rules`: remove `breakglass_events` rules and `sms` as a consent method
+  only after showing the diff and getting explicit approval, because rules edits are risky.
+- `functions/src/__tests__/rules/public-collections.rules.test.ts`: remove breakglass rules tests
+  after the rules diff is approved.
+- `packages/shared-validators/src/sms.ts`, `sms-encoding.ts`, `sms-templates.ts`, and matching tests:
+  delete only if no app or package imports remain.
+- `packages/shared-validators/src/coordination.ts`: remove `massAlertRequestDocSchema` and
+  `breakglassEventDocSchema` only if no imports remain.
+- `packages/shared-validators/src/index.ts`: remove stale SMS, mass-alert, and breakglass exports
+  after deleting the backing schemas.
+- `prd/bantayog-alert-architecture-spec-v8.md`: rewrite SMS/NDRRMC/PAGASA/break-glass sections as
+  deferred, not MVP architecture.
 
-## Feed Design
+Do not delete:
+
+- `report_inbox`
+- `processInboxItem`
+- `inboxReconciliationSweep`
+- service worker Background Sync for offline report replay
+- hotline/SMS-link UX that opens the user's native SMS app, unless product explicitly removes the
+  hotline fallback
+
+## Correct Lifecycle Model
+
+Report verification and dispatch are separate server-authoritative steps.
+
+`verifyReport` owns:
+
+- `new -> awaiting_verify`
+- `awaiting_verify -> verified`
+
+`dispatchResponder` owns:
+
+- `verified -> assigned`
+- creation of `dispatches/{reportId}_{responderUid}`
+- report and dispatch event writes
+- FCM notification tracking and retry queueing
+
+The UI must not show dispatch controls for `new` or `awaiting_verify` reports. It may show "Send to
+moderation" for `new`, "Publish scrubbed copy" for `awaiting_verify`, and dispatch controls only
+for `verified` reports.
+
+## Dispatch Eligibility and Errors
+
+Dispatch is not just an admin click. `dispatchResponder` validates:
+
+- actor is a municipal admin or provincial superadmin with active account status
+- report exists and belongs to the actor's municipality or permitted municipality set
+- report status is exactly `verified`
+- responder exists
+- responder is active
+- responder is inside the actor's municipality scope
+- responder has an agency ID
+- responder is currently on shift in RTDB at `/responder_index/{municipalityId}/{responderUid}`
+
+Admin UI must surface these failures as operational messages, not generic errors. The most common
+demo-time failure is an otherwise valid responder going off-shift between list load and dispatch.
+
+## Shared Feed Design
 
 The feed should feel familiar to citizens who use Facebook:
 
@@ -56,49 +128,82 @@ The feed should feel familiar to citizens who use Facebook:
 - optional photo or map preview
 - large touch targets
 
-It must not copy Facebook branding or add social network features. No likes, comments, follows, or
+It must not copy Facebook branding or add social-network features. No likes, comments, follows, or
 personal profiles. Bantayog actions replace social actions:
 
 - Citizen: Track, View Map, Share Hotline
 - Admin: Verify, Publish, Unpublish, Dispatch, Declare Related Alert
 - Responder: Open Dispatch, View Map, View Alert Details
 
-Feed cards must show only public-safe data: coarsened location, incident type, severity, status,
-institutional source, scrubbed description, and selected public media.
+Current code does not implement geographic coarsening. MVP feed cards should therefore claim only
+the privacy behavior the system actually has today: public reports expose `visibilityClass ==
+public_alertable`, `barangayId`, `municipalityLabel`, and `publicLocation` through Firestore rules.
+If true coarsening is required, that is a separate privacy slice with backend projection, rules, and
+map/feed test coverage.
+
+## Admin and Responder Feed/Alerts Scope
+
+Admin Desktop already has a moderation-oriented `FeedPage`. The MVP needs a clearer public-feed
+mode or shared feed component so admins can see the citizen-facing feed and official alerts without
+leaving the command surface.
+
+Responder App has no public feed or alerts routes today. MVP work must add:
+
+- routes for feed and alerts
+- shell navigation entries
+- read-only hooks for public reports and official alerts
+- tests proving responders can render `public_alertable` reports and `alerts`
+- a security check that responder accounts are active and can read only public feed data plus their
+  assigned dispatch data
+
+Responder feed and alerts must not expose citizen contact information, `report_private`, or admin
+personal identities.
 
 ## Alerts Design
 
 Alerts remain simple for MVP. Municipal admins may declare alerts only for their municipality.
 Provincial admins may declare alerts for one or more municipalities. `declareAlert` writes to
-`alerts` and sends best-effort FCM. It must not route through SMS, Semaphore, NDRRMC, PAGASA, or
-mass-alert request flows.
+`alerts` and sends best-effort FCM.
 
-All roles can read official alerts. Admin and responder views should reuse the same alert card
-language citizens see, with role-specific actions only where useful.
+FCM failure does not roll back alert creation. The UI should treat creation as successful if the
+callable returns an `alertId`, and the backend should keep logging FCM failures for follow-up. Do
+not add SMS, Semaphore, NDRRMC, PAGASA, or mass-alert request routing in this MVP.
 
-## Error Handling
+## Error Handling Boundaries
 
-The UI should show the failing boundary clearly:
+The UI should make the failing boundary clear:
 
-- submission failed before server materialization
-- report materialized but not yet visible to admin listener
-- report visible but not actionable because it is not in the right lifecycle state
-- dispatch rejected because responder is unavailable, out of scope, or not on shift
+- callable submit failed before materialization
+- offline replay wrote `report_inbox` but materialization has not completed
+- report materialized but admin listener cannot read it
+- report visible but in the wrong lifecycle state for the requested action
+- verify or dispatch callable rate limit was hit
+- App Check/auth rejected a callable
+- dispatch rejected because the responder is inactive, off-shift, out of scope, missing agency ID,
+  or the report is not verified
+- alert declaration succeeded but FCM delivery was best-effort and may require follow-up
 
-Local emulator trigger flakiness is not allowed to block the online demo path. The callable path is
-the demo path; `report_inbox` replay is the resilience path.
+Local emulator trigger flakiness must not block the online demo path. The callable path is the demo
+path; `report_inbox` plus reconciliation remains the resilience path.
 
-## Testing
+## Testing and Verification
 
-Each implementation slice needs a failing test first:
+Use test-first development for behavior changes.
 
-- stale-remnant removal: export/type/rules tests fail before cleanup, then pass after removal
-- citizen submit: callable materialization test proves `reports` and `report_ops` are written
-- admin visibility: listener/page test proves `new` reports render and can advance to moderation
-- shared feed: admin/responder page tests prove public reports and alerts render from live-shaped data
-- dispatch loop: backend and UI tests prove verified reports can be dispatched to eligible responders
+Required coverage by slice:
 
-Verification for final MVP should include targeted unit tests, app typecheck/lint, functions
+- remnant cleanup: run typecheck/lint and targeted package tests after deletion; do not invent tests
+  that assert modules "do not exist"
+- citizen submit: prove callable materialization writes `reports` and `report_ops`; prove
+  `report_inbox` replay dedups against the callable-created report
+- admin visibility: prove `new` reports render and can advance to moderation
+- shared feed: prove admin and responder feed views render citizen-facing public reports and alerts
+  from live-shaped data
+- dispatch loop: prove verified reports can be dispatched to eligible responders and that off-shift
+  responders produce a clear UI error
+- rules changes: run the relevant Firestore rules tests after an explicitly approved diff
+
+Final MVP verification should include targeted unit tests, app typecheck/lint, functions
 typecheck/lint, and a local proof run where practical.
 
 ## Scope Boundaries
