@@ -370,3 +370,4 @@
 **Residual note:**
 
 - `proof:local` still logs non-fatal Firebase emulator protobuf decode errors from `dispatchMirrorToReport` during dispatch updates/shutdown. The proof exits 0 and report/dispatch state advances correctly, but the emulator log noise should be tracked separately so it does not hide a real trigger failure later.
+- **Staging deploy blocked (2026-05-24):** Functions deploy fails with `secretmanager.googleapis.com` 403 — billing not enabled on project `bantayog-alert-staging`. Storage rules deploy also blocked (`Could not find rules for the following storage targets`). Need: (1) enable billing on staging GCP project, (2) fix `firebase.json` storage target configuration.

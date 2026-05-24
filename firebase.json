@@ -51,16 +51,7 @@
           ]
         }
       ],
-      "rewrites": [
-        {
-          "source": "/webhooks/sms-delivery-report",
-          "function": {
-            "functionId": "smsDeliveryReport",
-            "region": "asia-southeast1"
-          }
-        },
-        { "source": "**", "destination": "/index.html" }
-      ]
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
     },
     {
       "target": "responder",
