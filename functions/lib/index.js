@@ -6,6 +6,7 @@ export { requestUploadUrl } from './domains/media/callables.js';
 export { verifyReport } from './domains/reports/verify-report.js';
 export { unpublishReport } from './domains/reports/unpublish-report.js';
 export { requestLookup } from './domains/reports/request-lookup.js';
+export { submitCitizenReport } from './domains/reports/submit-citizen-report.js';
 export { dispatchResponder } from './domains/dispatches/dispatch-responder.js';
 export { cancelDispatch } from './domains/dispatches/cancel-dispatch.js';
 export { rejectReport } from './domains/reports/reject-report.js';
@@ -126,5 +127,4 @@ export { reopenReport } from './domains/reports/reopen-report.js';
 export { monitorDispatchDeadlines } from './domains/dispatches/monitor-dispatch-deadlines.js';
 export { retryFcmDelivery } from './domains/dispatches/retry-fcm-delivery.js';
 export { suspendUser, revokeUser, resetUserTotp } from './domains/users/user-management.js';
-export { smsDeliveryReport } from './http/sms-delivery-report.js';
 //# sourceMappingURL=index.js.map

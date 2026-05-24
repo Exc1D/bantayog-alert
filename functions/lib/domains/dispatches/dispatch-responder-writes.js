@@ -1,24 +1,3 @@
-export async function buildSmsPayload(args) {
-    const { db, tx, reportId, salt, defaultPublicRef } = args;
-    if (!salt)
-        return null;
-    const consentSnap = await tx.get(db.collection('report_sms_consent').doc(reportId));
-    if (!consentSnap.exists)
-        return null;
-    const consentData = consentSnap.data();
-    if (consentData?.smsConsent !== true)
-        return null;
-    if (typeof consentData.phone !== 'string')
-        return null;
-    const recipientMsisdn = consentData.phone.trim();
-    if (!recipientMsisdn)
-        return null;
-    const locale = consentData.locale === 'en' ? 'en' : 'tl';
-    const lookupQ = db.collection('report_lookup').where('reportId', '==', reportId).limit(1);
-    const lookupSnap = await lookupQ.get();
-    const publicRef = lookupSnap.docs[0]?.id ?? defaultPublicRef;
-    return { recipientMsisdn, locale, publicRef };
-}
 export function writeDispatchDocs(args) {
     const { tx, deps, dispatchRef, reportRef, reportEvRef, dispatchEvRef, responder, deadlineMs, correlationId, idempotencyPayloadHash, from, to, } = args;
     const dispatchId = dispatchRef.id;

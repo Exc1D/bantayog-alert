@@ -17,11 +17,11 @@ export declare const reportDocSchema: z.ZodObject<{
     }>;
     reportType: z.ZodEnum<{
         flood: "flood";
-        landslide: "landslide";
-        storm_surge: "storm_surge";
         fire: "fire";
         earthquake: "earthquake";
         typhoon: "typhoon";
+        landslide: "landslide";
+        storm_surge: "storm_surge";
         medical: "medical";
         accident: "accident";
         structural: "structural";
@@ -34,19 +34,19 @@ export declare const reportDocSchema: z.ZodObject<{
         high: "high";
     }>;
     status: z.ZodEnum<{
-        cancelled: "cancelled";
-        acknowledged: "acknowledged";
-        en_route: "en_route";
-        on_scene: "on_scene";
-        resolved: "resolved";
         draft_inbox: "draft_inbox";
         new: "new";
         awaiting_verify: "awaiting_verify";
         verified: "verified";
         assigned: "assigned";
+        acknowledged: "acknowledged";
+        en_route: "en_route";
+        on_scene: "on_scene";
+        resolved: "resolved";
         closed: "closed";
         reopened: "reopened";
         rejected: "rejected";
+        cancelled: "cancelled";
         cancelled_false_report: "cancelled_false_report";
         merged_as_duplicate: "merged_as_duplicate";
     }>;
@@ -72,8 +72,8 @@ export declare const reportDocSchema: z.ZodObject<{
         sharedWith: z.ZodDefault<z.ZodArray<z.ZodString>>;
     }, z.core.$strict>;
     source: z.ZodEnum<{
-        sms: "sms";
         web: "web";
+        sms: "sms";
         responder_witness: "responder_witness";
     }>;
     hasPhotoAndGPS: z.ZodDefault<z.ZodBoolean>;
@@ -92,19 +92,19 @@ export declare const reportPrivateDocSchema: z.ZodObject<{
 export declare const reportOpsDocSchema: z.ZodObject<{
     municipalityId: z.ZodString;
     status: z.ZodEnum<{
-        cancelled: "cancelled";
-        acknowledged: "acknowledged";
-        en_route: "en_route";
-        on_scene: "on_scene";
-        resolved: "resolved";
         draft_inbox: "draft_inbox";
         new: "new";
         awaiting_verify: "awaiting_verify";
         verified: "verified";
         assigned: "assigned";
+        acknowledged: "acknowledged";
+        en_route: "en_route";
+        on_scene: "on_scene";
+        resolved: "resolved";
         closed: "closed";
         reopened: "reopened";
         rejected: "rejected";
+        cancelled: "cancelled";
         cancelled_false_report: "cancelled_false_report";
         merged_as_duplicate: "merged_as_duplicate";
     }>;
@@ -119,11 +119,11 @@ export declare const reportOpsDocSchema: z.ZodObject<{
     requiresLocationFollowUp: z.ZodDefault<z.ZodBoolean>;
     reportType: z.ZodOptional<z.ZodEnum<{
         flood: "flood";
-        landslide: "landslide";
-        storm_surge: "storm_surge";
         fire: "fire";
         earthquake: "earthquake";
         typhoon: "typhoon";
+        landslide: "landslide";
+        storm_surge: "storm_surge";
         medical: "medical";
         accident: "accident";
         structural: "structural";
@@ -218,8 +218,8 @@ export declare const inboxPayloadSchema: z.ZodObject<{
         high: "high";
     }>;
     source: z.ZodEnum<{
-        sms: "sms";
         web: "web";
+        sms: "sms";
         responder_witness: "responder_witness";
     }>;
     clientDraftRef: z.ZodOptional<z.ZodString>;

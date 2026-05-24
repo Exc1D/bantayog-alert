@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { smsInboxDocSchema, smsOutboxDocSchema, smsProviderHealthDocSchema } from './sms.js';
 import { agencyAssistanceRequestDocSchema } from './coordination.js';
 import { hazardZoneDocSchema } from './hazard.js';
 import { incidentResponseEventSchema } from './incident-response.js';
@@ -10,35 +9,6 @@ import { deadLetterDocSchema } from './dead-letters.js';
 import { alertDocSchema } from './alerts-emergencies.js';
 import { CAMARINES_NORTE_MUNICIPALITIES, hazardSignalDocSchema, hazardSignalStatusDocSchema, } from './index.js';
 const ts = 1713350400000;
-describe('sms schemas', () => {
-    it('rejects sms outbox without providerId', () => {
-        expect(() => smsOutboxDocSchema.parse({
-            purpose: 'status_update',
-            recipientMsisdnHash: 'a'.repeat(64),
-            status: 'queued',
-            createdAt: ts,
-            schemaVersion: 1,
-        })).toThrow();
-    });
-    it('accepts canonical inbound sms record', () => {
-        expect(smsInboxDocSchema.parse({
-            providerId: 'globelabs',
-            receivedAt: ts,
-            senderMsisdnHash: 'a'.repeat(64),
-            body: 'BANTAYOG BAHA CALASGASAN',
-            parseStatus: 'pending',
-            schemaVersion: 1,
-        })).toMatchObject({ providerId: 'globelabs' });
-    });
-    it('validates provider health enum', () => {
-        expect(() => smsProviderHealthDocSchema.parse({
-            providerId: 'semaphore',
-            circuitState: 'unstable', // invalid
-            errorRatePct: 2,
-            updatedAt: ts,
-        })).toThrow();
-    });
-});
 describe('coordination schemas', () => {
     it('agency assistance expiresAt must be > createdAt', () => {
         expect(() => agencyAssistanceRequestDocSchema.parse({

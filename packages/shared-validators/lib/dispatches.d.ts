@@ -3,11 +3,11 @@ export declare const dispatchStatusSchema: z.ZodEnum<{
     pending: "pending";
     accepted: "accepted";
     declined: "declined";
-    cancelled: "cancelled";
     acknowledged: "acknowledged";
     en_route: "en_route";
     on_scene: "on_scene";
     resolved: "resolved";
+    cancelled: "cancelled";
     timed_out: "timed_out";
     superseded: "superseded";
     unable_to_complete: "unable_to_complete";
@@ -32,11 +32,11 @@ export declare const dispatchDocSchema: z.ZodObject<{
         pending: "pending";
         accepted: "accepted";
         declined: "declined";
-        cancelled: "cancelled";
         acknowledged: "acknowledged";
         en_route: "en_route";
         on_scene: "on_scene";
         resolved: "resolved";
+        cancelled: "cancelled";
         timed_out: "timed_out";
         superseded: "superseded";
         unable_to_complete: "unable_to_complete";

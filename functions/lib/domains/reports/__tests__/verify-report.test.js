@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
-const itif = (condition) => (condition ? it : it.skip);
 // Mock rtdb before importing callable modules that depend on firebase-admin.ts
 vi.mock('firebase-admin/database', () => ({
     getDatabase: vi.fn(() => ({})),
@@ -14,22 +13,17 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 const FIRESTORE_RULES_PATH = resolve(process.cwd(), '../infra/firebase/firestore.rules');
 const ts = 1713350400000;
-let testEnv;
-let available = false;
-beforeAll(async () => {
-    const guarded = await guardInitTestEnvironment({
-        projectId: 'verify-report-test',
-        firestore: {
-            host: 'localhost',
-            port: 8081,
-            rules: readFileSync(FIRESTORE_RULES_PATH, 'utf8'),
-        },
-    }, 'verify-report');
-    testEnv = guarded.env;
-    available = guarded.available;
-    if (!available)
-        return;
-});
+const guarded = await guardInitTestEnvironment({
+    projectId: 'verify-report-test',
+    firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules: readFileSync(FIRESTORE_RULES_PATH, 'utf8'),
+    },
+}, 'verify-report');
+const testEnv = guarded.env;
+const available = guarded.available;
+const itif = (condition) => (condition ? it : it.skip);
 beforeEach(async () => {
     if (!available || !testEnv)
         return;
@@ -72,7 +66,40 @@ describe('verifyReportCore', () => {
             });
         });
     });
-    itif(available)('advances awaiting_verify → verified, stamps verifiedBy, and makes the report public', async () => {
+    itif(available)('advances awaiting_verify → verified with scrubbed copy and makes the report public', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
+                municipalityId: 'daet',
+            });
+            await seedActiveAccount(testEnv, {
+                uid: 'admin-1',
+                role: 'municipal_admin',
+                municipalityId: 'daet',
+            });
+            const result = await verifyReportCore(db, {
+                reportId,
+                scrubbedDescription: 'Public-safe report summary',
+                idempotencyKey: crypto.randomUUID(),
+                actor: {
+                    uid: 'admin-1',
+                    claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+                },
+                now: Timestamp.now(),
+            });
+            expect(result.status).toBe('verified');
+            expect(result.updatedAt).toBeDefined();
+            const report = (await db.collection('reports').doc(reportId).get()).data();
+            expect(report.status).toBe('verified');
+            expect(report.verifiedBy).toBe('admin-1');
+            expect(report.verifiedAt).toBeDefined();
+            expect(report.description).toBe('Public-safe report summary');
+            expect(report.visibilityClass).toBe('public_alertable');
+            expect(report.updatedAt).toBeDefined();
+            expect(report.updatedAt).toBe(result.updatedAt);
+        });
+    });
+    itif(available)('advances awaiting_verify → verified without scrubbed copy but keeps the report internal', async () => {
         await testEnv.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
@@ -93,14 +120,11 @@ describe('verifyReportCore', () => {
                 now: Timestamp.now(),
             });
             expect(result.status).toBe('verified');
-            expect(result.updatedAt).toBeDefined();
             const report = (await db.collection('reports').doc(reportId).get()).data();
             expect(report.status).toBe('verified');
             expect(report.verifiedBy).toBe('admin-1');
-            expect(report.verifiedAt).toBeDefined();
-            expect(report.visibilityClass).toBe('public_alertable');
-            expect(report.updatedAt).toBeDefined();
-            expect(report.updatedAt).toBe(result.updatedAt);
+            expect(report.visibilityClass).toBe('internal');
+            expect(report.description).toBeUndefined();
         });
     });
     itif(available)('is idempotent: same idempotencyKey returns cached result', async () => {

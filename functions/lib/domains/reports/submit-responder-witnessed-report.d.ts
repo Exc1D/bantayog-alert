@@ -17,9 +17,9 @@ export declare const submitResponderWitnessedReportSchema: z.ZodObject<{
     }>;
     description: z.ZodString;
     severity: z.ZodEnum<{
-        high: "high";
         low: "low";
         medium: "medium";
+        high: "high";
     }>;
     publicLocation: z.ZodObject<{
         lat: z.ZodNumber;

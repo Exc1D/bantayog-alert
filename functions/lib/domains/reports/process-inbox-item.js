@@ -4,6 +4,146 @@ import { BantayogError, BantayogErrorCode, logDimension, reportInboxDocSchema, i
 import { reverseGeocodeToMunicipality } from '../shared/geocode.js';
 import { withIdempotency } from '../../idempotency/guard.js';
 const log = logDimension('processInboxItem');
+export async function materializeCitizenReportCore(input) {
+    const now = input.now ?? (() => Date.now());
+    const createdAt = now();
+    const exactLocation = input.payload.exactLocation;
+    const pendingMediaIds = input.payload.pendingMediaIds ?? [];
+    const pendingMediaDocs = new Map();
+    for (const uploadId of pendingMediaIds) {
+        const pendingSnap = await input.db.collection('pending_media').doc(uploadId).get();
+        if (pendingSnap.exists) {
+            pendingMediaDocs.set(uploadId, pendingSnap.data());
+        }
+        else {
+            log({
+                severity: 'WARNING',
+                code: 'INBOX_PENDING_MEDIA_MISSING',
+                message: `pending_media doc not found: ${uploadId} (public ref ${input.publicRef})`,
+                data: { publicRef: input.publicRef, uploadId },
+            });
+        }
+    }
+    return input.db.runTransaction(async (tx) => {
+        const lookupRef = input.db.collection('report_lookup').doc(input.publicRef);
+        const lookupSnap = await tx.get(lookupRef);
+        if (lookupSnap.exists) {
+            const lookup = lookupSnap.data();
+            if (lookup?.tokenHash !== input.secretHash) {
+                throw new BantayogError(BantayogErrorCode.CONFLICT, 'publicRef already exists');
+            }
+            if (typeof lookup.reportId !== 'string' || lookup.reportId.length === 0) {
+                throw new BantayogError(BantayogErrorCode.CONFLICT, 'publicRef lookup is malformed');
+            }
+            return {
+                materialized: true,
+                replayed: true,
+                reportId: lookup.reportId,
+                publicRef: input.publicRef,
+            };
+        }
+        const reportId = randomUUID();
+        tx.set(input.db.collection('reports').doc(reportId), {
+            municipalityId: input.municipalityId,
+            municipalityLabel: input.municipalityLabel,
+            barangayId: input.barangayId,
+            reporterRole: 'citizen',
+            reportType: input.payload.reportType,
+            severity: input.payload.severity,
+            status: 'new',
+            publicLocation: input.payload.publicLocation,
+            mediaRefs: pendingMediaIds,
+            description: input.payload.description,
+            submittedAt: input.clientCreatedAt,
+            retentionExempt: false,
+            visibilityClass: 'internal',
+            visibility: { scope: 'municipality', sharedWith: [] },
+            source: input.payload.source,
+            hasPhotoAndGPS: false,
+            schemaVersion: 1,
+            correlationId: input.correlationId,
+        });
+        tx.set(input.db.collection('report_private').doc(reportId), {
+            municipalityId: input.municipalityId,
+            reporterUid: input.reporterUid,
+            isPseudonymous: false,
+            publicTrackingRef: input.publicRef,
+            contactPhone: input.payload.contact?.phone ?? null,
+            createdAt,
+            schemaVersion: 1,
+            ...(exactLocation != null ? { exactLocation } : {}),
+        });
+        tx.set(input.db.collection('report_ops').doc(reportId), {
+            reportId,
+            municipalityId: input.municipalityId,
+            status: 'new',
+            severity: input.payload.severity,
+            createdAt,
+            agencyIds: [],
+            activeResponderCount: 0,
+            requiresLocationFollowUp: false,
+            reportType: input.payload.reportType,
+            ...(exactLocation
+                ? { locationGeohash: ngeohash.encode(exactLocation.lat, exactLocation.lng, 6) }
+                : {}),
+            visibility: { scope: 'municipality', sharedWith: [] },
+            updatedAt: createdAt,
+            schemaVersion: 1,
+        });
+        tx.set(input.db.collection('reports').doc(reportId).collection('status_log').doc(), {
+            from: 'draft_inbox',
+            to: 'new',
+            actor: 'system:processInboxItem',
+            at: createdAt,
+            correlationId: input.correlationId,
+            schemaVersion: 1,
+        });
+        tx.set(input.db.collection('report_lookup').doc(input.publicRef), {
+            publicTrackingRef: input.publicRef,
+            reportId,
+            tokenHash: input.secretHash,
+            expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
+            createdAt,
+            schemaVersion: 1,
+        });
+        if (input.payload.source === 'web') {
+            tx.set(input.db.collection('secret_lookup').doc(input.secretHash), {
+                publicRef: input.publicRef,
+                reportId,
+                expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
+            });
+        }
+        tx.set(input.db.collection('report_events').doc(), {
+            reportId,
+            correlationId: input.correlationId,
+            eventType: 'report_submitted',
+            municipalityId: input.municipalityId,
+            actor: 'system',
+            at: createdAt,
+            schemaVersion: 1,
+        });
+        for (const uploadId of pendingMediaIds) {
+            const data = pendingMediaDocs.get(uploadId);
+            if (!data)
+                continue;
+            tx.set(input.db.collection('reports').doc(reportId).collection('media').doc(uploadId), {
+                uploadId,
+                storagePath: data.storagePath,
+                mimeType: data.mimeType,
+                strippedAt: data.strippedAt,
+                addedAt: createdAt,
+                schemaVersion: 1,
+            });
+            tx.delete(input.db.collection('pending_media').doc(uploadId));
+        }
+        return {
+            materialized: true,
+            replayed: false,
+            reportId,
+            publicRef: input.publicRef,
+        };
+    });
+}
 export async function processInboxItemCore(input) {
     const { db, inboxId } = input;
     const now = input.now ?? (() => Date.now());
@@ -44,7 +184,6 @@ export async function processInboxItemCore(input) {
         throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, `payload schema invalid: ${payloadResult.error.issues[0]?.message ?? 'unknown'}`);
     }
     const payload = payloadResult.data;
-    const exactLocation = payload.exactLocation;
     if (!payload.publicLocation) {
         await db.collection('moderation_incidents').doc(inboxId).set({
             inboxId,
@@ -88,143 +227,35 @@ export async function processInboxItemCore(input) {
         municipalityLabel = geo.municipalityLabel;
         barangayId = geo.barangayId;
     }
-    const createdAt = now();
-    const pendingMediaIds = payload.pendingMediaIds ?? [];
     const idempotencyResult = await withIdempotency(db, { key: `processInboxItem:${inboxId}`, payload: { inboxId, publicRef: inbox.publicRef }, now }, async () => {
-        const reportId = randomUUID();
-        const pendingMediaDocs = new Map();
-        for (const uploadId of pendingMediaIds) {
-            const pendingSnap = await db.collection('pending_media').doc(uploadId).get();
-            if (pendingSnap.exists) {
-                pendingMediaDocs.set(uploadId, pendingSnap.data());
-            }
-            else {
-                log({
-                    severity: 'WARNING',
-                    code: 'INBOX_PENDING_MEDIA_MISSING',
-                    message: `pending_media doc not found: ${uploadId} (inbox ${inboxId})`,
-                    data: { inboxId, uploadId },
-                });
-            }
-        }
-        // Reads outside the transaction are a known race; we accept it because
-        // pending_media is append-only and deletion is best-effort.
-        await db.runTransaction(async (tx) => {
-            const lookupRef = db.collection('report_lookup').doc(inbox.publicRef);
-            const lookupSnap = await tx.get(lookupRef);
-            if (lookupSnap.exists && lookupSnap.data()?.reportId !== reportId) {
-                throw new BantayogError(BantayogErrorCode.CONFLICT, 'publicRef already exists');
-            }
-            tx.set(db.collection('reports').doc(reportId), {
-                municipalityId,
-                municipalityLabel,
-                barangayId,
-                reporterRole: 'citizen',
-                reportType: payload.reportType,
-                severity: payload.severity,
-                status: 'new',
-                publicLocation: payload.publicLocation,
-                mediaRefs: pendingMediaIds,
-                description: payload.description,
-                submittedAt: inbox.clientCreatedAt,
-                retentionExempt: false,
-                visibilityClass: 'internal',
-                visibility: { scope: 'municipality', sharedWith: [] },
-                source: payload.source,
-                hasPhotoAndGPS: false,
-                schemaVersion: 1,
-                correlationId: inbox.correlationId,
-            });
-            tx.set(db.collection('report_private').doc(reportId), {
-                municipalityId,
-                reporterUid: inbox.reporterUid,
-                isPseudonymous: false,
-                publicTrackingRef: inbox.publicRef,
-                contactPhone: payload.contact?.phone ?? null,
-                createdAt,
-                schemaVersion: 1,
-                ...(exactLocation != null ? { exactLocation } : {}),
-            });
-            tx.set(db.collection('report_ops').doc(reportId), {
-                municipalityId,
-                status: 'new',
-                severity: payload.severity,
-                createdAt,
-                agencyIds: [],
-                activeResponderCount: 0,
-                requiresLocationFollowUp: false,
-                reportType: payload.reportType,
-                ...(exactLocation
-                    ? { locationGeohash: ngeohash.encode(exactLocation.lat, exactLocation.lng, 6) }
-                    : {}),
-                visibility: { scope: 'municipality', sharedWith: [] },
-                updatedAt: createdAt,
-                schemaVersion: 1,
-            });
-            tx.set(db.collection('reports').doc(reportId).collection('status_log').doc(), {
-                from: 'draft_inbox',
-                to: 'new',
-                actor: 'system:processInboxItem',
-                at: createdAt,
-                correlationId: inbox.correlationId,
-                schemaVersion: 1,
-            });
-            tx.set(db.collection('report_lookup').doc(inbox.publicRef), {
-                reportId,
-                tokenHash: inbox.secretHash,
-                expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
-                createdAt,
-                schemaVersion: 1,
-            });
-            // Write secret_lookup only for web submissions — SMS uses a random tokenHash
-            // the user never sees, so a secret-only lookup makes no sense for those.
-            if (payload.source === 'web') {
-                tx.set(db.collection('secret_lookup').doc(inbox.secretHash), {
-                    publicRef: inbox.publicRef,
-                    reportId,
-                    expiresAt: createdAt + 90 * 24 * 60 * 60 * 1000,
-                });
-            }
-            tx.set(db.collection('report_events').doc(), {
-                reportId,
-                correlationId: inbox.correlationId,
-                eventType: 'report_submitted',
-                municipalityId,
-                actor: 'system',
-                at: createdAt,
-                schemaVersion: 1,
-            });
-            for (const uploadId of pendingMediaIds) {
-                const data = pendingMediaDocs.get(uploadId);
-                if (!data)
-                    continue;
-                tx.set(db.collection('reports').doc(reportId).collection('media').doc(uploadId), {
-                    uploadId,
-                    storagePath: data.storagePath,
-                    mimeType: data.mimeType,
-                    strippedAt: data.strippedAt,
-                    addedAt: createdAt,
-                    schemaVersion: 1,
-                });
-                tx.delete(db.collection('pending_media').doc(uploadId));
-            }
+        const result = await materializeCitizenReportCore({
+            db,
+            reporterUid: inbox.reporterUid,
+            clientCreatedAt: inbox.clientCreatedAt,
+            publicRef: inbox.publicRef,
+            secretHash: inbox.secretHash,
+            correlationId: inbox.correlationId,
+            payload,
+            municipalityId,
+            municipalityLabel,
+            barangayId,
+            now,
         });
         await inboxRef.update({ processedAt: now() });
         log({
             severity: 'INFO',
             code: 'INBOX_MATERIALIZED',
-            message: `Report ${reportId} created from inbox ${inboxId}`,
-            data: { reportId, inboxId, municipalityId },
+            message: `Report ${result.reportId} created from inbox ${inboxId}`,
+            data: { reportId: result.reportId, inboxId, municipalityId },
         });
-        return { materialized: true, reportId, publicRef: inbox.publicRef };
+        return result;
     });
     const { result, fromCache } = idempotencyResult;
-    const r = result;
     return {
-        materialized: r.materialized,
-        replayed: fromCache,
-        reportId: r.reportId,
-        publicRef: r.publicRef,
+        materialized: result.materialized,
+        replayed: fromCache || result.replayed,
+        reportId: result.reportId,
+        publicRef: result.publicRef,
     };
 }
 //# sourceMappingURL=process-inbox-item.js.map

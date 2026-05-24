@@ -1,21 +1,14 @@
-import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
 const itif = (condition) => (condition ? it : it.skip);
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { processInboxItemCore } from '../process-inbox-item.js';
 const PERMISSIVE_RULES = 'rules_version="2";\nservice cloud.firestore { match /{d=**} { allow read,write:if true; }}';
-let env;
-let available = false;
-beforeAll(async () => {
-    const guarded = await guardInitTestEnvironment({
-        projectId: 'demo-phase-3a-inbox',
-        firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
-    }, 'process-inbox-item');
-    env = guarded.env;
-    available = guarded.available;
-    if (!available)
-        return;
+const { env, available } = await guardInitTestEnvironment({
+    projectId: 'demo-phase-3a-inbox',
+    firestore: { rules: PERMISSIVE_RULES, host: '127.0.0.1', port: 8081 },
+}, 'process-inbox-item');
+if (available && env) {
     await env.withSecurityRulesDisabled(async (ctx) => {
         await setDoc(doc(ctx.firestore(), 'municipalities', 'daet'), {
             id: 'daet',
@@ -25,7 +18,7 @@ beforeAll(async () => {
             schemaVersion: 1,
         });
     });
-});
+}
 afterAll(async () => {
     await env?.cleanup();
 });
@@ -374,14 +367,14 @@ describe('processInboxItemCore', () => {
             await expect(processInboxItemCore({ db, inboxId: 'ibx-missing', now: () => 1713350401000 })).rejects.toMatchObject({ code: 'NOT_FOUND' });
         });
     });
-    itif(available)('throws CONFLICT when lookup doc exists with different reportId', async () => {
+    itif(available)('throws CONFLICT when lookup doc exists with different secret hash', async () => {
         await env.withSecurityRulesDisabled(async (ctx) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const db = ctx.firestore();
-            // Pre-write a conflicting lookup entry
+            // Pre-write a conflicting lookup entry with the same public ref but a different token.
             await setDoc(doc(ctx.firestore(), 'report_lookup', 'conf1234'), {
                 reportId: 'some-other-report',
-                tokenHash: 'f'.repeat(64),
+                tokenHash: 'e'.repeat(64),
                 expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
                 createdAt: Date.now(),
                 schemaVersion: 1,

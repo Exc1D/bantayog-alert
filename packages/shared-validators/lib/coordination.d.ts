@@ -63,47 +63,6 @@ export declare const commandChannelMessageDocSchema: z.ZodObject<{
     createdAt: z.ZodNumber;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
-export declare const massAlertRequestDocSchema: z.ZodObject<{
-    requestedByMunicipality: z.ZodString;
-    requestedByUid: z.ZodString;
-    severity: z.ZodEnum<{
-        low: "low";
-        medium: "medium";
-        high: "high";
-    }>;
-    body: z.ZodString;
-    targetType: z.ZodEnum<{
-        municipality: "municipality";
-        polygon: "polygon";
-        province: "province";
-    }>;
-    targetGeometryRef: z.ZodOptional<z.ZodString>;
-    estimatedReach: z.ZodNumber;
-    status: z.ZodEnum<{
-        declined: "declined";
-        queued: "queued";
-        sent: "sent";
-        pending_ndrrmc_review: "pending_ndrrmc_review";
-        submitted_to_pdrrmo: "submitted_to_pdrrmo";
-        forwarded_to_ndrrmc: "forwarded_to_ndrrmc";
-        acknowledged_by_ndrrmc: "acknowledged_by_ndrrmc";
-        cancelled: "cancelled";
-    }>;
-    createdAt: z.ZodNumber;
-    forwardedAt: z.ZodOptional<z.ZodNumber>;
-    forwardMethod: z.ZodOptional<z.ZodString>;
-    ndrrmcRecipient: z.ZodOptional<z.ZodString>;
-    acknowledgedAt: z.ZodOptional<z.ZodNumber>;
-    cancelledAt: z.ZodOptional<z.ZodNumber>;
-    sentAt: z.ZodOptional<z.ZodNumber>;
-    evidencePack: z.ZodOptional<z.ZodObject<{
-        linkedReportIds: z.ZodArray<z.ZodString>;
-        pagasaSignalRef: z.ZodOptional<z.ZodString>;
-        notes: z.ZodOptional<z.ZodString>;
-    }, z.core.$strict>>;
-    forwardedBy: z.ZodOptional<z.ZodString>;
-    schemaVersion: z.ZodNumber;
-}, z.core.$strict>;
 export declare const shiftHandoffDocSchema: z.ZodObject<{
     fromUid: z.ZodString;
     toUid: z.ZodOptional<z.ZodString>;
@@ -119,17 +78,6 @@ export declare const shiftHandoffDocSchema: z.ZodObject<{
     acceptedAt: z.ZodOptional<z.ZodNumber>;
     escalatedAt: z.ZodOptional<z.ZodNumber>;
     expiresAt: z.ZodNumber;
-    schemaVersion: z.ZodNumber;
-}, z.core.$strict>;
-export declare const breakglassEventDocSchema: z.ZodObject<{
-    sessionId: z.ZodString;
-    actor: z.ZodString;
-    action: z.ZodString;
-    resourceRef: z.ZodOptional<z.ZodString>;
-    createdAt: z.ZodNumber;
-    correlationId: z.ZodString;
-    expiresAt: z.ZodOptional<z.ZodNumber>;
-    sessionStartedAt: z.ZodOptional<z.ZodNumber>;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export declare const fieldModeSessionDocSchema: z.ZodObject<{
@@ -159,9 +107,7 @@ export declare const responderShiftHandoffDocSchema: z.ZodObject<{
 export type AgencyAssistanceRequestDoc = z.infer<typeof agencyAssistanceRequestDocSchema>;
 export type CommandChannelThreadDoc = z.infer<typeof commandChannelThreadDocSchema>;
 export type CommandChannelMessageDoc = z.infer<typeof commandChannelMessageDocSchema>;
-export type MassAlertRequestDoc = z.infer<typeof massAlertRequestDocSchema>;
 export type ShiftHandoffDoc = z.infer<typeof shiftHandoffDocSchema>;
-export type BreakglassEventDoc = z.infer<typeof breakglassEventDocSchema>;
 export type FieldModeSessionDoc = z.infer<typeof fieldModeSessionDocSchema>;
 export type ResponderShiftHandoffDoc = z.infer<typeof responderShiftHandoffDocSchema>;
 //# sourceMappingURL=coordination.d.ts.map

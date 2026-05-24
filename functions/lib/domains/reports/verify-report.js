@@ -67,13 +67,14 @@ export async function verifyReportCore(db, deps) {
                 lastStatusBy: deps.actor.uid,
                 updatedAt: deps.now.toMillis(),
             };
-            if (deps.scrubbedDescription) {
-                updates.description = deps.scrubbedDescription;
+            const scrubbedDescription = deps.scrubbedDescription?.trim();
+            if (scrubbedDescription) {
+                updates.description = scrubbedDescription;
             }
             if (to === 'verified') {
                 updates.verifiedBy = deps.actor.uid;
                 updates.verifiedAt = deps.now.toMillis();
-                updates.visibilityClass = 'public_alertable';
+                updates.visibilityClass = scrubbedDescription ? 'public_alertable' : 'internal';
             }
             tx.update(reportRef, updates);
             const eventRef = db.collection('report_events').doc();
