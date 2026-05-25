@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { CheckCircle, X } from 'lucide-react'
 
 interface Props {
@@ -6,6 +7,13 @@ interface Props {
 }
 
 export function SuccessBanner({ message, onDismiss }: Props) {
+  useEffect(() => {
+    const id = setTimeout(onDismiss, 4000)
+    return () => {
+      clearTimeout(id)
+    }
+  }, [message, onDismiss])
+
   return (
     <div
       className="mb-4 flex items-center gap-3 rounded-lg border border-[var(--color-success)]/30 bg-[var(--color-success)]/10 px-4 py-3 text-sm text-[var(--color-success)]"
