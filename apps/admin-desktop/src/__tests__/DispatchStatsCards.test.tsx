@@ -7,6 +7,7 @@ const DEFAULT_PROPS = {
   stalledCount: 0,
   avgAcceptSeconds: null as number | null,
   fcmSuccessRate: 0.95,
+  mode: 'active' as const,
 }
 
 describe('DispatchStatsCards', () => {
@@ -78,5 +79,21 @@ describe('DispatchStatsCards', () => {
     for (const card of cards) {
       expect(card.className).not.toMatch(/border-l-/)
     }
+  })
+
+  it('shows all 4 cards in active mode', () => {
+    render(<DispatchStatsCards {...DEFAULT_PROPS} mode="active" />)
+    expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
+    expect(screen.getByLabelText('Stalled')).toBeInTheDocument()
+    expect(screen.getByLabelText('Average accept time')).toBeInTheDocument()
+    expect(screen.getByLabelText('FCM success rate')).toBeInTheDocument()
+  })
+
+  it('only shows Active + Stalled in surge mode', () => {
+    render(<DispatchStatsCards {...DEFAULT_PROPS} mode="surge" />)
+    expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
+    expect(screen.getByLabelText('Stalled')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Average accept time')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('FCM success rate')).not.toBeInTheDocument()
   })
 })

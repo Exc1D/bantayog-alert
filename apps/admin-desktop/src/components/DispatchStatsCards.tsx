@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
+import type { DashboardMode } from '../utils/dashboard-mode'
 
 interface Props {
   activeCount: number
   stalledCount: number
   avgAcceptSeconds: number | null
   fcmSuccessRate: number
+  mode: DashboardMode
 }
 
 function formatSeconds(total: number): string {
@@ -18,7 +20,9 @@ export function DispatchStatsCards({
   stalledCount,
   avgAcceptSeconds,
   fcmSuccessRate,
+  mode,
 }: Props) {
+  const isSurge = mode === 'surge'
   const fcmPercent = Math.round(fcmSuccessRate * 100)
   const isFcmHigh = fcmSuccessRate >= 0.9
   const prevRef = useRef<number | null>(null)
@@ -63,28 +67,32 @@ export function DispatchStatsCards({
         <div className="text-2xl font-bold text-white">{stalledCount}</div>
       </div>
 
-      <div
-        aria-label="Average accept time"
-        className="rounded-lg border-t-[3px] border-t-gray-400 bg-white/[0.03] p-4"
-        role="region"
-      >
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          Avg Accept
-          {trend && <span className={`${trend.color} text-xs`}>{trend.arrow}</span>}
+      {!isSurge && (
+        <div
+          aria-label="Average accept time"
+          className="rounded-lg border-t-[3px] border-t-gray-400 bg-white/[0.03] p-4"
+          role="region"
+        >
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            Avg Accept
+            {trend && <span className={`${trend.color} text-xs`}>{trend.arrow}</span>}
+          </div>
+          <div className="text-2xl font-bold text-white">
+            {avgAcceptSeconds !== null ? formatSeconds(avgAcceptSeconds) : '—'}
+          </div>
         </div>
-        <div className="text-2xl font-bold text-white">
-          {avgAcceptSeconds !== null ? formatSeconds(avgAcceptSeconds) : '—'}
-        </div>
-      </div>
+      )}
 
-      <div
-        aria-label="FCM success rate"
-        className={`rounded-lg border-t-[3px] p-4 bg-white/[0.03] ${isFcmHigh ? 'border-t-green-400 text-green-400' : 'border-t-amber-400 text-amber-400'}`}
-        role="region"
-      >
-        <div className="text-xs">FCM Rate</div>
-        <div className="text-2xl font-bold">{fcmPercent}%</div>
-      </div>
+      {!isSurge && (
+        <div
+          aria-label="FCM success rate"
+          className={`rounded-lg border-t-[3px] p-4 bg-white/[0.03] ${isFcmHigh ? 'border-t-green-400 text-green-400' : 'border-t-amber-400 text-amber-400'}`}
+          role="region"
+        >
+          <div className="text-xs">FCM Rate</div>
+          <div className="text-2xl font-bold">{fcmPercent}%</div>
+        </div>
+      )}
     </div>
   )
 }
