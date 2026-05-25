@@ -104,7 +104,13 @@ afterAll(async () => {
   if (testEnv) await getTestEnv().cleanup()
 })
 
-const itif = (condition: boolean) => (condition ? it : it.skip)
+const itif = (condition: boolean) =>
+  condition ||
+  process.env.FIRESTORE_EMULATOR_HOST ||
+  process.env.FIREBASE_DATABASE_EMULATOR_HOST ||
+  process.env.FIREBASE_STORAGE_EMULATOR_HOST
+    ? it
+    : it.skip
 
 // ================================================================
 // Write tests — all roles blocked
@@ -302,27 +308,21 @@ describe('report_media read — other roles', () => {
 // must be verified against a live Firebase project.
 // ================================================================
 describe('report_media read — public_alertable', () => {
-  itif(false)(
-    '[SKIP: emulator lacks get() support] authenticated citizen reads report_media for public_alertable report',
-    async () => {
-      const storage = getTestEnv()
-        .authenticatedContext('citizen-1', {
-          role: 'citizen',
-          accountStatus: 'active',
-        })
-        .storage()
+  it.skip('[SKIP: emulator lacks get() support] authenticated citizen reads report_media for public_alertable report', async () => {
+    const storage = getTestEnv()
+      .authenticatedContext('citizen-1', {
+        role: 'citizen',
+        accountStatus: 'active',
+      })
+      .storage()
 
-      await assertSucceeds(storage.ref('report_media/daet/public-report/photo.jpg').getMetadata())
-    },
-  )
+    await assertSucceeds(storage.ref('report_media/daet/public-report/photo.jpg').getMetadata())
+  })
 
-  itif(false)(
-    '[SKIP: emulator lacks get() support] unauthenticated read of public_alertable report_media succeeds',
-    async () => {
-      const storage = getTestEnv().unauthenticatedContext().storage()
-      await assertSucceeds(storage.ref('report_media/daet/public-report/photo.jpg').getMetadata())
-    },
-  )
+  it.skip('[SKIP: emulator lacks get() support] unauthenticated read of public_alertable report_media succeeds', async () => {
+    const storage = getTestEnv().unauthenticatedContext().storage()
+    await assertSucceeds(storage.ref('report_media/daet/public-report/photo.jpg').getMetadata())
+  })
 })
 
 // ================================================================

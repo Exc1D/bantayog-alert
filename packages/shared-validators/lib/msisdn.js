@@ -1,15 +1,26 @@
 import { z } from 'zod';
-// node:crypto is server-only (hashMsisdn). Static import crashes in browser via Vite.
-const _nodeCrypto = (() => {
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        return require('node:crypto');
+function isNodeCryptoModule(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    const candidate = value;
+    return typeof candidate.createHash === 'function';
+}
+function loadNodeCrypto() {
+    const runtimeGlobal = globalThis;
+    const processLike = runtimeGlobal.process;
+    if (typeof processLike !== 'object' || processLike === null) {
+        throw new Error('hashMsisdn requires Node.js crypto — not available in browser');
     }
-    catch (_err) {
-        void _err;
-        return null;
+    const getBuiltinModule = processLike.getBuiltinModule;
+    if (typeof getBuiltinModule !== 'function') {
+        throw new Error('hashMsisdn requires Node.js crypto — not available in browser');
     }
-})();
+    const cryptoModule = getBuiltinModule.call(processLike, 'crypto');
+    if (!isNodeCryptoModule(cryptoModule)) {
+        throw new Error('hashMsisdn requires Node.js crypto — not available in browser');
+    }
+    return cryptoModule;
+}
 export class MsisdnInvalidError extends Error {
     constructor(input) {
         super(`Invalid PH MSISDN: ${input.slice(0, 20)}`);
@@ -43,9 +54,6 @@ export function normalizeMsisdn(input) {
     throw new MsisdnInvalidError(input);
 }
 export function hashMsisdn(normalizedMsisdn, salt) {
-    if (!_nodeCrypto) {
-        throw new Error('hashMsisdn requires Node.js crypto — not available in browser');
-    }
     if (!/^\+639\d{9}$/.test(normalizedMsisdn)) {
         throw new Error(`hashMsisdn requires normalized MSISDN, got: ${normalizedMsisdn}`);
     }
@@ -55,7 +63,7 @@ export function hashMsisdn(normalizedMsisdn, salt) {
     if (salt.length < 16) {
         throw new Error(`hashMsisdn requires a salt of at least 16 characters, got length: ${String(salt.length)}`);
     }
-    return _nodeCrypto
+    return loadNodeCrypto()
         .createHash('sha256')
         .update(salt + normalizedMsisdn)
         .digest('hex');

@@ -172,14 +172,14 @@ describe('declareAlertCore', () => {
     });
 });
 describe('declareDataIncidentCore', () => {
-    it.each(['sms_outbox', 'sms_inbox'])('rejects %s as an affected collection', async (affectedCollection) => {
+    it.each(['payments', 'unknown_collection'])('rejects %s as an affected collection', async (affectedCollection) => {
         const mockDb = createMockDb();
         await expect(declareDataIncidentCore(mockDb, {
             incidentType: 'data_loss',
             severity: 'high',
             affectedCollections: [affectedCollection],
             affectedDataClasses: ['contact_info'],
-            summary: 'SMS delivery data is outside the MVP incident surface.',
+            summary: 'The collection is outside the MVP incident surface.',
         }, { uid: 'admin-1' })).rejects.toThrow(ZodError);
     });
 });

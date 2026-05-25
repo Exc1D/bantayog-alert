@@ -7,7 +7,13 @@ import { seedActiveAccount, seedReport, staffClaims, ts } from '../helpers/seed-
 
 let env: RulesTestEnvironment | undefined
 
-const itif = (condition: boolean) => (condition ? it : it.skip)
+const itif = (condition: boolean) =>
+  condition ||
+  process.env.FIRESTORE_EMULATOR_HOST ||
+  process.env.FIREBASE_DATABASE_EMULATOR_HOST ||
+  process.env.FIREBASE_STORAGE_EMULATOR_HOST
+    ? it
+    : it.skip
 
 beforeAll(async () => {
   env = await createTestEnvSafe('report-notes-rules-test')

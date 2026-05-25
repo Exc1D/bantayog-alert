@@ -1,5 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { resolve, join } from 'node:path'
+import { dirname, resolve, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 interface RulePath {
   collection: string
@@ -88,11 +91,11 @@ function isServerOnly(rulesSrc: string, collection: string): boolean {
 }
 
 function main(): void {
-  const rulesPath = resolve(process.cwd(), 'infra/firebase/firestore.rules')
+  const rulesPath = resolve(ROOT, 'infra/firebase/firestore.rules')
   const rulesSrc = readFileSync(rulesPath, 'utf8')
   const paths = extractRulePaths(rulesSrc)
 
-  const testsRoot = resolve(process.cwd(), 'functions/src/__tests__')
+  const testsRoot = resolve(ROOT, 'functions/src/__tests__')
   const testsSrc = readAllTestFiles(testsRoot)
 
   const missing: { collection: string; missing: string[] }[] = []

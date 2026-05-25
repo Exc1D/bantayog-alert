@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle } from 'lucide-react'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { Toggle } from '../components/Toggle.js'
 import { DeleteAccountFlow } from '../components/DeleteAccountFlow.js'
@@ -9,7 +9,7 @@ import { useToast } from '../hooks/useToast.js'
 import { useFcmToken } from '../hooks/useFcmToken.js'
 import { Toast } from '../components/Toast.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
-import { requestDataExport } from '../services/callables.js'
+import { requestAnonymousDeletion, requestDataExport } from '../services/callables.js'
 import {
   getAlertSoundsEnabled,
   getAutoLocationEnabled,
@@ -113,6 +113,25 @@ export function SettingsPage() {
       }
     }
   }
+
+  const handleDeleteSessionData = useCallback(async () => {
+    if (!user?.isAnonymous) return
+    if (!window.confirm('This will delete your anonymous session data and sign you out. Continue?'))
+      return
+    try {
+      await requestAnonymousDeletion()
+      await signOut(auth())
+      void navigate('/', { replace: true })
+      toast('Session data deleted.', 'success')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('permission-denied')) {
+        toast('Cannot delete registered accounts here.', 'error')
+      } else {
+        toast('Failed to delete session data. Please try again.', 'error')
+      }
+    }
+  }, [navigate, toast, user])
 
   return (
     <main id="main-content" className="min-h-[100dvh] bg-[#f0f4f4]">
@@ -266,6 +285,19 @@ export function SettingsPage() {
               className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-left text-[#25292a]"
             >
               Sign out
+            </button>
+          </div>
+        )}
+        {user?.isAnonymous && (
+          <div className="flex items-center justify-between px-4 py-4">
+            <button
+              type="button"
+              onClick={() => {
+                void handleDeleteSessionData()
+              }}
+              className="text-sm font-medium bg-transparent border-none p-0 cursor-pointer text-left text-danger-500"
+            >
+              Delete session data
             </button>
           </div>
         )}

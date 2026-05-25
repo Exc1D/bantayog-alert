@@ -35,7 +35,13 @@ try {
   firestoreAvailable = false
 }
 
-const itif = (condition: boolean) => (condition ? it : it.skip)
+const itif = (condition: boolean) =>
+  condition ||
+  process.env.FIRESTORE_EMULATOR_HOST ||
+  process.env.FIREBASE_DATABASE_EMULATOR_HOST ||
+  process.env.FIREBASE_STORAGE_EMULATOR_HOST
+    ? it
+    : it.skip
 
 function seedReport(db: any, reportId: string, municipalityId: string, status: string) {
   return setDoc(doc(db, 'reports', reportId), {

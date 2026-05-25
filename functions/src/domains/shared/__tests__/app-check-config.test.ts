@@ -12,9 +12,22 @@ describe('shouldEnforceAppCheck', () => {
     process.env = originalEnv
   })
 
-  it('returns false for staging project', () => {
+  it('returns true for staging project', () => {
     process.env.GCLOUD_PROJECT = 'bantayog-alert-staging'
+    expect(shouldEnforceAppCheck()).toBe(true)
+  })
+
+  it('returns false for local emulator runs', () => {
+    process.env.GCLOUD_PROJECT = 'bantayog-alert-staging'
+    process.env.FUNCTIONS_EMULATOR = 'true'
     expect(shouldEnforceAppCheck()).toBe(false)
+  })
+
+  it('returns true for local emulator runs when explicitly enforced', () => {
+    process.env.GCLOUD_PROJECT = 'bantayog-alert-staging'
+    process.env.FUNCTIONS_EMULATOR = 'true'
+    process.env.ENFORCE_APP_CHECK = 'true'
+    expect(shouldEnforceAppCheck()).toBe(true)
   })
 
   it('returns true for production project', () => {

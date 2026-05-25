@@ -1,16 +1,41 @@
 import type { createHash as CreateHashFn } from 'node:crypto'
 import { z } from 'zod'
 
-// node:crypto is server-only (hashMsisdn). Static import crashes in browser via Vite.
-const _nodeCrypto: { createHash: typeof CreateHashFn } | null = (() => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('node:crypto') as { createHash: typeof CreateHashFn }
-  } catch (_err: unknown) {
-    void _err
-    return null
+interface NodeCryptoModule {
+  createHash: typeof CreateHashFn
+}
+
+interface ProcessWithBuiltins {
+  getBuiltinModule: (id: 'crypto') => unknown
+}
+
+function isNodeCryptoModule(value: unknown): value is NodeCryptoModule {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as { createHash?: unknown }
+  return typeof candidate.createHash === 'function'
+}
+
+function loadNodeCrypto(): { createHash: typeof CreateHashFn } {
+  const runtimeGlobal = globalThis as unknown as { process?: unknown }
+  const processLike = runtimeGlobal.process
+  if (typeof processLike !== 'object' || processLike === null) {
+    throw new Error('hashMsisdn requires Node.js crypto — not available in browser')
   }
-})()
+
+  const getBuiltinModule = (processLike as { getBuiltinModule?: unknown }).getBuiltinModule
+  if (typeof getBuiltinModule !== 'function') {
+    throw new Error('hashMsisdn requires Node.js crypto — not available in browser')
+  }
+
+  const cryptoModule = (getBuiltinModule as ProcessWithBuiltins['getBuiltinModule']).call(
+    processLike,
+    'crypto',
+  )
+  if (!isNodeCryptoModule(cryptoModule)) {
+    throw new Error('hashMsisdn requires Node.js crypto — not available in browser')
+  }
+  return cryptoModule
+}
 
 export class MsisdnInvalidError extends Error {
   constructor(input: string) {
@@ -45,9 +70,6 @@ export function normalizeMsisdn(input: string): string {
 }
 
 export function hashMsisdn(normalizedMsisdn: string, salt: string): string {
-  if (!_nodeCrypto) {
-    throw new Error('hashMsisdn requires Node.js crypto — not available in browser')
-  }
   if (!/^\+639\d{9}$/.test(normalizedMsisdn)) {
     throw new Error(`hashMsisdn requires normalized MSISDN, got: ${normalizedMsisdn}`)
   }
@@ -59,7 +81,7 @@ export function hashMsisdn(normalizedMsisdn: string, salt: string): string {
       `hashMsisdn requires a salt of at least 16 characters, got length: ${String(salt.length)}`,
     )
   }
-  return _nodeCrypto
+  return loadNodeCrypto()
     .createHash('sha256')
     .update(salt + normalizedMsisdn)
     .digest('hex')

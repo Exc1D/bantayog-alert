@@ -100,7 +100,7 @@
     {
       "source": "functions-dist",
       "codebase": "default",
-      "runtime": "nodejs22",
+      "runtime": "nodejs20",
       "predeploy": [
         "pnpm exec tsx scripts/build-rules.ts",
         "pnpm exec tsx scripts/prepare-functions-deploy.ts"

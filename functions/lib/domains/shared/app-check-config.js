@@ -1,14 +1,15 @@
 /**
  * Returns whether App Check should be enforced for callable functions.
  *
- * Staging project is exempt by default so that testing works without a
- * reCAPTCHA key. Set `ENFORCE_APP_CHECK=true` in staging to override.
- * Production always enforces App Check.
+ * Staging and production enforce App Check by default. Local emulator runs can
+ * bypass it unless `ENFORCE_APP_CHECK=true` is set for a stricter proof run.
  */
 export function shouldEnforceAppCheck() {
-    const projectId = process.env.GCLOUD_PROJECT ?? '';
-    if (projectId === 'bantayog-alert-staging') {
-        return process.env.ENFORCE_APP_CHECK === 'true';
+    if (process.env.ENFORCE_APP_CHECK === 'true') {
+        return true;
+    }
+    if (process.env.FUNCTIONS_EMULATOR === 'true') {
+        return false;
     }
     return true;
 }

@@ -9,6 +9,7 @@ export default defineConfig({
       'src/domains/**/__tests__/**/*.test.ts',
       'scripts/**/*.test.ts',
     ],
+    fileParallelism: false,
     hookTimeout: 30000,
     testTimeout: 30000,
     env: {

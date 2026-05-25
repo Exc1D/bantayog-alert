@@ -227,7 +227,7 @@ describe('declareAlertCore', () => {
 })
 
 describe('declareDataIncidentCore', () => {
-  it.each(['sms_outbox', 'sms_inbox'])(
+  it.each(['payments', 'unknown_collection'])(
     'rejects %s as an affected collection',
     async (affectedCollection) => {
       const mockDb = createMockDb()
@@ -240,7 +240,7 @@ describe('declareDataIncidentCore', () => {
             severity: 'high',
             affectedCollections: [affectedCollection],
             affectedDataClasses: ['contact_info'],
-            summary: 'SMS delivery data is outside the MVP incident surface.',
+            summary: 'The collection is outside the MVP incident surface.',
           },
           { uid: 'admin-1' },
         ),

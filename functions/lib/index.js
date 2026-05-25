@@ -127,4 +127,6 @@ export { reopenReport } from './domains/reports/reopen-report.js';
 export { monitorDispatchDeadlines } from './domains/dispatches/monitor-dispatch-deadlines.js';
 export { retryFcmDelivery } from './domains/dispatches/retry-fcm-delivery.js';
 export { suspendUser, revokeUser, resetUserTotp } from './domains/users/user-management.js';
+export { anonymousAuthCleanup } from './domains/users/anonymous-auth-cleanup.js';
+export { deleteOwnAnonymousAccount } from './domains/users/delete-own-anonymous-account.js';
 //# sourceMappingURL=index.js.map

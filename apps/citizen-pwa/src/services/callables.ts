@@ -92,6 +92,16 @@ export async function submitCitizenReport(
   }
 }
 
+export async function requestAnonymousDeletion(): Promise<{ deleted: boolean }> {
+  const callable = httpsCallable(fns(), 'deleteOwnAnonymousAccount')
+  const result = await callable()
+  const data = result.data as Record<string, unknown>
+  if (typeof data.deleted !== 'boolean') {
+    throw new Error('invalid server response')
+  }
+  return { deleted: data.deleted }
+}
+
 export async function cancelReport(reportId: string): Promise<void> {
   let key = idempotencyKeys.get(reportId)
   if (!key) {

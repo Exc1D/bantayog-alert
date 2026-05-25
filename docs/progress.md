@@ -1,5 +1,53 @@
 # Progress
 
+## Staging Readiness Hardening (2026-05-25)
+
+### Shipped
+
+- **Anonymous Auth lifecycle guardrails:**
+  - Citizen PWA shared auth now sets browser-local persistence before anonymous sign-in, so reloads/new tabs in the same browser profile reuse the same pseudonymous account instead of creating a fresh anonymous UID every session.
+  - Added `anonymousAuthCleanup`, a daily scheduled function that deletes only stale, plain anonymous Auth users older than 30 days. It skips users with providers, email, phone number, or custom claims so upgraded/privileged accounts are not swept.
+  - Added `deleteOwnAnonymousAccount` callable so anonymous users can proactively delete their own auth session before signing out, immediately reducing cluttering. Citizen PWA Settings page now shows a 'Delete session data' button for anonymous users.
+  - Staging users should be advised to use the 'Delete session data' button when done tinkering, as the 30-day scheduled cleanup won't run until the next day.
+
+- **Staging deployment hardening:**
+  - Updated `firebase.json` to pin Functions runtime to `nodejs20` (matching `functions/package.json` and avoiding staging deploy failures due to project-level billing/quota restrictions).
+- **Staging security default tightened:**
+  - `shouldEnforceAppCheck()` now enforces App Check in staging and production by default.
+  - Local Functions emulator remains bypassable for proof runs unless `ENFORCE_APP_CHECK=true`.
+- **Deployment gate hardening:**
+  - Fixed `pnpm --dir functions test:rules:coverage` so it resolves rule paths from the repo root, not the caller cwd.
+  - Removed the last Functions runtime dependency on `@bantayog/shared-sms-parser`.
+  - Removed stale `report_sms_consent` seed helper wiring and stale SMS collection assertions from data-incident tests.
+  - Kept env-aware `itif` only on rules suites that need it; restored deferred domain suites to their local availability gate.
+  - Disabled Functions Vitest file parallelism so shared Firestore/RTDB/Storage emulator rule loading does not race between rules suites.
+- **App Check staging verification:**
+  - Built all 3 apps with `VITE_USE_EMULATOR=false` to simulate production-like staging builds.
+  - Verified the reCAPTCHA v3 site key (`6Lc9...`) is embedded in the JS bundles of citizen PWA, admin desktop, and responder app.
+  - Manually previewed citizen PWA (`localhost:3456`) and admin desktop (`localhost:3457`) — both render correctly with no console warnings about App Check being disabled. Responder app preview also loads cleanly.
+  - **Caveat:** This verifies the _client-side_ key injection. Full end-to-end App Check enforcement can only be validated after deploying to Firebase Hosting and testing a callable against the live Functions backend.
+  - Downgraded `file-type` from the Node-22-only major to `21.3.4`, whose engine is `>=20`, matching Functions runtime.
+  - Removed the browser-build `node:crypto` warning by keeping MSISDN hashing server-only through `process.getBuiltinModule('crypto')` and leaving phone normalization browser-safe.
+
+### Verification
+
+- `pnpm --dir functions exec vitest run src/domains/shared/__tests__/app-check-config.test.ts` — 6 passed
+- `pnpm --dir packages/shared-firebase exec vitest run src/auth.test.ts` — 3 passed
+- `pnpm --dir functions exec vitest run src/domains/users/__tests__/anonymous-auth-cleanup.test.ts` — 4 passed
+- `pnpm --dir functions test:rules:coverage` — 39 collections covered
+- `firebase emulators:exec --only firestore,database,storage "pnpm --dir functions exec vitest run --silent=true --reporter=json --outputFile=/tmp/bantayog-functions-emulator.json"` — 282 suites passed; 565 tests passed, 214 skipped; exit 0
+- `pnpm typecheck` — 19 tasks passed
+- `pnpm lint` — 19 tasks passed
+- `pnpm build` — 12 tasks passed; remaining warnings are admin/responder chunk-size warnings, not `node:crypto` or engine warnings
+- `pnpm test` — 20 files passed; 187 tests passed
+- `pnpm proof:local` — exited 0 with Playwright 1/1 passed; `.last-run.json` recorded `passed`
+
+### Staging Note
+
+- No deploy has been run. External staging still needs a fresh deploy approval and project-side checks for billing, secrets, hosting targets, and App Check configuration.
+
+---
+
 ## MVP Reliability Spine (2026-05-24)
 
 ### Shipped
