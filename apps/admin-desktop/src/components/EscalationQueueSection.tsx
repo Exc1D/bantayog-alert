@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
+import type { DashboardMode } from '../utils/dashboard-mode'
 
 interface StalledDispatch {
   dispatchId: string
@@ -10,10 +11,12 @@ interface StalledDispatch {
 interface Props {
   stalledDispatches: StalledDispatch[]
   onReDispatch: (dispatchId: string) => void
+  mode: DashboardMode
 }
 
-export function EscalationQueueSection({ stalledDispatches, onReDispatch }: Props) {
-  if (stalledDispatches.length === 0) {
+export function EscalationQueueSection({ stalledDispatches, onReDispatch, mode }: Props) {
+  if (mode === 'calm' || stalledDispatches.length === 0) {
+    if (mode === 'calm') return null
     return (
       <div className="rounded border border-green-500/20 bg-green-500/5 px-4 py-2">
         <span className="text-sm text-green-400">All clear — no stalled dispatches</span>

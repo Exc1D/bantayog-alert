@@ -22,13 +22,19 @@ const mockDispatches = [
 
 describe('EscalationQueueSection', () => {
   it('renders all-clear banner when stalledDispatches is empty', () => {
-    render(<EscalationQueueSection stalledDispatches={[]} onReDispatch={noopReDispatch} />)
+    render(
+      <EscalationQueueSection stalledDispatches={[]} onReDispatch={noopReDispatch} mode="active" />,
+    )
     expect(screen.getByText(/all clear/i)).toBeInTheDocument()
   })
 
   it('renders header with AlertTriangle and count when there are stalled dispatches', () => {
     render(
-      <EscalationQueueSection stalledDispatches={mockDispatches} onReDispatch={noopReDispatch} />,
+      <EscalationQueueSection
+        stalledDispatches={mockDispatches}
+        onReDispatch={noopReDispatch}
+        mode="surge"
+      />,
     )
     expect(screen.getByText('Needs Admin Attention (2)')).toBeInTheDocument()
     const heading = screen.getByRole('heading', { level: 2 })
@@ -37,7 +43,11 @@ describe('EscalationQueueSection', () => {
 
   it('applies red-themed border and background classes to the section', () => {
     const { container } = render(
-      <EscalationQueueSection stalledDispatches={mockDispatches} onReDispatch={noopReDispatch} />,
+      <EscalationQueueSection
+        stalledDispatches={mockDispatches}
+        onReDispatch={noopReDispatch}
+        mode="surge"
+      />,
     )
     const section = container.firstChild as HTMLElement
     expect(section.className).toContain('border-red-500/30')
@@ -46,7 +56,11 @@ describe('EscalationQueueSection', () => {
 
   it('renders a card for each stalled dispatch with report id, responder name and escalation count', () => {
     render(
-      <EscalationQueueSection stalledDispatches={mockDispatches} onReDispatch={noopReDispatch} />,
+      <EscalationQueueSection
+        stalledDispatches={mockDispatches}
+        onReDispatch={noopReDispatch}
+        mode="surge"
+      />,
     )
     expect(screen.getByText('rep-abc1')).toBeInTheDocument()
     expect(screen.getByText('rep-def6')).toBeInTheDocument()
@@ -62,7 +76,11 @@ describe('EscalationQueueSection', () => {
 
   it('shows escalation count in amber color', () => {
     render(
-      <EscalationQueueSection stalledDispatches={mockDispatches} onReDispatch={noopReDispatch} />,
+      <EscalationQueueSection
+        stalledDispatches={mockDispatches}
+        onReDispatch={noopReDispatch}
+        mode="surge"
+      />,
     )
     const firstEscalation = screen.getByText(
       (content) => content.includes('Escalated') && content.includes('1x'),
@@ -73,7 +91,11 @@ describe('EscalationQueueSection', () => {
   it('calls onReDispatch with the dispatchId when Re-dispatch button is clicked', async () => {
     const onReDispatch = vi.fn()
     render(
-      <EscalationQueueSection stalledDispatches={mockDispatches} onReDispatch={onReDispatch} />,
+      <EscalationQueueSection
+        stalledDispatches={mockDispatches}
+        onReDispatch={onReDispatch}
+        mode="surge"
+      />,
     )
     const buttons = screen.getAllByRole('button', { name: /Re-dispatch/i })
     expect(buttons).toHaveLength(2)
@@ -87,7 +109,43 @@ describe('EscalationQueueSection', () => {
     const stalled = [
       { dispatchId: 'd1', reportId: 'rpt_001', responderName: 'Juan', escalationCount: 1 },
     ]
-    render(<EscalationQueueSection stalledDispatches={stalled} onReDispatch={noopReDispatch} />)
+    render(
+      <EscalationQueueSection
+        stalledDispatches={stalled}
+        onReDispatch={noopReDispatch}
+        mode="surge"
+      />,
+    )
     expect(screen.getByText(/view details/i)).toHaveAttribute('href', '/dispatches?highlight=d1')
+  })
+
+  // Mode-aware behavior tests
+  it('is hidden in calm mode even with stalled dispatches', () => {
+    const { container } = render(
+      <EscalationQueueSection
+        stalledDispatches={mockDispatches}
+        onReDispatch={noopReDispatch}
+        mode="calm"
+      />,
+    )
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('is visible in surge mode when there are stalled dispatches', () => {
+    render(
+      <EscalationQueueSection
+        stalledDispatches={mockDispatches}
+        onReDispatch={noopReDispatch}
+        mode="surge"
+      />,
+    )
+    expect(screen.getByText('Needs Admin Attention (2)')).toBeInTheDocument()
+  })
+
+  it('shows All clear when empty in active mode', () => {
+    render(
+      <EscalationQueueSection stalledDispatches={[]} onReDispatch={noopReDispatch} mode="active" />,
+    )
+    expect(screen.getByText(/all clear/i)).toBeInTheDocument()
   })
 })
