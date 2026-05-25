@@ -71,7 +71,57 @@
 
 - Spec approved by user after 3 clarifying questions + 4 design sections.
 - Adversarial review complete. Spec updated with fixes.
-- Ready for `writing-plans` skill to create implementation plan.
+- Implementation plan written: `docs/superpowers/plans/2026-05-25-admin-desktop-dashboard-command-board.md`
+
+---
+
+## Admin Desktop Dashboard Command Board Implementation (2026-05-25)
+
+### Shipped
+
+**PR 1: Trust Fixes (P0 + P1 Immediate)**
+
+1. **SuccessBanner auto-dismiss** — Added `useEffect` timer with cleanup. Used `useRef` for stable `onDismiss` callback to prevent timer restart on parent re-renders. Added tests: auto-dismiss, timer cleanup, unmount cleanup, button click. Commit: `80f6740` + fix `b149dd8`.
+2. **MunicipalPerformanceTable explicit unknown states** — Replaced `—` dashes with `"No telemetry"`, `"Not measured"`, `"No shift data"`. Added `HelpCircle` icons (decorative, `aria-hidden`). Added tests for all three states. Commit: `fb06721` + fix.
+3. **DashboardPage Re-dispatch wiring** — Wired no-op `handleReDispatch` to open `ReDispatchModal`, call `redispatchReport` callable with `generateIdempotencyKey()`, show `SuccessBanner` on success, `ActionErrorBanner` on error, added `isDispatching` state to prevent double-clicks. Added tests: modal open, success path, error path. Commit: initial + fix `b149dd8`.
+
+**PR 2: Situation Strip** 4. **Dashboard mode utility** — Created `apps/admin-desktop/src/utils/dashboard-mode.ts` with `DashboardMode` type, `MODE_THRESHOLDS` constants, `deriveDashboardMode()` function. Surge takes precedence over degraded. 8 tests covering all thresholds + precedence. Commit: `d18ee81`. 5. **useOpsMetrics lastPollAt** — Exposed `lastPollAt` timestamp from hook for freshness calculation. Commit: `c5f1af6`. 6. **StatusBar situation strip** — Transformed into province command strip with mode badge (CALM/ACTIVE/DEGRADED/SURGE), affected municipality chips, blocking response count, responder coverage, data freshness timer, operational labels (Normal/Watch/Degraded). 29 tests. Commit: `c5f1af6`.
+
+**PR 3: Layout Adaptation** 7. **EscalationQueueSection mode prop** — Hidden in `calm` mode, visible otherwise. 10 tests. Commit: `feat(admin-desktop): EscalationQueueSection mode-aware`. 8. **DispatchStatsCards mode prop** — In `surge` mode, only Active + Stalled cards shown. 12 tests. Commit: `6091931`. 9. **DashboardPage mode derivation and layout** — Added mode computation from hook data, conditional layout (hide escalation in calm, hide charts/table in surge, dim panels in degraded), StatusBar integration with all new props, `lastDataUpdateAt` tracking. 3 new layout tests. Full suite: 431 passed. Commit: `feat(admin-desktop): DashboardPage mode derivation and conditional layout`.
+
+**PR 4: Accessibility** 10. **SkipLink component** — `sr-only` until focused, links to `#main-content`. 3 tests. Commit: `4e2b85c`. 11. **LiveAnnouncer component** — Singleton aria-live region with module-level `announce()` function, 3-second rate limiting, message batching. 4 tests. Commit: `601c522`. 12. **App.tsx root integration** — `<SkipLink />` and `<LiveAnnouncer />` rendered at app root. Commit: `1750124`.
+
+### Verification
+
+- `pnpm typecheck` — 19/19 packages successful
+- `pnpm --dir apps/admin-desktop exec vitest run` — 57 test files passed, 438 tests passed, 0 failed
+- `pnpm lint` — clean (2 pre-existing warnings in unrelated files)
+
+### Files Changed
+
+**Modified (8):**
+
+- `apps/admin-desktop/src/components/SuccessBanner.tsx`
+- `apps/admin-desktop/src/components/MunicipalPerformanceTable.tsx`
+- `apps/admin-desktop/src/pages/DashboardPage.tsx`
+- `apps/admin-desktop/src/components/StatusBar.tsx`
+- `apps/admin-desktop/src/hooks/useOpsMetrics.ts`
+- `apps/admin-desktop/src/components/EscalationQueueSection.tsx`
+- `apps/admin-desktop/src/components/DispatchStatsCards.tsx`
+- `apps/admin-desktop/src/app/App.tsx`
+
+**New (3):**
+
+- `apps/admin-desktop/src/utils/dashboard-mode.ts`
+- `apps/admin-desktop/src/components/SkipLink.tsx`
+- `apps/admin-desktop/src/components/LiveAnnouncer.tsx`
+
+**New Tests (9 files):**
+
+- `SuccessBanner.test.tsx`, `municipal-performance-table.test.tsx`, `dashboard-redispatch.test.tsx`
+- `dashboard-mode.test.ts`, `StatusBar.test.tsx`
+- `EscalationQueueSection.test.tsx`, `DispatchStatsCards.test.tsx`, `dashboard-mode-layout.test.tsx`
+- `SkipLink.test.tsx`, `LiveAnnouncer.test.tsx`
 
 ---
 
