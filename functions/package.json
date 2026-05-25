@@ -25,7 +25,7 @@
     "bootstrap:phase1": "tsx scripts/bootstrap-phase1.ts"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "dependencies": {
     "@bantayog/shared-data": "workspace:*",
