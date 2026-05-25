@@ -22,6 +22,7 @@ const POLL_INTERVAL_MS = 60_000
 
 export function useOpsMetrics(timeRange: '1h' | '24h' | '7d' = '24h') {
   const [metrics, setMetrics] = useState<OpsMetricsResult | null>(null)
+  const [lastPollAt, setLastPollAt] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,6 +42,7 @@ export function useOpsMetrics(timeRange: '1h' | '24h' | '7d' = '24h') {
             escalatedCount: result.metrics.escalatedCount,
             needsAdminCount: result.metrics.needsAdminCount,
           })
+          setLastPollAt(Date.now())
           setLoading(false)
           setError(null)
         }
@@ -71,5 +73,5 @@ export function useOpsMetrics(timeRange: '1h' | '24h' | '7d' = '24h') {
     }
   }, [timeRange])
 
-  return { metrics, loading, error }
+  return { metrics, loading, error, lastPollAt }
 }
