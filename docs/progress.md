@@ -48,6 +48,33 @@
 
 ---
 
+## Admin Desktop Dashboard Command Board Design (2026-05-25)
+
+### Created
+
+- Design spec: `docs/superpowers/specs/2026-05-25-admin-desktop-dashboard-command-board-design.md`
+- Scope: Full dashboard transformation — situation strip, operational modes (`calm`/`active`/`degraded`/`surge`), layout adaptation, action trust fixes, a11y
+
+### Adversarial Review Findings (14 findings, 3 HIGH severity)
+
+**HIGH — Fixed in spec:**
+
+1. `degraded` mode previously overrode `surge` — would hide escalation queue during real crisis with stale data. **Fix:** `surge` now takes precedence; stale data shown as `"STALE"` watermark sub-state.
+2. Dynamic CSS mode classes (`.mode-calm`) would be purged by Tailwind JIT. **Fix:** Conditional `className` composition in JSX only.
+3. 11 files touched — exceeds "smallest safe change" rule. **Fix:** Decomposed into 4 independent PRs (Trust fixes → Situation strip → Layout adaptation → Accessibility).
+
+**MEDIUM — Documented for implementation:** 4. Re-dispatch candidates may include on-scene responders (filter needed). 5. Freshness timer — use single interval + `tick` counter, not multiple `Date.now()` state updates. 6. `onSelectMunicipality` prop removed — municipality chips use `<Link>` directly. 7. LiveAnnouncer pattern specified as module-level ref (no context needed). 8. Asymmetric debounce — enter `surge` is immediate; exit `surge` debounced 5s. 9. Affected municipalities now derived from BOTH reports AND active dispatch rows. 10. SuccessBanner timer cleanup + banner stacking rules added.
+
+**LOW — Documented:** 11. `r` shortcut behavior in `calm` mode. 12. `AllClearState` vs `calm` mode distinction clarified. 13. Characterization test baseline recommended before implementation.
+
+### Status
+
+- Spec approved by user after 3 clarifying questions + 4 design sections.
+- Adversarial review complete. Spec updated with fixes.
+- Ready for `writing-plans` skill to create implementation plan.
+
+---
+
 ## MVP Reliability Spine (2026-05-24)
 
 ### Shipped
@@ -419,3 +446,18 @@
 
 - `proof:local` still logs non-fatal Firebase emulator protobuf decode errors from `dispatchMirrorToReport` during dispatch updates/shutdown. The proof exits 0 and report/dispatch state advances correctly, but the emulator log noise should be tracked separately so it does not hide a real trigger failure later.
 - **Staging deploy blocked (2026-05-24):** Functions deploy fails with `secretmanager.googleapis.com` 403 — billing not enabled on project `bantayog-alert-staging`. Storage rules deploy also blocked (`Could not find rules for the following storage targets`). Need: (1) enable billing on staging GCP project, (2) fix `firebase.json` storage target configuration.
+
+---
+
+## 2026-05-25 — Admin Desktop Dashboard UX Synthesis
+
+**Created:**
+
+1. Added `docs/admin-desktop-dashboard-ux-synthesis-2026-05-25.md`, consolidating the existing UX completeness report, dashboard layout research, source inspection, screenshot review, and current dashboard UX research.
+2. Set the synthesis precedence rule: newest source-backed findings override older report claims.
+3. Re-ranked the dashboard backlog with the visible no-op `Re-dispatch` action as P0, followed by geography-first situation summary, operational KPI thresholds, explicit unknown-data states, and success feedback.
+
+**Verification:**
+
+- Re-read the new synthesis file after creation.
+- Reviewed local diff for the created report and tracking-doc updates.

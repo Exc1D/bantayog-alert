@@ -325,6 +325,15 @@
 - **2026-05-22: Admin `report_ops` listeners require a `reportId` field in doc data.** The document ID is not enough for the current `isReportOpsDoc` filter, so materializers and local seeds must write `reportId` into `report_ops/{reportId}`.
 - **2026-05-22: Seeded reports alone do not prove Admin/Responder visibility.** Local seed/proof data must include matching `report_ops` for Admin and active `dispatches/{reportId}_{responderUid}` docs for Responder, with IDs matching the bootstrapped test accounts.
 - **2026-05-22: Responder report readers must accept canonical `publicLocation: { lat, lng }`.** `{ latitude, longitude }` is only a defensive fallback; canonical report docs and seeds use `{ lat, lng }`.
+- **2026-05-25: Treat visible no-op command-center actions as P0 UX defects.** A disabled or absent action is safer than a clickable emergency action that silently does nothing. Dashboard audits must trace action handlers, not just verify that buttons render.
+- **2026-05-25: Adversarial review of dashboard redesign found 14 issues.** Key patterns to never repeat:
+  1. **Mode/state precedence matters.** `degraded` (data stale) was initially ranked above `surge` (actionable blockers). During a real crisis with overloaded networks, hiding the escalation queue behind a degraded screen wastes minutes. Actionable states must win over data-quality states; show staleness as a sub-state watermark, not a mode override.
+  2. **Tailwind JIT does not scan dynamically-generated class strings.** `.mode-${mode}` CSS classes are purged in production. Mode-driven layout must use conditional `className` composition in JSX, not dynamic CSS selectors.
+  3. **Decompose large designs into reviewable PRs.** 11 files touched in one go exceeds the "≤3 files" safe-change rule. Split into 4 independent PRs: trust fixes → situation strip → layout adaptation → accessibility. Each must pass typecheck, lint, and tests independently.
+  4. **Asymmetric debounce for critical transitions.** Entering `surge` mode must be immediate (no debounce) because operators need to see actionable blockers instantly. Exiting `surge` can be debounced to prevent flicker.
+  5. **Timer cleanup in auto-dismiss components.** `SuccessBanner` auto-dismiss with `setTimeout` must clear the previous timer in the `useEffect` cleanup to prevent race conditions when a new message arrives before the old timer fires.
+  6. **Affected geography must include all data sources.** A municipality with an active dispatch but no report would be missed if "affected" is derived from reports only. Include both `reports` and `rows` (dispatch lifecycle) in the derivation.
+  7. **Module-level refs are sufficient for lightweight announcers.** A `LiveAnnouncer` doesn't need React context — a module-level variable holding the `setState` function is simpler and avoids prop drilling.
 
 ## Acceptable Security Risks (Documented — Revisit on Change)
 
