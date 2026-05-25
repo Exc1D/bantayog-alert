@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
+import { SuccessBanner } from '../components/SuccessBanner'
 import { DispatchStatsCards } from '../components/DispatchStatsCards'
 import { EscalationQueueSection } from '../components/EscalationQueueSection'
 import { DispatchVolumeChart } from '../components/DispatchVolumeChart'
@@ -11,6 +12,8 @@ import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTab
 import { AllClearState } from '../components/AllClearState'
 import { HelpModal } from '../components/HelpModal'
 import { DeclareAlertModal } from '../components/DeclareAlertModal'
+import { ReDispatchModal } from '../components/ReDispatchModal'
+import { callables } from '../services/callables'
 import { useAuth } from '@bantayog/shared-ui'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
 import { useResponderFleet } from '../hooks/useResponderFleet'
@@ -38,6 +41,10 @@ export default function DashboardPage() {
 
   const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [reDispatchModalOpen, setReDispatchModalOpen] = useState(false)
+  const [selectedDispatchId, setSelectedDispatchId] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [pageLoadedAt] = useState(() => Date.now())
 
   const isLoading = lifecycleLoading || fleetLoading || metricsLoading || reportsLoading
@@ -71,10 +78,31 @@ export default function DashboardPage() {
 
   const navigate = useNavigate()
 
-  // TODO [PR#151-followup]: wire to responder-selection modal; redispatchReport requires newResponderUid + idempotencyKey
   const handleReDispatch = useCallback((dispatchId: string) => {
-    void dispatchId
+    setSelectedDispatchId(dispatchId)
+    setReDispatchModalOpen(true)
   }, [])
+
+  const handleConfirmReDispatch = useCallback(
+    async (newResponderUid: string) => {
+      if (!selectedDispatchId) return
+      try {
+        await callables.redispatchReport({
+          oldDispatchId: selectedDispatchId,
+          newResponderUid,
+          reason: 'Re-dispatched via dashboard',
+          idempotencyKey: crypto.randomUUID(),
+        })
+        setSuccessMessage('Re-dispatched successfully')
+        setActionError(null)
+        setReDispatchModalOpen(false)
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : 'Re-dispatch failed')
+        setSuccessMessage(null)
+      }
+    },
+    [selectedDispatchId],
+  )
 
   const handleSelectMunicipality = useCallback(
     (municipality: string) => {
@@ -146,6 +174,19 @@ export default function DashboardPage() {
         }}
       />
       {error && <OfflineBanner error={error} />}
+      {successMessage && (
+        <SuccessBanner
+          message={successMessage}
+          onDismiss={() => {
+            setSuccessMessage(null)
+          }}
+        />
+      )}
+      {actionError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {actionError}
+        </div>
+      )}
       <main className="flex-1 overflow-auto p-4">
         <h1 className="sr-only">Operations Dashboard</h1>
         {rows.length === 0 && responders.length === 0 && reports.length === 0 ? (
@@ -202,6 +243,23 @@ export default function DashboardPage() {
         onError={(msg) => {
           console.error('Alert declaration failed:', msg)
         }}
+      />
+      <ReDispatchModal
+        isOpen={reDispatchModalOpen}
+        onClose={() => {
+          setReDispatchModalOpen(false)
+        }}
+        onDispatch={(uid) => {
+          void handleConfirmReDispatch(uid)
+        }}
+        responders={responders}
+        previouslyNotified={
+          selectedDispatchId
+            ? (rows.find((r) => r.dispatchId === selectedDispatchId)
+                ?.previouslyNotifiedResponderUids ?? [])
+            : []
+        }
+        isLoading={false}
       />
     </div>
   )
