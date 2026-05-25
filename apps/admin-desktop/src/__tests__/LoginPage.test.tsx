@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 const mockNavigate = vi.hoisted(() => vi.fn())
 const mockSignOut = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const mockSignInWithEmailAndPassword = vi.hoisted(() => vi.fn())
+const mockSendPasswordResetEmail = vi.hoisted(() => vi.fn())
 
 // Mutable state to simulate useAuth transitions after sign-in
 let mockUser: { uid: string } | null = null
@@ -22,6 +23,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('firebase/auth', () => ({
   signInWithEmailAndPassword: mockSignInWithEmailAndPassword,
   signOut: mockSignOut,
+  sendPasswordResetEmail: mockSendPasswordResetEmail,
 }))
 
 vi.mock('../app/firebase', () => ({
@@ -137,6 +139,60 @@ describe('LoginPage', () => {
     )
 
     expect(screen.getByText('Forgot password?')).toBeInTheDocument()
+  })
+
+  it('shows email error when clicking forgot password with invalid email', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByText('Forgot password?'))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Please enter a valid email address to reset your password.',
+    )
+    expect(mockSendPasswordResetEmail).not.toHaveBeenCalled()
+  })
+
+  it('sends reset email and shows success message', async () => {
+    const user = userEvent.setup()
+    mockSendPasswordResetEmail.mockResolvedValue(undefined)
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    await user.type(screen.getByLabelText(/email/i), 'admin@test.local')
+    await user.click(screen.getByText('Forgot password?'))
+
+    await waitFor(() => {
+      expect(mockSendPasswordResetEmail).toHaveBeenCalledWith(expect.anything(), 'admin@test.local')
+    })
+
+    expect(screen.getByText('Check your email for a password reset link.')).toBeInTheDocument()
+  })
+
+  it('shows error when sendPasswordResetEmail fails', async () => {
+    const user = userEvent.setup()
+    mockSendPasswordResetEmail.mockRejectedValue(new Error('User not found'))
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    await user.type(screen.getByLabelText(/email/i), 'unknown@test.local')
+    await user.click(screen.getByText('Forgot password?'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('User not found')
+    })
   })
 
   it('navigates to dashboard ONLY after auth state propagates (not from submit)', async () => {

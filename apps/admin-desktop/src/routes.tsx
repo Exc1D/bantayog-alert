@@ -7,6 +7,7 @@ import FeedPage from './pages/FeedPage'
 import { DispatchMonitorPage } from './pages/DispatchMonitorPage'
 import MobileGate from './pages/MobileGate'
 import { LoginPage } from './pages/LoginPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { WindowSyncProvider } from './providers/WindowSyncProvider'
 import { ErrorBoundary } from './providers/ErrorBoundary'
 import { useOnboarding } from './hooks/useOnboarding'
@@ -68,6 +69,7 @@ function AuthLayout() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     element: <AuthLayout />,
     children: [

@@ -1,6 +1,6 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { useAuth } from '@bantayog/shared-ui'
 import { auth } from '../app/firebase'
 
@@ -13,6 +13,8 @@ export function LoginPage() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [verifyingRole, setVerifyingRole] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetSending, setResetSending] = useState(false)
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const canSubmit = isEmailValid && password.length > 0 && !loading && !verifyingRole
@@ -48,6 +50,27 @@ export function LoginPage() {
     } finally {
       setLoading(false)
       setVerifyingRole(false)
+    }
+  }
+
+  async function handleForgotPassword() {
+    setError(null)
+    setEmailError(null)
+
+    if (!email || !isEmailValid) {
+      setEmailError('Please enter a valid email address to reset your password.')
+      return
+    }
+
+    setResetSending(true)
+    try {
+      await sendPasswordResetEmail(auth, email)
+      setResetSent(true)
+    } catch (err: unknown) {
+      // Show generic message to prevent email enumeration attacks
+      setError(err instanceof Error ? err.message : 'Failed to send reset email. Please try again.')
+    } finally {
+      setResetSending(false)
     }
   }
 
@@ -141,18 +164,24 @@ export function LoginPage() {
               {loading ? 'Signing in…' : verifyingRole ? 'Verifying…' : 'Sign In'}
             </button>
 
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  // TODO: Wire to Firebase Auth password reset flow
-                  // Requires backend function or firebase.auth().sendPasswordResetEmail()
-                }}
-                className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:underline"
-              >
-                Forgot password?
-              </button>
-            </div>
+            {resetSent ? (
+              <p className="text-center text-sm text-[var(--color-success)]">
+                Check your email for a password reset link.
+              </p>
+            ) : (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleForgotPassword()
+                  }}
+                  disabled={resetSending}
+                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:underline disabled:opacity-50"
+                >
+                  {resetSending ? 'Sending…' : 'Forgot password?'}
+                </button>
+              </div>
+            )}
           </div>
         </form>
       </div>
