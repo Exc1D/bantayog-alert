@@ -273,6 +273,7 @@ describe('FeedPage', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Unpublish report r-public' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Unpublish' }))
 
     await waitFor(() => {
       expect(mockUnpublishReport).toHaveBeenCalledWith(

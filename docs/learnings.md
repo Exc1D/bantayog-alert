@@ -335,6 +335,19 @@
   6. **Affected geography must include all data sources.** A municipality with an active dispatch but no report would be missed if "affected" is derived from reports only. Include both `reports` and `rows` (dispatch lifecycle) in the derivation.
   7. **Module-level refs are sufficient for lightweight announcers.** A `LiveAnnouncer` doesn't need React context — a module-level variable holding the `setState` function is simpler and avoids prop drilling.
 
+## Admin Desktop UX Hardening (2026-05-25)
+
+- **`useFocusTrap` must check `offsetParent !== null` for visibility, not just `disabled`.** An element inside a hidden parent or `display:none` ancestor is still focusable by `tabindex` and `querySelectorAll`. Filtering by `offsetParent` removes hidden focusables from the trap sequence.
+- **`noUncheckedIndexedAccess` makes `focusable[0]` and `focusable[focusable.length - 1]` `T | undefined` even after length check.** Use non-null assertions (`first!.focus()`) when a prior `length === 0` guard already returns early. The guard is the proof; the assertion is the type-system admission.
+- **`withRetry` must be test-aware.** Wrapping mocked callables in retry logic breaks tests that expect immediate single-call behavior. Detect test environment (`process.env.NODE_ENV === 'test'`) and set `maxAttempts: 1` and `delay: 0` to preserve test semantics while keeping production resilience.
+- **ConfirmationModal changes require test updates.** Any button that previously triggered an immediate action but now opens a confirmation dialog will break tests that assert on the action callable. Update tests to click through the confirmation step.
+- **Auth flash during role verification:** After `signInWithEmailAndPassword`, the `onAuthStateChanged` listener fires before the role claim check completes. A local `verifyingRole` state that renders a loading spinner prevents the dashboard from flashing before the unauthorized sign-out redirect.
+- **Module-level `window.innerWidth` checks are stale on resize.** `const isMobile = window.innerWidth < 768` evaluated at import time never updates. Use a `useIsMobile` hook with `addEventListener('resize')` or a CSS-based breakpoint.
+- **`// eslint-disable-next-line react-hooks/exhaustive-deps` with `reportIdsKey` as sole dependency:** If `db` instance changes (emulator toggle), the media fetch effect won't refire. Document this explicitly with a comment explaining why `db` is intentionally excluded (stable reference from module init).
+- **ErrorBoundary `componentDidCatch` should log, not swallow.** The empty catch in the original suppressed error details. At minimum log to console; reserve Sentry integration for a follow-up when external error reporting is configured.
+- **`beforeunload` handler for unsaved form changes must return `e.returnValue = ''` to trigger the browser's native confirmation dialog.** Modern browsers require both `e.preventDefault()` and `e.returnValue = ''` (or any non-empty string historically) to show the dialog.
+- **Promise rejection chains in write queues need explicit breakage.** `prevWrite.then(() => save(...))` where `prevWrite` is rejected will skip the `.then()` and remain rejected, blocking all future chained writes. Add `.catch(() => undefined)` before `.then()` to reset the chain.
+
 ## Acceptable Security Risks (Documented — Revisit on Change)
 
 - **L-1: `report_lookup` world-readable** — Collection contains only anonymized tracking references (`publicRef`, `secretHash`, `status`). No PII, no user identifiers. Revisit if schema changes to include personal data.

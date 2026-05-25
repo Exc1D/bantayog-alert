@@ -11,6 +11,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [verifyingRole, setVerifyingRole] = useState(false)
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -24,12 +25,14 @@ export function LoginPage() {
     setLoading(true)
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
+      setVerifyingRole(true)
       const tokenResult = await cred.user.getIdTokenResult(true)
       const role = (tokenResult.claims as Record<string, unknown> | undefined)?.role
       const allowedRoles = ['provincial_superadmin', 'municipal_admin', 'agency_admin']
       if (!allowedRoles.includes(role as string)) {
         const { signOut } = await import('firebase/auth')
         await signOut(auth)
+        setVerifyingRole(false)
         setError('This account does not have admin privileges.')
         return
       }
@@ -40,6 +43,7 @@ export function LoginPage() {
       setError(err instanceof Error ? err.message : 'Sign in failed')
     } finally {
       setLoading(false)
+      setVerifyingRole(false)
     }
   }
 
@@ -104,13 +108,18 @@ export function LoginPage() {
                 {error}
               </p>
             )}
+            {verifyingRole && (
+              <p className="text-sm text-[var(--color-text-muted)]">
+                Verifying admin privileges…
+              </p>
+            )}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || verifyingRole}
               className="w-full rounded-md bg-[var(--color-sienna)] py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? 'Signing in…' : verifyingRole ? 'Verifying…' : 'Sign In'}
             </button>
           </div>
         </form>

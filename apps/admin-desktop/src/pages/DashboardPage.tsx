@@ -16,6 +16,7 @@ import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { StatusBar } from '../components/StatusBar'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
+import { withRetry } from '../utils/withRetry'
 import { deriveDashboardMode } from '../utils/dashboard-mode'
 import type { DashboardMode } from '../utils/dashboard-mode'
 import { callables } from '../services/callables'
@@ -128,12 +129,14 @@ export default function DashboardPage() {
       setIsDispatching(true)
       setActionError(null)
       try {
-        await callables.redispatchReport({
-          oldDispatchId: selectedDispatchId,
-          newResponderUid,
-          reason: 'Re-dispatched via dashboard',
-          idempotencyKey: generateIdempotencyKey(),
-        })
+        await withRetry(() =>
+          callables.redispatchReport({
+            oldDispatchId: selectedDispatchId,
+            newResponderUid,
+            reason: 'Re-dispatched via dashboard',
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        )
         setSuccessMessage('Re-dispatched successfully')
         setActionError(null)
         setReDispatchModalOpen(false)
@@ -188,6 +191,19 @@ export default function DashboardPage() {
       },
     },
   ])
+
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNow(Date.now())
+    }, 60000)
+    return () => {
+      clearInterval(id)
+    }
+  }, [])
+
+  const isStale = now - lastDataUpdateAt > 5 * 60 * 1000
+  const staleMinutes = isStale ? Math.round((now - lastDataUpdateAt) / 60000) : 0
 
   if (isLoading && rows.length === 0 && reports.length === 0) {
     return (
@@ -251,6 +267,14 @@ export default function DashboardPage() {
         }
         lastDataUpdateAt={lastDataUpdateAt}
       />
+      {isStale && !error && (
+        <div
+          className="flex items-center justify-center gap-2 bg-[var(--color-warning)]/20 px-4 py-1.5 text-xs text-[var(--color-warning)]"
+          role="status"
+        >
+          Data may be stale · last update {staleMinutes}m ago
+        </div>
+      )}
       <main className="flex-1 overflow-auto p-4">
         <h1 className="sr-only">Operations Dashboard</h1>
         {rows.length === 0 && responders.length === 0 && reports.length === 0 ? (

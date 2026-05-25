@@ -4,11 +4,13 @@ import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
+import { ConfirmationModal } from '../components/ConfirmationModal'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
+import { withRetry } from '../utils/withRetry'
 import type { Report } from '../types'
 
 function visibilityLabel(doc: Record<string, unknown>, report: Report): string {
@@ -70,6 +72,8 @@ export default function FeedPage() {
   const [verifyingIds, setVerifyingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [pendingFeaturedIds, setPendingFeaturedIds] = useState<Record<string, string[]>>({})
+  const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
+  const [mediaError, setMediaError] = useState<string | null>(null)
   const writeQueues = useRef(new Map<string, Promise<void>>())
   const [mediaUrlsByReport, setMediaUrlsByReport] = useState<
     Record<string, { uploadId: string; url: string }[]>
@@ -149,7 +153,9 @@ export default function FeedPage() {
             .map((r) => r.value)
             .filter((v): v is { uploadId: string; url: string } => v !== null)
         } catch (e) {
-          console.error(`Failed to fetch media for report ${report.id}`, e)
+          const msg = `Failed to fetch media for report ${report.id}`
+          console.error(msg, e)
+          if (!cancelled) setMediaError('Some photos failed to load. They will retry automatically.')
           urls[report.id] = []
         }
       }
@@ -170,11 +176,13 @@ export default function FeedPage() {
     }
     setPublishingIds((prev) => new Set(prev).add(report.id))
     try {
-      await callables.verifyReport({
-        reportId: report.id,
-        scrubbedDescription,
-        idempotencyKey: generateIdempotencyKey(),
-      })
+      await withRetry(() =>
+        callables.verifyReport({
+          reportId: report.id,
+          scrubbedDescription,
+          idempotencyKey: generateIdempotencyKey(),
+        }),
+      )
       setActionError(null)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Publish failed')
@@ -190,10 +198,12 @@ export default function FeedPage() {
   async function sendToModeration(report: Report) {
     setVerifyingIds((prev) => new Set(prev).add(report.id))
     try {
-      await callables.verifyReport({
-        reportId: report.id,
-        idempotencyKey: generateIdempotencyKey(),
-      })
+      await withRetry(() =>
+        callables.verifyReport({
+          reportId: report.id,
+          idempotencyKey: generateIdempotencyKey(),
+        }),
+      )
       setActionError(null)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Send to moderation failed')
@@ -209,11 +219,13 @@ export default function FeedPage() {
   async function unpublish(report: Report) {
     setUnpublishingIds((prev) => new Set(prev).add(report.id))
     try {
-      await callables.unpublishReport({
-        reportId: report.id,
-        reason: 'sensitive_content',
-        idempotencyKey: generateIdempotencyKey(),
-      })
+      await withRetry(() =>
+        callables.unpublishReport({
+          reportId: report.id,
+          reason: 'sensitive_content',
+          idempotencyKey: generateIdempotencyKey(),
+        }),
+      )
       setActionError(null)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unpublish failed')
@@ -284,6 +296,21 @@ export default function FeedPage() {
             role="alert"
           >
             {actionError}
+          </div>
+        )}
+        {mediaError && (
+          <div
+            className="mb-4 border border-[var(--color-warning)] bg-[var(--color-warning)]/20 px-4 py-2 text-sm text-[var(--color-warning)]"
+            role="alert"
+          >
+            {mediaError}
+            <button
+              onClick={() => { setMediaError(null); }}
+              className="ml-2 underline"
+              aria-label="Dismiss media error"
+            >
+              Dismiss
+            </button>
           </div>
         )}
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
@@ -361,7 +388,7 @@ export default function FeedPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              void unpublish(report)
+                              setConfirmUnpublishReport(report)
                             }}
                             disabled={unpublishingIds.has(report.id)}
                             className="rounded border border-[var(--color-danger)] px-3 py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-50"
@@ -410,9 +437,9 @@ export default function FeedPage() {
                                         }))
                                         const prevWrite =
                                           writeQueues.current.get(report.id) ?? Promise.resolve()
-                                        const chained = prevWrite.then(() =>
-                                          saveFeaturedMedia(report.id, next),
-                                        )
+                                        const chained = prevWrite
+                                          .catch(() => undefined)
+                                          .then(() => saveFeaturedMedia(report.id, next))
                                         writeQueues.current.set(report.id, chained)
                                       }}
                                       className="absolute left-1 top-1 z-10"
@@ -575,6 +602,22 @@ export default function FeedPage() {
           </div>
         </div>
       </main>
+      <ConfirmationModal
+        open={confirmUnpublishReport !== null}
+        title="Unpublish Report"
+        message="This will hide the report from the public feed. Citizens will no longer see it."
+        confirmLabel="Unpublish"
+        confirmVariant="danger"
+        onConfirm={() => {
+          if (confirmUnpublishReport) {
+            void unpublish(confirmUnpublishReport)
+          }
+          setConfirmUnpublishReport(null)
+        }}
+        onCancel={() => {
+          setConfirmUnpublishReport(null)
+        }}
+      />
     </div>
   )
 }

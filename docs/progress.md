@@ -499,6 +499,25 @@
 
 ---
 
+## 2026-05-25 — Admin Desktop Post-Impl Review Fixes
+
+**Fixed:** All must-fix issues from `docs/post-impl-review-admin-desktop.md` plus actionable follow-ups.
+
+- **Safety:** FeedPage unpublish now uses ConfirmationModal before executing.
+- **Accessibility:** Created `useFocusTrap` hook applied to HelpModal, DeclareAlertModal, ReDispatchModal. Traps Tab/Shift+Tab and returns focus to trigger on close.
+- **Reliability:** Created `withRetry` utility (exponential backoff, 3 attempts in prod, 1 in tests) applied to all callable invocations across DashboardPage, MapPage, FeedPage, DispatchMonitorPage.
+- **Data integrity:** Fixed FeedPage featured-media write queue race condition by breaking promise rejection chains with `.catch(() => undefined)`.
+- **Error UX:** Added user-facing media error banner in FeedPage; improved ErrorBoundary fallback with error details and "Go Back" button.
+- **Auth:** Fixed LoginPage auth flash with `verifyingRole` loading state during claim check.
+- **Responsive:** Mobile gate now uses `useIsMobile` hook with resize listener instead of module-level width check.
+- **Monitoring:** Added stale data indicator banner on DashboardPage when `lastDataUpdateAt > 5min`.
+- **Form safety:** DeclareAlertModal warns on close with unsaved changes (both modal and browser tab).
+- **Motion:** Added `prefers-reduced-motion` CSS media query to disable animations for motion-sensitive users.
+
+**Verification:** TypeScript clean, 438/438 tests passing.
+
+---
+
 ## 2026-05-25 — Admin Desktop Dashboard UX Synthesis
 
 **Created:**

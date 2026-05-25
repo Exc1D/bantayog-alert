@@ -15,6 +15,7 @@ import { db, rtdb } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
+import { withRetry } from '../utils/withRetry'
 import type { Report, MunicipalPerformance } from '../types'
 
 function responderEntries(responders: [string, unknown][]): {
@@ -107,7 +108,7 @@ export default function MapPage() {
   const handleVerify = useCallback(async (id: string) => {
     setActionError(null)
     try {
-      await callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() })
+      await withRetry(() => callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() }))
       setActionError(null)
     } catch (err) {
       setActionError(actionErrorMessage(err, 'Verify failed'))
@@ -116,11 +117,13 @@ export default function MapPage() {
 
   const handleReject = useCallback(async (id: string) => {
     try {
-      await callables.rejectReport({
-        reportId: id,
-        reason: 'obviously_false',
-        idempotencyKey: generateIdempotencyKey(),
-      })
+      await withRetry(() =>
+        callables.rejectReport({
+          reportId: id,
+          reason: 'obviously_false',
+          idempotencyKey: generateIdempotencyKey(),
+        }),
+      )
       setActionError(null)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Reject failed'
@@ -138,11 +141,13 @@ export default function MapPage() {
         return
       }
       try {
-        await callables.dispatchResponder({
-          reportId,
-          responderUid,
-          idempotencyKey: generateIdempotencyKey(),
-        })
+        await withRetry(() =>
+          callables.dispatchResponder({
+            reportId,
+            responderUid,
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        )
         setActionError(null)
       } catch (err) {
         setActionError(actionErrorMessage(err, 'Dispatch failed'))

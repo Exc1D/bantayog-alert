@@ -11,6 +11,7 @@ import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { callables } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
+import { withRetry } from '../utils/withRetry'
 
 export function DispatchMonitorPage() {
   const db = getFirestoreInstance()
@@ -48,12 +49,14 @@ export function DispatchMonitorPage() {
     setIsDispatching(true)
     setDispatchError(null)
     try {
-      await callables.escalateDispatch({
-        dispatchId: selectedDispatchId,
-        newResponderUid: responderUid,
-        idempotencyKey: generateIdempotencyKey(),
-        ...(forceOverride ? { forceOverride } : {}),
-      })
+      await withRetry(() =>
+        callables.escalateDispatch({
+          dispatchId: selectedDispatchId,
+          newResponderUid: responderUid,
+          idempotencyKey: generateIdempotencyKey(),
+          ...(forceOverride ? { forceOverride } : {}),
+        }),
+      )
       setIsModalOpen(false)
       setSelectedDispatchId(null)
     } catch (err) {

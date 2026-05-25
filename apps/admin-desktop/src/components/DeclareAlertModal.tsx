@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { X, AlertTriangle } from 'lucide-react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { callables } from '../services/callables'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 
@@ -34,7 +35,25 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
   const [selectedMunicipalityIds, setSelectedMunicipalityIds] = useState<Set<string>>(new Set())
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const trapRef = useFocusTrap({ isActive: open, onEscape: () => { if (!submitting && !showUnsavedWarning) onClose() } })
+
+  const hasUnsavedChanges = hazardType !== '' || selectedMunicipalityIds.size > 0 || message.trim().length > 0
+
+  // Warn before closing browser tab with unsaved changes
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      // Legacy browsers require returnValue assignment; modern browsers ignore it.
+      // This is the spec-compliant way to trigger the native confirmation dialog.
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => { window.removeEventListener('beforeunload', handler); }
+  }, [hasUnsavedChanges])
 
   // Reset and prefill when opened
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -43,6 +62,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
     setHazardType('')
     setMessage('')
     setSubmitting(false)
+    setShowUnsavedWarning(false)
     const next = new Set<string>()
     if (prefill?.municipalityId) {
       const allowedIds = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
@@ -54,13 +74,6 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
   }, [open, prefill?.municipalityId])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Focus dialog when opened
-  useEffect(() => {
-    if (open && dialogRef.current) {
-      dialogRef.current.focus()
-    }
-  }, [open])
-
   const toggleMunicipality = useCallback((id: string) => {
     setSelectedMunicipalityIds((prev) => {
       const next = new Set(prev)
@@ -70,13 +83,22 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
     })
   }, [])
 
+  const handleRequestClose = useCallback(() => {
+    if (submitting) return
+    if (hasUnsavedChanges) {
+      setShowUnsavedWarning(true)
+      return
+    }
+    onClose()
+  }, [submitting, hasUnsavedChanges, onClose])
+
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (e.target === e.currentTarget && !submitting) {
-        onClose()
+      if (e.target === e.currentTarget) {
+        handleRequestClose()
       }
     },
-    [onClose, submitting],
+    [handleRequestClose],
   )
 
   const handleSubmit = useCallback(async () => {
@@ -105,14 +127,10 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-[1100] flex items-center justify-center bg-[var(--color-surface)]/80"
       role="presentation"
       onClick={handleBackdropClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && !submitting) {
-          onClose()
-        }
-      }}
     >
       <div
         ref={dialogRef}
@@ -133,7 +151,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
             </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleRequestClose}
             disabled={submitting}
             className="rounded p-1 hover:bg-white/10 disabled:opacity-50"
             aria-label="Close"
@@ -239,7 +257,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
         {/* Footer */}
         <div className="flex justify-end gap-3 border-t border-white/10 p-6">
           <button
-            onClick={onClose}
+            onClick={handleRequestClose}
             disabled={submitting}
             className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 disabled:opacity-50"
           >
@@ -260,6 +278,48 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
           </button>
         </div>
       </div>
+      {showUnsavedWarning && (
+        <div
+          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowUnsavedWarning(false)
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-6 shadow-xl"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="unsaved-title"
+          >
+            <h2 id="unsaved-title" className="text-lg font-semibold text-[var(--color-text-primary)]">
+              Unsaved Changes
+            </h2>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              You have unsaved changes in this alert form. Closing will discard them.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowUnsavedWarning(false)
+                }}
+                className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10"
+              >
+                Keep Editing
+              </button>
+              <button
+                onClick={() => {
+                  setShowUnsavedWarning(false)
+                  onClose()
+                }}
+                className="rounded-md bg-[var(--color-danger)] px-4 py-2 text-sm text-white hover:opacity-90"
+              >
+                Discard Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

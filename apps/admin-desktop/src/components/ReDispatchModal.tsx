@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import type { ResponderFleetMember } from '../hooks/useResponderFleet'
 
 interface Props {
@@ -20,6 +21,7 @@ export function ReDispatchModal({
 }: Props) {
   const [selectedUid, setSelectedUid] = useState<string | null>(null)
   const [showForceDialog, setShowForceDialog] = useState(false)
+  const trapRef = useFocusTrap({ isActive: isOpen, onEscape: onClose })
 
   // Reset modal state when closed
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -66,6 +68,7 @@ export function ReDispatchModal({
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       role="dialog"
       aria-modal="true"

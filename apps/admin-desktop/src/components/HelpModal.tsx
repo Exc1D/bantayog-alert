@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useEffect } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface Shortcut {
   key: string
@@ -16,23 +16,13 @@ const keyStyle =
   'inline-flex min-w-[28px] items-center justify-center rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-xs text-[var(--color-text-primary)]'
 
 export function HelpModal({ open, onClose, shortcuts }: Props) {
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', handler)
-    return () => {
-      document.removeEventListener('keydown', handler)
-    }
-  }, [open, onClose])
+  const trapRef = useFocusTrap({ isActive: open, onEscape: onClose })
 
   if (!open) return null
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
       role="presentation"
       onClick={(e) => {

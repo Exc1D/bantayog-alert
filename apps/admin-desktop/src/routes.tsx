@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import DashboardPage from './pages/DashboardPage'
@@ -9,7 +10,25 @@ import { LoginPage } from './pages/LoginPage'
 import { WindowSyncProvider } from './providers/WindowSyncProvider'
 import { ErrorBoundary } from './providers/ErrorBoundary'
 
-const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768,
+  )
+
+  useEffect(() => {
+    const handleResize = () => { setIsMobile(window.innerWidth < 768); }
+    window.addEventListener('resize', handleResize)
+    return () => { window.removeEventListener('resize', handleResize); }
+  }, [])
+
+  return isMobile
+}
+
+function IndexRedirect() {
+  const isMobile = useIsMobile()
+  if (isMobile) return <MobileGate />
+  return <Navigate to="/dashboard" replace />
+}
 
 function AuthLayout() {
   const { user, loading } = useAuth()
@@ -38,7 +57,10 @@ export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
-      { path: '/', element: isMobile ? <MobileGate /> : <Navigate to="/dashboard" replace /> },
+      {
+        path: '/',
+        element: <IndexRedirect />,
+      },
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/map', element: <MapPage /> },
       { path: '/feed', element: <FeedPage /> },
