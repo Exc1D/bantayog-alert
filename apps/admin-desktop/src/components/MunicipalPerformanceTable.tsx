@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, HelpCircle } from 'lucide-react'
 import type { MunicipalPerformance } from '../types'
 
 type SortKey = 'municipality' | 'activeIncidents' | 'avgResponseTime'
@@ -144,7 +144,14 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
                   style={{ fontVariantNumeric: 'tabular-nums' }}
                   data-testid={`muniperf-responders-${row.municipality}`}
                 >
-                  {row.activeResponders ?? '—'}
+                  {row.activeResponders ?? (
+                    <span className="inline-flex items-center gap-1 text-[var(--color-text-muted)]">
+                      No telemetry
+                      <span title="No responder telemetry for this municipality">
+                        <HelpCircle className="h-3 w-3" />
+                      </span>
+                    </span>
+                  )}
                 </td>
                 <td
                   className="px-4 py-3 font-mono"
@@ -157,14 +164,21 @@ export function MunicipalPerformanceTable({ data, onSelectMunicipality }: Props)
                   }}
                   data-testid={`muniperf-response-${row.municipality}`}
                 >
-                  {row.avgResponseTime ?? '—'}
+                  {row.avgResponseTime ?? (
+                    <span className="text-[var(--color-text-muted)]">Not measured</span>
+                  )}
                 </td>
                 <td
                   className="px-4 py-3 text-[var(--color-text-secondary)]"
                   data-testid={`muniperf-admin-${row.municipality}`}
                 >
                   {row.adminOnDuty === undefined ? (
-                    '—'
+                    <span className="inline-flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                      No shift data
+                      <span title="No admin shift scheduled">
+                        <HelpCircle className="h-3 w-3" />
+                      </span>
+                    </span>
                   ) : row.adminOnDuty ? (
                     <span className="inline-flex items-center gap-1.5">
                       <span

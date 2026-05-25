@@ -98,10 +98,7 @@ describe('MunicipalPerformanceTable', () => {
     expect(warningCell?.style.color).toBe('var(--color-warning)')
   })
 
-  it('renders em-dash placeholders when synthesized fields are undefined', () => {
-    // Truth gate: producers (DashboardPage, MapPage) omit fields they cannot derive from
-    // the report stream. Renderer must surface "—" rather than fabricating 0 / "0m" / "No Shift",
-    // and the response-time color must stay neutral so we don't paint green for unwired data.
+  it('renders "No telemetry" for undefined activeResponders', () => {
     const unwired: MunicipalPerformance[] = [
       {
         municipality: 'Labo',
@@ -109,16 +106,47 @@ describe('MunicipalPerformanceTable', () => {
       },
     ]
     render(<MunicipalPerformanceTable data={unwired} onSelectMunicipality={vi.fn()} />)
-    expect(screen.getByTestId('muniperf-responders-Labo')).toHaveTextContent('—')
-    expect(screen.getByTestId('muniperf-response-Labo')).toHaveTextContent('—')
-    expect(screen.getByTestId('muniperf-admin-Labo')).toHaveTextContent('—')
+    expect(screen.getByTestId('muniperf-responders-Labo')).toHaveTextContent('No telemetry')
+  })
+
+  it('renders "Not measured" for undefined avgResponseTime', () => {
+    const unwired: MunicipalPerformance[] = [
+      {
+        municipality: 'Labo',
+        activeIncidents: 4,
+      },
+    ]
+    render(<MunicipalPerformanceTable data={unwired} onSelectMunicipality={vi.fn()} />)
+    expect(screen.getByTestId('muniperf-response-Labo')).toHaveTextContent('Not measured')
+    // Color must be muted, not 'var(--color-norm)' (which would imply healthy response time).
+    const responseCell = screen.getByTestId('muniperf-response-Labo').closest('td')
+    expect(responseCell?.style.color).toBe('var(--color-text-secondary)')
+  })
+
+  it('renders "No shift data" for undefined adminOnDuty', () => {
+    const unwired: MunicipalPerformance[] = [
+      {
+        municipality: 'Labo',
+        activeIncidents: 4,
+      },
+    ]
+    render(<MunicipalPerformanceTable data={unwired} onSelectMunicipality={vi.fn()} />)
+    expect(screen.getByTestId('muniperf-admin-Labo')).toHaveTextContent('No shift data')
+  })
+
+  it('does not fabricate prototype values for unwired rows', () => {
+    const unwired: MunicipalPerformance[] = [
+      {
+        municipality: 'Labo',
+        activeIncidents: 4,
+      },
+    ]
+    render(<MunicipalPerformanceTable data={unwired} onSelectMunicipality={vi.fn()} />)
     // Regression: prototype values must not appear for unwired rows.
     expect(screen.queryByText('0')).not.toBeInTheDocument()
     expect(screen.queryByText('0 min')).not.toBeInTheDocument()
     expect(screen.queryByText('No Shift')).not.toBeInTheDocument()
-    // Color must be neutral, not 'var(--color-norm)' (which would imply healthy response time).
-    const responseCell = screen.getByTestId('muniperf-response-Labo').closest('td')
-    expect(responseCell?.style.color).toBe('var(--color-text-secondary)')
+    expect(screen.queryByText('—')).not.toBeInTheDocument()
   })
 
   it('sorts undefined avg response time to the end when ascending', async () => {
