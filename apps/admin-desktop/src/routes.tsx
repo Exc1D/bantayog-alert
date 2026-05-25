@@ -9,16 +9,22 @@ import MobileGate from './pages/MobileGate'
 import { LoginPage } from './pages/LoginPage'
 import { WindowSyncProvider } from './providers/WindowSyncProvider'
 import { ErrorBoundary } from './providers/ErrorBoundary'
+import { useOnboarding } from './hooks/useOnboarding'
+import { OnboardingTour } from './components/OnboardingTour'
 
 function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' && window.innerWidth < 768,
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768,
   )
 
   useEffect(() => {
-    const handleResize = () => { setIsMobile(window.innerWidth < 768); }
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
     window.addEventListener('resize', handleResize)
-    return () => { window.removeEventListener('resize', handleResize); }
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
   }, [])
 
   return isMobile
@@ -32,6 +38,7 @@ function IndexRedirect() {
 
 function AuthLayout() {
   const { user, loading } = useAuth()
+  const onboarding = useOnboarding()
 
   if (loading) {
     return (
@@ -47,6 +54,13 @@ function AuthLayout() {
     <WindowSyncProvider>
       <ErrorBoundary>
         <Outlet />
+        <OnboardingTour
+          state={onboarding}
+          onNext={onboarding.nextStep}
+          onPrev={onboarding.prevStep}
+          onSkip={onboarding.skipTour}
+          onGoToStep={onboarding.goToStep}
+        />
       </ErrorBoundary>
     </WindowSyncProvider>
   )

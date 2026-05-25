@@ -99,6 +99,7 @@ export function CommandHeader({
                 <Link
                   key={item.role}
                   to={item.href}
+                  data-tour={item.role}
                   {...(active ? { 'aria-current': 'page' as const } : {})}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   style={{
