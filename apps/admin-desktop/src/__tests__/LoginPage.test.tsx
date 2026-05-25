@@ -93,6 +93,52 @@ describe('LoginPage', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
+  it('shows inline email error on blur for invalid email', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    const emailInput = screen.getByLabelText(/email/i)
+    await user.type(emailInput, 'not-an-email')
+    await user.tab() // blur
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Please enter a valid email address.',
+    )
+  })
+
+  it('disables submit when email is invalid or password is empty', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    const submitButton = screen.getByRole('button', { name: /sign in/i })
+    expect(submitButton).toBeDisabled()
+
+    await user.type(screen.getByLabelText(/email/i), 'valid@test.local')
+    // still disabled — no password
+    expect(submitButton).toBeDisabled()
+
+    await user.type(screen.getByLabelText(/password/i), 'secret123')
+    expect(submitButton).not.toBeDisabled()
+  })
+
+  it('renders forgot password link', () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Forgot password?')).toBeInTheDocument()
+  })
+
   it('navigates to dashboard ONLY after auth state propagates (not from submit)', async () => {
     const user = userEvent.setup()
     mockSignInWithEmailAndPassword.mockResolvedValue(mockUserWithRole('provincial_superadmin'))

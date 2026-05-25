@@ -188,7 +188,14 @@ export default function MapPage() {
   if (loading) {
     return (
       <>
-        {error && <OfflineBanner error={error} />}
+        {error && (
+          <OfflineBanner
+            error={error}
+            onRetry={() => {
+              window.location.reload()
+            }}
+          />
+        )}
         <PageSkeleton variant="map" />
       </>
     )
@@ -196,7 +203,12 @@ export default function MapPage() {
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-      <OfflineBanner error={error} />
+      <OfflineBanner
+        error={error}
+        onRetry={() => {
+          window.location.reload()
+        }}
+      />
       <CommandHeader
         title="Provincial Map — Camarines Norte"
         windowRole="map"

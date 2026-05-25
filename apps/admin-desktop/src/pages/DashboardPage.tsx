@@ -209,7 +209,14 @@ export default function DashboardPage() {
   if (isLoading && rows.length === 0 && reports.length === 0) {
     return (
       <>
-        {error && <OfflineBanner error={error} />}
+        {error && (
+          <OfflineBanner
+            error={error}
+            onRetry={() => {
+              window.location.reload()
+            }}
+          />
+        )}
         <PageSkeleton variant="dashboard" />
       </>
     )
@@ -231,7 +238,14 @@ export default function DashboardPage() {
           void signOut()
         }}
       />
-      {error && <OfflineBanner error={error} />}
+      {error && (
+        <OfflineBanner
+          error={error}
+          onRetry={() => {
+            window.location.reload()
+          }}
+        />
+      )}
       {successMessage && (
         <SuccessBanner
           message={successMessage}

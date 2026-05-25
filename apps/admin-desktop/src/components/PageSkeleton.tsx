@@ -6,7 +6,7 @@ function SkeletonBlock({ className }: { className?: string }) {
   return (
     <div
       data-testid="skeleton-block"
-      className={`animate-pulse rounded bg-white/5 ${className ?? ''}`}
+      className={`motion-reduce:animate-none animate-pulse rounded bg-white/5 ${className ?? ''}`}
     />
   )
 }

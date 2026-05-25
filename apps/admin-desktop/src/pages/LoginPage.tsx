@@ -10,8 +10,12 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [verifyingRole, setVerifyingRole] = useState(false)
+
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const canSubmit = isEmailValid && password.length > 0 && !loading && !verifyingRole
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -73,14 +77,31 @@ export function LoginPage() {
               <input
                 id="email"
                 type="email"
+                aria-invalid={emailError ? 'true' : 'false'}
+                aria-describedby={emailError ? 'email-error' : undefined}
                 className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-sienna)]"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value)
+                  if (emailError) setEmailError(null)
+                }}
+                onBlur={() => {
+                  if (email && !isEmailValid) {
+                    setEmailError('Please enter a valid email address.')
+                  }
                 }}
                 autoComplete="email"
                 required
               />
+              {emailError && (
+                <p
+                  id="email-error"
+                  role="alert"
+                  className="mt-1 text-xs text-[var(--color-danger)]"
+                >
+                  {emailError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -109,18 +130,29 @@ export function LoginPage() {
               </p>
             )}
             {verifyingRole && (
-              <p className="text-sm text-[var(--color-text-muted)]">
-                Verifying admin privileges…
-              </p>
+              <p className="text-sm text-[var(--color-text-muted)]">Verifying admin privileges…</p>
             )}
 
             <button
               type="submit"
-              disabled={loading || verifyingRole}
+              disabled={!canSubmit}
               className="w-full rounded-md bg-[var(--color-sienna)] py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {loading ? 'Signing in…' : verifyingRole ? 'Verifying…' : 'Sign In'}
             </button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  // TODO: Wire to Firebase Auth password reset flow
+                  // Requires backend function or firebase.auth().sendPasswordResetEmail()
+                }}
+                className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
           </div>
         </form>
       </div>
