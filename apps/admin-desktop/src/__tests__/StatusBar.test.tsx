@@ -1,40 +1,78 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { act, render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { StatusBar } from '../components/StatusBar'
+import type { DashboardMode } from '../utils/dashboard-mode'
+
+function renderWithRouter(ui: React.ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
+}
+
+function renderStatusBar(props: {
+  activeIncidents: number
+  avgResponseTime: number
+  pendingTriage: number
+  resolvedToday?: number
+  muniIssues?: { resolved: number; total: number }
+  mode?: DashboardMode
+  affectedMunicipalities?: string[]
+  stalledDispatchCount?: number
+  totalResponders?: number
+  uncoveredMunicipalities?: number
+  lastDataUpdateAt?: number
+}) {
+  const resolvedToday = props.resolvedToday
+  const muniIssues = props.muniIssues
+  const statusBarProps = {
+    activeIncidents: props.activeIncidents,
+    avgResponseTime: props.avgResponseTime,
+    pendingTriage: props.pendingTriage,
+    mode: props.mode ?? 'calm',
+    affectedMunicipalities: props.affectedMunicipalities ?? [],
+    stalledDispatchCount: props.stalledDispatchCount ?? 0,
+    totalResponders: props.totalResponders ?? 0,
+    uncoveredMunicipalities: props.uncoveredMunicipalities ?? 0,
+    lastDataUpdateAt: props.lastDataUpdateAt ?? Date.now(),
+    ...(resolvedToday !== undefined ? { resolvedToday } : {}),
+    ...(muniIssues !== undefined ? { muniIssues } : {}),
+  } satisfies React.ComponentProps<typeof StatusBar>
+
+  return renderWithRouter(<StatusBar {...statusBarProps} />)
+}
 
 describe('StatusBar', () => {
   it('renders three metrics', () => {
-    render(<StatusBar activeIncidents={47} avgResponseTime={12} pendingTriage={8} />)
+    renderStatusBar({ activeIncidents: 47, avgResponseTime: 12, pendingTriage: 8 })
     expect(screen.getByText('47')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('8')).toBeInTheDocument()
   })
 
   it('shows surge glow when pending >= 20, guarded by motion-safe so users who prefer reduced motion are not animated', () => {
-    render(<StatusBar activeIncidents={10} avgResponseTime={5} pendingTriage={22} />)
-    const bar = screen.getByText('22').closest('div')?.parentElement?.parentElement
+    renderStatusBar({ activeIncidents: 10, avgResponseTime: 5, pendingTriage: 22 })
+    const bar = screen.getByTestId('statusbar-root')
     expect(bar).toHaveClass('motion-safe:animate-pulse')
     expect(bar).toHaveClass('border-[var(--color-severity-medium)]')
     // Regression: the unguarded class must NOT be present — it would override the reduced-motion preference.
-    expect(bar?.className.split(/\s+/)).not.toContain('animate-pulse')
+    expect(bar.className.split(/\s+/)).not.toContain('animate-pulse')
   })
 
   it('shows surge glow when active incidents >= 50, guarded by motion-safe', () => {
-    render(<StatusBar activeIncidents={55} avgResponseTime={5} pendingTriage={5} />)
-    const bar = screen.getByText('55').closest('div')?.parentElement?.parentElement
+    renderStatusBar({ activeIncidents: 55, avgResponseTime: 5, pendingTriage: 5 })
+    const bar = screen.getByTestId('statusbar-root')
     expect(bar).toHaveClass('motion-safe:animate-pulse')
     expect(bar).toHaveClass('border-[var(--color-severity-medium)]')
-    expect(bar?.className.split(/\s+/)).not.toContain('animate-pulse')
+    expect(bar.className.split(/\s+/)).not.toContain('animate-pulse')
   })
 
   it('does not apply the pulse class when not in surge', () => {
-    render(<StatusBar activeIncidents={7} avgResponseTime={4} pendingTriage={3} />)
-    const bar = screen.getByText('7').closest('div')?.parentElement?.parentElement
-    expect(bar?.className).not.toMatch(/animate-pulse/)
+    renderStatusBar({ activeIncidents: 7, avgResponseTime: 4, pendingTriage: 3 })
+    const bar = screen.getByTestId('statusbar-root')
+    expect(bar.className).not.toMatch(/animate-pulse/)
   })
 
   it('renders em-dash placeholders for resolved/muni stats when no data is supplied', () => {
-    render(<StatusBar activeIncidents={7} avgResponseTime={4} pendingTriage={3} />)
+    renderStatusBar({ activeIncidents: 7, avgResponseTime: 4, pendingTriage: 3 })
     // Regression: hardcoded prototype values "89" and "0/12" must not be present.
     expect(screen.queryByText('89')).not.toBeInTheDocument()
     expect(screen.queryByText('0/12')).not.toBeInTheDocument()
@@ -44,16 +82,393 @@ describe('StatusBar', () => {
   })
 
   it('renders supplied resolved/muni stats when props are provided', () => {
-    render(
-      <StatusBar
-        activeIncidents={7}
-        avgResponseTime={4}
-        pendingTriage={3}
-        resolvedToday={42}
-        muniIssues={{ resolved: 3, total: 12 }}
-      />,
-    )
+    renderStatusBar({
+      activeIncidents: 7,
+      avgResponseTime: 4,
+      pendingTriage: 3,
+      resolvedToday: 42,
+      muniIssues: { resolved: 3, total: 12 },
+    })
     expect(screen.getByTestId('statusbar-resolved-today')).toHaveTextContent('42')
     expect(screen.getByTestId('statusbar-muni-issues')).toHaveTextContent('3/12')
+  })
+
+  describe('mode badge', () => {
+    const modes: DashboardMode[] = ['calm', 'active', 'degraded', 'surge']
+
+    it.each(modes)('renders mode badge correctly for %s', (mode) => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        mode,
+        lastDataUpdateAt: Date.now(),
+      })
+      const badge = screen.getByTestId('mode-badge')
+      expect(badge).toHaveTextContent(mode.toUpperCase())
+      expect(badge).toHaveAttribute('role', 'status')
+      expect(badge).toHaveAttribute('aria-live', 'polite')
+    })
+
+    it('applies pulse to degraded mode', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        mode: 'degraded',
+        lastDataUpdateAt: Date.now(),
+      })
+      const badge = screen.getByTestId('mode-badge')
+      expect(badge).toHaveClass('motion-safe:animate-pulse')
+    })
+
+    it('applies pulse to surge mode', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        mode: 'surge',
+        lastDataUpdateAt: Date.now(),
+      })
+      const badge = screen.getByTestId('mode-badge')
+      expect(badge).toHaveClass('motion-safe:animate-pulse')
+    })
+
+    it('does not apply pulse to calm mode', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        mode: 'calm',
+        lastDataUpdateAt: Date.now(),
+      })
+      const badge = screen.getByTestId('mode-badge')
+      expect(badge.className).not.toMatch(/animate-pulse/)
+    })
+
+    it('does not apply pulse to active mode', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        mode: 'active',
+        lastDataUpdateAt: Date.now(),
+      })
+      const badge = screen.getByTestId('mode-badge')
+      expect(badge.className).not.toMatch(/animate-pulse/)
+    })
+  })
+
+  describe('municipality chips', () => {
+    it('renders municipality chips as links when not in calm mode', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        mode: 'active',
+        affectedMunicipalities: ['Manila', 'Quezon City'],
+        lastDataUpdateAt: Date.now(),
+      })
+      const manilaLink = screen.getByText('Manila')
+      expect(manilaLink.tagName).toBe('A')
+      expect(manilaLink).toHaveAttribute('href', '/map?municipality=Manila')
+
+      const qcLink = screen.getByText('Quezon City')
+      expect(qcLink.tagName).toBe('A')
+      expect(qcLink).toHaveAttribute('href', '/map?municipality=Quezon%20City')
+    })
+
+    it('hides municipality chips in calm mode', () => {
+      renderStatusBar({
+        activeIncidents: 0,
+        avgResponseTime: 5,
+        pendingTriage: 0,
+        mode: 'calm',
+        affectedMunicipalities: ['Manila'],
+        lastDataUpdateAt: Date.now(),
+      })
+      expect(screen.queryByTestId('municipality-chips')).not.toBeInTheDocument()
+      expect(screen.getByTestId('all-clear')).toHaveTextContent('All clear')
+    })
+
+    it('hides municipality chips when list is empty even in non-calm mode', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        mode: 'active',
+        affectedMunicipalities: [],
+        lastDataUpdateAt: Date.now(),
+      })
+      expect(screen.queryByTestId('municipality-chips')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('blocking response', () => {
+    it('shows stalled dispatch count when greater than 0', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        stalledDispatchCount: 3,
+        lastDataUpdateAt: Date.now(),
+      })
+      expect(screen.getByTestId('blocking-response')).toHaveTextContent('3 stalled dispatches')
+    })
+
+    it('uses singular form for one stalled dispatch', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        stalledDispatchCount: 1,
+        lastDataUpdateAt: Date.now(),
+      })
+      expect(screen.getByTestId('blocking-response')).toHaveTextContent('1 stalled dispatch')
+    })
+
+    it('hides blocking response when stalled count is 0', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        stalledDispatchCount: 0,
+        lastDataUpdateAt: Date.now(),
+      })
+      expect(screen.queryByTestId('blocking-response')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('responder coverage', () => {
+    it('shows responder coverage', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        totalResponders: 12,
+        uncoveredMunicipalities: 3,
+        lastDataUpdateAt: Date.now(),
+      })
+      expect(screen.getByTestId('responder-coverage')).toHaveTextContent(
+        '12 available / 3 uncovered',
+      )
+    })
+
+    it('shows zero responders', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        totalResponders: 0,
+        uncoveredMunicipalities: 5,
+        lastDataUpdateAt: Date.now(),
+      })
+      expect(screen.getByTestId('responder-coverage')).toHaveTextContent(
+        '0 available / 5 uncovered',
+      )
+    })
+  })
+
+  describe('data freshness', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows live seconds ago when under 60s', () => {
+      const now = new Date('2024-01-01T12:00:00Z').getTime()
+      vi.setSystemTime(now)
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        lastDataUpdateAt: now - 45_000,
+      })
+      expect(screen.getByTestId('data-freshness')).toHaveTextContent('live 45s ago')
+    })
+
+    it('shows updated minutes when between 60s and 5min', () => {
+      const now = new Date('2024-01-01T12:00:00Z').getTime()
+      vi.setSystemTime(now)
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        lastDataUpdateAt: now - 180_000,
+      })
+      expect(screen.getByTestId('data-freshness')).toHaveTextContent('updated 3m ago')
+    })
+
+    it('shows stale when over 5 minutes', () => {
+      const now = new Date('2024-01-01T12:00:00Z').getTime()
+      vi.setSystemTime(now)
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        lastDataUpdateAt: now - 400_000,
+      })
+      expect(screen.getByTestId('data-freshness')).toHaveTextContent('stale 6m ago')
+    })
+
+    it('updates freshness text as time passes', () => {
+      const now = new Date('2024-01-01T12:00:00Z').getTime()
+      vi.setSystemTime(now)
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        lastDataUpdateAt: now - 55_000,
+      })
+      const freshness = screen.getByTestId('data-freshness')
+      expect(freshness).toHaveTextContent('live 55s ago')
+
+      // Advance 10 seconds to push it over 60s threshold
+      act(() => {
+        vi.advanceTimersByTime(10_000)
+      })
+      expect(freshness).toHaveTextContent('updated 1m ago')
+    })
+  })
+
+  describe('operational labels', () => {
+    function getLabelWithin(text: string) {
+      const heading = screen.getByText(text)
+      const metricDiv = heading.closest('div')
+      if (!metricDiv) throw new Error(`Could not find metric container for ${text}`)
+      return within(metricDiv)
+    }
+
+    it('shows Normal/Watch/Degraded for active incidents at boundaries', () => {
+      const { rerender } = renderStatusBar({
+        activeIncidents: 10,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+      })
+      expect(getLabelWithin('Active Incidents').getByText('Normal')).toBeInTheDocument()
+
+      rerender(
+        <MemoryRouter>
+          <StatusBar
+            activeIncidents={11}
+            avgResponseTime={5}
+            pendingTriage={1}
+            mode="calm"
+            affectedMunicipalities={[]}
+            stalledDispatchCount={0}
+            totalResponders={0}
+            uncoveredMunicipalities={0}
+            lastDataUpdateAt={Date.now()}
+          />
+        </MemoryRouter>,
+      )
+      expect(getLabelWithin('Active Incidents').getByText('Watch')).toBeInTheDocument()
+
+      rerender(
+        <MemoryRouter>
+          <StatusBar
+            activeIncidents={21}
+            avgResponseTime={5}
+            pendingTriage={1}
+            mode="calm"
+            affectedMunicipalities={[]}
+            stalledDispatchCount={0}
+            totalResponders={0}
+            uncoveredMunicipalities={0}
+            lastDataUpdateAt={Date.now()}
+          />
+        </MemoryRouter>,
+      )
+      expect(getLabelWithin('Active Incidents').getByText('Degraded')).toBeInTheDocument()
+    })
+
+    it('shows Normal/Watch/Degraded for response time at boundaries', () => {
+      const { rerender } = renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+      })
+      expect(getLabelWithin('Avg Response').getByText('Normal')).toBeInTheDocument()
+
+      rerender(
+        <MemoryRouter>
+          <StatusBar
+            activeIncidents={1}
+            avgResponseTime={6}
+            pendingTriage={1}
+            mode="calm"
+            affectedMunicipalities={[]}
+            stalledDispatchCount={0}
+            totalResponders={0}
+            uncoveredMunicipalities={0}
+            lastDataUpdateAt={Date.now()}
+          />
+        </MemoryRouter>,
+      )
+      expect(getLabelWithin('Avg Response').getByText('Watch')).toBeInTheDocument()
+
+      rerender(
+        <MemoryRouter>
+          <StatusBar
+            activeIncidents={1}
+            avgResponseTime={11}
+            pendingTriage={1}
+            mode="calm"
+            affectedMunicipalities={[]}
+            stalledDispatchCount={0}
+            totalResponders={0}
+            uncoveredMunicipalities={0}
+            lastDataUpdateAt={Date.now()}
+          />
+        </MemoryRouter>,
+      )
+      expect(getLabelWithin('Avg Response').getByText('Degraded')).toBeInTheDocument()
+    })
+
+    it('shows Normal/Watch/Degraded for triage at boundaries', () => {
+      const { rerender } = renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 3,
+      })
+      expect(getLabelWithin('Pending Triage').getByText('Normal')).toBeInTheDocument()
+
+      rerender(
+        <MemoryRouter>
+          <StatusBar
+            activeIncidents={1}
+            avgResponseTime={5}
+            pendingTriage={4}
+            mode="calm"
+            affectedMunicipalities={[]}
+            stalledDispatchCount={0}
+            totalResponders={0}
+            uncoveredMunicipalities={0}
+            lastDataUpdateAt={Date.now()}
+          />
+        </MemoryRouter>,
+      )
+      expect(getLabelWithin('Pending Triage').getByText('Watch')).toBeInTheDocument()
+
+      rerender(
+        <MemoryRouter>
+          <StatusBar
+            activeIncidents={1}
+            avgResponseTime={5}
+            pendingTriage={8}
+            mode="calm"
+            affectedMunicipalities={[]}
+            stalledDispatchCount={0}
+            totalResponders={0}
+            uncoveredMunicipalities={0}
+            lastDataUpdateAt={Date.now()}
+          />
+        </MemoryRouter>,
+      )
+      expect(getLabelWithin('Pending Triage').getByText('Degraded')).toBeInTheDocument()
+    })
   })
 })
