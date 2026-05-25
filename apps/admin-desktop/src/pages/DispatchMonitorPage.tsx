@@ -95,6 +95,7 @@ export function DispatchMonitorPage() {
           stalledCount={stalledDispatches.length}
           avgAcceptSeconds={avgAcceptSeconds}
           fcmSuccessRate={fcmSuccessRate}
+          mode={stalledDispatches.length > 0 ? 'active' : 'calm'}
         />
 
         <EscalationQueueSection
@@ -105,6 +106,7 @@ export function DispatchMonitorPage() {
             escalationCount: d.escalationCount,
           }))}
           onReDispatch={handleReDispatch}
+          mode={stalledDispatches.length > 0 ? 'active' : 'calm'}
         />
 
         <DispatchLifecycleTable rows={rows} />

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -14,7 +14,10 @@ import { HelpModal } from '../components/HelpModal'
 import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
+import { StatusBar } from '../components/StatusBar'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
+import { deriveDashboardMode } from '../utils/dashboard-mode'
+import type { DashboardMode } from '../utils/dashboard-mode'
 import { callables } from '../services/callables'
 import { useAuth } from '@bantayog/shared-ui'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
@@ -26,6 +29,17 @@ import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import type { MunicipalPerformance, Report } from '../types'
+
+function computeDashboardMode(
+  stalledCount: number,
+  activeCount: number,
+  fcmRate: number,
+  hookErrors: string[],
+  lastDataUpdateAt: number,
+): DashboardMode {
+  const dataFreshness = Date.now() - lastDataUpdateAt
+  return deriveDashboardMode(stalledCount, activeCount, fcmRate, hookErrors, dataFreshness)
+}
 
 export default function DashboardPage() {
   const { signOut } = useAuth()
@@ -49,9 +63,7 @@ export default function DashboardPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDispatching, setIsDispatching] = useState(false)
   const [pageLoadedAt] = useState(() => Date.now())
-
-  const isLoading = lifecycleLoading || fleetLoading || metricsLoading || reportsLoading
-  const error = lifecycleError ?? fleetError ?? metricsError ?? reportsError
+  const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
 
   const stalledDispatches = rows
     .filter((r) => r.status === 'needs_admin')
@@ -63,6 +75,30 @@ export default function DashboardPage() {
     }))
 
   const activeCount = rows.filter((r) => r.status !== 'needs_admin').length
+
+  const hookErrors: string[] = []
+  if (lifecycleError) hookErrors.push(lifecycleError)
+  if (fleetError) hookErrors.push(fleetError)
+  if (metricsError) hookErrors.push(metricsError)
+  if (reportsError) hookErrors.push(reportsError)
+
+  const mode: DashboardMode = computeDashboardMode(
+    stalledDispatches.length,
+    activeCount,
+    opsMetrics?.fcmSuccessRate ?? 1.0,
+    hookErrors,
+    lastDataUpdateAt,
+  )
+
+  useEffect(() => {
+    if (!lifecycleLoading || !fleetLoading || !metricsLoading || !reportsLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLastDataUpdateAt(Date.now())
+    }
+  }, [lifecycleLoading, fleetLoading, metricsLoading, reportsLoading])
+
+  const isLoading = lifecycleLoading || fleetLoading || metricsLoading || reportsLoading
+  const error = lifecycleError ?? fleetError ?? metricsError ?? reportsError
 
   const municipalData: MunicipalPerformance[] = useMemo(() => {
     const byMuni = new Map<string, Report[]>()
@@ -198,33 +234,56 @@ export default function DashboardPage() {
           }}
         />
       )}
+      <StatusBar
+        activeIncidents={activeCount}
+        avgResponseTime={
+          opsMetrics?.avgAcceptSeconds ? Math.round(opsMetrics.avgAcceptSeconds / 60) : 0
+        }
+        pendingTriage={0} // TODO: derive from reports
+        mode={mode}
+        affectedMunicipalities={municipalData
+          .filter((m) => m.activeIncidents > 0)
+          .map((m) => m.municipality)}
+        stalledDispatchCount={stalledDispatches.length}
+        totalResponders={responders.length}
+        uncoveredMunicipalities={
+          municipalData.filter((m) => (m.activeResponders ?? 0) === 0).length
+        }
+        lastDataUpdateAt={lastDataUpdateAt}
+      />
       <main className="flex-1 overflow-auto p-4">
         <h1 className="sr-only">Operations Dashboard</h1>
         {rows.length === 0 && responders.length === 0 && reports.length === 0 ? (
           <AllClearState />
         ) : (
-          <div className="space-y-4">
+          <div className={`space-y-4 ${mode === 'degraded' ? 'opacity-50' : ''}`}>
             <DispatchStatsCards
               activeCount={activeCount}
               stalledCount={stalledDispatches.length}
               avgAcceptSeconds={opsMetrics?.avgAcceptSeconds ?? null}
               fcmSuccessRate={opsMetrics?.fcmSuccessRate ?? 0}
+              mode={mode}
             />
-            <EscalationQueueSection
-              stalledDispatches={stalledDispatches}
-              onReDispatch={handleReDispatch}
-            />
+            {mode !== 'calm' && (
+              <EscalationQueueSection
+                stalledDispatches={stalledDispatches}
+                onReDispatch={handleReDispatch}
+                mode={mode}
+              />
+            )}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
               <div className="space-y-4">
-                <DispatchVolumeChart rows={rows} />
+                {mode !== 'surge' && <DispatchVolumeChart rows={rows} />}
                 <RecentEventsFeed rows={rows} />
               </div>
               <div className="space-y-4">
                 <ResponderAvailabilityPanel responders={responders} />
-                <MunicipalPerformanceTable
-                  data={municipalData}
-                  onSelectMunicipality={handleSelectMunicipality}
-                />
+                {mode !== 'surge' && (
+                  <MunicipalPerformanceTable
+                    data={municipalData}
+                    onSelectMunicipality={handleSelectMunicipality}
+                  />
+                )}
               </div>
             </div>
           </div>
