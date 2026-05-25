@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useLayoutEffect } from 'react'
 import { CheckCircle, X } from 'lucide-react'
 
 interface Props {
@@ -7,12 +7,20 @@ interface Props {
 }
 
 export function SuccessBanner({ message, onDismiss }: Props) {
+  const onDismissRef = useRef(onDismiss)
+
+  useLayoutEffect(() => {
+    onDismissRef.current = onDismiss
+  })
+
   useEffect(() => {
-    const id = setTimeout(onDismiss, 4000)
+    const id = setTimeout(() => {
+      onDismissRef.current()
+    }, 4000)
     return () => {
       clearTimeout(id)
     }
-  }, [message, onDismiss])
+  }, [message])
 
   return (
     <div
