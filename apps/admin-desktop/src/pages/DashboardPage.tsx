@@ -13,6 +13,8 @@ import { AllClearState } from '../components/AllClearState'
 import { HelpModal } from '../components/HelpModal'
 import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { ReDispatchModal } from '../components/ReDispatchModal'
+import { ActionErrorBanner } from '../components/ActionErrorBanner'
+import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { callables } from '../services/callables'
 import { useAuth } from '@bantayog/shared-ui'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
@@ -45,6 +47,7 @@ export default function DashboardPage() {
   const [selectedDispatchId, setSelectedDispatchId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [isDispatching, setIsDispatching] = useState(false)
   const [pageLoadedAt] = useState(() => Date.now())
 
   const isLoading = lifecycleLoading || fleetLoading || metricsLoading || reportsLoading
@@ -86,19 +89,24 @@ export default function DashboardPage() {
   const handleConfirmReDispatch = useCallback(
     async (newResponderUid: string) => {
       if (!selectedDispatchId) return
+      setIsDispatching(true)
+      setActionError(null)
       try {
         await callables.redispatchReport({
           oldDispatchId: selectedDispatchId,
           newResponderUid,
           reason: 'Re-dispatched via dashboard',
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: generateIdempotencyKey(),
         })
         setSuccessMessage('Re-dispatched successfully')
         setActionError(null)
         setReDispatchModalOpen(false)
+        setSelectedDispatchId(null)
       } catch (err) {
         setActionError(err instanceof Error ? err.message : 'Re-dispatch failed')
         setSuccessMessage(null)
+      } finally {
+        setIsDispatching(false)
       }
     },
     [selectedDispatchId],
@@ -183,9 +191,12 @@ export default function DashboardPage() {
         />
       )}
       {actionError && (
-        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {actionError}
-        </div>
+        <ActionErrorBanner
+          message={actionError}
+          onDismiss={() => {
+            setActionError(null)
+          }}
+        />
       )}
       <main className="flex-1 overflow-auto p-4">
         <h1 className="sr-only">Operations Dashboard</h1>
@@ -248,6 +259,7 @@ export default function DashboardPage() {
         isOpen={reDispatchModalOpen}
         onClose={() => {
           setReDispatchModalOpen(false)
+          setSelectedDispatchId(null)
         }}
         onDispatch={(uid) => {
           void handleConfirmReDispatch(uid)
@@ -259,7 +271,7 @@ export default function DashboardPage() {
                 ?.previouslyNotifiedResponderUids ?? [])
             : []
         }
-        isLoading={false}
+        isLoading={isDispatching}
       />
     </div>
   )
