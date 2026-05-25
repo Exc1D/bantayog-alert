@@ -5,12 +5,15 @@ import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ConfirmationModal } from '../components/ConfirmationModal'
+import { PageSkeleton } from '../components/PageSkeleton'
+import { Tooltip } from '../components/Tooltip'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
+import { useOptimisticFeedActions } from '../hooks/useOptimisticFeedActions'
 import type { Report } from '../types'
 
 function visibilityLabel(doc: Record<string, unknown>, report: Report): string {
@@ -68,10 +71,33 @@ export default function FeedPage() {
   const { loading, error, reports, alerts } = useFirestoreListeners({ windowType: 'dashboard', db })
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
-  const [unpublishingIds, setUnpublishingIds] = useState<Set<string>>(new Set())
-  const [verifyingIds, setVerifyingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [pendingFeaturedIds, setPendingFeaturedIds] = useState<Record<string, string[]>>({})
+
+  const { optimisticReports, optimisticVerify, optimisticUnpublish, pendingIds } =
+    useOptimisticFeedActions({
+      reports,
+      verifyReport: async (reportId) => {
+        await withRetry(() =>
+          callables.verifyReport({
+            reportId,
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        )
+      },
+      unpublishReport: async (reportId) => {
+        await withRetry(() =>
+          callables.unpublishReport({
+            reportId,
+            reason: 'sensitive_content',
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        )
+      },
+      onError: (_reportId, err) => {
+        setActionError(err instanceof Error ? err.message : 'Action failed')
+      },
+    })
   const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
   const [mediaError, setMediaError] = useState<string | null>(null)
   const writeQueues = useRef(new Map<string, Promise<void>>())
@@ -91,7 +117,7 @@ export default function FeedPage() {
 
   const feedReports = useMemo(
     () =>
-      reports
+      optimisticReports
         .map((doc) => {
           const raw = doc as unknown as Record<string, unknown>
           return { raw, report: mapReportDocToReportLoose(raw) }
@@ -102,7 +128,7 @@ export default function FeedPage() {
             report.status === 'awaiting_verify' ||
             report.status === 'new',
         ),
-    [reports],
+    [optimisticReports],
   )
 
   const publicFeedReports = useMemo(
@@ -155,7 +181,8 @@ export default function FeedPage() {
         } catch (e) {
           const msg = `Failed to fetch media for report ${report.id}`
           console.error(msg, e)
-          if (!cancelled) setMediaError('Some photos failed to load. They will retry automatically.')
+          if (!cancelled)
+            setMediaError('Some photos failed to load. They will retry automatically.')
           urls[report.id] = []
         }
       }
@@ -195,49 +222,6 @@ export default function FeedPage() {
     }
   }
 
-  async function sendToModeration(report: Report) {
-    setVerifyingIds((prev) => new Set(prev).add(report.id))
-    try {
-      await withRetry(() =>
-        callables.verifyReport({
-          reportId: report.id,
-          idempotencyKey: generateIdempotencyKey(),
-        }),
-      )
-      setActionError(null)
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Send to moderation failed')
-    } finally {
-      setVerifyingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(report.id)
-        return next
-      })
-    }
-  }
-
-  async function unpublish(report: Report) {
-    setUnpublishingIds((prev) => new Set(prev).add(report.id))
-    try {
-      await withRetry(() =>
-        callables.unpublishReport({
-          reportId: report.id,
-          reason: 'sensitive_content',
-          idempotencyKey: generateIdempotencyKey(),
-        }),
-      )
-      setActionError(null)
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Unpublish failed')
-    } finally {
-      setUnpublishingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(report.id)
-        return next
-      })
-    }
-  }
-
   async function saveFeaturedMedia(reportId: string, selectedIds: string[]) {
     try {
       await updateDoc(doc(db, 'reports', reportId), {
@@ -255,12 +239,10 @@ export default function FeedPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-        <OfflineBanner error={error} />
-        <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-        </div>
-      </div>
+      <>
+        {error && <OfflineBanner error={error} />}
+        <PageSkeleton variant="feed" />
+      </>
     )
   }
 
@@ -305,7 +287,9 @@ export default function FeedPage() {
           >
             {mediaError}
             <button
-              onClick={() => { setMediaError(null); }}
+              onClick={() => {
+                setMediaError(null)
+              }}
               className="ml-2 underline"
               aria-label="Dismiss media error"
             >
@@ -359,43 +343,51 @@ export default function FeedPage() {
                           {label}
                         </span>
                         {report.status === 'new' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void sendToModeration(report)
-                            }}
-                            disabled={verifyingIds.has(report.id)}
-                            className="rounded bg-[var(--color-info)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label={`Send report ${report.id} to moderation`}
-                          >
-                            {verifyingIds.has(report.id) ? 'Sending…' : 'Send to moderation'}
-                          </button>
+                          <Tooltip content="Verify this report and send it to the moderation queue for review before publication.">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void optimisticVerify(report.id)
+                              }}
+                              disabled={pendingIds.has(report.id)}
+                              className="rounded bg-[var(--color-info)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Send report ${report.id} to moderation`}
+                            >
+                              {pendingIds.has(report.id) ? 'Sending…' : 'Send to moderation'}
+                            </button>
+                          </Tooltip>
                         )}
                         {canPublish && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void publishScrubbed(report)
-                            }}
-                            disabled={publishingIds.has(report.id)}
-                            className="rounded bg-[var(--color-success)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label={`Publish scrubbed copy for ${report.id}`}
-                          >
-                            {publishingIds.has(report.id) ? 'Publishing' : 'Publish scrubbed copy'}
-                          </button>
+                          <Tooltip content="Make this report visible to the public as an alert.">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void publishScrubbed(report)
+                              }}
+                              disabled={publishingIds.has(report.id)}
+                              className="rounded bg-[var(--color-success)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Publish scrubbed copy for ${report.id}`}
+                            >
+                              {publishingIds.has(report.id)
+                                ? 'Publishing'
+                                : 'Publish scrubbed copy'}
+                            </button>
+                          </Tooltip>
                         )}
                         {canUnpublish && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setConfirmUnpublishReport(report)
-                            }}
-                            disabled={unpublishingIds.has(report.id)}
-                            className="rounded border border-[var(--color-danger)] px-3 py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label={`Unpublish report ${report.id}`}
-                          >
-                            {unpublishingIds.has(report.id) ? 'Unpublishing' : 'Unpublish'}
-                          </button>
+                          <Tooltip content="Remove this report from public alerts and return it to the moderation queue.">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmUnpublishReport(report)
+                              }}
+                              disabled={pendingIds.has(report.id)}
+                              className="rounded border border-[var(--color-danger)] px-3 py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Unpublish report ${report.id}`}
+                            >
+                              {pendingIds.has(report.id) ? 'Unpublishing' : 'Unpublish'}
+                            </button>
+                          </Tooltip>
                         )}
                       </div>
                       {/* Photo gallery */}
@@ -610,7 +602,7 @@ export default function FeedPage() {
         confirmVariant="danger"
         onConfirm={() => {
           if (confirmUnpublishReport) {
-            void unpublish(confirmUnpublishReport)
+            void optimisticUnpublish(confirmUnpublishReport.id)
           }
           setConfirmUnpublishReport(null)
         }}

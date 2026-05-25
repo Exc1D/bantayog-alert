@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { SuccessBanner } from '../components/SuccessBanner'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { DispatchStatsCards } from '../components/DispatchStatsCards'
 import { EscalationQueueSection } from '../components/EscalationQueueSection'
 import { DispatchVolumeChart } from '../components/DispatchVolumeChart'
@@ -207,13 +208,10 @@ export default function DashboardPage() {
 
   if (isLoading && rows.length === 0 && reports.length === 0) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-        <CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={pageLoadedAt} />
+      <>
         {error && <OfflineBanner error={error} />}
-        <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-        </div>
-      </div>
+        <PageSkeleton variant="dashboard" />
+      </>
     )
   }
 

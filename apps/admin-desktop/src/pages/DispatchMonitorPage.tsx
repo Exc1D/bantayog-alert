@@ -9,6 +9,7 @@ import { DispatchLifecycleTable } from '../components/DispatchLifecycleTable'
 import { ResponderAvailabilityPanel } from '../components/ResponderAvailabilityPanel'
 import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { callables } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
@@ -68,16 +69,7 @@ export function DispatchMonitorPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-        <div className="flex flex-1 items-center justify-center">
-          <div
-            role="status"
-            className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white"
-          />
-        </div>
-      </div>
-    )
+    return <PageSkeleton variant="dispatch" />
   }
 
   return (

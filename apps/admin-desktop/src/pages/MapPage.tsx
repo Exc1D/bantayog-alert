@@ -7,9 +7,11 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { MapOverlayControls } from '../components/MapOverlayControls'
 import { MunicipalDrillDown } from '../components/MunicipalDrillDown'
 import { DeclareAlertModal } from '../components/DeclareAlertModal'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
+import { useUrlSync } from '../hooks/useUrlSync'
 import { callables } from '../services/callables'
 import { db, rtdb } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
@@ -50,6 +52,25 @@ export default function MapPage() {
     toggleOverlay,
     setSuppressNextBroadcast,
   } = useCommandCenterStore()
+
+  useUrlSync({
+    reportId: selectedReportId,
+    municipalityId: selectedMunicipalityId,
+    overlays: Array.from(activeOverlays),
+    onReportIdChange: selectReport,
+    onMunicipalityIdChange: selectMunicipality,
+    onOverlaysChange: (overlays) => {
+      const current = new Set(activeOverlays)
+      const next = new Set(overlays)
+      // Toggle overlays that differ
+      for (const o of current) {
+        if (!next.has(o)) toggleOverlay(o)
+      }
+      for (const o of next) {
+        if (!current.has(o)) toggleOverlay(o)
+      }
+    },
+  })
 
   const {
     loading,
@@ -108,7 +129,9 @@ export default function MapPage() {
   const handleVerify = useCallback(async (id: string) => {
     setActionError(null)
     try {
-      await withRetry(() => callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() }))
+      await withRetry(() =>
+        callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() }),
+      )
       setActionError(null)
     } catch (err) {
       setActionError(actionErrorMessage(err, 'Verify failed'))
@@ -164,12 +187,10 @@ export default function MapPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-        <OfflineBanner error={error} />
-        <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-        </div>
-      </div>
+      <>
+        {error && <OfflineBanner error={error} />}
+        <PageSkeleton variant="map" />
+      </>
     )
   }
 

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { LiveIndicator } from './LiveIndicator'
+import { Tooltip } from './Tooltip'
 
 type WindowRole = 'dashboard' | 'map' | 'feed' | 'dispatches'
 
@@ -114,13 +115,15 @@ export function CommandHeader({
         )}
         <LiveIndicator lastUpdatedAt={lastUpdatedAt} />
         {onDeclareAlert && (
-          <button
-            onClick={onDeclareAlert}
-            className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
-          >
-            <AlertTriangle className="h-4 w-4" />
-            Declare Alert
-          </button>
+          <Tooltip content="Create and broadcast a new public emergency alert.">
+            <button
+              onClick={onDeclareAlert}
+              className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Declare Alert
+            </button>
+          </Tooltip>
         )}
         {onToggleAudio && (
           <button

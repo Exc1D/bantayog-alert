@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { Tooltip } from './Tooltip'
 
 interface Props {
   activeOverlays: Set<string>
@@ -12,10 +13,22 @@ const PRIMARY_OPTIONS = [
 ] as const
 
 const CHECKBOX_OPTIONS = [
-  { id: 'heatmap', label: 'Heatmap' },
-  { id: 'responder_locations', label: 'Responder Locations' },
-  { id: 'provincial_resources', label: 'Provincial Resources' },
-  { id: 'municipal_labels', label: 'Municipal Labels' },
+  { id: 'heatmap', label: 'Heatmap', hint: 'Density visualization of incident locations' },
+  {
+    id: 'responder_locations',
+    label: 'Responder Locations',
+    hint: 'Live GPS positions of active responders',
+  },
+  {
+    id: 'provincial_resources',
+    label: 'Provincial Resources',
+    hint: 'Hospitals, evacuation centers, and supply depots',
+  },
+  {
+    id: 'municipal_labels',
+    label: 'Municipal Labels',
+    hint: 'Boundary lines and municipality names',
+  },
 ] as const
 
 export function MapOverlayControls({ activeOverlays, onToggleOverlay }: Props) {
@@ -61,21 +74,22 @@ export function MapOverlayControls({ activeOverlays, onToggleOverlay }: Props) {
 
         {/* Primary checkboxes */}
         {primaryCheckboxes.map((opt) => (
-          <label
-            key={opt.id}
-            className="flex cursor-pointer items-center gap-1.5 px-2 py-2 text-xs text-[var(--color-text-secondary)]"
-            style={{ minHeight: '44px' }}
-          >
-            <input
-              type="checkbox"
-              checked={activeOverlays.has(opt.id)}
-              onChange={() => {
-                onToggleOverlay(opt.id)
-              }}
-              aria-label={opt.label}
-            />
-            {opt.label}
-          </label>
+          <Tooltip key={opt.id} content={opt.hint}>
+            <label
+              className="flex cursor-pointer items-center gap-1.5 px-2 py-2 text-xs text-[var(--color-text-secondary)]"
+              style={{ minHeight: '44px' }}
+            >
+              <input
+                type="checkbox"
+                checked={activeOverlays.has(opt.id)}
+                onChange={() => {
+                  onToggleOverlay(opt.id)
+                }}
+                aria-label={opt.label}
+              />
+              {opt.label}
+            </label>
+          </Tooltip>
         ))}
 
         {/* More toggle */}
@@ -97,21 +111,22 @@ export function MapOverlayControls({ activeOverlays, onToggleOverlay }: Props) {
       {showMore && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/10 pt-2">
           {secondaryCheckboxes.map((opt) => (
-            <label
-              key={opt.id}
-              className="flex cursor-pointer items-center gap-1.5 py-1 text-xs text-[var(--color-text-secondary)]"
-              style={{ minHeight: '44px' }}
-            >
-              <input
-                type="checkbox"
-                checked={activeOverlays.has(opt.id)}
-                onChange={() => {
-                  onToggleOverlay(opt.id)
-                }}
-                aria-label={opt.label}
-              />
-              {opt.label}
-            </label>
+            <Tooltip key={opt.id} content={opt.hint}>
+              <label
+                className="flex cursor-pointer items-center gap-1.5 py-1 text-xs text-[var(--color-text-secondary)]"
+                style={{ minHeight: '44px' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={activeOverlays.has(opt.id)}
+                  onChange={() => {
+                    onToggleOverlay(opt.id)
+                  }}
+                  aria-label={opt.label}
+                />
+                {opt.label}
+              </label>
+            </Tooltip>
           ))}
         </div>
       )}
