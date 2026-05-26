@@ -76,10 +76,16 @@ export function usePublicFeed(): {
   items: PublicFeedItem[]
   loading: boolean
   error: string | null
+  retry: () => void
 } {
   const [items, setItems] = useState<PublicFeedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+
+  const retry = () => {
+    setRetryCount((c) => c + 1)
+  }
 
   useEffect(() => {
     const publicReportsQuery = query(
@@ -105,7 +111,7 @@ export function usePublicFeed(): {
         setLoading(false)
       },
     )
-  }, [])
+  }, [retryCount])
 
-  return { items, loading, error }
+  return { items, loading, error, retry }
 }

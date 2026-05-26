@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Bell, ClipboardList, Map, Newspaper, User } from 'lucide-react'
 import { useAuth } from '@bantayog/shared-ui'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { SosHoldButton } from './SosHoldButton'
 import styles from './Shell.module.css'
 
@@ -14,6 +15,7 @@ export function Shell({ children }: Props) {
   const { user } = useAuth()
   const { groups } = useOwnDispatches(user?.uid)
   const location = useLocation()
+  const online = useOnlineStatus()
 
   const pendingCount = groups.pending.length
   const activeDispatchId = groups.active[0]?.dispatchId ?? null
@@ -53,15 +55,28 @@ export function Shell({ children }: Props) {
       <header className={styles.header}>
         <span className={styles.headerTitle}>BANTAYOG ALERT</span>
         <div className={styles.headerRight}>
-          <span className={styles.onlineStatus} role="status" aria-label="Online">
-            <span className={styles.onlineDot} aria-hidden="true" />
-            Online
+          <span
+            className={styles.onlineStatus}
+            role="status"
+            aria-label={online ? 'Online' : 'Offline'}
+          >
+            <span
+              className={styles.onlineDot}
+              aria-hidden="true"
+              {...(!online ? { style: { background: 'var(--color-danger)' } } : {})}
+            />
+            {online ? 'Online' : 'Offline'}
           </span>
           <SosHoldButton activeDispatchId={activeDispatchId} disabled={!activeDispatchId} />
         </div>
       </header>
 
-      <main className={styles.content}>{children}</main>
+      <a href="#main-content" className={styles.visuallyHiddenSkip}>
+        Skip to main content
+      </a>
+      <main id="main-content" className={styles.content}>
+        {children}
+      </main>
 
       <nav className={styles.tabBar} aria-label="Main navigation">
         {tabs.map((tab) => {

@@ -112,4 +112,44 @@ describe('useOwnDispatches', () => {
     })
     expect(result.current.rows).toEqual([])
   })
+
+  it('exposes a retry function that re-subscribes the listener', async () => {
+    let callCount = 0
+    mockOnSnapshot.mockImplementation((_q, onNext) => {
+      callCount++
+      if (callCount === 1) {
+        onNext({ docs: [] })
+      } else if (callCount === 2) {
+        onNext({
+          docs: [
+            {
+              id: 'disp-active',
+              data: () => ({
+                reportId: 'rep-1',
+                status: 'acknowledged',
+                dispatchedAt: { toMillis: () => 1000 },
+              }),
+            },
+          ],
+        })
+      }
+      return vi.fn()
+    })
+
+    const { result } = renderHook(() => useOwnDispatches('uid-1'))
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(0)
+    })
+    expect(callCount).toBe(1)
+
+    // Calling retry should trigger a re-subscription
+    result.current.retry()
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1)
+    })
+    expect(callCount).toBe(2)
+    expect(result.current.rows[0]!.dispatchId).toBe('disp-active')
+  })
 })

@@ -42,6 +42,12 @@
   box-shadow: var(--shadow-sm);
 }
 
+.card:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-md);
+}
+
 .cardHeader {
   display: flex;
   align-items: flex-start;
@@ -85,6 +91,34 @@
   font-size: var(--font-size-sm);
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.bodyClamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.btnExpand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-top: var(--space-1);
+}
+
+.btnExpand:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
 }
 
 .mediaGrid {
@@ -149,4 +183,21 @@
 
 .state strong {
   color: var(--text-primary);
+}
+
+.btnRetry {
+  margin-top: var(--space-2);
+  padding: 6px 12px;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnRetry:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
 }

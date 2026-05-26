@@ -38,10 +38,16 @@ export function useOfficialAlerts(): {
   alerts: OfficialAlertItem[]
   loading: boolean
   error: string | null
+  retry: () => void
 } {
   const [alerts, setAlerts] = useState<OfficialAlertItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+
+  const retry = () => {
+    setRetryCount((c) => c + 1)
+  }
 
   useEffect(() => {
     const officialAlertsQuery = query(
@@ -66,7 +72,7 @@ export function useOfficialAlerts(): {
         setLoading(false)
       },
     )
-  }, [])
+  }, [retryCount])
 
-  return { alerts, loading, error }
+  return { alerts, loading, error, retry }
 }

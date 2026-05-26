@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockNavigate = vi.hoisted(() => vi.fn())
@@ -30,6 +31,8 @@ const dispatchListState = vi.hoisted(() => ({
     }[],
   },
   error: null as string | null,
+  retry: vi.fn(),
+  loading: false,
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -47,6 +50,8 @@ vi.mock('../hooks/useOwnDispatches', () => ({
     rows: dispatchListState.rows,
     groups: dispatchListState.groups,
     error: dispatchListState.error,
+    retry: dispatchListState.retry,
+    loading: dispatchListState.loading,
   }),
 }))
 
@@ -76,6 +81,32 @@ describe('DispatchListPage', () => {
     dispatchListState.rows = []
     dispatchListState.groups = { pending: [], active: [] }
     dispatchListState.error = null
+    dispatchListState.retry.mockClear()
+    dispatchListState.loading = false
+  })
+
+  it('navigates on card Enter key press if dispatch data is ready', async () => {
+    dispatchListState.rows = [
+      {
+        dispatchId: 'd-1',
+        reportId: 'report-1',
+        status: 'pending',
+        uiStatus: 'pending',
+        acknowledgementDeadlineAt: Date.now() + 60_000,
+      },
+    ]
+    dispatchListState.groups.pending = dispatchListState.rows
+
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <DispatchListPage />
+      </MemoryRouter>,
+    )
+
+    const card = screen.getByTestId('dispatch-card-d-1')
+    await user.type(card, '{enter}')
+    expect(mockNavigate).toHaveBeenCalledWith('/dispatches/d-1')
   })
 
   it('shows incident type label and severity in pending dispatch card', () => {
@@ -177,6 +208,22 @@ describe('DispatchListPage', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent(/permission-denied/)
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
+  })
+
+  it('calls retry when the Retry button is clicked', async () => {
+    dispatchListState.error = 'network-error'
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <DispatchListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(dispatchListState.retry).toHaveBeenCalledTimes(1)
   })
 
   it('renders pending dispatch inside an urgent countdown ring', () => {
@@ -224,5 +271,19 @@ describe('DispatchListPage', () => {
     expect(screen.getByRole('img', { name: /progress 60 percent/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /mark on scene/i })).toBeInTheDocument()
     expect(screen.getByTestId('dispatch-card-d-2')).toBeInTheDocument()
+  })
+
+  it('shows loading skeletons while useOwnDispatches is loading', () => {
+    dispatchListState.rows = []
+    dispatchListState.loading = true
+
+    render(
+      <MemoryRouter>
+        <DispatchListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/loading/i)).toBeInTheDocument()
+    expect(document.querySelectorAll('[data-testid="skeleton"]')).toHaveLength(3)
   })
 })

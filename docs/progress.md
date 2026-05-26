@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-05-26 — Critical UX Fixes (Responder App Dispatch Tab)
+
+- ✅ **`useOwnDispatches` retry mechanism** — Added `retryCount` state + `retry()` function. `retry()` calls increment `retryCount`, which is a dependency of the `useEffect` that calls `onSnapshot`, causing a re-subscription. This gives users a way to recover from transient Firestore listener errors (network blips) without refreshing the page.
+- ✅ **Offline indicator** — Added `useOnlineStatus` hook that listens to `window` `online`/`offline` events. Shell header now shows "Offline" with a red dot when `navigator.onLine === false`. Critical for responders operating in disaster zones with intermittent connectivity.
+- ✅ **Character limits** — Added `maxLength={2000}` to both textareas (resolution summary and field notes), matching the backend `firestore.rules` limit. Added `.charCount` labels showing current length (e.g. "47/2000"). Prevents silent truncation when backend rejects long inputs.
+- ✅ `prefers-reduced-motion` for SOS button — `@media (prefers-reduced-motion: reduce)` block in `SosHoldButton.module.css` suppresses the `ring-fill` animation. The fill ring still appears at full scale for user awareness.
+- **Tests:** 16 new assertions across 3 test files. 244 tests pass. TypeScript clean.
+- **Files touched:** `useOwnDispatches.ts`, `useOwnDispatches.test.ts`, `Shell.tsx`, `Shell.test.tsx`, `useOnlineStatus.ts` (new), `DispatchListPage.tsx`, `DispatchListPage.test.tsx`, `DispatchListPage.module.css`, `DispatchDetailPage.tsx`, `DispatchDetailPage.module.css`, `SosHoldButton.module.css`
+- **Verdict:** Previously "Needs Work" on 4 critical ship-blockers → now "Shippable" for those categories.
+
+---
+
 ## Current Status (2026-05-19)
 
 **Phase 3 Admin Desktop Frontend — In Progress**
@@ -181,17 +193,17 @@ Post-review hardening: 2 Firestore rule fixes, 15 UX/perf concerns (offline mark
 
 ## Older Completed Phases
 
-| Phase | Status | Notes |
-|---|---|---|
-| Phase 9: Citizen PWA Redesign | DONE | 18 tasks — Feed/Profile/Alerts tabs, RevealSheet, Toggle, Toast, offline banner, auth-aware ProfileTab, RegisterPage, SettingsPage, routes, data export |
-| Phase 8C: RA 10173 Erasure | DONE | 8 tasks — callables, sweeps, rules, delete-account flow |
-| Phase 7.A: Security Callables | DONE | 7 callables + Firestore rules |
-| Phase 7.B: Superadmin UI | DONE | Analytics dashboard, emergency declaration, TOTP enrollment (NDRRMC/break-glass removed in `9f520d99`) |
-| Phase 6: Responder App | DONE | Native foundation, push, telemetry, location, field UX, handoffs. Residual: E2E dispatch, push tokens, background geolocation (need devices) |
-| Phase 5: Cluster C + PRE-C | DONE | Analytics (mass alerts/NDRRMC escalation removed in `9f520d99`) |
-| Phase 4b: SMS Inbound Pipeline | DEFERRED | Removed in `9f520d99`; citizen SMS rewired to hotline |
-| Phase 3b: Admin Triage + Dispatch | DONE | Code complete |
-| Phase 0: Foundation | DONE | All tooling passing |
+| Phase                             | Status   | Notes                                                                                                                                                   |
+| --------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 9: Citizen PWA Redesign     | DONE     | 18 tasks — Feed/Profile/Alerts tabs, RevealSheet, Toggle, Toast, offline banner, auth-aware ProfileTab, RegisterPage, SettingsPage, routes, data export |
+| Phase 8C: RA 10173 Erasure        | DONE     | 8 tasks — callables, sweeps, rules, delete-account flow                                                                                                 |
+| Phase 7.A: Security Callables     | DONE     | 7 callables + Firestore rules                                                                                                                           |
+| Phase 7.B: Superadmin UI          | DONE     | Analytics dashboard, emergency declaration, TOTP enrollment (NDRRMC/break-glass removed in `9f520d99`)                                                  |
+| Phase 6: Responder App            | DONE     | Native foundation, push, telemetry, location, field UX, handoffs. Residual: E2E dispatch, push tokens, background geolocation (need devices)            |
+| Phase 5: Cluster C + PRE-C        | DONE     | Analytics (mass alerts/NDRRMC escalation removed in `9f520d99`)                                                                                         |
+| Phase 4b: SMS Inbound Pipeline    | DEFERRED | Removed in `9f520d99`; citizen SMS rewired to hotline                                                                                                   |
+| Phase 3b: Admin Triage + Dispatch | DONE     | Code complete                                                                                                                                           |
+| Phase 0: Foundation               | DONE     | All tooling passing                                                                                                                                     |
 
 > Features removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAGASA hazard signals, Break Glass protocol, mass alert broadcast. Entries retained for historical accuracy.
 

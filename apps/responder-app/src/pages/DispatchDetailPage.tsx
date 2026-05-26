@@ -288,6 +288,9 @@ export function DispatchDetailPage() {
               <span>{label}</span>
             </span>
           ))}
+          <span className={styles.onboardingHint}>
+            Next step: tap the action button below to advance.
+          </span>
         </div>
 
         {isActive && mapsUrl !== null && (
@@ -358,6 +361,16 @@ export function DispatchDetailPage() {
                 >
                   {declining ? 'Declining…' : 'Confirm Decline'}
                 </button>
+                <button
+                  type="button"
+                  className={styles.secondaryBtn}
+                  onClick={() => {
+                    setShowDecline(false)
+                    setDeclineReason('')
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
             )}
             {acceptError && <p className={styles.errorMsg}>{getActionErrorMessage(acceptError)}</p>}
@@ -416,12 +429,14 @@ export function DispatchDetailPage() {
                   id="resolution-summary"
                   className={styles.textarea}
                   value={resolutionSummary}
+                  maxLength={2000}
                   onChange={(e) => {
                     setResolutionSummary(e.target.value)
                   }}
                   placeholder="Resolution summary (required)"
                   rows={3}
                 />
+                <span className={styles.charCount}>{resolutionSummary.length}/2000</span>
                 <button
                   className={[styles.toggleBtn, styles.togglePrimary].filter(Boolean).join(' ')}
                   onClick={() => {
@@ -527,6 +542,7 @@ export function DispatchDetailPage() {
                 id="field-notes"
                 className={styles.noteInput}
                 value={fieldNoteDraft.value}
+                maxLength={2000}
                 disabled={!fieldNoteDraft.loaded}
                 onChange={(e) => {
                   fieldNoteDraft.setValue(e.target.value)
@@ -534,6 +550,7 @@ export function DispatchDetailPage() {
                 placeholder="On scene. Water is waist-deep…"
                 rows={2}
               />
+              <span className={styles.charCount}>{fieldNoteDraft.value.length}/2000</span>
               <button
                 className={styles.noteSubmitBtn}
                 disabled={!fieldNoteDraft.loaded || !fieldNoteDraft.value.trim() || addingNote}

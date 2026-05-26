@@ -21,11 +21,19 @@ export interface OwnDispatchRow {
 export function useOwnDispatches(uid: string | undefined) {
   const [rows, setRows] = useState<OwnDispatchRow[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const [loading, setLoading] = useState(!!uid)
+
+  const retry = () => {
+    setRetryCount((c) => c + 1)
+  }
+
   useEffect(() => {
     if (!uid) {
       queueMicrotask(() => {
         setRows([])
         setError(null)
+        setLoading(false)
       })
       return
     }
@@ -59,14 +67,16 @@ export function useOwnDispatches(uid: string | undefined) {
           }),
         )
         setError(null)
+        setLoading(false)
       },
       (err) => {
         console.error('[useOwnDispatches] Firestore listener error:', err)
         setRows([])
         setError(err.message)
+        setLoading(false)
       },
     )
-  }, [uid])
+  }, [uid, retryCount])
   const presentationRows: QueueDispatchRow[] = rows.map((row) => ({
     dispatchId: row.dispatchId,
     reportId: row.reportId,
@@ -77,5 +87,5 @@ export function useOwnDispatches(uid: string | undefined) {
       ? { acknowledgementDeadlineAt: row.acknowledgementDeadlineAt }
       : {}),
   }))
-  return { rows, groups: groupDispatchRows(presentationRows), error }
+  return { rows, groups: groupDispatchRows(presentationRows), error, retry, loading }
 }

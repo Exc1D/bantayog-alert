@@ -104,6 +104,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  overflow-wrap: break-word;
 }
 
 .incidentDesc {
@@ -301,6 +302,24 @@
   margin-top: var(--space-2);
 }
 
+.secondaryBtn {
+  padding: 10px;
+  background: transparent;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.secondaryBtn:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
 .actionStack {
   display: flex;
   flex-direction: column;
@@ -353,6 +372,26 @@
 
 .noteInput:focus {
   border-color: var(--amber-accent);
+}
+
+.charCount {
+  display: block;
+  text-align: right;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.onboardingHint {
+  padding: var(--space-3);
+  background: var(--surface-raised);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  border: 1px solid var(--border-default);
+  display: block;
+  margin-top: var(--space-2);
 }
 
 .noteInput:focus-visible {

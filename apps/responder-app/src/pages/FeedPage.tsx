@@ -1,4 +1,24 @@
-import { AlertCircle, Clock, FileText, Image as ImageIcon, MapPin } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { useState } from 'react'
+import {
+  AlertCircle,
+  AlertTriangle,
+  Building,
+  Car,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  CloudLightning,
+  FileText,
+  Flame,
+  HeartPulse,
+  Image as ImageIcon,
+  MapPin,
+  Mountain,
+  ShieldAlert,
+  Waves,
+  Wind,
+} from 'lucide-react'
 import { usePublicFeed, type PublicFeedItem } from '../hooks/usePublicFeed'
 import { getReportTypeLabel } from '../lib/incident-labels'
 import styles from './FeedPage.module.css'
@@ -17,10 +37,32 @@ function formatStatus(value: string): string {
   return value.replace(/_/g, ' ')
 }
 
-function severityClass(severity: string): string | undefined {
-  if (severity === 'high') return styles.severityHigh
-  if (severity === 'medium') return styles.severityMedium
-  return styles.severityLow
+const REPORT_TYPE_ICONS: Record<string, LucideIcon> = {
+  flood: Waves,
+  fire: Flame,
+  earthquake: CloudLightning,
+  typhoon: Wind,
+  landslide: Mountain,
+  storm_surge: Waves,
+  medical: HeartPulse,
+  accident: Car,
+  structural: Building,
+  security: ShieldAlert,
+  other: AlertTriangle,
+}
+
+function renderReportTypeIcon(reportType: string | undefined): React.ReactElement {
+  if (reportType == null) {
+    return <AlertTriangle size={18} />
+  }
+  const Icon = REPORT_TYPE_ICONS[reportType] ?? AlertTriangle
+  return <Icon size={18} />
+}
+
+function severityClass(severity: string): string {
+  if (severity === 'high') return styles.severityHigh ?? ''
+  if (severity === 'medium') return styles.severityMedium ?? ''
+  return styles.severityLow ?? ''
 }
 
 function locationLabel(item: PublicFeedItem): string {
@@ -29,8 +71,10 @@ function locationLabel(item: PublicFeedItem): string {
 }
 
 function FeedCard({ item }: { item: PublicFeedItem }) {
+  const [expanded, setExpanded] = useState(false)
   const reportLabel = getReportTypeLabel(item.reportType)
   const body = item.description.trim() || 'Verified report details unavailable.'
+  const bodyClamped = body.length > 180 && !expanded
   const media = item.featuredMediaUrls?.slice(0, 4) ?? []
 
   return (
@@ -43,7 +87,7 @@ function FeedCard({ item }: { item: PublicFeedItem }) {
           className={[styles.avatar, severityClass(item.severity)].join(' ')}
           aria-hidden="true"
         >
-          <FileText size={18} />
+          {renderReportTypeIcon(item.reportType)}
         </span>
         <div className={styles.headerText}>
           <h2 className={styles.cardTitle}>{reportLabel}</h2>
@@ -57,7 +101,33 @@ function FeedCard({ item }: { item: PublicFeedItem }) {
         </div>
       </header>
 
-      <p className={styles.body}>{body}</p>
+      <p className={bodyClamped ? [styles.body, styles.bodyClamped].join(' ') : styles.body}>
+        {body}
+      </p>
+      {bodyClamped && (
+        <button
+          type="button"
+          className={styles.btnExpand}
+          onClick={() => {
+            setExpanded(true)
+          }}
+          aria-label="Show full report description"
+        >
+          Show more <ChevronDown size={14} aria-hidden="true" />
+        </button>
+      )}
+      {expanded && body.length > 180 && (
+        <button
+          type="button"
+          className={styles.btnExpand}
+          onClick={() => {
+            setExpanded(false)
+          }}
+          aria-label="Collapse report description"
+        >
+          Show less <ChevronUp size={14} aria-hidden="true" />
+        </button>
+      )}
 
       {media.length > 0 && (
         <div className={styles.mediaGrid} aria-label="Incident media">
@@ -87,7 +157,7 @@ function FeedCard({ item }: { item: PublicFeedItem }) {
 }
 
 export function FeedPage() {
-  const { items, loading, error } = usePublicFeed()
+  const { items, loading, error, retry } = usePublicFeed()
   const hasItems = items.length > 0
 
   return (
@@ -104,7 +174,10 @@ export function FeedPage() {
       {error !== null && hasItems && (
         <div role="alert" className={styles.card}>
           <strong className={styles.cardTitle}>Could not refresh public feed</strong>
-          <span className={styles.body}>{error}</span>
+          <span className={styles.body}>{error}</span>{' '}
+          <button type="button" className={styles.btnRetry} onClick={retry}>
+            Retry
+          </button>
         </div>
       )}
 
@@ -118,6 +191,9 @@ export function FeedPage() {
           <AlertCircle size={32} aria-hidden="true" />
           <strong>Could not load public feed</strong>
           <span>{error}</span>
+          <button type="button" className={styles.btnRetry} onClick={retry}>
+            Retry
+          </button>
         </div>
       ) : !hasItems ? (
         <div className={styles.state}>

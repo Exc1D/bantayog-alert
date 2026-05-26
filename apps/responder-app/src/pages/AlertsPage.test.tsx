@@ -10,17 +10,26 @@ vi.mock('../hooks/useOfficialAlerts', () => ({
 
 import { AlertsPage } from './AlertsPage'
 
+const mockRetry = vi.fn()
+
 describe('AlertsPage', () => {
   beforeEach(() => {
+    mockRetry.mockClear()
     mockUseOfficialAlerts.mockReturnValue({
       alerts: [],
       loading: false,
       error: null,
+      retry: mockRetry,
     })
   })
 
   it('renders a loading state', () => {
-    mockUseOfficialAlerts.mockReturnValue({ alerts: [], loading: true, error: null })
+    mockUseOfficialAlerts.mockReturnValue({
+      alerts: [],
+      loading: true,
+      error: null,
+      retry: mockRetry,
+    })
 
     render(<AlertsPage />)
 
@@ -38,18 +47,36 @@ describe('AlertsPage', () => {
       alerts: [],
       loading: false,
       error: 'permission_denied',
+      retry: mockRetry,
     })
 
     render(<AlertsPage />)
 
     expect(screen.getByRole('alert')).toHaveTextContent(/could not load official alerts/i)
     expect(screen.getByRole('alert')).toHaveTextContent(/permission_denied/i)
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
+  })
+
+  it('calls retry when retry button is clicked', () => {
+    mockUseOfficialAlerts.mockReturnValue({
+      alerts: [],
+      loading: false,
+      error: 'network_error',
+      retry: mockRetry,
+    })
+
+    render(<AlertsPage />)
+
+    const retryBtn = screen.getByRole('button', { name: /retry/i })
+    retryBtn.click()
+    expect(mockRetry).toHaveBeenCalledTimes(1)
   })
 
   it('keeps stale alerts visible when a refresh error occurs', () => {
     mockUseOfficialAlerts.mockReturnValue({
       loading: false,
       error: 'permission_denied',
+      retry: mockRetry,
       alerts: [
         {
           id: 'stale-alert-1',
@@ -75,6 +102,7 @@ describe('AlertsPage', () => {
     mockUseOfficialAlerts.mockReturnValue({
       loading: false,
       error: null,
+      retry: mockRetry,
       alerts: [
         {
           id: 'alert-1',
@@ -100,6 +128,7 @@ describe('AlertsPage', () => {
     mockUseOfficialAlerts.mockReturnValue({
       loading: false,
       error: null,
+      retry: mockRetry,
       alerts: [
         {
           id: 'alert-province',
@@ -116,5 +145,30 @@ describe('AlertsPage', () => {
     render(<AlertsPage />)
 
     expect(screen.getByText(/province-wide/i)).toBeInTheDocument()
+  })
+
+  it('clamps long alert messages with a Show more button', () => {
+    mockUseOfficialAlerts.mockReturnValue({
+      loading: false,
+      error: null,
+      retry: mockRetry,
+      alerts: [
+        {
+          id: 'alert-long',
+          message:
+            'A massive landslide has blocked the main highway connecting multiple barangays. The debris field extends over two hundred meters and has caused significant damage to nearby structures. Several families have been evacuated and emergency responders are on the scene assessing the structural integrity of surrounding buildings. The area remains unstable and further landslides are possible during continued rainfall. Motorists are advised to take alternate routes and avoid the region entirely.',
+          hazardType: 'flood',
+          affectedMunicipalityIds: ['daet'],
+          declaredAtMillis: Date.now(),
+          publishedAtMillis: Date.now(),
+          declaredBy: '',
+        },
+      ],
+    })
+
+    render(<AlertsPage />)
+
+    expect(screen.getByText(/debris field extends/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show full alert message/i })).toBeInTheDocument()
   })
 })

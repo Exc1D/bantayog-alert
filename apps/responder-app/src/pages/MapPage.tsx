@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import {
   AlertTriangle,
   Building,
   Car,
+  CheckCircle,
   CloudLightning,
   Crosshair,
   Flame,
@@ -101,38 +103,68 @@ interface Coords {
   lng: number
 }
 
+const REDUCED_MOTION =
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
 function MapFlyTo({ coords, recenterRequest }: { coords: Coords | null; recenterRequest: number }) {
   const map = useMap()
   const flownRef = useRef(false)
 
   useEffect(() => {
     if (coords && !flownRef.current) {
-      map.setView([coords.lat, coords.lng], 15)
+      map.setView([coords.lat, coords.lng], 15, { animate: !REDUCED_MOTION })
       flownRef.current = true
     }
   }, [coords, map])
 
   useEffect(() => {
     if (recenterRequest === 0 || !coords) return
-    map.setView([coords.lat, coords.lng], 15)
+    map.setView([coords.lat, coords.lng], 15, { animate: !REDUCED_MOTION })
   }, [recenterRequest, coords, map])
 
   return null
 }
 
+function capitalize(s: string): string {
+  if (s.length === 0) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 function ActiveDispatchMarker({ reportId }: { reportId: string }) {
   const { report } = useReport(reportId)
+  const markerRef = useRef<L.Marker | null>(null)
   if (!report?.publicLocation) return null
   const lat = report.publicLocation.latitude
   const lng = report.publicLocation.longitude
+  const label = getReportTypeLabel(report.reportType)
   return (
-    <Marker position={[lat, lng]} icon={buildIncidentIcon(report.severity, report.reportType)}>
+    <Marker
+      ref={markerRef}
+      position={[lat, lng]}
+      icon={buildIncidentIcon(report.severity, report.reportType)}
+      keyboard
+      eventHandlers={{
+        keydown: (e: L.LeafletEvent) => {
+          const ke = (e as unknown as { originalEvent?: KeyboardEvent }).originalEvent
+          if (ke?.key === 'Enter' || ke?.key === ' ') {
+            ke.preventDefault()
+            markerRef.current?.openPopup()
+          }
+        },
+        popupopen: () => {
+          const popup = markerRef.current?.getPopup()
+          const el = popup?.getElement()
+          const focusable = el?.querySelector<HTMLElement>('a[href], button')
+          focusable?.focus()
+        },
+      }}
+    >
       <Popup>
-        <strong>{getReportTypeLabel(report.reportType)}</strong>
+        <strong>{label}</strong>
         <br />
-        {report.severity} severity
+        {capitalize(report.severity)} severity
         <br />
-        {report.municipalityLabel ?? report.municipalityId}
+        {report.municipalityLabel ?? 'Unknown location'}
         <br />
         <a
           href={`https://maps.google.com/?q=${String(lat)},${String(lng)}`}
@@ -146,15 +178,23 @@ function ActiveDispatchMarker({ reportId }: { reportId: string }) {
   )
 }
 
+type GpsErrorState = 'denied' | 'unavailable' | null
+
 export function MapPage() {
   const { user } = useAuth()
-  const { groups } = useOwnDispatches(user?.uid)
+  const { groups, loading, error, retry } = useOwnDispatches(user?.uid)
   const [ownLocation, setOwnLocation] = useState<Coords | null>(null)
+  const [gpsError, setGpsError] = useState<GpsErrorState>(null)
   const [recenterRequest, setRecenterRequest] = useState(0)
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) {
+      queueMicrotask(() => {
+        setGpsError('unavailable')
+      })
+      return
+    }
     let watchId: number | null = null
 
     const startWatch = () => {
@@ -162,9 +202,15 @@ export function MapPage() {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
           setOwnLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+          setGpsError(null)
         },
         (err) => {
           console.warn('[MapPage] geolocation error:', err)
+          if (err.code === 1) {
+            setGpsError('denied')
+          } else {
+            setGpsError('unavailable')
+          }
         },
         { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
       )
@@ -192,9 +238,13 @@ export function MapPage() {
 
   const allActive = [...groups.pending, ...groups.active]
   const center: [number, number] = ownLocation ? [ownLocation.lat, ownLocation.lng] : DEFAULT_CENTER
+  const showEmpty = !loading && error === null && allActive.length === 0
 
   return (
     <div className={styles.page}>
+      <a href="#map-controls" className={styles.visuallyHiddenSkip}>
+        Skip map, go to controls
+      </a>
       <MapContainer
         center={center}
         zoom={ownLocation ? 15 : 12}
@@ -202,7 +252,7 @@ export function MapPage() {
         className={styles.mapContainer ?? ''}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='&amp;copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapFlyTo coords={ownLocation} recenterRequest={recenterRequest} />
@@ -216,7 +266,46 @@ export function MapPage() {
         ))}
       </MapContainer>
 
-      <div className={styles.legend}>
+      {loading && (
+        <div className={styles.loadingOverlay}>
+          <div className={styles.loadingSpinner} aria-hidden="true" />
+          <span className={styles.loadingText}>Loading dispatches…</span>
+        </div>
+      )}
+
+      {error !== null && (
+        <div role="alert" className={styles.errorBanner}>
+          <p className={styles.errorBannerMessage}>Failed to load dispatches: {error}</p>
+          <button type="button" className={styles.btnRetry} onClick={retry}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {showEmpty && (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyIcon} role="img" aria-label="All clear">
+            <CheckCircle size={48} strokeWidth={2} />
+          </div>
+          <h2 className={styles.emptyTitle}>All Clear!</h2>
+          <p className={styles.emptyText}>
+            No active dispatches on the map. Stay ready — new dispatches will appear here.
+          </p>
+          <Link to="/history" className={styles.emptyAction}>
+            View Past Dispatches
+          </Link>
+        </div>
+      )}
+
+      {gpsError !== null && (
+        <div role="status" className={styles.gpsBanner}>
+          {gpsError === 'denied'
+            ? 'Location access denied. Enable location in settings.'
+            : 'Unable to get location. Check GPS or network.'}
+        </div>
+      )}
+
+      <div className={styles.legend} id="map-controls">
         <div className={styles.legendItem}>
           <span
             className={[styles.dot, styles.dotBlue].filter(Boolean).join(' ')}
@@ -229,7 +318,10 @@ export function MapPage() {
             className={[styles.dot, styles.dotRed].filter(Boolean).join(' ')}
             aria-hidden="true"
           />
-          <span>Incident pin</span>
+          <span>
+            Incident pin{' '}
+            {allActive.length > 0 && <span className={styles.badge}>({allActive.length})</span>}
+          </span>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 const useAuthMock = vi.hoisted(() => vi.fn())
 const useOwnDispatchesMock = vi.hoisted(() => vi.fn())
+const useOnlineStatusMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: useAuthMock,
@@ -12,6 +13,10 @@ vi.mock('@bantayog/shared-ui', () => ({
 
 vi.mock('../hooks/useOwnDispatches', () => ({
   useOwnDispatches: useOwnDispatchesMock,
+}))
+
+vi.mock('../hooks/useOnlineStatus', () => ({
+  useOnlineStatus: useOnlineStatusMock,
 }))
 
 vi.mock('./SosHoldButton', () => ({
@@ -31,10 +36,7 @@ beforeEach(() => {
     rows: [],
     error: null,
   })
-  Object.defineProperty(window.navigator, 'onLine', {
-    configurable: true,
-    value: true,
-  })
+  useOnlineStatusMock.mockReturnValue(true)
 })
 
 describe('Shell', () => {
@@ -62,14 +64,42 @@ describe('Shell', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getAllByRole('link').map((link) => link.getAttribute('aria-label'))).toEqual([
-      'Dispatches',
-      'Map',
-      'Feed',
-      'Alerts',
-      'Profile',
-    ])
+    expect(
+      screen
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('aria-label'))
+        .map((link) => link.getAttribute('aria-label')),
+    ).toEqual(['Dispatches', 'Map', 'Feed', 'Alerts', 'Profile'])
     expect(screen.queryByRole('link', { name: /messages/i })).not.toBeInTheDocument()
     expect(screen.getByLabelText(/2 pending/i)).toBeInTheDocument()
+  })
+
+  it('shows Offline status when useOnlineStatus returns false', () => {
+    useOnlineStatusMock.mockReturnValue(false)
+
+    render(
+      <MemoryRouter>
+        <Shell>
+          <div>content</div>
+        </Shell>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Offline')
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'Offline')
+  })
+
+  it('renders a skip link to main content', () => {
+    render(
+      <MemoryRouter>
+        <Shell>
+          <div>content</div>
+        </Shell>
+      </MemoryRouter>,
+    )
+
+    const skip = screen.getByRole('link', { name: /skip to main content/i })
+    expect(skip).toHaveAttribute('href', '#main-content')
+    expect(document.getElementById('main-content')).toBeInTheDocument()
   })
 })

@@ -62,3 +62,11 @@
     border-color: var(--color-danger);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .ringActive {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+}

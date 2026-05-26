@@ -39,7 +39,9 @@ function DispatchCard({
   now: number
 }) {
   const navigate = useNavigate()
-  const { report } = useReport(row.reportId)
+  const destination = `/dispatches/${row.dispatchId}`
+
+  const { report, loading: reportLoading } = useReport(row.reportId)
   const sevTone =
     report?.severity === 'high'
       ? styles.sevHigh
@@ -47,15 +49,34 @@ function DispatchCard({
         ? styles.sevMedium
         : styles.sevLow
 
-  const destination = `/dispatches/${row.dispatchId}`
-  const title = report
-    ? getReportTypeLabel(report.reportType)
-    : `Incident ${row.reportId.slice(0, 8)}`
+  const title = report ? getReportTypeLabel(report.reportType) : 'Incident'
+  const location = report
+    ? (report.municipalityLabel ?? 'Unknown location') +
+      (report.barangayId !== undefined ? ` · ${report.barangayId}` : '')
+    : ''
+
   const deadlineMs = resolveDeadlineMs(row.acknowledgementDeadlineAt, now)
   const remainingMs = Math.max(0, deadlineMs - now)
   const remainingPercent = Math.max(0, Math.min(100, (remainingMs / (5 * 60 * 1000)) * 100))
   const urgent = remainingMs > 0 && remainingMs < 60_000
   const progress = getDispatchProgress(row.status)
+
+  if (reportLoading) {
+    return (
+      <div
+        data-testid={`dispatch-card-${row.dispatchId}-loading`}
+        className={[
+          styles.card,
+          variant === 'pending' ? styles.cardPending : styles.cardActive,
+          styles.skeleton,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        style={{ height: 200 }}
+        aria-hidden="true"
+      />
+    )
+  }
 
   return (
     <div
@@ -63,6 +84,24 @@ function DispatchCard({
       className={[styles.card, variant === 'pending' ? styles.cardPending : styles.cardActive]
         .filter(Boolean)
         .join(' ')}
+      tabIndex={0}
+      role="button"
+      aria-label={
+        variant === 'pending'
+          ? `${title} — pending acceptance`
+          : `${title} — ${statusLabel(row.uiStatus, row.status)}`
+      }
+      onClick={(e) => {
+        if (e.target instanceof HTMLButtonElement) return
+        void navigate(destination)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          void navigate(destination)
+        }
+      }}
+      data-destination={destination}
     >
       <div className={styles.cardHeader}>
         <h3 className={styles.cardTitle}>{title}</h3>
@@ -77,17 +116,16 @@ function DispatchCard({
           {variant === 'pending' ? 'Pending' : statusLabel(row.uiStatus, row.status)}
         </span>
       </div>
+
       {report && (
         <div className={styles.cardChips}>
           <span className={[styles.severityChip, sevTone].filter(Boolean).join(' ')}>
             {report.severity}
           </span>
-          <span className={styles.locationChip}>
-            {report.municipalityLabel ?? report.municipalityId}
-            {report.barangayId !== undefined ? ` · ${report.barangayId}` : ''}
-          </span>
+          <span className={styles.locationChip}>{location}</span>
         </div>
       )}
+
       {variant === 'pending' ? (
         <DispatchRing
           mode="countdown"
@@ -133,7 +171,7 @@ function DispatchCard({
 export function DispatchListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { rows, groups, error } = useOwnDispatches(user?.uid)
+  const { rows, groups, error, retry, loading } = useOwnDispatches(user?.uid)
   const [now, setNow] = useState(() => Date.now())
 
   const activeDispatchId =
@@ -154,7 +192,7 @@ export function DispatchListPage() {
     }
   }, [activeDispatchId, navigate])
 
-  if (rows.length === 0 && error === null) {
+  if (rows.length === 0 && error === null && !loading) {
     return (
       <div className={styles.page}>
         <div className={styles.emptyState}>
@@ -176,9 +214,27 @@ export function DispatchListPage() {
   return (
     <div className={styles.page}>
       {error !== null && (
-        <p role="alert" className={styles.errorBanner}>
-          Failed to load dispatches: {error}
-        </p>
+        <div role="alert" className={styles.errorBanner}>
+          <p>Failed to load dispatches: {error}</p>{' '}
+          <button type="button" className={styles.btnRetry} onClick={retry}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {loading && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Loading…</h2>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              data-testid="skeleton"
+              aria-hidden="true"
+              className={[styles.card, styles.skeleton].filter(Boolean).join(' ')}
+              style={{ height: 200 }}
+            />
+          ))}
+        </div>
       )}
 
       {groups.pending.length > 0 && (
