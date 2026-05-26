@@ -28,12 +28,7 @@ export const app = getFirebaseApp()
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined
 
-if (RECAPTCHA_SITE_KEY) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
-    isTokenAutoRefreshEnabled: true,
-  })
-} else if (USE_EMULATOR) {
+if (USE_EMULATOR) {
   initializeAppCheck(app, {
     provider: new CustomProvider({
       getToken: () =>
@@ -43,6 +38,11 @@ if (RECAPTCHA_SITE_KEY) {
         }),
     }),
     isTokenAutoRefreshEnabled: false,
+  })
+} else if (RECAPTCHA_SITE_KEY) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+    isTokenAutoRefreshEnabled: true,
   })
 } else {
   console.warn(

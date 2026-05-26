@@ -45,21 +45,21 @@ const TEST_USERS = [
     email: 'citizen-4a@test.local',
     password: 'test123456',
     role: 'citizen',
-    claims: { role: 'citizen', active: true },
+    claims: { role: 'citizen', accountStatus: 'active' },
   },
   {
     uid: 'admin-4a-test-01',
     email: 'admin-4a@test.local',
     password: 'test123456',
     role: 'municipal_admin',
-    claims: { role: 'municipal_admin', municipalityId: 'm1', active: true },
+    claims: { role: 'municipal_admin', accountStatus: 'active', municipalityId: 'm1' },
   },
   {
     uid: 'responder-4a-test-01',
     email: 'responder-4a@test.local',
     password: 'test123456',
     role: 'responder',
-    claims: { role: 'responder', municipalityId: 'm1', active: true },
+    claims: { role: 'responder', accountStatus: 'active', municipalityId: 'm1' },
   },
 ]
 
@@ -103,27 +103,27 @@ async function main() {
     console.log(`[bootstrap] claims set for ${user.email}`)
   }
 
-  // Seed active_accounts for superadmin (idempotent)
-  const sa = TEST_USERS.find((u) => u.role === 'provincial_superadmin')
-  if (sa) {
-    await db
-      .collection('active_accounts')
-      .doc(sa.uid)
-      .set(
-        {
-          uid: sa.uid,
-          role: 'provincial_superadmin',
-          accountStatus: 'active',
-          municipalityId: null,
-          agencyId: null,
-          permittedMunicipalityIds: [],
-          mfaEnrolled: false,
-          lastClaimIssuedAt: Timestamp.fromMillis(now),
-          updatedAt: Timestamp.fromMillis(now),
-        },
-        { merge: true },
-      )
-    console.log(`[bootstrap] active_accounts/${sa.uid} seeded`)
+  // Seed active_accounts for all staff users (idempotent)
+  for (const user of TEST_USERS) {
+    if (user.role === 'citizen') continue
+    const data: Record<string, unknown> = {
+      uid: user.uid,
+      role: user.role,
+      accountStatus: 'active',
+      updatedAt: Timestamp.fromMillis(now),
+    }
+    if ('municipalityId' in user.claims) {
+      data.municipalityId = user.claims.municipalityId
+    }
+    if (user.role === 'provincial_superadmin') {
+      data.municipalityId = null
+      data.agencyId = null
+      data.permittedMunicipalityIds = []
+      data.mfaEnrolled = false
+      data.lastClaimIssuedAt = Timestamp.fromMillis(now)
+    }
+    await db.collection('active_accounts').doc(user.uid).set(data, { merge: true })
+    console.log(`[bootstrap] active_accounts/${user.uid} seeded`)
   }
 
   console.log('Phase 4a bootstrap complete')
