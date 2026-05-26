@@ -98,7 +98,6 @@ export default function MapPage() {
     .filter((r): r is Report => r !== null)
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null
   const [actionError, setActionError] = useState<string | null>(null)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState(() => Date.now())
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [alertPrefill, setAlertPrefill] = useState<
@@ -214,20 +213,6 @@ export default function MapPage() {
     [reports],
   )
 
-  const contentFingerprint = useMemo(
-    () => reports.map((r) => `${r.id}:${r.status}:${r.updatedAt}`).join('|'),
-    [reports],
-  )
-
-  // Update lastUpdatedAt whenever Firestore reports change (while not loading)
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!loading) {
-      setLastUpdatedAt(Date.now())
-    }
-  }, [loading, contentFingerprint])
-  /* eslint-enable react-hooks/set-state-in-effect */
-
   const clearSuccessMessage = useCallback(() => {
     setSuccessMessage(null)
   }, [setSuccessMessage])
@@ -305,7 +290,6 @@ export default function MapPage() {
       <CommandHeader
         title="Provincial Map — Camarines Norte"
         windowRole="map"
-        lastUpdatedAt={lastUpdatedAt}
         onSignOut={() => {
           void signOut()
         }}

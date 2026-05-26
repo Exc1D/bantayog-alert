@@ -197,17 +197,6 @@ export default function FeedPage() {
     }
   }, [activeTab, newReports, pendingReports, publicFeedReports])
 
-  const lastUpdatedAt = useMemo(() => {
-    if (reports.length === 0) return 0
-    return Math.max(
-      ...reports.map((r) => {
-        const raw = r as unknown as Record<string, unknown>
-        const ts = raw.updatedAt
-        return typeof ts === 'number' ? ts : 0
-      }),
-    )
-  }, [reports])
-
   const reportIdsKey = feedReports.map(({ report }) => report.id).join(',')
   useEffect(() => {
     let cancelled = false
@@ -292,7 +281,6 @@ export default function FeedPage() {
       <CommandHeader
         title="Feed moderation"
         windowRole="feed"
-        lastUpdatedAt={lastUpdatedAt}
         onSignOut={() => {
           signOut()
             .then(() => {

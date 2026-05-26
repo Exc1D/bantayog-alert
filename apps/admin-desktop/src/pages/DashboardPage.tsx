@@ -63,7 +63,6 @@ export default function DashboardPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDispatching, setIsDispatching] = useState(false)
-  const [pageLoadedAt] = useState(() => Date.now())
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
 
   const stalledDispatches = rows
@@ -234,7 +233,6 @@ export default function DashboardPage() {
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <CommandHeader
         title="PDRRMO Camarines Norte"
-        lastUpdatedAt={pageLoadedAt}
         windowRole="dashboard"
         onDeclareAlert={() => {
           setAlertModalOpen(true)

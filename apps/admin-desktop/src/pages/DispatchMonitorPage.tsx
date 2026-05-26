@@ -37,7 +37,6 @@ export function DispatchMonitorPage() {
   const [dispatchError, setDispatchError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
-  const [pageLoadedAt] = useState(() => Date.now())
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
 
@@ -170,7 +169,6 @@ export function DispatchMonitorPage() {
 
       <CommandHeader
         title="PDRRMO Camarines Norte"
-        lastUpdatedAt={pageLoadedAt}
         windowRole="dispatches"
         onShowKeyboardShortcuts={() => {
           setHelpModalOpen(true)

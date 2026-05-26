@@ -178,66 +178,6 @@ describe('MapPage UX completeness', () => {
     expect(screen.getByText('Report rejected')).toBeInTheDocument()
   })
 
-  it('updates lastUpdatedAt when reports change', () => {
-    const initialTime = 1_000_000_000_000
-    vi.spyOn(Date, 'now').mockReturnValue(initialTime)
-
-    mockUseFirestoreListeners.mockReturnValue(
-      listenerResult([
-        {
-          id: 'r1',
-          type: 'flood',
-          severity: 'high',
-          municipality: 'Daet',
-          barangay: 'Camambugan',
-          createdAt: '14:02',
-          status: 'new',
-          description: 'Water rising',
-          latitude: 14.1,
-          longitude: 122.9,
-          updatedAt: '',
-        },
-      ]),
-    )
-
-    const { rerender } = render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
-
-    // Advance time
-    vi.spyOn(Date, 'now').mockReturnValue(initialTime + 30_000)
-
-    // Trigger re-render with new reports (simulating Firestore update)
-    mockUseFirestoreListeners.mockReturnValue(
-      listenerResult([
-        {
-          id: 'r2',
-          type: 'fire',
-          severity: 'high',
-          municipality: 'Labo',
-          barangay: 'San Roque',
-          createdAt: '14:08',
-          status: 'new',
-          description: 'Smoke reported',
-          latitude: 14.2,
-          longitude: 122.8,
-          updatedAt: '',
-        },
-      ]),
-    )
-
-    rerender(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
-
-    // LiveIndicator should show 0s ago because lastUpdatedAt was updated
-    expect(screen.getByText('Updated 0s ago')).toBeInTheDocument()
-  })
-
   it('renders keyboard-navigable incident list when reports exist', () => {
     mockUseFirestoreListeners.mockReturnValue(
       listenerResult([

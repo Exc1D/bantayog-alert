@@ -4,14 +4,13 @@ import { MemoryRouter } from 'react-router-dom'
 import { CommandHeader } from '../components/CommandHeader'
 
 describe('CommandHeader', () => {
-  it('renders title and live indicator', () => {
+  it('renders title', () => {
     render(
       <MemoryRouter>
-        <CommandHeader title="PDRRMO Camarines Norte" lastUpdatedAt={Date.now()} />
+        <CommandHeader title="PDRRMO Camarines Norte" />
       </MemoryRouter>,
     )
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('renders command-center tabs including feed moderation', () => {
@@ -19,7 +18,6 @@ describe('CommandHeader', () => {
       <MemoryRouter>
         <CommandHeader
           title="PDRRMO Camarines Norte"
-          lastUpdatedAt={Date.now()}
           windowRole="feed"
         />
       </MemoryRouter>,
@@ -38,7 +36,6 @@ describe('CommandHeader', () => {
       <MemoryRouter>
         <CommandHeader
           title="PDRRMO Camarines Norte"
-          lastUpdatedAt={Date.now()}
           windowRole="dispatches"
         />
       </MemoryRouter>,
@@ -49,57 +46,11 @@ describe('CommandHeader', () => {
     expect(screen.getByRole('link', { name: 'Dispatches' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('shows a Dashboard role chip and danger-toned accent when windowRole is "dashboard"', () => {
-    const { container } = render(
-      <MemoryRouter>
-        <CommandHeader
-          title="PDRRMO Camarines Norte"
-          lastUpdatedAt={Date.now()}
-          windowRole="dashboard"
-        />
-      </MemoryRouter>,
-    )
-    const chip = screen.getByTestId('window-role-chip')
-    expect(chip).toHaveTextContent(/dashboard/i)
-    // Visually distinct accent — keyed to the dashboard role (danger token).
-    const accent = container.querySelector('[data-testid="window-role-accent"]')
-    expect(accent).not.toBeNull()
-    expect(accent?.getAttribute('data-role')).toBe('dashboard')
-  })
-
-  it('shows a Map role chip and info-toned accent when windowRole is "map"', () => {
-    const { container } = render(
-      <MemoryRouter>
-        <CommandHeader
-          title="Provincial Map — Camarines Norte"
-          lastUpdatedAt={Date.now()}
-          windowRole="map"
-        />
-      </MemoryRouter>,
-    )
-    const chip = screen.getByTestId('window-role-chip')
-    expect(chip).toHaveTextContent(/map/i)
-    const accent = container.querySelector('[data-testid="window-role-accent"]')
-    expect(accent).not.toBeNull()
-    expect(accent?.getAttribute('data-role')).toBe('map')
-  })
-
-  it('renders without role chip or accent when windowRole is not provided', () => {
-    render(
-      <MemoryRouter>
-        <CommandHeader title="Generic" lastUpdatedAt={Date.now()} />
-      </MemoryRouter>,
-    )
-    expect(screen.queryByTestId('window-role-chip')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('window-role-accent')).not.toBeInTheDocument()
-  })
-
   it('icon buttons have focus-visible ring classes', () => {
     render(
       <MemoryRouter>
         <CommandHeader
           title="Focus Test"
-          lastUpdatedAt={Date.now()}
           audioEnabled
           onToggleAudio={vi.fn()}
           onShowNotifications={vi.fn()}
@@ -125,7 +76,6 @@ describe('CommandHeader', () => {
       <MemoryRouter>
         <CommandHeader
           title="Badge Test"
-          lastUpdatedAt={Date.now()}
           notificationCount={3}
           onShowNotifications={vi.fn()}
         />
@@ -140,7 +90,6 @@ describe('CommandHeader', () => {
       <MemoryRouter>
         <CommandHeader
           title="Muted Test"
-          lastUpdatedAt={Date.now()}
           audioEnabled={false}
           onToggleAudio={vi.fn()}
         />

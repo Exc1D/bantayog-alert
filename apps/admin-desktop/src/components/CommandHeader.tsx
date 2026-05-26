@@ -2,23 +2,17 @@ import {
   AlertTriangle,
   Bell,
   Keyboard,
-  LayoutDashboard,
   LogOut,
-  Map,
-  Newspaper,
-  Radio,
   Volume2,
   VolumeX,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { LiveIndicator } from './LiveIndicator'
 import { Tooltip } from './Tooltip'
 
 type WindowRole = 'dashboard' | 'map' | 'feed' | 'dispatches'
 
 interface Props {
   title: string
-  lastUpdatedAt: number
   notificationCount?: number
   audioEnabled?: boolean
   onToggleAudio?: () => void
@@ -29,30 +23,15 @@ interface Props {
   windowRole?: WindowRole
 }
 
-const ROLE_ACCENT: Record<WindowRole, string> = {
-  dashboard: 'var(--color-danger)',
-  map: 'var(--color-info)',
-  feed: 'var(--color-success)',
-  dispatches: 'var(--color-warning)',
-} as const
-
-const ROLE_LABEL: Record<WindowRole, string> = {
-  dashboard: 'Dashboard',
-  map: 'Map',
-  feed: 'Feed',
-  dispatches: 'Dispatches',
-} as const
-
 const NAV_ITEMS = [
-  { role: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { role: 'map', href: '/map', label: 'Map', icon: Map },
-  { role: 'feed', href: '/feed', label: 'Feed', icon: Newspaper },
-  { role: 'dispatches', href: '/dispatches', label: 'Dispatches', icon: Radio },
+  { role: 'dashboard', href: '/dashboard', label: 'Dashboard' },
+  { role: 'map', href: '/map', label: 'Map' },
+  { role: 'feed', href: '/feed', label: 'Feed' },
+  { role: 'dispatches', href: '/dispatches', label: 'Dispatches' },
 ] as const
 
 export function CommandHeader({
   title,
-  lastUpdatedAt,
   notificationCount = 0,
   audioEnabled,
   onToggleAudio,
@@ -63,29 +42,8 @@ export function CommandHeader({
   windowRole,
 }: Props) {
   return (
-    <header className="relative flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
-      {windowRole && (
-        <span
-          aria-hidden="true"
-          data-testid="window-role-accent"
-          data-role={windowRole}
-          className="absolute left-0 top-0 h-[2px] w-full"
-          style={{ backgroundColor: ROLE_ACCENT[windowRole] }}
-        />
-      )}
-      <div className="flex items-center gap-3">
-        {windowRole && (
-          <span
-            data-testid="window-role-chip"
-            data-role={windowRole}
-            className="rounded-sm border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]"
-            style={{ color: ROLE_ACCENT[windowRole] }}
-          >
-            {ROLE_LABEL[windowRole]}
-          </span>
-        )}
-        <span className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</span>
-      </div>
+    <header className="flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
+      <span className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</span>
       <div className="flex items-center gap-4">
         {windowRole && (
           <nav
@@ -93,7 +51,6 @@ export function CommandHeader({
             className="flex overflow-hidden rounded border border-white/10"
           >
             {NAV_ITEMS.map((item) => {
-              const Icon = item.icon
               const active = windowRole === item.role
               return (
                 <Link
@@ -101,20 +58,17 @@ export function CommandHeader({
                   to={item.href}
                   data-tour={item.role}
                   {...(active ? { 'aria-current': 'page' as const } : {})}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   style={{
-                    color: active ? ROLE_ACCENT[item.role] : 'var(--color-text-secondary)',
                     backgroundColor: active ? 'rgba(255,255,255,0.06)' : 'transparent',
                   }}
                 >
-                  <Icon className="h-3.5 w-3.5" />
                   {item.label}
                 </Link>
               )
             })}
           </nav>
         )}
-        <LiveIndicator lastUpdatedAt={lastUpdatedAt} />
         {onDeclareAlert && (
           <Tooltip content="Create and broadcast a new public emergency alert.">
             <button
