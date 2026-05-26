@@ -322,7 +322,11 @@ describe('MapPage Firestore wiring', () => {
       updatedAt: '',
     })
 
+    // Open confirmation modal and confirm verify
     fireEvent.click(screen.getByRole('button', { name: 'Verify' }))
+    const verifyButtons = screen.getAllByRole('button', { name: 'Verify' })
+    expect(verifyButtons.length).toBe(2)
+    fireEvent.click(verifyButtons[1]!)
 
     await flushPromises()
     expect(screen.getByRole('alert')).toHaveTextContent('Old verify failure')
@@ -335,6 +339,7 @@ describe('MapPage Firestore wiring', () => {
         }),
     )
 
+    // Click TriagePanel Verify again: error should clear immediately when modal opens
     fireEvent.click(screen.getByRole('button', { name: 'Verify' }))
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()

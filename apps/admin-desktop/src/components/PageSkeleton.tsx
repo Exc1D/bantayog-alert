@@ -36,13 +36,6 @@ export function PageSkeleton({ variant }: Props) {
           <SkeletonBlock className="h-4 w-24" />
           <SkeletonBlock className="h-4 w-24" />
         </div>
-        {/* Stats cards */}
-        <div className="grid grid-cols-4 gap-4 p-4">
-          <SkeletonBlock className="h-24" />
-          <SkeletonBlock className="h-24" />
-          <SkeletonBlock className="h-24" />
-          <SkeletonBlock className="h-24" />
-        </div>
         {/* Main content grid */}
         <div className="grid flex-1 grid-cols-[3fr_2fr] gap-4 p-4 pt-0">
           <div className="space-y-4">

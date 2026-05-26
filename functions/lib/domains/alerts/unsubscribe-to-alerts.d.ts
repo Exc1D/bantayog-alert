@@ -1,9 +1,10 @@
-import { type Firestore } from 'firebase-admin/firestore';
+import { type Firestore, Timestamp } from 'firebase-admin/firestore';
 export interface UnsubscribeFromAlertsDeps {
     token: string;
     actor: {
         uid: string;
     };
+    now: Timestamp;
 }
 export declare function unsubscribeFromAlertsCore(db: Firestore, deps: UnsubscribeFromAlertsDeps): Promise<{
     success: true;

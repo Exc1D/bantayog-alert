@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
+import { useNavigate } from 'react-router-dom'
 import { CommandHeader } from '../components/CommandHeader'
 import { ProvincialMap } from '../components/ProvincialMap'
 import { TriagePanel } from '../components/TriagePanel'
@@ -8,10 +9,17 @@ import { MapOverlayControls } from '../components/MapOverlayControls'
 import { MunicipalDrillDown } from '../components/MunicipalDrillDown'
 import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { SuccessBanner } from '../components/SuccessBanner'
+import { ActionErrorBanner } from '../components/ActionErrorBanner'
+import { SkipLink } from '../components/SkipLink'
+import { MapKeyboardNav } from '../components/MapKeyboardNav'
+import { HelpModal } from '../components/HelpModal'
+import { ConfirmationModal } from '../components/ConfirmationModal'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { useUrlSync } from '../hooks/useUrlSync'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { callables } from '../services/callables'
 import { db, rtdb } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
@@ -90,6 +98,17 @@ export default function MapPage() {
     .filter((r): r is Report => r !== null)
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null
   const [actionError, setActionError] = useState<string | null>(null)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(() => Date.now())
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [alertPrefill, setAlertPrefill] = useState<
+    { municipalityId: string | undefined; reportId: string | undefined } | undefined
+  >(undefined)
+  const [helpModalOpen, setHelpModalOpen] = useState(false)
+  const [verifyConfirmOpen, setVerifyConfirmOpen] = useState(false)
+  const [verifyPendingId, setVerifyPendingId] = useState<string | null>(null)
+
+  const navigate = useNavigate()
 
   const municipalityData: MunicipalPerformance | null = useMemo(() => {
     if (!selectedMunicipalityId) return null
@@ -127,18 +146,34 @@ export default function MapPage() {
   }, [])
 
   const handleVerify = useCallback(async (id: string) => {
-    setActionError(null)
     try {
       await withRetry(() =>
         callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() }),
       )
-      setActionError(null)
+      setSuccessMessage('Report verified')
     } catch (err) {
       setActionError(actionErrorMessage(err, 'Verify failed'))
+    } finally {
+      setVerifyPendingId(null)
+      setVerifyConfirmOpen(false)
     }
   }, [])
 
+  const handleRequestVerify = useCallback((id: string) => {
+    setActionError(null)
+    setSuccessMessage(null)
+    setVerifyPendingId(id)
+    setVerifyConfirmOpen(true)
+  }, [])
+
+  const handleCancelVerify = useCallback(() => {
+    setVerifyPendingId(null)
+    setVerifyConfirmOpen(false)
+  }, [])
+
   const handleReject = useCallback(async (id: string) => {
+    setActionError(null)
+    setSuccessMessage(null)
     try {
       await withRetry(() =>
         callables.rejectReport({
@@ -147,7 +182,7 @@ export default function MapPage() {
           idempotencyKey: generateIdempotencyKey(),
         }),
       )
-      setActionError(null)
+      setSuccessMessage('Report rejected')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Reject failed'
       setActionError(msg)
@@ -171,7 +206,7 @@ export default function MapPage() {
             idempotencyKey: generateIdempotencyKey(),
           }),
         )
-        setActionError(null)
+        setSuccessMessage('Responder dispatched')
       } catch (err) {
         setActionError(actionErrorMessage(err, 'Dispatch failed'))
       }
@@ -179,11 +214,68 @@ export default function MapPage() {
     [reports],
   )
 
-  const [lastUpdatedAt] = useState(() => Date.now())
-  const [alertModalOpen, setAlertModalOpen] = useState(false)
-  const [alertPrefill, setAlertPrefill] = useState<
-    { municipalityId: string | undefined; reportId: string | undefined } | undefined
-  >(undefined)
+  const contentFingerprint = useMemo(
+    () => reports.map((r) => `${r.id}:${r.status}:${r.updatedAt}`).join('|'),
+    [reports],
+  )
+
+  // Update lastUpdatedAt whenever Firestore reports change (while not loading)
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!loading) {
+      setLastUpdatedAt(Date.now())
+    }
+  }, [loading, contentFingerprint])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const clearSuccessMessage = useCallback(() => {
+    setSuccessMessage(null)
+  }, [setSuccessMessage])
+
+  useKeyboardShortcuts([
+    {
+      key: 'd',
+      handler: () => {
+        void navigate('/dispatches')
+      },
+    },
+    {
+      key: 'f',
+      handler: () => {
+        void navigate('/feed')
+      },
+    },
+    {
+      key: '?',
+      handler: () => {
+        setHelpModalOpen(true)
+      },
+    },
+    {
+      key: 'Escape',
+      handler: () => {
+        setHelpModalOpen(false)
+      },
+    },
+    {
+      key: 'ArrowUp',
+      handler: () => {
+        if (!selectedReportId || reports.length === 0) return
+        const idx = reports.findIndex((r) => r.id === selectedReportId)
+        const nextIdx = idx <= 0 ? reports.length - 1 : idx - 1
+        handlePinClick(reports[nextIdx]!.id)
+      },
+    },
+    {
+      key: 'ArrowDown',
+      handler: () => {
+        if (!selectedReportId || reports.length === 0) return
+        const idx = reports.findIndex((r) => r.id === selectedReportId)
+        const nextIdx = idx >= reports.length - 1 ? 0 : idx + 1
+        handlePinClick(reports[nextIdx]!.id)
+      },
+    },
+  ])
 
   if (loading) {
     return (
@@ -203,6 +295,7 @@ export default function MapPage() {
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+      <SkipLink />
       <OfflineBanner
         error={error}
         onRetry={() => {
@@ -220,19 +313,26 @@ export default function MapPage() {
           setAlertPrefill(undefined)
           setAlertModalOpen(true)
         }}
+        onShowKeyboardShortcuts={() => {
+          setHelpModalOpen(true)
+        }}
       />
-      {actionError && (
-        <div
-          className="absolute left-0 right-0 top-12 z-[60] border border-[var(--color-danger)] bg-[var(--color-danger)]/20 px-4 py-2 text-sm text-[var(--color-danger)]"
-          role="alert"
-        >
-          {actionError}
-          <button onClick={clearActionError} className="ml-2 underline">
-            Dismiss
-          </button>
+      {successMessage && (
+        <div className="absolute left-0 right-0 top-12 z-[1002] px-4">
+          <SuccessBanner message={successMessage} onDismiss={clearSuccessMessage} />
         </div>
       )}
-      <div className="relative flex-1">
+      {actionError && (
+        <div className="absolute left-0 right-0 top-12 z-[1002] px-4">
+          <ActionErrorBanner message={actionError} onDismiss={clearActionError} />
+        </div>
+      )}
+      <div id="main-content" className="relative flex-1">
+        <MapKeyboardNav
+          reports={reports}
+          selectedReportId={selectedReportId}
+          onSelect={handlePinClick}
+        />
         <div className="isolate h-full w-full">
           <ProvincialMap
             reports={reports}
@@ -240,14 +340,28 @@ export default function MapPage() {
             onPinClick={handlePinClick}
           />
         </div>
-        <MapOverlayControls activeOverlays={activeOverlays} onToggleOverlay={toggleOverlay} />
+        {reports.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] px-6 py-4 text-center shadow-xl">
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">No active incidents</p>
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                Reports will appear here as they are submitted.
+              </p>
+            </div>
+          </div>
+        )}
+        <MapOverlayControls
+          activeOverlays={activeOverlays}
+          onToggleOverlay={toggleOverlay}
+          triagePanelOpen={!!selectedReport}
+        />
         <TriagePanel
           report={selectedReport}
           responders={responderEntries(responders)}
           onClose={() => {
             selectReport(null)
           }}
-          onVerify={(id) => void handleVerify(id)}
+          onVerify={handleRequestVerify}
           onReject={(id) => void handleReject(id)}
           onDispatch={(reportId, agency, responderUid) =>
             void handleDispatch(reportId, agency, responderUid)
@@ -280,10 +394,37 @@ export default function MapPage() {
           onSuccess={() => {
             setAlertModalOpen(false)
             setAlertPrefill(undefined)
+            setSuccessMessage('Alert declared successfully')
           }}
           onError={(msg) => {
             setActionError(msg)
           }}
+        />
+        <HelpModal
+          open={helpModalOpen}
+          onClose={() => {
+            setHelpModalOpen(false)
+          }}
+          shortcuts={[
+            { key: '↑', description: 'Previous incident' },
+            { key: '↓', description: 'Next incident' },
+            { key: 'Tab', description: 'Focus the incident list' },
+            { key: '?', description: 'Show keyboard shortcuts' },
+            { key: 'Esc', description: 'Close help' },
+          ]}
+        />
+        <ConfirmationModal
+          open={verifyConfirmOpen}
+          title="Verify Report"
+          message="This will advance the report to verified status. It cannot be undone."
+          confirmLabel="Verify"
+          confirmVariant="primary"
+          onConfirm={() => {
+            if (verifyPendingId) {
+              void handleVerify(verifyPendingId)
+            }
+          }}
+          onCancel={handleCancelVerify}
         />
       </div>
     </div>

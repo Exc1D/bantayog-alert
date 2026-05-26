@@ -159,6 +159,31 @@ jobs:
             echo "✓ $app correctly rejected by guard"
           done
 
+  e2e-full-loop:
+    name: E2E Full-Loop Proof
+    needs: [build, functions-emulator-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: corepack enable
+      - run: corepack prepare pnpm@${PNPM_VERSION} --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Run full-loop e2e proof against local emulator stack
+        # proof-local.mjs prepares functions, starts emulators+dev servers,
+        # seeds accounts, runs Playwright full-loop.spec.ts, then tears down.
+        run: node scripts/proof-local.mjs
+        env:
+          BANTAYOG_FIREBASE_PROJECT_ID: demo-bantayog-alert
+          CI: true
+
   rules-check:
     name: Firestore Rules Check
     needs: setup

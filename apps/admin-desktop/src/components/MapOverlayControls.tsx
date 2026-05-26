@@ -5,6 +5,7 @@ import { Tooltip } from './Tooltip'
 interface Props {
   activeOverlays: Set<string>
   onToggleOverlay: (overlayId: string) => void
+  triagePanelOpen?: boolean
 }
 
 const PRIMARY_OPTIONS = [
@@ -31,7 +32,7 @@ const CHECKBOX_OPTIONS = [
   },
 ] as const
 
-export function MapOverlayControls({ activeOverlays, onToggleOverlay }: Props) {
+export function MapOverlayControls({ activeOverlays, onToggleOverlay, triagePanelOpen }: Props) {
   const [showMore, setShowMore] = useState(false)
 
   const currentFilter = activeOverlays.has('active_only') ? 'active_only' : 'all_incidents'
@@ -47,7 +48,7 @@ export function MapOverlayControls({ activeOverlays, onToggleOverlay }: Props) {
   const secondaryCheckboxes = CHECKBOX_OPTIONS.slice(1)
 
   return (
-    <div className="absolute right-4 top-4 z-[1000] rounded-lg border border-white/10 bg-[var(--color-surface-elevated)]/95 p-3 shadow-xl backdrop-blur-sm">
+    <div className={`absolute top-4 z-[1000] rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-3 shadow-xl ${triagePanelOpen ? 'right-[400px]' : 'right-4'}`}>
       <div className="flex items-center gap-2">
         {/* Segmented control: All | Active Only */}
         <div className="flex rounded-md border border-white/10 bg-[var(--color-surface)]">

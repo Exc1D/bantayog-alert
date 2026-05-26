@@ -30,6 +30,7 @@ interface ResponderDoc {
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 const THIRTY_MINUTES_MS = 30 * 60 * 1000
+const ALLOWED_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
 
 function deriveOnlineStatus(lastSeenAt: number): ResponderFleetMember['onlineStatus'] {
   const elapsed = Date.now() - lastSeenAt
@@ -38,7 +39,35 @@ function deriveOnlineStatus(lastSeenAt: number): ResponderFleetMember['onlineSta
   return 'offline'
 }
 
-const ALLOWED_ADMIN_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
+function isAuthorized(
+  role: string | null,
+  municipalityId: string | null,
+  agencyId: string | null,
+): boolean {
+  if (!ALLOWED_ROLES.has(role ?? '')) return false
+  if (role === 'municipal_admin' && !municipalityId) return false
+  if (role === 'agency_admin' && !agencyId) return false
+  return true
+}
+
+function scopeQuery(
+  base: Query,
+  role: string | null,
+  municipalityId: string | null,
+  agencyId: string | null,
+): Query {
+  if (role === 'municipal_admin' && municipalityId) {
+    return query(base, where('municipalityId', '==', municipalityId))
+  }
+  if (role === 'agency_admin' && agencyId) {
+    return query(base, where('agencyId', '==', agencyId))
+  }
+  return base
+}
+
+function snapshotError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
 
 export function useResponderFleet(db: Firestore) {
   const { claims, loading: authLoading } = useAuth()
@@ -49,20 +78,10 @@ export function useResponderFleet(db: Firestore) {
   const [responders, setResponders] = useState<ResponderFleetMember[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  // Derive loading from authLoading — no setState in effect
-  const loading = authLoading
-
   useEffect(() => {
     if (authLoading) return
 
-    const isSupportedRole = role !== null && ALLOWED_ADMIN_ROLES.has(role)
-
-    if (
-      !isSupportedRole ||
-      (role === 'municipal_admin' && !municipalityId) ||
-      (role === 'agency_admin' && !agencyId)
-    ) {
-      // Clear stale data and set error — one-time derivation from auth claims
+    if (!isAuthorized(role, municipalityId, agencyId)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setResponders([])
       setError('unauthorized')
@@ -72,17 +91,8 @@ export function useResponderFleet(db: Firestore) {
     setError(null)
     setResponders([])
 
-    const respondersCol = collection(db, 'responders')
-    let respondersRef: Query = respondersCol
-
-    if (role === 'municipal_admin' && municipalityId) {
-      respondersRef = query(respondersRef, where('municipalityId', '==', municipalityId))
-    } else if (role === 'agency_admin' && agencyId) {
-      respondersRef = query(respondersRef, where('agencyId', '==', agencyId))
-    }
-
-    respondersRef = query(
-      respondersRef,
+    const respondersRef = query(
+      scopeQuery(collection(db, 'responders'), role, municipalityId, agencyId),
       where('availabilityStatus', '==', 'available'),
       where('accountStatus', '==', 'active'),
       orderBy('lastSeenAt', 'desc'),
@@ -94,28 +104,22 @@ export function useResponderFleet(db: Firestore) {
         const data = snapshot.docs.map((d) => {
           const doc = d.data() as ResponderDoc
           const lastSeenAt = doc.lastSeenAt ?? 0
-          const member: ResponderFleetMember = {
+          return {
             uid: d.id,
             displayName: doc.displayName ?? '',
             availabilityStatus: doc.availabilityStatus ?? 'unavailable',
             lastSeenAt,
             onlineStatus: deriveOnlineStatus(lastSeenAt),
+            ...(doc.municipalityId && { municipalityId: doc.municipalityId }),
+            ...(doc.agencyId && { agencyId: doc.agencyId }),
           }
-          if (doc.municipalityId !== undefined) {
-            member.municipalityId = doc.municipalityId
-          }
-          if (doc.agencyId !== undefined) {
-            member.agencyId = doc.agencyId
-          }
-          return member
         })
         setResponders(data)
         setError(null)
       },
       (err) => {
-        const message = err instanceof Error ? err.message : String(err)
         setResponders([])
-        setError(message)
+        setError(snapshotError(err))
       },
     )
 
@@ -124,5 +128,5 @@ export function useResponderFleet(db: Firestore) {
     }
   }, [db, authLoading, role, municipalityId, agencyId])
 
-  return { responders, loading, error }
+  return { responders, loading: authLoading, error }
 }

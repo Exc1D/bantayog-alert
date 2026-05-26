@@ -10,11 +10,8 @@ interface Props {
 
 export function MunicipalDrillDown({ data, onClose, onViewAll, onContactAdmin }: Props) {
   return (
-    <div
-      className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4 shadow-xl"
-      style={{ pointerEvents: 'none' }}
-    >
-      <div className="flex items-start justify-between" style={{ pointerEvents: 'auto' }}>
+    <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4 shadow-xl">
+      <div className="flex items-start justify-between">
         <h3 className="font-semibold text-[var(--color-text-primary)]">
           {data.municipality} Municipality
         </h3>
@@ -23,7 +20,6 @@ export function MunicipalDrillDown({ data, onClose, onViewAll, onContactAdmin }:
           onClick={onClose}
           className="rounded p-1 hover:bg-white/10"
           aria-label="Close"
-          style={{ pointerEvents: 'auto' }}
         >
           <X className="h-4 w-4 text-[var(--color-text-secondary)]" />
         </button>
@@ -62,7 +58,7 @@ export function MunicipalDrillDown({ data, onClose, onViewAll, onContactAdmin }:
       </div>
 
       {(onViewAll ?? onContactAdmin) && (
-        <div className="mt-3 flex gap-2" style={{ pointerEvents: 'auto' }}>
+        <div className="mt-3 flex gap-2">
           {onViewAll && (
             <button
               type="button"

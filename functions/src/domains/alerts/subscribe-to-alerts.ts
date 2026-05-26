@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 
 const subscribeSchema = z.object({
   token: z.string().min(1),
@@ -35,6 +36,18 @@ export async function subscribeToAlertsCore(
   deps: SubscribeToAlertsCoreDeps,
 ): Promise<{ success: true }> {
   const { token, actor, now } = deps
+
+  const rl = await checkRateLimit(db, {
+    key: `subscribeToAlerts:${actor.uid}`,
+    limit: 20,
+    windowSeconds: 60,
+    now,
+  })
+  if (!rl.allowed) {
+    throw new HttpsError('resource-exhausted', 'rate limit exceeded', {
+      retryAfterSeconds: rl.retryAfterSeconds,
+    })
+  }
 
   await verifyTokenOwnership(db, actor.uid, token)
 
@@ -78,6 +91,7 @@ export const subscribeToAlerts = onCall(
         now: Timestamp.now(),
       })
     } catch (error) {
+      if (error instanceof HttpsError) throw error
       console.error('Failed to subscribe to alerts topic:', error)
       throw new HttpsError('internal', 'Failed to subscribe to alerts')
     }

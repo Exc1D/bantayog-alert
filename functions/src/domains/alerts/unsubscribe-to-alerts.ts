@@ -1,8 +1,9 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
-import { type Firestore } from 'firebase-admin/firestore'
+import { type Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { checkRateLimit } from '../shared/rate-limit.js'
 
 const unsubscribeSchema = z.object({
   token: z.string().min(1),
@@ -11,6 +12,7 @@ const unsubscribeSchema = z.object({
 export interface UnsubscribeFromAlertsDeps {
   token: string
   actor: { uid: string }
+  now: Timestamp
 }
 
 async function verifyTokenOwnership(db: Firestore, uid: string, token: string): Promise<void> {
@@ -32,6 +34,18 @@ export async function unsubscribeFromAlertsCore(
   db: Firestore,
   deps: UnsubscribeFromAlertsDeps,
 ): Promise<{ success: true }> {
+  const rl = await checkRateLimit(db, {
+    key: `unsubscribeFromAlerts:${deps.actor.uid}`,
+    limit: 20,
+    windowSeconds: 60,
+    now: deps.now,
+  })
+  if (!rl.allowed) {
+    throw new HttpsError('resource-exhausted', 'rate limit exceeded', {
+      retryAfterSeconds: rl.retryAfterSeconds,
+    })
+  }
+
   await verifyTokenOwnership(db, deps.actor.uid, deps.token)
 
   const { messaging } = await import('firebase-admin')
@@ -61,8 +75,10 @@ export const unsubscribeFromAlerts = onCall(
       return await unsubscribeFromAlertsCore(adminDb, {
         token: parsed.data.token,
         actor: { uid: request.auth.uid },
+        now: Timestamp.now(),
       })
     } catch (error) {
+      if (error instanceof HttpsError) throw error
       console.error('Failed to unsubscribe from alerts topic:', error)
       throw new HttpsError('internal', 'Failed to unsubscribe from alerts')
     }

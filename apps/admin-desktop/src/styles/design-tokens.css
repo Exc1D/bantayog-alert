@@ -25,6 +25,10 @@
     --hsu-norm: var(--color-success);
     --hsu-info: var(--color-info);
 
+    /* Cartographic palette — for map-linked interactive elements */
+    --color-carto-blue: #4a90d9;
+    --color-carto-blue-glow: rgba(74, 144, 217, 0.25);
+
     /* Legacy aliases (deprecated, use semantic tokens above) */
     --color-crit: var(--color-danger);
     --color-warn: var(--color-warning);
@@ -64,6 +68,11 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+@keyframes vigilance-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
 }
 
 @layer utilities {

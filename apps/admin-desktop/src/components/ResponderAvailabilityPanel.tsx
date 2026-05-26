@@ -1,3 +1,4 @@
+import { Users } from 'lucide-react'
 import type { ResponderFleetMember } from '../hooks/useResponderFleet'
 
 interface Props {
@@ -13,8 +14,12 @@ const STATUS_DOT_COLOR: Record<ResponderFleetMember['onlineStatus'], string> = {
 export function ResponderAvailabilityPanel({ responders }: Props) {
   if (responders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-[var(--color-text-muted)]">
-        <p className="text-sm">No responders online</p>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-[var(--color-text-muted)]/20 bg-[var(--color-surface-elevated)] py-12 text-center">
+        <Users className="mb-3 h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)]">No responders online</h3>
+        <p className="mt-1 max-w-xs text-xs text-[var(--color-text-secondary)]">
+          Responders appear here when they are active in the field.
+        </p>
       </div>
     )
   }

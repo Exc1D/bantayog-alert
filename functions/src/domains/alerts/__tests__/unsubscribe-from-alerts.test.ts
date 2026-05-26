@@ -1,8 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { type Firestore } from 'firebase-admin/firestore'
+import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
-const { mockUnsubscribeFromTopic } = vi.hoisted(() => ({
-  mockUnsubscribeFromTopic: vi.fn(),
+const { mockCheckRateLimit, mockUnsubscribeFromTopic } = vi.hoisted(() => ({
+  mockCheckRateLimit: vi.fn(),
+  mockUnsubscribeFromTopic: vi.fn().mockResolvedValue({
+    successCount: 1,
+    failureCount: 0,
+    errors: [],
+  }),
 }))
 
 vi.mock('firebase-admin', () => ({
@@ -13,6 +18,10 @@ vi.mock('firebase-admin', () => ({
 
 vi.mock('../../../admin-init.js', () => ({
   adminDb: {},
+}))
+
+vi.mock('../../shared/rate-limit.js', () => ({
+  checkRateLimit: mockCheckRateLimit,
 }))
 
 function createMockDb(userDoc?: { fcmToken?: string; fcmTokens?: string[] }) {
@@ -43,6 +52,11 @@ import { unsubscribeFromAlertsCore } from '../unsubscribe-to-alerts.js'
 describe('unsubscribeFromAlertsCore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCheckRateLimit.mockResolvedValue({
+      allowed: true,
+      remaining: 19,
+      retryAfterSeconds: 0,
+    })
   })
 
   it('unsubscribes token from alerts topic', async () => {
@@ -56,6 +70,7 @@ describe('unsubscribeFromAlertsCore', () => {
     const result = await unsubscribeFromAlertsCore(db, {
       token: 'test-fcm-token',
       actor: { uid: 'user-123' },
+      now: Timestamp.now(),
     })
 
     expect(mockUnsubscribeFromTopic).toHaveBeenCalledWith(['test-fcm-token'], 'alerts')
@@ -73,6 +88,7 @@ describe('unsubscribeFromAlertsCore', () => {
     const result = await unsubscribeFromAlertsCore(db, {
       token: 'unregistered-token',
       actor: { uid: 'user-123' },
+      now: Timestamp.now(),
     })
 
     expect(result).toEqual({ success: true })
@@ -83,14 +99,43 @@ describe('unsubscribeFromAlertsCore', () => {
 
     const db = createMockDb({ fcmToken: 'bad-token' })
     await expect(
-      unsubscribeFromAlertsCore(db, { token: 'bad-token', actor: { uid: 'user-123' } }),
+      unsubscribeFromAlertsCore(db, {
+        token: 'bad-token',
+        actor: { uid: 'user-123' },
+        now: Timestamp.now(),
+      }),
     ).rejects.toThrow('messaging error')
   })
 
   it('rejects token not belonging to caller', async () => {
     const db = createMockDb({ fcmToken: 'other-token' })
     await expect(
-      unsubscribeFromAlertsCore(db, { token: 'stolen-token', actor: { uid: 'user-123' } }),
+      unsubscribeFromAlertsCore(db, {
+        token: 'stolen-token',
+        actor: { uid: 'user-123' },
+        now: Timestamp.now(),
+      }),
     ).rejects.toThrow('does not belong')
+  })
+
+  it('rejects when the caller exceeds the unsubscribe rate limit', async () => {
+    mockCheckRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: 42,
+    })
+
+    const db = createMockDb({ fcmToken: 'test-fcm-token' })
+    await expect(
+      unsubscribeFromAlertsCore(db, {
+        token: 'test-fcm-token',
+        actor: { uid: 'user-123' },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({
+      code: 'resource-exhausted',
+      details: { retryAfterSeconds: 42 },
+    })
+    expect(mockUnsubscribeFromTopic).not.toHaveBeenCalled()
   })
 })

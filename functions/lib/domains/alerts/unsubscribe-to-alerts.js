@@ -1,8 +1,9 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import {} from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { adminDb } from '../../admin-init.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { checkRateLimit } from '../shared/rate-limit.js';
 const unsubscribeSchema = z.object({
     token: z.string().min(1),
 });
@@ -19,6 +20,17 @@ async function verifyTokenOwnership(db, uid, token) {
     throw new HttpsError('permission-denied', 'Token does not belong to caller');
 }
 export async function unsubscribeFromAlertsCore(db, deps) {
+    const rl = await checkRateLimit(db, {
+        key: `unsubscribeFromAlerts:${deps.actor.uid}`,
+        limit: 20,
+        windowSeconds: 60,
+        now: deps.now,
+    });
+    if (!rl.allowed) {
+        throw new HttpsError('resource-exhausted', 'rate limit exceeded', {
+            retryAfterSeconds: rl.retryAfterSeconds,
+        });
+    }
     await verifyTokenOwnership(db, deps.actor.uid, deps.token);
     const { messaging } = await import('firebase-admin');
     const response = await messaging().unsubscribeFromTopic([deps.token], 'alerts');
@@ -42,9 +54,12 @@ export const unsubscribeFromAlerts = onCall({ region: 'asia-southeast1', enforce
         return await unsubscribeFromAlertsCore(adminDb, {
             token: parsed.data.token,
             actor: { uid: request.auth.uid },
+            now: Timestamp.now(),
         });
     }
     catch (error) {
+        if (error instanceof HttpsError)
+            throw error;
         console.error('Failed to unsubscribe from alerts topic:', error);
         throw new HttpsError('internal', 'Failed to unsubscribe from alerts');
     }

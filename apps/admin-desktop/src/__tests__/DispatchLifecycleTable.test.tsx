@@ -34,7 +34,8 @@ describe('DispatchLifecycleTable', () => {
     expect(screen.getByText('Report')).toBeInTheDocument()
     expect(screen.getByText('Responder')).toBeInTheDocument()
     expect(screen.getByText('Status')).toBeInTheDocument()
-    expect(screen.getByText('FCM')).toBeInTheDocument()
+    // FCM appears twice: column header + tooltip label
+    expect(screen.getAllByText('FCM').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Escalations')).toBeInTheDocument()
   })
 
@@ -45,17 +46,16 @@ describe('DispatchLifecycleTable', () => {
   })
 
   it.each([
-    ['pending', 'Pending', 'bg-amber-100', 'text-amber-800'],
-    ['accepted', 'Accepted', 'bg-blue-100', 'text-blue-800'],
-    ['declined', 'Declined', 'bg-red-100', 'text-red-800'],
-    ['needs_admin', 'Needs Admin', 'bg-red-100', 'text-red-800'],
-  ] as const)('renders %s badge with correct colors', (status, label, bgColor, textColor) => {
+    ['pending', 'Pending'],
+    ['accepted', 'Accepted'],
+    ['declined', 'Declined'],
+    ['needs_admin', 'Needs Admin'],
+  ] as const)('renders %s badge with inline dark styles', (status, label) => {
     const rows: DispatchLifecycleRow[] = [makeRow({ status })]
     render(<DispatchLifecycleTable rows={rows} />)
     const badge = screen.getByText(label)
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass(bgColor)
-    expect(badge).toHaveClass(textColor)
+    expect(badge).toHaveAttribute('style')
   })
 
   it('renders FcmStatusIcon in the FCM column', () => {

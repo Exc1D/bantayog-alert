@@ -47,12 +47,16 @@ export function useFocusTrap({ isActive, onEscape }: UseFocusTrapOptions) {
 
     previousFocusRef.current = document.activeElement as HTMLElement
 
-    // Focus first focusable element when trap activates
+    // Focus first focusable element when trap activates, but only if focus
+    // is not already inside the container (prevents stealing focus from a
+    // user- or test-selected element).
     const focusable = getFocusableElements(containerRef.current)
     if (focusable.length > 0) {
-      // Use rAF to ensure the DOM is fully rendered
       requestAnimationFrame(() => {
-        focusable[0]?.focus()
+        const current = document.activeElement
+        if (!containerRef.current?.contains(current)) {
+          focusable[0]?.focus()
+        }
       })
     }
 

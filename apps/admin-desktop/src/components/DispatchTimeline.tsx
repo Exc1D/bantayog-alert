@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { DispatchEvent } from '../hooks/useDispatchLifecycle'
 
 interface Props {
@@ -22,21 +23,44 @@ function formatTimeHHMMSS(timestamp: number): string {
   })
 }
 
+const MAX_EVENTS = 20
+
 export function DispatchTimeline({ events }: Props) {
+  const [showAll, setShowAll] = useState(false)
+
   if (events.length === 0) {
-    return <p>No events recorded</p>
+    return (
+      <p className="text-sm text-[var(--color-text-muted)]">No events recorded</p>
+    )
   }
 
   const sorted = [...events].sort((a, b) => a.at - b.at)
+  const visible = showAll ? sorted : sorted.slice(0, MAX_EVENTS)
+  const hasMore = sorted.length > MAX_EVENTS
 
   return (
-    <ul>
-      {sorted.map((event) => (
-        <li key={event.id}>
-          <span>{LABEL_MAP[event.type] ?? event.type}</span>
-          <span>{formatTimeHHMMSS(event.at)}</span>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <ul className="space-y-1">
+        {visible.map((event) => (
+          <li key={event.id} className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-[var(--color-text-primary)]">
+              {LABEL_MAP[event.type] ?? event.type}
+            </span>
+            <span className="text-xs text-[var(--color-text-muted)]">{formatTimeHHMMSS(event.at)}</span>
+          </li>
+        ))}
+      </ul>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => {
+            setShowAll((prev) => !prev)
+          }}
+          className="mt-2 text-xs text-[var(--color-carto-blue)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-carto-blue)]"
+        >
+          {showAll ? 'Show less' : `Show ${String(sorted.length - MAX_EVENTS)} more`}
+        </button>
+      )}
+    </div>
   )
 }

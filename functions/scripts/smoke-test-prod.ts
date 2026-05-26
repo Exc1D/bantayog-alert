@@ -14,9 +14,10 @@ import { BigQuery } from '@google-cloud/bigquery'
 
 const project = process.argv[2] ?? 'bantayog-alert'
 const rtdbUrl = `https://${project}-default-rtdb.asia-southeast1.firebasedatabase.app`
+const storageBucket = process.env.STORAGE_BUCKET ?? `${project}.appspot.com`
 
 if (getApps().length === 0) {
-  initializeApp({ projectId: project, databaseURL: rtdbUrl })
+  initializeApp({ projectId: project, databaseURL: rtdbUrl, storageBucket })
 }
 
 const fsdb = getFirestore()
@@ -25,6 +26,28 @@ const storage = getStorage()
 const bq = new BigQuery({ projectId: project })
 
 type CheckResult = { name: string; ok: boolean; error?: string }
+
+const CHECK_TIMEOUT_MS = Number(process.env.SMOKE_CHECK_TIMEOUT_MS ?? 20_000)
+
+function timeoutResult(name: string): CheckResult {
+  return { name, ok: false, error: `timed out after ${CHECK_TIMEOUT_MS}ms` }
+}
+
+async function runCheck(name: string, check: () => Promise<CheckResult>): Promise<CheckResult> {
+  let timeout: ReturnType<typeof setTimeout> | null = null
+  try {
+    return await Promise.race([
+      check(),
+      new Promise<CheckResult>((resolve) => {
+        timeout = setTimeout(() => {
+          resolve(timeoutResult(name))
+        }, CHECK_TIMEOUT_MS)
+      }),
+    ])
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
 
 async function checkFirestore(): Promise<CheckResult> {
   const name = 'Firestore read/write'
@@ -63,9 +86,10 @@ async function checkRtdb(): Promise<CheckResult> {
 
 async function checkStorage(): Promise<CheckResult> {
   const name = 'Storage read/write'
-  const testFile = storage.bucket().file('_smoke_test/probe.txt')
+  let testFile: ReturnType<ReturnType<typeof storage.bucket>['file']> | null = null
   try {
     const bucket = storage.bucket()
+    testFile = bucket.file('_smoke_test/probe.txt')
     await bucket.getMetadata()
     await testFile.save('smoke-test', { contentType: 'text/plain' })
     const [exists] = await testFile.exists()
@@ -74,9 +98,11 @@ async function checkStorage(): Promise<CheckResult> {
   } catch (err) {
     return { name, ok: false, error: String(err) }
   } finally {
-    await testFile.delete().catch(() => {
-      /* best-effort cleanup */
-    })
+    if (testFile) {
+      await testFile.delete().catch(() => {
+        /* best-effort cleanup */
+      })
+    }
   }
 }
 
@@ -117,12 +143,16 @@ async function main(): Promise<void> {
   console.log(`Smoke test — project: ${project}\n`)
 
   const results = await Promise.all([
-    checkFirestore(),
-    checkRtdb(),
-    checkStorage(),
-    checkDoc('system_config/min_app_version', ['citizen', 'admin', 'responder']),
-    checkDoc('system_config/update_urls', ['citizen', 'admin', 'responder']),
-    checkBigQuery(),
+    runCheck('Firestore read/write', checkFirestore),
+    runCheck('RTDB read/write', checkRtdb),
+    runCheck('Storage read/write', checkStorage),
+    runCheck('system_config/min_app_version', () =>
+      checkDoc('system_config/min_app_version', ['citizen', 'admin', 'responder']),
+    ),
+    runCheck('system_config/update_urls', () =>
+      checkDoc('system_config/update_urls', ['citizen', 'admin', 'responder']),
+    ),
+    runCheck('BigQuery audit table accessible', checkBigQuery),
   ])
 
   const failed: CheckResult[] = []

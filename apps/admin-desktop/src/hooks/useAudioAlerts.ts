@@ -1,10 +1,36 @@
 import { useCallback, useRef, useState } from 'react'
 
 const STORAGE_KEY = 'bantayog.audio-alerts-enabled'
-const ALERT_FREQUENCY = 800 // Hz
-const ALERT_DURATION = 0.4 // seconds
-const ERROR_FREQUENCY = 200 // Hz
-const ERROR_DURATION = 0.2 // seconds
+
+interface ToneConfig {
+  frequency: number
+  duration: number
+}
+
+const ALERT_TONE: ToneConfig = { frequency: 800, duration: 0.4 }
+const ERROR_TONE: ToneConfig = { frequency: 200, duration: 0.2 }
+
+function playTone(ctx: AudioContext, { frequency, duration }: ToneConfig) {
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(frequency, ctx.currentTime)
+  gain.gain.setValueAtTime(0.3, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start(ctx.currentTime)
+  osc.stop(ctx.currentTime + duration)
+}
+
+function getAudioContext(ctxRef: React.RefObject<AudioContext | null>): AudioContext {
+  ctxRef.current ??= new AudioContext()
+  const ctx = ctxRef.current
+  if (ctx.state === 'suspended') {
+    void ctx.resume()
+  }
+  return ctx
+}
 
 export function useAudioAlerts() {
   const [enabled, setEnabled] = useState(() => {
@@ -17,47 +43,13 @@ export function useAudioAlerts() {
   const ctxRef = useRef<AudioContext | null>(null)
 
   const play = useCallback(() => {
-    if (!enabled) return
-    if (document.visibilityState === 'hidden') return
-
-    ctxRef.current ??= new AudioContext()
-    const ctx = ctxRef.current
-    if (ctx.state === 'suspended') {
-      void ctx.resume()
-    }
-
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(ALERT_FREQUENCY, ctx.currentTime)
-    gain.gain.setValueAtTime(0.3, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ALERT_DURATION)
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + ALERT_DURATION)
+    if (!enabled || document.visibilityState === 'hidden') return
+    playTone(getAudioContext(ctxRef), ALERT_TONE)
   }, [enabled])
 
   const playError = useCallback(() => {
-    if (!enabled) return
-    if (document.visibilityState === 'hidden') return
-
-    ctxRef.current ??= new AudioContext()
-    const ctx = ctxRef.current
-    if (ctx.state === 'suspended') {
-      void ctx.resume()
-    }
-
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(ERROR_FREQUENCY, ctx.currentTime)
-    gain.gain.setValueAtTime(0.3, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ERROR_DURATION)
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + ERROR_DURATION)
+    if (!enabled || document.visibilityState === 'hidden') return
+    playTone(getAudioContext(ctxRef), ERROR_TONE)
   }, [enabled])
 
   const toggle = useCallback(() => {

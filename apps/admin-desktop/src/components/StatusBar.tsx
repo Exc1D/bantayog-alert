@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import type { DashboardMode } from '../utils/dashboard-mode'
@@ -6,6 +5,8 @@ import type { DashboardMode } from '../utils/dashboard-mode'
 interface Props {
   activeIncidents: number
   avgResponseTime: number // minutes
+  avgAcceptSeconds: number | null
+  fcmSuccessRate: number
   pendingTriage: number
   resolvedToday?: number
   muniIssues?: { resolved: number; total: number }
@@ -43,72 +44,61 @@ function getFreshnessText(lastDataUpdateAt: number): string {
   return `stale ${String(minutesAgo)}m ago`
 }
 
-type OpLabel = 'Normal' | 'Watch' | 'Degraded'
+type AlertLevel = 'none' | 'amber' | 'red'
 
-function activeLabel(active: number): OpLabel {
-  if (active <= 10) return 'Normal'
-  if (active <= 20) return 'Watch'
-  return 'Degraded'
+function alertColorClass(alert: AlertLevel): string {
+  if (alert === 'red') return 'text-[var(--color-danger)]'
+  if (alert === 'amber') return 'text-[var(--color-warning)]'
+  return 'text-[var(--color-text-primary)]'
 }
 
-function responseLabel(minutes: number): OpLabel {
-  if (minutes <= 5) return 'Normal'
-  if (minutes <= 10) return 'Watch'
-  return 'Degraded'
+function alertDotColor(alert: AlertLevel): string {
+  if (alert === 'red') return 'var(--color-danger)'
+  if (alert === 'amber') return 'var(--color-warning)'
+  return 'transparent'
 }
 
-function triageLabel(pending: number): OpLabel {
-  if (pending <= 3) return 'Normal'
-  if (pending <= 7) return 'Watch'
-  return 'Degraded'
+function formatSeconds(total: number): string {
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${String(m)}m ${String(s)}s`
 }
 
-function Metric({
-  label,
+function SituationValue({
   value,
   unit,
   alert,
-  opLabel,
 }: {
-  label: string
-  value: number
+  value: number | string
   unit?: string
-  alert: 'none' | 'amber' | 'red'
-  opLabel?: OpLabel
+  alert: AlertLevel
 }) {
-  const alertColor =
-    alert === 'red'
-      ? 'var(--color-danger)'
-      : alert === 'amber'
-        ? 'var(--color-warning)'
-        : 'transparent'
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-        {label}
-      </span>
+    <span className="inline-flex items-center gap-1">
       <span
-        className="mt-1 font-mono text-2xl font-medium leading-none text-[var(--color-text-primary)]"
+        className={`font-mono text-sm font-semibold ${alertColorClass(alert)}`}
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
         {value}
-        {unit && <span className="ml-1 text-lg">{unit}</span>}
+        {unit && (
+          <span className="text-xs font-normal text-[var(--color-text-muted)]">{unit}</span>
+        )}
       </span>
       {alert !== 'none' && (
-        <span className="mt-1 h-1 w-8 rounded-full" style={{ backgroundColor: alertColor }} />
+        <span
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: alertDotColor(alert) }}
+        />
       )}
-      {opLabel && (
-        <span className="mt-1 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
-          {opLabel}
-        </span>
-      )}
-    </div>
+    </span>
   )
 }
 
 export function StatusBar({
   activeIncidents,
   avgResponseTime,
+  avgAcceptSeconds,
+  fcmSuccessRate,
   pendingTriage,
   resolvedToday,
   muniIssues,
@@ -123,19 +113,12 @@ export function StatusBar({
   const isSurge = pendingTriage >= 20 || activeIncidents >= 50
   const expanded = statusBarExpandedOverride ?? !isSurge
 
-  const activeAlert = activeIncidents > 75 ? 'red' : activeIncidents > 50 ? 'amber' : 'none'
-  const responseAlert = avgResponseTime > 20 ? 'red' : avgResponseTime > 15 ? 'amber' : 'none'
-  const pendingAlert = pendingTriage > 10 ? 'red' : pendingTriage > 5 ? 'amber' : 'none'
+  const activeAlert: AlertLevel = activeIncidents > 75 ? 'red' : activeIncidents > 50 ? 'amber' : 'none'
+  const responseAlert: AlertLevel = avgResponseTime > 20 ? 'red' : avgResponseTime > 15 ? 'amber' : 'none'
+  const pendingAlert: AlertLevel = pendingTriage > 10 ? 'red' : pendingTriage > 5 ? 'amber' : 'none'
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTick((t) => t + 1)
-    }, 1000)
-    return () => {
-      clearInterval(id)
-    }
-  }, [])
+  const fcmPercent = Math.round(fcmSuccessRate * 100)
+  const isFcmHigh = fcmSuccessRate >= 0.9
 
   const modeShouldPulse = mode === 'degraded' || mode === 'surge'
   const freshnessText = getFreshnessText(lastDataUpdateAt)
@@ -163,6 +146,7 @@ export function StatusBar({
               backgroundColor: `${MODE_COLORS[mode]}20`,
               color: MODE_COLORS[mode],
               border: `1px solid ${MODE_COLORS[mode]}40`,
+              boxShadow: modeShouldPulse ? `0 0 12px ${MODE_COLORS[mode]}30` : undefined,
             }}
           >
             {MODE_LABELS[mode]}
@@ -174,7 +158,7 @@ export function StatusBar({
                 <Link
                   key={muni}
                   to={`/map?municipality=${encodeURIComponent(muni)}`}
-                  className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-[var(--color-carto-blue)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-carto-blue)]/50"
                 >
                   {muni}
                 </Link>
@@ -197,29 +181,16 @@ export function StatusBar({
           </span>
         </div>
 
-        {/* Center: Metrics */}
-        <div className="flex flex-1 items-center justify-around">
-          <Metric
-            label="Active Incidents"
-            value={activeIncidents}
-            alert={activeAlert}
-            opLabel={activeLabel(activeIncidents)}
-          />
-          <div className="h-10 w-px bg-white/10" />
-          <Metric
-            label="Avg Response"
-            value={avgResponseTime}
-            unit="m"
-            alert={responseAlert}
-            opLabel={responseLabel(avgResponseTime)}
-          />
-          <div className="h-10 w-px bg-white/10" />
-          <Metric
-            label="Pending Triage"
-            value={pendingTriage}
-            alert={pendingAlert}
-            opLabel={triageLabel(pendingTriage)}
-          />
+        {/* Center: Situation strip */}
+        <div className="flex flex-1 items-center justify-center gap-1 text-sm text-[var(--color-text-secondary)]">
+          <SituationValue value={activeIncidents} alert={activeAlert} />
+          <span className="text-xs text-[var(--color-text-muted)]">active</span>
+          <span className="text-xs text-[var(--color-text-muted)]">·</span>
+          <SituationValue value={avgResponseTime} unit="m" alert={responseAlert} />
+          <span className="text-xs text-[var(--color-text-muted)]">avg response</span>
+          <span className="text-xs text-[var(--color-text-muted)]">·</span>
+          <SituationValue value={pendingTriage} alert={pendingAlert} />
+          <span className="text-xs text-[var(--color-text-muted)]">pending</span>
         </div>
 
         {/* Right: Blocking + coverage */}
@@ -255,27 +226,62 @@ export function StatusBar({
       {expanded && (
         <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
           <span>
-            Resolved Today:{' '}
+            Resolved:{" "}
             <strong
               data-testid="statusbar-resolved-today"
               className="text-[var(--color-text-primary)]"
             >
-              {resolvedToday === undefined ? '—' : String(resolvedToday)}
+              {resolvedToday === undefined ? "—" : String(resolvedToday)}
             </strong>
           </span>
           <span>
-            Muni Issues:{' '}
+            Muni Issues:{" "}
             <strong
               data-testid="statusbar-muni-issues"
               className="text-[var(--color-text-primary)]"
             >
-              {muniIssues ? `${String(muniIssues.resolved)}/${String(muniIssues.total)}` : '—'}
+              {muniIssues ? `${String(muniIssues.resolved)}/${String(muniIssues.total)}` : "—"}
             </strong>
           </span>
           <span>
-            Surge:{' '}
+            Stalled:{" "}
+            <strong
+              data-testid="statusbar-stalled"
+              className={
+                stalledDispatchCount > 0
+                  ? "text-[var(--color-danger)]"
+                  : "text-[var(--color-text-primary)]"
+              }
+            >
+              {String(stalledDispatchCount)}
+            </strong>
+          </span>
+          <span>
+            Push Rate:{" "}
+            <strong
+              data-testid="statusbar-fcm-rate"
+              className={
+                isFcmHigh
+                  ? "text-[var(--color-success)]"
+                  : "text-[var(--color-warning)]"
+              }
+            >
+              {fcmPercent}%
+            </strong>
+          </span>
+          <span>
+            Avg Response:{" "}
+            <strong
+              data-testid="statusbar-avg-accept"
+              className="text-[var(--color-text-primary)]"
+            >
+              {avgAcceptSeconds !== null ? formatSeconds(avgAcceptSeconds) : "—"}
+            </strong>
+          </span>
+          <span>
+            Surge:{" "}
             <strong className="text-[var(--color-text-primary)]">
-              {isSurge ? 'Active' : 'Idle'}
+              {isSurge ? "Active" : "Idle"}
             </strong>
           </span>
         </div>

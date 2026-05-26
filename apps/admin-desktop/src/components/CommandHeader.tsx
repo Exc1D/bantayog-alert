@@ -69,7 +69,7 @@ export function CommandHeader({
           aria-hidden="true"
           data-testid="window-role-accent"
           data-role={windowRole}
-          className="absolute left-0 top-0 h-full w-1"
+          className="absolute left-0 top-0 h-[2px] w-full"
           style={{ backgroundColor: ROLE_ACCENT[windowRole] }}
         />
       )}

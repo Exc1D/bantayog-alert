@@ -1,12 +1,12 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
-import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { CommandHeader } from '../components/CommandHeader'
+import { FeedCard } from '../components/FeedCard'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ConfirmationModal } from '../components/ConfirmationModal'
 import { PageSkeleton } from '../components/PageSkeleton'
-import { Tooltip } from '../components/Tooltip'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
@@ -16,11 +16,9 @@ import { withRetry } from '../utils/withRetry'
 import { useOptimisticFeedActions } from '../hooks/useOptimisticFeedActions'
 import type { Report } from '../types'
 
-function visibilityLabel(doc: Record<string, unknown>, report: Report): string {
-  if (doc.visibilityClass === 'public_alertable') return 'Published'
-  if (report.status === 'awaiting_verify') return 'Pending publication'
-  if (report.status === 'verified') return 'Unpublished'
-  return 'Intake'
+interface MediaItem {
+  uploadId: string
+  url: string
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -66,13 +64,23 @@ function readStringList(doc: Record<string, unknown>, field: string): string[] {
     : []
 }
 
+const SEVERITY_COLORS: Record<string, string> = {
+  high: 'var(--color-danger)',
+  medium: 'var(--color-warning)',
+  low: 'var(--color-info)',
+}
+
 export default function FeedPage() {
   const { signOut } = useAuth()
   const { loading, error, reports, alerts } = useFirestoreListeners({ windowType: 'dashboard', db })
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
-  const [pendingFeaturedIds, setPendingFeaturedIds] = useState<Record<string, string[]>>({})
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [mediaUrlsByReport, setMediaUrlsByReport] = useState<Record<string, MediaItem[]>>({})
+  const [mediaError, setMediaError] = useState<string | null>(null)
+  const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
+  const [activeTab, setActiveTab] = useState<'new' | 'pending' | 'live'>('new')
 
   const { optimisticReports, optimisticVerify, optimisticUnpublish, pendingIds } =
     useOptimisticFeedActions({
@@ -98,22 +106,6 @@ export default function FeedPage() {
         setActionError(err instanceof Error ? err.message : 'Action failed')
       },
     })
-  const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
-  const [mediaError, setMediaError] = useState<string | null>(null)
-  const writeQueues = useRef(new Map<string, Promise<void>>())
-  const [mediaUrlsByReport, setMediaUrlsByReport] = useState<
-    Record<string, { uploadId: string; url: string }[]>
-  >({})
-  const lastUpdatedAt = useMemo(() => {
-    if (reports.length === 0) return 0
-    return Math.max(
-      ...reports.map((r) => {
-        const raw = r as unknown as Record<string, unknown>
-        const ts = raw.updatedAt
-        return typeof ts === 'number' ? ts : 0
-      }),
-    )
-  }, [reports])
 
   const feedReports = useMemo(
     () =>
@@ -127,7 +119,8 @@ export default function FeedPage() {
             raw.visibilityClass === 'public_alertable' ||
             report.status === 'awaiting_verify' ||
             report.status === 'new',
-        ),
+        )
+        .sort((a, b) => reportMillis(b.raw, b.report) - reportMillis(a.raw, a.report)),
     [optimisticReports],
   )
 
@@ -151,36 +144,97 @@ export default function FeedPage() {
     [alerts],
   )
 
+  const handleVerify = async (reportId: string) => {
+    try {
+      await optimisticVerify(reportId)
+      setSuccessMessage('Naipadala sa pagmamoderate.')
+    } catch {
+      // error already handled by onError callback
+    }
+  }
+
+  const handleUnpublish = async (reportId: string) => {
+    try {
+      await optimisticUnpublish(reportId)
+      setSuccessMessage('Naalis sa pampublikong feed.')
+    } catch {
+      // error already handled by onError callback
+    }
+  }
+
+  useEffect(() => {
+    if (!successMessage) return
+    const timer = setTimeout(() => {
+      setSuccessMessage(null)
+    }, 4000)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [successMessage])
+
+  const newReports = useMemo(
+    () =>
+      feedReports.filter(({ report }) => report.status === 'new'),
+    [feedReports],
+  )
+
+  const pendingReports = useMemo(
+    () =>
+      feedReports.filter(({ report }) => report.status === 'awaiting_verify'),
+    [feedReports],
+  )
+
+  const tabReports = useMemo(() => {
+    switch (activeTab) {
+      case 'new':
+        return newReports
+      case 'pending':
+        return pendingReports
+      case 'live':
+        return publicFeedReports
+      default:
+        return newReports
+    }
+  }, [activeTab, newReports, pendingReports, publicFeedReports])
+
+  const lastUpdatedAt = useMemo(() => {
+    if (reports.length === 0) return 0
+    return Math.max(
+      ...reports.map((r) => {
+        const raw = r as unknown as Record<string, unknown>
+        const ts = raw.updatedAt
+        return typeof ts === 'number' ? ts : 0
+      }),
+    )
+  }, [reports])
+
   const reportIdsKey = feedReports.map(({ report }) => report.id).join(',')
   useEffect(() => {
     let cancelled = false
     async function fetchMedia() {
-      const urls: Record<string, { uploadId: string; url: string }[]> = {}
+      const urls: Record<string, MediaItem[]> = {}
       for (const { report } of feedReports) {
         try {
           const mediaSnap = await getDocs(collection(db, 'reports', report.id, 'media'))
-          const promises = mediaSnap.docs.map(async (d) => {
-            const data = d.data()
-            if (typeof data.storagePath !== 'string') return null
-            try {
-              const url = await getDownloadURL(ref(getStorage(), data.storagePath))
-              return { uploadId: d.id, url }
-            } catch (e) {
-              console.error(`Failed to resolve media URL for report ${report.id}, media ${d.id}`, e)
-              return null
-            }
-          })
-          const settled = await Promise.allSettled(promises)
-          urls[report.id] = settled
+          const results = await Promise.allSettled(
+            mediaSnap.docs.map(async (d) => {
+              const data = d.data()
+              if (typeof data.storagePath !== 'string') return null
+              try {
+                const url = await getDownloadURL(ref(getStorage(), data.storagePath))
+                return { uploadId: d.id, url }
+              } catch {
+                return null
+              }
+            }),
+          )
+          urls[report.id] = results
             .filter(
-              (r): r is PromiseFulfilledResult<{ uploadId: string; url: string } | null> =>
-                r.status === 'fulfilled',
+              (r): r is PromiseFulfilledResult<MediaItem | null> => r.status === 'fulfilled',
             )
             .map((r) => r.value)
-            .filter((v): v is { uploadId: string; url: string } => v !== null)
-        } catch (e) {
-          const msg = `Failed to fetch media for report ${report.id}`
-          console.error(msg, e)
+            .filter((v): v is MediaItem => v !== null)
+        } catch {
           if (!cancelled)
             setMediaError('Some photos failed to load. They will retry automatically.')
           urls[report.id] = []
@@ -195,10 +249,10 @@ export default function FeedPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportIdsKey])
 
-  async function publishScrubbed(report: Report) {
+    async function publishScrubbed(report: Report) {
     const scrubbedDescription = (drafts[report.id] ?? report.description).trim()
     if (!scrubbedDescription) {
-      setActionError('Scrubbed copy cannot be empty.')
+      setActionError('Kopyang nilinis ay hindi maaaring walang laman.')
       return
     }
     setPublishingIds((prev) => new Set(prev).add(report.id))
@@ -211,6 +265,7 @@ export default function FeedPage() {
         }),
       )
       setActionError(null)
+      setSuccessMessage('Na-publish sa pampublikong feed.')
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Publish failed')
     } finally {
@@ -218,21 +273,6 @@ export default function FeedPage() {
         const next = new Set(prev)
         next.delete(report.id)
         return next
-      })
-    }
-  }
-
-  async function saveFeaturedMedia(reportId: string, selectedIds: string[]) {
-    try {
-      await updateDoc(doc(db, 'reports', reportId), {
-        featuredMediaIds: selectedIds,
-      })
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to save featured media')
-      setPendingFeaturedIds((prev) => {
-        const { [reportId]: _removed, ...rest } = prev
-        void _removed
-        return rest
       })
     }
   }
@@ -263,213 +303,149 @@ export default function FeedPage() {
             })
         }}
       />
-      <main className="flex-1 overflow-auto p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Feed moderation
-          </h1>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {feedReports.length} report{feedReports.length === 1 ? '' : 's'}
-          </span>
-        </div>
-        {actionError && (
-          <div
-            className="mb-4 border border-[var(--color-danger)] bg-[var(--color-danger)]/20 px-4 py-2 text-sm text-[var(--color-danger)]"
-            role="alert"
-          >
-            {actionError}
-          </div>
-        )}
-        {mediaError && (
-          <div
-            className="mb-4 border border-[var(--color-warning)] bg-[var(--color-warning)]/20 px-4 py-2 text-sm text-[var(--color-warning)]"
-            role="alert"
-          >
-            {mediaError}
-            <button
-              onClick={() => {
-                setMediaError(null)
-              }}
-              className="ml-2 underline"
-              aria-label="Dismiss media error"
+      <main className="flex-1 overflow-auto">
+        <div className="mx-auto grid max-w-[1200px] gap-6 p-6 lg:grid-cols-[1fr_360px]">
+          {/* Left: Feed Stream */}
+          <section aria-label="Feed moderation queue" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-bold tracking-tight text-[var(--color-text-primary)]">
+                Feed moderation
+              </h1>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                {newReports.length} new · {pendingReports.length} pending ·{' '}
+                {publicFeedReports.length} live · {officialAlerts.length} alert
+                {officialAlerts.length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            {/* Tabs */}
+            <nav
+              aria-label="Moderation queue tabs"
+              className="flex border-b border-white/10"
             >
-              Dismiss
-            </button>
-          </div>
-        )}
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-          <section
-            aria-label="Feed moderation queue"
-            className="overflow-hidden rounded-lg border border-white/10 bg-[var(--color-surface-elevated)]"
-          >
-            {feedReports.length === 0 ? (
-              <p className="p-4 text-sm text-[var(--color-text-secondary)]">
-                No report feed items need moderation.
-              </p>
+              {[
+                { key: 'new' as const, label: `New (${String(newReports.length)})` },
+                { key: 'pending' as const, label: `Pending (${String(pendingReports.length)})` },
+                { key: 'live' as const, label: `Live (${String(publicFeedReports.length)})` },
+              ].map((tab) => {
+                const active = activeTab === tab.key
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => {
+                      setActiveTab(tab.key)
+                    }}
+                    className="px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    style={{
+                      color: active
+                        ? 'var(--color-text-primary)'
+                        : 'var(--color-text-muted)',
+                      borderBottom: active ? '2px solid var(--color-success)' : '2px solid transparent',
+                    }}
+                    aria-current={active ? 'page' : undefined}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            {successMessage && (
+              <div
+                className="rounded-lg border border-[var(--color-success)] bg-[var(--color-success)]/10 px-4 py-3 text-sm text-[var(--color-success)]"
+                role="status"
+              >
+                {successMessage}
+              </div>
+            )}
+
+            {actionError && (
+              <div
+                className="rounded-lg border border-[var(--color-danger)] bg-[var(--color-danger)]/10 px-4 py-3 text-sm text-[var(--color-danger)]"
+                role="alert"
+              >
+                {actionError}
+                <button
+                  onClick={() => {
+                    setActionError(null)
+                  }}
+                  className="ml-3 underline"
+                  aria-label="Dismiss error"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+            {mediaError && (
+              <div
+                className="rounded-lg border border-[var(--color-warning)] bg-[var(--color-warning)]/10 px-4 py-3 text-sm text-[var(--color-warning)]"
+                role="alert"
+              >
+                {mediaError}
+                <button
+                  onClick={() => {
+                    setMediaError(null)
+                  }}
+                  className="ml-3 underline"
+                  aria-label="Dismiss media error"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {tabReports.length === 0 ? (
+              <div className="rounded-xl bg-[var(--color-surface-elevated)] p-8 text-center">
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  {activeTab === 'new'
+                    ? 'Walang bagong ulat na nangangailangan ng pagmamoderate.'
+                    : activeTab === 'pending'
+                      ? 'Walang nakaantabay na ulat na nangangailangan ng paglilinis.'
+                      : 'Walang live na ulat sa pampublikong feed.'}
+                </p>
+              </div>
             ) : (
-              <div className="divide-y divide-white/10">
-                {feedReports.map(({ raw, report }) => {
-                  const label = visibilityLabel(raw, report)
-                  const draft = drafts[report.id] ?? report.description
-                  const canPublish = report.status === 'awaiting_verify'
-                  const canUnpublish = raw.visibilityClass === 'public_alertable'
-                  return (
-                    <article
-                      key={report.id}
-                      className="grid gap-3 p-4 lg:grid-cols-[220px_1fr_220px]"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                          {report.municipality || 'Unknown municipality'}
-                        </p>
-                        <p className="text-xs text-[var(--color-text-muted)]">
-                          {report.barangay || 'Unknown barangay'} / {report.type}
-                        </p>
-                      </div>
-                      <label className="block text-sm text-[var(--color-text-secondary)]">
-                        <span className="sr-only">Scrubbed copy for {report.id}</span>
-                        <textarea
-                          aria-label={`Scrubbed copy for ${report.id}`}
-                          value={draft}
-                          readOnly={!canPublish}
-                          onChange={(event) => {
-                            setDrafts((prev) => ({ ...prev, [report.id]: event.target.value }))
-                          }}
-                          className="min-h-20 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
-                        />
-                      </label>
-                      <div className="flex flex-col items-start gap-2 lg:items-end">
-                        <span className="rounded-sm border border-white/10 px-2 py-1 text-xs uppercase text-[var(--color-text-secondary)]">
-                          {label}
-                        </span>
-                        {report.status === 'new' && (
-                          <Tooltip content="Verify this report and send it to the moderation queue for review before publication.">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void optimisticVerify(report.id)
-                              }}
-                              disabled={pendingIds.has(report.id)}
-                              className="rounded bg-[var(--color-info)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                              aria-label={`Send report ${report.id} to moderation`}
-                            >
-                              {pendingIds.has(report.id) ? 'Sending…' : 'Send to moderation'}
-                            </button>
-                          </Tooltip>
-                        )}
-                        {canPublish && (
-                          <Tooltip content="Make this report visible to the public as an alert.">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void publishScrubbed(report)
-                              }}
-                              disabled={publishingIds.has(report.id)}
-                              className="rounded bg-[var(--color-success)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                              aria-label={`Publish scrubbed copy for ${report.id}`}
-                            >
-                              {publishingIds.has(report.id)
-                                ? 'Publishing'
-                                : 'Publish scrubbed copy'}
-                            </button>
-                          </Tooltip>
-                        )}
-                        {canUnpublish && (
-                          <Tooltip content="Remove this report from public alerts and return it to the moderation queue.">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setConfirmUnpublishReport(report)
-                              }}
-                              disabled={pendingIds.has(report.id)}
-                              className="rounded border border-[var(--color-danger)] px-3 py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-50"
-                              aria-label={`Unpublish report ${report.id}`}
-                            >
-                              {pendingIds.has(report.id) ? 'Unpublishing' : 'Unpublish'}
-                            </button>
-                          </Tooltip>
-                        )}
-                      </div>
-                      {/* Photo gallery */}
-                      {(() => {
-                        const reportMedia = mediaUrlsByReport[report.id]
-                        if (!reportMedia || reportMedia.length === 0) return null
-                        return (
-                          <div className="col-span-full">
-                            <p className="mb-1 text-xs text-[var(--color-text-muted)]">Photos:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {reportMedia.map(({ uploadId, url }, idx) => {
-                                const firestoreIds = Array.isArray(raw.featuredMediaIds)
-                                  ? (raw.featuredMediaIds as string[])
-                                  : []
-                                const pending = pendingFeaturedIds[report.id]
-                                const currentIds = pending ?? firestoreIds
-                                const isSelected = currentIds.includes(uploadId)
-                                return (
-                                  <label
-                                    key={uploadId}
-                                    className={`relative cursor-pointer overflow-hidden rounded border-2 ${
-                                      isSelected
-                                        ? 'border-[var(--color-success)]'
-                                        : 'border-white/10'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      onChange={(e) => {
-                                        const checked = e.target.checked
-                                        const base = pendingFeaturedIds[report.id] ?? firestoreIds
-                                        const next = checked
-                                          ? [...base, uploadId]
-                                          : base.filter((id) => id !== uploadId)
-                                        setPendingFeaturedIds((prev) => ({
-                                          ...prev,
-                                          [report.id]: next,
-                                        }))
-                                        const prevWrite =
-                                          writeQueues.current.get(report.id) ?? Promise.resolve()
-                                        const chained = prevWrite
-                                          .catch(() => undefined)
-                                          .then(() => saveFeaturedMedia(report.id, next))
-                                        writeQueues.current.set(report.id, chained)
-                                      }}
-                                      className="absolute left-1 top-1 z-10"
-                                      aria-label={`Select photo ${String(idx + 1)}`}
-                                    />
-                                    <span className="sr-only">
-                                      Photo {String(idx + 1)}{' '}
-                                      {isSelected ? '(selected)' : '(unselected)'}
-                                    </span>
-                                    <img
-                                      src={url}
-                                      alt=""
-                                      className="h-[60px] w-[80px] object-cover"
-                                    />
-                                  </label>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })()}
-                    </article>
-                  )
-                })}
+              <div className="space-y-4">
+                {tabReports.map(({ raw, report }) => (
+                  <FeedCard
+                    key={report.id}
+                    raw={raw}
+                    report={report}
+                    draft={drafts[report.id] ?? report.description}
+                    canPublish={report.status === 'awaiting_verify'}
+                    canUnpublish={raw.visibilityClass === 'public_alertable'}
+                    isPending={pendingIds.has(report.id)}
+                    isPublishing={publishingIds.has(report.id)}
+                    mediaUrls={mediaUrlsByReport[report.id] ?? []}
+                    onVerify={() => void handleVerify(report.id)}
+                    onPublish={() => void publishScrubbed(report)}
+                    onUnpublish={() => {
+                      setConfirmUnpublishReport(report)
+                    }}
+                    onDraftChange={(value) => {
+                      setDrafts((prev) => ({ ...prev, [report.id]: value }))
+                    }}
+                    onError={(msg) => {
+                      setActionError(msg)
+                    }}
+                  />
+                ))}
               </div>
             )}
           </section>
 
-          <div className="space-y-4">
+          {/* Right: Widgets Sidebar */}
+          <aside className="space-y-5">
+            {/* Official Alerts Widget */}
             <section
               aria-label="Recent official alerts"
-              className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
+              className="rounded-xl bg-[var(--color-surface-elevated)] p-5"
             >
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                  Recent official alerts
+                  Official alerts
                 </h2>
-                <span className="text-xs text-[var(--color-text-muted)]">
+                <span className="rounded-full bg-[var(--color-surface)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--color-text-muted)]">
                   {officialAlerts.length} active
                 </span>
               </div>
@@ -479,44 +455,43 @@ export default function FeedPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {officialAlerts.map((alert, index) => {
-                    const hazardType = readString(alert, 'hazardType') || 'official alert'
-                    const message = readString(alert, 'message') || 'Alert details pending'
-                    const municipalities = readStringList(alert, 'affectedMunicipalityIds')
-                    const alertTime = formatFeedTime(
-                      toMillis(alert.publishedAt ?? alert.declaredAt),
-                    )
-                    return (
-                      <article
-                        key={readString(alert, 'id') || `alert-${String(index)}`}
-                        className="rounded border border-white/10 bg-[var(--color-surface)] p-3"
-                      >
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <p className="text-xs font-semibold uppercase text-[var(--color-danger)]">
-                            {hazardType}
-                          </p>
-                          <p className="text-xs text-[var(--color-text-muted)]">{alertTime}</p>
-                        </div>
-                        <p className="text-sm text-[var(--color-text-primary)]">{message}</p>
-                        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-                          {municipalities.length > 0 ? municipalities.join(', ') : 'Province-wide'}
+                  {officialAlerts.map((alert, index) => (
+                    <article
+                      key={readString(alert, 'id') || `alert-${String(index)}`}
+                      className="rounded-lg bg-[var(--color-surface)] p-3"
+                    >
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-danger)]">
+                          {readString(alert, 'hazardType') || 'official alert'}
                         </p>
-                      </article>
-                    )
-                  })}
+                        <p className="text-[11px] text-[var(--color-text-muted)]">
+                          {formatFeedTime(toMillis(alert.publishedAt ?? alert.declaredAt))}
+                        </p>
+                      </div>
+                      <p className="text-sm text-[var(--color-text-primary)]">
+                        {readString(alert, 'message') || 'Alert details pending'}
+                      </p>
+                      <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+                        {readStringList(alert, 'affectedMunicipalityIds').length > 0
+                          ? readStringList(alert, 'affectedMunicipalityIds').join(', ')
+                          : 'Province-wide'}
+                      </p>
+                    </article>
+                  ))}
                 </div>
               )}
             </section>
 
+            {/* Public Feed Preview Widget */}
             <section
               aria-label="Citizen-visible public feed"
-              className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
+              className="rounded-xl bg-[var(--color-surface-elevated)] p-5"
             >
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
                   Public feed preview
                 </h2>
-                <span className="text-xs text-[var(--color-text-muted)]">
+                <span className="rounded-full bg-[var(--color-surface)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--color-text-muted)]">
                   {publicFeedReports.length} visible
                 </span>
               </div>
@@ -525,7 +500,7 @@ export default function FeedPage() {
                   No reports are visible to citizens yet.
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
                   {publicFeedReports.map(({ raw, report }) => {
                     const submittedAt = reportMillis(raw, report)
                     const reportMedia = mediaUrlsByReport[report.id] ?? []
@@ -536,53 +511,55 @@ export default function FeedPage() {
                         : []
                     const location =
                       report.municipality || report.barangay
-                        ? `${report.municipality || 'Unknown municipality'} / ${
+                        ? `${report.municipality || 'Unknown municipality'} · ${
                             report.barangay || 'Unknown barangay'
                           }`
                         : 'Location pending'
                     return (
                       <article
                         key={`public-${report.id}`}
-                        className="rounded border border-white/10 bg-[var(--color-surface)] p-4"
+                        className="rounded-lg bg-[var(--color-surface)] p-3"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-info)]/20 text-xs font-semibold uppercase text-[var(--color-info)]">
-                            {report.severity.slice(0, 1)}
+                        <div className="flex items-start gap-2">
+                          <div
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                            style={{
+                              backgroundColor:
+                                SEVERITY_COLORS[report.severity] || 'var(--color-text-muted)',
+                            }}
+                            aria-hidden="true"
+                          >
+                            {(report.type || '?').slice(0, 1).toUpperCase()}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                                Verified public report
-                              </p>
-                              <span className="text-xs text-[var(--color-text-muted)]">
-                                {report.type}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                              {formatFeedTime(submittedAt)} / {location}
+                            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                              {report.municipality || 'Unknown municipality'}
+                            </p>
+                            <p className="text-[11px] text-[var(--color-text-muted)]">
+                              {formatFeedTime(submittedAt)} · {location}
                             </p>
                           </div>
                         </div>
-                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--color-text-primary)]">
+                        <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-primary)]">
                           {report.description.trim() || 'Report details pending'}
                         </p>
                         {visibleMedia.length > 0 && (
-                          <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="mt-2 grid grid-cols-2 gap-1.5">
                             {visibleMedia.slice(0, 4).map((media, index) => (
                               <img
                                 key={media.uploadId}
                                 src={media.url}
                                 alt={`Public report media ${String(index + 1)}`}
-                                className="aspect-video w-full rounded object-cover"
+                                className="aspect-video w-full rounded-md object-cover"
                               />
                             ))}
                           </div>
                         )}
-                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3 text-xs text-[var(--color-text-muted)]">
-                          <span>Published to public feed</span>
-                          <span aria-hidden="true">/</span>
-                          <span>{report.status.replaceAll('_', ' ')}</span>
-                          <span aria-hidden="true">/</span>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-text-muted)]">
+                          <span className="rounded-full bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[var(--color-success)]">
+                            Published
+                          </span>
+                          <span>{report.type}</span>
                           <span>{report.severity}</span>
                         </div>
                       </article>
@@ -591,7 +568,8 @@ export default function FeedPage() {
                 </div>
               )}
             </section>
-          </div>
+
+          </aside>
         </div>
       </main>
       <ConfirmationModal
@@ -602,7 +580,7 @@ export default function FeedPage() {
         confirmVariant="danger"
         onConfirm={() => {
           if (confirmUnpublishReport) {
-            void optimisticUnpublish(confirmUnpublishReport.id)
+            void handleUnpublish(confirmUnpublishReport.id)
           }
           setConfirmUnpublishReport(null)
         }}

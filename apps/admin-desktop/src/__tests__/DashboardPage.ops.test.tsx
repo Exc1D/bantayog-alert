@@ -121,10 +121,13 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
 }))
 
 describe('DashboardPage ops redesign', () => {
-  it('renders KPI cards', () => {
+  it('renders StatusBar metrics', () => {
     renderWithRouter(<DashboardPage />)
-    expect(screen.getByText('Active Now')).toBeInTheDocument()
-    expect(screen.getByText('Stalled')).toBeInTheDocument()
+    // StatusBar primary metrics in the situation strip
+    expect(screen.getByText('active')).toBeInTheDocument()
+    expect(screen.getByText('avg response')).toBeInTheDocument()
+    // Stalled count shown in expanded section
+    expect(screen.getByTestId('statusbar-stalled')).toBeInTheDocument()
   })
 
   it('does not render triage queue', () => {

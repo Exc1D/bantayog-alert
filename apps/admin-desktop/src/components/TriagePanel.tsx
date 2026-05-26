@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { SeverityBadge } from './SeverityBadge'
 import { ReportTypeIcon } from './ReportTypeIcon'
 import { ConfirmationModal } from './ConfirmationModal'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import type { Report } from '../types'
 
 interface ResponderEntry {
@@ -32,8 +33,7 @@ export function TriagePanel({
   onDispatch,
   onDeclareAlert,
 }: Props) {
-  const panelRef = useRef<HTMLDivElement>(null)
-  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const trapRef = useFocusTrap({ isActive: !!report, onEscape: onClose })
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [agency, setAgency] = useState('')
@@ -63,24 +63,6 @@ export function TriagePanel({
       }
     }
   }, [])
-
-  useEffect(() => {
-    if (!report?.id) return
-    previousFocusRef.current = document.activeElement as HTMLElement
-    panelRef.current?.focus()
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      if (previousFocusRef.current) {
-        previousFocusRef.current.focus()
-      }
-    }
-  }, [report?.id, onClose])
 
   if (!report) return null
 
@@ -122,9 +104,8 @@ export function TriagePanel({
   return (
     <>
       <div
-        ref={panelRef}
+        ref={trapRef}
         data-testid={`triage-panel-${report.id}`}
-        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="triage-panel-title"
@@ -266,6 +247,9 @@ export function TriagePanel({
                       />
                     )}
                   </button>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    Press and hold the button (or Space/Enter) for 1 second to dispatch.
+                  </p>
                 </div>
               )}
             </div>

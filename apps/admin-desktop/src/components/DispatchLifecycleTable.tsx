@@ -1,30 +1,44 @@
-import { useCallback, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronRight, Search, Info } from 'lucide-react'
 import { List } from 'react-window'
 import type { DispatchLifecycleRow, DispatchEvent } from '../hooks/useDispatchLifecycle'
 import { FcmStatusIcon } from './FcmStatusIcon'
 import { DispatchTimeline } from './DispatchTimeline'
+import { Tooltip } from './Tooltip'
 
 interface Props {
   rows: DispatchLifecycleRow[]
+  highlightDispatchId?: string | null
 }
 
-const STATUS_BADGE_MAP: Record<string, { label: string; bgColor: string; textColor: string }> = {
-  pending: { label: 'Pending', bgColor: 'bg-amber-100', textColor: 'text-amber-800' },
-  accepted: { label: 'Accepted', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
-  declined: { label: 'Declined', bgColor: 'bg-red-100', textColor: 'text-red-800' },
-  needs_admin: { label: 'Needs Admin', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+const STATUS_BADGE_MAP: Record<string, { label: string; style: React.CSSProperties }> = {
+  pending: {
+    label: 'Pending',
+    style: { color: 'var(--color-warning)', backgroundColor: 'rgba(167,52,0,0.12)' },
+  },
+  accepted: {
+    label: 'Accepted',
+    style: { color: 'var(--color-info)', backgroundColor: 'rgba(59,130,246,0.12)' },
+  },
+  declined: {
+    label: 'Declined',
+    style: { color: 'var(--color-danger)', backgroundColor: 'rgba(153,27,27,0.12)' },
+  },
+  needs_admin: {
+    label: 'Needs Admin',
+    style: { color: 'var(--color-danger)', backgroundColor: 'rgba(153,27,27,0.12)' },
+  },
 }
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_BADGE_MAP[status] ?? {
     label: status,
-    bgColor: 'bg-gray-100',
-    textColor: 'text-gray-800',
+    style: { color: 'var(--color-text-muted)', backgroundColor: 'rgba(255,255,255,0.06)' },
   }
   return (
     <span
-      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${cfg.bgColor} ${cfg.textColor}`}
+      className="inline-flex rounded px-2 py-0.5 text-xs font-medium"
+      style={cfg.style}
     >
       {cfg.label}
     </span>
@@ -39,19 +53,30 @@ interface RowRendererProps {
   rows: DispatchLifecycleRow[]
   expandedId: string | null
   onToggle: (id: string) => void
+  highlightDispatchId?: string | null
 }
 
-function RowRenderer({ index, style, rows, expandedId, onToggle }: RowRendererProps) {
+function RowRenderer({ index, style, rows, expandedId, onToggle, highlightDispatchId }: RowRendererProps) {
   const row = rows[index]
+  const rowRef = useRef<HTMLDivElement>(null)
+  const expanded = row ? expandedId === row.dispatchId : false
+  const isHighlighted = row ? highlightDispatchId === row.dispatchId : false
+
+  useEffect(() => {
+    if (isHighlighted && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [isHighlighted])
+
   if (!row) return null
-  const expanded = expandedId === row.dispatchId
 
   return (
-    <div style={style}>
+    <div style={style} ref={rowRef}>
       <div
-        className={`flex cursor-pointer items-center border-b px-3 py-2 hover:bg-gray-50 ${expanded ? 'bg-blue-50' : ''}`}
+        className={`flex cursor-pointer items-center border-b border-white/5 px-3 py-2 hover:bg-white/[0.03] ${expanded ? 'bg-white/[0.05]' : ''} ${isHighlighted ? 'ring-2 ring-[var(--color-carto-blue)] ring-inset' : ''}`}
         role="row"
         tabIndex={0}
+        data-dispatch-id={row.dispatchId}
         onClick={() => {
           onToggle(row.dispatchId)
         }}
@@ -62,10 +87,10 @@ function RowRenderer({ index, style, rows, expandedId, onToggle }: RowRendererPr
           }
         }}
       >
-        <span className="w-28 truncate">{row.reportId.slice(0, 8)}</span>
+        <span className="w-28 truncate font-mono text-[var(--color-text-secondary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{row.reportId.slice(0, 8)}</span>
         <span className="flex-1">
-          <div>{row.responderName}</div>
-          <div className="text-xs text-gray-500">{row.responderAgency}</div>
+          <div className="text-[var(--color-text-primary)]">{row.responderName}</div>
+          <div className="text-xs text-[var(--color-text-muted)]">{row.responderAgency}</div>
         </span>
         <span className="w-24">
           <StatusBadge status={row.status} />
@@ -90,46 +115,110 @@ function RowRenderer({ index, style, rows, expandedId, onToggle }: RowRendererPr
   )
 }
 
-export function DispatchLifecycleTable({ rows }: Props) {
+export function DispatchLifecycleTable({ rows, highlightDispatchId }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   const toggleRow = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
 
-  if (rows.length === 0) {
-    return <p>No active dispatches</p>
-  }
+  // Auto-expand highlighted row on mount / param change
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (highlightDispatchId) {
+      setExpandedId(highlightDispatchId)
+    }
+  }, [highlightDispatchId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const expandedRow = expandedId ? rows.find((r) => r.dispatchId === expandedId) : null
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(
+      (r) =>
+        r.reportId.toLowerCase().includes(q) ||
+        r.responderName.toLowerCase().includes(q) ||
+        r.responderAgency.toLowerCase().includes(q) ||
+        r.status.toLowerCase().includes(q),
+    )
+  }, [rows, query])
+
+  const expandedRow = expandedId ? filteredRows.find((r) => r.dispatchId === expandedId) : null
   const expandedTimeline: DispatchEvent[] = expandedRow?.timeline ?? []
 
   return (
     <div>
-      <div className="mb-2 flex text-sm font-medium text-left">
-        <span className="w-28 px-3 py-2">Report</span>
-        <span className="flex-1 px-3 py-2">Responder</span>
-        <span className="w-24 px-3 py-2">Status</span>
-        <span className="w-12 px-3 py-2">FCM</span>
-        <span className="w-16 px-3 py-2 text-center">Escalations</span>
-        <span className="w-8 px-3 py-2"></span>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Dispatch Lifecycle</h2>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" aria-hidden="true" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+              }}
+              placeholder="Search dispatches…"
+              className="rounded border border-white/10 bg-white/5 py-1.5 pl-7 pr-3 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-carto-blue)]"
+              aria-label="Search dispatches"
+            />
+          </div>
+          <Tooltip content="FCM = Firebase Cloud Messaging (push notification delivery)">
+            <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+              <Info className="h-3.5 w-3.5" aria-hidden="true" />
+              FCM
+            </span>
+          </Tooltip>
+        </div>
       </div>
-      <List
-        style={{ height: Math.min(rows.length * ROW_HEIGHT, 600), width: '100%' }}
-        rowCount={rows.length}
-        rowHeight={ROW_HEIGHT}
-        // react-window v2 types expect forbidden keys as `never` in rowProps
-        // @ts-expect-error rowProps excludes index/style/ariaAttributes at runtime
-        rowProps={{
-          rows,
-          expandedId,
-          onToggle: toggleRow,
-        }}
-        rowComponent={RowRenderer}
-      />
+
+      <div className="overflow-x-auto">
+        <div className="min-w-[640px]">
+          <div className="mb-2 flex text-left text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            <span className="w-28 px-3 py-2">Report</span>
+            <span className="flex-1 px-3 py-2">Responder</span>
+            <span className="w-24 px-3 py-2">Status</span>
+            <span className="w-12 px-3 py-2">FCM</span>
+            <span className="w-16 px-3 py-2 text-center">Escalations</span>
+            <span className="w-8 px-3 py-2"></span>
+          </div>
+
+          {filteredRows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-[var(--color-text-muted)]/20 bg-[var(--color-surface-elevated)] py-12 text-center">
+              <Search className="mb-3 h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
+              <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                {query ? 'No matching dispatches' : 'No active dispatches'}
+              </h3>
+              <p className="mt-1 max-w-xs text-xs text-[var(--color-text-secondary)]">
+                {query
+                  ? 'Try adjusting your search terms.'
+                  : 'Dispatches appear here when reports are assigned to responders.'}
+              </p>
+            </div>
+          ) : (
+            <List
+              style={{ height: Math.min(filteredRows.length * ROW_HEIGHT, 600), width: '100%' }}
+              rowCount={filteredRows.length}
+              rowHeight={ROW_HEIGHT}
+              // react-window v2 types expect forbidden keys as `never` in rowProps
+              // @ts-expect-error rowProps excludes index/style/ariaAttributes at runtime
+              rowProps={{
+                rows: filteredRows,
+                expandedId,
+                onToggle: toggleRow,
+                highlightDispatchId,
+              }}
+              rowComponent={RowRenderer}
+            />
+          )}
+        </div>
+      </div>
+
       {expandedRow && (
-        <div className="mt-2 rounded-md border bg-gray-50 p-3">
-          <div className="mb-1 text-xs font-medium text-gray-500">
+        <div className="mt-2 rounded-md border border-white/10 bg-[var(--color-surface-elevated)] p-3">
+          <div className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">
             Timeline — {expandedRow.reportId.slice(0, 8)}
           </div>
           <DispatchTimeline events={expandedTimeline} />

@@ -4,7 +4,6 @@ import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { SuccessBanner } from '../components/SuccessBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
-import { DispatchStatsCards } from '../components/DispatchStatsCards'
 import { EscalationQueueSection } from '../components/EscalationQueueSection'
 import { DispatchVolumeChart } from '../components/DispatchVolumeChart'
 import { RecentEventsFeed } from '../components/RecentEventsFeed'
@@ -116,6 +115,15 @@ export default function DashboardPage() {
       activeIncidents: muniReports.filter((r) => ACTIVE_REPORT_STATUSES.includes(r.status)).length,
     }))
   }, [reports])
+
+  const pendingTriage = useMemo(
+    () =>
+      reports.filter((r) => {
+        const mapped = mapReportDocToReportLoose(r)
+        return mapped.status === 'new' || mapped.status === 'awaiting_verify'
+      }).length,
+    [reports],
+  )
 
   const navigate = useNavigate()
 
@@ -267,7 +275,9 @@ export default function DashboardPage() {
         avgResponseTime={
           opsMetrics?.avgAcceptSeconds ? Math.round(opsMetrics.avgAcceptSeconds / 60) : 0
         }
-        pendingTriage={0} // TODO: derive from reports
+        avgAcceptSeconds={opsMetrics?.avgAcceptSeconds ?? null}
+        fcmSuccessRate={opsMetrics?.fcmSuccessRate ?? 0}
+        pendingTriage={pendingTriage}
         mode={mode}
         affectedMunicipalities={municipalData
           .filter((m) => m.activeIncidents > 0)
@@ -293,13 +303,6 @@ export default function DashboardPage() {
           <AllClearState />
         ) : (
           <div className={`space-y-4 ${mode === 'degraded' ? 'opacity-50' : ''}`}>
-            <DispatchStatsCards
-              activeCount={activeCount}
-              stalledCount={stalledDispatches.length}
-              avgAcceptSeconds={opsMetrics?.avgAcceptSeconds ?? null}
-              fcmSuccessRate={opsMetrics?.fcmSuccessRate ?? 0}
-              mode={mode}
-            />
             {mode !== 'calm' && (
               <EscalationQueueSection
                 stalledDispatches={stalledDispatches}

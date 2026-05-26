@@ -3,103 +3,83 @@ import type { ReportDoc } from '../hooks/useFirestoreListeners'
 import type { Report } from '../types'
 
 function extractCreatedAt(doc: Record<string, unknown>): string {
-  const submittedAt = doc.submittedAt
-  const createdAt = doc.createdAt
-
-  // Prefer submittedAt (epoch ms) over createdAt for new-schema docs
-  const raw = submittedAt ?? createdAt
+  const raw = doc.submittedAt ?? doc.createdAt
 
   if (typeof raw === 'string') return raw
   if (typeof raw === 'number') return new Date(raw).toISOString()
-  if (
-    raw != null &&
-    typeof raw === 'object' &&
-    typeof (raw as { toDate?: unknown }).toDate === 'function'
-  ) {
-    const dt = (raw as { toDate: () => Date }).toDate()
+  if (isFirebaseTimestamp(raw)) {
+    const dt = raw.toDate()
     if (dt instanceof Date && !Number.isNaN(dt.getTime())) return dt.toISOString()
   }
   return ''
 }
 
-interface ExtractedCoords {
-  latitude: number | undefined
-  longitude: number | undefined
+function isFirebaseTimestamp(value: unknown): value is { toDate: () => Date } {
+  return (
+    value != null &&
+    typeof value === 'object' &&
+    typeof (value as { toDate?: unknown }).toDate === 'function'
+  )
 }
 
-function extractCoords(doc: Record<string, unknown>): ExtractedCoords {
-  const publicLocation =
-    typeof doc.publicLocation === 'object' && doc.publicLocation !== null
-      ? (doc.publicLocation as Record<string, unknown>)
-      : undefined
-  const location =
-    typeof doc.location === 'object' && doc.location !== null
-      ? (doc.location as Record<string, unknown>)
-      : undefined
-
-  const latitude =
-    typeof publicLocation?.lat === 'number'
-      ? publicLocation.lat
-      : typeof doc.latitude === 'number'
-        ? doc.latitude
-        : typeof location?.latitude === 'number'
-          ? location.latitude
-          : undefined
-  const longitude =
-    typeof publicLocation?.lng === 'number'
-      ? publicLocation.lng
-      : typeof doc.longitude === 'number'
-        ? doc.longitude
-        : typeof location?.longitude === 'number'
-          ? location.longitude
-          : undefined
-
-  return { latitude, longitude }
-}
-
-function getValidCoords(
-  doc: Record<string, unknown>,
-): { latitude: number; longitude: number } | null {
-  const { latitude, longitude } = extractCoords(doc)
-  if (
-    typeof latitude !== 'number' ||
-    typeof longitude !== 'number' ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180
-  ) {
-    return null
+function firstNumber(...values: (number | undefined)[]): number | undefined {
+  for (const v of values) {
+    if (typeof v === 'number') return v
   }
-  return { latitude, longitude }
+  return undefined
+}
+
+function extractCoords(doc: Record<string, unknown>) {
+  const publicLocation = asRecord(doc.publicLocation)
+  const location = asRecord(doc.location)
+
+  return {
+    latitude: firstNumber(
+      asNumber(publicLocation?.lat),
+      asNumber(doc.latitude),
+      asNumber(location?.latitude),
+    ),
+    longitude: firstNumber(
+      asNumber(publicLocation?.lng),
+      asNumber(doc.longitude),
+      asNumber(location?.longitude),
+    ),
+  }
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === 'number' ? value : undefined
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined
+}
+
+function isValidCoord(lat: number | undefined, lng: number | undefined): { latitude: number; longitude: number } | null {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+  return { latitude: lat, longitude: lng }
+}
+
+function firstNonEmpty(doc: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = doc[key]
+    if (typeof value === 'string') return value
+  }
+  return ''
 }
 
 function mapCommonFields(doc: Record<string, unknown>): Omit<Report, 'latitude' | 'longitude'> {
-  const municipality =
-    typeof doc.municipalityLabel === 'string'
-      ? doc.municipalityLabel
-      : typeof doc.municipality === 'string'
-        ? doc.municipality
-        : ''
-  const barangay =
-    typeof doc.barangayId === 'string'
-      ? doc.barangayId
-      : typeof doc.barangay === 'string'
-        ? doc.barangay
-        : ''
-  const description = typeof doc.description === 'string' ? doc.description : ''
-
   return {
     id: doc.id as string,
     type: normalizeReportType(doc.reportType ?? doc.type),
     severity: normalizeSeverity(doc.severity),
-    municipality,
-    barangay,
+    municipality: firstNonEmpty(doc, 'municipalityLabel', 'municipality'),
+    barangay: firstNonEmpty(doc, 'barangayId', 'barangay'),
     createdAt: extractCreatedAt(doc),
     status: normalizeReportStatus(doc.status),
-    description,
+    description: typeof doc.description === 'string' ? doc.description : '',
     reporterName: '',
     reporterPhone: '',
     updatedAt: '',
@@ -110,19 +90,15 @@ function mapCommonFields(doc: Record<string, unknown>): Omit<Report, 'latitude' 
 }
 
 export function mapReportDocToReport(doc: Record<string, unknown>): Report | null {
-  const coords = getValidCoords(doc)
+  const { latitude, longitude } = extractCoords(doc)
+  const coords = isValidCoord(latitude, longitude)
   if (coords === null) return null
-  return {
-    ...mapCommonFields(doc),
-    ...coords,
-  }
+  return { ...mapCommonFields(doc), ...coords }
 }
 
 export function mapReportDocToReportLoose(doc: ReportDoc | Record<string, unknown>): Report {
   const d = doc as Record<string, unknown>
-  const coords = getValidCoords(d) ?? { latitude: 0, longitude: 0 }
-  return {
-    ...mapCommonFields(d),
-    ...coords,
-  }
+  const { latitude, longitude } = extractCoords(d)
+  const coords = isValidCoord(latitude, longitude) ?? { latitude: 0, longitude: 0 }
+  return { ...mapCommonFields(d), ...coords }
 }

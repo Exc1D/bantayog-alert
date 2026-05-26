@@ -106,7 +106,8 @@ export const requestLookup = onCall({
         if (err instanceof BantayogError) {
             throw bantayogErrorToHttps(err);
         }
-        throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error');
+        console.error('requestLookup failed:', err);
+        throw new HttpsError('internal', 'Lookup failed.');
     }
 });
 //# sourceMappingURL=request-lookup.js.map

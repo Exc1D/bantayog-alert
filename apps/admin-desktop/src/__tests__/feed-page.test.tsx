@@ -134,10 +134,21 @@ describe('FeedPage', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Feed moderation' })).toBeInTheDocument()
+
+    // Default tab is New
     const moderationQueue = screen.getByRole('region', { name: 'Feed moderation queue' })
+    expect(within(moderationQueue).getByText('New incoming report')).toBeInTheDocument()
+    // Pending items are on a separate tab
+    expect(within(moderationQueue).queryByText('Needs swear word removed')).not.toBeInTheDocument()
+
+    // Switch to Pending tab
+    fireEvent.click(screen.getByRole('button', { name: /Pending/i }))
     expect(within(moderationQueue).getByText('Needs swear word removed')).toBeInTheDocument()
-    expect(within(moderationQueue).getByText('Public feed copy')).toBeInTheDocument()
     expect(within(moderationQueue).getByText('Pending publication')).toBeInTheDocument()
+
+    // Switch to Live tab
+    fireEvent.click(screen.getByRole('button', { name: /Live/i }))
+    expect(within(moderationQueue).getByText('Public feed copy')).toBeInTheDocument()
     expect(within(moderationQueue).getByText('Published')).toBeInTheDocument()
 
     // verified+internal items are not feed-relevant and should be hidden
@@ -154,7 +165,7 @@ describe('FeedPage', () => {
 
     const publicFeed = screen.getByRole('region', { name: 'Citizen-visible public feed' })
     expect(within(publicFeed).getByText('Public feed copy')).toBeInTheDocument()
-    expect(within(publicFeed).getByText(/Labo \/ San Roque/)).toBeInTheDocument()
+    expect(within(publicFeed).getByText(/Labo · San Roque/)).toBeInTheDocument()
     expect(within(publicFeed).queryByText('Hidden feed copy')).not.toBeInTheDocument()
     expect(within(publicFeed).queryByText('Maria Private')).not.toBeInTheDocument()
     expect(within(publicFeed).queryByText('0917PRIVATE')).not.toBeInTheDocument()
@@ -216,10 +227,12 @@ describe('FeedPage', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByLabelText('Scrubbed copy for r-awaiting'), {
+    // Switch to Pending tab to find the awaiting_verify report
+    fireEvent.click(screen.getByRole('button', { name: /Pending/i }))
+    fireEvent.change(screen.getByLabelText('Kopyang nilinis para sa r-awaiting'), {
       target: { value: 'Needs sensitive detail removed' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Publish scrubbed copy for r-awaiting' }))
+    fireEvent.click(screen.getByRole('button', { name: 'I-publish ang kopyang nilinis para sa r-awaiting' }))
 
     await waitFor(() => {
       expect(mockVerifyReport).toHaveBeenCalledWith(
@@ -238,6 +251,7 @@ describe('FeedPage', () => {
       </MemoryRouter>,
     )
 
+    // Default tab is New
     fireEvent.click(screen.getByRole('button', { name: 'Send report r-new to moderation' }))
 
     await waitFor(() => {
@@ -272,6 +286,8 @@ describe('FeedPage', () => {
       </MemoryRouter>,
     )
 
+    // Switch to Live tab to find the published report
+    fireEvent.click(screen.getByRole('button', { name: /Live/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Unpublish report r-public' }))
     fireEvent.click(screen.getByRole('button', { name: 'Unpublish' }))
 
@@ -292,11 +308,18 @@ describe('FeedPage', () => {
       </MemoryRouter>,
     )
 
+    // Default tab is New
     const moderationQueue = screen.getByRole('region', { name: 'Feed moderation queue' })
-    expect(within(moderationQueue).getByText('Needs swear word removed')).toBeInTheDocument()
-    expect(within(moderationQueue).getByText('Public feed copy')).toBeInTheDocument()
-    // 'new' items MUST appear so admins can send them to moderation
     expect(within(moderationQueue).getByText('New incoming report')).toBeInTheDocument()
+
+    // Switch to Pending to see awaiting_verify items
+    fireEvent.click(screen.getByRole('button', { name: /Pending/i }))
+    expect(within(moderationQueue).getByText('Needs swear word removed')).toBeInTheDocument()
+
+    // Switch to Live to see published items
+    fireEvent.click(screen.getByRole('button', { name: /Live/i }))
+    expect(within(moderationQueue).getByText('Public feed copy')).toBeInTheDocument()
+
     // verified+internal items should not appear
     expect(within(moderationQueue).queryByText('Hidden feed copy')).not.toBeInTheDocument()
   })

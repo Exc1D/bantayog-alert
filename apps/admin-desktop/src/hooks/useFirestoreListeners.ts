@@ -51,6 +51,45 @@ export function isReportOpsDoc(doc: unknown): doc is ReportOpsDoc {
 }
 
 const MAX_RETRIES = 3
+const LOADING_TIMEOUT_MS = 5000
+const ALLOWED_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
+
+function isAuthorized(
+  role: string | null,
+  municipalityId: string | null,
+  agencyId: string | null,
+): boolean {
+  if (!ALLOWED_ROLES.has(role ?? '')) return false
+  if (role === 'municipal_admin' && !municipalityId) return false
+  if (role === 'agency_admin' && !agencyId) return false
+  return true
+}
+
+interface ScopeFields {
+  municipal: string
+  agency: string
+  agencyOperator?: '==' | 'array-contains'
+}
+
+function scopeQuery(
+  base: Query,
+  role: string | null,
+  municipalityId: string | null,
+  agencyId: string | null,
+  fields: ScopeFields,
+): Query {
+  if (role === 'municipal_admin' && municipalityId) {
+    return query(base, where(fields.municipal, '==', municipalityId))
+  }
+  if (role === 'agency_admin' && agencyId) {
+    return query(base, where(fields.agency, fields.agencyOperator ?? '==', agencyId))
+  }
+  return base
+}
+
+function snapshotError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
 
 export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   const { claims, loading: authLoading } = useAuth()
@@ -71,75 +110,43 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   useEffect(() => {
     if (!db) return
 
-    // Flush prior-tenant state when the visibility scope changes (e.g.,
-    // municipal_admin M001 → M002, or a token refresh that flips authLoading
-    // back to true). Without this, React keeps rendering the previous
-    // tenant's docs until the new onSnapshot callback fires.
+    // Flush state when visibility scope changes (tenant switch or token refresh)
     const nextScopeKey = authLoading
       ? null
       : `${role ?? 'none'}:${municipalityId ?? ''}:${agencyId ?? ''}:${windowType}`
 
-    const scopeChanged = scopeKeyRef.current !== nextScopeKey
-    scopeKeyRef.current = nextScopeKey
-
-    if (scopeChanged) {
+    if (scopeKeyRef.current !== nextScopeKey) {
+      scopeKeyRef.current = nextScopeKey
       setReports([])
       setReportOps([])
       setAlerts([])
       setResponders([])
-      // Reset retry budget so the new scope doesn't inherit an exhausted
-      // counter from the prior tenant. The pending retry timer (if any) is
-      // already cleared by the effect cleanup that ran before this re-entry.
       setRetryCount(0)
     }
 
     if (authLoading) {
-      // Clear any stale onSnapshot error from the prior scope before flipping
-      // back to loading; otherwise a token refresh would leave error+loading
-      // both set, and the UI would render the "failed" state on top of a
-      // spinner.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null)
       setLoading(true)
       return
     }
 
-    const isSupportedRole =
-      role === 'provincial_superadmin' || role === 'municipal_admin' || role === 'agency_admin'
-
-    // Unauthorized when role is not on the admin-desktop allowlist or scope IDs are missing
-    if (
-      !isSupportedRole ||
-      (role === 'municipal_admin' && !municipalityId) ||
-      (role === 'agency_admin' && !agencyId)
-    ) {
+    if (!isAuthorized(role, municipalityId, agencyId)) {
       setLoading(false)
       setError('unauthorized')
       return
     }
 
     setLoading(true)
-
     setError(null)
 
-    // Safety timeout: always exit loading state within 5s even if Firestore is slow or denied
     const loadingTimeout = setTimeout(() => {
       setLoading(false)
-    }, 5000)
+    }, LOADING_TIMEOUT_MS)
 
-    const unsubscribers: (() => void)[] = []
-
-    // Shared retry scheduler for all listeners. Clears any previously-scheduled
-    // retry timer before overwriting the ref — without this, when multiple
-    // listeners fail in the same effect run only the last assignment is
-    // reachable via cleanup, and the prior ones become orphans that still fire
-    // setRetryCount and trigger spurious effect re-runs after authLoading flips
-    // or unmount.
     const scheduleRetry = () => {
       if (retryCount >= MAX_RETRIES) return
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current)
-      }
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
       retryTimerRef.current = setTimeout(
         () => {
           setRetryCount((c) => c + 1)
@@ -148,11 +155,6 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       )
     }
 
-    // Reset the shared retry budget on a successful connection. Without this,
-    // a listener that recovered after MAX_RETRIES would permanently disable
-    // future retries (scheduleRetry short-circuits on retryCount >= MAX_RETRIES),
-    // and a pending retry timer from the failing window would still fire and
-    // trigger a spurious effect re-run.
     const resetRetryBudget = () => {
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current)
@@ -161,127 +163,111 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       setRetryCount(0)
     }
 
-    // Role-scoped reports listener
-    const reportsCol = collection(db, 'reports')
-    let reportsRef: Query = reportsCol
-    if (role === 'municipal_admin' && municipalityId) {
-      reportsRef = query(reportsCol, where('municipalityId', '==', municipalityId))
-    } else if (role === 'agency_admin' && agencyId) {
-      // reports docs do not have agencyId. Agency admins see reports that
-      // are public_alertable or that their agency handles (enforced by
-      // Firestore rules), so we query the full collection and let rules
-      // filter. The responders listener below already scopes by agency.
-      reportsRef = reportsCol
-    }
-    const unsubReports = onSnapshot(
-      reportsRef,
-      (snapshot) => {
-        const data = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<ReportDoc, 'id'>),
-        }))
-        setReports(data)
-        setLoading(false)
-        setError(null)
-        resetRetryBudget()
-      },
-      (err) => {
-        const message = err instanceof Error ? err.message : String(err)
-        setError(message)
-        scheduleRetry()
-      },
-    )
-    unsubscribers.push(unsubReports)
+    const unsubscribers: (() => void)[] = []
 
-    // Role-scoped report_ops listener
-    const reportOpsCol = collection(db, 'report_ops')
-    let reportOpsRef: Query = reportOpsCol
-    if (role === 'municipal_admin' && municipalityId) {
-      reportOpsRef = query(reportOpsCol, where('municipalityId', '==', municipalityId))
-    } else if (role === 'agency_admin' && agencyId) {
-      reportOpsRef = query(reportOpsCol, where('agencyIds', 'array-contains', agencyId))
-    }
-    const unsubReportOps = onSnapshot(
-      reportOpsRef,
-      (snapshot) => {
-        const data = snapshot.docs
-          .map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }))
-          .filter(isReportOpsDoc)
-        setReportOps(data)
-        setError(null)
-        resetRetryBudget()
-      },
-      (err) => {
-        const message = err instanceof Error ? err.message : String(err)
-        setError(message)
-        scheduleRetry()
-      },
-    )
-    unsubscribers.push(unsubReportOps)
-
-    // Listen to alerts
-    const alertsRef = collection(db, 'alerts')
-    const unsubAlerts = onSnapshot(
-      alertsRef,
-      (snapshot) => {
-        const data = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
-        setAlerts(data)
-        setError(null)
-        resetRetryBudget()
-      },
-      (err) => {
-        const message = err instanceof Error ? err.message : String(err)
-        setError(message)
-        scheduleRetry()
-      },
-    )
-    unsubscribers.push(unsubAlerts)
-
-    if (windowType === 'map') {
-      const respondersCol = collection(db, 'responders')
-      let respondersRef: Query = query(respondersCol, where('isActive', '==', true))
-      if (role === 'municipal_admin' && municipalityId) {
-        respondersRef = query(respondersRef, where('municipalityId', '==', municipalityId))
-      } else if (role === 'agency_admin' && agencyId) {
-        respondersRef = query(respondersRef, where('agencyId', '==', agencyId))
-      }
-      const unsubResponderAccounts = onSnapshot(
-        respondersRef,
+    // reports — agency_admin sees full collection (Firestore rules filter)
+    const reportsRef = scopeQuery(collection(db, 'reports'), role, municipalityId, agencyId, {
+      municipal: 'municipalityId',
+      agency: 'municipalityId',
+    })
+    unsubscribers.push(
+      onSnapshot(
+        reportsRef,
         (snapshot) => {
-          setResponders(snapshot.docs.map((d) => [d.id, d.data()]))
+          setReports(
+            snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ReportDoc, 'id'>) })),
+          )
+          setLoading(false)
           setError(null)
           resetRetryBudget()
         },
         (err) => {
-          const message = err instanceof Error ? err.message : String(err)
-          setError(message)
+          setError(snapshotError(err))
           scheduleRetry()
         },
-      )
-      unsubscribers.push(unsubResponderAccounts)
-    }
+      ),
+    )
 
-    if (windowType === 'map' && rtdb) {
-      // Listen to responder locations in RTDB
-      const locationsRef = ref(rtdb, 'responder_locations')
-      const unsubLocations = onValue(
-        locationsRef,
+    // report_ops
+    const reportOpsRef = scopeQuery(collection(db, 'report_ops'), role, municipalityId, agencyId, {
+      municipal: 'municipalityId',
+      agency: 'agencyIds',
+      agencyOperator: 'array-contains',
+    })
+    unsubscribers.push(
+      onSnapshot(
+        reportOpsRef,
         (snapshot) => {
-          const data = (snapshot.val() ?? {}) as Record<string, unknown>
-          setResponders(Object.entries(data))
+          setReportOps(
+            snapshot.docs
+              .map((d) => ({ id: d.id, ...d.data() }))
+              .filter(isReportOpsDoc),
+          )
+          setError(null)
+          resetRetryBudget()
         },
         (err) => {
-          const message = err instanceof Error ? err.message : String(err)
-          setError(message)
+          setError(snapshotError(err))
+          scheduleRetry()
         },
+      ),
+    )
+
+    // alerts — unscoped (public read)
+    unsubscribers.push(
+      onSnapshot(
+        collection(db, 'alerts'),
+        (snapshot) => {
+          setAlerts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })))
+          setError(null)
+          resetRetryBudget()
+        },
+        (err) => {
+          setError(snapshotError(err))
+          scheduleRetry()
+        },
+      ),
+    )
+
+    // map-only: responder accounts
+    if (windowType === 'map') {
+      const respondersRef = scopeQuery(
+        query(collection(db, 'responders'), where('isActive', '==', true)),
+        role,
+        municipalityId,
+        agencyId,
+        { municipal: 'municipalityId', agency: 'agencyId' },
       )
-      unsubscribers.push(unsubLocations)
+      unsubscribers.push(
+        onSnapshot(
+          respondersRef,
+          (snapshot) => {
+            setResponders(snapshot.docs.map((d) => [d.id, d.data()]))
+            setError(null)
+            resetRetryBudget()
+          },
+          (err) => {
+            setError(snapshotError(err))
+            scheduleRetry()
+          },
+        ),
+      )
+    }
+
+    // map-only: responder locations (RTDB)
+    if (windowType === 'map' && rtdb) {
+      unsubscribers.push(
+        onValue(
+          ref(rtdb, 'responder_locations'),
+          (snapshot) => {
+            const data = (snapshot.val() ?? {}) as Record<string, unknown>
+            setResponders(Object.entries(data))
+          },
+          (err) => {
+            setError(snapshotError(err))
+          },
+        ),
+      )
     }
 
     return () => {

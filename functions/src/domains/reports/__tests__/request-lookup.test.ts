@@ -1,6 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createHash } from 'node:crypto'
-import { requestLookupImpl } from '../request-lookup.js'
+
+const { mockCheckRateLimit, mockFirestore, onCallMock } = vi.hoisted(() => ({
+  mockCheckRateLimit: vi.fn(),
+  mockFirestore: vi.fn(),
+  onCallMock: vi.fn((_config: unknown, handler: unknown) => handler),
+}))
+
+vi.mock('firebase-functions/v2/https', async () => {
+  const actual = await vi.importActual<typeof import('firebase-functions/v2/https')>(
+    'firebase-functions/v2/https',
+  )
+  return { ...actual, onCall: onCallMock }
+})
+
+vi.mock('firebase-admin/firestore', async () => {
+  const actual = await vi.importActual<typeof import('firebase-admin/firestore')>(
+    'firebase-admin/firestore',
+  )
+  return { ...actual, getFirestore: mockFirestore }
+})
+
+vi.mock('../../shared/rate-limit.js', () => ({
+  checkRateLimit: mockCheckRateLimit,
+}))
+
+import { requestLookup, requestLookupImpl } from '../request-lookup.js'
 
 const mockGet = vi.fn()
 
@@ -10,7 +35,15 @@ function db() {
   }
 }
 
-beforeEach(() => mockGet.mockReset())
+beforeEach(() => {
+  mockGet.mockReset()
+  mockCheckRateLimit.mockResolvedValue({
+    allowed: true,
+    remaining: 29,
+    retryAfterSeconds: 0,
+  })
+  mockFirestore.mockReturnValue(db())
+})
 
 describe('requestLookupImpl — both-codes path', () => {
   const secret = 'abc'
@@ -123,5 +156,32 @@ describe('requestLookupImpl — secret-only path', () => {
       lastStatusAt: 1713350401000,
       municipalityLabel: 'Daet',
     })
+  })
+})
+
+describe('requestLookup callable', () => {
+  it('does not leak unexpected backend error messages to public callers', async () => {
+    mockGet.mockRejectedValueOnce(new Error('index secret_lookup/private missing in prod'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const handler = requestLookup as unknown as (request: {
+      auth?: { uid: string } | undefined
+      data: unknown
+      rawRequest: { ip?: string }
+    }) => Promise<unknown>
+
+    try {
+      await expect(
+        handler({
+          auth: undefined,
+          data: { publicRef: 'a1b2c3d4', secret: 'abc' },
+          rawRequest: { ip: '203.0.113.10' },
+        }),
+      ).rejects.toMatchObject({
+        code: 'internal',
+        message: 'Lookup failed.',
+      })
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })

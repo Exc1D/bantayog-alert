@@ -87,7 +87,8 @@ export const requestUploadUrl = onCall({
         if (err instanceof BantayogError) {
             throw bantayogErrorToHttps(err);
         }
-        throw new HttpsError('internal', err instanceof Error ? err.message : 'Unknown error');
+        console.error('requestUploadUrl failed:', err);
+        throw new HttpsError('internal', 'Failed to create upload URL.');
     }
 });
 //# sourceMappingURL=callables.js.map

@@ -15,7 +15,7 @@ describe('DispatchStatsCards', () => {
     render(<DispatchStatsCards {...DEFAULT_PROPS} />)
     const card = screen.getByLabelText('Active Now')
     expect(card).toHaveTextContent('5')
-    expect(card).toHaveClass('border-t-blue-400')
+    expect(card).toHaveClass('border-t-[var(--color-carto-blue)]')
     expect(card).toHaveAttribute('role', 'region')
   })
 

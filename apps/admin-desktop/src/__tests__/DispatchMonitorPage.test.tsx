@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { DispatchMonitorPage } from '../pages/DispatchMonitorPage'
 
 const mockEscalateDispatch = vi.hoisted(() =>
@@ -101,27 +102,31 @@ describe('DispatchMonitorPage', () => {
     })
   })
 
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <MemoryRouter>{children}</MemoryRouter>
+  )
+
   it('shows loading spinner when dispatch lifecycle is loading', () => {
     mockUseDispatchLifecycle.mockReturnValue({ rows: [], loading: true, error: null })
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('shows ActionErrorBanner when dispatch lifecycle errors', () => {
     mockUseDispatchLifecycle.mockReturnValue({ rows: [], loading: false, error: 'network error' })
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     expect(screen.getByRole('alert')).toHaveTextContent(/network error/i)
   })
 
   it('renders all sections when data is loaded', () => {
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
     expect(screen.getByText('Report')).toBeInTheDocument()
     expect(screen.getByText(/responders/i)).toBeInTheDocument()
   })
 
   it('does not show escalation queue when no stalled dispatches', () => {
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     expect(screen.queryByLabelText('Escalation queue')).not.toBeInTheDocument()
   })
 
@@ -131,7 +136,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     expect(screen.getByLabelText('Escalation queue')).toBeInTheDocument()
     expect(screen.getByText(/needs admin attention/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /re-dispatch/i })).toBeInTheDocument()
@@ -150,7 +155,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -171,7 +176,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -212,7 +217,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -243,7 +248,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />)
+    render(<DispatchMonitorPage />, { wrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()

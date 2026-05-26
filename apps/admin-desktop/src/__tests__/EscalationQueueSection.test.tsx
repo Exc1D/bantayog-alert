@@ -50,8 +50,8 @@ describe('EscalationQueueSection', () => {
       />,
     )
     const section = container.firstChild as HTMLElement
-    expect(section.className).toContain('border-red-500/30')
-    expect(section.className).toContain('bg-red-500/5')
+    expect(section.className).toContain('border-[var(--color-danger)]/30')
+    expect(section.className).toContain('bg-[var(--color-danger)]/5')
   })
 
   it('renders a card for each stalled dispatch with report id, responder name and escalation count', () => {
@@ -74,7 +74,7 @@ describe('EscalationQueueSection', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows escalation count in amber color', () => {
+  it('shows escalation count in warning color', () => {
     render(
       <EscalationQueueSection
         stalledDispatches={mockDispatches}
@@ -85,7 +85,7 @@ describe('EscalationQueueSection', () => {
     const firstEscalation = screen.getByText(
       (content) => content.includes('Escalated') && content.includes('1x'),
     )
-    expect(firstEscalation).toHaveClass('text-amber-500')
+    expect(firstEscalation).toHaveClass('text-[var(--color-warning)]')
   })
 
   it('calls onReDispatch with the dispatchId when Re-dispatch button is clicked', async () => {

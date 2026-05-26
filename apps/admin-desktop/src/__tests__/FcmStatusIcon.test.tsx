@@ -3,38 +3,38 @@ import { render, screen } from '@testing-library/react'
 import { FcmStatusIcon } from '../components/FcmStatusIcon'
 
 describe('FcmStatusIcon', () => {
-  it('renders green CheckCircle for sent', () => {
+  it('renders success-colored CheckCircle for sent', () => {
     render(<FcmStatusIcon result="sent" />)
     const icon = screen.getByLabelText('FCM delivered to device')
     expect(icon).toBeInTheDocument()
-    expect(icon).toHaveClass('text-green-600')
+    expect(icon).toHaveClass('text-[var(--color-success)]')
   })
 
-  it('renders red XCircle for network_error', () => {
+  it('renders danger-colored XCircle for network_error', () => {
     render(<FcmStatusIcon result="network_error" />)
     const icon = screen.getByLabelText('FCM network error')
     expect(icon).toBeInTheDocument()
-    expect(icon).toHaveClass('text-red-600')
+    expect(icon).toHaveClass('text-[var(--color-danger)]')
   })
 
-  it('renders amber AlertCircle for no_token', () => {
+  it('renders warning-colored AlertCircle for no_token', () => {
     render(<FcmStatusIcon result="no_token" />)
     const icon = screen.getByLabelText('No FCM token')
     expect(icon).toBeInTheDocument()
-    expect(icon).toHaveClass('text-amber-500')
+    expect(icon).toHaveClass('text-[var(--color-warning)]')
   })
 
-  it('renders gray HelpCircle for null result', () => {
+  it('renders muted HelpCircle for null result', () => {
     render(<FcmStatusIcon result={null} />)
     const icon = screen.getByLabelText('FCM status unknown')
     expect(icon).toBeInTheDocument()
-    expect(icon).toHaveClass('text-gray-500')
+    expect(icon).toHaveClass('text-[var(--color-text-muted)]')
   })
 
-  it('renders gray HelpCircle for unknown result', () => {
+  it('renders muted HelpCircle for unknown result', () => {
     render(<FcmStatusIcon result="some_unexpected_value" />)
     const icon = screen.getByLabelText('FCM status unknown')
     expect(icon).toBeInTheDocument()
-    expect(icon).toHaveClass('text-gray-500')
+    expect(icon).toHaveClass('text-[var(--color-text-muted)]')
   })
 })

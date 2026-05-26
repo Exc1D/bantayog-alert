@@ -15,6 +15,15 @@ interface Options<T extends ReportStub> {
   onError?: (reportId: string, error: Error) => void
 }
 
+function removeOptimisticState(
+  prev: Record<string, string>,
+  reportId: string,
+): Record<string, string> {
+  const { [reportId]: _removed, ...rest } = prev
+  void _removed
+  return rest
+}
+
 export function useOptimisticFeedActions<T extends ReportStub>({
   reports,
   verifyReport,
@@ -43,18 +52,10 @@ export function useOptimisticFeedActions<T extends ReportStub>({
 
       try {
         await actionFn(reportId)
-        setOptimisticState((prev) => {
-          const { [reportId]: _removed, ...rest } = prev
-          void _removed
-          return rest
-        })
+        setOptimisticState((prev) => removeOptimisticState(prev, reportId))
         onSuccess?.(reportId, actionName)
       } catch (err) {
-        setOptimisticState((prev) => {
-          const { [reportId]: _removed, ...rest } = prev
-          void _removed
-          return rest
-        })
+        setOptimisticState((prev) => removeOptimisticState(prev, reportId))
         onError?.(reportId, err instanceof Error ? err : new Error(String(err)))
       } finally {
         setPendingIds((prev) => {

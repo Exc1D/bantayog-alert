@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import type { ResponderFleetMember } from '../hooks/useResponderFleet'
 
@@ -79,8 +80,12 @@ export function ReDispatchModal({
           <h2 id="re-dispatch-title" className="text-lg font-semibold text-white">
             Re-dispatch
           </h2>
-          <button onClick={onClose} className="rounded p-1 hover:bg-white/10" aria-label="Close">
-            <span className="sr-only">Close</span>×
+            <button
+            onClick={onClose}
+            className="rounded p-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4 text-[var(--color-text-secondary)]" />
           </button>
         </div>
 

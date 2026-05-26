@@ -1,0 +1,50 @@
+name: Load Test
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 03:00 UTC daily — before morning deploy window
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'k6 scenario to run'
+        required: true
+        default: 'accept-dispatch-race'
+        type: choice
+        options:
+          - accept-dispatch-race
+          - citizen-submit-burst
+          - cold-start-inbox
+
+env:
+  PNPM_VERSION: 9.12.0
+
+jobs:
+  load-test:
+    name: k6 Load Test (Staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: corepack prepare pnpm@${PNPM_VERSION} --activate
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install k6
+        run: |
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D786D16274856A31D7E0
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run k6 load test
+        run: |
+          SCENARIO=${{ github.event.inputs.scenario || 'accept-dispatch-race' }} \
+            BANTAYOG_ADMIN_EMAIL=${{ secrets.BANTAYOG_ADMIN_EMAIL }} \
+            BANTAYOG_ADMIN_PASSWORD=${{ secrets.BANTAYOG_ADMIN_PASSWORD }} \
+            BANTAYOG_RESPONDER_EMAIL=${{ secrets.BANTAYOG_RESPONDER_EMAIL }} \
+            BANTAYOG_RESPONDER_PASSWORD=${{ secrets.BANTAYOG_RESPONDER_PASSWORD }} \
+            pnpm run load-test
+        timeout-minutes: 10

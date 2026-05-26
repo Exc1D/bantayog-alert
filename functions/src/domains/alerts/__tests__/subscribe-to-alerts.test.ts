@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { type Firestore } from 'firebase-admin/firestore'
 
-const { mockSubscribeToTopic } = vi.hoisted(() => ({
+const { mockCheckRateLimit, mockSubscribeToTopic } = vi.hoisted(() => ({
+  mockCheckRateLimit: vi.fn(),
   mockSubscribeToTopic: vi.fn().mockResolvedValue({ successCount: 1, failureCount: 0, errors: [] }),
 }))
 
@@ -19,6 +20,10 @@ vi.mock('../../../idempotency/guard.js', () => ({
   withIdempotency: vi.fn(async (_db: unknown, _opts: unknown, fn: () => Promise<unknown>) => {
     return { result: await fn() }
   }),
+}))
+
+vi.mock('../../shared/rate-limit.js', () => ({
+  checkRateLimit: mockCheckRateLimit,
 }))
 
 import { subscribeToAlertsCore } from '../subscribe-to-alerts.js'
@@ -51,6 +56,11 @@ function createMockDb(userDoc?: { fcmToken?: string; fcmTokens?: string[] }) {
 describe('subscribeToAlertsCore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCheckRateLimit.mockResolvedValue({
+      allowed: true,
+      remaining: 19,
+      retryAfterSeconds: 0,
+    })
   })
 
   it('allows token matching users/{uid}.fcmToken', async () => {
@@ -82,5 +92,26 @@ describe('subscribeToAlertsCore', () => {
         now: Timestamp.now(),
       }),
     ).rejects.toThrow('does not belong')
+  })
+
+  it('rejects when the caller exceeds the subscription rate limit', async () => {
+    mockCheckRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: 42,
+    })
+
+    const db = createMockDb({ fcmToken: 'valid-token' })
+    await expect(
+      subscribeToAlertsCore(db, {
+        token: 'valid-token',
+        actor: { uid: 'user-123' },
+        now: Timestamp.now(),
+      }),
+    ).rejects.toMatchObject({
+      code: 'resource-exhausted',
+      details: { retryAfterSeconds: 42 },
+    })
+    expect(mockSubscribeToTopic).not.toHaveBeenCalled()
   })
 })

@@ -51,11 +51,16 @@ export function DispatchStatsCards({
     <div className="flex gap-4">
       <div
         aria-label="Active Now"
-        className="rounded-lg border-t-[3px] border-t-blue-400 bg-white/[0.03] p-4"
+        className="rounded-lg border-t-[3px] border-t-[var(--color-carto-blue)] bg-white/[0.03] p-4"
         role="region"
       >
         <div className="text-xs text-gray-400">Active Now</div>
-        <div className="text-2xl font-bold text-white">{activeCount}</div>
+        <div
+          className="font-mono text-2xl font-bold text-white"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {activeCount}
+        </div>
       </div>
 
       <div
@@ -64,7 +69,12 @@ export function DispatchStatsCards({
         role="region"
       >
         <div className="text-xs text-gray-400">Stalled</div>
-        <div className="text-2xl font-bold text-white">{stalledCount}</div>
+        <div
+          className="font-mono text-2xl font-bold text-white"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {stalledCount}
+        </div>
       </div>
 
       {!isSurge && (
@@ -77,7 +87,10 @@ export function DispatchStatsCards({
             Avg Accept
             {trend && <span className={`${trend.color} text-xs`}>{trend.arrow}</span>}
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div
+            className="font-mono text-2xl font-bold text-white"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
             {avgAcceptSeconds !== null ? formatSeconds(avgAcceptSeconds) : '—'}
           </div>
         </div>
@@ -90,7 +103,12 @@ export function DispatchStatsCards({
           role="region"
         >
           <div className="text-xs">FCM Rate</div>
-          <div className="text-2xl font-bold">{fcmPercent}%</div>
+          <div
+            className="font-mono text-2xl font-bold"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {fcmPercent}%
+          </div>
         </div>
       )}
     </div>

@@ -79,7 +79,7 @@ export function useUrlSync({
     // Only update if params actually changed
     if (next.toString() !== searchParams.toString()) {
       lastReadRef.current = next.toString()
-      setSearchParams(next, { replace: true })
+      setSearchParams(next)
     }
   }, [reportId, municipalityId, overlays, searchParams, setSearchParams])
 }
