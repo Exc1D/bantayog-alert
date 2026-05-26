@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -7,6 +7,7 @@ const mockNavigate = vi.hoisted(() => vi.fn())
 const mockSignOut = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const mockSignInWithEmailAndPassword = vi.hoisted(() => vi.fn())
 const mockSendPasswordResetEmail = vi.hoisted(() => vi.fn())
+const mockAnnounce = vi.hoisted(() => vi.fn())
 
 // Mutable state to simulate useAuth transitions after sign-in
 let mockUser: { uid: string } | null = null
@@ -32,6 +33,10 @@ vi.mock('../app/firebase', () => ({
 
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: () => ({ user: mockUser, loading: mockAuthLoading }),
+}))
+
+vi.mock('../components/LiveAnnouncer', () => ({
+  announce: mockAnnounce,
 }))
 
 import { LoginPage } from '../pages/LoginPage'
@@ -64,7 +69,7 @@ describe('LoginPage', () => {
     )
 
     await user.type(screen.getByLabelText(/email/i), 'superadmin@test.local')
-    await user.type(screen.getByLabelText(/password/i), 'test123456')
+    await user.type(screen.getByLabelText(/^password/i), 'test123456')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -72,6 +77,7 @@ describe('LoginPage', () => {
     )
     expect(mockSignOut).toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
+    expect(mockAnnounce).toHaveBeenCalledWith('This account does not have admin privileges.')
   })
 
   it('rejects legacy admin role and shows error', async () => {
@@ -85,7 +91,7 @@ describe('LoginPage', () => {
     )
 
     await user.type(screen.getByLabelText(/email/i), 'admin@test.local')
-    await user.type(screen.getByLabelText(/password/i), 'test123456')
+    await user.type(screen.getByLabelText(/^password/i), 'test123456')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -127,7 +133,7 @@ describe('LoginPage', () => {
     // still disabled — no password
     expect(submitButton).toBeDisabled()
 
-    await user.type(screen.getByLabelText(/password/i), 'secret123')
+    await user.type(screen.getByLabelText(/^password/i), 'secret123')
     expect(submitButton).not.toBeDisabled()
   })
 
@@ -206,7 +212,7 @@ describe('LoginPage', () => {
     )
 
     await user.type(screen.getByLabelText(/email/i), 'superadmin@test.local')
-    await user.type(screen.getByLabelText(/password/i), 'test123456')
+    await user.type(screen.getByLabelText(/^password/i), 'test123456')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     // Wait for handleSubmit to finish
@@ -230,5 +236,90 @@ describe('LoginPage', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
     })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows escalation hint after role verification failure', async () => {
+    const user = userEvent.setup()
+    mockSignInWithEmailAndPassword.mockResolvedValue(mockUserWithRole('superadmin'))
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    await user.type(screen.getByLabelText(/email/i), 'superadmin@test.local')
+    await user.type(screen.getByLabelText(/^password/i), 'test123456')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This account does not have admin privileges.',
+    )
+    expect(screen.getByText('Need access? Contact your provincial superadmin.')).toBeInTheDocument()
+  })
+
+  it('toggles password visibility', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    const passwordInput = screen.getByLabelText(/^password/i)
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    const toggleButton = screen.getByRole('button', { name: /show password/i })
+    await user.click(toggleButton)
+
+    expect(passwordInput).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('button', { name: /hide password/i })).toBeInTheDocument()
+  })
+
+  it('shows caps lock warning when CapsLock is on', () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    const passwordInput = screen.getByLabelText(/^password/i)
+    const original = KeyboardEvent.prototype.getModifierState
+
+    try {
+      KeyboardEvent.prototype.getModifierState = () => true
+      fireEvent.keyDown(passwordInput, { key: 'a' })
+      expect(screen.getByText('Caps Lock is on')).toBeInTheDocument()
+
+      KeyboardEvent.prototype.getModifierState = () => false
+      fireEvent.keyUp(passwordInput, { key: 'a' })
+      expect(screen.queryByText('Caps Lock is on')).not.toBeInTheDocument()
+    } finally {
+      KeyboardEvent.prototype.getModifierState = original
+    }
+  })
+
+  it('maps Firebase error codes to friendly messages', async () => {
+    const user = userEvent.setup()
+    mockSignInWithEmailAndPassword.mockRejectedValue(
+      Object.assign(new Error('Firebase: Error (auth/invalid-credential).'), {
+        code: 'auth/invalid-credential',
+      }),
+    )
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    await user.type(screen.getByLabelText(/email/i), 'admin@test.local')
+    await user.type(screen.getByLabelText(/^password/i), 'wrongpass')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Invalid email or password. Please try again.',
+    )
+    expect(mockAnnounce).toHaveBeenCalledWith('Error: Invalid email or password. Please try again.')
   })
 })

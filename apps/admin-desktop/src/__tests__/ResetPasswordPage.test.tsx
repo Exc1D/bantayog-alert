@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 const mockNavigate = vi.hoisted(() => vi.fn())
 const mockVerifyPasswordResetCode = vi.hoisted(() => vi.fn())
 const mockConfirmPasswordReset = vi.hoisted(() => vi.fn())
+const mockAnnounce = vi.hoisted(() => vi.fn())
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -22,6 +23,10 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('../app/firebase', () => ({
   auth: { currentUser: null },
+}))
+
+vi.mock('../components/LiveAnnouncer', () => ({
+  announce: mockAnnounce,
 }))
 
 import { ResetPasswordPage } from '../pages/ResetPasswordPage'
@@ -53,6 +58,7 @@ describe('ResetPasswordPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Invalid code')
     })
+    expect(mockAnnounce).toHaveBeenCalledWith('Error: Invalid code')
   })
 
   it('shows error when no oobCode is provided', async () => {
@@ -61,6 +67,7 @@ describe('ResetPasswordPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Invalid or expired password reset link.')
     })
+    expect(mockAnnounce).toHaveBeenCalledWith('Invalid or expired password reset link.')
   })
 
   it('shows reset form when code is valid', async () => {
@@ -100,6 +107,7 @@ describe('ResetPasswordPage', () => {
     })
 
     expect(screen.getByText('Your password has been updated successfully.')).toBeInTheDocument()
+    expect(mockAnnounce).toHaveBeenCalledWith('Password reset successfully.')
 
     await user.click(screen.getByRole('button', { name: /Sign In/i }))
     expect(mockNavigate).toHaveBeenCalledWith('/login')

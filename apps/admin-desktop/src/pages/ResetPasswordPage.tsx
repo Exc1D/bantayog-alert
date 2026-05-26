@@ -2,8 +2,34 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth'
 import { auth } from '../app/firebase'
+import { announce } from '../components/LiveAnnouncer'
+
+function friendlyAuthError(err: unknown): string {
+  if (!(err instanceof Error)) return 'Something went wrong. Please try again.'
+  const code = (err as unknown as Record<string, unknown>).code as string | undefined
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Invalid email or password. Please try again.'
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.'
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Contact your administrator.'
+    case 'auth/too-many-requests':
+      return 'Too many failed attempts. Please try again later.'
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection and try again.'
+    default:
+      return err.message
+  }
+}
 
 export function ResetPasswordPage() {
+  useEffect(() => {
+    document.title = 'Reset Password · Bantayog Alert'
+  }, [])
+
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [newPassword, setNewPassword] = useState('')
@@ -21,7 +47,9 @@ export function ResetPasswordPage() {
     if (!oobCode) {
       // Defer state update to avoid cascading render
       const id = requestAnimationFrame(() => {
-        setError('Invalid or expired password reset link.')
+        const msg = 'Invalid or expired password reset link.'
+        setError(msg)
+        announce(msg)
         setLoading(false)
       })
       return () => {
@@ -36,10 +64,13 @@ export function ResetPasswordPage() {
         setEmail(emailAddress)
         setVerified(true)
         setLoading(false)
+        announce('Reset link verified.')
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Invalid or expired reset link.')
+        const msg = friendlyAuthError(err)
+        setError(msg)
+        announce(`Error: ${msg}`)
         setLoading(false)
       })
 
@@ -71,8 +102,11 @@ export function ResetPasswordPage() {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword)
       setSuccess(true)
+      announce('Password reset successfully.')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password.')
+      const msg = friendlyAuthError(err)
+      setError(msg)
+      announce(`Error: ${msg}`)
     } finally {
       setSubmitting(false)
     }
@@ -80,7 +114,10 @@ export function ResetPasswordPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[var(--color-surface)]">
+      <div
+        id="main-content"
+        className="flex h-screen items-center justify-center bg-[var(--color-surface)]"
+      >
         <div
           role="status"
           className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white"
@@ -92,7 +129,10 @@ export function ResetPasswordPage() {
   if (success) {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--color-surface)]">
-        <div className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-8 text-center">
+        <div
+          id="main-content"
+          className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-8 text-center"
+        >
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Password Reset</h1>
           <p className="mt-4 text-sm text-[var(--color-text-secondary)]">
             Your password has been updated successfully.
@@ -113,7 +153,10 @@ export function ResetPasswordPage() {
 
   return (
     <div className="flex h-screen items-center justify-center bg-[var(--color-surface)]">
-      <div className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-8">
+      <div
+        id="main-content"
+        className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-8"
+      >
         <div className="mb-6 text-center">
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Reset Password</h1>
           {verified && <p className="mt-1 text-sm text-[var(--color-text-muted)]">{email}</p>}

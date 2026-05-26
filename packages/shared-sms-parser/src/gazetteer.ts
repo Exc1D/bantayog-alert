@@ -1,7 +1,3 @@
-import { createRequire } from 'node:module'
-
-const require = createRequire(import.meta.url)
-
 // ─── Barangay Gazetteer ───────────────────────────────────────────────────────
 
 export interface BarangayEntry {
@@ -306,38 +302,8 @@ const FALLBACK_BARANGAYS: BarangayEntry[] = [
   { name: 'Sula', municipality: 'Vinzons' },
 ]
 
-function isBarangayEntry(value: unknown): value is BarangayEntry {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'name' in value &&
-    typeof (value as { name?: unknown }).name === 'string' &&
-    'municipality' in value &&
-    typeof (value as { municipality?: unknown }).municipality === 'string'
-  )
-}
-
 export function getBarangayGazetteer(): BarangayEntry[] {
-  try {
-    const mod = require('@bantayog/shared-data') as { BARANGAY_GAZETTEER?: unknown }
-    if (Array.isArray(mod.BARANGAY_GAZETTEER) && mod.BARANGAY_GAZETTEER.every(isBarangayEntry)) {
-      return mod.BARANGAY_GAZETTEER
-    }
-  } catch (err: unknown) {
-    // Only suppress MODULE_NOT_FOUND for @bantayog/shared-data; rethrow all other failures
-    const isModuleNotFound =
-      typeof err === 'object' &&
-      err !== null &&
-      'code' in err &&
-      (err as { code?: string }).code === 'MODULE_NOT_FOUND'
-    const message = err instanceof Error ? err.message : ''
-    const isSharedDataLoadFailure = /Cannot find module ['"]@bantayog\/shared-data['"]/.test(
-      message,
-    )
-    if (isModuleNotFound && isSharedDataLoadFailure) {
-      return FALLBACK_BARANGAYS
-    }
-    throw err
-  }
+  // TODO: When @bantayog/shared-data exports BARANGAY_GAZETTEER, load it here.
+  // For now the fallback embeds the complete Camarines Norte barangay list.
   return FALLBACK_BARANGAYS
 }
