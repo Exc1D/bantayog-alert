@@ -17,6 +17,7 @@ import { SuccessBanner } from '../components/SuccessBanner'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { HelpModal } from '../components/HelpModal'
+import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { callables } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
@@ -37,6 +38,7 @@ export function DispatchMonitorPage() {
   const [dispatchError, setDispatchError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
 
@@ -170,6 +172,9 @@ export function DispatchMonitorPage() {
       <CommandHeader
         title="PDRRMO Camarines Norte"
         windowRole="dispatches"
+        onDeclareAlert={() => {
+          setAlertModalOpen(true)
+        }}
         onShowKeyboardShortcuts={() => {
           setHelpModalOpen(true)
         }}
@@ -265,6 +270,19 @@ export function DispatchMonitorPage() {
           { key: '?', description: 'Show keyboard shortcuts' },
           { key: 'Esc', description: 'Close help' },
         ]}
+      />
+      <DeclareAlertModal
+        open={alertModalOpen}
+        onClose={() => {
+          setAlertModalOpen(false)
+        }}
+        onSuccess={() => {
+          setAlertModalOpen(false)
+          setSuccessMessage('Alert declared successfully')
+        }}
+        onError={(msg) => {
+          setDispatchError(msg)
+        }}
       />
     </div>
   )

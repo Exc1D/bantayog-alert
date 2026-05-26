@@ -288,7 +288,7 @@ export default function MapPage() {
         }}
       />
       <CommandHeader
-        title="Provincial Map — Camarines Norte"
+        title="PDRRMO Camarines Norte"
         windowRole="map"
         onSignOut={() => {
           void signOut()

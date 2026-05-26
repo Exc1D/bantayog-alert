@@ -6,6 +6,8 @@ import { CommandHeader } from '../components/CommandHeader'
 import { FeedCard } from '../components/FeedCard'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ConfirmationModal } from '../components/ConfirmationModal'
+import { DeclareAlertModal } from '../components/DeclareAlertModal'
+import { HelpModal } from '../components/HelpModal'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
@@ -81,6 +83,8 @@ export default function FeedPage() {
   const [mediaError, setMediaError] = useState<string | null>(null)
   const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
   const [activeTab, setActiveTab] = useState<'new' | 'pending' | 'live'>('new')
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [helpModalOpen, setHelpModalOpen] = useState(false)
 
   const { optimisticReports, optimisticVerify, optimisticUnpublish, pendingIds } =
     useOptimisticFeedActions({
@@ -279,8 +283,14 @@ export default function FeedPage() {
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <OfflineBanner error={error} />
       <CommandHeader
-        title="Feed moderation"
+        title="PDRRMO Camarines Norte"
         windowRole="feed"
+        onDeclareAlert={() => {
+          setAlertModalOpen(true)
+        }}
+        onShowKeyboardShortcuts={() => {
+          setHelpModalOpen(true)
+        }}
         onSignOut={() => {
           signOut()
             .then(() => {
@@ -575,6 +585,32 @@ export default function FeedPage() {
         onCancel={() => {
           setConfirmUnpublishReport(null)
         }}
+      />
+      <DeclareAlertModal
+        open={alertModalOpen}
+        onClose={() => {
+          setAlertModalOpen(false)
+        }}
+        onSuccess={() => {
+          setAlertModalOpen(false)
+          setSuccessMessage('Alert declared successfully')
+        }}
+        onError={(msg) => {
+          setActionError(msg)
+        }}
+      />
+      <HelpModal
+        open={helpModalOpen}
+        onClose={() => {
+          setHelpModalOpen(false)
+        }}
+        shortcuts={[
+          { key: 'N', description: 'Focus New tab' },
+          { key: 'P', description: 'Focus Pending tab' },
+          { key: 'L', description: 'Focus Live tab' },
+          { key: '?', description: 'Show keyboard shortcuts' },
+          { key: 'Esc', description: 'Close help' },
+        ]}
       />
     </div>
   )
