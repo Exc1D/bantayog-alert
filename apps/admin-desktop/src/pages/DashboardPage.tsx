@@ -231,6 +231,14 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+      {error && (
+        <OfflineBanner
+          error={error}
+          onRetry={() => {
+            window.location.reload()
+          }}
+        />
+      )}
       <CommandHeader
         title="PDRRMO Camarines Norte"
         windowRole="dashboard"
@@ -244,14 +252,6 @@ export default function DashboardPage() {
           void signOut()
         }}
       />
-      {error && (
-        <OfflineBanner
-          error={error}
-          onRetry={() => {
-            window.location.reload()
-          }}
-        />
-      )}
       {successMessage && (
         <SuccessBanner
           message={successMessage}
