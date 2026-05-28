@@ -77,10 +77,12 @@ export function usePublicFeed(): {
   loading: boolean
   error: string | null
   retry: () => void
+  lastUpdatedAt: number | null
 } {
   const [items, setItems] = useState<PublicFeedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [retryCount, setRetryCount] = useState(0)
 
   const retry = () => {
@@ -105,6 +107,7 @@ export function usePublicFeed(): {
         )
         setLoading(false)
         setError(null)
+        setLastUpdatedAt(Date.now())
       },
       (err) => {
         setError(err instanceof Error ? err.message : 'Failed to load public feed')
@@ -113,5 +116,5 @@ export function usePublicFeed(): {
     )
   }, [retryCount])
 
-  return { items, loading, error, retry }
+  return { items, loading, error, retry, lastUpdatedAt }
 }

@@ -15,7 +15,6 @@ export const asHazardZoneVersion = (v) => v;
 export const asDispatchRequestId = (v) => v;
 export const asCommandThreadId = (v) => v;
 export const asCommandMessageId = (v) => v;
-export const asShiftHandoffId = (v) => v;
 export const asMassAlertRequestId = (v) => v;
 export const asMediaRef = (v) => v;
 export const asPublicTrackingRef = (v) => v;

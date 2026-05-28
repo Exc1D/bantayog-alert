@@ -16,6 +16,7 @@ export function useResponderProfile(uid: string | undefined) {
   const [profile, setProfile] = useState<ResponderProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     if (!uid) {
@@ -58,7 +59,11 @@ export function useResponderProfile(uid: string | undefined) {
         setLoading(false)
       },
     )
-  }, [uid])
+  }, [uid, retryKey])
 
-  return { profile, loading, error }
+  const refetch = () => {
+    setRetryKey((k) => k + 1)
+  }
+
+  return { profile, loading, error, refetch }
 }

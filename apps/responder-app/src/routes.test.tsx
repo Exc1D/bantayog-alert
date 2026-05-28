@@ -37,9 +37,7 @@ vi.mock('./pages/DispatchDetailPage', () => ({
 vi.mock('./pages/LoginPage', () => ({
   LoginPage: () => <div data-testid="login-page" />,
 }))
-vi.mock('./pages/ShiftHandoffPage', () => ({
-  ShiftHandoffPage: () => <div data-testid="handoff-page" />,
-}))
+
 vi.mock('./pages/DispatchHistoryPage', () => ({
   DispatchHistoryPage: () => <div data-testid="history-page" />,
 }))
@@ -113,12 +111,6 @@ describe('AppRouter', () => {
     await renderAt('/dispatches/disp-1')
     expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
     expect(screen.getByTestId('dispatch-detail')).toBeInTheDocument()
-  })
-
-  it('renders ShiftHandoffPage at /handoff outside Shell', async () => {
-    await renderAt('/handoff')
-    expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
-    expect(screen.getByTestId('handoff-page')).toBeInTheDocument()
   })
 
   it('renders DispatchHistoryPage at /history outside Shell', async () => {

@@ -11,6 +11,8 @@ const profileState = vi.hoisted(() => ({
     stationLabel?: string
     specializations?: string[]
   },
+  loading: false,
+  error: null as string | null,
 }))
 
 const mockSignOut = vi.hoisted(() => vi.fn(() => Promise.resolve()))
@@ -25,6 +27,7 @@ const historyState = vi.hoisted(() => ({
     dispatchedAt: number
     resolvedAt?: number
   }[],
+  loading: false,
 }))
 
 vi.mock('../app/firebase', () => ({
@@ -42,7 +45,11 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 vi.mock('../hooks/useResponderProfile', () => ({
-  useResponderProfile: () => ({ profile: profileState.profile }),
+  useResponderProfile: () => ({
+    profile: profileState.profile,
+    loading: profileState.loading,
+    error: profileState.error,
+  }),
 }))
 
 vi.mock('../hooks/useResponderAvailability', () => ({
@@ -54,7 +61,11 @@ vi.mock('../hooks/useResponderAvailability', () => ({
 }))
 
 vi.mock('../hooks/useDispatchHistory', () => ({
-  useDispatchHistory: () => ({ history: historyState.history, loading: false, error: null }),
+  useDispatchHistory: () => ({
+    history: historyState.history,
+    loading: historyState.loading,
+    error: null,
+  }),
 }))
 
 import { ProfilePage } from './ProfilePage'
@@ -62,6 +73,9 @@ import { ProfilePage } from './ProfilePage'
 describe('ProfilePage', () => {
   beforeEach(() => {
     profileState.profile = null
+    profileState.loading = false
+    profileState.error = null
+    historyState.loading = false
     mockSignOut.mockClear()
     mockSetAvailability.mockClear()
     mockGetDoc.mockReset()
@@ -112,17 +126,35 @@ describe('ProfilePage', () => {
     )
 
     const user = userEvent.setup()
-    const select = screen.getByLabelText(/set availability status/i)
-    await user.selectOptions(select, 'unavailable')
+    const unavailableBtn = screen.getByRole('button', { name: /unavailable/i })
+    await user.click(unavailableBtn)
 
-    const updateBtn = screen.getByRole('button', { name: /update status/i })
-    await user.click(updateBtn)
+    const applyBtn = screen.getByRole('button', { name: /apply status/i })
+    await user.click(applyBtn)
 
     expect(screen.getByText(/reason is required/i)).toBeInTheDocument()
     expect(mockSetAvailability).not.toHaveBeenCalled()
   })
 
-  it('calls signOut when the sign-out button is clicked', async () => {
+  it('sets available status immediately via segmented control', async () => {
+    profileState.profile = { responderType: 'fire' }
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    const user = userEvent.setup()
+    const availableBtn = screen.getByRole('button', { name: /^available$/i })
+    await user.click(availableBtn)
+
+    expect(mockSetAvailability).toHaveBeenCalledWith('available')
+    expect(screen.getByText(/status updated/i)).toBeInTheDocument()
+  })
+
+  it('calls signOut when the sign-out button is clicked after confirmation', async () => {
+    const origConfirm = window.confirm
+    window.confirm = vi.fn(() => true)
     profileState.profile = { responderType: 'fire' }
     render(
       <MemoryRouter>
@@ -133,7 +165,52 @@ describe('ProfilePage', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /sign out/i }))
 
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to sign out?')
     expect(mockSignOut).toHaveBeenCalledTimes(1)
+    window.confirm = origConfirm
+  })
+
+  it('does not call signOut when confirmation is cancelled', async () => {
+    const origConfirm = window.confirm
+    window.confirm = vi.fn(() => false)
+    profileState.profile = { responderType: 'fire' }
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /sign out/i }))
+
+    expect(mockSignOut).not.toHaveBeenCalled()
+    window.confirm = origConfirm
+  })
+
+  it('shows a loading state for profile when loading is true', () => {
+    profileState.loading = true
+    profileState.profile = null
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/loading profile/i)).toBeInTheDocument()
+  })
+
+  it('shows N/A for dispatch stats while history is loading', () => {
+    historyState.loading = true
+    profileState.profile = { responderType: 'fire' }
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    const nas = screen.getAllByText('N/A')
+    expect(nas.length).toBeGreaterThanOrEqual(1)
+    historyState.loading = false
   })
 
   it('shows correct completion rate from dispatch history', () => {
@@ -212,12 +289,10 @@ describe('ProfilePage', () => {
       expect(screen.getByText('11m 20s')).toBeInTheDocument()
     })
 
-    expect(screen.getAllByText(/water rescue/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/structure fire/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('0 resolved').length).toBe(2)
-    expect(screen.getByText(/fastest response/i)).toBeInTheDocument()
-    expect(screen.getByText(/most dispatches in a week/i)).toBeInTheDocument()
-    expect(screen.getByText(/longest availability streak/i)).toBeInTheDocument()
-    expect(screen.getByText(/—/)).toBeInTheDocument()
+    expect(screen.getByText(/water rescue/i)).toBeInTheDocument()
+    expect(screen.getByText(/structure fire/i)).toBeInTheDocument()
+    expect(screen.queryByText(/resolved by type/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/personal bests/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/longest availability streak/i)).not.toBeInTheDocument()
   })
 })

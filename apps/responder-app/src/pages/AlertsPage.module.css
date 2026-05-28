@@ -109,14 +109,14 @@
   gap: var(--space-1);
   background: none;
   border: none;
-  padding: 0;
+  padding: 10px 0;
+  min-height: 44px;
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
-  margin-top: var(--space-1);
 }
 
 .btnExpand:focus-visible {
@@ -139,10 +139,70 @@
 .hazardChip {
   border-radius: 999px;
   padding: 2px 10px;
-  background: rgba(167, 52, 0, 0.16);
-  color: var(--amber-accent);
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.hazardDefault {
+  background: rgba(167, 52, 0, 0.16);
+  color: var(--amber-accent);
+}
+
+.hazardFlood,
+.hazardStormSurge {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+}
+
+.hazardFire {
+  background: rgba(234, 88, 12, 0.15);
+  color: #fb923c;
+}
+
+.hazardEarthquake {
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+}
+
+.hazardTyphoon {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.hazardLandslide {
+  background: rgba(120, 53, 15, 0.25);
+  color: #d97706;
+}
+
+.iconBadgeDefault {
+  background: rgba(59, 130, 246, 0.16);
+  color: var(--blue-responder);
+}
+
+.iconBadgeFlood,
+.iconBadgeStormSurge {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+}
+
+.iconBadgeFire {
+  background: rgba(234, 88, 12, 0.15);
+  color: #fb923c;
+}
+
+.iconBadgeEarthquake {
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+}
+
+.iconBadgeTyphoon {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.iconBadgeLandslide {
+  background: rgba(120, 53, 15, 0.25);
+  color: #d97706;
 }
 
 .state {
@@ -175,4 +235,92 @@
 .btnRetry:focus-visible {
   outline: 2px solid var(--amber-accent);
   outline-offset: 2px;
+}
+
+.offlineBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  border-radius: 8px;
+  background: rgba(234, 179, 8, 0.12);
+  color: var(--amber-accent);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.filterChip {
+  padding: 6px 14px;
+  min-height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.filterChip:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.filterChip:focus-visible {
+  outline: 2px solid var(--amber-accent);
+  outline-offset: 2px;
+}
+
+.filterChipActive {
+  background: var(--amber-accent);
+  border-color: var(--amber-accent);
+  color: var(--bg-black);
+}
+
+.filterChipActive:hover {
+  background: var(--amber-accent);
+  color: var(--bg-black);
+}
+
+.freshnessBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+}
+
+.freshnessDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.fresh {
+  background: var(--green-success);
+}
+
+.stale {
+  background: var(--text-tertiary);
+}
+
+.freshnessText {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
 }

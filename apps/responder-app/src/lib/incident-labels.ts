@@ -1,15 +1,15 @@
 export const REPORT_TYPE_LABEL: Record<string, string> = {
-  flood: '🌊 Flood',
-  fire: '🔥 Fire',
-  earthquake: '🌍 Earthquake',
-  typhoon: '🌀 Typhoon',
-  landslide: '⛰️ Landslide',
-  storm_surge: '🌊 Storm Surge',
-  medical: '🏥 Medical',
-  accident: '💥 Accident',
-  structural: '🏚️ Structural',
-  security: '🚔 Security',
-  other: '⚠️ Other',
+  flood: 'Flood',
+  fire: 'Fire',
+  earthquake: 'Earthquake',
+  typhoon: 'Typhoon',
+  landslide: 'Landslide',
+  storm_surge: 'Storm Surge',
+  medical: 'Medical',
+  accident: 'Accident',
+  structural: 'Structural',
+  security: 'Security',
+  other: 'Other',
 }
 
 export const RESPONDER_TYPE_LABEL: Record<string, string> = {

@@ -8,14 +8,11 @@
   color: var(--text-primary);
 }
 
-.profileCard,
-.sectionCard,
-.availabilityPanel,
-.linkList {
+.profileCard {
   background: linear-gradient(180deg, var(--surface-elevated) 0%, rgba(22, 22, 16, 0.92) 100%);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
 .profileCard {
@@ -166,100 +163,6 @@
   color: var(--text-secondary);
 }
 
-.sectionCard {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.sectionBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.sectionNote {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-}
-
-.masteryList,
-.recordList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.masteryRow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.recordRow {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.masteryMeta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.masteryLabel,
-.recordLabel {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.masteryCount,
-.recordValue {
-  color: var(--text-secondary);
-  font-size: var(--font-size-md);
-  white-space: nowrap;
-}
-
-.masteryTrack {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  overflow: hidden;
-}
-
-.masteryFill {
-  height: 100%;
-  border-radius: inherit;
-  transition:
-    width 200ms ease-out,
-    background-color 200ms ease-out;
-}
-
-.masteryGreen {
-  background: var(--green-success);
-}
-
-.masteryAmber {
-  background: var(--amber-accent);
-}
-
-.masteryMuted {
-  background: var(--text-tertiary);
-}
-
-.availabilityPanel {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
 .availabilityRow {
   display: flex;
   align-items: center;
@@ -297,7 +200,48 @@
   min-width: 0;
 }
 
-.statusSelect,
+.segmentedControl {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.segmentBtn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.segmentBtn:not(:last-child) {
+  border-right: 1px solid var(--border-default);
+}
+
+.segmentBtn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.segmentBtnActive {
+  background: var(--amber-accent);
+  color: var(--bg-black);
+}
+
+.segmentBtnActive:hover {
+  background: var(--amber-accent);
+  color: var(--bg-black);
+}
+
 .reasonInput {
   width: 100%;
   padding: 12px 14px;
@@ -308,16 +252,11 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-.statusSelect {
-  width: auto;
-  min-width: 160px;
-}
-
 .reasonInput:focus-visible,
-.statusSelect:focus-visible,
 .updateBtn:focus-visible,
 .signOutBtn:focus-visible,
-.actionLink:focus-visible {
+.actionLink:focus-visible,
+.segmentBtn:focus-visible {
   outline: 2px solid var(--amber-accent);
   outline-offset: 2px;
 }
@@ -348,7 +287,56 @@
   font-size: var(--font-size-md);
 }
 
+.errorBanner {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(220, 38, 38, 0.12);
+  color: #fecaca;
+  font-size: var(--font-size-sm);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.retryBtn {
+  background: none;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  color: #fecaca;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.retryBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.retryBtn:focus-visible {
+  outline: 2px solid #fecaca;
+  outline-offset: 2px;
+}
+
+.successMsg {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(34, 197, 94, 0.12);
+  color: #bbf7d0;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
 .linkList {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -405,8 +393,13 @@
     grid-template-columns: 1fr;
   }
 
-  .statusSelect {
-    width: 100%;
+  .segmentedControl {
+    flex-direction: column;
+  }
+
+  .segmentBtn:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
   }
 
   .statsRow {

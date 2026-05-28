@@ -4,16 +4,20 @@ import { CheckCircle } from 'lucide-react'
 import { useAuth } from '@bantayog/shared-ui'
 import { DispatchRing } from '../components/DispatchRing'
 import { AcceptanceCountdown } from '../components/AcceptanceCountdown'
+import { DispatchRow } from '../components/DispatchRow'
 import { useOwnDispatches } from '../hooks/useOwnDispatches'
 import { useReport } from '../hooks/useReport'
 import { getReportTypeLabel } from '../lib/incident-labels'
-import {
-  formatCountdownLabel,
-  getDispatchProgress,
-  getNextActionLabel,
-} from '../lib/dispatch-progress'
+import { formatCountdownLabel, getNextActionLabel } from '../lib/dispatch-progress'
 import type { QueueDispatchRow } from '../lib/dispatch-presentation'
 import styles from './DispatchListPage.module.css'
+
+const COMPACT_THRESHOLD = 3
+
+/** Whether this section should use compact row layout */
+function useCompactMode(count: number): boolean {
+  return count > COMPACT_THRESHOLD
+}
 
 function statusLabel(uiStatus: string | undefined, fallback: string): string {
   if (uiStatus === 'heading_to_scene') return 'En Route'
@@ -59,7 +63,6 @@ function DispatchCard({
   const remainingMs = Math.max(0, deadlineMs - now)
   const remainingPercent = Math.max(0, Math.min(100, (remainingMs / (5 * 60 * 1000)) * 100))
   const urgent = remainingMs > 0 && remainingMs < 60_000
-  const progress = getDispatchProgress(row.status)
 
   if (reportLoading) {
     return (
@@ -146,23 +149,17 @@ function DispatchCard({
           </button>
         </DispatchRing>
       ) : (
-        <DispatchRing
-          mode="progress"
-          percent={progress}
-          tone="success"
-          ariaLabel={`Progress ${String(progress)} percent`}
-        >
-          <span className={styles.ringLabel}>PROGRESS</span>
-          <strong className={styles.ringNumber}>{String(progress)}%</strong>
-          <h3 className={styles.ringTitle}>{title}</h3>
+        <div className={styles.activeStatusBlock}>
+          <span className={styles.activeStatusLabel}>{statusLabel(row.uiStatus, row.status)}</span>
+          <span className={styles.activeLocation}>{location}</span>
           <button
             type="button"
-            className={styles.btnSuccess}
+            className={styles.nextActionBtn}
             onClick={() => void navigate(destination)}
           >
             {getNextActionLabel(row.status)}
           </button>
-        </DispatchRing>
+        </div>
       )}
     </div>
   )
@@ -170,12 +167,10 @@ function DispatchCard({
 
 export function DispatchListPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
-  const { rows, groups, error, retry, loading } = useOwnDispatches(user?.uid)
+  const { rows, groups, error, retry, loading, lastUpdatedAt } = useOwnDispatches(user?.uid)
   const [now, setNow] = useState(() => Date.now())
 
-  const activeDispatchId =
-    groups.active.length === 1 ? (groups.active[0]?.dispatchId ?? null) : null
+  const activeOnlyId = groups.active.length === 1 ? (groups.active[0]?.dispatchId ?? null) : null
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -186,11 +181,8 @@ export function DispatchListPage() {
     }
   }, [])
 
-  useEffect(() => {
-    if (activeDispatchId !== null) {
-      void navigate(`/dispatches/${activeDispatchId}`, { replace: true })
-    }
-  }, [activeDispatchId, navigate])
+  const pendingCompact = useCompactMode(groups.pending.length)
+  const activeCompact = useCompactMode(groups.active.length)
 
   if (rows.length === 0 && error === null && !loading) {
     return (
@@ -199,9 +191,9 @@ export function DispatchListPage() {
           <div className={styles.emptyIcon} role="img" aria-label="All dispatches complete">
             <CheckCircle size={48} strokeWidth={2} />
           </div>
-          <h2 className={styles.emptyTitle}>All Clear!</h2>
+          <h2 className={styles.emptyTitle}>STANDBY</h2>
           <p className={styles.emptyText}>
-            No active dispatches. Stay ready — new dispatches will appear here.
+            System live. Awaiting dispatches. Stay ready; new dispatches will appear here.
           </p>
           <Link to="/history" className={styles.emptyAction}>
             View Past Dispatches
@@ -213,6 +205,19 @@ export function DispatchListPage() {
 
   return (
     <div className={styles.page}>
+      {activeOnlyId !== null && (
+        <div className={styles.resumeBanner} role="status" aria-live="polite">
+          <span className={styles.resumeText}>1 active dispatch</span>
+          <Link
+            to={`/dispatches/${activeOnlyId}`}
+            className={styles.resumeBtn}
+            data-testid="resume-active-dispatch"
+          >
+            Resume
+          </Link>
+        </div>
+      )}
+
       {error !== null && (
         <div role="alert" className={styles.errorBanner}>
           <p>Failed to load dispatches: {error}</p>{' '}
@@ -237,21 +242,58 @@ export function DispatchListPage() {
         </div>
       )}
 
+      {groups.pending.length > 0 || groups.active.length > 0 ? (
+        <div className={styles.freshnessBar} aria-live="polite" aria-atomic="true">
+          {loading || lastUpdatedAt === 0 ? (
+            <span className={styles.freshnessText}>Connecting…</span>
+          ) : (
+            <>
+              <span
+                className={[
+                  styles.freshnessDot,
+                  now - lastUpdatedAt < 60_000 ? styles.fresh : styles.stale,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                aria-hidden="true"
+              />
+              <span className={styles.freshnessText}>
+                {now - lastUpdatedAt < 60_000
+                  ? 'Live'
+                  : `Updated ${String(Math.floor((now - lastUpdatedAt) / 1000))}s ago`}
+              </span>
+            </>
+          )}
+        </div>
+      ) : null}
+
       {groups.pending.length > 0 && (
-        <section className={styles.section}>
+        <section
+          className={[styles.section, pendingCompact && styles.compactSection]
+            .filter(Boolean)
+            .join(' ')}
+        >
           <h2 className={styles.sectionTitle}>New Dispatches ({String(groups.pending.length)})</h2>
-          {groups.pending.map((row) => (
-            <DispatchCard key={row.dispatchId} row={row} variant="pending" now={now} />
-          ))}
+          {pendingCompact
+            ? groups.pending.map((row) => <DispatchRow key={row.dispatchId} row={row} now={now} />)
+            : groups.pending.map((row) => (
+                <DispatchCard key={row.dispatchId} row={row} variant="pending" now={now} />
+              ))}
         </section>
       )}
 
       {groups.active.length > 0 && (
-        <section className={styles.section}>
+        <section
+          className={[styles.section, activeCompact && styles.compactSection]
+            .filter(Boolean)
+            .join(' ')}
+        >
           <h2 className={styles.sectionTitle}>Active ({String(groups.active.length)})</h2>
-          {groups.active.map((row) => (
-            <DispatchCard key={row.dispatchId} row={row} variant="active" now={now} />
-          ))}
+          {activeCompact
+            ? groups.active.map((row) => <DispatchRow key={row.dispatchId} row={row} now={now} />)
+            : groups.active.map((row) => (
+                <DispatchCard key={row.dispatchId} row={row} variant="active" now={now} />
+              ))}
         </section>
       )}
     </div>

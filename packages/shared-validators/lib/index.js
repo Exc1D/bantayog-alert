@@ -9,7 +9,7 @@ export { reportEventSchema, dispatchEventSchema } from './events.js';
 export { agencyDocSchema } from './agencies.js';
 export { responderDocSchema, responderTelemetryPayloadSchema } from './responders.js';
 export { userDocSchema } from './users.js';
-export { agencyAssistanceRequestDocSchema, commandChannelThreadDocSchema, commandChannelMessageDocSchema, shiftHandoffDocSchema, responderShiftHandoffDocSchema, fieldModeSessionDocSchema, } from './coordination.js';
+export { agencyAssistanceRequestDocSchema, commandChannelThreadDocSchema, commandChannelMessageDocSchema, shiftHandoffDocSchema, fieldModeSessionDocSchema, } from './coordination.js';
 export { hazardZoneDocSchema, hazardZoneHistoryDocSchema, hazardSignalDocSchema, hazardSignalStatusDocSchema, } from './hazard.js';
 export { incidentResponseEventSchema, dataIncidentDocSchema } from './incident-response.js';
 export { moderationIncidentDocSchema } from './moderation.js';

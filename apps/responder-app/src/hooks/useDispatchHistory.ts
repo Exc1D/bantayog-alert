@@ -24,6 +24,7 @@ export function useDispatchHistory(uid: string | undefined, maxRows = 20) {
   const [history, setHistory] = useState<DispatchHistoryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     if (!uid) {
@@ -67,7 +68,11 @@ export function useDispatchHistory(uid: string | undefined, maxRows = 20) {
         setLoading(false)
       },
     )
-  }, [uid, maxRows])
+  }, [uid, maxRows, retryKey])
 
-  return { history, loading, error }
+  const refetch = () => {
+    setRetryKey((k) => k + 1)
+  }
+
+  return { history, loading, error, refetch }
 }

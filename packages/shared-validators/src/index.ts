@@ -53,7 +53,6 @@ export {
   commandChannelThreadDocSchema,
   commandChannelMessageDocSchema,
   shiftHandoffDocSchema,
-  responderShiftHandoffDocSchema,
   fieldModeSessionDocSchema,
 } from './coordination.js'
 export type {
@@ -61,7 +60,6 @@ export type {
   CommandChannelThreadDoc,
   CommandChannelMessageDoc,
   ShiftHandoffDoc,
-  ResponderShiftHandoffDoc,
   FieldModeSessionDoc,
 } from './coordination.js'
 export {

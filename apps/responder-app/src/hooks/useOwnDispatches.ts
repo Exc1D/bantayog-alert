@@ -23,6 +23,7 @@ export function useOwnDispatches(uid: string | undefined) {
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [loading, setLoading] = useState(!!uid)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number>(0)
 
   const retry = () => {
     setRetryCount((c) => c + 1)
@@ -68,6 +69,7 @@ export function useOwnDispatches(uid: string | undefined) {
         )
         setError(null)
         setLoading(false)
+        setLastUpdatedAt(Date.now())
       },
       (err) => {
         console.error('[useOwnDispatches] Firestore listener error:', err)
@@ -87,5 +89,5 @@ export function useOwnDispatches(uid: string | undefined) {
       ? { acknowledgementDeadlineAt: row.acknowledgementDeadlineAt }
       : {}),
   }))
-  return { rows, groups: groupDispatchRows(presentationRows), error, retry, loading }
+  return { rows, groups: groupDispatchRows(presentationRows), error, retry, loading, lastUpdatedAt }
 }

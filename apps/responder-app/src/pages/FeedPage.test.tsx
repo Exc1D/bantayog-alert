@@ -19,21 +19,28 @@ describe('FeedPage', () => {
       loading: false,
       error: null,
       retry: mockRetry,
+      lastUpdatedAt: null,
     })
   })
 
   it('renders a loading state', () => {
-    mockUsePublicFeed.mockReturnValue({ items: [], loading: true, error: null, retry: mockRetry })
+    mockUsePublicFeed.mockReturnValue({
+      items: [],
+      loading: true,
+      error: null,
+      retry: mockRetry,
+      lastUpdatedAt: null,
+    })
 
     render(<FeedPage />)
 
-    expect(screen.getByRole('status')).toHaveTextContent(/loading public feed/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/loading incident feed/i)
   })
 
   it('renders an empty state', () => {
     render(<FeedPage />)
 
-    expect(screen.getByText(/no public reports yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no reports yet/i)).toBeInTheDocument()
   })
 
   it('renders an error state', () => {
@@ -42,11 +49,12 @@ describe('FeedPage', () => {
       loading: false,
       error: 'permission_denied',
       retry: mockRetry,
+      lastUpdatedAt: null,
     })
 
     render(<FeedPage />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/could not load public feed/i)
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not load incident feed/i)
     expect(screen.getByRole('alert')).toHaveTextContent(/permission_denied/i)
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
   })
@@ -57,6 +65,7 @@ describe('FeedPage', () => {
       loading: false,
       error: 'network_error',
       retry: mockRetry,
+      lastUpdatedAt: null,
     })
 
     render(<FeedPage />)
@@ -71,6 +80,7 @@ describe('FeedPage', () => {
       loading: false,
       error: 'permission_denied',
       retry: mockRetry,
+      lastUpdatedAt: null,
       items: [
         {
           id: 'stale-report-1',
@@ -87,7 +97,7 @@ describe('FeedPage', () => {
 
     render(<FeedPage />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/could not refresh public feed/i)
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not refresh feed/i)
     expect(screen.getByRole('alert')).toHaveTextContent(/permission_denied/i)
     expect(screen.getByRole('article', { name: /flood report in daet/i })).toBeInTheDocument()
     expect(screen.getByText(/still visible from cache/i)).toBeInTheDocument()
@@ -98,6 +108,7 @@ describe('FeedPage', () => {
       loading: false,
       error: null,
       retry: mockRetry,
+      lastUpdatedAt: null,
       items: [
         {
           id: 'report-1',
@@ -119,7 +130,7 @@ describe('FeedPage', () => {
     expect(screen.getByRole('article', { name: /flood report in daet/i })).toBeInTheDocument()
     expect(screen.getByText(/water rising near the public market/i)).toBeInTheDocument()
     expect(screen.getByText(/barangay 1, daet/i)).toBeInTheDocument()
-    expect(screen.getByText(/high/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/high/i).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('verified')).toBeInTheDocument()
     expect(screen.queryByText(/comment/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/share/i)).not.toBeInTheDocument()
@@ -131,6 +142,7 @@ describe('FeedPage', () => {
       loading: false,
       error: null,
       retry: mockRetry,
+      lastUpdatedAt: null,
       items: [
         {
           id: 'report-with-media',
@@ -156,6 +168,7 @@ describe('FeedPage', () => {
       loading: false,
       error: null,
       retry: mockRetry,
+      lastUpdatedAt: null,
       items: [
         {
           id: 'report-long',
@@ -177,5 +190,33 @@ describe('FeedPage', () => {
     expect(
       screen.getByRole('button', { name: /show full report description/i }),
     ).toBeInTheDocument()
+  })
+
+  it('renders compact rows when more than 10 items are present', () => {
+    mockUsePublicFeed.mockReturnValue({
+      loading: false,
+      error: null,
+      retry: mockRetry,
+      lastUpdatedAt: null,
+      items: Array.from({ length: 11 }, (_, i) => ({
+        id: `report-${String(i)}`,
+        reportType: 'flood',
+        severity: 'high',
+        status: 'verified',
+        barangayId: 'Barangay 1',
+        municipalityLabel: 'Daet',
+        description: 'Water rising',
+        submittedAtMillis: Date.now(),
+      })),
+    })
+
+    render(<FeedPage />)
+
+    const cards = screen.getAllByRole('article')
+    expect(cards.length).toBe(11)
+    expect(
+      screen.queryByRole('button', { name: /show full report description/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByAltText(/incident media/i)).not.toBeInTheDocument()
   })
 })

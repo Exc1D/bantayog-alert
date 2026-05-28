@@ -5,7 +5,6 @@ import {
   commandChannelMessageDocSchema,
   agencyAssistanceRequestDocSchema,
   fieldModeSessionDocSchema,
-  responderShiftHandoffDocSchema,
 } from './coordination'
 
 describe('Coordination Schemas', () => {
@@ -297,69 +296,6 @@ describe('Coordination Schemas', () => {
         schemaVersion: 1,
       }
       expect(() => fieldModeSessionDocSchema.parse(invalidDoc)).toThrow()
-    })
-  })
-
-  describe('responderShiftHandoffDocSchema', () => {
-    it('accepts valid responder shift handoff document', () => {
-      const validDoc = {
-        fromUid: 'responder-a',
-        toUid: 'responder-b',
-        agencyId: 'bfp-daet',
-        municipalityId: 'daet',
-        reason: 'End of shift',
-        status: 'pending' as const,
-        createdAt: 1713350400000,
-        expiresAt: 1713354000000,
-        schemaVersion: 1,
-      }
-      expect(() => responderShiftHandoffDocSchema.parse(validDoc)).not.toThrow()
-    })
-
-    it('rejects invalid status literal', () => {
-      const invalidDoc = {
-        fromUid: 'responder-a',
-        toUid: 'responder-b',
-        agencyId: 'bfp-daet',
-        municipalityId: 'daet',
-        reason: 'End of shift',
-        status: 'expired',
-        createdAt: 1713350400000,
-        expiresAt: 1713354000000,
-        schemaVersion: 1,
-      }
-      expect(() => responderShiftHandoffDocSchema.parse(invalidDoc)).toThrow()
-    })
-
-    it('rejects when expiresAt is not after createdAt', () => {
-      const invalidDoc = {
-        fromUid: 'responder-a',
-        toUid: 'responder-b',
-        agencyId: 'bfp-daet',
-        municipalityId: 'daet',
-        reason: 'End of shift',
-        status: 'pending' as const,
-        createdAt: 1713350400000,
-        expiresAt: 1713350399999,
-        schemaVersion: 1,
-      }
-      expect(() => responderShiftHandoffDocSchema.parse(invalidDoc)).toThrow()
-    })
-
-    it('rejects unknown keys via strict mode', () => {
-      const docWithExtraKey = {
-        fromUid: 'responder-a',
-        toUid: 'responder-b',
-        agencyId: 'bfp-daet',
-        municipalityId: 'daet',
-        reason: 'End of shift',
-        status: 'pending' as const,
-        createdAt: 1713350400000,
-        expiresAt: 1713354000000,
-        schemaVersion: 1,
-        unknownField: 'should not be allowed',
-      }
-      expect(() => responderShiftHandoffDocSchema.parse(docWithExtraKey)).toThrow()
     })
   })
 })

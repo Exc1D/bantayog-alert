@@ -89,25 +89,9 @@ export declare const fieldModeSessionDocSchema: z.ZodObject<{
     isActive: z.ZodBoolean;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
-export declare const responderShiftHandoffDocSchema: z.ZodObject<{
-    fromUid: z.ZodString;
-    toUid: z.ZodString;
-    agencyId: z.ZodString;
-    municipalityId: z.ZodString;
-    reason: z.ZodString;
-    status: z.ZodEnum<{
-        pending: "pending";
-        accepted: "accepted";
-        declined: "declined";
-    }>;
-    createdAt: z.ZodNumber;
-    expiresAt: z.ZodNumber;
-    schemaVersion: z.ZodNumber;
-}, z.core.$strict>;
 export type AgencyAssistanceRequestDoc = z.infer<typeof agencyAssistanceRequestDocSchema>;
 export type CommandChannelThreadDoc = z.infer<typeof commandChannelThreadDocSchema>;
 export type CommandChannelMessageDoc = z.infer<typeof commandChannelMessageDocSchema>;
 export type ShiftHandoffDoc = z.infer<typeof shiftHandoffDocSchema>;
 export type FieldModeSessionDoc = z.infer<typeof fieldModeSessionDocSchema>;
-export type ResponderShiftHandoffDoc = z.infer<typeof responderShiftHandoffDocSchema>;
 //# sourceMappingURL=coordination.d.ts.map

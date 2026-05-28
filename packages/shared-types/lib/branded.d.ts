@@ -49,9 +49,6 @@ export type CommandThreadId = string & {
 export type CommandMessageId = string & {
     readonly __brand: 'CommandMessageId';
 };
-export type ShiftHandoffId = string & {
-    readonly __brand: 'ShiftHandoffId';
-};
 export type MassAlertRequestId = string & {
     readonly __brand: 'MassAlertRequestId';
 };
@@ -69,7 +66,6 @@ export declare const asHazardZoneVersion: (v: number) => HazardZoneVersion;
 export declare const asDispatchRequestId: (v: string) => DispatchRequestId;
 export declare const asCommandThreadId: (v: string) => CommandThreadId;
 export declare const asCommandMessageId: (v: string) => CommandMessageId;
-export declare const asShiftHandoffId: (v: string) => ShiftHandoffId;
 export declare const asMassAlertRequestId: (v: string) => MassAlertRequestId;
 export declare const asMediaRef: (v: string) => MediaRef;
 export declare const asPublicTrackingRef: (v: string) => PublicTrackingRef;

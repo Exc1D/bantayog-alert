@@ -27,7 +27,7 @@ export type HazardZoneVersion = number & { readonly __brand: 'HazardZoneVersion'
 export type DispatchRequestId = string & { readonly __brand: 'DispatchRequestId' }
 export type CommandThreadId = string & { readonly __brand: 'CommandThreadId' }
 export type CommandMessageId = string & { readonly __brand: 'CommandMessageId' }
-export type ShiftHandoffId = string & { readonly __brand: 'ShiftHandoffId' }
+
 export type MassAlertRequestId = string & { readonly __brand: 'MassAlertRequestId' }
 export type MediaRef = string & { readonly __brand: 'MediaRef' }
 export type PublicTrackingRef = string & { readonly __brand: 'PublicTrackingRef' }
@@ -38,7 +38,7 @@ export const asHazardZoneVersion = (v: number): HazardZoneVersion => v as Hazard
 export const asDispatchRequestId = (v: string): DispatchRequestId => v as DispatchRequestId
 export const asCommandThreadId = (v: string): CommandThreadId => v as CommandThreadId
 export const asCommandMessageId = (v: string): CommandMessageId => v as CommandMessageId
-export const asShiftHandoffId = (v: string): ShiftHandoffId => v as ShiftHandoffId
+
 export const asMassAlertRequestId = (v: string): MassAlertRequestId => v as MassAlertRequestId
 export const asMediaRef = (v: string): MediaRef => v as MediaRef
 export const asPublicTrackingRef = (v: string): PublicTrackingRef => v as PublicTrackingRef

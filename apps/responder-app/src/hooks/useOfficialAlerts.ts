@@ -39,11 +39,13 @@ export function useOfficialAlerts(): {
   loading: boolean
   error: string | null
   retry: () => void
+  lastUpdatedAt: number
 } {
   const [alerts, setAlerts] = useState<OfficialAlertItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number>(0)
 
   const retry = () => {
     setRetryCount((c) => c + 1)
@@ -66,6 +68,7 @@ export function useOfficialAlerts(): {
         )
         setLoading(false)
         setError(null)
+        setLastUpdatedAt(Date.now())
       },
       (err) => {
         setError(err instanceof Error ? err.message : 'Failed to load official alerts')
@@ -74,5 +77,5 @@ export function useOfficialAlerts(): {
     )
   }, [retryCount])
 
-  return { alerts, loading, error, retry }
+  return { alerts, loading, error, retry, lastUpdatedAt }
 }

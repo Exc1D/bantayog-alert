@@ -1,218 +1,120 @@
 # Progress
 
-## 2026-05-26 — Critical UX Fixes (Responder App Dispatch Tab)
+## 2026-05-28 — Responder App Dispatches Tab Design Review
 
-- ✅ **`useOwnDispatches` retry mechanism** — Added `retryCount` state + `retry()` function. `retry()` calls increment `retryCount`, which is a dependency of the `useEffect` that calls `onSnapshot`, causing a re-subscription. This gives users a way to recover from transient Firestore listener errors (network blips) without refreshing the page.
-- ✅ **Offline indicator** — Added `useOnlineStatus` hook that listens to `window` `online`/`offline` events. Shell header now shows "Offline" with a red dot when `navigator.onLine === false`. Critical for responders operating in disaster zones with intermittent connectivity.
-- ✅ **Character limits** — Added `maxLength={2000}` to both textareas (resolution summary and field notes), matching the backend `firestore.rules` limit. Added `.charCount` labels showing current length (e.g. "47/2000"). Prevents silent truncation when backend rejects long inputs.
-- ✅ `prefers-reduced-motion` for SOS button — `@media (prefers-reduced-motion: reduce)` block in `SosHoldButton.module.css` suppresses the `ring-fill` animation. The fill ring still appears at full scale for user awareness.
-- **Tests:** 16 new assertions across 3 test files. 244 tests pass. TypeScript clean.
-- **Files touched:** `useOwnDispatches.ts`, `useOwnDispatches.test.ts`, `Shell.tsx`, `Shell.test.tsx`, `useOnlineStatus.ts` (new), `DispatchListPage.tsx`, `DispatchListPage.test.tsx`, `DispatchListPage.module.css`, `DispatchDetailPage.tsx`, `DispatchDetailPage.module.css`, `SosHoldButton.module.css`
-- **Verdict:** Previously "Needs Work" on 4 critical ship-blockers → now "Shippable" for those categories.
+**critique findings (score 25/40):** adaptive density missing, auto-navigate removes agency, ring dominates low-value info, PROGRESS % is meaningless, em dash in empty state violates PRODUCT.md anti-references.
 
----
+**Implemented fix ($impeccable layout + $impeccable harden + $impeccable clarify):**
 
-## Current Status (2026-05-19)
+- Added `DispatchRow` compact component with severity chips and inline Accept/View button.
+- `DispatchListPage` now switches to compact row mode when >3 dispatches per section (`COMPACT_THRESHOLD`). Falls back to ring cards for ≤3.
+- Removed auto-navigate (previously `replace: true` on single active dispatch). Now keeps list visible for user agency.
+- Empty state updated to "STANDBY / System live. Awaiting dispatches." (on-brand, no em dashes).
+- All 262 tests pass, zero type errors.
 
-**Phase 3 Admin Desktop Frontend — In Progress**
+  **Option C (harden):** Added data freshness heartbeat. `useOwnDispatches` now tracks `lastUpdatedAt` from Firestore snapshots. `DispatchListPage` shows "Live" green dot when <60s, "Updated Xs ago" when stale, "Connecting…" during initial load. Aligns with PRODUCT.md Principle #4 (data freshness heartbeat). 264 tests pass, zero type errors.
 
-- ✅ **Task 11:** `DispatchMonitorPage.tsx` — composes `DispatchStatsCards`, `EscalationQueueSection`, `DispatchLifecycleTable`, `ResponderAvailabilityPanel`, `ReDispatchModal`. State-managed re-dispatch flow with `callables.escalateDispatch`. TDD with 9 tests. Typecheck/lint clean.
-- ✅ **Task 12:** `EscalationQueueSection.tsx` — high-contrast red section for `needs_admin` dispatches. Horizontal scrolling stalled dispatch cards. TDD with 6 tests. Committed to `feat/dispatch-hardening-observability`.
-- **Remaining:** Task 13 (`OpsDashboard`)
+  **Post-review cleanup:** Fixed `DispatchRow` to use `useNavigate` instead of `window.location.href` (full page reload). Removed dead `.cardMeta` CSS and deduplicated `.activeStatusBlock` rule in `DispatchListPage.module.css`. 264 tests pass, zero type errors.
 
-**Dispatch Hardening + Observability Backend (Phase 1 Complete)** · [PR #149](https://github.com/Exc1D/bantayog-alert/pull/149)
+  **Option B (distill + clarify):** Removed meaningless "PROGRESS 60%" ring from active dispatch cards. Replaced with status block: status label + location + large "Mark On Scene" primary button. Pending cards keep the countdown ring (genuinely useful). 263 tests pass, zero type errors.
 
-- ✅ Task 1: `needs_admin` + `escalated` added to `dispatchStatusSchema`; `dispatchTimeoutSweep` retired
-- ✅ Task 2: `dispatchResponder` extended with FCM tracking (notification_attempted events, fcmResult/fcmWarnings, fcm_retry_queue)
-- ✅ Task 3: `acceptDispatch`/`declineDispatch` write `notification_delivered` events
-- ✅ Task 4: `monitorDispatchDeadlines` — 1-min cron, lease protection (2-min expiry), auto-escalation with `needs_admin` cap, responder chunking (Firestore 10-value `in` limit), fallback 2h window, ≤200 responders. Includes `monitor-config` (30s TTL) + `dispatch-counter`.
-- ✅ Task 5: `escalateDispatch` callable — municipal_admin/provincial_superadmin, validates active + not previously notified
-- ✅ Task 6: `getOpsMetrics` callable — server-derived scope, reads `metrics_daily/{scopeId}_{date}`, returns aggregated metrics + `avgAcceptSeconds` + `fcmSuccessRate`
-- ✅ Task 7: `retryFcmDelivery` — 30s scheduled, exponential backoff (30s/60s/120s), max 3 attempts
-- ✅ Task 8: Firestore rules + composite indexes for agency_admin, fcm_retry_queue, system_config/monitor
+**Option A (harden):** Removed auto-navigate completely. Now shows a sticky amber "1 active dispatch — Resume" banner instead. Responder keeps full list visibility and chooses when to resume. Added test for banner. 263 tests pass, zero type errors.
 
-**Remaining Phases:** Phase 2 (responder FCM receipt, deferred to Phase 4) · Phase 3 (admin-desktop frontend, in progress) · Phase 4 (emulator E2E + responder FCM handler) · Phase 5 (Cloud Monitoring/BigQuery)
+**Profile UX:** Added loading states, error banners, sign-out confirm dialog, success feedback on availability, `aria-live="polite"` announcements. 10 tests.
 
----
+## 2026-05-28 — Responder App Alerts Tab Design Review
 
-## 2026-05-18 — E2E Report Flow Fix (Citizen PWA → Admin Desktop)
+**critique findings (score 26/40):** monochrome icon badge and hazard chips (zero differentiation by threat type), em dash in offline banner violates PRODUCT.md, missing data freshness indicator, no `timeAgo` upper bound.
 
-Five root causes for reports not appearing in admin-desktop:
+**Implemented fix ($impeccable clarify + $impeccable colorize):**
 
-1. **Upstream emulator bug:** `onDocumentCreated` trigger on `report_inbox` crashes 100% (`protobufjs` ESM module caching in `firebase-tools` v15.x + `firebase-functions` v7.x). **Prod impact: zero.** Workaround: `functions/scripts/process-inbox-manual.ts` for local E2E.
-2. **Unsupported inbox fields:** `reporterName` + `reporterMsisdnHash` removed from Draft/CreateDraftInput/useSubmissionMachine/SubmitReportForm — `inboxPayloadSchema` rejected them.
-3. **Empty description:** PWA has no description field; fallback was `""`. Changed to `"Report submitted via Bantayog Alert."` in `SubmitReportForm/index.tsx`.
-4. **Missing municipality centroids:** Emulator seed had no `centroid` → geocoder threw "out of jurisdiction". Fixed via `scripts/seed-centroids-rem.cjs`.
-5. **`.env.local` override:** Both apps had `VITE_USE_EMULATOR=false` in `.env.local` overriding `.env`'s `true`. Updated both.
+- **P0:** Replaced em dash in offline banner (`You&rsquo;re offline &mdash; showing cached alerts`) with period (`You&rsquo;re offline. Showing cached alerts.`). Aligns with PRODUCT.md Anti-References.
+- **P1:** Added hazard-specific color-coding to alert cards. Icon badge and hazard chip now color-coded by `hazardType`:
+  - `typhoon` → blue (#60a5fa)
+  - `flood` / `storm_surge` → cyan (#22d3ee)
+  - `fire` → orange (#fb923c)
+  - `earthquake` → red (#ef4444)
+  - `landslide` → amber/brown (#d97706)
+  - Unknown types fallback to amber (existing behavior).
+- Added `hazardClassSuffix()` helper mapping `hazardType` to CSS class suffix.
+- 264 tests pass, zero type errors.
 
-**Gate:** Full E2E verified — PWA submit → emulator `report_inbox` → manual fallback → report visible in admin Triage Queue.
+**Post-critique P2 fixes ($impeccable harden):**
 
----
+- **P2:** Added data freshness indicator to alerts tab. `useOfficialAlerts` now returns `lastUpdatedAt`. `AlertsPage` shows "Live" dot, "Updated Xs ago", or "Connecting…" status above the alert list. Same pattern as dispatches tab. 265 tests pass, zero type errors.
+- **P2:** Capped `timeAgo` at `over 30 days ago` so stale data never shows meaningless `400d ago`. Added test.
+- **P3:** Replaced literal `#000` in `.filterChipActive` with `var(--bg-black)` for consistency. Also removed dead `.page` CSS rule. 265 tests pass, zero type errors.
 
-## 2026-05-17 — Admin Desktop Live Report Surfacing + Feed Moderation
+## 2026-05-28 — Responder App Profile Tab Design Review
 
-- ✅ Map right panel is status-aware (new→Advance, awaiting_verify→Verify/Reject, dispatch controls reserved for verified/active)
-- ✅ `/feed` moderation page: scoped live reports, pending/public separation, scrubbed publishing via `verifyReport.scrubbedDescription`
-- ✅ `unpublishReport` backend for post-public takedown (flips `visibilityClass` to `internal`, writes audit evidence)
-- ✅ `inboxReconciliationSweep` no longer marks transient retries as `processedAt`
-- **Gate:** 36 files/223 tests pass · typecheck/lint clean
+**critique findings (score 25/40):** identical gradient+shadow on all cards flattens visual hierarchy, 3-click status toggle during shift changes, dead "Longest availability streak" data erodes trust, em dash in `formatDuration` violates PRODUCT.md, "Specialization Mastery" jargon unexplained.
 
----
+**Implemented fix ($impeccable layout + $impeccable harden + $impeccable distill + $impeccable clarify):**
 
-## 2026-05-15 — Staging E2E Root Cause Fixes
+- **P0:** Flattened secondary cards. `sectionCard` and `linkList` now use flat `var(--surface-elevated)` background with subtle border. Removed heavy `box-shadow: 0 14px 40px` and `linear-gradient` from all but `profileCard` and `availabilityPanel`. Reduced shadow to `0 4px 12px` for less visual weight.
+- **P1:** Replaced `<select>` status dropdown with segmented control: `[Available] [Unavailable] [Off Duty]` buttons. Clicking "Available" immediately calls `setAvailability('available')`. Non-available states show reason `<select>` + "Apply Status" button. Single-tap for the most common action.
+- **P1:** Removed dead "Longest availability streak" row from Personal Bests. Only live metrics remain.
+- **P2:** Fixed `formatDuration` em dash (`—`) → `N/A`. Also updated all stat fallbacks from `—` → `N/A` for consistency.
+- **P2:** Renamed "Specialization Mastery" → "Resolved by Type". Updated note from "fills relative to the strongest bucket" → "Breakdown of incident types you have resolved."
+- 266 tests pass, zero type errors.
 
-- ✅ Dashboard Timestamp: `mapReportDocToReport` converts Firestore Timestamp→ISO string (11/11 tests)
-- ✅ Bootstrap claims: `active: true` → `accountStatus: 'active'` + `lastClaimIssuedAt`
-- ✅ `active_accounts` doc creation in bootstrap (required by `isActivePrivileged()`)
-- ✅ Dispatches composite index already exists — no change needed
+**Shift Handoff Removal:** Deleted responder-to-responder handoff (frontend + functions + validators). Preserved municipality-level handoff used by admin sweep. 261 tests pass, zero type errors.
 
----
+## 2026-05-26 — Responder App Dispatch Tab UX Hardening
 
-## 2026-05-14 — Staging QA Triage + Responder Deploy
+Added retry to `useOwnDispatches`, offline indicator in shell, character limits + counters on textareas, `prefers-reduced-motion` for SOS button. 244 tests pass.
 
-- ✅ Responder staging root cause: deployed artifact built with `VITE_USE_EMULATOR=true`
-- ✅ Production-build guard: `vite build` fails closed when emulator mode enabled
-- ✅ Municipality contact rules: `municipalities/{id}` now public read / client-write denied
-- ✅ Responder staging deploy complete: https://bantayog-responder-staging.web.app
-- ✅ Hotfix: aligned shared-ui peer deps, cleaned stale Firebase packages, shipped real PWA icons
-- ✅ Shell contract cleanup: uppercase header, online status pill, 3-tab nav, Vitest coverage
-- **Still open:** staging admin/responder test accounts in Firebase Auth; App Check 400 errors
+## 2026-05-25 — Dashboard Redesign Adversarial Review
 
----
+14 issues fixed: mode/state precedence (actionable > data-quality states), Tailwind JIT class purging, decomposing into reviewable PRs, asymmetric debounce, timer cleanup, affected geography from reports+dispatches.
 
-## 2026-05-12 — Admin Desktop Interface-Design Critique Remediation
+## 2026-05-24 — RTDB + Emulator Hardening
 
-- ✅ Phase 0: Consolidated severity + brand tokens in `design-tokens.css`. Deleted orphaned `severity-colors.ts`.
-- ✅ P0.1: Role-scoped Firestore reads in `useFirestoreListeners.ts`. Narrowed claims via `typeof`; gates unauthorized scoped roles BEFORE `onSnapshot`. 7 new scoping tests.
-- ✅ P1.8: MunicipalPerformanceTable truth gate — 4 optional fields, `—` for undefined, sort treats undefined avgResponseTime as Infinity.
-- ✅ P2.9: Hold-to-Dispatch keyboard parity (Space/Enter with `e.repeat` guard, blur/unmount cleanup).
-- ✅ P2.10: Sticky bulk-action bar (`sticky top-0 z-20` above `z-10` thead).
-- ✅ P2.11: WindowSyncProvider message dedup via `crypto.randomUUID()` + in-memory `Map` with TTL.
-- ✅ P2.12: OfflineBanner renders before spinner in loading branches.
-- **Gate:** 29 files/147 tests pass · typecheck/lint clean
+RTDB parent `.read` fix, zombie emulator detection, anonymous auth lifecycle, runtime dependency checks.
 
----
+## 2026-05-22 — Admin Surfacing + Report Flow E2E
 
-## 2026-05-10 — Admin Desktop Greenfield Reset
+Citizen PWA → emulator `report_inbox` → materialization → admin Triage Queue verified. 5 root causes fixed (protobuf bug, schema mismatches, missing centroids, `.env.local` overrides). Feed moderation, unpublish, inbox reconciliation. 223 tests.
 
-- ✅ Deleted all previous UI components, hooks, pages, stores. Clean infrastructure slate. Placeholder page created.
+## 2026-05-14-21 — Staging Deploy + Security Audit
 
----
+- Responder staging deployed with production-build guard. Shell cleanup, municipality rules, PWA icons.
+- Bootstrap script for all seeded test accounts (citizen, admin, responder, superadmin).
+- 36 security findings from audit: accountStatus checks, idempotency atomicity, MFA bypass rules, signed URL TTL, App Check enforcement, FCM rate limits, anonymous submission rules fix.
+- Functions 885 tests zero failures. Admin Desktop superadmin route gating.
+- Responder PWA rebuild (12 tasks): shell, login, dispatch list/detail, messages, map, profile.
 
-## 2026-05-08 — PR #115 Review Fixes + Adversarial Review
+## 2026-05-10-12 — Admin Desktop Reset + Design Critique
 
-**PR #115 (29 CodeRabbit comments):**
-Zod 4 migration (`z.string().uuid()`→`z.uuid()`), race condition fixes (removed `queueMicrotask`), ARIA/focus on 4 modals, redispatch safety (tx.get + merge-update), auth orphan prevention (adminAuth.deleteUser compensation), audit collection correction (`report_events`→`audit_events`), 6 responder fixes (phone normalization, MIME validation, geolocation guard, TOTP token refresh, route param standardization, Storage URL encoding).
+Greenfield reset. Consolidated severity/brand tokens, role-scoped Firestore reads, municipal performance truth-gate, hold-to-dispatch keyboard parity, sticky bulk-action bar, WindowSync dedup, offline banner ordering. 147 tests.
 
-**Adversarial Review (12 findings):**
-Critical: SosPage/BackupRequestPage route param migration was incomplete; create-responder audit target fixed. High: E.164 regex alignment, TotpEnrollment token failure handling. Medium: modal a11y completeness, idempotency key persistence, role validation relocation.
+## 2026-05-08 — PR #115 Review + 3-App UI Audit
 
-**Gate:** Build 10/10 · Lint/typecheck clean · Responder 197 tests · Admin 185 tests
+PR #115: Zod 4 migration, race condition fixes, ARIA/focus on 4 modals, redispatch safety, auth orphan prevention. Adversarial review: 12 findings fixed.
 
----
+3-app parallel UI audit: responder (button semantics, contrast, Lucide icons), citizen (eager import, RevealSheet, severity colors), admin (palette canonization, animation removal, skip-to-content).
 
-## 2026-05-08 — UI Audit Fixes (3-App Parallel)
+## 2026-05-02-07 — Auth, Wizard, QA, Hardening
 
-Addressed P0/P1/P2 findings from `docs/ui-audit-findings-2026-05-07.md`:
-
-**responder-app** (branch `fix/audit-responder-app-ui`): `<span>`→`<button>`, label `htmlFor` on textareas, legend dot contrast fix, empty-state aria, severity CSS vars, emoji→Lucide icons, SOS icon a11y, prefers-reduced-motion. Gate: 149 tests.
-
-**citizen-pwa** (branch `fix/audit-citizen-pwa-ui`): eager import for SubmitReportForm, nav text contrast, RevealSheet spring easing, `aria-current` conditional spread, centralized `useSeverityStyle`, danger banner contrast, FAB overlap fix at 320px. Teal palette intentionally unchanged. Gate: 374 tests.
-
-**admin-desktop** (branch `fix/audit-admin-desktop-ui`): palette canonization, CSS module extraction, particle animation removal, logo/button color alignment, chart constants, superadmin badge contrast, live indicator aria, OTP autocomplete, notification a11y, anomaly card contrast, Inter font, focus-visible ring, reduced-motion, skip-to-content. Analytics/scoped ops bridges with callable-backed agency map feed. Gate: 110 tests.
-
----
-
-## 2026-05-07 — Functions Test Suite Zero Failures
-
-Reduced from ~118 failures to 0. Fixed: missing `report_ops` seeds (border-auto-share), TOCTOU race simulation (erasure-sweep), pagination after batch-delete (cleanup-sms), public alerts read assertion (firestore.rules), version expectation (phase1-auth), missing `hazard_signal_status` rule (public-collections), storage emulator resilience via `itif(storageAvailable)`. Gate: 114 files/885 tests/0 failures.
-
----
-
-## 2026-05-07 — Admin Desktop Superadmin Route Gating
-
-Legacy prototype URLs redirected: `/dashboard`→`/province/dashboard`, `/map`→`/province/map`, `/users`→`/province/users`, `/health`→`/province/system-health`, `/reports`→`/analytics`. Retired `/emergency`,`/ndrrmc`,`/audit`,`/handoff`,`/settings`→`/province/dashboard`; `/erasure`→`/province/users`. Removed non-live TCWS placeholder from SystemHealthPage. Added Vitest coverage for all redirected routes.
-
----
-
-## 2026-05-06 — Responder PWA Frontend Rebuild
-
-12 commits on `feature/responder-pwa-frontend`. 12 tasks: global styles + PWA manifest, Shell + tab nav + SosHoldButton, route restructuring, branded LoginPage, `useReport` hook, DispatchListPage (amber pending/green active cards), DispatchDetailPage (state-machine UI), `useMessages`/`useSendMessage` hooks, MessagesPage + MessageThreadPage, MapPage (react-leaflet + OSM + geolocation), ProfilePage (hero card + stats + availability), ShiftHandoffPage + terminal screens.
-
-Post-review hardening: 2 Firestore rule fixes, 15 UX/perf concerns (offline markers, GPS battery, one-shot fly, scroll guard, displayName fallback, severity allowlist, SOS keyboard + timer), centralized incident labels, 8 new test files, Vite manualChunks. Gate: 102 tests.
-
----
-
-## 2026-05-05 — Admin Desktop SMS Audit + System Health Controls
-
-**SMS Audit Page:** Outbox/Inbox/Provider Health tabs with color-coded status badges. Gate: 9 tests.
-
-> Removed in `9f520d99` (2026-05-11 feature deferral).
-
-**System Health Controls:** `replayAuditDeadLetter` callable (superadmin-only, replays failed audit events from `dead_letters`). `prewarmSurge` callable (HTTP GET pings to warm CF instances). `audit-stream.ts` dead-letter write on BigQuery failure. SystemHealthPage wired. Gate: functions 17 tests, admin 88 tests.
-
-> `prewarmSurge` removed in `9f520d99`; `replayAuditDeadLetter` remains.
-
----
-
-## 2026-05-04 — Citizen PWA Multi-Feature Day
-
-**Cancel Own Report + Draggable Status Pill:** `cancelReportByCitizen` callable, client wrapper, localForage cleanup, draggable pill via pointer events. Gate: 243 tests.
-
-**Report Tracking + Profile Stats Fixes:** TrackingScreen seeds from localForage, individual invalid-entry filtering (not nuclear wipe), `municipalityLabel` saved to localForage. Gate: 364 tests.
-
-**Report Flow QA (10 subagents):** 5 passes, 4 bugs found (consent checkbox, severity color inconsistency, offline auth block), 3 missing features (offline RevealSheet, detail sheet fields).
-
-**Live Status Sync + Richer Timeline:** Live `onSnapshot` subscriptions per stored report, permission-denied fallback, multi-step timeline synthesis from per-step timestamps. Gate: 363 tests.
-
-**Public Verification Wiring:** `visibilityClass` flip during admin verification, Firestore timestamp normalization for live timeline. Gate: 49 tests.
-
-**Active Report + Tracking Fixes:** 4 citizen-facing bugs, legacy `public_disturbance`→`security` normalization, secret-code lookup normalization. Gate: 43 tests.
-
----
-
-## 2026-05-03 — UX Bug Fixes + QA Sweep
-
-**10 UX fixes:** TrackingScreen nav, RevealSheet iOS, FilterBar z-index, municipality chips filter, saveReport wiring, FeedTab consistency. Gate: 330 tests.
-
-**QA Findings (45 items):** 7 P0, 8 P1, 10 P2/P3. Key: RevealSheet nav, CORS/auth, SW retry, iOS meta tags, push toggle, GPS fallback, sign-out, contrast, motion-safe, Tagalog labels. Gate: lint 0 errors.
-
-**PR #91 follow-ups:** SW precache resilience, aria-hidden→status role, extracted phone-session-storage, wizard load catch, TTL test fix. Gate: 243 tests.
-
----
-
-## 2026-05-02 — Auth + Wizard + Hardening
-
-**Auth + Wizard Resumability:** RegisterPage a11y, phone preservation via sessionStorage, Step 1 validation, wizard-snapshot service (localforage, 24h TTL). Gate: 327 tests.
-
-**QA Round 1:** Offline precache, Settings contrast, `<main>` landmark, wizard hint visibility. Gate: 319 tests.
-
-**Hardening Sweep (7 clusters):** Correctness (PWA install, toggles, RevealSheet, photo validation), reliability (backoff, error sanitization, FCM rollback), per-jurisdiction config, performance (lazy RevealSheet, dead code), background sync + image compression, data export (GCS signed URLs). New: `useMunicipalityContact.ts`, `RevealSheet.lazy.tsx`, `imageCompress.ts`. Deleted: `photoUpload.ts`, `draftManager.ts`, `localforage.ts`. Gate: 318 tests.
-
----
+Auth + wizard resumability, QA sweep (45 items, 7 P0), hardening (PWA install, offline, backoff, image compression, background sync), cancel report flow, live sync, 10 UX fixes.
 
 ## Older Completed Phases
 
-| Phase                             | Status   | Notes                                                                                                                                                   |
-| --------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 9: Citizen PWA Redesign     | DONE     | 18 tasks — Feed/Profile/Alerts tabs, RevealSheet, Toggle, Toast, offline banner, auth-aware ProfileTab, RegisterPage, SettingsPage, routes, data export |
-| Phase 8C: RA 10173 Erasure        | DONE     | 8 tasks — callables, sweeps, rules, delete-account flow                                                                                                 |
-| Phase 7.A: Security Callables     | DONE     | 7 callables + Firestore rules                                                                                                                           |
-| Phase 7.B: Superadmin UI          | DONE     | Analytics dashboard, emergency declaration, TOTP enrollment (NDRRMC/break-glass removed in `9f520d99`)                                                  |
-| Phase 6: Responder App            | DONE     | Native foundation, push, telemetry, location, field UX, handoffs. Residual: E2E dispatch, push tokens, background geolocation (need devices)            |
-| Phase 5: Cluster C + PRE-C        | DONE     | Analytics (mass alerts/NDRRMC escalation removed in `9f520d99`)                                                                                         |
-| Phase 4b: SMS Inbound Pipeline    | DEFERRED | Removed in `9f520d99`; citizen SMS rewired to hotline                                                                                                   |
-| Phase 3b: Admin Triage + Dispatch | DONE     | Code complete                                                                                                                                           |
-| Phase 0: Foundation               | DONE     | All tooling passing                                                                                                                                     |
+| Phase                                       | Status | Notes                                                         |
+| ------------------------------------------- | ------ | ------------------------------------------------------------- |
+| Phase 9: Citizen PWA Redesign               | DONE   | Feed/Profile/Alerts tabs, RevealSheet, auth, registration     |
+| Phase 8C: Erasure (RA 10173)                | DONE   | Callables, sweeps, rules, delete-account flow                 |
+| Phase 7: Security Callables + Superadmin UI | DONE   | 7 callables, analytics dashboard, emergency declaration, TOTP |
+| Phase 6: Responder App                      | DONE   | Native, push, telemetry, location, field UX                   |
+| Phase 5: Analytics                          | DONE   | Cluster C + PRE-C                                             |
+| Phase 3b: Admin Triage + Dispatch           | DONE   | Code complete                                                 |
+| Phase 0: Foundation                         | DONE   | All tooling passing                                           |
 
-> Features removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAGASA hazard signals, Break Glass protocol, mass alert broadcast. Entries retained for historical accuracy.
+> Features removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAGASA hazard signals, Break Glass, mass alert broadcast.
 
----
+## Open
 
-## Open Blockers
-
-1. ~~SMS data erasure gap~~ **RESOLVED (2026-05-11):** SMS features removed in `9f520d99`.
-2. Firebase Console: Phone Auth disabled; App Check 400 errors on staging
-3. Deploy needed: Staging redeploy to verify accumulated code fixes
-4. Phase 7.C: Staff TOTP enrollment audit in progress
-5. Deferred to Phase 11: 4 observability dashboards (Ops, Backend, Compliance, Cost)
+1. Firebase Console: Phone Auth disabled; App Check 400 errors on staging
+2. Staging redeploy to verify accumulated fixes
+3. Phase 7.C: Staff TOTP enrollment audit
+4. Deferred: 4 observability dashboards (Phase 11)

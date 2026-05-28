@@ -52,6 +52,7 @@ vi.mock('../hooks/useOwnDispatches', () => ({
     error: dispatchListState.error,
     retry: dispatchListState.retry,
     loading: dispatchListState.loading,
+    lastUpdatedAt: Date.now(),
   }),
 }))
 
@@ -184,18 +185,40 @@ describe('DispatchListPage', () => {
     )
 
     expect(screen.getByText(/New Dispatches/i)).toBeInTheDocument()
-    expect(screen.getByText(/Active/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Active \(1\)/i })).toBeInTheDocument()
   })
 
-  it('renders empty state with All Clear copy when no dispatches', () => {
+  it('shows resume banner when exactly one active dispatch exists', () => {
+    dispatchListState.rows = [
+      {
+        dispatchId: 'd-2',
+        reportId: 'report-2',
+        status: 'acknowledged',
+        uiStatus: 'acknowledged',
+        acknowledgementDeadlineAt: Date.now() + 60_000,
+      },
+    ]
+    dispatchListState.groups.active = dispatchListState.rows
+
     render(
       <MemoryRouter>
         <DispatchListPage />
       </MemoryRouter>,
     )
 
-    expect(screen.getByText(/All Clear/i)).toBeInTheDocument()
-    expect(screen.getByText(/No active dispatches/i)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/1 active dispatch/i)
+    expect(screen.getByTestId('resume-active-dispatch')).toHaveAttribute('href', '/dispatches/d-2')
+  })
+
+  it('renders empty state with STANDBY copy when no dispatches', () => {
+    render(
+      <MemoryRouter>
+        <DispatchListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/STANDBY/i)).toBeInTheDocument()
+    expect(screen.getByText(/awaiting dispatches/i)).toBeInTheDocument()
   })
 
   it('shows error banner on listener error', () => {
@@ -250,7 +273,7 @@ describe('DispatchListPage', () => {
     expect(screen.getByTestId('dispatch-card-d-1')).toBeInTheDocument()
   })
 
-  it('renders active dispatch progress ring and next action label', () => {
+  it('renders active dispatch status block and next action button', () => {
     dispatchListState.rows = [
       {
         dispatchId: 'd-2',
@@ -268,9 +291,29 @@ describe('DispatchListPage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('img', { name: /progress 60 percent/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /mark on scene/i })).toBeInTheDocument()
     expect(screen.getByTestId('dispatch-card-d-2')).toBeInTheDocument()
+  })
+
+  it('shows freshness indicator when dispatches are present', () => {
+    dispatchListState.rows = [
+      {
+        dispatchId: 'd-1',
+        reportId: 'report-1',
+        status: 'pending',
+        uiStatus: 'pending',
+        acknowledgementDeadlineAt: Date.now() + 60_000,
+      },
+    ]
+    dispatchListState.groups.pending = dispatchListState.rows
+
+    render(
+      <MemoryRouter>
+        <DispatchListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/Live/i)).toBeInTheDocument()
   })
 
   it('shows loading skeletons while useOwnDispatches is loading', () => {

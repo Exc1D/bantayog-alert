@@ -41,10 +41,7 @@ export { borderAutoShareTrigger } from './domains/reports/border-auto-share.js'
 export { duplicateClusterTrigger } from './domains/reports/duplicate-cluster-trigger.js'
 export { mergeDuplicates } from './domains/reports/merge-duplicates.js'
 export { initiateShiftHandoff, acceptShiftHandoff } from './domains/agency/shift-handoff.js'
-export {
-  initiateResponderHandoff,
-  acceptResponderHandoff,
-} from './domains/agency/responder-shift-handoff.js'
+
 export { subscribeToAlerts } from './domains/alerts/subscribe-to-alerts.js'
 export { unsubscribeFromAlerts } from './domains/alerts/unsubscribe-to-alerts.js'
 

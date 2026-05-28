@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Clock,
   CloudLightning,
+  Droplets,
   FileText,
   Flame,
   HeartPulse,
@@ -43,7 +44,7 @@ const REPORT_TYPE_ICONS: Record<string, LucideIcon> = {
   earthquake: CloudLightning,
   typhoon: Wind,
   landslide: Mountain,
-  storm_surge: Waves,
+  storm_surge: Droplets,
   medical: HeartPulse,
   accident: Car,
   structural: Building,
@@ -70,12 +71,46 @@ function locationLabel(item: PublicFeedItem): string {
   return parts.length > 0 ? parts.join(', ') : 'Location pending'
 }
 
-function FeedCard({ item }: { item: PublicFeedItem }) {
+const COMPACT_THRESHOLD = 10
+
+function FeedCard({ item, compact }: { item: PublicFeedItem; compact?: boolean }) {
   const [expanded, setExpanded] = useState(false)
+  const [brokenMedia, setBrokenMedia] = useState<Set<string>>(() => new Set())
   const reportLabel = getReportTypeLabel(item.reportType)
   const body = item.description.trim() || 'Verified report details unavailable.'
   const bodyClamped = body.length > 180 && !expanded
   const media = item.featuredMediaUrls?.slice(0, 4) ?? []
+
+  if (compact) {
+    return (
+      <article
+        className={styles.compactRow}
+        aria-label={`${reportLabel} — ${item.severity} — ${locationLabel(item)}`}
+      >
+        <span
+          className={[styles.compactAvatar, severityClass(item.severity)].join(' ')}
+          aria-hidden="true"
+        >
+          {renderReportTypeIcon(item.reportType)}
+        </span>
+        <div className={styles.compactMeta}>
+          <div className={styles.compactTop}>
+            <h2 className={styles.compactTitle}>{reportLabel}</h2>
+            <span className={[styles.compactSeverity, severityClass(item.severity)].join(' ')}>
+              {item.severity}
+            </span>
+          </div>
+          <p className={styles.compactLine}>
+            <MapPin size={12} aria-hidden="true" />
+            <span>{locationLabel(item)}</span>
+            <span aria-hidden="true">·</span>
+            <Clock size={12} aria-hidden="true" />
+            <span>{timeAgo(item.submittedAtMillis)}</span>
+          </p>
+        </div>
+      </article>
+    )
+  }
 
   return (
     <article
@@ -131,15 +166,27 @@ function FeedCard({ item }: { item: PublicFeedItem }) {
 
       {media.length > 0 && (
         <div className={styles.mediaGrid} aria-label="Incident media">
-          {media.map((url, index) => (
-            <img
-              key={`${item.id}-${url}`}
-              src={url}
-              alt={`Incident media ${String(index + 1)} for report ${item.id}`}
-              loading="lazy"
-              className={styles.media}
-            />
-          ))}
+          {media.map((url, index) => {
+            const isBroken = brokenMedia.has(url)
+            return isBroken ? (
+              <div key={`${item.id}-${url}`} className={styles.mediaBroken} aria-hidden="true" />
+            ) : (
+              <img
+                key={`${item.id}-${url}`}
+                src={url}
+                alt={`Incident media ${String(index + 1)} for report ${item.id}`}
+                loading="lazy"
+                className={styles.media}
+                onError={() => {
+                  setBrokenMedia((prev) => {
+                    const next = new Set(prev)
+                    next.add(url)
+                    return next
+                  })
+                }}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -156,24 +203,74 @@ function FeedCard({ item }: { item: PublicFeedItem }) {
   )
 }
 
+function freshnessLabel(lastUpdatedAt: number | null): string {
+  if (lastUpdatedAt === null) return ''
+  const seconds = Math.round((Date.now() - lastUpdatedAt) / 1000)
+  if (seconds < 60) return 'Live'
+  if (seconds < 3600) return `Updated ${String(Math.round(seconds / 60))}m ago`
+  return `Updated ${String(Math.round(seconds / 3600))}h ago`
+}
+
 export function FeedPage() {
-  const { items, loading, error, retry } = usePublicFeed()
-  const hasItems = items.length > 0
+  const { items, loading, error, retry, lastUpdatedAt } = usePublicFeed()
+  const [activeSeverities, setActiveSeverities] = useState<Set<string>>(new Set())
+  const filteredItems =
+    activeSeverities.size > 0 ? items.filter((item) => activeSeverities.has(item.severity)) : items
+  const hasItems = filteredItems.length > 0
+  const compact = filteredItems.length > COMPACT_THRESHOLD
+  const severityOptions = ['high', 'medium', 'low'] as const
+  const freshness = freshnessLabel(lastUpdatedAt)
+  const isLive = freshness === 'Live'
 
   return (
     <section className={styles.page} aria-labelledby="feed-title">
       <header className={styles.pageHeader}>
         <div>
           <h1 id="feed-title" className={styles.pageTitle}>
-            Public Feed
+            Incident Feed
           </h1>
-          <p className={styles.pageMeta}>{String(items.length)} visible reports</p>
+          <p className={styles.pageMeta}>{String(filteredItems.length)} visible reports</p>
         </div>
+        {lastUpdatedAt !== null && (
+          <p className={isLive ? styles.freshLive : styles.freshStale} aria-live="polite">
+            {isLive && <span className={styles.liveDot} aria-hidden="true" />}
+            {freshness}
+          </p>
+        )}
       </header>
+
+      <div className={styles.filterBar} role="group" aria-label="Filter by severity">
+        {severityOptions.map((sev) => {
+          const active = activeSeverities.has(sev)
+          return (
+            <button
+              key={sev}
+              type="button"
+              className={[styles.filterChip, active && styles.filterChipActive]
+                .filter(Boolean)
+                .join(' ')}
+              aria-pressed={active}
+              onClick={() => {
+                setActiveSeverities((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(sev)) {
+                    next.delete(sev)
+                  } else {
+                    next.add(sev)
+                  }
+                  return next
+                })
+              }}
+            >
+              {sev}
+            </button>
+          )
+        })}
+      </div>
 
       {error !== null && hasItems && (
         <div role="alert" className={styles.card}>
-          <strong className={styles.cardTitle}>Could not refresh public feed</strong>
+          <strong className={styles.cardTitle}>Could not refresh feed</strong>
           <span className={styles.body}>{error}</span>{' '}
           <button type="button" className={styles.btnRetry} onClick={retry}>
             Retry
@@ -184,27 +281,41 @@ export function FeedPage() {
       {loading ? (
         <div role="status" className={styles.state}>
           <FileText size={32} aria-hidden="true" />
-          <span>Loading public feed</span>
+          <span>Loading incident feed</span>
         </div>
       ) : error !== null && !hasItems ? (
         <div role="alert" className={styles.state}>
           <AlertCircle size={32} aria-hidden="true" />
-          <strong>Could not load public feed</strong>
+          <strong>Could not load incident feed</strong>
           <span>{error}</span>
           <button type="button" className={styles.btnRetry} onClick={retry}>
             Retry
           </button>
         </div>
+      ) : !hasItems && items.length > 0 ? (
+        <div className={styles.state}>
+          <strong>All reports filtered</strong>
+          <span>No reports match the selected filters.</span>
+          <button
+            type="button"
+            className={styles.btnRetry}
+            onClick={() => {
+              setActiveSeverities(new Set())
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
       ) : !hasItems ? (
         <div className={styles.state}>
           <ImageIcon size={32} aria-hidden="true" />
-          <strong>No public reports yet</strong>
-          <span>Verified public reports will appear here.</span>
+          <strong>No reports yet</strong>
+          <span>Verified incident reports will appear here.</span>
         </div>
       ) : (
         <div className={styles.feedList}>
-          {items.map((item) => (
-            <FeedCard key={item.id} item={item} />
+          {filteredItems.map((item) => (
+            <FeedCard key={item.id} item={item} compact={compact} />
           ))}
         </div>
       )}

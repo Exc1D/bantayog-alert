@@ -15,7 +15,7 @@ import { MapPage } from './pages/MapPage'
 import { FeedPage } from './pages/FeedPage'
 import { AlertsPage } from './pages/AlertsPage'
 import { ProfilePage } from './pages/ProfilePage'
-import { ShiftHandoffPage } from './pages/ShiftHandoffPage'
+
 import { DispatchHistoryPage } from './pages/DispatchHistoryPage'
 import { ResponderWitnessReportPage } from './pages/ResponderWitnessReportPage'
 import { SosPage } from './pages/SosPage'
@@ -104,7 +104,7 @@ const router = createBrowserRouter([
               },
               { path: '/dispatches/:dispatchId/sos', element: <SosPage /> },
               { path: '/dispatches/:dispatchId/backup', element: <BackupRequestPage /> },
-              { path: '/handoff', element: <ShiftHandoffPage /> },
+
               { path: '/history', element: <DispatchHistoryPage /> },
             ],
           },

@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { doc, getDoc } from 'firebase/firestore'
 import { User } from 'lucide-react'
 import { useAuth } from '@bantayog/shared-ui'
-import { auth, db } from '../app/firebase'
+import { auth } from '../app/firebase'
 import { useResponderProfile } from '../hooks/useResponderProfile'
 import { useResponderAvailability } from '../hooks/useResponderAvailability'
 import type { ResponderAvailabilityStatus } from '../hooks/useResponderAvailability'
 import { useDispatchHistory } from '../hooks/useDispatchHistory'
-import { getReportTypeLabel, getResponderTypeLabel } from '../lib/incident-labels'
+import { getResponderTypeLabel } from '../lib/incident-labels'
 import styles from './ProfilePage.module.css'
 
 const UNAVAILABLE_REASONS = ['On break', 'In meeting', 'On another call', 'Other']
@@ -31,7 +30,7 @@ function statusBlurb(status: ResponderAvailabilityStatus | null): string {
 }
 
 function formatDuration(ms: number | null): string {
-  if (ms === null || !Number.isFinite(ms) || ms < 0) return '—'
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return 'N/A'
   const totalSeconds = Math.round(ms / 1000)
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -44,30 +43,31 @@ function formatDuration(ms: number | null): string {
   return `${String(minutes)}m ${String(seconds).padStart(2, '0')}s`
 }
 
-function getWeekBucket(ms: number): number {
-  const date = new Date(ms)
-  date.setHours(0, 0, 0, 0)
-  const day = date.getDay()
-  const offset = (day + 6) % 7
-  date.setDate(date.getDate() - offset)
-  return date.getTime()
-}
-
-function getToneClass(ratio: number, stylesMap: typeof styles): string {
-  if (ratio >= 0.8) return stylesMap.masteryGreen ?? ''
-  if (ratio >= 0.5) return stylesMap.masteryAmber ?? ''
-  return stylesMap.masteryMuted ?? ''
-}
+const STATUS_SEGMENTS: { value: SettableStatus; label: string }[] = [
+  { value: 'available', label: 'Available' },
+  { value: 'unavailable', label: 'Unavailable' },
+  { value: 'off_duty', label: 'Off Duty' },
+]
 
 export function ProfilePage() {
   const { user, signOut } = useAuth()
-  const { profile } = useResponderProfile(user?.uid)
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+    refetch: refetchProfile,
+  } = useResponderProfile(user?.uid)
   const {
     status: availStatus,
     setAvailability,
     writeError: availWriteError,
   } = useResponderAvailability(user?.uid)
-  const { history } = useDispatchHistory(user?.uid)
+  const {
+    history,
+    loading: historyLoading,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useDispatchHistory(user?.uid)
 
   const [selectedStatusOverride, setSelectedStatusOverride] = useState<SettableStatus | null>(null)
   const selectedStatus =
@@ -76,58 +76,7 @@ export function ProfilePage() {
   const [reason, setReason] = useState('')
   const [statusSaving, setStatusSaving] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const [reportTypesById, setReportTypesById] = useState<Record<string, string>>({})
-  const reportIdsKey = history.map((row) => row.reportId).join('|')
-  const [loadedReportIdsKey, setLoadedReportIdsKey] = useState('')
-  const reportTypesLoaded = loadedReportIdsKey === reportIdsKey
-
-  useEffect(() => {
-    if (loadedReportIdsKey === reportIdsKey) return
-
-    let active = true
-    const reportIds = Array.from(new Set(history.map((row) => row.reportId)))
-
-    if (reportIds.length === 0) {
-      return () => {
-        active = false
-      }
-    }
-
-    void Promise.allSettled(
-      reportIds.map(async (reportId) => {
-        const snap = await getDoc(doc(db, 'reports', reportId))
-        if (!snap.exists()) return null
-        const data = snap.data()
-        return [reportId, String(data.reportType ?? 'other')] as const
-      }),
-    ).then((results) => {
-      if (!active) return
-      const next: Record<string, string> = {}
-      let errorCount = 0
-      for (const result of results) {
-        if (result.status === 'rejected') {
-          errorCount++
-          continue
-        }
-        if (result.value === null) continue
-        next[result.value[0]] = result.value[1]
-      }
-      if (errorCount > 0) {
-        console.error(
-          `[ProfilePage] report insight load failed: ${String(errorCount)} of ${String(results.length)} reports`,
-        )
-      }
-      setReportTypesById(next)
-      setLoadedReportIdsKey(reportIdsKey)
-    })
-
-    return () => {
-      active = false
-    }
-    // reportIdsKey is derived from history so including history is redundant.
-    // loadedReportIdsKey is only set by this effect to prevent re-triggering.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportIdsKey])
+  const [statusSuccess, setStatusSuccess] = useState(false)
 
   const completedRows = history.filter((row) => row.status === 'resolved')
   const totalCount = history.length
@@ -140,41 +89,6 @@ export function ProfilePage() {
     responseDurations.length > 0
       ? Math.round(responseDurations.reduce((sum, ms) => sum + ms, 0) / responseDurations.length)
       : null
-  const fastestResponseTime = responseDurations.length > 0 ? Math.min(...responseDurations) : null
-  const mostDispatchesInWeek = Object.values(
-    history.reduce<Record<number, number>>((acc, row) => {
-      const bucket = getWeekBucket(row.dispatchedAt)
-      acc[bucket] = (acc[bucket] ?? 0) + 1
-      return acc
-    }, {}),
-  ).reduce((max, count) => Math.max(max, count), 0)
-
-  const reportTypeLookup = reportTypesLoaded ? reportTypesById : {}
-  const resolvedTypeCounts = completedRows.reduce<Record<string, number>>((acc, row) => {
-    const type = reportTypeLookup[row.reportId] ?? 'other'
-    acc[type] = (acc[type] ?? 0) + 1
-    return acc
-  }, {})
-  const masterySourceRows = Object.entries(resolvedTypeCounts).sort((a, b) => {
-    if (b[1] !== a[1]) return b[1] - a[1]
-    return getReportTypeLabel(a[0]).localeCompare(getReportTypeLabel(b[0]))
-  })
-  const maxMasteryCount = masterySourceRows[0]?.[1] ?? 0
-  const countByType = new Map(masterySourceRows.map(([type, count]) => [type, count]))
-  const masteryRows =
-    profile?.specializations != null && profile.specializations.length > 0
-      ? profile.specializations.map((label) => {
-          const matchingType =
-            masterySourceRows.find(([type]) => getReportTypeLabel(type) === label)?.[0] ?? null
-          return {
-            label,
-            count: matchingType !== null ? (countByType.get(matchingType) ?? 0) : 0,
-          }
-        })
-      : masterySourceRows.map(([type, count]) => ({
-          label: getReportTypeLabel(type),
-          count,
-        }))
 
   const dotClass =
     availStatus === 'available'
@@ -185,21 +99,23 @@ export function ProfilePage() {
           ? styles.dotRed
           : styles.dotGray
 
-  async function handleStatusUpdate() {
+  async function handleStatusUpdate(nextStatus: SettableStatus, nextReason?: string) {
     setStatusError(null)
-    if (selectedStatus !== 'available' && !reason.trim()) {
+    setStatusSuccess(false)
+    if (nextStatus !== 'available' && !nextReason?.trim()) {
       setStatusError('Reason is required.')
       return
     }
     setStatusSaving(true)
     try {
-      if (selectedStatus === 'available') {
+      if (nextStatus === 'available') {
         await setAvailability('available')
       } else {
-        await setAvailability(selectedStatus, reason.trim())
+        await setAvailability(nextStatus, (nextReason ?? '').trim())
       }
       setSelectedStatusOverride(null) // Clear override to follow availStatus
       setReason('')
+      setStatusSuccess(true)
     } catch (err: unknown) {
       setStatusError(err instanceof Error ? err.message : 'Update failed.')
     } finally {
@@ -214,15 +130,37 @@ export function ProfilePage() {
 
   return (
     <div className={styles.page}>
+      {profileError !== null && (
+        <div role="alert" className={styles.errorBanner}>
+          Could not load profile: {profileError}
+          <button className={styles.retryBtn} onClick={refetchProfile}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {historyError !== null && (
+        <div role="alert" className={styles.errorBanner}>
+          Could not load dispatch history: {historyError}
+          <button className={styles.retryBtn} onClick={refetchHistory}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className={styles.profileCard}>
         <div className={styles.avatar} aria-hidden="true">
           <User size={28} strokeWidth={2.2} />
         </div>
         <div className={styles.profileInfo}>
           <div className={styles.identityRow}>
-            <h1 className={styles.profileName}>
-              {profile?.displayName ?? auth.currentUser?.displayName ?? 'Responder'}
-            </h1>
+            {profileLoading ? (
+              <h1 className={styles.profileName}>Loading profile...</h1>
+            ) : (
+              <h1 className={styles.profileName}>
+                {profile?.displayName ?? auth.currentUser?.displayName ?? 'Responder'}
+              </h1>
+            )}
             {responderTypeCode !== undefined && (
               <p className={styles.profileTypeBadge}>
                 <span>{responderTypeCode}</span>
@@ -257,24 +195,105 @@ export function ProfilePage() {
             )}
           </div>
 
+          <div className={styles.availabilityPanel}>
+            <div className={styles.availabilityRow}>
+              <span
+                className={[styles.statusDot, dotClass].filter(Boolean).join(' ')}
+                aria-hidden="true"
+              />
+              <span className={styles.statusLabel} aria-live="polite">
+                {statusBlurb(availStatus)}
+              </span>
+            </div>
+            <div
+              className={styles.segmentedControl}
+              role="group"
+              aria-label="Set availability status"
+            >
+              {STATUS_SEGMENTS.map((segment) => {
+                const active = selectedStatus === segment.value
+                return (
+                  <button
+                    key={segment.value}
+                    type="button"
+                    className={[styles.segmentBtn, active && styles.segmentBtnActive]
+                      .filter(Boolean)
+                      .join(' ')}
+                    aria-pressed={active}
+                    onClick={() => {
+                      setStatusError(null)
+                      setStatusSuccess(false)
+                      if (segment.value === 'available') {
+                        setReason('')
+                        void handleStatusUpdate('available')
+                      } else {
+                        setSelectedStatusOverride(segment.value)
+                        setReason('')
+                      }
+                    }}
+                  >
+                    {segment.label}
+                  </button>
+                )
+              })}
+            </div>
+            {selectedStatus !== 'available' && (
+              <select
+                className={styles.reasonInput}
+                value={reason}
+                onChange={(e) => {
+                  setReason(e.target.value)
+                }}
+                aria-label="Reason"
+              >
+                <option value="">Select reason...</option>
+                {reasonOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            )}
+            {statusError !== null && <p className={styles.errorMsg}>{statusError}</p>}
+            {availWriteError !== null && <p className={styles.errorMsg}>{availWriteError}</p>}
+            {statusSuccess && <p className={styles.successMsg}>Status updated.</p>}
+            {selectedStatus !== 'available' && (
+              <button
+                className={styles.updateBtn}
+                onClick={() => void handleStatusUpdate(selectedStatus, reason)}
+                disabled={statusSaving}
+              >
+                {statusSaving ? 'Saving...' : 'Apply Status'}
+              </button>
+            )}
+          </div>
+
           <div className={styles.statsRow}>
             <div className={styles.statItem}>
               <span className={[styles.statValue, styles.statAmber].join(' ')}>
-                {String(totalCount)}
+                {historyLoading && history.length === 0 ? 'N/A' : String(totalCount)}
               </span>
               <span className={styles.statLabel}>Total Dispatches</span>
             </div>
             <div className={styles.statDivider} aria-hidden="true" />
             <div className={styles.statItem}>
               <span className={[styles.statValue, styles.statGreen].join(' ')}>
-                {completionRate !== null ? `${String(completionRate)}%` : '—'}
+                {historyLoading && history.length === 0
+                  ? 'N/A'
+                  : completionRate !== null
+                    ? `${String(completionRate)}%`
+                    : 'N/A'}
               </span>
               <span className={styles.statLabel}>Resolution Rate</span>
             </div>
             <div className={styles.statDivider} aria-hidden="true" />
             <div className={styles.statItem}>
               <span className={styles.statValue}>
-                {avgResponseTime !== null ? formatDuration(avgResponseTime) : '—'}
+                {historyLoading && history.length === 0
+                  ? 'N/A'
+                  : avgResponseTime !== null
+                    ? formatDuration(avgResponseTime)
+                    : 'N/A'}
               </span>
               <span className={styles.statLabel}>Avg Response Time</span>
             </div>
@@ -282,125 +301,9 @@ export function ProfilePage() {
         </div>
       </div>
 
-      <div className={styles.sectionCard}>
-        <div className={styles.sectionHeader}>Specialization Mastery</div>
-        <div className={styles.sectionBody}>
-          {reportTypesLoaded && masteryRows.length > 0 ? (
-            <div className={styles.masteryList}>
-              {masteryRows.map((row) => {
-                const ratio = maxMasteryCount > 0 ? row.count / maxMasteryCount : 0
-                return (
-                  <div key={row.label} className={styles.masteryRow}>
-                    <div className={styles.masteryMeta}>
-                      <span className={styles.masteryLabel}>{row.label}</span>
-                      <span className={styles.masteryCount}>{String(row.count)} resolved</span>
-                    </div>
-                    <div className={styles.masteryTrack} aria-hidden="true">
-                      <div
-                        className={[styles.masteryFill, getToneClass(ratio, styles)]
-                          .filter(Boolean)
-                          .join(' ')}
-                        style={{ width: `${String(ratio * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className={styles.emptyState}>
-              {!reportTypesLoaded && history.length > 0
-                ? 'Loading mastery data…'
-                : 'No recent resolved dispatches yet.'}
-            </p>
-          )}
-          <p className={styles.sectionNote}>
-            Mastery uses recent resolved dispatch types and fills relative to the strongest bucket.
-          </p>
-        </div>
-      </div>
-
-      <div className={styles.sectionCard}>
-        <div className={styles.sectionHeader}>Personal Bests</div>
-        <div className={styles.sectionBody}>
-          <div className={styles.recordList}>
-            <div className={styles.recordRow}>
-              <span className={styles.recordLabel}>Fastest response</span>
-              <span className={styles.recordValue}>
-                {fastestResponseTime !== null ? formatDuration(fastestResponseTime) : '—'}
-              </span>
-            </div>
-            <div className={styles.recordRow}>
-              <span className={styles.recordLabel}>Most dispatches in a week</span>
-              <span className={styles.recordValue}>
-                {mostDispatchesInWeek > 0 ? `${String(mostDispatchesInWeek)} dispatches` : '—'}
-              </span>
-            </div>
-            <div className={styles.recordRow}>
-              <span className={styles.recordLabel}>Longest availability streak</span>
-              <span className={styles.recordValue}>—</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.availabilityPanel}>
-        <div className={styles.availabilityRow}>
-          <span
-            className={[styles.statusDot, dotClass].filter(Boolean).join(' ')}
-            aria-hidden="true"
-          />
-          <span className={styles.statusLabel}>{statusBlurb(availStatus)}</span>
-          <select
-            className={styles.statusSelect}
-            value={selectedStatus}
-            onChange={(e) => {
-              const val = e.target.value
-              setSelectedStatusOverride(isSettableStatus(val) ? val : 'available')
-              setReason('')
-            }}
-            aria-label="Set availability status"
-          >
-            <option value="available">Available</option>
-            <option value="unavailable">Unavailable</option>
-            <option value="off_duty">Off Duty</option>
-          </select>
-        </div>
-        {selectedStatus !== 'available' && (
-          <select
-            className={styles.reasonInput}
-            value={reason}
-            onChange={(e) => {
-              setReason(e.target.value)
-            }}
-            aria-label="Reason"
-          >
-            <option value="">Select reason…</option>
-            {reasonOptions.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        )}
-        {statusError !== null && <p className={styles.errorMsg}>{statusError}</p>}
-        {availWriteError !== null && <p className={styles.errorMsg}>{availWriteError}</p>}
-        <button
-          className={styles.updateBtn}
-          onClick={() => void handleStatusUpdate()}
-          disabled={statusSaving}
-        >
-          {statusSaving ? 'Saving…' : 'Update Status'}
-        </button>
-      </div>
-
       <div className={styles.linkList}>
         <Link to="/history" className={styles.actionLink}>
           View Dispatch History
-          <span aria-hidden="true">›</span>
-        </Link>
-        <Link to="/handoff" className={styles.actionLink}>
-          Start Shift Handoff
           <span aria-hidden="true">›</span>
         </Link>
       </div>
@@ -409,11 +312,12 @@ export function ProfilePage() {
 
       <button
         className={styles.signOutBtn}
-        onClick={() =>
+        onClick={() => {
+          if (!window.confirm('Are you sure you want to sign out?')) return
           void signOut().catch((err: unknown) => {
             console.error('[ProfilePage] sign out failed:', err)
           })
-        }
+        }}
       >
         Sign Out
       </button>
