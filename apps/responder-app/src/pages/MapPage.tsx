@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent } from 'react-leaflet'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import {
   AlertTriangle,
   Building,
@@ -106,6 +107,18 @@ interface Coords {
 const REDUCED_MOTION =
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/** Map user-facing firestore/network errors so responders never see raw technical text. */
+function friendlyErrorMessage(raw: string): string {
+  const lowered = raw.toLowerCase()
+  if (lowered.includes('permission denied') || lowered.includes('unauthenticated')) {
+    return 'Your session expired or lacks permission. Please sign in again.'
+  }
+  if (lowered.includes('offline') || lowered.includes('failed to fetch')) {
+    return 'Network error — map data unavailable while offline.'
+  }
+  return 'Could not load dispatches. Please check your connection and try again.'
+}
+
 function MapFlyTo({ coords, recenterRequest }: { coords: Coords | null; recenterRequest: number }) {
   const map = useMap()
   const flownRef = useRef(false)
@@ -122,6 +135,37 @@ function MapFlyTo({ coords, recenterRequest }: { coords: Coords | null; recenter
     map.setView([coords.lat, coords.lng], 15, { animate: !REDUCED_MOTION })
   }, [recenterRequest, coords, map])
 
+  return null
+}
+
+function TileEventMonitor({ setTileError }: { setTileError: (err: boolean) => void }) {
+  useMapEvent('tileerror', () => {
+    setTileError(true)
+  })
+  // Reset tile error when tiles load successfully
+  useMapEvent('tileload', () => {
+    setTileError(false)
+  })
+  // Also reset on moveend in case the error was transient
+  useMapEvent('moveend', () => {
+    setTileError(false)
+  })
+  return null
+}
+
+function MapEscHandler() {
+  const map = useMap()
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        map.closePopup()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => {
+      document.removeEventListener('keydown', handler)
+    }
+  }, [map])
   return null
 }
 
@@ -186,6 +230,12 @@ export function MapPage() {
   const [ownLocation, setOwnLocation] = useState<Coords | null>(null)
   const [gpsError, setGpsError] = useState<GpsErrorState>(null)
   const [recenterRequest, setRecenterRequest] = useState(0)
+  const [tileError, setTileError] = useState(false)
+  const online = useOnlineStatus()
+
+  useEffect(() => {
+    document.title = 'Map — Bantayog Alert'
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -252,9 +302,21 @@ export function MapPage() {
         className={styles.mapContainer ?? ''}
       >
         <TileLayer
-          attribution='&amp;copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='&amp;copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a><span title="Map data may be unavailable while offline" />'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {tileError && (
+          <div
+            className={styles.tileErrorPlaceholder}
+            role="alert"
+            aria-label="Map tiles unavailable"
+          >
+            <AlertTriangle size={48} aria-hidden="true" />
+            <p>Map tiles failed to load. Check your network or try again later.</p>
+          </div>
+        )}
+        <TileEventMonitor setTileError={setTileError} />
+        <MapEscHandler />
         <MapFlyTo coords={ownLocation} recenterRequest={recenterRequest} />
         {ownLocation && (
           <Marker position={[ownLocation.lat, ownLocation.lng]} icon={responderIcon}>
@@ -275,10 +337,16 @@ export function MapPage() {
 
       {error !== null && (
         <div role="alert" className={styles.errorBanner}>
-          <p className={styles.errorBannerMessage}>Failed to load dispatches: {error}</p>
+          <p className={styles.errorBannerMessage}>{friendlyErrorMessage(error)}</p>
           <button type="button" className={styles.btnRetry} onClick={retry}>
             Retry
           </button>
+        </div>
+      )}
+
+      {!online && (
+        <div role="status" className={styles.offlineBanner}>
+          Offline — map data unavailable. Some pins may not load.
         </div>
       )}
 

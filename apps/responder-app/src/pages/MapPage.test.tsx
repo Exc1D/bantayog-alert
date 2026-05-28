@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 const mockDivIcon = vi.hoisted(() => vi.fn(() => ({ _kind: 'divIcon' })))
 const mockUseOwnDispatches = vi.hoisted(() => vi.fn())
 const mockUseReport = vi.hoisted(() => vi.fn())
+const mockUseOnlineStatus = vi.hoisted(() => vi.fn())
 
 vi.mock('@bantayog/shared-ui', () => ({ useAuth: () => ({ user: { uid: 'uid-1' } }) }))
 vi.mock('../hooks/useOwnDispatches', () => ({
@@ -14,6 +15,9 @@ vi.mock('../hooks/useOwnDispatches', () => ({
 vi.mock('../hooks/useReport', () => ({
   useReport: mockUseReport,
 }))
+vi.mock('../hooks/useOnlineStatus', () => ({
+  useOnlineStatus: mockUseOnlineStatus,
+}))
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="map">{children}</div>
@@ -21,7 +25,8 @@ vi.mock('react-leaflet', () => ({
   TileLayer: () => null,
   Marker: () => null,
   Popup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  useMap: () => ({ setView: vi.fn() }),
+  useMap: () => ({ setView: vi.fn(), closePopup: vi.fn() }),
+  useMapEvent: () => ({ setView: vi.fn(), closePopup: vi.fn() }),
 }))
 vi.mock('leaflet', () => ({
   default: { divIcon: mockDivIcon, icon: vi.fn(() => ({})) },
@@ -36,6 +41,7 @@ describe('MapPage', () => {
 
   beforeEach(() => {
     mockRetry.mockClear()
+    mockUseOnlineStatus.mockReturnValue(true)
     mockUseOwnDispatches.mockReturnValue({
       groups: { active: [], pending: [] },
       rows: [],
@@ -203,7 +209,7 @@ describe('MapPage', () => {
   })
 
   describe('Error state', () => {
-    it('shows error banner when dispatch load fails', () => {
+    it('shows friendly error banner when dispatch load fails with permission denied', () => {
       mockUseOwnDispatches.mockReturnValue({
         groups: { active: [], pending: [] },
         rows: [],
@@ -216,8 +222,42 @@ describe('MapPage', () => {
           <MapPage />
         </MemoryRouter>,
       )
-      expect(screen.getByRole('alert')).toHaveTextContent(/failed to load dispatches/i)
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent(/your session expired/i)
+      expect(alert).not.toHaveTextContent('Firestore')
       expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
+    })
+
+    it('shows network error banner for offline-like failures', () => {
+      mockUseOwnDispatches.mockReturnValue({
+        groups: { active: [], pending: [] },
+        rows: [],
+        error: 'Failed to fetch',
+        retry: mockRetry,
+        loading: false,
+      })
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(screen.getByRole('alert')).toHaveTextContent(/network error/i)
+    })
+
+    it('shows generic error banner for unmapped errors', () => {
+      mockUseOwnDispatches.mockReturnValue({
+        groups: { active: [], pending: [] },
+        rows: [],
+        error: 'Something went wrong',
+        retry: mockRetry,
+        loading: false,
+      })
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(screen.getByRole('alert')).toHaveTextContent(/could not load dispatches/i)
     })
 
     it('calls retry when retry button clicked', () => {
@@ -392,6 +432,54 @@ describe('MapPage', () => {
       // Since ActiveDispatchMarker renders conditionally, we just confirm the page renders without
       // crashing and uses the data we expect.
       expect(screen.getByTestId('map')).toBeInTheDocument()
+    })
+  })
+
+  describe('Offline banner', () => {
+    it('shows offline status banner when navigator is offline', () => {
+      mockUseOnlineStatus.mockReturnValue(false)
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(screen.getByRole('status')).toHaveTextContent(/offline — map data unavailable/i)
+    })
+
+    it('does NOT show offline banner when navigator is online', () => {
+      mockUseOnlineStatus.mockReturnValue(true)
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(screen.queryByText(/offline/i)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Tile error state', () => {
+    it('does NOT render tile-error placeholder by default', () => {
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(
+        screen.queryByRole('alert', { name: /map tiles unavailable/i }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Page title', () => {
+    it('sets document.title to "Map — Bantayog Alert"', () => {
+      const originalTitle = document.title
+      render(
+        <MemoryRouter>
+          <MapPage />
+        </MemoryRouter>,
+      )
+      expect(document.title).toBe('Map — Bantayog Alert')
+      document.title = originalTitle
     })
   })
 })
