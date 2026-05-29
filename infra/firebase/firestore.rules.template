@@ -67,6 +67,62 @@ service cloud.firestore {
               && ('agencyId' in data.assignedTo)
               && data.assignedTo.agencyId == myAgency());
     }
+    function canReadAlertDoc(data) {
+      return (('visibility' in data) && data.visibility == 'public')
+          || (isActivePrivileged()
+              && (isSuperadmin()
+                  || (isMuniAdmin()
+                      && ((('affectedMunicipalityIds' in data)
+                           && data.affectedMunicipalityIds is list
+                           && data.affectedMunicipalityIds.hasAny([myMunicipality()]))
+                          || (('targetMunicipalityIds' in data)
+                              && data.targetMunicipalityIds is list
+                              && data.targetMunicipalityIds.hasAny([myMunicipality()]))))));
+    }
+    function canReadSituationUpdate(data) {
+      return (('visibility' in data) && data.visibility == 'public')
+          || (isActivePrivileged()
+              && ('municipalityId' in data)
+              && adminOf(data.municipalityId));
+    }
+    function validSituationUpdate(data) {
+      return data.keys().hasOnly([
+             'authorUid', 'createdAt', 'updatedAt', 'municipalityId', 'municipalityLabel',
+             'barangayLabel', 'hazardType', 'condition', 'body',
+             'visibility', 'reportedCount'
+          ])
+          && data.keys().hasAll([
+             'authorUid', 'createdAt', 'municipalityId', 'municipalityLabel',
+             'hazardType', 'condition', 'body', 'visibility'
+          ])
+          && data.authorUid == uid()
+          && data.createdAt is number
+          && data.municipalityId is string
+          && data.municipalityId.size() >= 2
+          && data.municipalityId.size() <= 80
+          && data.municipalityLabel is string
+          && data.municipalityLabel.size() >= 2
+          && data.municipalityLabel.size() <= 80
+          && data.hazardType is string
+          && data.hazardType in [
+             'typhoon', 'flood', 'storm_surge', 'landslide', 'earthquake',
+             'fire', 'medical', 'power_outage', 'road_blocked', 'other'
+          ]
+          && data.condition is string
+          && data.condition in [
+             'safe', 'light_rain', 'heavy_rain', 'flooding', 'strong_wind',
+             'needs_help', 'blocked_road', 'power_outage', 'other'
+          ]
+          && data.body is string
+          && data.body.size() >= 3
+          && data.body.size() <= 500
+          && data.visibility == 'public'
+          && (!('updatedAt' in data) || data.updatedAt is number)
+          && (!('barangayLabel' in data)
+              || (data.barangayLabel is string
+                  && data.barangayLabel.size() <= 80))
+          && (!('reportedCount' in data) || data.reportedCount == 0);
+    }
     // @@TRANSITION_TABLES@@
 
     // ================================================================
@@ -350,8 +406,33 @@ service cloud.firestore {
     // ================================================================
 
     match /alerts/{a} {
-      allow read: if true;
+      allow read: if canReadAlertDoc(resource.data);
       allow write: if false;
+    }
+
+    match /situation_updates/{updateId} {
+      allow read: if canReadSituationUpdate(resource.data);
+      allow create: if request.auth != null
+                    && validSituationUpdate(request.resource.data);
+      allow update, delete: if false;
+
+      match /reports/{reportId} {
+        allow read: if isSuperadmin() && isActivePrivileged();
+        allow create: if request.auth != null
+                      && exists(/databases/$(database)/documents/situation_updates/$(updateId))
+                      && request.resource.data.keys().hasOnly([
+                           'reporterUid', 'reason', 'createdAt'
+                         ])
+                      && request.resource.data.keys().hasAll([
+                           'reporterUid', 'reason', 'createdAt'
+                         ])
+                      && request.resource.data.reporterUid == uid()
+                      && request.resource.data.reason is string
+                      && request.resource.data.reason.size() >= 3
+                      && request.resource.data.reason.size() <= 120
+                      && request.resource.data.createdAt is number;
+        allow update, delete: if false;
+      }
     }
 
     match /emergencies/{e} {

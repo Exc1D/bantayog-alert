@@ -9,6 +9,9 @@ const mockVerifyReport = vi.hoisted(() =>
 const mockUnpublishReport = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ visibilityClass: 'internal', reportId: 'r-public' }),
 )
+const mockSetCitizenContentVisibility = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ visibility: 'internal', contentId: 'sit-1' }),
+)
 const mockSignOut = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const mockGetDocs = vi.hoisted(() => vi.fn(() => new Promise(() => undefined)))
 const mockCollection = vi.hoisted(() => vi.fn())
@@ -35,6 +38,7 @@ vi.mock('../services/callables', () => ({
   callables: {
     verifyReport: mockVerifyReport,
     unpublishReport: mockUnpublishReport,
+    setCitizenContentVisibility: mockSetCitizenContentVisibility,
   },
 }))
 
@@ -109,9 +113,33 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
         id: 'alert-1',
         hazardType: 'flood',
         message: 'Evacuate low-lying areas now.',
-        affectedMunicipalityIds: ['Daet'],
+        affectedMunicipalityIds: ['daet'],
         publishedAt: 1713350800000,
         declaredAt: 1713350750000,
+        visibility: 'public',
+      },
+      {
+        id: 'alert-legacy',
+        hazardType: 'typhoon',
+        message: 'Legacy alert without visibility should not be treated as public.',
+        affectedMunicipalityIds: ['daet'],
+        publishedAt: 1713350700000,
+        declaredAt: 1713350650000,
+      },
+    ],
+    situationUpdates: [
+      {
+        id: 'sit-1',
+        authorUid: 'citizen-1',
+        createdAt: 1713350900000,
+        municipalityId: 'daet',
+        municipalityLabel: 'Daet',
+        barangayLabel: 'San Jose',
+        hazardType: 'typhoon',
+        condition: 'heavy_rain',
+        body: 'Heavy rain near the market.',
+        visibility: 'public',
+        reportedCount: 2,
       },
     ],
     responders: [],
@@ -220,6 +248,65 @@ describe('FeedPage', () => {
     expect(within(alerts).getByText(/flood/i)).toBeInTheDocument()
   })
 
+  it('lets admins hide citizen feed situation updates through the backend', async () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    const communityFeed = screen.getByRole('region', { name: 'Citizen feed moderation' })
+    expect(within(communityFeed).getByText('Heavy rain near the market.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide situation update sit-1' }))
+
+    await waitFor(() => {
+      expect(mockSetCitizenContentVisibility).toHaveBeenCalledWith(
+        expect.objectContaining({
+          surface: 'feed',
+          contentId: 'sit-1',
+          visibility: 'internal',
+          reason: 'sensitive_content',
+        }),
+      )
+    })
+  })
+
+  it('lets admins hide official alerts through the backend', async () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide alert alert-1' }))
+
+    await waitFor(() => {
+      expect(mockSetCitizenContentVisibility).toHaveBeenCalledWith(
+        expect.objectContaining({
+          surface: 'alerts',
+          contentId: 'alert-1',
+          visibility: 'internal',
+          reason: 'sensitive_content',
+        }),
+      )
+    })
+  })
+
+  it('treats missing alert visibility as hidden from citizens', () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    const alerts = screen.getByRole('region', { name: 'Recent official alerts' })
+    expect(
+      within(alerts).getByText('Legacy alert without visibility should not be treated as public.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Restore alert alert-legacy' })).toBeInTheDocument()
+  })
+
   it('publishes scrubbed copy through verifyReport', async () => {
     render(
       <MemoryRouter>
@@ -232,7 +319,9 @@ describe('FeedPage', () => {
     fireEvent.change(screen.getByLabelText('Kopyang nilinis para sa r-awaiting'), {
       target: { value: 'Needs sensitive detail removed' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'I-publish ang kopyang nilinis para sa r-awaiting' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'I-publish ang kopyang nilinis para sa r-awaiting' }),
+    )
 
     await waitFor(() => {
       expect(mockVerifyReport).toHaveBeenCalledWith(

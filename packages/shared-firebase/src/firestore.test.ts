@@ -5,12 +5,14 @@ const mockQuery = vi.hoisted(() => vi.fn())
 const mockOrderBy = vi.hoisted(() => vi.fn())
 const mockLimit = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn())
+const mockWhere = vi.hoisted(() => vi.fn())
 
 vi.mock('firebase/firestore', () => ({
   collection: mockCollection,
   query: mockQuery,
   orderBy: mockOrderBy,
   limit: mockLimit,
+  where: mockWhere,
   onSnapshot: mockOnSnapshot,
   doc: vi.fn(),
   getFirestore: vi.fn(),
@@ -23,6 +25,7 @@ describe('subscribeAlerts', () => {
     mockCollection.mockReturnValue({ _tag: 'collection' })
     mockOrderBy.mockReturnValue({ _tag: 'orderBy' })
     mockLimit.mockReturnValue({ _tag: 'limit' })
+    mockWhere.mockReturnValue({ _tag: 'whereVisibility' })
     mockQuery.mockReturnValue({ _tag: 'query' })
     mockOnSnapshot.mockImplementation((_query, onNext) => {
       onNext({
@@ -45,10 +48,12 @@ describe('subscribeAlerts', () => {
     subscribeAlerts({} as never, callback)
 
     expect(mockCollection).toHaveBeenCalledWith({}, 'alerts')
+    expect(mockWhere).toHaveBeenCalledWith('visibility', '==', 'public')
     expect(mockOrderBy).toHaveBeenCalledWith('publishedAt', 'desc')
     expect(mockLimit).toHaveBeenCalledWith(5)
     expect(mockQuery).toHaveBeenCalledWith(
       { _tag: 'collection' },
+      { _tag: 'whereVisibility' },
       { _tag: 'orderBy' },
       { _tag: 'limit' },
     )
@@ -68,6 +73,7 @@ describe('subscribeAlerts', () => {
     mockCollection.mockReturnValue({ _tag: 'collection' })
     mockOrderBy.mockReturnValue({ _tag: 'orderBy' })
     mockLimit.mockReturnValue({ _tag: 'limit' })
+    mockWhere.mockReturnValue({ _tag: 'whereVisibility' })
     mockQuery.mockReturnValue({ _tag: 'query' })
     mockOnSnapshot.mockImplementation((_query, onNext) => {
       onNext({

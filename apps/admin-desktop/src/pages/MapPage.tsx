@@ -248,7 +248,8 @@ export default function MapPage() {
         if (!selectedReportId || reports.length === 0) return
         const idx = reports.findIndex((r) => r.id === selectedReportId)
         const nextIdx = idx <= 0 ? reports.length - 1 : idx - 1
-        handlePinClick(reports[nextIdx]!.id)
+        const nextReport = reports[nextIdx]
+        if (nextReport) handlePinClick(nextReport.id)
       },
     },
     {
@@ -257,7 +258,8 @@ export default function MapPage() {
         if (!selectedReportId || reports.length === 0) return
         const idx = reports.findIndex((r) => r.id === selectedReportId)
         const nextIdx = idx >= reports.length - 1 ? 0 : idx + 1
-        handlePinClick(reports[nextIdx]!.id)
+        const nextReport = reports[nextIdx]
+        if (nextReport) handlePinClick(nextReport.id)
       },
     },
   ])
@@ -327,7 +329,9 @@ export default function MapPage() {
         {reports.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] px-6 py-4 text-center shadow-xl">
-              <p className="text-sm font-medium text-[var(--color-text-primary)]">No active incidents</p>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                No active incidents
+              </p>
               <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
                 Reports will appear here as they are submitted.
               </p>

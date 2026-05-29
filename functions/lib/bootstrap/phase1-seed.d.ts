@@ -16,6 +16,7 @@ export declare function buildPhase1SeedDocs(updatedAt: number): {
         severity: string;
         publishedAt: number;
         publishedBy: string;
+        visibility: string;
     }[];
 };
 //# sourceMappingURL=phase1-seed.d.ts.map

@@ -4,6 +4,7 @@ import {
   getFirestore,
   onSnapshot,
   query,
+  where,
   orderBy,
   limit,
   type Firestore,
@@ -87,7 +88,12 @@ export function subscribeAlerts(
   onError?: (error: Error) => void,
 ): () => void {
   return onSnapshot(
-    query(collection(db, 'alerts'), orderBy('publishedAt', 'desc'), limit(5)),
+    query(
+      collection(db, 'alerts'),
+      where('visibility', '==', 'public'),
+      orderBy('publishedAt', 'desc'),
+      limit(5),
+    ),
     (snapshot) => {
       callback(snapshot.docs.map((item) => mapAlertDoc(item.id, item.data())))
     },

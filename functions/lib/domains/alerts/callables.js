@@ -49,6 +49,7 @@ export async function declareAlertCore(db, input, actor) {
         declaredBy: actor.uid,
         declaredAt: now,
         publishedAt: now,
+        visibility: 'public',
         schemaVersion: 1,
     };
     if (validated.reportId) {

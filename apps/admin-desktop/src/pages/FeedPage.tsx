@@ -72,11 +72,19 @@ const SEVERITY_COLORS: Record<string, string> = {
   low: 'var(--color-info)',
 }
 
+function isPublicVisibility(value: unknown): boolean {
+  return value === 'public'
+}
+
 export default function FeedPage() {
   const { signOut } = useAuth()
-  const { loading, error, reports, alerts } = useFirestoreListeners({ windowType: 'dashboard', db })
+  const { loading, error, reports, alerts, situationUpdates } = useFirestoreListeners({
+    windowType: 'dashboard',
+    db,
+  })
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
+  const [moderatingContentIds, setModeratingContentIds] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [mediaUrlsByReport, setMediaUrlsByReport] = useState<Record<string, MediaItem[]>>({})
@@ -148,6 +156,14 @@ export default function FeedPage() {
     [alerts],
   )
 
+  const citizenSituationUpdates = useMemo(
+    () =>
+      [...situationUpdates]
+        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
+        .slice(0, 10),
+    [situationUpdates],
+  )
+
   const handleVerify = async (reportId: string) => {
     try {
       await optimisticVerify(reportId)
@@ -166,6 +182,39 @@ export default function FeedPage() {
     }
   }
 
+  const handleCitizenContentVisibility = async (
+    surface: 'feed' | 'alerts',
+    contentId: string,
+    currentVisibility: unknown,
+  ) => {
+    const visibility = isPublicVisibility(currentVisibility) ? 'internal' : 'public'
+    const pendingKey = `${surface}:${contentId}`
+    setModeratingContentIds((prev) => new Set(prev).add(pendingKey))
+    try {
+      await withRetry(() =>
+        callables.setCitizenContentVisibility({
+          surface,
+          contentId,
+          visibility,
+          reason: 'sensitive_content',
+          idempotencyKey: generateIdempotencyKey(),
+        }),
+      )
+      setActionError(null)
+      setSuccessMessage(
+        visibility === 'public' ? 'Naibalik sa Citizen PWA.' : 'Naitago sa Citizen PWA.',
+      )
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Visibility update failed')
+    } finally {
+      setModeratingContentIds((prev) => {
+        const next = new Set(prev)
+        next.delete(pendingKey)
+        return next
+      })
+    }
+  }
+
   useEffect(() => {
     if (!successMessage) return
     const timer = setTimeout(() => {
@@ -177,14 +226,12 @@ export default function FeedPage() {
   }, [successMessage])
 
   const newReports = useMemo(
-    () =>
-      feedReports.filter(({ report }) => report.status === 'new'),
+    () => feedReports.filter(({ report }) => report.status === 'new'),
     [feedReports],
   )
 
   const pendingReports = useMemo(
-    () =>
-      feedReports.filter(({ report }) => report.status === 'awaiting_verify'),
+    () => feedReports.filter(({ report }) => report.status === 'awaiting_verify'),
     [feedReports],
   )
 
@@ -222,9 +269,7 @@ export default function FeedPage() {
             }),
           )
           urls[report.id] = results
-            .filter(
-              (r): r is PromiseFulfilledResult<MediaItem | null> => r.status === 'fulfilled',
-            )
+            .filter((r): r is PromiseFulfilledResult<MediaItem | null> => r.status === 'fulfilled')
             .map((r) => r.value)
             .filter((v): v is MediaItem => v !== null)
         } catch {
@@ -242,7 +287,7 @@ export default function FeedPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportIdsKey])
 
-    async function publishScrubbed(report: Report) {
+  async function publishScrubbed(report: Report) {
     const scrubbedDescription = (drafts[report.id] ?? report.description).trim()
     if (!scrubbedDescription) {
       setActionError('Kopyang nilinis ay hindi maaaring walang laman.')
@@ -311,16 +356,13 @@ export default function FeedPage() {
               </h1>
               <span className="text-xs text-[var(--color-text-muted)]">
                 {newReports.length} new · {pendingReports.length} pending ·{' '}
-                {publicFeedReports.length} live · {officialAlerts.length} alert
+                {publicFeedReports.length} map/feed live · {officialAlerts.length} alert
                 {officialAlerts.length === 1 ? '' : 's'}
               </span>
             </div>
 
             {/* Tabs */}
-            <nav
-              aria-label="Moderation queue tabs"
-              className="flex border-b border-white/10"
-            >
+            <nav aria-label="Moderation queue tabs" className="flex border-b border-white/10">
               {[
                 { key: 'new' as const, label: `New (${String(newReports.length)})` },
                 { key: 'pending' as const, label: `Pending (${String(pendingReports.length)})` },
@@ -335,10 +377,10 @@ export default function FeedPage() {
                     }}
                     className="px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                     style={{
-                      color: active
-                        ? 'var(--color-text-primary)'
-                        : 'var(--color-text-muted)',
-                      borderBottom: active ? '2px solid var(--color-success)' : '2px solid transparent',
+                      color: active ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+                      borderBottom: active
+                        ? '2px solid var(--color-success)'
+                        : '2px solid transparent',
                     }}
                     aria-current={active ? 'page' : undefined}
                   >
@@ -453,29 +495,140 @@ export default function FeedPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {officialAlerts.map((alert, index) => (
-                    <article
-                      key={readString(alert, 'id') || `alert-${String(index)}`}
-                      className="rounded-lg bg-[var(--color-surface)] p-3"
-                    >
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-danger)]">
-                          {readString(alert, 'hazardType') || 'official alert'}
+                  {officialAlerts.map((alert, index) => {
+                    const alertId = readString(alert, 'id') || readString(alert, 'alertId')
+                    const isPublic = isPublicVisibility(alert.visibility)
+                    const pending = moderatingContentIds.has(`alerts:${alertId}`)
+                    return (
+                      <article
+                        key={alertId || `alert-${String(index)}`}
+                        className="rounded-lg bg-[var(--color-surface)] p-3"
+                      >
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-danger)]">
+                            {readString(alert, 'hazardType') || 'official alert'}
+                          </p>
+                          <p className="text-[11px] text-[var(--color-text-muted)]">
+                            {formatFeedTime(toMillis(alert.publishedAt ?? alert.declaredAt))}
+                          </p>
+                        </div>
+                        <p className="text-sm text-[var(--color-text-primary)]">
+                          {readString(alert, 'message') || 'Alert details pending'}
                         </p>
-                        <p className="text-[11px] text-[var(--color-text-muted)]">
-                          {formatFeedTime(toMillis(alert.publishedAt ?? alert.declaredAt))}
+                        <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+                          {readStringList(alert, 'affectedMunicipalityIds').length > 0
+                            ? readStringList(alert, 'affectedMunicipalityIds').join(', ')
+                            : 'Province-wide'}
                         </p>
-                      </div>
-                      <p className="text-sm text-[var(--color-text-primary)]">
-                        {readString(alert, 'message') || 'Alert details pending'}
-                      </p>
-                      <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
-                        {readStringList(alert, 'affectedMunicipalityIds').length > 0
-                          ? readStringList(alert, 'affectedMunicipalityIds').join(', ')
-                          : 'Province-wide'}
-                      </p>
-                    </article>
-                  ))}
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] ${
+                              isPublic
+                                ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
+                                : 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
+                            }`}
+                          >
+                            {isPublic ? 'Visible to citizens' : 'Hidden from citizens'}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={!alertId || pending}
+                            onClick={() => {
+                              if (alertId) {
+                                void handleCitizenContentVisibility(
+                                  'alerts',
+                                  alertId,
+                                  alert.visibility,
+                                )
+                              }
+                            }}
+                            className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`${isPublic ? 'Hide' : 'Restore'} alert ${alertId}`}
+                          >
+                            {pending ? 'Updating...' : isPublic ? 'Hide' : 'Restore'}
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section
+              aria-label="Citizen feed moderation"
+              className="rounded-xl bg-[var(--color-surface-elevated)] p-5"
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                  Citizen feed posts
+                </h2>
+                <span className="rounded-full bg-[var(--color-surface)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--color-text-muted)]">
+                  {citizenSituationUpdates.length} recent
+                </span>
+              </div>
+              {citizenSituationUpdates.length === 0 ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  No citizen situation posts in scope.
+                </p>
+              ) : (
+                <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
+                  {citizenSituationUpdates.map((update) => {
+                    const isPublic = isPublicVisibility(update.visibility)
+                    const pending = moderatingContentIds.has(`feed:${update.id}`)
+                    return (
+                      <article key={update.id} className="rounded-lg bg-[var(--color-surface)] p-3">
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-info)]">
+                            {update.hazardType ?? 'situation'}
+                          </p>
+                          <p className="text-[11px] text-[var(--color-text-muted)]">
+                            {formatFeedTime(toMillis(update.createdAt))}
+                          </p>
+                        </div>
+                        <p className="text-sm text-[var(--color-text-primary)]">
+                          {update.body ?? 'Situation details pending'}
+                        </p>
+                        <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+                          {update.barangayLabel ? `${update.barangayLabel}, ` : ''}
+                          {update.municipalityLabel ?? update.municipalityId ?? 'Location pending'}
+                          {typeof update.reportedCount === 'number'
+                            ? ` · ${String(update.reportedCount)} report${
+                                update.reportedCount === 1 ? '' : 's'
+                              }`
+                            : ''}
+                        </p>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] ${
+                              isPublic
+                                ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
+                                : 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
+                            }`}
+                          >
+                            {isPublic ? 'Visible to citizens' : 'Hidden from citizens'}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => {
+                              void handleCitizenContentVisibility(
+                                'feed',
+                                update.id,
+                                update.visibility,
+                              )
+                            }}
+                            className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`${isPublic ? 'Hide' : 'Restore'} situation update ${
+                              update.id
+                            }`}
+                          >
+                            {pending ? 'Updating...' : isPublic ? 'Hide' : 'Restore'}
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })}
                 </div>
               )}
             </section>
@@ -523,11 +676,11 @@ export default function FeedPage() {
                             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
                             style={{
                               backgroundColor:
-                                SEVERITY_COLORS[report.severity] || 'var(--color-text-muted)',
+                                SEVERITY_COLORS[report.severity] ?? 'var(--color-text-muted)',
                             }}
                             aria-hidden="true"
                           >
-                            {(report.type || '?').slice(0, 1).toUpperCase()}
+                            {report.type.slice(0, 1).toUpperCase()}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -566,7 +719,6 @@ export default function FeedPage() {
                 </div>
               )}
             </section>
-
           </aside>
         </div>
       </main>

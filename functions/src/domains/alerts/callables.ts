@@ -62,6 +62,7 @@ export async function declareAlertCore(
     declaredBy: actor.uid,
     declaredAt: now,
     publishedAt: now,
+    visibility: 'public',
     schemaVersion: 1,
   }
 

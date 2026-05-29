@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-05-29 — Admin Control for Citizen PWA Visibility
+
+Wired missing admin moderation for what citizens see on the Citizen PWA. Existing report publication remains the control path for Citizen Map/report visibility. Added backend-enforced visibility for citizen situation feed posts and official alerts, including admin callable moderation, scoped admin listeners, public-only Citizen alert queries, `situation_updates.municipalityId`, Firestore rules/index updates, and Feed page controls to hide/restore citizen posts and alerts. Focused tests, lint, typecheck, builds, and emulator rules tests pass.
+
+## 2026-05-28 — Citizen PWA Feed Retention UX
+
+Researched disaster-app retention, civic-tech engagement, gamification risk, and Facebook-style feed patterns. Feed tab now uses a Facebook-inspired community situation feed without a highlights/story strip: inline composer, municipality filter chips, citizen post cards, `Community Pulse` area/needs-help counts, report-for-moderation action, and a separate `situation_updates` Firestore path. Emergency report flow remains unchanged.
+
+## 2026-05-28 — Citizen PWA Ethical Gamification UX Polish
+
+Applied the UX-video takeaways without changing the visual system: Profile now reframes milestones as an `Impact Path`, adds a compact `x/4 signals` completion cue, and gives next-step guidance based on real report lifecycle states. Badge/pitch copy now emphasizes verified impact and reporting skill instead of raw badge chasing. Added ProfileTab coverage for the impact path. Focused test, lint, typecheck, and local render check pass.
+
 ## 2026-05-28 — Responder App Dispatches Tab Design Review
 
 **critique findings (score 25/40):** adaptive density missing, auto-navigate removes agency, ring dominates low-value info, PROGRESS % is meaningless, em dash in empty state violates PRODUCT.md anti-references.

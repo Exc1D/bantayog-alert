@@ -44,6 +44,21 @@ export interface ReportOpsDoc {
   status?: string
 }
 
+export interface SituationUpdateDoc {
+  id: string
+  authorUid?: string
+  createdAt?: number | string | { toDate(): Date }
+  updatedAt?: number | string | { toDate(): Date }
+  municipalityId?: string
+  municipalityLabel?: string
+  barangayLabel?: string
+  hazardType?: string
+  condition?: string
+  body?: string
+  visibility?: string
+  reportedCount?: number
+}
+
 export function isReportOpsDoc(doc: unknown): doc is ReportOpsDoc {
   if (doc == null || typeof doc !== 'object') return false
   const d = doc as Record<string, unknown>
@@ -102,6 +117,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
   const [reports, setReports] = useState<ReportDoc[]>([])
   const [reportOps, setReportOps] = useState<ReportOpsDoc[]>([])
   const [alerts, setAlerts] = useState<unknown[]>([])
+  const [situationUpdates, setSituationUpdates] = useState<SituationUpdateDoc[]>([])
   const [responders, setResponders] = useState<[string, unknown][]>([])
   const [retryCount, setRetryCount] = useState(0)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -120,6 +136,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       setReports([])
       setReportOps([])
       setAlerts([])
+      setSituationUpdates([])
       setResponders([])
       setRetryCount(0)
     }
@@ -198,11 +215,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       onSnapshot(
         reportOpsRef,
         (snapshot) => {
-          setReportOps(
-            snapshot.docs
-              .map((d) => ({ id: d.id, ...d.data() }))
-              .filter(isReportOpsDoc),
-          )
+          setReportOps(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).filter(isReportOpsDoc))
           setError(null)
           resetRetryBudget()
         },
@@ -213,10 +226,19 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       ),
     )
 
-    // alerts — unscoped (public read)
+    // alerts — scoped so municipal admins can moderate their citizen-visible alerts.
+    const alertsRef =
+      role === 'municipal_admin' && municipalityId
+        ? query(
+            collection(db, 'alerts'),
+            where('affectedMunicipalityIds', 'array-contains', municipalityId),
+          )
+        : role === 'agency_admin'
+          ? query(collection(db, 'alerts'), where('visibility', '==', 'public'))
+          : collection(db, 'alerts')
     unsubscribers.push(
       onSnapshot(
-        collection(db, 'alerts'),
+        alertsRef,
         (snapshot) => {
           setAlerts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })))
           setError(null)
@@ -228,6 +250,35 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         },
       ),
     )
+
+    if (role === 'municipal_admin' || role === 'provincial_superadmin') {
+      const situationRef =
+        role === 'municipal_admin' && municipalityId
+          ? query(
+              collection(db, 'situation_updates'),
+              where('municipalityId', '==', municipalityId),
+            )
+          : collection(db, 'situation_updates')
+      unsubscribers.push(
+        onSnapshot(
+          situationRef,
+          (snapshot) => {
+            setSituationUpdates(
+              snapshot.docs.map((d) => ({
+                id: d.id,
+                ...(d.data() as Omit<SituationUpdateDoc, 'id'>),
+              })),
+            )
+            setError(null)
+            resetRetryBudget()
+          },
+          (err) => {
+            setError(snapshotError(err))
+            scheduleRetry()
+          },
+        ),
+      )
+    }
 
     // map-only: responder accounts
     if (windowType === 'map') {
@@ -282,5 +333,5 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     }
   }, [windowType, db, rtdb, retryCount, role, municipalityId, agencyId, authLoading])
 
-  return { loading, error, reports, reportOps, alerts, responders }
+  return { loading, error, reports, reportOps, alerts, situationUpdates, responders }
 }

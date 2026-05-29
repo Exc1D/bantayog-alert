@@ -13,6 +13,13 @@
 
 ## Citizen PWA / React Hooks
 
+- Citizen-visible surfaces need backend-enforced visibility, not client-only hiding. Alerts and citizen situation posts should carry `visibility: 'public' | 'internal'`; Citizen subscriptions must query `visibility == 'public'`; admin writes should go through callables that record moderation evidence.
+- Citizen situation updates need `municipalityId` as well as a label. Labels are for display; IDs are required for admin scoping, security rules, and municipal moderation.
+- Safety-app gamification must be lifecycle-based, not pressure-based. Use completion and competence cues tied to real report states; avoid streaks, leaderboards, hidden scores, and copy that nudges users to submit more reports.
+- Feed retention for emergency apps should use situational awareness loops, not popularity loops. Show confirmed/urgent/area signals and explicit tracking actions; do not fake likes, comments, rankings, or social pressure.
+- Citizen situation feeds are not emergency reports. Keep them on a separate public collection with short text limits, pseudonymous signed-in create, public read, no update/delete, and a moderation-report subcollection.
+- Pseudonymous citizen writes cannot use `isAuthed()` when that helper requires active account claims. Use `request.auth != null` plus strict field ownership/validation for anonymous-friendly citizen paths.
+- Chronological public feeds need an approved composite index before `where('visibility') + orderBy('createdAt')`; do not sneak index edits past the risky-change approval gate.
 - Filter invalid entries individually (`raw.filter(isStoredReport)`); discarding the whole array wipes all stored reports on one stale entry.
 - Track from localForage before `report_lookup` materializes; `onSnapshot` upgrades automatically.
 - Normalise incident-type aliases at the draft boundary (e.g. `public_disturbance` → `security`).

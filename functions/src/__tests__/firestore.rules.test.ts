@@ -36,6 +36,7 @@ if (testEnv) {
       severity: 'info',
       publishedAt: 1713350400000,
       publishedBy: 'phase-1-bootstrap',
+      visibility: 'public',
     })
 
     await db.collection('system_config').doc('min_app_version').set({

@@ -151,6 +151,14 @@
       "collectionGroup": "alerts",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "visibility", "order": "ASCENDING" },
+        { "fieldPath": "publishedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "targetMunicipalityIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "sentAt", "order": "DESCENDING" }
       ]

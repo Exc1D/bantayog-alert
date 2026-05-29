@@ -49,6 +49,21 @@ export const callables = {
     },
     { visibilityClass: 'internal'; reportId: string }
   >('unpublishReport'),
+  setCitizenContentVisibility: callable<
+    {
+      surface: 'feed' | 'alerts'
+      contentId: string
+      visibility: 'public' | 'internal'
+      reason:
+        | 'sensitive_content'
+        | 'privacy_request'
+        | 'false_or_misleading'
+        | 'legal_request'
+        | 'other'
+      idempotencyKey: IdempotencyKey
+    },
+    { surface: 'feed' | 'alerts'; contentId: string; visibility: 'public' | 'internal' }
+  >('setCitizenContentVisibility'),
   dispatchResponder: callable<
     { reportId: string; responderUid: string; idempotencyKey: IdempotencyKey },
     { dispatchId: string; status: DispatchStatus; reportId: string }
@@ -66,7 +81,12 @@ export const callables = {
     { status: ReportStatus; reportId: string }
   >('closeReport'),
   shareReport: callable<
-    { reportId: string; targetMunicipalityId: string; reason?: string; idempotencyKey: IdempotencyKey },
+    {
+      reportId: string
+      targetMunicipalityId: string
+      reason?: string
+      idempotencyKey: IdempotencyKey
+    },
     { status: 'shared' }
   >('shareReport'),
   mergeDuplicates: callable<
@@ -204,7 +224,12 @@ export const callables = {
     { uid: string }
   >('createResponder'),
   redispatchReport: callable<
-    { oldDispatchId: string; newResponderUid: string; reason: string; idempotencyKey: IdempotencyKey },
+    {
+      oldDispatchId: string
+      newResponderUid: string
+      reason: string
+      idempotencyKey: IdempotencyKey
+    },
     { newDispatchId: string; status: DispatchStatus; reportId: string }
   >('redispatchReport'),
   reopenReport: callable<

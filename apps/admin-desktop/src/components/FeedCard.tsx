@@ -59,13 +59,14 @@ export function FeedCard({
   onError,
 }: Props) {
   const label = visibilityLabel(raw, report)
-  const featuredIds = Array.isArray(raw.featuredMediaIds)
-    ? (raw.featuredMediaIds as string[])
-    : []
+  const featuredIds = Array.isArray(raw.featuredMediaIds) ? (raw.featuredMediaIds as string[]) : []
 
-  const severityColor = SEVERITY_COLORS[report.severity] || 'var(--color-text-muted)'
-  const typeInitial = (report.type || '?').slice(0, 1).toUpperCase()
-  const badgeStyle = STATUS_BADGE_STYLES[label] ?? { color: 'var(--color-text-muted)', bg: 'rgba(255,255,255,0.06)' }
+  const severityColor = SEVERITY_COLORS[report.severity] ?? 'var(--color-text-muted)'
+  const typeInitial = report.type.slice(0, 1).toUpperCase()
+  const badgeStyle = STATUS_BADGE_STYLES[label] ?? {
+    color: 'var(--color-text-muted)',
+    bg: 'rgba(255,255,255,0.06)',
+  }
 
   const severityBorder = report.severity === 'high' ? 'border-t-2' : 'border-t-0'
   const severityBorderColor = report.severity === 'high' ? severityColor : 'transparent'

@@ -15,6 +15,7 @@ export { advanceDispatch } from './domains/dispatches/advance-dispatch.js';
 export { declineDispatch } from './domains/dispatches/decline-dispatch.js';
 export { escalateDispatch } from './domains/dispatches/escalate-dispatch.js';
 export { getOpsMetrics } from './domains/ops/callables.js';
+export { setCitizenContentVisibility } from './domains/ops/citizen-content-visibility.js';
 export { closeReport } from './domains/reports/close-report.js';
 export { submitResponderWitnessedReport } from './domains/reports/submit-responder-witnessed-report.js';
 export { triggerSOS } from './domains/agency/trigger-sos.js';
@@ -29,7 +30,6 @@ export { borderAutoShareTrigger } from './domains/reports/border-auto-share.js';
 export { duplicateClusterTrigger } from './domains/reports/duplicate-cluster-trigger.js';
 export { mergeDuplicates } from './domains/reports/merge-duplicates.js';
 export { initiateShiftHandoff, acceptShiftHandoff } from './domains/agency/shift-handoff.js';
-export { initiateResponderHandoff, acceptResponderHandoff, } from './domains/agency/responder-shift-handoff.js';
 export { subscribeToAlerts } from './domains/alerts/subscribe-to-alerts.js';
 export { unsubscribeFromAlerts } from './domains/alerts/unsubscribe-to-alerts.js';
 // onMediaFinalize is lazily instantiated to avoid triggering Firebase Functions v2

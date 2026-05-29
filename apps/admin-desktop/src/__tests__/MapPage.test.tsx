@@ -30,7 +30,7 @@ describe('MapPage', () => {
         <MapPage />
       </MemoryRouter>,
     )
-    expect(screen.getByText('Provincial Map — Camarines Norte')).toBeInTheDocument()
+    expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
   })
 
   it('opens alert declaration from the map header', () => {

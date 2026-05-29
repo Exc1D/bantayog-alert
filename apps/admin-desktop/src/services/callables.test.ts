@@ -67,6 +67,13 @@ describe('callables backend/frontend coverage', () => {
       duplicateReportIds: ['report-2'],
       idempotencyKey: 'a1b2c3d4-0000-4000-8000-000000000002',
     },
+    setCitizenContentVisibility: {
+      surface: 'feed',
+      contentId: 'sit-1',
+      visibility: 'internal',
+      reason: 'sensitive_content',
+      idempotencyKey: 'a1b2c3d4-0000-4000-8000-000000000004',
+    },
     setErasureLegalHold: {
       erasureRequestId: 'erase-1',
       hold: true,

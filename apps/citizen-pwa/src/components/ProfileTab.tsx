@@ -9,7 +9,6 @@ import {
   Award,
   ShieldCheck,
   HeartHandshake,
-  Flame,
   TrendingUp,
   ChevronRight,
   Lock,
@@ -62,10 +61,15 @@ const BADGE_DEFS: Omit<BadgeDef, 'earned'>[] = [
   {
     id: 'community-helper',
     label: 'Community Helper',
-    description: 'Filed 3+ reports',
+    description: 'Reports added community context',
     Icon: HeartHandshake,
   },
-  { id: 'active-citizen', label: 'Active Citizen', description: 'Filed 5+ reports', Icon: Flame },
+  {
+    id: 'active-citizen',
+    label: 'Local Signal',
+    description: 'Reports helped map local risk',
+    Icon: MapPin,
+  },
 ]
 
 function useBadges(reports: MyReport[]): BadgeDef[] {
@@ -100,14 +104,14 @@ function GuardianPitchCard({ onRegister }: { onRegister: () => void }) {
       </div>
       <h2 className="m-0 text-white text-xl font-bold leading-tight mb-1">Become a Guardian</h2>
       <p className="m-0 text-white/80 text-sm mb-4 leading-relaxed">
-        Samahan mo kaming magbantay. Register to track your impact, earn recognition, and help your
-        community when it matters most.
+        Samahan mo kaming magbantay. Register to keep report history, track verified impact, and
+        help your community when it matters most.
       </p>
       <div className="flex flex-col gap-2 mb-4">
         {[
           'Track your reports across devices',
-          'Earn Guardian badges',
-          'Get recognized by your community',
+          'Build real reporting skill',
+          'Share useful status updates',
         ].map((item) => (
           <div key={item} className="flex items-center gap-2">
             <CheckCircle size={14} className="text-white/80 shrink-0" />
@@ -127,6 +131,20 @@ function GuardianPitchCard({ onRegister }: { onRegister: () => void }) {
 }
 
 /* ── Report milestone tracker ── */
+function impactGuidance(counts: {
+  sent: number
+  review: number
+  verified: number
+  resolved: number
+}): string {
+  if (counts.resolved > 0) return 'Response loop complete. Keep the reference for your records.'
+  if (counts.verified > 0)
+    return 'Verified signal. Watch for responder updates before sending duplicates.'
+  if (counts.review > 0)
+    return 'Under review. Keep your phone nearby in case responders need details.'
+  return 'Report sent. Keep the reference code ready until it is verified.'
+}
+
 function MilestoneTracker({ reports }: { reports: MyReport[] }) {
   const counts = {
     sent: reports.length,
@@ -141,12 +159,19 @@ function MilestoneTracker({ reports }: { reports: MyReport[] }) {
     { label: 'Verified', count: counts.verified },
     { label: 'Resolved', count: counts.resolved },
   ]
+  const activeSignals = data.filter((m) => m.count > 0).length
+  const guidance = impactGuidance(counts)
 
   return (
     <div className="bg-white rounded-xl border border-surface-200 p-4 mx-4 mt-4">
-      <div className="flex items-center gap-2 mb-3">
-        <TrendingUp size={16} className="text-brand-500" />
-        <h2 className="text-sm font-semibold text-surface-700">Report Milestones</h2>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={16} className="text-brand-500" />
+          <h2 className="text-sm font-semibold text-surface-700">Impact Path</h2>
+        </div>
+        <span className="text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-200 px-2 py-1 rounded-full">
+          {activeSignals}/4 signals
+        </span>
       </div>
       <div className="flex gap-2">
         {data.map((m, i) => {
@@ -175,6 +200,10 @@ function MilestoneTracker({ reports }: { reports: MyReport[] }) {
             </div>
           )
         })}
+      </div>
+      <div className="mt-4 flex items-start gap-2 rounded-lg bg-surface-100 px-3 py-2">
+        <CheckCircle size={14} className="text-brand-500 shrink-0 mt-0.5" />
+        <p className="m-0 text-xs leading-relaxed text-surface-600">{guidance}</p>
       </div>
     </div>
   )
@@ -352,8 +381,8 @@ export function ProfileTab() {
         <div className="mx-4 mt-5">
           <div className="flex items-center gap-2 mb-3">
             <Award size={16} className="text-surface-400" />
-            <h2 className="m-0 text-sm font-semibold text-surface-500">Guardian Badges</h2>
-            <span className="text-[10px] text-surface-400 ml-auto">Register to unlock</span>
+            <h2 className="m-0 text-sm font-semibold text-surface-500">Guardian Skills</h2>
+            <span className="text-[10px] text-surface-400 ml-auto">Register to track</span>
           </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {BADGE_DEFS.map((badge) => (
@@ -507,7 +536,7 @@ export function ProfileTab() {
       <div className="mx-4 mt-4">
         <div className="flex items-center gap-2 mb-3">
           <Award size={16} className="text-brand-500" />
-          <h2 className="text-sm font-semibold text-surface-700">Achievements</h2>
+          <h2 className="text-sm font-semibold text-surface-700">Guardian Skills</h2>
         </div>
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {badges.map((badge) => (

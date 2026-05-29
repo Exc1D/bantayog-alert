@@ -218,6 +218,8 @@ interface AlertSeed {
   severity: 'info' | 'low' | 'medium' | 'high' | 'critical'
   publishedAt: number
   publishedBy: string
+  affectedMunicipalityIds: string[]
+  visibility: 'public'
 }
 
 const ALERTS: AlertSeed[] = [
@@ -228,6 +230,8 @@ const ALERTS: AlertSeed[] = [
     severity: 'critical',
     publishedAt: h(1),
     publishedBy: 'Provincial DRRMO',
+    affectedMunicipalityIds: ['daet', 'labo', 'paracale', 'vinzons'],
+    visibility: 'public',
   },
   {
     id: 'seed-alert-002',
@@ -236,6 +240,8 @@ const ALERTS: AlertSeed[] = [
     severity: 'high',
     publishedAt: h(3),
     publishedBy: 'Daet MDRRMO',
+    affectedMunicipalityIds: ['daet'],
+    visibility: 'public',
   },
   {
     id: 'seed-alert-003',
@@ -244,6 +250,8 @@ const ALERTS: AlertSeed[] = [
     severity: 'medium',
     publishedAt: h(8),
     publishedBy: 'DPWH Camarines Norte',
+    affectedMunicipalityIds: ['daet', 'labo'],
+    visibility: 'public',
   },
   {
     id: 'seed-alert-004',
@@ -252,6 +260,8 @@ const ALERTS: AlertSeed[] = [
     severity: 'high',
     publishedAt: h(2),
     publishedBy: 'Paracale MDRRMO',
+    affectedMunicipalityIds: ['paracale'],
+    visibility: 'public',
   },
   {
     id: 'seed-alert-005',
@@ -260,6 +270,8 @@ const ALERTS: AlertSeed[] = [
     severity: 'info',
     publishedAt: d(1),
     publishedBy: 'Vinzons MDRRMO',
+    affectedMunicipalityIds: ['vinzons'],
+    visibility: 'public',
   },
 ]
 

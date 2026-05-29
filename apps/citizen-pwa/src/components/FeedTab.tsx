@@ -1,11 +1,15 @@
-import { useState } from 'react'
-import { MapPin, Info } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useState, type SyntheticEvent } from 'react'
+import { AlertTriangle, CheckCircle2, Flag, Info, MapPin, Send, ShieldCheck } from 'lucide-react'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
-import { usePublicIncidents } from '../hooks/usePublicIncidents.js'
-import { incidentIcon, incidentLabel } from '../utils/incident-meta.js'
-import { getSeverityStyle } from '../utils/useSeverityStyle.js'
-import type { PublicIncident, Filters } from './MapTab/types.js'
+import { useSituationUpdates } from '../hooks/useSituationUpdates.js'
+import { hasFirebaseConfig } from '../services/firebase.js'
+import {
+  createSituationUpdate,
+  reportSituationUpdate,
+  type SituationCondition,
+  type SituationHazardType,
+  type SituationUpdate,
+} from '../services/situation-updates.js'
 
 function timeAgo(timestamp: number): string {
   const minutes = Math.floor((Date.now() - timestamp) / 60000)
@@ -16,70 +20,366 @@ function timeAgo(timestamp: number): string {
   return `${String(Math.floor(hours / 24))}d ago`
 }
 
-function FeedCard({ incident, onTap }: { incident: PublicIncident; onTap: () => void }) {
-  const icon = incidentIcon(incident.reportType)
-  const label = incidentLabel(incident.reportType)
-  const severityStyle = getSeverityStyle(incident.severity)
+function locationLabel(update: SituationUpdate): string {
+  return `${update.barangayLabel ? `${update.barangayLabel}, ` : ''}${update.municipalityLabel}`
+}
+
+function titleCase(value: string): string {
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function plural(count: number, singular: string, pluralLabel: string): string {
+  return `${String(count)} ${count === 1 ? singular : pluralLabel}`
+}
+
+const HAZARD_OPTIONS: { value: SituationHazardType; label: string }[] = [
+  { value: 'typhoon', label: 'Typhoon' },
+  { value: 'flood', label: 'Flood' },
+  { value: 'storm_surge', label: 'Storm surge' },
+  { value: 'landslide', label: 'Landslide' },
+  { value: 'earthquake', label: 'Earthquake' },
+  { value: 'fire', label: 'Fire' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'power_outage', label: 'Power outage' },
+  { value: 'road_blocked', label: 'Road blocked' },
+  { value: 'other', label: 'Other' },
+]
+
+const CONDITION_OPTIONS: { value: SituationCondition; label: string }[] = [
+  { value: 'safe', label: 'Safe' },
+  { value: 'light_rain', label: 'Light rain' },
+  { value: 'heavy_rain', label: 'Heavy rain' },
+  { value: 'flooding', label: 'Flooding' },
+  { value: 'strong_wind', label: 'Strong wind' },
+  { value: 'needs_help', label: 'Needs help' },
+  { value: 'blocked_road', label: 'Blocked road' },
+  { value: 'power_outage', label: 'Power outage' },
+  { value: 'other', label: 'Other' },
+]
+
+const MUNICIPALITY_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'All' },
+  ...[...CAMARINES_NORTE_MUNICIPALITIES]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .map((m) => ({ value: m.label, label: m.label })),
+]
+
+const POST_MUNICIPALITY_OPTIONS = MUNICIPALITY_OPTIONS.filter((option) => option.value)
+const MUNICIPALITY_LABEL_TO_ID = Object.fromEntries(
+  CAMARINES_NORTE_MUNICIPALITIES.map((municipality) => [municipality.label, municipality.id]),
+)
+
+function CommunityPulse({ updates }: { updates: SituationUpdate[] }) {
+  const needsHelpCount = updates.filter((update) => update.condition === 'needs_help').length
+  const areaCount = new Set(updates.map((update) => update.municipalityLabel)).size
 
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)] text-left cursor-pointer block border-none"
+    <section
+      aria-label="Community pulse"
+      className="mx-3 mb-2 rounded-xl border border-surface-200 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
     >
-      {/* Header row */}
-      <div className="flex items-start justify-between p-4 pb-2">
-        <span
-          aria-hidden="true"
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-surface-100 text-lg"
-        >
-          {icon}
-        </span>
-        <div className="ml-3 flex-1 min-w-0">
-          <div className="flex justify-between items-start gap-2">
-            <p className="m-0 font-semibold text-surface-900 text-sm leading-snug">{label}</p>
-            <span className="flex-shrink-0 text-xs text-surface-500">
-              {timeAgo(incident.submittedAt)}
-            </span>
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+          <ShieldCheck size={18} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="m-0 text-sm font-bold text-surface-900">Community Pulse</h2>
+            <span className="text-[11px] font-semibold text-success-600">Live sharing</span>
           </div>
-          <p className="mt-1 mb-0 text-xs text-surface-500 flex items-center gap-0.5">
-            <MapPin size={11} className="inline flex-shrink-0" />
-            <span>
-              {incident.barangayId ? `${incident.barangayId}, ` : ''}
-              {incident.municipalityLabel}
-            </span>
+          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
+            Situation updates from citizens across the selected area.
+          </p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div>
+              <p className="m-0 text-base font-bold text-surface-900">
+                {plural(updates.length, 'update', 'updates')}
+              </p>
+              <p className="m-0 text-[10px] text-surface-500">shared</p>
+            </div>
+            <div>
+              <p className="m-0 text-base font-bold text-danger-600">
+                {plural(needsHelpCount, 'needs help', 'needs help')}
+              </p>
+              <p className="m-0 text-[10px] text-surface-500">needs attention</p>
+            </div>
+            <div>
+              <p className="m-0 text-base font-bold text-brand-600">
+                {plural(areaCount, 'area', 'areas')}
+              </p>
+              <p className="m-0 text-[10px] text-surface-500">active</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SituationComposer({
+  firebaseConfigured,
+  selectedMunicipality,
+  onPosted,
+}: {
+  firebaseConfigured: boolean
+  selectedMunicipality: string
+  onPosted: (message: string) => void
+}) {
+  const [municipalityLabel, setMunicipalityLabel] = useState(selectedMunicipality || 'Daet')
+  const [barangayLabel, setBarangayLabel] = useState('')
+  const [hazardType, setHazardType] = useState<SituationHazardType>('typhoon')
+  const [condition, setCondition] = useState<SituationCondition>('heavy_rain')
+  const [body, setBody] = useState('')
+  const [submitState, setSubmitState] = useState<'idle' | 'posting' | 'posted' | 'error'>('idle')
+  const trimmedBody = body.trim()
+
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault()
+    if (!firebaseConfigured || trimmedBody.length < 3 || submitState === 'posting') return
+    setSubmitState('posting')
+    try {
+      const trimmedBarangay = barangayLabel.trim()
+      await createSituationUpdate({
+        municipalityId: MUNICIPALITY_LABEL_TO_ID[municipalityLabel] ?? municipalityLabel,
+        municipalityLabel,
+        ...(trimmedBarangay ? { barangayLabel: trimmedBarangay } : {}),
+        hazardType,
+        condition,
+        body: trimmedBody,
+      })
+      setBody('')
+      setBarangayLabel('')
+      setSubmitState('posted')
+      onPosted('Update posted')
+    } catch (err: unknown) {
+      console.error('Failed to post situation update', err)
+      setSubmitState('error')
+      onPosted('Could not post update')
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        void handleSubmit(event)
+      }}
+      className="mx-3 mb-2 rounded-xl border border-surface-200 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-full bg-surface-900 text-white flex items-center justify-center shrink-0">
+          <MapPin size={18} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="m-0 text-sm font-bold text-surface-900">
+            Share what is happening near you
+          </h2>
+          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
+            Short local updates help neighbors compare conditions during typhoons and floods.
           </p>
         </div>
       </div>
 
-      {incident.featuredMediaUrls && incident.featuredMediaUrls.length > 0 && (
-        <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto">
-          {incident.featuredMediaUrls.slice(0, 3).map((url, idx) => (
-            <img
-              key={String(idx)}
-              loading="lazy"
-              src={url}
-              alt=""
-              className="h-[60px] w-[100px] rounded-lg object-cover flex-shrink-0 bg-surface-100"
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Footer action row */}
-      <div className="border-t border-surface-100 px-4 py-2 flex items-center gap-4">
-        <span
-          className="px-2 py-0.5 rounded-full text-xs font-semibold"
-          style={{ backgroundColor: severityStyle.bg, color: severityStyle.fg }}
-        >
-          {severityStyle.label}
-        </span>
-        <span className="text-xs text-surface-500 capitalize">
-          {incident.status.replace(/_/g, ' ')}
-        </span>
-        <span className="ml-auto text-xs font-medium text-brand-500">Track</span>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <label className="text-[11px] font-semibold text-surface-600">
+          Municipality
+          <select
+            aria-label="Municipality"
+            value={municipalityLabel}
+            onChange={(event) => {
+              setMunicipalityLabel(event.target.value)
+            }}
+            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
+          >
+            {POST_MUNICIPALITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-[11px] font-semibold text-surface-600">
+          Barangay
+          <input
+            aria-label="Barangay (optional)"
+            value={barangayLabel}
+            onChange={(event) => {
+              setBarangayLabel(event.target.value)
+            }}
+            placeholder="Optional"
+            maxLength={80}
+            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 text-sm text-surface-900"
+          />
+        </label>
       </div>
-    </button>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <label className="text-[11px] font-semibold text-surface-600">
+          Situation type
+          <select
+            aria-label="Situation type"
+            value={hazardType}
+            onChange={(event) => {
+              setHazardType(event.target.value as SituationHazardType)
+            }}
+            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
+          >
+            {HAZARD_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-[11px] font-semibold text-surface-600">
+          Current condition
+          <select
+            aria-label="Current condition"
+            value={condition}
+            onChange={(event) => {
+              setCondition(event.target.value as SituationCondition)
+            }}
+            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
+          >
+            {CONDITION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="mt-3 block text-[11px] font-semibold text-surface-600">
+        Update
+        <textarea
+          aria-label="Share situation update"
+          value={body}
+          onChange={(event) => {
+            setBody(event.target.value.slice(0, 500))
+            if (submitState !== 'posting') setSubmitState('idle')
+          }}
+          placeholder="Roads clear in Labo, light rain only..."
+          rows={3}
+          className="mt-1 w-full resize-none rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm leading-relaxed text-surface-900"
+        />
+      </label>
+
+      <div className="mt-3 flex items-center gap-3">
+        <span className="text-[11px] text-surface-500">{String(trimmedBody.length)}/500</span>
+        {!firebaseConfigured && (
+          <span className="text-[11px] font-medium text-warning-600">
+            Live sharing unavailable here.
+          </span>
+        )}
+        <button
+          type="submit"
+          disabled={!firebaseConfigured || trimmedBody.length < 3 || submitState === 'posting'}
+          className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-full border-none bg-brand-600 px-4 text-sm font-bold text-white disabled:bg-surface-200 disabled:text-surface-500"
+        >
+          <Send size={15} />
+          {submitState === 'posting' ? 'Posting' : 'Post update'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function FeedCard({
+  update,
+  onReport,
+  reporting,
+  position,
+  setSize,
+}: {
+  update: SituationUpdate
+  onReport: () => void
+  reporting: boolean
+  position: number
+  setSize: number
+}) {
+  const hazardLabel = titleCase(update.hazardType)
+  const conditionLabel = titleCase(update.condition)
+  const location = locationLabel(update)
+  const headingId = `feed-post-${update.id}`
+  const needsHelp = update.condition === 'needs_help'
+
+  return (
+    <article
+      aria-labelledby={headingId}
+      aria-posinset={position}
+      aria-setsize={setSize}
+      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-surface-100"
+    >
+      <div className="flex items-start gap-3 p-4 pb-2">
+        <span
+          aria-hidden="true"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-brand-50 text-brand-600"
+        >
+          <AlertTriangle size={18} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="m-0 font-semibold text-surface-900 text-sm leading-snug">
+                Citizen update
+              </p>
+              <p className="mt-0.5 mb-0 text-xs text-surface-500 flex items-center gap-1">
+                <span>{timeAgo(update.createdAt)}</span>
+                <span aria-hidden="true">·</span>
+                <MapPin size={11} className="inline flex-shrink-0" />
+                <span className="truncate">{location}</span>
+              </p>
+            </div>
+            <span className="flex-shrink-0 text-xs text-surface-500">Public</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 pb-3">
+        <h2 id={headingId} className="m-0 text-base font-bold leading-snug text-surface-900">
+          {hazardLabel} update in {location}
+        </h2>
+        <p className="m-0 mt-2 whitespace-pre-wrap text-sm leading-relaxed text-surface-700">
+          {update.body}
+        </p>
+      </div>
+
+      <div className="border-t border-surface-100 px-4 py-2 flex items-center gap-2">
+        <span
+          className={
+            needsHelp
+              ? 'inline-flex items-center gap-1 rounded-full bg-danger-50 px-2 py-0.5 text-xs font-semibold text-danger-700'
+              : 'inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700'
+          }
+        >
+          {needsHelp ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
+          {conditionLabel}
+        </span>
+        <span className="rounded-full bg-surface-100 px-2 py-0.5 text-xs font-semibold text-surface-600">
+          {hazardLabel}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 border-t border-surface-100">
+        <div className="flex min-h-11 items-center justify-center gap-1 text-xs font-semibold text-surface-500">
+          <Info size={14} />
+          Area context
+        </div>
+        <button
+          type="button"
+          onClick={onReport}
+          disabled={reporting}
+          aria-label={`Report post ${hazardLabel} update in ${location}`}
+          className="inline-flex min-h-11 items-center justify-center gap-1 bg-white border-none border-l border-surface-100 text-sm font-semibold text-surface-600 active:bg-surface-50 cursor-pointer disabled:text-surface-400"
+        >
+          <Flag size={14} />
+          {reporting ? 'Reporting' : 'Report post'}
+        </button>
+      </div>
+    </article>
   )
 }
 
@@ -98,26 +398,33 @@ function SkeletonCard() {
   )
 }
 
-const MUNICIPALITY_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'All' },
-  ...[...CAMARINES_NORTE_MUNICIPALITIES]
-    .sort((a, b) => a.label.localeCompare(b.label))
-    .map((m) => ({ value: m.label, label: m.label })),
-]
-
 export function FeedTab() {
-  const navigate = useNavigate()
-  const [filters, setFilters] = useState<Filters>({ municipality: '' })
-  const { incidents, loading, error } = usePublicIncidents(filters)
+  const [filters, setFilters] = useState({ municipality: '' })
+  const [notice, setNotice] = useState<string | null>(null)
+  const [reportingId, setReportingId] = useState<string | null>(null)
+  const firebaseConfigured = hasFirebaseConfig()
+  const { updates, loading, error } = useSituationUpdates(filters)
+
+  async function handleReport(updateId: string): Promise<void> {
+    if (reportingId) return
+    setReportingId(updateId)
+    try {
+      await reportSituationUpdate(updateId, 'Needs review')
+      setNotice('Post reported for review')
+    } catch (err: unknown) {
+      console.error('Failed to report situation update', err)
+      setNotice('Could not report post')
+    } finally {
+      setReportingId(null)
+    }
+  }
 
   return (
     <div className="h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-      {/* Sticky top bar */}
       <div className="sticky top-0 z-20 bg-surface-50/90 px-4 py-3 flex flex-col border-b border-surface-200">
         <div className="flex items-center justify-between">
-          <h1 className="text-[20px] font-bold text-surface-900 m-0">Incident Feed</h1>
+          <h1 className="text-[20px] font-bold text-surface-900 m-0">Situation Feed</h1>
         </div>
-        {/* Municipality filter chips */}
         <div
           role="group"
           aria-label="Filter by municipality"
@@ -143,8 +450,23 @@ export function FeedTab() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="py-3 pb-24">
+        <SituationComposer
+          key={filters.municipality || 'all'}
+          firebaseConfigured={firebaseConfigured}
+          selectedMunicipality={filters.municipality}
+          onPosted={setNotice}
+        />
+
+        {notice && (
+          <div
+            role="status"
+            className="mx-3 mb-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700"
+          >
+            {notice}
+          </div>
+        )}
+
         {loading ? (
           <>
             <SkeletonCard />
@@ -156,37 +478,45 @@ export function FeedTab() {
             role="alert"
             className="mx-3 mt-2 p-4 rounded-xl bg-red-100 text-red-800 text-center text-sm"
           >
-            <p className="m-0 mb-1 font-bold">Could not load incidents</p>
-            <p className="m-0 text-xs">Hindi makuha ang mga ulat. Subukan ulit.</p>
+            <p className="m-0 mb-1 font-bold">Could not load situation updates</p>
+            <p className="m-0 text-xs">Hindi makuha ang mga update. Subukan ulit.</p>
           </div>
-        ) : incidents.length === 0 ? (
+        ) : updates.length === 0 ? (
           <div
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="flex flex-col items-center justify-center min-h-[50vh] text-surface-500 px-4"
+            className="flex flex-col items-center justify-center min-h-[38vh] text-surface-500 px-4"
           >
             <span className="text-surface-400 mb-3">
               <Info size={40} />
             </span>
-            <p className="m-0 mb-1 font-bold text-surface-900 text-[15px]">No incidents</p>
+            <p className="m-0 mb-1 font-bold text-surface-900 text-[15px]">No situation updates</p>
             <p className="m-0 text-[13px] text-surface-600 text-center">
-              No incidents reported in the selected time window.
+              Be the first to share what conditions are like in your area.
               <span className="block text-xs text-surface-500 mt-1 italic">
-                Walang naiulat na insidente sa panahong ito.
+                Magbahagi ng maikling update kung ligtas gawin.
               </span>
             </p>
           </div>
         ) : (
-          incidents.map((incident) => (
-            <FeedCard
-              key={incident.id}
-              incident={incident}
-              onTap={() => {
-                void navigate(`/incidents/${incident.id}`)
-              }}
-            />
-          ))
+          <>
+            <CommunityPulse updates={updates} />
+            <div role="feed" aria-label="Community situation feed">
+              {updates.map((update, index) => (
+                <FeedCard
+                  key={update.id}
+                  update={update}
+                  position={index + 1}
+                  setSize={updates.length}
+                  reporting={reportingId === update.id}
+                  onReport={() => {
+                    void handleReport(update.id)
+                  }}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

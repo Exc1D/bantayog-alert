@@ -25,6 +25,7 @@ export function buildPhase1SeedDocs(updatedAt: number) {
         severity: 'info',
         publishedAt: updatedAt,
         publishedBy: 'phase-1-bootstrap',
+        visibility: 'public',
       },
     ],
   }
