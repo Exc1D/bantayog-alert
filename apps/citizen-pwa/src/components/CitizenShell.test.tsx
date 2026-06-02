@@ -141,7 +141,7 @@ describe('CitizenShell', () => {
 
   it('shows offline banner when navigatorOnline is false', () => {
     renderShell('/', { offline: true, queueCount: 3 })
-    expect(screen.getByText('Offline — 3 reports queued')).toBeInTheDocument()
+    expect(screen.getByText('Offline. 3 reports queued')).toBeInTheDocument()
   })
 
   it('hides offline banner when online', () => {

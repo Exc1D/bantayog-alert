@@ -1,20 +1,22 @@
 # Test Hardening for Production — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended)
-**Goal:** Close the 4 critical testing gaps identified by the QA assessment so the codebase can pass production readiness gates.
-**Architecture:** Add CI-gated e2e proof, unit-test shared-data constants, schedule k6 load tests nightly, and fill responder-app critical flow coverage.
-**Tech Stack:** GitHub Actions, Playwright, k6, Vitest, Firebase emulators
+> **Goal:** Close the 4 critical testing gaps identified by the QA assessment so the codebase can pass production readiness gates.
+> **Architecture:** Add CI-gated e2e proof, unit-test shared-data constants, schedule k6 load tests nightly, and fill responder-app critical flow coverage.
+> **Tech Stack:** GitHub Actions, Playwright, k6, Vitest, Firebase emulators
 
 ---
 
 ## Task 1: Add e2e CI Job (Playwright Full-Loop Against Emulators)
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 **Context:** The existing `ci.yml` already runs unit tests and emulator-based function tests, but it does NOT run the Playwright e2e suite. The `proof-local` script (`scripts/proof-local.mjs`) already orchestrates: build functions → start `pnpm dev:all` (emulators + 3 dev servers) → run `e2e-tests/specs/full-loop.spec.ts` → teardown. We can replicate this in CI.
 
 **Requirements to add to CI:**
+
 - Java 21 (already used by existing emulator jobs)
 - Node.js (from `.nvmrc`)
 - `corepack` + `pnpm`
@@ -33,6 +35,7 @@
 - [ ] **Step 1: Add CI job section to `.github/workflows/ci.yml` after the `build` job**
 
 Add a new job named `e2e-full-loop` that:
+
 1. `needs: [build, functions-emulator-test]` (we need successful build + function tests first)
 2. `runs-on: ubuntu-latest`
 3. Installs Node, Java 21, corepack, pnpm
@@ -45,33 +48,34 @@ Add a new job named `e2e-full-loop` that:
 **Reference snippet to insert after the `build` job:**
 
 ```yaml
-  e2e-full-loop:
-    name: E2E Full-Loop Proof
-    needs: [build, functions-emulator-test]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: corepack enable
-      - run: corepack prepare pnpm@${PNPM_VERSION} --activate
-      - run: pnpm install --frozen-lockfile
-      - name: Build apps and functions for emulator hosting
-        run: pnpm build
-      - name: Run full-loop proof against local emulator stack
-        run: BANTAYOG_PROOF_TARGET=local pnpm --dir e2e-tests proof:local
-        env:
-          BANTAYOG_FIREBASE_PROJECT_ID: demo-bantayog-alert
-          CI: true
+e2e-full-loop:
+  name: E2E Full-Loop Proof
+  needs: [build, functions-emulator-test]
+  runs-on: ubuntu-latest
+  timeout-minutes: 20
+  steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version-file: .nvmrc
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '21'
+    - run: corepack enable
+    - run: corepack prepare pnpm@${PNPM_VERSION} --activate
+    - run: pnpm install --frozen-lockfile
+    - name: Build apps and functions for emulator hosting
+      run: pnpm build
+    - name: Run full-loop proof against local emulator stack
+      run: BANTAYOG_PROOF_TARGET=local pnpm --dir e2e-tests proof:local
+      env:
+        BANTAYOG_FIREBASE_PROJECT_ID: demo-bantayog-alert
+        CI: true
 ```
 
 **Important caveats & risks:**
+
 - `proof:local` starts ALL dev servers; in GitHub Actions this may be slow or flaky due to resource limits.
 - `proof:local` also runs `pnpm dev:all` which is designed for local interactive use. It may spawn too many processes or timeout.
 - We MUST confirm whether `proof:local` is deterministic enough for CI.
@@ -80,15 +84,15 @@ Add a new job named `e2e-full-loop` that:
 Instead of `proof:local`, do the CI build + emulator + playwright directly:
 
 ```yaml
-      - name: Start Firebase emulators
-        run: |
-          pnpm dlx firebase-tools emulators:start --only firestore,auth,database,storage,functions --project demo-bantayog-alert &
-          echo $! > emulator.pid
-          npx wait-on http://127.0.0.1:8081 --timeout 120000
-      - name: Seed local proof accounts
-        run: BANTAYOG_PROOF_TARGET=local pnpm exec tsx e2e-tests/fixtures/reliability-spine.ts seed
-      - name: Run full-loop e2e
-        run: BANTAYOG_PROOF_TARGET=local pnpm --dir e2e-tests exec playwright test specs/full-loop.spec.ts
+- name: Start Firebase emulators
+  run: |
+    pnpm dlx firebase-tools emulators:start --only firestore,auth,database,storage,functions --project demo-bantayog-alert &
+    echo $! > emulator.pid
+    npx wait-on http://127.0.0.1:8081 --timeout 120000
+- name: Seed local proof accounts
+  run: BANTAYOG_PROOF_TARGET=local pnpm exec tsx e2e-tests/fixtures/reliability-spine.ts seed
+- name: Run full-loop e2e
+  run: BANTAYOG_PROOF_TARGET=local pnpm --dir e2e-tests exec playwright test specs/full-loop.spec.ts
 ```
 
 Wait-on is not installed by default. We could use a simple Node script to poll ports.
@@ -100,15 +104,18 @@ Wait-on is not installed by default. We could use a simple Node script to poll p
 ## Task 2: Add Unit Tests to `@bantayog/shared-data`
 
 **Files:**
+
 - Create: `packages/shared-data/src/index.test.ts`
 - Modify: `packages/shared-data/package.json` (if needed to add test script)
 - Modify: root `vitest.config.ts` (monorepo workspace configuration — likely already handles it)
 
 **Context:** `shared-data` currently exports only:
+
 - `CAMARINES_NORTE_MUNICIPALITY_IDS` const array
 - `CamarinesNorteMunicipalityId` type
 
 These are critical constants used by analytics snapshot writers and mass-alert scope validation. Even a simple constant array should have a test that:
+
 1. Asserts the array contains all 12 municipalities (regression guard against accidental deletion)
 2. Asserts the type can be used as a union (type-level check)
 
@@ -122,18 +129,24 @@ Create `packages/shared-data/src/index.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest'
-import {
-  CAMARINES_NORTE_MUNICIPALITY_IDS,
-  type CamarinesNorteMunicipalityId,
-} from './index.js'
+import { CAMARINES_NORTE_MUNICIPALITY_IDS, type CamarinesNorteMunicipalityId } from './index.js'
 
 describe('shared-data constants', () => {
   it('contains all 12 Camarines Norte municipalities', () => {
     expect(CAMARINES_NORTE_MUNICIPALITY_IDS).toHaveLength(12)
     const expected = new Set([
-      'basud','capalonga','daet','san_lorenzo_ruiz',
-      'jose_panganiban','labo','mercedes','paracale',
-      'san_vicente','santa_elena','talisay','vinzons',
+      'basud',
+      'capalonga',
+      'daet',
+      'san_lorenzo_ruiz',
+      'jose_panganiban',
+      'labo',
+      'mercedes',
+      'paracale',
+      'san_vicente',
+      'santa_elena',
+      'talisay',
+      'vinzons',
     ])
     const actual = new Set(CAMARINES_NORTE_MUNICIPALITY_IDS)
     expect(actual).toEqual(expected)
@@ -158,6 +171,7 @@ describe('shared-data constants', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
+
 ```bash
 pnpm --dir packages/shared-data exec vitest run src/index.test.ts
 ```
@@ -166,6 +180,7 @@ Expected: If `package.json` in `shared-data` does not have a `test` script, it m
 
 **If package.json needs a test script:**
 Add to `packages/shared-data/package.json` scripts:
+
 ```json
 "test": "vitest run --pass-with-no-tests"
 ```
@@ -175,6 +190,7 @@ Add to `packages/shared-data/package.json` scripts:
 ```bash
 pnpm --dir packages/shared-data exec vitest run src/index.test.ts
 ```
+
 Expected: PASS
 
 ---
@@ -182,11 +198,13 @@ Expected: PASS
 ## Task 3: Add k6 Load-Test CI Gate (Scheduled, Not Per-PR)
 
 **Files:**
+
 - Create: `.github/workflows/load-test.yml`
 
 **Context:** `e2e-tests/k6/run.cjs` is a wrapper that runs `k6 run scenarios/${SCENARIO}.js`. The scenarios directory exists but we don't know the filenames yet. We will create a scheduled workflow that runs nightly against staging, NOT per-PR.
 
 **Risks:**
+
 - Requires k6 CLI in GitHub Actions (use `grafana/k6-action` or install via apt).
 - Requires staging secrets (do NOT commit them).
 - Load test target URL must be staging, never production.
@@ -204,7 +222,7 @@ name: Load Test
 
 on:
   schedule:
-    - cron: '0 3 * * *'   # 03:00 UTC daily
+    - cron: '0 3 * * *' # 03:00 UTC daily
   workflow_dispatch:
 
 env:
@@ -241,9 +259,11 @@ jobs:
 
 **Note:** The exact scenario(s) will need to be iterated. Default to `accept-dispatch-race` if that file exists in `e2e-tests/k6/scenarios/`.
 s
+
 - [ ] **Step 2: Verify scenario file exists**
 
 Run:
+
 ```bash
 ls e2e-tests/k6/scenarios/
 ```
@@ -255,6 +275,7 @@ If the default scenario `accept-dispatch-race.js` is missing, adjust the default
 ## Task 4: Audit Responder-App Coverage and Add Critical Flow Tests
 
 **Files:**
+
 - Read: `apps/responder-app/src/main.tsx` (entrypoint)
 - Read: `apps/responder-app/src/App.tsx` (routes)
 - Glob: `apps/responder-app/src/**/__tests__/*.test.ts*` (existing tests)
@@ -264,6 +285,7 @@ If the default scenario `accept-dispatch-race.js` is missing, adjust the default
 **Context:** QA identified responder-app as having fewer tests (45 files) compared to citizen-pwa (68 files). The critical responder flows are: accept dispatch, on-scene status update, field note sync.
 
 **Plan:**
+
 1. Audit the existing responder-app tests to see if these critical flows are covered.
 2. If missing, add focused unit/integration tests using vitest + happydom (same pattern as other apps).
 
@@ -272,10 +294,12 @@ If the default scenario `accept-dispatch-race.js` is missing, adjust the default
 ### Task 4 Steps
 
 - [ ] **Step 1: Audit responder-app `main.tsx` and `App.tsx`**
-Run:
+      Run:
+
 ```bash
 cat apps/responder-app/src/main.tsx
 ```
+
 ```bash
 cat apps/responder-app/src/App.tsx
 ```
@@ -283,12 +307,14 @@ cat apps/responder-app/src/App.tsx
 Identify the primary routes and components involved in dispatch acceptance, responder status updates, and field note submission.
 
 - [ ] **Step 2: Glob existing responder tests and identify top gaps**
-Run:
+      Run:
+
 ```bash
 find apps/responder-app/src -name "*.test.*" | sort
 ```
 
 Compare against the critical responder flows:
+
 - Dispatch list / detail
 - Accept / reject dispatch
 - Update responder status (acknowledge → en_route → on_scene → resolved)
@@ -324,30 +350,39 @@ If Step 2 shows existing tests ARE sufficient (e.g., 45 tests cover those flows 
 After implementing ALL tasks:
 
 1. **Run root-level tests**:
+
 ```bash
 pnpm test
 ```
+
 Expected: All pass.
 
 2. **Run load-test script locally (dry-run):**
+
 ```bash
 SCENARIO=accept-dispatch-race pnpm run load-test
 ```
+
 Expected: Runs without crashing (may fail on staging auth; that's expected in local dev without secrets).
 
 3. **Run e2e proof locally** (to confirm CI approach will work):
+
 ```bash
 BANTAYOG_PROOF_TARGET=local pnpm --dir e2e-tests proof:local
 ```
+
 Expected: `full-loop.spec.ts` passes.
 
 4. **Verify CI file syntax**:
+
 ```bash
 pnpm exec actionlint .github/workflows/ci.yml .github/workflows/load-test.yml
 ```
+
 If `actionlint` is not installed, use online action linter or run `act` locally.
 
 5. **Update docs**:
+
 - Append to `docs/learnings.md` about why CI needs e2e/scheduled load tests.
 - Append to `docs/progress.md` tracking this hardening.
 

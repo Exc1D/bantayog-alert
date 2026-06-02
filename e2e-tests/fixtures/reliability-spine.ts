@@ -2,15 +2,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { getApps, initializeApp } from 'firebase-admin/app'
-import {
-  getAuth,
-  type Auth,
-  type UserRecord,
-} from 'firebase-admin/auth'
-import {
-  getDatabase,
-  type Database,
-} from 'firebase-admin/database'
+import { getAuth, type Auth, type UserRecord } from 'firebase-admin/auth'
+import { getDatabase, type Database } from 'firebase-admin/database'
 import {
   getFirestore,
   type DocumentData,
@@ -207,9 +200,7 @@ async function requireActiveAccount(
     throw new Error(`Staging proof ${input.label} role must be ${input.role}`)
   }
   if (data.municipalityId !== input.municipalityId) {
-    throw new Error(
-      `Staging proof ${input.label} municipalityId must be ${input.municipalityId}`,
-    )
+    throw new Error(`Staging proof ${input.label} municipalityId must be ${input.municipalityId}`)
   }
 }
 
@@ -290,10 +281,17 @@ export function isAuthUserNotFound(err: unknown): boolean {
       ? String((err as { code?: unknown }).code)
       : ''
   const message = err instanceof Error ? err.message : String(err)
-  return code === 'auth/user-not-found' || message.includes('auth/user-not-found') || message.includes('user not found')
+  return (
+    code === 'auth/user-not-found' ||
+    message.includes('auth/user-not-found') ||
+    message.includes('user not found')
+  )
 }
 
-async function seedAdminUser(auth: Auth, db: Firestore): Promise<{ email: string; password: string; uid: string }> {
+async function seedAdminUser(
+  auth: Auth,
+  db: Firestore,
+): Promise<{ email: string; password: string; uid: string }> {
   const email = 'daet-admin-test-01@test.local'
   const password = 'test123456'
   const uid = 'daet-admin-test-01'
@@ -373,16 +371,19 @@ async function seedResponderLocation(rtdb: Database, input: { uid: string }): Pr
 }
 
 async function seedProofMunicipality(db: Firestore): Promise<void> {
-  await db.collection('municipalities').doc('daet').set(
-    {
-      id: 'daet',
-      label: 'Daet',
-      provinceId: 'camarines-norte',
-      centroid: { lat: 14.1, lng: 122.95 },
-      schemaVersion: 1,
-    },
-    { merge: true },
-  )
+  await db
+    .collection('municipalities')
+    .doc('daet')
+    .set(
+      {
+        id: 'daet',
+        label: 'Daet',
+        provinceId: 'camarines-norte',
+        centroid: { lat: 14.1, lng: 122.95 },
+        schemaVersion: 1,
+      },
+      { merge: true },
+    )
 }
 
 export async function seedLocalProofAccounts(): Promise<ProofCredentials> {
@@ -474,10 +475,10 @@ export async function runManualInboxProcessor(): Promise<ManualInboxSummary> {
   const stdoutChunks: Buffer[] = []
   const stderrChunks: Buffer[] = []
   let exitSignal: NodeJS.Signals | null = null
-  child.stdout?.on('data', (chunk: Buffer) => {
+  child.stdout.on('data', (chunk: Buffer) => {
     stdoutChunks.push(chunk)
   })
-  child.stderr?.on('data', (chunk: Buffer) => {
+  child.stderr.on('data', (chunk: Buffer) => {
     stderrChunks.push(chunk)
   })
 

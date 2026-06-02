@@ -205,7 +205,9 @@ describe('MapPage UX completeness', () => {
 
     const list = screen.getByLabelText(/keyboard-navigable incident list/i)
     expect(list).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /flood incident, severity high, at Daet, Camambugan/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /flood incident, severity high, at Daet, Camambugan/i }),
+    ).toBeInTheDocument()
   })
 
   it('selects report via keyboard list button', () => {

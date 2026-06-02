@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 
 const mockOnSnapshot = vi.hoisted(() => vi.fn())
 const mockQuery = vi.hoisted(() => vi.fn())
+const mockWhere = vi.hoisted(() => vi.fn())
 const mockOrderBy = vi.hoisted(() => vi.fn())
 const mockLimit = vi.hoisted(() => vi.fn())
 const mockCollection = vi.hoisted(() => vi.fn())
@@ -14,6 +15,7 @@ vi.mock('../app/firebase', () => ({
 vi.mock('firebase/firestore', () => ({
   collection: mockCollection,
   query: mockQuery,
+  where: mockWhere,
   orderBy: mockOrderBy,
   limit: mockLimit,
   onSnapshot: mockOnSnapshot,
@@ -25,6 +27,7 @@ describe('useOfficialAlerts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockCollection.mockReturnValue({ _tag: 'collection' })
+    mockWhere.mockImplementation((...args) => ({ _tag: 'where', args }))
     mockOrderBy.mockImplementation((...args) => ({ _tag: 'orderBy', args }))
     mockLimit.mockImplementation((...args) => ({ _tag: 'limit', args }))
     mockQuery.mockImplementation((...parts) => ({ _tag: 'query', parts }))
@@ -36,10 +39,12 @@ describe('useOfficialAlerts', () => {
     renderHook(() => useOfficialAlerts())
 
     expect(mockCollection).toHaveBeenCalledWith(mockDb, 'alerts')
+    expect(mockWhere).toHaveBeenCalledWith('visibility', '==', 'public')
     expect(mockOrderBy).toHaveBeenCalledWith('publishedAt', 'desc')
     expect(mockLimit).toHaveBeenCalledWith(20)
     expect(mockQuery).toHaveBeenCalledWith(
       { _tag: 'collection' },
+      { _tag: 'where', args: ['visibility', '==', 'public'] },
       { _tag: 'orderBy', args: ['publishedAt', 'desc'] },
       { _tag: 'limit', args: [20] },
     )

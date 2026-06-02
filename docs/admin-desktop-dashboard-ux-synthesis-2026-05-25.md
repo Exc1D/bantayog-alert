@@ -4,6 +4,7 @@
 **Scope:** `@bantayog/admin-desktop`
 **Surface:** PDRRMO Camarines Norte command-center dashboard
 **Inputs incorporated:**
+
 - `docs/ux-evaluation-admin-desktop-2026-05-25.md`
 - `docs/research-dashboard-layout-2026-05-25.md`
 - Source inspection of `DashboardPage`, `CommandHeader`, `DispatchStatsCards`, `EscalationQueueSection`, `MunicipalPerformanceTable`, `DispatchVolumeChart`, and related tests
@@ -147,6 +148,7 @@ For this product, the practical standard is:
 **Why it matters:** During surge, lower-priority charts should recede and actionable blockers should dominate. During calm, readiness and freshness matter more than empty panels.
 
 **Fix:** Define dashboard modes:
+
 - `calm`: all-clear, readiness, last activity, feed freshness
 - `active`: affected municipalities, active incidents, pending actions
 - `degraded`: offline/stale feeds, manual fallback guidance
@@ -201,33 +203,33 @@ For this product, the practical standard is:
 
 ## Nielsen Heuristic Score
 
-| # | Heuristic | Score | Key issue |
-|---|---|---:|---|
-| 1 | Visibility of system status | 3/4 | Live/offline exists; stale/degraded widget-level freshness is weak |
-| 2 | Match system and real world | 3/4 | DRRMO language is good; geography-first crisis view is missing |
-| 3 | User control and freedom | 2/4 | Dashboard re-dispatch action is not wired |
-| 4 | Consistency and standards | 3/4 | Header/tokens are consistent; unknown states are inconsistent |
-| 5 | Error prevention | 2/4 | Dead high-stakes action and missing confirmations/feedback in some flows |
-| 6 | Recognition rather than recall | 3/4 | Labels are clear; users must remember thresholds |
-| 7 | Flexibility and efficiency | 3/4 | Keyboard shortcuts and multi-window patterns exist |
-| 8 | Aesthetic and minimalist design | 3/4 | Restrained UI; panel hierarchy still too flat |
-| 9 | Error recovery | 2/4 | Error banners exist; success/recovery guidance incomplete |
-| 10 | Help and documentation | 2/4 | Shortcut help exists; onboarding/contextual guidance missing |
-| **Total** |  | **26/40** | Needs work before high-stakes pilot use |
+| #         | Heuristic                       |     Score | Key issue                                                                |
+| --------- | ------------------------------- | --------: | ------------------------------------------------------------------------ |
+| 1         | Visibility of system status     |       3/4 | Live/offline exists; stale/degraded widget-level freshness is weak       |
+| 2         | Match system and real world     |       3/4 | DRRMO language is good; geography-first crisis view is missing           |
+| 3         | User control and freedom        |       2/4 | Dashboard re-dispatch action is not wired                                |
+| 4         | Consistency and standards       |       3/4 | Header/tokens are consistent; unknown states are inconsistent            |
+| 5         | Error prevention                |       2/4 | Dead high-stakes action and missing confirmations/feedback in some flows |
+| 6         | Recognition rather than recall  |       3/4 | Labels are clear; users must remember thresholds                         |
+| 7         | Flexibility and efficiency      |       3/4 | Keyboard shortcuts and multi-window patterns exist                       |
+| 8         | Aesthetic and minimalist design |       3/4 | Restrained UI; panel hierarchy still too flat                            |
+| 9         | Error recovery                  |       2/4 | Error banners exist; success/recovery guidance incomplete                |
+| 10        | Help and documentation          |       2/4 | Shortcut help exists; onboarding/contextual guidance missing             |
+| **Total** |                                 | **26/40** | Needs work before high-stakes pilot use                                  |
 
 ## Evidence Map
 
-| Claim | Evidence |
-|---|---|
-| Dashboard route is primary command surface | `apps/admin-desktop/src/routes.tsx` maps `/dashboard` to `DashboardPage` |
-| Command header provides persistent orientation | `apps/admin-desktop/src/components/CommandHeader.tsx` |
-| Main dashboard layout is stats, escalation, charts, events, responders, municipal table | `apps/admin-desktop/src/pages/DashboardPage.tsx` |
-| Re-dispatch is visible but not wired | `DashboardPage.handleReDispatch`; `EscalationQueueSection` button |
-| KPI cards lack threshold context | `apps/admin-desktop/src/components/DispatchStatsCards.tsx` |
-| Municipal unknowns use generic placeholders | `apps/admin-desktop/src/components/MunicipalPerformanceTable.tsx` |
-| Existing UX gaps include success feedback, skip link, mobile block, onboarding, search | `docs/ux-evaluation-admin-desktop-2026-05-25.md` |
+| Claim                                                                                     | Evidence                                                                          |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Dashboard route is primary command surface                                                | `apps/admin-desktop/src/routes.tsx` maps `/dashboard` to `DashboardPage`          |
+| Command header provides persistent orientation                                            | `apps/admin-desktop/src/components/CommandHeader.tsx`                             |
+| Main dashboard layout is stats, escalation, charts, events, responders, municipal table   | `apps/admin-desktop/src/pages/DashboardPage.tsx`                                  |
+| Re-dispatch is visible but not wired                                                      | `DashboardPage.handleReDispatch`; `EscalationQueueSection` button                 |
+| KPI cards lack threshold context                                                          | `apps/admin-desktop/src/components/DispatchStatsCards.tsx`                        |
+| Municipal unknowns use generic placeholders                                               | `apps/admin-desktop/src/components/MunicipalPerformanceTable.tsx`                 |
+| Existing UX gaps include success feedback, skip link, mobile block, onboarding, search    | `docs/ux-evaluation-admin-desktop-2026-05-25.md`                                  |
 | Operational dashboard principles require speed, action, context, geography, and freshness | `docs/research-dashboard-layout-2026-05-25.md` plus current dashboard UX research |
-| Automated design anti-pattern scan found no inspected-file findings | `npx impeccable --json --fast ...` returned `[]` during this audit |
+| Automated design anti-pattern scan found no inspected-file findings                       | `npx impeccable --json --fast ...` returned `[]` during this audit                |
 
 ## Final Product Direction
 
@@ -244,4 +246,3 @@ The strongest next design move is a top-level situation layer:
 ```
 
 That layer should drive the rest of the dashboard. Charts, tables, and feed entries are supporting evidence. The first screen must make the room smarter in seconds.
-

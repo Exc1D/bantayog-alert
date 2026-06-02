@@ -18,6 +18,20 @@ describe('ConfirmationModal', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
+  it('renders above map triage panels', () => {
+    render(
+      <ConfirmationModal
+        open
+        title="Verify?"
+        message="Are you sure?"
+        confirmLabel="Verify"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('dialog').parentElement).toHaveClass('z-[1100]')
+  })
+
   it('does not render when closed', () => {
     render(
       <ConfirmationModal
