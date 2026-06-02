@@ -7,7 +7,7 @@
  *
  * Starts:
  *   - Firebase emulators (auth 9099, firestore 8081, db 9000, storage 9199,
- *                        functions 5001, hosting 5002/5007/5008, pubsub 8085)
+ *                        functions 5001)
  *   - citizen-pwa       http://localhost:5173
  *   - admin-desktop     http://localhost:5175
  *   - responder-app     http://localhost:5174
@@ -85,7 +85,13 @@ const emulators = start(
   'emulators',
   colors.emulators,
   'pnpm',
-  ['dlx', 'firebase-tools', 'emulators:start'],
+  [
+    'dlx',
+    'firebase-tools',
+    'emulators:start',
+    '--only',
+    'auth,firestore,database,storage,functions',
+  ],
   {
     cwd: rootDir,
   },

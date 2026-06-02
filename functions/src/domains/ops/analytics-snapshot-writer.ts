@@ -1,7 +1,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '../../admin-init.js'
-import { CAMARINES_NORTE_MUNICIPALITY_IDS } from '@bantayog/shared-data'
+import { CAMARINES_NORTE_MUNICIPALITY_IDS } from '@bantayog/shared-types'
 import { logDimension } from '@bantayog/shared-validators'
 
 const log = logDimension('analyticsSnapshotWriter')

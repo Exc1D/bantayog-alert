@@ -10,7 +10,7 @@ let municipalityBoundaries = null;
 function getMunicipalityBoundaries() {
     if (!municipalityBoundaries) {
         const require = createRequire(import.meta.url);
-        const filePath = require.resolve('@bantayog/shared-data/municipality-boundaries.geojson');
+        const filePath = require.resolve('@bantayog/shared-types/municipality-boundaries.geojson');
         municipalityBoundaries = JSON.parse(readFileSync(filePath, 'utf8'));
     }
     return municipalityBoundaries;
@@ -97,14 +97,14 @@ export const borderAutoShareTrigger = onDocumentCreated({ document: 'report_ops/
     const opsData = event.data?.data() ?? {};
     let boundaryGeohashSet = new Set();
     try {
-        const mod = (await import('@bantayog/shared-data'));
+        const mod = (await import('@bantayog/shared-types'));
         boundaryGeohashSet = mod.BOUNDARY_GEOHASH_SET ?? new Set();
     }
     catch (err) {
         log({
             severity: 'WARNING',
-            code: 'border.shared-data-missing',
-            message: `Failed to import @bantayog/shared-data: ${err instanceof Error ? err.message : String(err)}`,
+            code: 'border.shared-types-missing',
+            message: `Failed to import BOUNDARY_GEOHASH_SET from @bantayog/shared-types: ${err instanceof Error ? err.message : String(err)}`,
         });
     }
     await borderAutoShareCore(adminDb, {

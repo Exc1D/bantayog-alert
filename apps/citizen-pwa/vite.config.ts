@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
-import { assertNoEmulatorInProduction } from '@bantayog/shared-build-utils'
+import { assertNoEmulatorInProduction } from '../../scripts/assert-no-emulator.mjs'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig(({ command, mode }) => {

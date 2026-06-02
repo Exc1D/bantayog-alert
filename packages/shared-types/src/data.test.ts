@@ -28,10 +28,11 @@ describe('shared-data constants', () => {
   })
 
   it('type narrows to known municipality ids at compile time', () => {
-    // Runtime assertion that the exported type can receive literal values
     const assertMunicipality = (id: CamarinesNorteMunicipalityId) => id
     expect(assertMunicipality('daet')).toBe('daet')
     expect(assertMunicipality('labo')).toBe('labo')
     expect(assertMunicipality('vinzons')).toBe('vinzons')
+    // @ts-expect-error invalid municipality ids must stay rejected
+    assertMunicipality('not_a_camarines_norte_municipality')
   })
 })

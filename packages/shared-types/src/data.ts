@@ -3,11 +3,10 @@
 // spec §11.1. Phase 0 delivers only the package structure.
 
 /**
-
-12 Camarines Norte municipalities — used by analytics snapshot writer and
-mass-alert scope validation.
-*/
-export const CAMARINES_NORTE_MUNICIPALITY_IDS = [
+ * 12 Camarines Norte municipalities — used by analytics snapshot writer and
+ * mass-alert scope validation.
+ */
+export const CAMARINES_NORTE_MUNICIPALITY_IDS = Object.freeze([
   'basud',
   'capalonga',
   'daet',
@@ -20,6 +19,6 @@ export const CAMARINES_NORTE_MUNICIPALITY_IDS = [
   'santa_elena',
   'talisay',
   'vinzons',
-] as const
+] as const)
 
 export type CamarinesNorteMunicipalityId = (typeof CAMARINES_NORTE_MUNICIPALITY_IDS)[number]

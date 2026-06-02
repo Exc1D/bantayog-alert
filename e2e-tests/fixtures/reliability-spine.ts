@@ -436,7 +436,7 @@ export async function waitForQueryExactlyOne<T extends DocumentData>(
   while (Date.now() - startedAt < timeoutMs) {
     const snapshot = await read()
     if (snapshot.docs.length === 1) {
-      return snapshot.docs[0] as QueryDocumentSnapshot<T>
+      return snapshot.docs[0]
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs))
   }
@@ -498,21 +498,20 @@ export async function runManualInboxProcessor(): Promise<ManualInboxSummary> {
 
   for (const rawLine of stdout.split(/\r?\n/)) {
     const line = rawLine.trimEnd()
-    const candidateMatch = line.match(/^Found (\d+) unprocessed inbox item\(s\)\.$/)
+    const candidateMatch = /^Found (\d+) unprocessed inbox item\(s\)\.$/.exec(line)
     if (candidateMatch) {
       candidateCount = Number(candidateMatch[1])
       continue
     }
 
-    const processingMatch = line.match(/^Processing inbox (.+)\.\.\.$/)
+    const processingMatch = /^Processing inbox (.+)\.\.\.$/.exec(line)
     if (processingMatch) {
       currentClientDraftRef = processingMatch[1]
       continue
     }
 
-    const processedMatch = line.match(
-      /^✅ Materialized: (true|false), Report ID: ([^,]+), Public Ref: (.+)$/,
-    )
+    const processedMatch =
+      /^✅ Materialized: (true|false), Report ID: ([^,]+), Public Ref: (.+)$/.exec(line)
     if (processedMatch && currentClientDraftRef) {
       const materialized = processedMatch[1] === 'true'
       results.push({
@@ -525,7 +524,7 @@ export async function runManualInboxProcessor(): Promise<ManualInboxSummary> {
       continue
     }
 
-    const failedMatch = line.match(/^❌ Failed: (.+)$/)
+    const failedMatch = /^❌ Failed: (.+)$/.exec(line)
     if (failedMatch && currentClientDraftRef) {
       results.push({
         clientDraftRef: currentClientDraftRef,
@@ -561,7 +560,7 @@ export async function cleanupProofRun(
   ledger: ProofLedger,
 ): Promise<void> {
   const { db, auth, rtdb } = services
-  const deletes: Array<{ label: string; run: () => Promise<unknown> }> = []
+  const deletes: { label: string; run: () => Promise<unknown> }[] = []
 
   if (ledger.publicRef && !ledger.reportId) {
     const lookup = await db.collection('report_lookup').doc(ledger.publicRef).get()
