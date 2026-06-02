@@ -19,7 +19,6 @@ const MANAGED_PORTS = [
   { label: 'responder-app', host: 'localhost', port: 5174 },
   { label: 'admin-desktop', host: 'localhost', port: 5175 },
   { label: 'firestore emulator', host: '127.0.0.1', port: 8081 },
-  { label: 'pubsub emulator', host: '127.0.0.1', port: 8085 },
   { label: 'rtdb emulator', host: '127.0.0.1', port: 9000 },
   { label: 'auth emulator', host: '127.0.0.1', port: 9099 },
   { label: 'storage emulator', host: '127.0.0.1', port: 9199 },
