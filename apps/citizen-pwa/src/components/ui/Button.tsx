@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { hapticMedium } from '../../lib/haptics'
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'amber' | 'red'
   fullWidth?: boolean
@@ -13,6 +15,7 @@ export function Button({
   disabled = false,
   children,
   className = '',
+  onClick,
   ...props
 }: ButtonProps) {
   return (
@@ -20,6 +23,10 @@ export function Button({
       type="button"
       className={`btn btn--${variant}${fullWidth ? ' btn--full' : ''}${className ? ' ' + className : ''}`}
       disabled={disabled}
+      onClick={(e) => {
+        hapticMedium()
+        onClick?.(e)
+      }}
       {...props}
     >
       {children}

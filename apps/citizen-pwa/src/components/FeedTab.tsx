@@ -507,7 +507,7 @@ function FeedCard({
       aria-labelledby={headingId}
       aria-posinset={position}
       aria-setsize={setSize}
-      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-surface-100"
+      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-surface-100 motion-fade-in"
     >
       <div className="flex items-start gap-3 p-4 pb-2">
         <span
@@ -583,11 +583,11 @@ function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)]">
       <div className="p-4 flex gap-3">
-        <div className="w-10 h-10 rounded-full bg-surface-200 motion-safe:animate-pulse flex-shrink-0" />
+        <div className="w-10 h-10 rounded-full shimmer-gradient flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-3.5 w-[55%] bg-surface-200 rounded motion-safe:animate-pulse mb-2" />
-          <div className="h-3 w-[40%] bg-surface-200 rounded motion-safe:animate-pulse mb-3" />
-          <div className="h-4 w-14 bg-surface-200 rounded-full motion-safe:animate-pulse" />
+          <div className="h-3.5 w-[55%] rounded shimmer-gradient mb-2" />
+          <div className="h-3 w-[40%] rounded shimmer-gradient mb-3" />
+          <div className="h-4 w-14 rounded-full shimmer-gradient" />
         </div>
       </div>
     </div>
