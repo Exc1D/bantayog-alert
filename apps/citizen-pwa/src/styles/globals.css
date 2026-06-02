@@ -52,6 +52,8 @@
   --color-dot-inactive: #e0e3e5;
   --color-body-bg: #f7f9fb;
 
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
   font-family:
     'Inter',
     -apple-system,
@@ -129,7 +131,14 @@ body {
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition:
+    transform 0.18s var(--ease-spring),
+    background-color 0.15s;
+  touch-action: manipulation;
+}
+
+.btn:not(:disabled):active {
+  transform: scale(0.96);
 }
 
 .btn:focus {
@@ -195,6 +204,14 @@ body {
   justify-content: center;
   color: var(--color-primary);
   font-size: 1rem;
+  transition:
+    transform 0.18s var(--ease-spring),
+    background-color 0.15s;
+  touch-action: manipulation;
+}
+
+.back-btn:active {
+  transform: scale(0.92);
 }
 
 .back-btn:focus {
@@ -1236,5 +1253,193 @@ body {
 @media (max-width: 360px) {
   .report-status-pill {
     top: calc(50% - 2rem);
+  }
+}
+
+/* === Premium UX: Subtle animations (Lesson 2) === */
+
+/* Fade-in-up for lists and cards on first paint */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-fade-in {
+  animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Stagger children via CSS custom property delay */
+.motion-stagger > * {
+  animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Shimmer loading skeleton (bidirectional gradient sweep) */
+.shimmer-gradient {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-100) 25%,
+    var(--color-surface-200) 50%,
+    var(--color-surface-100) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSweep 1.5s infinite linear;
+}
+
+@keyframes shimmerSweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Toggle glow when checked */
+@keyframes glowCheck {
+  0% {
+    box-shadow: 0 0 0 rgba(15, 148, 136, 0);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(15, 148, 136, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(15, 148, 136, 0);
+  }
+}
+
+/* Reduced-motion guard */
+@media (prefers-reduced-motion: reduce) {
+  .motion-fade-in,
+  .motion-stagger > *,
+  .shimmer-gradient {
+    animation: none;
+  }
+}
+
+/* === Premium UX: Alive & Fun (Lesson 6) === */
+
+/* Center button (FAB) subtle pulse-breathe — signals primary action */
+@keyframes fabBreathe {
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
+  }
+}
+
+.fab-breathe {
+  animation: fabBreathe 2.5s ease-in-out infinite;
+}
+
+/* Alert badge gentle bell-ring shake */
+@keyframes badgeRing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(8deg);
+  }
+  20% {
+    transform: rotate(-6deg);
+  }
+  30% {
+    transform: rotate(4deg);
+  }
+  40% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(1deg);
+  }
+  60% {
+    transform: rotate(0deg);
+  }
+}
+
+.badge-shake {
+  animation: badgeRing 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  transform-origin: 50% 0%;
+}
+
+/* Card hover lift — subtle depth on desktop hover, press state on touch */
+.card-hover {
+  transition: transform 0.18s var(--ease-spring), box-shadow 0.18s ease;
+}
+
+.card-hover:hover:not(:active) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.card-hover:active {
+  transform: scale(0.985);
+}
+
+/* Spring pop for interactive elements */
+.spring-pop {
+  transition: transform 0.2s var(--ease-spring);
+}
+
+.spring-pop:active {
+  transform: scale(0.94);
+}
+
+/* Subtle rotation for the center button icon */
+@keyframes iconRotateIn {
+  from {
+    transform: rotate(-45deg) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.icon-rotate-in {
+  animation: iconRotateIn 0.3s var(--ease-spring) forwards;
+}
+
+/* Staggered list entrance utility */
+@keyframes slideInStagger {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.slide-in-stagger {
+  opacity: 0;
+}
+
+.slide-in-stagger.visible {
+  animation: slideInStagger 0.25s var(--ease-spring) forwards;
+}
+
+/* Reduced-motion guard for new animations */
+@media (prefers-reduced-motion: reduce) {
+  .fab-breathe,
+  .badge-shake,
+  .icon-rotate-in,
+  .slide-in-stagger.visible {
+    animation: none;
+  }
+  .card-hover:hover:not(:active) {
+    transform: none;
+    box-shadow: none;
   }
 }

@@ -1,4 +1,5 @@
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { useHaptics } from '../lib/haptics'
 
 interface ToggleProps {
   checked: boolean
@@ -9,11 +10,21 @@ interface ToggleProps {
 
 export function Toggle({ checked, onChange, label, disabled = false }: ToggleProps) {
   const reducedMotion = useReducedMotion()
+  const haptics = useHaptics()
+
+  const handleClick = () => {
+    if (disabled) return
+    haptics.light()
+    onChange(!checked)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault()
-      if (!disabled) onChange(!checked)
+      if (!disabled) {
+        haptics.light()
+        onChange(!checked)
+      }
     }
   }
 
@@ -38,9 +49,7 @@ export function Toggle({ checked, onChange, label, disabled = false }: TogglePro
         aria-checked={checked}
         aria-label={label}
         disabled={disabled}
-        onClick={() => {
-          if (!disabled) onChange(!checked)
-        }}
+        onClick={handleClick}
         onKeyDown={handleKeyDown}
         className={trackClasses}
       >
