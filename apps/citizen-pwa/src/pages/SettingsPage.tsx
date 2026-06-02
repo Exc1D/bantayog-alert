@@ -142,7 +142,7 @@ export function SettingsPage() {
           onClick={() => {
             void navigate(-1)
           }}
-          className="p-0 border-none bg-transparent cursor-pointer"
+          className="min-h-11 min-w-11 flex items-center justify-center border-none bg-transparent cursor-pointer"
           aria-label="Go back"
         >
           <ArrowLeft size={20} className="text-[#25292a]" />
@@ -181,7 +181,7 @@ export function SettingsPage() {
           </div>
           {typeof Notification !== 'undefined' && Notification.permission === 'denied' && (
             <p className="text-xs text-surface-500 mt-1">
-              Notifications blocked in browser — enable in site settings.
+              Notifications blocked in browser. Enable in site settings.
             </p>
           )}
         </div>

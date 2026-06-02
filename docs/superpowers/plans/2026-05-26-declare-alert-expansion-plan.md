@@ -12,20 +12,21 @@
 
 ## File Structure
 
-| File | Responsibility |
-|------|-------------|
-| `packages/shared-validators/src/alerts.ts` | Export `HAZARD_TYPES`, `SECTOR_TYPES`, `declareAlertInputSchema` |
-| `functions/src/domains/alerts/callables.ts` | Expand `HAZARD_TYPES`, add new fields to `declareAlertInputSchema`, add conditional validation, write new fields to Firestore |
-| `apps/admin-desktop/src/components/DeclareAlertModal.tsx` | Full form rewrite: grouped type selector, barangay drill-down, sector checkboxes, temporal inputs, conditional road name |
-| `apps/admin-desktop/src/services/callables.ts` | Update `declareAlert` callable type to include new optional fields |
-| `apps/admin-desktop/src/__tests__/DeclareAlertModal.test.tsx` | Unit tests for all new form behaviors |
-| `functions/src/domains/alerts/__tests__/callables.test.ts` | Backend unit tests for new validation rules |
+| File                                                          | Responsibility                                                                                                                |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared-validators/src/alerts.ts`                    | Export `HAZARD_TYPES`, `SECTOR_TYPES`, `declareAlertInputSchema`                                                              |
+| `functions/src/domains/alerts/callables.ts`                   | Expand `HAZARD_TYPES`, add new fields to `declareAlertInputSchema`, add conditional validation, write new fields to Firestore |
+| `apps/admin-desktop/src/components/DeclareAlertModal.tsx`     | Full form rewrite: grouped type selector, barangay drill-down, sector checkboxes, temporal inputs, conditional road name      |
+| `apps/admin-desktop/src/services/callables.ts`                | Update `declareAlert` callable type to include new optional fields                                                            |
+| `apps/admin-desktop/src/__tests__/DeclareAlertModal.test.tsx` | Unit tests for all new form behaviors                                                                                         |
+| `functions/src/domains/alerts/__tests__/callables.test.ts`    | Backend unit tests for new validation rules                                                                                   |
 
 ---
 
 ## Task 1: Expand Shared Validators Schema
 
 **Files:**
+
 - Modify: `packages/shared-validators/src/alerts.ts`
 - Test: `packages/shared-validators/src/alerts.test.ts` (create if missing)
 
@@ -159,6 +160,7 @@ Expected: PASS
 
 Modify: `packages/shared-validators/src/index.ts`
 Add to exports:
+
 ```typescript
 export { declareAlertInputSchema, HAZARD_TYPES, SECTOR_TYPES } from './alerts.js'
 export type { DeclareAlertInput } from './alerts.js'
@@ -177,6 +179,7 @@ git commit -m "feat(shared-validators): expand declareAlert schema with hazard t
 ## Task 2: Update Backend Callable
 
 **Files:**
+
 - Modify: `functions/src/domains/alerts/callables.ts`
 - Test: `functions/src/domains/alerts/__tests__/callables.test.ts`
 
@@ -188,28 +191,36 @@ Add to existing test file `functions/src/domains/alerts/__tests__/callables.test
 it('requires effectiveFrom and effectiveUntil for scheduled_power_interruption', async () => {
   const db = getTestFirestore()
   await expect(
-    declareAlertCore(db, {
-      hazardType: 'scheduled_power_interruption',
-      affectedMunicipalityIds: ['daet'],
-      message: 'Power out',
-    }, { uid: 'admin1', claims: { role: 'pdrmmo' } })
+    declareAlertCore(
+      db,
+      {
+        hazardType: 'scheduled_power_interruption',
+        affectedMunicipalityIds: ['daet'],
+        message: 'Power out',
+      },
+      { uid: 'admin1', claims: { role: 'pdrmmo' } },
+    ),
   ).rejects.toThrow('effectiveFrom and effectiveUntil are required')
 })
 
 it('accepts new fields and writes them to Firestore', async () => {
   const db = getTestFirestore()
   const now = Date.now()
-  const result = await declareAlertCore(db, {
-    hazardType: 'road_closure',
-    affectedMunicipalityIds: ['daet'],
-    message: 'Road closed due to landslide',
-    effectiveFrom: now,
-    effectiveUntil: now + 3600000,
-    expectedResolutionAt: now + 7200000,
-    affectedSectors: ['public_schools'],
-    affectedBarangayIds: ['Alawihao'],
-    roadName: 'Maharlika Highway',
-  }, { uid: 'admin1', claims: { role: 'pdrmmo' } })
+  const result = await declareAlertCore(
+    db,
+    {
+      hazardType: 'road_closure',
+      affectedMunicipalityIds: ['daet'],
+      message: 'Road closed due to landslide',
+      effectiveFrom: now,
+      effectiveUntil: now + 3600000,
+      expectedResolutionAt: now + 7200000,
+      affectedSectors: ['public_schools'],
+      affectedBarangayIds: ['Alawihao'],
+      roadName: 'Maharlika Highway',
+    },
+    { uid: 'admin1', claims: { role: 'pdrmmo' } },
+  )
 
   const doc = await db.collection('alerts').doc(result.alertId).get()
   const data = doc.data()
@@ -272,8 +283,14 @@ export async function declareAlertCore(
   ]
 
   if (requiresEffectivePeriod.includes(validated.hazardType)) {
-    if (typeof validated.effectiveFrom !== 'number' || typeof validated.effectiveUntil !== 'number') {
-      throw new HttpsError('invalid-argument', 'effectiveFrom and effectiveUntil are required for this alert type')
+    if (
+      typeof validated.effectiveFrom !== 'number' ||
+      typeof validated.effectiveUntil !== 'number'
+    ) {
+      throw new HttpsError(
+        'invalid-argument',
+        'effectiveFrom and effectiveUntil are required for this alert type',
+      )
     }
   }
 
@@ -285,8 +302,14 @@ export async function declareAlertCore(
     throw new HttpsError('invalid-argument', 'effectiveUntil must be after effectiveFrom')
   }
 
-  if (validated.roadName != null && !['road_closure', 'bridge_closure'].includes(validated.hazardType)) {
-    throw new HttpsError('invalid-argument', 'roadName is only allowed for road_closure or bridge_closure')
+  if (
+    validated.roadName != null &&
+    !['road_closure', 'bridge_closure'].includes(validated.hazardType)
+  ) {
+    throw new HttpsError(
+      'invalid-argument',
+      'roadName is only allowed for road_closure or bridge_closure',
+    )
   }
 
   if (validated.affectedBarangayIds != null && validated.affectedBarangayIds.length > 0) {
@@ -360,6 +383,7 @@ git commit -m "feat(functions): expand declareAlert callable with temporal, sect
 ## Task 3: Update Frontend Callable Types
 
 **Files:**
+
 - Modify: `apps/admin-desktop/src/services/callables.ts`
 
 - [ ] **Step 1: Update declareAlert callable type**
@@ -394,6 +418,7 @@ git commit -m "feat(admin-desktop): update declareAlert callable types for expan
 ## Task 4: Rewrite DeclareAlertModal Component
 
 **Files:**
+
 - Modify: `apps/admin-desktop/src/components/DeclareAlertModal.tsx`
 - Test: `apps/admin-desktop/src/__tests__/DeclareAlertModal.test.tsx` (create)
 
@@ -472,7 +497,16 @@ const HAZARD_TYPE_LABELS: Record<string, string> = {
 const HAZARD_GROUPS = [
   {
     label: '🌧️ Weather & Flood',
-    types: ['tropical_cyclone', 'heavy_rainfall_warning', 'thunderstorm_advisory', 'flood_advisory', 'storm_surge_warning', 'gale_warning', 'heat_index_warning', 'cold_surge_advisory'],
+    types: [
+      'tropical_cyclone',
+      'heavy_rainfall_warning',
+      'thunderstorm_advisory',
+      'flood_advisory',
+      'storm_surge_warning',
+      'gale_warning',
+      'heat_index_warning',
+      'cold_surge_advisory',
+    ],
   },
   {
     label: '🌋 Geophysical & Natural',
@@ -480,11 +514,27 @@ const HAZARD_GROUPS = [
   },
   {
     label: '🔌 Utilities & Infrastructure',
-    types: ['scheduled_power_interruption', 'emergency_power_interruption', 'water_service_interruption', 'road_closure', 'bridge_closure', 'telecommunication_outage', 'structural_damage'],
+    types: [
+      'scheduled_power_interruption',
+      'emergency_power_interruption',
+      'water_service_interruption',
+      'road_closure',
+      'bridge_closure',
+      'telecommunication_outage',
+      'structural_damage',
+    ],
   },
   {
     label: '📋 Public Service Orders',
-    types: ['class_suspension', 'work_suspension', 'transport_suspension', 'curfew', 'state_of_calamity', 'preemptive_evacuation', 'evacuation_order'],
+    types: [
+      'class_suspension',
+      'work_suspension',
+      'transport_suspension',
+      'curfew',
+      'state_of_calamity',
+      'preemptive_evacuation',
+      'evacuation_order',
+    ],
   },
   {
     label: '🛡️ Security & Health',
@@ -539,7 +589,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
 ```typescript
 const handleHazardTypeChange = useCallback((type: string) => {
   setHazardType(type)
-  
+
   // Pre-check sectors based on type
   if (type === 'class_suspension') {
     setSelectedSectors(new Set(['public_schools', 'private_schools']))
@@ -548,7 +598,7 @@ const handleHazardTypeChange = useCallback((type: string) => {
   } else {
     setSelectedSectors(new Set())
   }
-  
+
   // Clear road name if not applicable
   if (!SHOWS_ROAD_NAME.has(type)) {
     setRoadName('')
@@ -596,20 +646,23 @@ const handleToggleBarangay = useCallback((barangay: string) => {
   })
 }, [])
 
-const handleToggleAllBarangaysForMunicipality = useCallback((municipalityId: string, checked: boolean) => {
-  const barangays = BARANGAYS_BY_MUNICIPALITY[municipalityId] ?? []
-  setSelectedBarangayIds((prev) => {
-    const next = new Set(prev)
-    for (const b of barangays) {
-      if (checked) {
-        next.add(b)
-      } else {
-        next.delete(b)
+const handleToggleAllBarangaysForMunicipality = useCallback(
+  (municipalityId: string, checked: boolean) => {
+    const barangays = BARANGAYS_BY_MUNICIPALITY[municipalityId] ?? []
+    setSelectedBarangayIds((prev) => {
+      const next = new Set(prev)
+      for (const b of barangays) {
+        if (checked) {
+          next.add(b)
+        } else {
+          next.delete(b)
+        }
       }
-    }
-    return next
-  })
-}, [])
+      return next
+    })
+  },
+  [],
+)
 ```
 
 - [ ] **Step 7: Add sector toggle handler**
@@ -626,7 +679,7 @@ const handleToggleSector = useCallback((sector: string) => {
         return new Set(SECTOR_TYPES)
       }
     }
-    
+
     if (next.has(sector)) {
       next.delete(sector)
     } else {
@@ -644,15 +697,15 @@ const handleToggleSector = useCallback((sector: string) => {
 ```typescript
 const validationErrors = useMemo(() => {
   const errors: Record<string, string> = {}
-  
+
   if (!hazardType) {
     errors.hazardType = 'Select an alert type'
   }
-  
+
   if (selectedMunicipalityIds.size === 0) {
     errors.municipalities = 'Select at least one municipality'
   }
-  
+
   if (REQUIRES_EFFECTIVE_PERIOD.has(hazardType)) {
     if (!effectiveFrom) {
       errors.effectiveFrom = 'Start time is required for this alert type'
@@ -661,7 +714,7 @@ const validationErrors = useMemo(() => {
       errors.effectiveUntil = 'End time is required for this alert type'
     }
   }
-  
+
   if (effectiveFrom && effectiveUntil) {
     const fromMs = new Date(effectiveFrom).getTime()
     const untilMs = new Date(effectiveUntil).getTime()
@@ -669,15 +722,15 @@ const validationErrors = useMemo(() => {
       errors.effectiveUntil = 'End time must be after start time'
     }
   }
-  
+
   if (SHOWS_ROAD_NAME.has(hazardType) && !roadName.trim()) {
     errors.roadName = 'Road name is required for this alert type'
   }
-  
+
   if (!message.trim()) {
     errors.message = 'Message is required'
   }
-  
+
   return errors
 }, [hazardType, selectedMunicipalityIds.size, effectiveFrom, effectiveUntil, roadName, message])
 
@@ -687,42 +740,56 @@ const isValid = Object.keys(validationErrors).length === 0
 - [ ] **Step 9: Update handleSubmit**
 
 ```typescript
-const handleSubmit = useCallback(async () => {
-  if (!isValid) return
-  setSubmitting(true)
-  
-  try {
-    const payload: Parameters<typeof callables.declareAlert>[0] = {
-      hazardType,
-      affectedMunicipalityIds: Array.from(selectedMunicipalityIds),
-      message: message.trim(),
-      ...(prefill?.reportId ? { reportId: prefill.reportId } : {}),
-      ...(effectiveFrom ? { effectiveFrom: new Date(effectiveFrom).getTime() } : {}),
-      ...(effectiveUntil ? { effectiveUntil: new Date(effectiveUntil).getTime() } : {}),
-      ...(expectedResolutionAt ? { expectedResolutionAt: new Date(expectedResolutionAt).getTime() } : {}),
-      ...(selectedSectors.size > 0 ? { affectedSectors: Array.from(selectedSectors) } : {}),
-      ...(selectedBarangayIds.size > 0 ? { affectedBarangayIds: Array.from(selectedBarangayIds) } : {}),
-      ...(roadName.trim() ? { roadName: roadName.trim() } : {}),
+const handleSubmit = useCallback(
+  async () => {
+    if (!isValid) return
+    setSubmitting(true)
+
+    try {
+      const payload: Parameters<typeof callables.declareAlert>[0] = {
+        hazardType,
+        affectedMunicipalityIds: Array.from(selectedMunicipalityIds),
+        message: message.trim(),
+        ...(prefill?.reportId ? { reportId: prefill.reportId } : {}),
+        ...(effectiveFrom ? { effectiveFrom: new Date(effectiveFrom).getTime() } : {}),
+        ...(effectiveUntil ? { effectiveUntil: new Date(effectiveUntil).getTime() } : {}),
+        ...(expectedResolutionAt
+          ? { expectedResolutionAt: new Date(expectedResolutionAt).getTime() }
+          : {}),
+        ...(selectedSectors.size > 0 ? { affectedSectors: Array.from(selectedSectors) } : {}),
+        ...(selectedBarangayIds.size > 0
+          ? { affectedBarangayIds: Array.from(selectedBarangayIds) }
+          : {}),
+        ...(roadName.trim() ? { roadName: roadName.trim() } : {}),
+      }
+
+      const result = await callables.declareAlert(payload)
+      onSuccess(result.alertId)
+      onClose()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to declare alert'
+      onError(msg)
+    } finally {
+      setSubmitting(false)
     }
-    
-    const result = await callables.declareAlert(payload)
-    onSuccess(result.alertId)
-    onClose()
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to declare alert'
-    onError(msg)
-  } finally {
-    setSubmitting(false)
-  }
-}, [/* all deps */])
+  },
+  [
+    /* all deps */
+  ],
+)
 ```
 
 - [ ] **Step 10: Rewrite JSX — Alert Type selector**
 
 ```tsx
-{/* Alert Type */}
-<div>
-  <label htmlFor="hazard-type" className="block text-sm font-medium text-[var(--color-text-secondary)]">
+{
+  /* Alert Type */
+}
+;<div>
+  <label
+    htmlFor="hazard-type"
+    className="block text-sm font-medium text-[var(--color-text-secondary)]"
+  >
     Alert Type (required)
   </label>
   <select
@@ -751,8 +818,10 @@ const handleSubmit = useCallback(async () => {
 - [ ] **Step 11: Rewrite JSX — Municipalities + Barangay toggle**
 
 ```tsx
-{/* Municipalities */}
-<div>
+{
+  /* Municipalities */
+}
+;<div>
   <p className="text-sm font-medium text-[var(--color-text-secondary)]">
     Affected Municipalities (required)
   </p>
@@ -775,7 +844,7 @@ const handleSubmit = useCallback(async () => {
   {validationErrors.municipalities && (
     <p className="mt-1 text-xs text-[var(--color-danger)]">{validationErrors.municipalities}</p>
   )}
-  
+
   {selectedMunicipalityIds.size > 0 && (
     <button
       type="button"
@@ -788,54 +857,63 @@ const handleSubmit = useCallback(async () => {
   )}
 </div>
 
-{/* Barangay Selector */}
-{showBarangaySelector && selectedMunicipalityIds.size > 0 && (
-  <div className="rounded border border-dashed border-white/10 p-4">
-    <p className="mb-2 text-xs text-[var(--color-text-muted)]">
-      Barangays in selected municipalities
-    </p>
-    {Array.from(selectedMunicipalityIds).map((municipalityId) => {
-      const barangays = BARANGAYS_BY_MUNICIPALITY[municipalityId] ?? []
-      const allSelected = barangays.length > 0 && barangays.every((b) => selectedBarangayIds.has(b))
-      return (
-        <div key={municipalityId} className="mb-3">
-          <label className="mb-1 flex items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)]">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={(e) => handleToggleAllBarangaysForMunicipality(municipalityId, e.target.checked)}
-              className="h-3.5 w-3.5 accent-[var(--color-danger)]"
-            />
-            {MUNICIPALITY_ID_TO_LABEL[municipalityId]} — select all barangays
-          </label>
-          <div className="grid grid-cols-2 gap-1 pl-5 text-xs">
-            {barangays.map((b) => (
-              <label key={b} className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={selectedBarangayIds.has(b)}
-                  onChange={() => handleToggleBarangay(b)}
-                  className="h-3 w-3 accent-[var(--color-danger)]"
-                />
-                {b}
-              </label>
-            ))}
+{
+  /* Barangay Selector */
+}
+{
+  showBarangaySelector && selectedMunicipalityIds.size > 0 && (
+    <div className="rounded border border-dashed border-white/10 p-4">
+      <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+        Barangays in selected municipalities
+      </p>
+      {Array.from(selectedMunicipalityIds).map((municipalityId) => {
+        const barangays = BARANGAYS_BY_MUNICIPALITY[municipalityId] ?? []
+        const allSelected =
+          barangays.length > 0 && barangays.every((b) => selectedBarangayIds.has(b))
+        return (
+          <div key={municipalityId} className="mb-3">
+            <label className="mb-1 flex items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)]">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={(e) =>
+                  handleToggleAllBarangaysForMunicipality(municipalityId, e.target.checked)
+                }
+                className="h-3.5 w-3.5 accent-[var(--color-danger)]"
+              />
+              {MUNICIPALITY_ID_TO_LABEL[municipalityId]} — select all barangays
+            </label>
+            <div className="grid grid-cols-2 gap-1 pl-5 text-xs">
+              {barangays.map((b) => (
+                <label key={b} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={selectedBarangayIds.has(b)}
+                    onChange={() => handleToggleBarangay(b)}
+                    className="h-3 w-3 accent-[var(--color-danger)]"
+                  />
+                  {b}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
-      )
-    })}
-    <p className="text-xs text-[var(--color-text-muted)]">
-      Tip: If no barangays are selected, the alert applies to the entire municipality.
-    </p>
-  </div>
-)}
+        )
+      })}
+      <p className="text-xs text-[var(--color-text-muted)]">
+        Tip: If no barangays are selected, the alert applies to the entire municipality.
+      </p>
+    </div>
+  )
+}
 ```
 
 - [ ] **Step 12: Rewrite JSX — Sectors**
 
 ```tsx
-{/* Affected Sectors */}
-<div>
+{
+  /* Affected Sectors */
+}
+;<div>
   <p className="text-sm font-medium text-[var(--color-text-secondary)]">Affected Sectors</p>
   <div className="mt-2 grid grid-cols-2 gap-2" role="group" aria-label="Affected Sectors">
     {SECTOR_TYPES.map((sector) => (
@@ -859,8 +937,10 @@ const handleSubmit = useCallback(async () => {
 - [ ] **Step 13: Rewrite JSX — Temporal fields**
 
 ```tsx
-{/* Effective Period */}
-<div>
+{
+  /* Effective Period */
+}
+;<div>
   <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
     Effective Period
     {REQUIRES_EFFECTIVE_PERIOD.has(hazardType) && (
@@ -900,9 +980,14 @@ const handleSubmit = useCallback(async () => {
   )}
 </div>
 
-{/* Expected Resolution */}
-<div>
-  <label htmlFor="expected-resolution" className="block text-sm font-medium text-[var(--color-text-secondary)]">
+{
+  /* Expected Resolution */
+}
+;<div>
+  <label
+    htmlFor="expected-resolution"
+    className="block text-sm font-medium text-[var(--color-text-secondary)]"
+  >
     Expected Resolution (optional)
   </label>
   <input
@@ -921,25 +1006,33 @@ const handleSubmit = useCallback(async () => {
 - [ ] **Step 14: Rewrite JSX — Road Name (conditional)**
 
 ```tsx
-{/* Road Name */}
-{SHOWS_ROAD_NAME.has(hazardType) && (
-  <div>
-    <label htmlFor="road-name" className="block text-sm font-medium text-[var(--color-text-secondary)]">
-      Road / Route Name {hazardType === 'road_closure' || hazardType === 'bridge_closure' ? '*' : ''}
-    </label>
-    <input
-      id="road-name"
-      type="text"
-      value={roadName}
-      onChange={(e) => setRoadName(e.target.value)}
-      placeholder="e.g. Maharlika Highway, Daet-Basud Road"
-      className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
-    />
-    {validationErrors.roadName && (
-      <p className="mt-1 text-xs text-[var(--color-danger)]">{validationErrors.roadName}</p>
-    )}
-  </div>
-)}
+{
+  /* Road Name */
+}
+{
+  SHOWS_ROAD_NAME.has(hazardType) && (
+    <div>
+      <label
+        htmlFor="road-name"
+        className="block text-sm font-medium text-[var(--color-text-secondary)]"
+      >
+        Road / Route Name{' '}
+        {hazardType === 'road_closure' || hazardType === 'bridge_closure' ? '*' : ''}
+      </label>
+      <input
+        id="road-name"
+        type="text"
+        value={roadName}
+        onChange={(e) => setRoadName(e.target.value)}
+        placeholder="e.g. Maharlika Highway, Daet-Basud Road"
+        className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
+      />
+      {validationErrors.roadName && (
+        <p className="mt-1 text-xs text-[var(--color-danger)]">{validationErrors.roadName}</p>
+      )}
+    </div>
+  )
+}
 ```
 
 - [ ] **Step 15: Update reset effect**
@@ -981,6 +1074,7 @@ git commit -m "feat(admin-desktop): expand DeclareAlertModal with 36 types, bara
 ## Task 5: Write Frontend Unit Tests
 
 **Files:**
+
 - Create: `apps/admin-desktop/src/__tests__/DeclareAlertModal.test.tsx`
 
 - [ ] **Step 1: Write tests**
@@ -1039,7 +1133,7 @@ describe('DeclareAlertModal', () => {
     fireEvent.click(screen.getByLabelText(/daet/i))
     fireEvent.click(screen.getByText(/specify barangays/i))
     expect(screen.getByText(/alawihao/i)).toBeInTheDocument()
-    
+
     // Deselect municipality
     fireEvent.click(screen.getByLabelText(/daet/i))
     expect(screen.queryByText(/alawihao/i)).not.toBeInTheDocument()
@@ -1157,18 +1251,18 @@ git commit -m "chore: verify expanded declare alert feature passes all checks"
 
 ## Spec Coverage Check
 
-| Spec Requirement | Task |
-|-----------------|------|
-| 36 hazard types in flat grouped `<select>` | Task 4, Step 10 |
-| `effectiveFrom` / `effectiveUntil` | Task 4, Step 8 + Step 13 |
-| `expectedResolutionAt` | Task 4, Step 8 + Step 13 |
-| `affectedSectors` multi-select | Task 4, Step 7 + Step 12 |
-| `affectedBarangayIds` optional drill-down | Task 4, Step 5 + Step 11 |
-| `roadName` conditional | Task 4, Step 8 + Step 14 |
-| Sector pre-check for class/work suspension | Task 4, Step 4 |
-| Effective period required for scheduled/suspension | Task 4, Step 8 |
-| Backend conditional validation | Task 2, Step 3 |
-| Backward compatibility | All tasks (new fields optional) |
+| Spec Requirement                                   | Task                            |
+| -------------------------------------------------- | ------------------------------- |
+| 36 hazard types in flat grouped `<select>`         | Task 4, Step 10                 |
+| `effectiveFrom` / `effectiveUntil`                 | Task 4, Step 8 + Step 13        |
+| `expectedResolutionAt`                             | Task 4, Step 8 + Step 13        |
+| `affectedSectors` multi-select                     | Task 4, Step 7 + Step 12        |
+| `affectedBarangayIds` optional drill-down          | Task 4, Step 5 + Step 11        |
+| `roadName` conditional                             | Task 4, Step 8 + Step 14        |
+| Sector pre-check for class/work suspension         | Task 4, Step 4                  |
+| Effective period required for scheduled/suspension | Task 4, Step 8                  |
+| Backend conditional validation                     | Task 2, Step 3                  |
+| Backward compatibility                             | All tasks (new fields optional) |
 
 ---
 

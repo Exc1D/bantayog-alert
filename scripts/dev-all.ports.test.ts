@@ -11,4 +11,27 @@ describe('dev-all ports', () => {
     expect(script).not.toContain('http://localhost:3001')
     expect(script).not.toContain('http://localhost:4173')
   })
+
+  it('automatically seeds the canonical empty demo accounts', () => {
+    const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
+
+    expect(script).toContain('scripts/seed-demo-accounts.ts')
+    expect(script).toContain('daet-admin-test-01@test.local')
+    expect(script).toContain('bfp-responder-test-01@test.local')
+    expect(script).not.toContain('scripts/bootstrap-staging.ts')
+  })
+
+  it('stops instead of launching apps after emulator startup fails', () => {
+    const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
+
+    expect(script).toContain("emulators.on('exit', (code)")
+    expect(script).toContain('if (code !== null && code !== 0) shutdown(code)')
+  })
+
+  it('keeps signal names out of the numeric shutdown exit code', () => {
+    const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
+
+    expect(script).toContain("process.on('SIGINT', () => shutdown())")
+    expect(script).toContain("process.on('SIGTERM', () => shutdown())")
+  })
 })

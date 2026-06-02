@@ -69,6 +69,38 @@ describe('useSituationUpdates', () => {
     expect(result.current.updates).toEqual([daetUpdate])
   })
 
+  it('records when updates last arrived', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(12_345)
+    const { result } = renderHook(() => useSituationUpdates({ municipality: '' }))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    expect(result.current.lastUpdatedAt).toBe(12_345)
+    nowSpy.mockRestore()
+  })
+
+  it('can retry after a subscription error', async () => {
+    const unsubscribe = vi.fn()
+    mockSubscribeSituationUpdates.mockImplementation(
+      (_onNext: (updates: SituationUpdate[]) => void, onError: (err: unknown) => void) => {
+        onError(new Error('offline'))
+        return unsubscribe
+      },
+    )
+    const { result } = renderHook(() => useSituationUpdates({ municipality: '' }))
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(Error)
+    })
+    act(() => {
+      result.current.retry()
+    })
+
+    expect(mockSubscribeSituationUpdates).toHaveBeenCalledTimes(2)
+    expect(unsubscribe).toHaveBeenCalledOnce()
+  })
+
   it('returns empty state without subscribing when Firebase is not configured', async () => {
     mockHasFirebaseConfig.mockReturnValue(false)
     const { result } = renderHook(() => useSituationUpdates({ municipality: '' }))

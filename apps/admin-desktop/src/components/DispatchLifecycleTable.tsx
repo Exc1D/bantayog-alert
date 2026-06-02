@@ -36,10 +36,7 @@ function StatusBadge({ status }: { status: string }) {
     style: { color: 'var(--color-text-muted)', backgroundColor: 'rgba(255,255,255,0.06)' },
   }
   return (
-    <span
-      className="inline-flex rounded px-2 py-0.5 text-xs font-medium"
-      style={cfg.style}
-    >
+    <span className="inline-flex rounded px-2 py-0.5 text-xs font-medium" style={cfg.style}>
       {cfg.label}
     </span>
   )
@@ -56,7 +53,14 @@ interface RowRendererProps {
   highlightDispatchId?: string | null
 }
 
-function RowRenderer({ index, style, rows, expandedId, onToggle, highlightDispatchId }: RowRendererProps) {
+function RowRenderer({
+  index,
+  style,
+  rows,
+  expandedId,
+  onToggle,
+  highlightDispatchId,
+}: RowRendererProps) {
   const row = rows[index]
   const rowRef = useRef<HTMLDivElement>(null)
   const expanded = row ? expandedId === row.dispatchId : false
@@ -87,7 +91,12 @@ function RowRenderer({ index, style, rows, expandedId, onToggle, highlightDispat
           }
         }}
       >
-        <span className="w-28 truncate font-mono text-[var(--color-text-secondary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{row.reportId.slice(0, 8)}</span>
+        <span
+          className="w-28 truncate font-mono text-[var(--color-text-secondary)]"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {row.reportId.slice(0, 8)}
+        </span>
         <span className="flex-1">
           <div className="text-[var(--color-text-primary)]">{row.responderName}</div>
           <div className="text-xs text-[var(--color-text-muted)]">{row.responderAgency}</div>
@@ -150,10 +159,15 @@ export function DispatchLifecycleTable({ rows, highlightDispatchId }: Props) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Dispatch Lifecycle</h2>
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          Dispatch Lifecycle
+        </h2>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" aria-hidden="true" />
+            <Search
+              className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
+              aria-hidden="true"
+            />
             <input
               type="text"
               value={query}

@@ -93,9 +93,16 @@ function RootLayout() {
     }
   }, [hasCompletedOnboarding, navigate, pathname])
 
+  const onReportNow = useCallback(() => {
+    setShowSplash(false)
+    void navigate('/report')
+  }, [navigate])
+
   return (
     <>
-      <AnimatePresence>{showSplash && <SplashScreen onDone={onSplashDone} />}</AnimatePresence>
+      <AnimatePresence>
+        {showSplash && <SplashScreen onDone={onSplashDone} onReportNow={onReportNow} />}
+      </AnimatePresence>
       <Outlet />
     </>
   )

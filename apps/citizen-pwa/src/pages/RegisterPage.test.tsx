@@ -34,7 +34,7 @@ describe('RegisterPage', () => {
       </MemoryRouter>,
     )
     expect(screen.getByPlaceholderText('+63XXXXXXXXXX')).toBeInTheDocument()
-    expect(screen.getByText('Send OTP')).toBeInTheDocument()
+    expect(screen.getByText('Send verification code')).toBeInTheDocument()
   })
 
   it('shows navy header with Register title', () => {

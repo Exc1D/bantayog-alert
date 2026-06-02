@@ -82,11 +82,14 @@ describe('useResponderTelemetry', () => {
   })
 
   it('stops tracking when status changes to non-active', async () => {
-    const { rerender } = renderHook(({ status }: { status: string }) => {
-      useResponderTelemetry('uid-1', 'disp-1', status)
-    }, {
-      initialProps: { status: 'en_route' },
-    })
+    const { rerender } = renderHook(
+      ({ status }: { status: string }) => {
+        useResponderTelemetry('uid-1', 'disp-1', status)
+      },
+      {
+        initialProps: { status: 'en_route' },
+      },
+    )
     await vi.waitFor(() => {
       expect(mockStartTracking).toHaveBeenCalled()
     })

@@ -80,7 +80,7 @@ export function ReDispatchModal({
           <h2 id="re-dispatch-title" className="text-lg font-semibold text-white">
             Re-dispatch
           </h2>
-            <button
+          <button
             onClick={onClose}
             className="rounded p-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
             aria-label="Close"

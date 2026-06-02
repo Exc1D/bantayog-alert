@@ -186,10 +186,11 @@ export function AlertsTab() {
       {/* Content */}
       <div className="py-3 pb-6">
         {loading ? (
-          <>
+          <div role="status" aria-live="polite">
+            <span className="sr-only">Loading alerts</span>
             <SkeletonCard />
             <SkeletonCard />
-          </>
+          </div>
         ) : error ? (
           <div
             role="alert"
