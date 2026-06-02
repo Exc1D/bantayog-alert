@@ -10,7 +10,9 @@ export function AllClearState({ lastReportAt }: Props) {
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success)]/5">
         <ShieldCheck className="h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
       </div>
-      <h3 className="text-2xl font-semibold text-[var(--color-text-secondary)]">No Active Incidents</h3>
+      <h3 className="text-2xl font-semibold text-[var(--color-text-secondary)]">
+        No Active Incidents
+      </h3>
       <div
         className="mt-3 h-px w-32 bg-[var(--color-success)]/20 motion-safe:animate-[vigilance-pulse_3s_ease-in-out_infinite]"
         aria-hidden="true"

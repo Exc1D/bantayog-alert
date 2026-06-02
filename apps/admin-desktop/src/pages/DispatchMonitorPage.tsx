@@ -237,10 +237,7 @@ export function DispatchMonitorPage() {
             mode={stalledDispatches.length > 0 ? 'active' : 'calm'}
           />
 
-          <DispatchLifecycleTable
-            rows={rows}
-            highlightDispatchId={highlightDispatchId}
-          />
+          <DispatchLifecycleTable rows={rows} highlightDispatchId={highlightDispatchId} />
 
           <ResponderAvailabilityPanel responders={responders} />
         </div>

@@ -16,10 +16,7 @@ describe('CommandHeader', () => {
   it('renders command-center tabs including feed moderation', () => {
     render(
       <MemoryRouter>
-        <CommandHeader
-          title="PDRRMO Camarines Norte"
-          windowRole="feed"
-        />
+        <CommandHeader title="PDRRMO Camarines Norte" windowRole="feed" />
       </MemoryRouter>,
     )
 
@@ -34,10 +31,7 @@ describe('CommandHeader', () => {
   it('renders command-center tabs including Dispatches', () => {
     render(
       <MemoryRouter>
-        <CommandHeader
-          title="PDRRMO Camarines Norte"
-          windowRole="dispatches"
-        />
+        <CommandHeader title="PDRRMO Camarines Norte" windowRole="dispatches" />
       </MemoryRouter>,
     )
 
@@ -74,11 +68,7 @@ describe('CommandHeader', () => {
   it('notification badge uses warning color token', () => {
     render(
       <MemoryRouter>
-        <CommandHeader
-          title="Badge Test"
-          notificationCount={3}
-          onShowNotifications={vi.fn()}
-        />
+        <CommandHeader title="Badge Test" notificationCount={3} onShowNotifications={vi.fn()} />
       </MemoryRouter>,
     )
     const badge = screen.getByText('3')
@@ -88,11 +78,7 @@ describe('CommandHeader', () => {
   it('muted audio icon uses text-muted token', () => {
     render(
       <MemoryRouter>
-        <CommandHeader
-          title="Muted Test"
-          audioEnabled={false}
-          onToggleAudio={vi.fn()}
-        />
+        <CommandHeader title="Muted Test" audioEnabled={false} onToggleAudio={vi.fn()} />
       </MemoryRouter>,
     )
     const btn = screen.getByRole('button', { name: /enable audio/i })

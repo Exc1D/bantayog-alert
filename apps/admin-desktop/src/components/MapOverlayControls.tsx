@@ -48,7 +48,9 @@ export function MapOverlayControls({ activeOverlays, onToggleOverlay, triagePane
   const secondaryCheckboxes = CHECKBOX_OPTIONS.slice(1)
 
   return (
-    <div className={`absolute top-4 z-[1000] rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-3 shadow-xl ${triagePanelOpen ? 'right-[400px]' : 'right-4'}`}>
+    <div
+      className={`absolute top-4 z-[1000] rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-3 shadow-xl ${triagePanelOpen ? 'right-[400px]' : 'right-4'}`}
+    >
       <div className="flex items-center gap-2">
         {/* Segmented control: All | Active Only */}
         <div className="flex rounded-md border border-white/10 bg-[var(--color-surface)]">

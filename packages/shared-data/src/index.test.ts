@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import {
-  CAMARINES_NORTE_MUNICIPALITY_IDS,
-  type CamarinesNorteMunicipalityId,
-} from './index.js'
+import { CAMARINES_NORTE_MUNICIPALITY_IDS, type CamarinesNorteMunicipalityId } from './index.js'
 
 describe('shared-data constants', () => {
   it('contains all 12 Camarines Norte municipalities', () => {
     expect(CAMARINES_NORTE_MUNICIPALITY_IDS).toHaveLength(12)
     const expected = new Set([
-      'basud','capalonga','daet','san_lorenzo_ruiz',
-      'jose_panganiban','labo','mercedes','paracale',
-      'san_vicente','santa_elena','talisay','vinzons',
+      'basud',
+      'capalonga',
+      'daet',
+      'san_lorenzo_ruiz',
+      'jose_panganiban',
+      'labo',
+      'mercedes',
+      'paracale',
+      'san_vicente',
+      'santa_elena',
+      'talisay',
+      'vinzons',
     ])
     const actual = new Set(CAMARINES_NORTE_MUNICIPALITY_IDS)
     expect(actual).toEqual(expected)
