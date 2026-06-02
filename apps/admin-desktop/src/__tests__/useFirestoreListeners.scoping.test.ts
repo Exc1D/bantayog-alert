@@ -104,7 +104,7 @@ describe('useFirestoreListeners — role scoping', () => {
     expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
   })
 
-  it('municipal_admin: scopes alerts by scalar municipalityId', () => {
+  it('municipal_admin: scopes alerts by query-provable municipality projection', () => {
     useAuthMock.mockReturnValue({
       user: { uid: 'muni-1' },
       claims: { role: 'municipal_admin', municipalityId: 'M001' },
@@ -118,7 +118,7 @@ describe('useFirestoreListeners — role scoping', () => {
       return ref?.kind === 'query' && ref.ref?.path === 'alerts'
     })
     expect(alertsCall?.[0]).toMatchObject({
-      constraints: [{ field: 'municipalityId', op: '==', value: 'M001' }],
+      constraints: [{ field: 'municipalityScope.M001', op: '==', value: true }],
     })
   })
 

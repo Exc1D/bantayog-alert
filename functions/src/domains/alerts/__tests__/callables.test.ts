@@ -193,6 +193,27 @@ describe('declareAlertCore', () => {
     expect(mockDb._setFn).toHaveBeenCalledWith(expect.objectContaining({ municipalityId: 'daet' }))
   })
 
+  it('deduplicates repeated municipalities before projecting municipalityId', async () => {
+    await declareAlertCore(
+      mockDb,
+      { ...validInput, affectedMunicipalityIds: ['daet', 'daet'] },
+      { uid: 'admin-1', claims: { role: 'municipal_admin', municipalityId: 'daet' } },
+    )
+
+    const setArg = (mockDb._setFn.mock.calls[0] as [Record<string, unknown>])[0]
+    expect(setArg.affectedMunicipalityIds).toEqual(['daet'])
+    expect(setArg.municipalityScope).toEqual({ daet: true })
+    expect(setArg.municipalityId).toBe('daet')
+  })
+
+  it('omits scalar municipalityId for multi-municipality alerts', async () => {
+    await declareAlertCore(mockDb, validInput, { uid: 'admin-1' })
+
+    const setArg = (mockDb._setFn.mock.calls[0] as [Record<string, unknown>])[0]
+    expect('municipalityId' in setArg).toBe(false)
+    expect(setArg.municipalityScope).toEqual({ daet: true, 'san-vicente': true })
+  })
+
   it('rejects municipal admins declaring alerts outside their municipality', async () => {
     await expect(
       declareAlertCore(mockDb, validInput, {

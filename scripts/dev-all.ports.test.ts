@@ -55,4 +55,19 @@ describe('dev-all ports', () => {
     expect(script).toContain('auth,firestore,database,storage,functions')
     expect(script).not.toContain('auth,firestore,database,storage,functions,hosting')
   })
+
+  it('starts emulators and apps with one explicit demo project id', () => {
+    const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
+    const wrapper = readFileSync(new URL('./seed-demo-accounts.ts', import.meta.url), 'utf8')
+    const accountSeed = readFileSync(new URL('./create-test-accounts.ts', import.meta.url), 'utf8')
+
+    expect(script).toContain('BANTAYOG_FIREBASE_PROJECT_ID')
+    expect(script).toContain("'--project'")
+    expect(script).toContain('VITE_FIREBASE_PROJECT_ID: projectId')
+    expect(wrapper).toContain("socket.once('error', () => {")
+    expect(wrapper).toContain('socket.destroy()')
+    expect(accountSeed).not.toContain("agencyId: 'BFP'")
+    expect(accountSeed).toContain("agencyId: 'bfp-daet'")
+    expect(accountSeed).toContain('PROJECT_ID = getProjectId()')
+  })
 })

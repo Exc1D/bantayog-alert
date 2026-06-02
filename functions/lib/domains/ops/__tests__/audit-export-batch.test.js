@@ -27,8 +27,12 @@ beforeEach(() => {
 });
 describe('auditExportBatchCore', () => {
     it('loads Cloud Logging lazily to preserve the Firestore emulator protobuf root', () => {
-        const source = readFileSync(new URL('../audit-export-batch.ts', import.meta.url), 'utf8');
+        const sourceFile = import.meta.url.endsWith('.js')
+            ? '../audit-export-batch.js'
+            : '../audit-export-batch.ts';
+        const source = readFileSync(new URL(sourceFile, import.meta.url), 'utf8');
         expect(source).not.toMatch(/^import .*@google-cloud\/logging/m);
+        expect(source).not.toMatch(/^const logging = new Logging\(/m);
         expect(source).toContain("await import('@google-cloud/logging')");
     });
     it('returns 0 when no log entries exist', async () => {

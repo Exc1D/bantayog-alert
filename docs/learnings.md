@@ -73,6 +73,9 @@
 - `vi.hoisted()` mocks must be created inside the hoisted callback.
 - A passing test is not enough; confirm it exercises the changed path.
 - Never mix Admin SDK and Client SDK Firestore calls in the same context.
+- E2E jobs with fresh checkouts must build workspace package `lib` outputs themselves before Vite dev servers start; `needs: build` does not carry compiled package files into the next job.
+- Pre-auth E2E readiness should navigate directly to explicit login routes; protected root routes can sit on auth-loading spinners before redirecting.
+- Rules fixtures for production-projected documents must preserve omitted optional fields; multi-municipality alerts use `affectedMunicipalityIds`/`municipalityScope` and intentionally omit scalar `municipalityId`.
 - Callable error handling: use runtime client codes (`not-found`), not internal enum names.
 - Wrap `waitFor(() => expect(...))` assertion body in braces.
 - Auth-dependent setup must render inside `AuthProvider`.
@@ -251,7 +254,9 @@
 ## Live Demo Readiness (2026-06-03)
 
 - `pnpm dev:all` must fail loudly until Auth, Firestore, and RTDB emulators accept connections; a listening process is not enough.
+- `pnpm dev:all` must pass one explicit Firebase project ID through emulator startup, Vite apps, and demo seeding; CI can otherwise wait on one project namespace while Functions registered under `.firebaserc` default.
 - Account-only demo seeding still needs responder roster metadata in Firestore and RTDB so investors can perform dispatch manually without workflow automation.
+- Firestore cannot prove hidden-alert list authorization from `array-contains` membership alone. Use a query-provable map projection such as `municipalityScope.<id> == true` when multi-municipality docs need per-municipality admin list access.
 - Load `@google-cloud/logging` lazily inside scheduled Functions handlers: its static import can erase the Firestore emulator protobuf root before trigger decoding.
 - Full-loop proof navigation must dismiss the admin onboarding tour immediately before map report selection because the tour may mount after route navigation.
 - Firestore report-read rules must pass the matched `reportId` path variable into `canReadReportDoc`; report payloads do not carry their document ID.

@@ -24,6 +24,7 @@ const alertDoc = {
   hazardType: 'typhoon',
   affectedMunicipalityIds: ['daet'],
   municipalityId: 'daet',
+  municipalityScope: { daet: true },
   message: 'Signal no. 3 raised.',
   declaredBy: 'admin-1',
   declaredAt: ts,
@@ -54,6 +55,24 @@ beforeAll(async () => {
       alertId: 'alert-hidden',
       visibility: 'internal',
     })
+    await setDoc(doc(ctx.firestore(), 'alerts', 'alert-hidden-labo'), {
+      ...alertDoc,
+      alertId: 'alert-hidden-labo',
+      affectedMunicipalityIds: ['labo'],
+      municipalityId: 'labo',
+      municipalityScope: { labo: true },
+      visibility: 'internal',
+    })
+    const multiMunicipalityAlertDoc: Record<string, unknown> = {
+      ...alertDoc,
+      alertId: 'alert-hidden-multi',
+      affectedMunicipalityIds: ['daet', 'labo'],
+      municipalityScope: { daet: true, labo: true },
+      visibility: 'internal',
+    }
+    // Production omits scalar municipalityId for multi-municipality alerts.
+    Reflect.deleteProperty(multiMunicipalityAlertDoc, 'municipalityId')
+    await setDoc(doc(ctx.firestore(), 'alerts', 'alert-hidden-multi'), multiMunicipalityAlertDoc)
   })
 })
 
@@ -98,14 +117,28 @@ describe('alerts visibility rules', () => {
     )
   })
 
-  itif('allows scoped municipal admins to query hidden municipality alerts', async () => {
+  itif('allows scoped municipal admins to query hidden affected alerts', async () => {
     const db = authed(
       env,
       'daet-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
     await assertSucceeds(
-      getDocs(query(collection(db, 'alerts'), where('municipalityId', '==', 'daet'))),
+      getDocs(query(collection(db, 'alerts'), where('municipalityScope.daet', '==', true))),
+    )
+  })
+
+  itif('allows restricted superadmins to query only permitted affected alerts', async () => {
+    const db = authed(
+      env,
+      'superadmin-1',
+      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+    )
+    await assertSucceeds(
+      getDocs(query(collection(db, 'alerts'), where('municipalityScope.daet', '==', true))),
+    )
+    await assertFails(
+      getDocs(query(collection(db, 'alerts'), where('municipalityScope.labo', '==', true))),
     )
   })
 
@@ -122,4 +155,17 @@ describe('alerts visibility rules', () => {
     const db = authed(env, 'superadmin-1', staffClaims({ role: 'provincial_superadmin' }))
     await assertSucceeds(getDoc(doc(db, 'alerts/alert-hidden')))
   })
+
+  itif(
+    'rejects restricted superadmins reading hidden alerts outside permitted municipalities',
+    async () => {
+      const db = authed(
+        env,
+        'superadmin-1',
+        staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
+      )
+      await assertSucceeds(getDoc(doc(db, 'alerts/alert-hidden-multi')))
+      await assertFails(getDoc(doc(db, 'alerts/alert-hidden-labo')))
+    },
+  )
 })

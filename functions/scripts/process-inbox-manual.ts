@@ -124,7 +124,12 @@ export async function runManualInboxProcessorAndTerminate(
   try {
     return await runManualInboxProcessor(db, writeLine, processInboxItem)
   } finally {
-    await db.terminate()
+    try {
+      await db.terminate()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      writeLine(`Failed to terminate Firestore: ${message}`)
+    }
   }
 }
 

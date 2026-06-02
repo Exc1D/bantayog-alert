@@ -23,6 +23,26 @@ import path from 'node:path'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
+const DEFAULT_PROJECT_ID = 'bantayog-alert-staging'
+
+function getProjectId() {
+  return (
+    process.env.BANTAYOG_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.VITE_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim() ||
+    process.env.FIREBASE_PROJECT_ID?.trim() ||
+    DEFAULT_PROJECT_ID
+  )
+}
+
+const projectId = getProjectId()
+const childEnv = {
+  ...process.env,
+  BANTAYOG_FIREBASE_PROJECT_ID: projectId,
+  VITE_FIREBASE_PROJECT_ID: projectId,
+  GCLOUD_PROJECT: projectId,
+  FIREBASE_PROJECT_ID: projectId,
+}
 
 const colors = {
   emulators: '\x1b[36m', // cyan
@@ -91,9 +111,12 @@ const emulators = start(
     'emulators:start',
     '--only',
     'auth,firestore,database,storage,functions',
+    '--project',
+    projectId,
   ],
   {
     cwd: rootDir,
+    env: childEnv,
   },
 )
 emulators.on('exit', (code) => {
@@ -106,7 +129,8 @@ setTimeout(() => {
   start('citizen-pwa', colors.citizen, 'pnpm', ['dev', '--port', '5173'], {
     cwd: path.join(rootDir, 'apps', 'citizen-pwa'),
     env: {
-      ...process.env,
+      ...childEnv,
+      VITE_FIREBASE_PROJECT_ID: projectId,
       VITE_USE_EMULATOR: 'true',
     },
   })
@@ -115,7 +139,8 @@ setTimeout(() => {
   start('admin-desktop', colors.admin, 'pnpm', ['dev', '--port', '5175'], {
     cwd: path.join(rootDir, 'apps', 'admin-desktop'),
     env: {
-      ...process.env,
+      ...childEnv,
+      VITE_FIREBASE_PROJECT_ID: projectId,
       VITE_USE_EMULATOR: 'true',
     },
   })
@@ -124,7 +149,8 @@ setTimeout(() => {
   start('responder-app', colors.responder, 'pnpm', ['dev', '--port', '5174'], {
     cwd: path.join(rootDir, 'apps', 'responder-app'),
     env: {
-      ...process.env,
+      ...childEnv,
+      VITE_FIREBASE_PROJECT_ID: projectId,
       VITE_USE_EMULATOR: 'true',
     },
   })
@@ -140,7 +166,7 @@ setTimeout(() => {
     colors.seed,
     'pnpm',
     ['exec', 'tsx', 'scripts/seed-demo-accounts.ts'],
-    { cwd: rootDir },
+    { cwd: rootDir, env: childEnv },
   )
   seed.on('exit', (code) => {
     if (code !== 0) {

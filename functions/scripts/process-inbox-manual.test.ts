@@ -88,4 +88,33 @@ describe('processInboxManualSummary', () => {
 
     expect(db.terminate).toHaveBeenCalledOnce()
   })
+
+  it('terminates Firestore even when processing fails', async () => {
+    const db = {
+      ...createDb([{ id: 'draft-error' }]),
+      terminate: vi.fn().mockResolvedValue(undefined),
+    }
+    const logger = { log: vi.fn() }
+    const processInboxItem = vi.fn().mockRejectedValue(new Error('boom'))
+
+    const summary = await runManualInboxProcessorAndTerminate(
+      db as never,
+      logger.log,
+      processInboxItem,
+    )
+
+    expect(db.terminate).toHaveBeenCalledOnce()
+    expect(summary.exitCode).toBe(1)
+  })
+
+  it('does not let Firestore termination failures mask the processing summary', async () => {
+    const db = { ...createDb([]), terminate: vi.fn().mockRejectedValue(new Error('close failed')) }
+    const logger = { log: vi.fn() }
+
+    const summary = await runManualInboxProcessorAndTerminate(db as never, logger.log)
+
+    expect(db.terminate).toHaveBeenCalledOnce()
+    expect(summary.exitCode).toBe(0)
+    expect(logger.log).toHaveBeenCalledWith('Failed to terminate Firestore: close failed')
+  })
 })

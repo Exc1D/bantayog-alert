@@ -67,10 +67,23 @@ service cloud.firestore {
               && ('agencyId' in data.assignedTo)
               && data.assignedTo.agencyId == myAgency());
     }
+    function alertTargetsAnyMunicipality(data, muniIds) {
+      return ((('affectedMunicipalityIds' in data)
+               && data.affectedMunicipalityIds is list
+               && data.affectedMunicipalityIds.hasAny(muniIds))
+              || (('targetMunicipalityIds' in data)
+                  && data.targetMunicipalityIds is list
+                  && data.targetMunicipalityIds.hasAny(muniIds))
+              || (('municipalityScope' in data)
+                  && data.municipalityScope is map
+                  && data.municipalityScope.keys().hasAny(muniIds)));
+    }
     function canReadAlertDoc(data) {
       return (('visibility' in data) && data.visibility == 'public')
           || (isActivePrivileged()
-              && (isSuperadmin()
+              && ((isSuperadmin()
+                   && (permittedMunis().size() == 0
+                       || alertTargetsAnyMunicipality(data, permittedMunis())))
                   || (isMuniAdmin()
                       && ((('affectedMunicipalityIds' in data)
                            && data.affectedMunicipalityIds is list
@@ -82,10 +95,14 @@ service cloud.firestore {
     function canListAlertDoc(data) {
       return (('visibility' in data) && data.visibility == 'public')
           || (isActivePrivileged()
-              && (isSuperadmin()
-                  || (isMuniAdmin()
-                      && ('municipalityId' in data)
-                      && data.municipalityId == myMunicipality())));
+              && ('municipalityScope' in data)
+              && data.municipalityScope is map
+              && ((isMuniAdmin()
+                  && myMunicipality() in data.municipalityScope
+                  && data.municipalityScope[myMunicipality()] == true)
+                  || (isSuperadmin()
+                      && (permittedMunis().size() == 0
+                          || data.municipalityScope.keys().hasAny(permittedMunis())))));
     }
     function canReadSituationUpdate(data) {
       return (('visibility' in data) && data.visibility == 'public')

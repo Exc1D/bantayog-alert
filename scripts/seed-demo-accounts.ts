@@ -17,7 +17,10 @@ function canConnect(port: number): Promise<boolean> {
       socket.destroy()
       resolve(true)
     })
-    socket.once('error', () => resolve(false))
+    socket.once('error', () => {
+      socket.destroy()
+      resolve(false)
+    })
     socket.once('timeout', () => {
       socket.destroy()
       resolve(false)

@@ -8,6 +8,10 @@ The reliability proof now selects the exact admin report row, dismisses the onbo
 
 Verification: focused unit and emulator rules regressions pass. Cold `pnpm proof:local` passes checkpoints `C00-C10` in 47.1s with no responder `[useReport] listener error`.
 
+PR #168 follow-up: addressed CI and review feedback by aligning `dev:all`/proof project IDs, normalizing the seeded responder agency ID to `bfp-daet`, projecting alert municipality scope with a query-provable map for multi-municipality alerts, deduplicating Declare Alert municipality input, and hardening CLI cleanup paths.
+
+Follow-up CI hardening: `proof:local` now builds shared app packages in its own fresh checkout and warms each Vite app route before Playwright C00, avoiding clean-runner cold-start races from stale/missing package `lib` sourcemaps. The proof also opens admin/responder login routes explicitly for pre-auth readiness instead of relying on protected-root auth redirects. The alert rules regression fixture now mirrors production multi-municipality alerts by omitting scalar `municipalityId`.
+
 ## 2026-06-02 — CI Green Main + Merge Dependency Batch
 
 Systematically fixed main CI failures and merged all eligible dependabot PRs (160–166). Skipped PR #167 per instructions.

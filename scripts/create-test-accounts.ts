@@ -7,7 +7,17 @@ process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081'
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099'
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000'
 
-const PROJECT_ID = 'bantayog-alert-staging'
+function getProjectId(): string {
+  return (
+    process.env.BANTAYOG_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.VITE_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim() ||
+    process.env.FIREBASE_PROJECT_ID?.trim() ||
+    'bantayog-alert-staging'
+  )
+}
+
+const PROJECT_ID = getProjectId()
 
 if (getApps().length === 0) {
   initializeApp({ projectId: PROJECT_ID, databaseURL: `http://127.0.0.1:9000?ns=${PROJECT_ID}` })
@@ -184,7 +194,7 @@ async function seedResponderRoster(
     uid,
     displayName: 'BFP Daet Test Responder',
     agency: 'BFP',
-    agencyId: 'BFP',
+    agencyId: 'bfp-daet',
     municipalityId: 'daet',
     isActive: true,
     availabilityStatus: 'available',
@@ -192,16 +202,17 @@ async function seedResponderRoster(
   })
   await rtdb.ref('responder_index/bfp-responder-test-01').set({
     municipalityId: 'daet',
-    agencyId: 'BFP',
+    agencyId: 'bfp-daet',
   })
   await rtdb.ref('responder_index/daet/bfp-responder-test-01').set({
     isOnShift: true,
-    agencyId: 'BFP',
+    agencyId: 'bfp-daet',
   })
   await rtdb.ref('responder_locations/bfp-responder-test-01').set({
     uid,
     displayName: 'BFP Daet Test Responder',
     agency: 'BFP',
+    agencyId: 'bfp-daet',
   })
   console.log(`✓ responders/${uid} roster metadata`)
 }
