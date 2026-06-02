@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAMARINES_NORTE_MUNICIPALITY_IDS } from './data.js';
+import { CAMARINES_NORTE_MUNICIPALITY_IDS } from './index.js';
 describe('shared-data constants', () => {
     it('contains all 12 Camarines Norte municipalities', () => {
         expect(CAMARINES_NORTE_MUNICIPALITY_IDS).toHaveLength(12);
@@ -25,11 +25,12 @@ describe('shared-data constants', () => {
         expect(CAMARINES_NORTE_MUNICIPALITY_IDS[11]).toBe('vinzons');
     });
     it('type narrows to known municipality ids at compile time', () => {
-        // Runtime assertion that the exported type can receive literal values
         const assertMunicipality = (id) => id;
         expect(assertMunicipality('daet')).toBe('daet');
         expect(assertMunicipality('labo')).toBe('labo');
         expect(assertMunicipality('vinzons')).toBe('vinzons');
+        // @ts-expect-error invalid municipality ids must stay rejected
+        assertMunicipality('not_a_camarines_norte_municipality');
     });
 });
 //# sourceMappingURL=data.test.js.map
