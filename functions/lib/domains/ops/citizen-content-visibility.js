@@ -32,7 +32,9 @@ function municipalityIds(data) {
     const affected = data.affectedMunicipalityIds;
     const target = data.targetMunicipalityIds;
     const value = Array.isArray(affected) ? affected : target;
-    return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
+    return Array.isArray(value)
+        ? value.filter((item) => typeof item === 'string')
+        : [];
 }
 function assertActorCanModerate(deps, data) {
     const { role, municipalityId } = deps.actor.claims;

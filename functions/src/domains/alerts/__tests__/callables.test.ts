@@ -118,6 +118,23 @@ describe('declareAlertCore', () => {
     expect(setArg.schemaVersion).toBe(1)
   })
 
+  it('stores expanded alert metadata offered by the admin modal', async () => {
+    const input = {
+      ...validInput,
+      hazardType: 'road_closure',
+      effectiveFrom: 1_000,
+      effectiveUntil: 2_000,
+      expectedResolutionAt: 3_000,
+      affectedSectors: ['transportation'],
+      affectedBarangayIds: ['alawihao'],
+      roadName: 'Vinzons Avenue',
+    }
+
+    await declareAlertCore(mockDb, input, { uid: 'admin-1' })
+
+    expect(mockDb._setFn).toHaveBeenCalledWith(expect.objectContaining(input))
+  })
+
   it('throws ZodError for empty hazardType', async () => {
     await expect(
       declareAlertCore(mockDb, { ...validInput, hazardType: '' }, { uid: 'admin-1' }),

@@ -29,7 +29,7 @@ export function PrivacyNoticePage() {
         <div className="flex items-center gap-2 px-3 py-2 bg-brand-50 rounded-lg border border-brand-200">
           <Shield size={16} className="text-brand-600 shrink-0" />
           <span className="text-xs font-medium text-brand-700">
-            Compliant with RA 10173 — Data Privacy Act of 2012
+            Compliant with RA 10173: Data Privacy Act of 2012
           </span>
         </div>
 
@@ -44,7 +44,7 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>Pseudonymous UID</strong> — a random device identifier, not linked to your
+                <strong>Pseudonymous UID</strong>: a random device identifier, not linked to your
                 name by default.
               </span>
             </li>
@@ -53,7 +53,7 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>GPS location</strong> — only when you tap &quot;Use my location&quot; or
+                <strong>GPS location</strong>: only when you tap &quot;Use my location&quot; or
                 enable auto-detect. Never collected silently.
               </span>
             </li>
@@ -62,7 +62,7 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>Report content</strong> — incident type, description, barangay, and optional
+                <strong>Report content</strong>: incident type, description, barangay, and optional
                 patient count.
               </span>
             </li>
@@ -71,8 +71,8 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>Photos</strong> — voluntarily attached images. EXIF stripped (GPS
-                coordinates removed) before storage.
+                <strong>Photos</strong>: voluntarily attached images. EXIF stripped (GPS coordinates
+                removed) before storage.
               </span>
             </li>
             <li className="flex gap-2">
@@ -80,7 +80,7 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>IP address</strong> — retained short-term in server logs (standard Firebase
+                <strong>IP address</strong>: retained short-term in server logs (standard Firebase
                 infrastructure).
               </span>
             </li>
@@ -89,7 +89,7 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>Phone number hash</strong> (optional) — a one-way cryptographic hash of your
+                <strong>Phone number hash</strong> (optional): a one-way cryptographic hash of your
                 number if you choose to provide it. We cannot reverse this to your number.
               </span>
             </li>
@@ -153,8 +153,8 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>Reports</strong> — retained until resolved, then deleted after a 30-day
-                grace period.
+                <strong>Reports</strong>: retained until resolved, then deleted after a 30-day grace
+                period.
               </span>
             </li>
             <li className="flex gap-2">
@@ -162,8 +162,8 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>Account data</strong> — retained until you request deletion via
-                &ldquo;Delete My Account.&rdquo;
+                <strong>Account data</strong>: retained until you request deletion via &ldquo;Delete
+                My Account.&rdquo;
               </span>
             </li>
             <li className="flex gap-2">
@@ -171,7 +171,7 @@ export function PrivacyNoticePage() {
                 •
               </span>
               <span>
-                <strong>Wizard drafts</strong> — stored locally on your device for 24 hours, then
+                <strong>Wizard drafts</strong>: stored locally on your device for 24 hours, then
                 deleted automatically. Never uploaded until you submit.
               </span>
             </li>

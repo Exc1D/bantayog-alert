@@ -510,6 +510,9 @@ export function ProfileTab() {
         </div>
       )}
 
+      {/* Lifecycle feedback stays ahead of rewards so citizens see real response progress first. */}
+      {reports.length > 0 && <MilestoneTracker reports={reports} />}
+
       {/* Stats grid — Your Impact */}
       <div className="grid grid-cols-2 gap-3 mx-4 mt-4">
         <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm">
@@ -526,7 +529,7 @@ export function ProfileTab() {
         </div>
         <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm">
           <p className="m-0 text-2xl font-bold text-surface-900">
-            {uniqueAreas > 0 ? uniqueAreas : '—'}
+            {uniqueAreas > 0 ? uniqueAreas : 'N/A'}
           </p>
           <p className="m-0 text-xs text-surface-500 mt-0.5">Areas Helped</p>
         </div>
@@ -570,9 +573,6 @@ export function ProfileTab() {
           ))}
         </div>
       </div>
-
-      {/* Milestones */}
-      {reports.length > 0 && <MilestoneTracker reports={reports} />}
 
       {/* Share prompt */}
       {reports.length > 0 && (

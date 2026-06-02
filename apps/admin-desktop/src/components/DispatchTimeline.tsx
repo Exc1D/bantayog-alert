@@ -29,9 +29,7 @@ export function DispatchTimeline({ events }: Props) {
   const [showAll, setShowAll] = useState(false)
 
   if (events.length === 0) {
-    return (
-      <p className="text-sm text-[var(--color-text-muted)]">No events recorded</p>
-    )
+    return <p className="text-sm text-[var(--color-text-muted)]">No events recorded</p>
   }
 
   const sorted = [...events].sort((a, b) => a.at - b.at)
@@ -46,7 +44,9 @@ export function DispatchTimeline({ events }: Props) {
             <span className="font-medium text-[var(--color-text-primary)]">
               {LABEL_MAP[event.type] ?? event.type}
             </span>
-            <span className="text-xs text-[var(--color-text-muted)]">{formatTimeHHMMSS(event.at)}</span>
+            <span className="text-xs text-[var(--color-text-muted)]">
+              {formatTimeHHMMSS(event.at)}
+            </span>
           </li>
         ))}
       </ul>

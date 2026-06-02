@@ -7,6 +7,7 @@ const {
   mockEnsureSignedIn,
   mockLimit,
   mockOnSnapshot,
+  mockOrderBy,
   mockQuery,
   mockWhere,
 } = vi.hoisted(() => ({
@@ -16,6 +17,7 @@ const {
   mockEnsureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
   mockLimit: vi.fn((count: number) => ({ type: 'limit', count })),
   mockOnSnapshot: vi.fn(),
+  mockOrderBy: vi.fn((field: string, direction: string) => ({ field, direction })),
   mockQuery: vi.fn((...parts: unknown[]) => ({ parts })),
   mockWhere: vi.fn((field: string, op: string, value: string) => ({ field, op, value })),
 }))
@@ -25,6 +27,7 @@ vi.mock('firebase/firestore', () => ({
   collection: mockCollection,
   limit: mockLimit,
   onSnapshot: mockOnSnapshot,
+  orderBy: mockOrderBy,
   query: mockQuery,
   where: mockWhere,
 }))
@@ -147,6 +150,7 @@ describe('situation updates service', () => {
 
     expect(result).toBe(unsubscribe)
     expect(mockWhere).toHaveBeenCalledWith('visibility', '==', 'public')
+    expect(mockOrderBy).toHaveBeenCalledWith('createdAt', 'desc')
     expect(errorSpy).toHaveBeenCalledWith('Skipping invalid situation update document', 'bad')
     expect(onNext).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'new', body: 'Newer update' }),

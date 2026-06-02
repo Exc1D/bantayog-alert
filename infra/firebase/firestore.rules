@@ -163,6 +163,7 @@ service cloud.firestore {
     match /report_inbox/{inboxId} {
       allow read: if false;
       allow create: if request.auth != null
+          && request.auth.token.accountStatus == 'active'
           && request.resource.data.reporterUid == uid()
           && request.resource.data.keys().hasOnly([
             'reporterUid', 'clientCreatedAt', 'idempotencyKey', 'payload',
@@ -317,7 +318,9 @@ service cloud.firestore {
     }
 
     match /secret_lookup/{tokenHash} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/report_private/$(get(/databases/$(database)/documents/secret_lookup/$(tokenHash)).data.reportId))
+          && get(/databases/$(database)/documents/report_private/$(get(/databases/$(database)/documents/secret_lookup/$(tokenHash)).data.reportId)).data.reporterUid == uid();
       allow write: if false;
     }
 
@@ -444,6 +447,7 @@ service cloud.firestore {
     match /situation_updates/{updateId} {
       allow read: if canReadSituationUpdate(resource.data);
       allow create: if request.auth != null
+                    && request.auth.token.accountStatus == 'active'
                     && validSituationUpdate(request.resource.data);
       allow update, delete: if false;
 

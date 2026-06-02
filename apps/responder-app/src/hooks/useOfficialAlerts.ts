@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../app/firebase'
 import { toMillis } from '../lib/to-millis'
 
@@ -54,6 +54,7 @@ export function useOfficialAlerts(): {
   useEffect(() => {
     const officialAlertsQuery = query(
       collection(db, 'alerts'),
+      where('visibility', '==', 'public'),
       orderBy('publishedAt', 'desc'),
       limit(20),
     )

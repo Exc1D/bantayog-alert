@@ -1,6 +1,15 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc, setLogLevel } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  setLogLevel,
+  where,
+} from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnvSafe, unauthed } from '../helpers/rules-harness.js'
 import { seedActiveAccount, staffClaims, ts } from '../helpers/seed-factories.js'
@@ -69,6 +78,19 @@ describe('alerts visibility rules', () => {
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
     await assertSucceeds(getDoc(doc(db, 'alerts/alert-hidden')))
+  })
+
+  itif('allows scoped municipal admins to query their municipality alerts', async () => {
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(
+      getDocs(
+        query(collection(db, 'alerts'), where('affectedMunicipalityIds', 'array-contains', 'daet')),
+      ),
+    )
   })
 
   itif('rejects other municipal admins reading hidden alerts', async () => {
