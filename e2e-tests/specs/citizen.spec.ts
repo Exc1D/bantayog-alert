@@ -33,7 +33,7 @@ test.describe('citizen PWA', () => {
         Object.defineProperty(navigator, 'geolocation', {
           value: {
             getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) => {
-              error({ code: 1, message: 'User denied Geolocation' })
+              error({ code: 1, message: 'User denied Geolocation' } as GeolocationPositionError)
             },
           },
           writable: true,

@@ -27,7 +27,7 @@ function buildVariants(mdrrmoLabel: string) {
     },
     queued: {
       headline: "Saved. We'll send it for you.",
-      subline: `Your report is safe on this phone. The moment signal returns, we'll automatically forward it to ${mdrrmoLabel} — no action needed from you. Walang mawawala.`,
+      subline: `Your report is safe on this phone. The moment signal returns, we'll automatically forward it to ${mdrrmoLabel}. No action needed from you. Walang mawawala.`,
       sublineTl: undefined as string | undefined,
       bannerVariant: 'queued' as const,
       receiverText: 'Saved to device · auto-send when online',
@@ -39,7 +39,7 @@ function buildVariants(mdrrmoLabel: string) {
     failed_retryable: {
       headline: 'Your report is safe. Still trying.',
       subline:
-        "We saved it securely on your phone and are retrying automatically. The network is having trouble — this is not your fault and nothing is lost. If it's a life-threatening emergency, call now.",
+        "We saved it securely on your phone and are retrying automatically. The network is having trouble. This is not your fault and nothing is lost. If it's a life-threatening emergency, call now.",
       sublineTl: 'Ligtas ang inyong ulat. Nagre-retry kami. Kung emergency, tawagan kami ngayon.',
       bannerVariant: 'failed' as const,
       receiverText: undefined as string | undefined,
@@ -50,7 +50,7 @@ function buildVariants(mdrrmoLabel: string) {
     },
     failed_terminal: {
       headline: "We couldn't send. Please call now.",
-      subline: `Your draft is saved on this phone, but we have stopped retrying after several attempts. If this is an emergency, call ${mdrrmoLabel} right now — it is faster than the app right now.`,
+      subline: `Your draft is saved on this phone, but we have stopped retrying after several attempts. If this is an emergency, call ${mdrrmoLabel} right now. It is faster than the app right now.`,
       sublineTl:
         'Hindi naipasa ang ulat. Kung emergency, tumawag agad sa hotline o magpadala ng SMS.',
       bannerVariant: 'danger' as const,
@@ -468,7 +468,7 @@ export function RevealSheet({
                 onClick={() => {
                   void handleCopySecret()
                 }}
-                className="p-2 border-0 bg-brand-500 rounded-lg cursor-pointer flex items-center"
+                className="min-h-11 min-w-11 border-0 bg-brand-500 rounded-lg cursor-pointer flex items-center justify-center"
                 aria-label="Copy secret code"
               >
                 <Copy size={16} className="text-white" />
@@ -476,7 +476,7 @@ export function RevealSheet({
             </div>
             {copied && <p className="mt-1 text-xs text-success-600">Copied!</p>}
             {hasCopyError && (
-              <p className="mt-1 text-xs text-danger-600">Copy failed — please write it down</p>
+              <p className="mt-1 text-xs text-danger-600">Copy failed. Please write it down</p>
             )}
             <p className="mt-2 text-xs text-surface-500">
               Save this to check your report without an account.

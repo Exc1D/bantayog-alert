@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { FeedTab } from './FeedTab'
 
@@ -9,11 +9,13 @@ const {
   mockCreateSituationUpdate,
   mockReportSituationUpdate,
   mockHasFirebaseConfig,
+  mockUseOnlineStatus,
 } = vi.hoisted(() => ({
   mockUseSituationUpdates: vi.fn(),
   mockCreateSituationUpdate: vi.fn().mockResolvedValue(undefined),
   mockReportSituationUpdate: vi.fn().mockResolvedValue(undefined),
   mockHasFirebaseConfig: vi.fn().mockReturnValue(true),
+  mockUseOnlineStatus: vi.fn().mockReturnValue({ isOnline: true, navigatorOnline: true }),
 }))
 
 vi.mock('../hooks/useSituationUpdates.js', () => ({
@@ -32,6 +34,10 @@ vi.mock('../services/firebase.js', () => ({
   hasFirebaseConfig: () => mockHasFirebaseConfig(),
 }))
 
+vi.mock('../hooks/useOnlineStatus.js', () => ({
+  useOnlineStatus: () => mockUseOnlineStatus(),
+}))
+
 function renderFeedTab() {
   return render(
     <MemoryRouter>
@@ -43,10 +49,18 @@ function renderFeedTab() {
 describe('FeedTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockHasFirebaseConfig.mockReturnValue(true)
+    mockUseOnlineStatus.mockReturnValue({ isOnline: true, navigatorOnline: true })
     mockCreateSituationUpdate.mockResolvedValue(undefined)
     mockReportSituationUpdate.mockResolvedValue(undefined)
-    mockUseSituationUpdates.mockReturnValue({ updates: [], loading: false, error: null })
+    mockUseSituationUpdates.mockReturnValue({
+      updates: [],
+      loading: false,
+      error: null,
+      lastUpdatedAt: null,
+      retry: vi.fn(),
+    })
   })
 
   it('renders without crashing', () => {
@@ -72,24 +86,152 @@ describe('FeedTab', () => {
   it('uses the selected municipality as the composer default', () => {
     renderFeedTab()
     fireEvent.click(screen.getByRole('button', { name: 'Labo' }))
+    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
     expect(screen.getByLabelText('Municipality')).toHaveValue('Labo')
   })
 
+  it('keeps the composer compact until the user chooses to share', () => {
+    renderFeedTab()
+    expect(screen.getByRole('button', { name: /share local update/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Municipality')).not.toBeInTheDocument()
+  })
+
+  it('opens the composer with neutral incident defaults', () => {
+    renderFeedTab()
+    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    expect(screen.getByLabelText('Municipality')).toHaveValue('')
+    expect(screen.getByLabelText('Situation type')).toHaveValue('')
+    expect(screen.getByLabelText('Current condition')).toHaveValue('')
+    expect(screen.getByText(/community update only/i)).toBeInTheDocument()
+  })
+
+  it('explains public sharing, moderation, and missing fields before posting', () => {
+    renderFeedTab()
+    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    expect(screen.getByText(/shared publicly as a citizen update/i)).toBeInTheDocument()
+    expect(screen.getByText(/reported posts go to admins for review/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /to post, add municipality, situation type, condition, and a 3\+ character update/i,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('preserves composer input and blocks posting while offline', () => {
+    mockUseOnlineStatus.mockReturnValue({ isOnline: false, navigatorOnline: false })
+    renderFeedTab()
+    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.change(screen.getByLabelText('Municipality'), { target: { value: 'Labo' } })
+    fireEvent.change(screen.getByLabelText('Situation type'), { target: { value: 'flood' } })
+    fireEvent.change(screen.getByLabelText('Current condition'), {
+      target: { value: 'flooding' },
+    })
+    fireEvent.change(screen.getByLabelText('Share situation update'), {
+      target: { value: 'Water is rising near the bridge.' },
+    })
+
+    expect(screen.getByText(/reconnect to post/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Post update' })).toBeDisabled()
+    expect(screen.getByLabelText('Share situation update')).toHaveValue(
+      'Water is rising near the bridge.',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    expect(screen.getByLabelText('Share situation update')).toHaveValue(
+      'Water is rising near the bridge.',
+    )
+    expect(screen.getByText(/saved on this phone until posted/i)).toBeInTheDocument()
+  })
+
+  it('explains when a selected municipality has no posts yet', () => {
+    renderFeedTab()
+    fireEvent.click(screen.getByRole('button', { name: 'Labo' }))
+    expect(screen.getByText(/no posts for Labo yet/i)).toBeInTheDocument()
+  })
+
+  it('ignores unsupported values from a stored composer draft', () => {
+    localStorage.setItem(
+      'bantayog_situation_update_draft',
+      JSON.stringify({
+        municipalityLabel: 'Labo',
+        barangayLabel: '',
+        hazardType: 'not-real',
+        condition: 'flooding',
+        body: 'This stale draft must not hydrate.',
+      }),
+    )
+    renderFeedTab()
+    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+
+    expect(screen.getByLabelText('Municipality')).toHaveValue('')
+    expect(screen.getByLabelText('Share situation update')).toHaveValue('')
+  })
+
   it('shows loading skeletons when loading=true', () => {
-    mockUseSituationUpdates.mockReturnValue({ updates: [], loading: true, error: null })
+    mockUseSituationUpdates.mockReturnValue({
+      updates: [],
+      loading: true,
+      error: null,
+      lastUpdatedAt: null,
+      retry: vi.fn(),
+    })
     renderFeedTab()
     expect(screen.getByText('Situation Feed')).toBeInTheDocument()
+    expect(screen.getByText('Loading situation updates')).toBeInTheDocument()
     expect(screen.queryByText('No situation updates')).not.toBeInTheDocument()
   })
 
   it('shows error state when error is set', () => {
+    const retry = vi.fn()
     mockUseSituationUpdates.mockReturnValue({
       updates: [],
       loading: false,
       error: new Error('Server error'),
+      lastUpdatedAt: null,
+      retry,
     })
     renderFeedTab()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(screen.getByText('Could not load situation updates')).toBeInTheDocument()
+    expect(retry).toHaveBeenCalledOnce()
+  })
+
+  it('shows when the feed last refreshed', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(60_000)
+    mockUseSituationUpdates.mockReturnValue({
+      updates: [],
+      loading: false,
+      error: null,
+      lastUpdatedAt: 60_000,
+      retry: vi.fn(),
+    })
+    renderFeedTab()
+    expect(screen.getByText('Updated just now')).toBeInTheDocument()
+    vi.mocked(Date.now).mockRestore()
+  })
+
+  it('ages the feed freshness label while the tab stays open', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(60_000)
+      mockUseSituationUpdates.mockReturnValue({
+        updates: [],
+        loading: false,
+        error: null,
+        lastUpdatedAt: 60_000,
+        retry: vi.fn(),
+      })
+      renderFeedTab()
+      expect(screen.getByText('Updated just now')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(60_000)
+      })
+
+      expect(screen.getByText('Updated 1m ago')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders situation cards when data is present', () => {
@@ -188,6 +330,7 @@ describe('FeedTab', () => {
 
   it('submits a community situation update from the composer', async () => {
     renderFeedTab()
+    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
     fireEvent.change(screen.getByLabelText('Municipality'), { target: { value: 'Labo' } })
     fireEvent.change(screen.getByLabelText('Barangay (optional)'), {
       target: { value: 'Talobatib' },

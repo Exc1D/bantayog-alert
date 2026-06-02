@@ -36,7 +36,7 @@ describe('BarangaySelector', () => {
   it('shows optional label', () => {
     render(<BarangaySelector municipalityId="daet" value="" onChange={vi.fn()} />)
 
-    expect(screen.getByText(/— optional/)).toBeInTheDocument()
+    expect(screen.getByText(/^\s*\(optional\)$/)).toBeInTheDocument()
   })
 
   it('reflects the value prop on the select element', () => {

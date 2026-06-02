@@ -16,6 +16,7 @@ import { Button } from '../ui/Button'
 
 const MAX_PHOTO_BYTES = 20 * 1024 * 1024 // 20 MB
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const COMMON_INCIDENT_COUNT = 4
 
 interface Step1EvidenceProps {
   onNext: (data: { reportType: string; photoFile: File | null }) => void
@@ -109,6 +110,9 @@ export function Step1Evidence({
   // gates the "Skip photo for now" path — without it, Skip silently
   // submitted whatever the seeded default was.
   const [reportType, setReportType] = useState(initialReportType)
+  const [showAllIncidentTypes, setShowAllIncidentTypes] = useState(() =>
+    INCIDENT_TYPES.slice(COMMON_INCIDENT_COUNT).some(({ value }) => value === initialReportType),
+  )
   const [reportTypeError, setReportTypeError] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -273,7 +277,7 @@ export function Step1Evidence({
                     fileInputRef.current.value = ''
                   }
                 }}
-                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-surface-900/60 flex items-center justify-center active:bg-surface-900/80 transition-colors"
+                className="absolute top-2 right-2 w-11 h-11 rounded-full bg-surface-900/60 flex items-center justify-center active:bg-surface-900/80 transition-colors"
                 aria-label="Remove photo"
               >
                 <X size={16} className="text-white" />
@@ -302,7 +306,10 @@ export function Step1Evidence({
             What type of incident is this?
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {INCIDENT_TYPES.map(({ value, label, Icon, colorClass, selBorder, selBg, selText }) => {
+            {(showAllIncidentTypes
+              ? INCIDENT_TYPES
+              : INCIDENT_TYPES.slice(0, COMMON_INCIDENT_COUNT)
+            ).map(({ value, label, Icon, colorClass, selBorder, selBg, selText }) => {
               const isSelected = reportType === value
               return (
                 <button
@@ -328,6 +335,15 @@ export function Step1Evidence({
               )
             })}
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAllIncidentTypes((isShowingAll) => !isShowingAll)
+            }}
+            className="mt-2 flex min-h-11 w-full items-center justify-center rounded-lg bg-transparent text-sm font-semibold text-brand-600"
+          >
+            {showAllIncidentTypes ? 'Show fewer incident types' : 'More incident types'}
+          </button>
           {reportTypeError && (
             <p role="alert" className="mt-2 text-xs text-danger-500 font-medium">
               {reportTypeError}

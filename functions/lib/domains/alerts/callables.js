@@ -9,6 +9,7 @@ import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
 import { checkRateLimit } from '../shared/rate-limit.js';
 import { Timestamp } from 'firebase-admin/firestore';
 const HAZARD_TYPES = [
+    // Legacy values remain accepted for older callers.
     'flood',
     'landslide',
     'earthquake',
@@ -22,12 +23,54 @@ const HAZARD_TYPES = [
     'health',
     'infrastructure',
     'other',
+    'tropical_cyclone',
+    'heavy_rainfall_warning',
+    'thunderstorm_advisory',
+    'flood_advisory',
+    'storm_surge_warning',
+    'gale_warning',
+    'heat_index_warning',
+    'cold_surge_advisory',
+    'tsunami_warning',
+    'scheduled_power_interruption',
+    'emergency_power_interruption',
+    'water_service_interruption',
+    'road_closure',
+    'bridge_closure',
+    'telecommunication_outage',
+    'structural_damage',
+    'class_suspension',
+    'work_suspension',
+    'transport_suspension',
+    'curfew',
+    'state_of_calamity',
+    'preemptive_evacuation',
+    'evacuation_order',
+    'security_incident',
+    'crime_alert',
+    'health_advisory',
+    'disease_outbreak',
+];
+const SECTOR_TYPES = [
+    'public_schools',
+    'private_schools',
+    'government_offices',
+    'private_business',
+    'healthcare',
+    'transportation',
+    'all',
 ];
 const declareAlertInputSchema = z.object({
     hazardType: z.enum(HAZARD_TYPES),
     affectedMunicipalityIds: z.array(z.string().min(1)).min(1),
     message: z.string().min(1).max(500),
     reportId: z.uuid().optional(),
+    effectiveFrom: z.number().int().optional(),
+    effectiveUntil: z.number().int().optional(),
+    expectedResolutionAt: z.number().int().optional(),
+    affectedSectors: z.array(z.enum(SECTOR_TYPES)).optional(),
+    affectedBarangayIds: z.array(z.string().min(1)).optional(),
+    roadName: z.string().trim().min(1).max(200).optional(),
 });
 export async function declareAlertCore(db, input, actor) {
     const validated = declareAlertInputSchema.parse(input);
@@ -43,18 +86,13 @@ export async function declareAlertCore(db, input, actor) {
     const alertDoc = {
         alertId,
         alertType: 'alert',
-        hazardType: validated.hazardType,
-        affectedMunicipalityIds: validated.affectedMunicipalityIds,
-        message: validated.message,
+        ...validated,
         declaredBy: actor.uid,
         declaredAt: now,
         publishedAt: now,
         visibility: 'public',
         schemaVersion: 1,
     };
-    if (validated.reportId) {
-        alertDoc.reportId = validated.reportId;
-    }
     await db.collection('alerts').doc(alertId).set(alertDoc);
     if (process.env.FUNCTIONS_EMULATOR !== 'true') {
         // Best-effort FCM push — don't fail alert creation if push fails

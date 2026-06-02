@@ -1,12 +1,13 @@
 /// <reference types="node" />
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TestWrapper } from './test-utils'
 
 // Hoist mocks so they can be referenced by vi.mock factories
 const mockLoad = vi.hoisted(() => vi.fn())
 const mockClear = vi.hoisted(() => vi.fn())
+const mockPathname = vi.hoisted(() => ({ value: '/' }))
 
 vi.mock('../services/wizard-snapshot', () => ({
   wizardSnapshot: {
@@ -47,7 +48,7 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
     ...actual,
-    useLocation: () => ({ pathname: '/' }),
+    useLocation: () => ({ pathname: mockPathname.value }),
     useNavigate: () => vi.fn(),
   }
 })
@@ -55,22 +56,21 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../styles/design-tokens.css', () => ({}))
 
 async function renderShell(pathname = '/') {
-  vi.doMock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom')
-    return {
-      ...actual,
-      useLocation: () => ({ pathname }),
-      useNavigate: () => vi.fn(),
-    }
-  })
+  mockPathname.value = pathname
   const { CitizenShell } = await import('../components/CitizenShell')
-  return render(
-    <TestWrapper>
-      <CitizenShell>
-        <div>child content</div>
-      </CitizenShell>
-    </TestWrapper>,
-  )
+  let result: ReturnType<typeof render> | undefined
+  await act(async () => {
+    result = render(
+      <TestWrapper>
+        <CitizenShell>
+          <div>child content</div>
+        </CitizenShell>
+      </TestWrapper>,
+    )
+    await Promise.resolve()
+  })
+  if (!result) throw new Error('CitizenShell did not render')
+  return result
 }
 
 beforeEach(() => {
@@ -118,7 +118,7 @@ describe('CitizenShell — draft resume prompt', () => {
     })
   })
 
-  it('Discard button clears snapshot and hides banner', async () => {
+  it('asks for confirmation before discarding a saved report', async () => {
     mockLoad.mockResolvedValue({
       step: 1,
       step1: { reportType: 'fire' },
@@ -134,7 +134,12 @@ describe('CitizenShell — draft resume prompt', () => {
     const discardBtn = screen.getByRole('button', { name: /discard/i })
     await userEvent.click(discardBtn)
 
-    expect(mockClear).toHaveBeenCalled()
+    expect(mockClear).not.toHaveBeenCalled()
+    expect(screen.getByText(/discard this unfinished report/i)).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /discard report/i }))
+
+    expect(mockClear).toHaveBeenCalledOnce()
     await waitFor(() => {
       expect(screen.queryByText(/unfinished report/i)).not.toBeInTheDocument()
     })

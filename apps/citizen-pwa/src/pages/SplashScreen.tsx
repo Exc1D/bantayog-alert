@@ -1,26 +1,28 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield } from 'lucide-react'
 import { useUIStore } from '../lib/store.js'
 import { useNavigate } from 'react-router-dom'
 
 const STATUS_MESSAGES = [
-  'Initializing emergency services...',
-  'Connecting to watchtower...',
-  'Loading Camarines Norte map data...',
+  'Preparing local safety tools...',
+  'Loading community updates...',
+  'Opening Camarines Norte map...',
 ]
 
 const EASE_REVEAL: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 interface SplashScreenProps {
   onDone?: () => void
+  onReportNow?: () => void
 }
 
-export function SplashScreen({ onDone }: SplashScreenProps) {
+export function SplashScreen({ onDone, onReportNow }: SplashScreenProps) {
   const navigate = useNavigate()
   const hasCompletedOnboarding = useUIStore((s) => s.hasCompletedOnboarding)
   const [visible, setVisible] = useState(true)
   const [statusIndex, setStatusIndex] = useState(0)
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const finish = useCallback(() => {
     setVisible(false)
@@ -33,8 +35,19 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
     }, 100)
   }, [hasCompletedOnboarding, navigate, onDone])
 
+  const startReport = useCallback(() => {
+    if (finishTimerRef.current) clearTimeout(finishTimerRef.current)
+    setVisible(false)
+    if (onReportNow) {
+      onReportNow()
+      return
+    }
+    void navigate('/report')
+  }, [navigate, onReportNow])
+
   useEffect(() => {
     const timer = setTimeout(finish, 1600)
+    finishTimerRef.current = timer
     return () => {
       clearTimeout(timer)
     }
@@ -141,6 +154,14 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
               />
             </div>
           </motion.div>
+
+          <button
+            type="button"
+            onClick={startReport}
+            className="mt-6 min-h-11 rounded-full border border-white/50 bg-white/10 px-5 text-sm font-semibold text-white"
+          >
+            Report emergency now
+          </button>
 
           <motion.p
             className="absolute bottom-8 text-white/30 text-[11px]"

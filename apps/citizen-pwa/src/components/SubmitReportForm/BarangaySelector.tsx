@@ -23,7 +23,7 @@ export function BarangaySelector({ municipalityId, value, onChange }: BarangaySe
     <div className="field-group">
       <label htmlFor="report-barangay" className="field-label">
         Barangay
-        <span className="field-label-optional"> — optional</span>
+        <span className="field-label-optional"> (optional)</span>
       </label>
       <select
         id="report-barangay"

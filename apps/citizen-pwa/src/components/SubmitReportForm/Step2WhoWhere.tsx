@@ -284,7 +284,7 @@ export function Step2WhoWhere({
                   onClick={() => {
                     resetGps()
                   }}
-                  className="text-xs font-semibold text-brand-500 bg-transparent border-none cursor-pointer"
+                  className="min-h-11 px-2 text-xs font-semibold text-brand-500 bg-transparent border-none cursor-pointer"
                 >
                   Change
                 </button>
@@ -321,7 +321,7 @@ export function Step2WhoWhere({
                 className="text-sm font-semibold text-surface-700 block mb-2"
               >
                 Nearest landmark
-                <span className="font-normal text-surface-400 ml-1">— optional</span>
+                <span className="font-normal text-surface-400 ml-1">(optional)</span>
               </label>
               <input
                 id="report-landmark"

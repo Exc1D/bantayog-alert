@@ -40,6 +40,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const showOfflineBanner = !isOnline
   const prefersReducedMotion = useReducedMotion()
   const [hasDraft, setHasDraft] = useState(false)
+  const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false)
 
   // Check for an in-progress wizard snapshot on mount. Hide the banner when
   // the user is already on the /report route (they're actively filling it).
@@ -72,6 +73,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
       .clear()
       .then(() => {
         setHasDraft(false)
+        setIsConfirmingDiscard(false)
       })
       .catch((err: unknown) => {
         console.warn('[CitizenShell] Failed to discard draft:', err)
@@ -82,6 +84,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const handleResumeDraft = () => {
     setNavDirection('forward')
     setHasDraft(false)
+    setIsConfirmingDiscard(false)
     void navigate('/report')
   }
 
@@ -117,7 +120,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
               <WifiOff size={16} className="text-warning-500" />
               <span className="text-sm font-medium text-warning-500">
                 {queueCount > 0
-                  ? `Offline — ${String(queueCount)} report${queueCount !== 1 ? 's' : ''} queued`
+                  ? `Offline. ${String(queueCount)} report${queueCount !== 1 ? 's' : ''} queued`
                   : "You're offline. Reports saved on device."}
               </span>
             </motion.div>
@@ -133,7 +136,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
               animate={{ y: 0, opacity: 1 }}
               exit={prefersReducedMotion ? { y: 0, opacity: 0 } : { y: -40, opacity: 0 }}
               transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
-              className="shrink-0 z-toast bg-brand-50 border-b border-brand-200 px-4 py-2 flex items-center gap-2"
+              className="shrink-0 z-toast bg-brand-50 border-b border-brand-200 px-4 py-2 flex flex-wrap items-center gap-2"
               role="status"
               aria-label="Draft report available"
               aria-live="polite"
@@ -141,24 +144,55 @@ export function CitizenShell({ children }: { children: ReactNode }) {
             >
               <FileText size={16} className="text-brand-600 shrink-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-surface-900 m-0">Resume unfinished report</p>
-                <p className="text-xs text-surface-600 italic m-0">Hindi pa natapos ang ulat</p>
+                <p className="text-sm font-medium text-surface-900 m-0">
+                  {isConfirmingDiscard
+                    ? 'Discard this unfinished report?'
+                    : 'Resume unfinished report'}
+                </p>
+                <p className="text-xs text-surface-600 italic m-0">
+                  {isConfirmingDiscard ? 'This cannot be undone.' : 'Hindi pa natapos ang ulat'}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={handleResumeDraft}
-                className="text-xs font-semibold text-white bg-brand-600 px-3 py-1.5 rounded-md min-h-[36px]"
-              >
-                Resume
-              </button>
-              <button
-                type="button"
-                onClick={handleDiscardDraft}
-                className="text-xs font-medium text-surface-600 px-2 py-1.5 rounded-md min-h-[36px]"
-                aria-label="Discard draft"
-              >
-                Discard
-              </button>
+              {isConfirmingDiscard ? (
+                <div className="basis-full flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConfirmingDiscard(false)
+                    }}
+                    className="text-xs font-semibold text-brand-700 px-2 py-1.5 rounded-md min-h-11"
+                  >
+                    Keep report
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDiscardDraft}
+                    className="text-xs font-semibold text-white bg-danger-600 px-3 py-1.5 rounded-md min-h-11"
+                  >
+                    Discard report
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleResumeDraft}
+                    className="text-xs font-semibold text-white bg-brand-600 px-3 py-1.5 rounded-md min-h-11"
+                  >
+                    Resume
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConfirmingDiscard(true)
+                    }}
+                    className="text-xs font-medium text-surface-600 px-2 py-1.5 rounded-md min-h-11"
+                    aria-label="Discard draft"
+                  >
+                    Discard
+                  </button>
+                </>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -200,7 +234,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           main has no overflow:hidden. */}
         <nav
           aria-label="Main navigation"
-          className="shrink-0 z-nav bg-surface-50/90 backdrop-blur-md border-t border-surface-200"
+          className="shrink-0 z-nav bg-surface-50 border-t border-surface-200"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <div className="flex items-center justify-around h-16 max-w-lg mx-auto relative">
