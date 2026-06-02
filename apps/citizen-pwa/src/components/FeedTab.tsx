@@ -337,24 +337,22 @@ function SituationComposer({
         <div className="w-10 h-10 rounded-full bg-surface-900 text-white flex items-center justify-center shrink-0">
           <MapPin size={18} />
         </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="m-0 text-sm font-bold text-surface-900">
-            Share what is happening near you
-          </h2>
-          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
-            Short local updates help neighbors compare conditions during typhoons and floods.
-          </p>
-          <p className="m-0 mt-1 text-xs font-semibold text-brand-700">
-            Community update only. For emergencies, use Report.
-          </p>
-          <p className="m-0 mt-2 text-xs leading-relaxed text-surface-600">
-            Shared publicly as a citizen update. Do not include names, phone numbers, or private
-            details.
-          </p>
-          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
-            Reported posts go to admins for review.
-          </p>
-        </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="m-0 text-sm font-bold text-surface-900">
+              Share a quick local update
+            </h2>
+            <p className="m-0 mt-1 text-xs text-surface-500">
+              Help neighbors compare conditions during disasters.
+            </p>
+            <div className="m-0 mt-2 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700">
+                <Info size={12} /> Community only — not for emergencies
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-2 py-1 text-[11px] font-medium text-surface-600">
+                <ShieldCheck size={12} /> Public — no personal info
+              </span>
+            </div>
+          </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">

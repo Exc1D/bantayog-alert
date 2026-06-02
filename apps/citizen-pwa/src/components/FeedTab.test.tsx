@@ -102,14 +102,13 @@ describe('FeedTab', () => {
     expect(screen.getByLabelText('Municipality')).toHaveValue('')
     expect(screen.getByLabelText('Situation type')).toHaveValue('')
     expect(screen.getByLabelText('Current condition')).toHaveValue('')
-    expect(screen.getByText(/community update only/i)).toBeInTheDocument()
+    expect(screen.getByText(/Community only — not for emergencies/i)).toBeInTheDocument()
   })
 
   it('explains public sharing, moderation, and missing fields before posting', () => {
     renderFeedTab()
     fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
-    expect(screen.getByText(/shared publicly as a citizen update/i)).toBeInTheDocument()
-    expect(screen.getByText(/reported posts go to admins for review/i)).toBeInTheDocument()
+    expect(screen.getByText(/Public — no personal info/i)).toBeInTheDocument()
     expect(
       screen.getByText(
         /to post, add municipality, situation type, condition, and a 3\+ character update/i,
