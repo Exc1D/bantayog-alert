@@ -23,6 +23,7 @@ describe('local proof runner', () => {
     const plan = JSON.parse(result.stdout) as {
       steps: string[]
       managedPorts: Array<{ label: string; host: string; port: number }>
+      functionsProbe: { url: string }
       prepare: { args: string[] }
       proof: { args: string[]; env: Record<string, string> }
     }
@@ -32,10 +33,14 @@ describe('local proof runner', () => {
       'prepare-functions',
       'start-local-stack',
       'wait-for-readiness',
+      'wait-for-functions',
       'run-proof',
       'shutdown',
     ])
     expect(plan.prepare.args).toContain('scripts/prepare-functions-deploy.ts')
+    expect(plan.functionsProbe.url).toBe(
+      'http://127.0.0.1:5001/bantayog-alert-staging/asia-southeast1/getOpsMetrics',
+    )
     expect(plan.proof.args).toEqual(['--dir', 'e2e-tests', 'proof:local'])
     expect(plan.proof.env).toMatchObject({
       CI: 'true',

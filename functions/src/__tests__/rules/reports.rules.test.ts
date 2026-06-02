@@ -3,7 +3,13 @@ import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 import { authed, createTestEnvSafe } from '../helpers/rules-harness.js'
-import { seedActiveAccount, seedReport, staffClaims, ts } from '../helpers/seed-factories.js'
+import {
+  seedActiveAccount,
+  seedDispatchRT,
+  seedReport,
+  staffClaims,
+  ts,
+} from '../helpers/seed-factories.js'
 
 let env: RulesTestEnvironment | undefined
 
@@ -29,8 +35,13 @@ beforeAll(async () => {
     municipalityId: 'mercedes',
   })
   await seedActiveAccount(env, { uid: 'citizen-1', role: 'citizen' })
+  await seedActiveAccount(env, { uid: 'bfp-responder', role: 'responder' })
   await seedReport(env, 'r-public', { visibilityClass: 'public_alertable' })
   await seedReport(env, 'r-internal', { visibilityClass: 'internal' })
+  await seedDispatchRT(env, 'r-internal_bfp-responder', {
+    reportId: 'r-internal',
+    assignedTo: { uid: 'bfp-responder' },
+  })
 })
 
 afterAll(async () => {
@@ -58,6 +69,11 @@ describe('reports rules', () => {
       'daet-admin',
       staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
     )
+    await assertSucceeds(getDoc(doc(db, 'reports/r-internal')))
+  })
+
+  itif(!!env)('assigned responder reads their internal report', async () => {
+    const db = authed(env, 'bfp-responder', staffClaims({ role: 'responder' }))
     await assertSucceeds(getDoc(doc(db, 'reports/r-internal')))
   })
 

@@ -146,6 +146,7 @@ describe('declareAlertCore', () => {
         const result = await declareAlertCore(mockDb, { ...validInput, affectedMunicipalityIds: ['daet'] }, { uid: 'admin-1', claims: { role: 'municipal_admin', municipalityId: 'daet' } });
         expect(result.alertId).toBeDefined();
         expect(mockDb._setFn).toHaveBeenCalledTimes(1);
+        expect(mockDb._setFn).toHaveBeenCalledWith(expect.objectContaining({ municipalityId: 'daet' }));
     });
     it('rejects municipal admins declaring alerts outside their municipality', async () => {
         await expect(declareAlertCore(mockDb, validInput, {

@@ -190,6 +190,7 @@ describe('declareAlertCore', () => {
 
     expect(result.alertId).toBeDefined()
     expect(mockDb._setFn).toHaveBeenCalledTimes(1)
+    expect(mockDb._setFn).toHaveBeenCalledWith(expect.objectContaining({ municipalityId: 'daet' }))
   })
 
   it('rejects municipal admins declaring alerts outside their municipality', async () => {

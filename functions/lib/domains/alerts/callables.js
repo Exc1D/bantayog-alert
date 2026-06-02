@@ -83,10 +83,14 @@ export async function declareAlertCore(db, input, actor) {
     }
     const alertId = randomUUID();
     const now = Date.now();
+    const municipalityId = validated.affectedMunicipalityIds.length === 1
+        ? validated.affectedMunicipalityIds[0]
+        : undefined;
     const alertDoc = {
         alertId,
         alertType: 'alert',
         ...validated,
+        ...(municipalityId ? { municipalityId } : {}),
         declaredBy: actor.uid,
         declaredAt: now,
         publishedAt: now,

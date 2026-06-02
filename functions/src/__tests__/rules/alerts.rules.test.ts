@@ -23,6 +23,7 @@ const alertDoc = {
   alertType: 'alert',
   hazardType: 'typhoon',
   affectedMunicipalityIds: ['daet'],
+  municipalityId: 'daet',
   message: 'Signal no. 3 raised.',
   declaredBy: 'admin-1',
   declaredAt: ts,
@@ -94,6 +95,17 @@ describe('alerts visibility rules', () => {
           where('visibility', '==', 'public'),
         ),
       ),
+    )
+  })
+
+  itif('allows scoped municipal admins to query hidden municipality alerts', async () => {
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
+    await assertSucceeds(
+      getDocs(query(collection(db, 'alerts'), where('municipalityId', '==', 'daet'))),
     )
   })
 

@@ -247,3 +247,11 @@
 - **Empty custom claims `{}` ≠ authenticated user with active account.** Firestore rules checking `request.auth.token.accountStatus == 'active'` will fail for `{}` claims (undefined). Use `staffClaims({ role: 'citizen' })` or explicitly include `accountStatus: 'active'` in test claims.
 - **Terraform `default_table_expiration_ms` must be ≥ 3600000 (1 hour).** Setting it to `0` causes `terraform validate` to fail even though the provider docs suggest `0` means "never expire". Use `3600000`.
 - **Dependabot PRs with `pnpm-lock.yaml` conflicts need manual resolution.** When multiple dependabot PRs bump different packages, merging one invalidates others' lockfiles. Consolidate by regenerating the lockfile from the merged `package.json`.
+
+## Live Demo Readiness (2026-06-03)
+
+- `pnpm dev:all` must fail loudly until Auth, Firestore, and RTDB emulators accept connections; a listening process is not enough.
+- Account-only demo seeding still needs responder roster metadata in Firestore and RTDB so investors can perform dispatch manually without workflow automation.
+- Load `@google-cloud/logging` lazily inside scheduled Functions handlers: its static import can erase the Firestore emulator protobuf root before trigger decoding.
+- Full-loop proof navigation must dismiss the admin onboarding tour immediately before map report selection because the tour may mount after route navigation.
+- Firestore report-read rules must pass the matched `reportId` path variable into `canReadReportDoc`; report payloads do not carry their document ID.

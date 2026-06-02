@@ -69,7 +69,7 @@ describe('useFirestoreListeners — role scoping', () => {
     renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
 
     expect(mockWhere).not.toHaveBeenCalled()
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
+    expect(mockOnSnapshot).toHaveBeenCalledTimes(4)
   })
 
   it('municipal_admin: scopes reports + report_ops by municipalityId', () => {
@@ -84,7 +84,7 @@ describe('useFirestoreListeners — role scoping', () => {
     const calls = whereCalls()
     expect(calls).toContainEqual({ field: 'municipalityId', op: '==', value: 'M001' })
     expect(calls.filter((c) => c.field === 'municipalityId').length).toBeGreaterThanOrEqual(2)
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
+    expect(mockOnSnapshot).toHaveBeenCalledTimes(4)
   })
 
   it('agency_admin: reports are unfiltered (rules gate access), report_ops use array-contains on agencyIds', () => {
@@ -104,7 +104,7 @@ describe('useFirestoreListeners — role scoping', () => {
     expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
   })
 
-  it('alerts listener is never scoped (public read)', () => {
+  it('municipal_admin: scopes alerts by scalar municipalityId', () => {
     useAuthMock.mockReturnValue({
       user: { uid: 'muni-1' },
       claims: { role: 'municipal_admin', municipalityId: 'M001' },
@@ -113,28 +113,13 @@ describe('useFirestoreListeners — role scoping', () => {
 
     renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
 
-    // Reports + report_ops subscribe through constrained Queries; alerts must
-    // receive the plain collection ref so it stays unscoped (public read).
-    // Path-aware assertions guard against the failure mode where some *other*
-    // collection (not alerts) is the one being read unscoped.
-    const collectionCalls = mockOnSnapshot.mock.calls.filter((call) => {
-      const ref = call[0] as { kind?: string; path?: string } | undefined
-      return ref?.kind === 'collection'
+    const alertsCall = mockOnSnapshot.mock.calls.find((call) => {
+      const ref = call[0] as { kind?: string; ref?: { path?: string } } | undefined
+      return ref?.kind === 'query' && ref.ref?.path === 'alerts'
     })
-    expect(collectionCalls).toHaveLength(1)
-    expect((collectionCalls[0]?.[0] as { path: string }).path).toBe('alerts')
-
-    // Sanity: the other two listeners ARE constrained, and they wrap the
-    // reports + report_ops collections specifically — not alerts.
-    const queryCalls = mockOnSnapshot.mock.calls.filter((call) => {
-      const ref = call[0] as { kind?: string } | undefined
-      return ref?.kind === 'query'
+    expect(alertsCall?.[0]).toMatchObject({
+      constraints: [{ field: 'municipalityId', op: '==', value: 'M001' }],
     })
-    expect(queryCalls).toHaveLength(2)
-    const queriedPaths = queryCalls
-      .map((call) => (call[0] as { ref: { path: string } }).ref.path)
-      .sort()
-    expect(queriedPaths).toEqual(['report_ops', 'reports'])
   })
 
   it('rejects unsupported role and clears any prior cached data', () => {

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_PROJECT_ID = 'bantayog-alert-staging'
 const PORT_TIMEOUT_MS = 180_000
+const FUNCTIONS_READY_TIMEOUT_MS = 180_000
 
 const MANAGED_PORTS = [
   { label: 'emulator ui', host: '127.0.0.1', port: 4000 },
@@ -29,10 +30,14 @@ export function buildPlan(env = process.env) {
       'prepare-functions',
       'start-local-stack',
       'wait-for-readiness',
+      'wait-for-functions',
       'run-proof',
       'shutdown',
     ],
     managedPorts: MANAGED_PORTS,
+    functionsProbe: {
+      url: `http://127.0.0.1:5001/${encodeURIComponent(projectId)}/asia-southeast1/getOpsMetrics`,
+    },
     prepare: {
       command: 'pnpm',
       args: ['exec', 'tsx', 'scripts/prepare-functions-deploy.ts'],
@@ -146,6 +151,31 @@ async function waitForPorts(ports, timeoutMs) {
   }
 }
 
+async function waitForFunctions(url, timeoutMs) {
+  logStep('Waiting for Functions handler registration')
+  const startedAt = Date.now()
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ data: {} }),
+        signal: AbortSignal.timeout(1000),
+      })
+      if (response.status !== 404) {
+        console.log(`[proof:local] ready: functions handler ${url}`)
+        return
+      }
+    } catch {
+      // Functions may still be loading after the emulator port opens.
+    }
+    await delay(500)
+  }
+
+  throw new Error(`Timed out waiting for local Functions handler: ${url}`)
+}
+
 async function stopStack(child) {
   if (!child || child.exitCode !== null) return
 
@@ -185,8 +215,9 @@ async function main() {
     await runCommand('Preparing functions-dist', plan.prepare.command, plan.prepare.args)
     stack = startStack(plan)
     await waitForPorts(plan.managedPorts, PORT_TIMEOUT_MS)
+    await waitForFunctions(plan.functionsProbe.url, FUNCTIONS_READY_TIMEOUT_MS)
     await delay(3000)
-    await runCommand('Running C00-C09 reliability proof', plan.proof.command, plan.proof.args, {
+    await runCommand('Running C00-C10 reliability proof', plan.proof.command, plan.proof.args, {
       env: { ...process.env, ...plan.proof.env },
     })
   } finally {

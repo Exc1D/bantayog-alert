@@ -14,11 +14,25 @@ describe('dev-all ports', () => {
 
   it('automatically seeds the canonical empty demo accounts', () => {
     const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
+    const accountSeed = readFileSync(new URL('./create-test-accounts.ts', import.meta.url), 'utf8')
 
     expect(script).toContain('scripts/seed-demo-accounts.ts')
     expect(script).toContain('daet-admin-test-01@test.local')
     expect(script).toContain('bfp-responder-test-01@test.local')
+    expect(accountSeed).toContain("'bfp-responder-test-01'")
+    expect(accountSeed).toContain("'bfp-responder-test-01@test.local'")
+    expect(accountSeed).toContain("collection('responders')")
+    expect(accountSeed).toContain("ref('responder_locations/bfp-responder-test-01')")
     expect(script).not.toContain('scripts/bootstrap-staging.ts')
+  })
+
+  it('waits for auth, firestore, and realtime database before seeding and propagates failures', () => {
+    const wrapper = readFileSync(new URL('./seed-demo-accounts.ts', import.meta.url), 'utf8')
+    const accountSeed = readFileSync(new URL('./create-test-accounts.ts', import.meta.url), 'utf8')
+
+    expect(wrapper).toContain('const requiredEmulatorPorts = [8081, 9000, 9099]')
+    expect(wrapper).toContain('await waitForEmulators()')
+    expect(accountSeed).toContain('process.exit(1)')
   })
 
   it('stops instead of launching apps after emulator startup fails', () => {

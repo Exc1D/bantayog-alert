@@ -105,25 +105,16 @@ async function createCitizenReport(page: Page, testRunId: string): Promise<strin
 }
 
 async function openExactReportOnMap(page: Page, reportId: string): Promise<void> {
-  const markers = page.locator('.leaflet-marker-icon')
-  await expect(markers.first()).toBeVisible({ timeout: 20_000 })
-  const markerCount = await markers.count()
-  for (let index = 0; index < markerCount; index += 1) {
-    const markerBox = await markers.nth(index).boundingBox()
-    if (!markerBox) continue
-    await page.mouse.click(markerBox.x + markerBox.width / 2, markerBox.y + markerBox.height / 2)
-    const panel = page.getByRole('dialog', { name: /report detail/i })
-    const exactReport = panel.getByText(new RegExp(`Report #${reportId.slice(0, 8)}`))
-    if (
-      await exactReport
-        .waitFor({ state: 'visible', timeout: 2_000 })
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      return
-    }
-  }
-  throw new Error(`Could not find report ${reportId} on the admin map`)
+  const incident = page.locator(`[data-report-id="${reportId}"]`)
+  await expect(incident).toBeAttached({ timeout: 20_000 })
+  await dismissAdminTourIfPresent(page)
+  await incident.focus()
+  await incident.click()
+  await expect(
+    page
+      .getByRole('dialog', { name: /report detail/i })
+      .getByText(new RegExp(`Report #${reportId.slice(0, 8)}`)),
+  ).toBeVisible({ timeout: 10_000 })
 }
 
 async function chooseResponderAndDispatch(page: Page, responderUid: string): Promise<void> {
