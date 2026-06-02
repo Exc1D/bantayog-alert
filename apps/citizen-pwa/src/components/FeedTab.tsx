@@ -505,7 +505,7 @@ function FeedCard({
       aria-labelledby={headingId}
       aria-posinset={position}
       aria-setsize={setSize}
-      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-surface-100 motion-fade-in"
+      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-surface-100 motion-fade-in card-hover"
     >
       <div className="flex items-start gap-3 p-4 pb-2">
         <span

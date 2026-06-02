@@ -73,7 +73,7 @@ function AlertCard({
       type="button"
       data-testid={`alert-card-${alert.id}`}
       onClick={onClick}
-      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative motion-fade-in`}
+      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative motion-fade-in card-hover`}
       style={style}
     >
       {/* Unread indicator dot */}
