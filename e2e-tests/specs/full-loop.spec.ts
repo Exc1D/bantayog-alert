@@ -47,18 +47,27 @@ function monitorPage(page: Page, label: string) {
 async function signInAdmin(page: Page, baseUrl: string): Promise<void> {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
   await page.getByLabel(/email/i).fill(ADMIN_EMAIL)
-  await page.getByLabel(/password/i).fill(ADMIN_PASSWORD)
+  await page.locator('#password').fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: /sign in/i }).click()
   await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 15_000 })
+  await dismissAdminTourIfPresent(page)
 }
 
 async function signInResponder(page: Page, baseUrl: string): Promise<void> {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
   await page.getByLabel(/email/i).fill(RESPONDER_EMAIL)
-  await page.getByLabel(/password/i).fill(RESPONDER_PASSWORD)
+  await page.locator('#password').fill(RESPONDER_PASSWORD)
   await page.getByRole('button', { name: /sign in/i }).click()
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15_000 })
   await dismissResponderPrivacyNoticeIfPresent(page)
+}
+
+async function dismissAdminTourIfPresent(page: Page): Promise<void> {
+  const skipButton = page.getByRole('button', { name: /skip tour/i })
+  if (!(await skipButton.isVisible({ timeout: 2_000 }).catch(() => false))) return
+
+  await skipButton.click()
+  await expect(skipButton).toBeHidden({ timeout: 10_000 })
 }
 
 async function dismissResponderPrivacyNoticeIfPresent(page: Page): Promise<void> {
@@ -70,11 +79,14 @@ async function dismissResponderPrivacyNoticeIfPresent(page: Page): Promise<void>
 }
 
 async function createCitizenReport(page: Page, testRunId: string): Promise<string> {
+  await page.evaluate(() => {
+    localStorage.setItem('bantayog_location_auto', 'false')
+  })
   await page.goto('/report', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.z-splash')).toBeHidden({ timeout: 10_000 })
   await page.getByRole('button', { name: /flood/i }).click()
   await page.getByRole('button', { name: /continue/i }).click()
-  await page.getByRole('button', { name: /pick my municipality manually/i }).click({ force: true })
+  await page.getByRole('button', { name: /pick my municipality manually/i }).click()
   const municipality = page.getByLabel('Municipality')
   await municipality.selectOption({ label: 'Daet' })
   await expect(municipality).toHaveValue('daet')
@@ -97,13 +109,15 @@ async function openExactReportOnMap(page: Page, reportId: string): Promise<void>
   await expect(markers.first()).toBeVisible({ timeout: 20_000 })
   const markerCount = await markers.count()
   for (let index = 0; index < markerCount; index += 1) {
-    await markers.nth(index).click({ force: true })
+    const markerBox = await markers.nth(index).boundingBox()
+    if (!markerBox) continue
+    await page.mouse.click(markerBox.x + markerBox.width / 2, markerBox.y + markerBox.height / 2)
     const panel = page.getByRole('dialog', { name: /report detail/i })
-    await expect(panel).toBeVisible({ timeout: 10_000 })
+    const exactReport = panel.getByText(new RegExp(`Report #${reportId.slice(0, 8)}`))
     if (
-      await panel
-        .getByText(new RegExp(`Report #${reportId.slice(0, 8)}`))
-        .isVisible()
+      await exactReport
+        .waitFor({ state: 'visible', timeout: 2_000 })
+        .then(() => true)
         .catch(() => false)
     ) {
       return
@@ -114,8 +128,10 @@ async function openExactReportOnMap(page: Page, reportId: string): Promise<void>
 
 async function chooseResponderAndDispatch(page: Page, responderUid: string): Promise<void> {
   await page.getByRole('button', { name: /advance to review/i }).click()
+  await confirmReportVerification(page)
   await expect(page.getByRole('button', { name: /^verify$/i })).toBeVisible({ timeout: 10_000 })
   await page.getByRole('button', { name: /^verify$/i }).click()
+  await confirmReportVerification(page)
   await expect(page.getByRole('button', { name: /dispatch responder/i })).toBeVisible({
     timeout: 10_000,
   })
@@ -129,11 +145,19 @@ async function chooseResponderAndDispatch(page: Page, responderUid: string): Pro
   await page.keyboard.up('Space')
 }
 
+async function confirmReportVerification(page: Page): Promise<void> {
+  const confirmation = page.getByRole('dialog', { name: /verify report/i })
+  await expect(confirmation).toBeVisible({ timeout: 10_000 })
+  await confirmation.getByRole('button', { name: /^verify$/i }).click()
+  await expect(confirmation).toBeHidden({ timeout: 10_000 })
+}
+
 async function declareAlert(page: Page, testRunId: string): Promise<void> {
-  await page.getByRole('button', { name: /declare alert/i }).click()
+  await page.getByRole('button', { name: /declare alert/i }).focus()
+  await page.keyboard.press('Enter')
   const modal = page.getByRole('dialog', { name: /declare alert/i })
   await expect(modal).toBeVisible({ timeout: 10_000 })
-  await modal.getByLabel(/hazard type/i).selectOption('flood')
+  await modal.getByLabel(/alert type/i).selectOption('flood_advisory')
   await modal.getByRole('checkbox', { name: /daet/i }).check()
   await modal.getByLabel(/message/i).fill(`[TEST:${testRunId}] Flood proof alert`)
   await modal.getByRole('button', { name: /^declare alert$/i }).click()
@@ -350,6 +374,10 @@ test.describe('reliability spine', () => {
 
       currentCheckpoint = 'C07'
       await signInResponder(responderPage, env.responderBaseUrl)
+      await responderPage.goto(`${env.responderBaseUrl}/alerts`, { waitUntil: 'domcontentloaded' })
+      await expect(
+        responderPage.getByText(`[TEST:${ledger.testRunId}] Flood proof alert`),
+      ).toBeVisible({ timeout: 15_000 })
       await responderPage.goto(`${env.responderBaseUrl}/dispatches/${ledger.dispatchId}`, {
         waitUntil: 'domcontentloaded',
       })
@@ -363,8 +391,9 @@ test.describe('reliability spine', () => {
         checkpoint: 'C07',
         status: 'passed',
         target: ledger.target,
-        expected: 'Responder detail page shows the exact dispatch and accept action',
+        expected: 'Responder alerts surface the declaration and detail page shows the dispatch',
         observed: {
+          alertId: ledger.alertId,
           dispatchId: ledger.dispatchId,
           reportId: ledger.reportId,
           responderUid: ledger.responderUid,
@@ -423,6 +452,33 @@ test.describe('reliability spine', () => {
       })
 
       currentCheckpoint = 'C09'
+      const alertId = ledger.alertId
+      if (!alertId) throw new Error('Missing alertId before feed moderation')
+      await adminPage.goto(`${env.adminBaseUrl}/feed`, { waitUntil: 'domcontentloaded' })
+      const hideAlertButton = adminPage.getByRole('button', { name: `Hide alert ${alertId}` })
+      await expect(hideAlertButton).toBeVisible({ timeout: 15_000 })
+      await hideAlertButton.click()
+      await expect
+        .poll(async () => (await db.collection('alerts').doc(alertId).get()).data()?.visibility)
+        .toBe('internal')
+      const restoreAlertButton = adminPage.getByRole('button', {
+        name: `Restore alert ${alertId}`,
+      })
+      await expect(restoreAlertButton).toBeVisible({ timeout: 15_000 })
+      await restoreAlertButton.click()
+      await expect
+        .poll(async () => (await db.collection('alerts').doc(alertId).get()).data()?.visibility)
+        .toBe('public')
+      logCheckpoint({
+        testRunId: ledger.testRunId,
+        checkpoint: 'C09',
+        status: 'passed',
+        target: ledger.target,
+        expected: 'Admin feed regulation hides and restores the exact official alert',
+        observed: { alertId, finalVisibility: 'public' },
+      })
+
+      currentCheckpoint = 'C10'
       const replaySummary = await runManualInboxProcessor()
       expect(replaySummary.exitCode).toBe(0)
       expect(replaySummary.candidateCount).toBe(0)
@@ -445,7 +501,7 @@ test.describe('reliability spine', () => {
       expect(reportAfterReplay.exists).toBe(true)
       logCheckpoint({
         testRunId: ledger.testRunId,
-        checkpoint: 'C09',
+        checkpoint: 'C10',
         status: 'passed',
         target: ledger.target,
         expected: 'Replaying local materialization does not duplicate the report',
@@ -458,9 +514,9 @@ test.describe('reliability spine', () => {
         },
       })
 
-      citizenGuard.assertHealthy('C09')
-      adminGuard.assertHealthy('C09')
-      responderGuard.assertHealthy('C09')
+      citizenGuard.assertHealthy('C10')
+      adminGuard.assertHealthy('C10')
+      responderGuard.assertHealthy('C10')
     } catch (error) {
       logCheckpoint({
         testRunId: ledger.testRunId,
@@ -477,7 +533,11 @@ test.describe('reliability spine', () => {
       })
       throw error
     } finally {
-      await Promise.all([citizenContext.close(), adminContext.close(), responderContext.close()])
+      await Promise.allSettled([
+        citizenContext.close(),
+        adminContext.close(),
+        responderContext.close(),
+      ])
       await cleanupProofRun(cleanupContext, ledger).catch((cleanupError: unknown) => {
         console.error(
           JSON.stringify({

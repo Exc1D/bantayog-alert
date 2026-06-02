@@ -20,6 +20,7 @@ The current "Declare Alert" feature supports 10 generic hazard types (flood, typ
 - **Curfew** orders
 
 Additionally, the current form lacks:
+
 - Temporal boundaries (start/end times, expected resolution)
 - Sector-level targeting (which schools, offices, businesses are affected)
 - Barangay-level granularity (the current municipality-only scope is too broad for road closures and targeted power interruptions)
@@ -64,7 +65,7 @@ Additionally, the current form lacks:
 ### 4.2 Barangay Selector Behavior
 
 - **Hidden by default.** Only appears after admin clicks "+ Specify barangays (advanced)".
-- **Municipality-driven.** Only barangays belonging to *selected* municipalities are shown. If Basud is unchecked, its barangays don't appear.
+- **Municipality-driven.** Only barangays belonging to _selected_ municipalities are shown. If Basud is unchecked, its barangays don't appear.
 - **"Select all" toggle per municipality.** Each municipality group has a master checkbox that selects/deselects all its barangays.
 - **Auto-sync with municipalities.** If a municipality is unchecked in the main grid, its barangay section disappears and all its barangays are deselected.
 - **Default = all barangays.** If barangay selector is NOT expanded, the backend treats the alert as affecting the entire municipality (all barangays).
@@ -72,14 +73,14 @@ Additionally, the current form lacks:
 
 ### 4.3 Conditional Behaviors by Type
 
-| Type | Extra Fields / Behaviors |
-|------|-------------------------|
-| `road_closure`, `bridge_closure` | Shows **Road / Route Name** |
-| `class_suspension` | Pre-checks **Public Schools + Private Schools** in Sectors |
-| `work_suspension` | Pre-checks **Government Offices + Private Business** in Sectors |
-| `scheduled_power_interruption` | Makes **Effective From/Until required** |
-| `class_suspension`, `work_suspension`, `transport_suspension`, `curfew` | Makes **Effective From/Until required** |
-| All other types | Effective From/Until **optional**; Expected Resolution optional |
+| Type                                                                    | Extra Fields / Behaviors                                        |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `road_closure`, `bridge_closure`                                        | Shows **Road / Route Name**                                     |
+| `class_suspension`                                                      | Pre-checks **Public Schools + Private Schools** in Sectors      |
+| `work_suspension`                                                       | Pre-checks **Government Offices + Private Business** in Sectors |
+| `scheduled_power_interruption`                                          | Makes **Effective From/Until required**                         |
+| `class_suspension`, `work_suspension`, `transport_suspension`, `curfew` | Makes **Effective From/Until required**                         |
+| All other types                                                         | Effective From/Until **optional**; Expected Resolution optional |
 
 ### 4.4 Sector Options
 
@@ -110,7 +111,7 @@ Existing fields remain unchanged:
 interface AlertDoc {
   alertId: string
   alertType: 'alert'
-  hazardType: string        // expanded enum (36 values)
+  hazardType: string // expanded enum (36 values)
   affectedMunicipalityIds: string[]
   message: string
   declaredBy: string
@@ -151,6 +152,7 @@ const declareAlertInputSchema = z.object({
 ```
 
 **Validation rules:**
+
 - If `hazardType === 'scheduled_power_interruption'` → `effectiveFrom` and `effectiveUntil` are **required**.
 - If `hazardType` is in `['class_suspension', 'work_suspension', 'transport_suspension', 'curfew']` → `effectiveFrom` and `effectiveUntil` are **required**.
 - If both `effectiveFrom` and `effectiveUntil` are present → `effectiveUntil` must be > `effectiveFrom`.
@@ -233,14 +235,15 @@ const SECTOR_TYPES = [
 Barangays are sourced from `@bantayog/shared-sms-parser` gazetteer. The `DeclareAlertModal` imports the gazetteer and filters by selected municipalities.
 
 **Gazetteer shape:**
+
 ```ts
 interface BarangayEntry {
-  name: string      // e.g., 'Alawihao'
+  name: string // e.g., 'Alawihao'
   municipality: string // e.g., 'Daet'
 }
 ```
 
-**Mapping to municipality IDs:** The gazetteer uses municipality *names* (e.g., 'Daet'), while the form uses municipality *IDs* (e.g., 'daet'). We maintain a `MUNICIPALITY_NAME_TO_ID` map derived from `CAMARINES_NORTE_MUNICIPALITIES`.
+**Mapping to municipality IDs:** The gazetteer uses municipality _names_ (e.g., 'Daet'), while the form uses municipality _IDs_ (e.g., 'daet'). We maintain a `MUNICIPALITY_NAME_TO_ID` map derived from `CAMARINES_NORTE_MUNICIPALITIES`.
 
 ---
 
@@ -248,11 +251,11 @@ interface BarangayEntry {
 
 ### 6.1 Files to Change
 
-| File | Change |
-|------|--------|
+| File                                                      | Change                                                                         |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `apps/admin-desktop/src/components/DeclareAlertModal.tsx` | Full rewrite of form fields, add state for new fields, add barangay drill-down |
-| `functions/src/domains/alerts/callables.ts` | Expand `HAZARD_TYPES`, add new input schema fields, add validation rules |
-| `packages/shared-validators/src/alerts.ts` | Expand `alertSchema` or add new `declareAlertInputSchema` export |
+| `functions/src/domains/alerts/callables.ts`               | Expand `HAZARD_TYPES`, add new input schema fields, add validation rules       |
+| `packages/shared-validators/src/alerts.ts`                | Expand `alertSchema` or add new `declareAlertInputSchema` export               |
 
 ### 6.2 Component State (React)
 
@@ -288,17 +291,18 @@ interface FormState {
 
 ### 7.1 Inline Validation (Frontend)
 
-| Field | Rule | Message |
-|-------|------|---------|
-| `hazardType` | Required | "Select an alert type" |
-| `affectedMunicipalityIds` | Min 1 | "Select at least one municipality" |
-| `effectiveUntil` | If present, must be > `effectiveFrom` | "End time must be after start time" |
+| Field                            | Rule                                          | Message                                            |
+| -------------------------------- | --------------------------------------------- | -------------------------------------------------- |
+| `hazardType`                     | Required                                      | "Select an alert type"                             |
+| `affectedMunicipalityIds`        | Min 1                                         | "Select at least one municipality"                 |
+| `effectiveUntil`                 | If present, must be > `effectiveFrom`         | "End time must be after start time"                |
 | `effectiveFrom`/`effectiveUntil` | Required for scheduled/power/suspension types | "Effective period is required for this alert type" |
-| `roadName` | Required when type = road/bridge closure | "Road name is required for road/bridge closures" |
+| `roadName`                       | Required when type = road/bridge closure      | "Road name is required for road/bridge closures"   |
 
 ### 7.2 Backend Validation
 
 Same rules as frontend, plus:
+
 - `affectedBarangayIds` must all belong to selected municipalities.
 - `message` max 500 chars.
 - `roadName` max 200 chars.
@@ -355,19 +359,20 @@ Same rules as frontend, plus:
 
 ## 10. Risks
 
-| Risk | Mitigation |
-|------|-----------|
-| 36-item dropdown is overwhelming | Start with native `<select>`; upgrade to custom searchable dropdown if feedback demands it. |
-| Barangay data out of sync with gazetteer | Barangays are already used by SMS parser; same source of truth. |
-| Citizen PWA doesn't show new fields | Out of scope for this spec. Existing `message` and `hazardType` still render correctly. |
-| Admins don't understand new type names | Type labels are descriptive (e.g., "Scheduled Power Interruption" not "Power"). Tooltip/help text deferred. |
-| Backend validation rejects valid frontend input | Ensure frontend and backend schemas stay in sync. Use shared validators package. |
+| Risk                                            | Mitigation                                                                                                  |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 36-item dropdown is overwhelming                | Start with native `<select>`; upgrade to custom searchable dropdown if feedback demands it.                 |
+| Barangay data out of sync with gazetteer        | Barangays are already used by SMS parser; same source of truth.                                             |
+| Citizen PWA doesn't show new fields             | Out of scope for this spec. Existing `message` and `hazardType` still render correctly.                     |
+| Admins don't understand new type names          | Type labels are descriptive (e.g., "Scheduled Power Interruption" not "Power"). Tooltip/help text deferred. |
+| Backend validation rejects valid frontend input | Ensure frontend and backend schemas stay in sync. Use shared validators package.                            |
 
 ---
 
 ## 11. Rollback Plan
 
 If the expanded form causes issues:
+
 1. Revert `DeclareAlertModal.tsx` to previous version (10 types, no new fields).
 2. Backend remains backward-compatible — old frontend submits valid payloads.
 3. No Firestore migration needed since new fields are optional.
@@ -376,14 +381,14 @@ If the expanded form causes issues:
 
 ## 12. Open Questions (resolved during brainstorming)
 
-| Question | Resolution |
-|----------|-----------|
-| Category vs flat list? | **Flat grouped list** — merged into single `<select>` with `<optgroup>` headers. |
-| Temporal fields? | **`effectiveFrom` + `effectiveUntil` required for scheduled/suspension types; `expectedResolutionAt` optional for all.** |
-| Sector targeting? | **Multi-select checkboxes: public_schools, private_schools, government_offices, private_business, healthcare, transportation, all.** |
-| Barangay targeting? | **Hidden by default, municipality-driven drill-down with "select all" per municipality.** |
-| Road name field? | **Conditional text input, shown for `road_closure` and `bridge_closure`.** |
+| Question               | Resolution                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Category vs flat list? | **Flat grouped list** — merged into single `<select>` with `<optgroup>` headers.                                                     |
+| Temporal fields?       | **`effectiveFrom` + `effectiveUntil` required for scheduled/suspension types; `expectedResolutionAt` optional for all.**             |
+| Sector targeting?      | **Multi-select checkboxes: public_schools, private_schools, government_offices, private_business, healthcare, transportation, all.** |
+| Barangay targeting?    | **Hidden by default, municipality-driven drill-down with "select all" per municipality.**                                            |
+| Road name field?       | **Conditional text input, shown for `road_closure` and `bridge_closure`.**                                                           |
 
 ---
 
-*Spec approved by user on 2026-05-26. Ready for implementation plan.*
+_Spec approved by user on 2026-05-26. Ready for implementation plan._

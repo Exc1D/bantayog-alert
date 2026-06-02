@@ -80,9 +80,7 @@ function SituationValue({
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
         {value}
-        {unit && (
-          <span className="text-xs font-normal text-[var(--color-text-muted)]">{unit}</span>
-        )}
+        {unit && <span className="text-xs font-normal text-[var(--color-text-muted)]">{unit}</span>}
       </span>
       {alert !== 'none' && (
         <span
@@ -113,8 +111,10 @@ export function StatusBar({
   const isSurge = pendingTriage >= 20 || activeIncidents >= 50
   const expanded = statusBarExpandedOverride ?? !isSurge
 
-  const activeAlert: AlertLevel = activeIncidents > 75 ? 'red' : activeIncidents > 50 ? 'amber' : 'none'
-  const responseAlert: AlertLevel = avgResponseTime > 20 ? 'red' : avgResponseTime > 15 ? 'amber' : 'none'
+  const activeAlert: AlertLevel =
+    activeIncidents > 75 ? 'red' : activeIncidents > 50 ? 'amber' : 'none'
+  const responseAlert: AlertLevel =
+    avgResponseTime > 20 ? 'red' : avgResponseTime > 15 ? 'amber' : 'none'
   const pendingAlert: AlertLevel = pendingTriage > 10 ? 'red' : pendingTriage > 5 ? 'amber' : 'none'
 
   const fcmPercent = Math.round(fcmSuccessRate * 100)
@@ -226,62 +226,55 @@ export function StatusBar({
       {expanded && (
         <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
           <span>
-            Resolved:{" "}
+            Resolved:{' '}
             <strong
               data-testid="statusbar-resolved-today"
               className="text-[var(--color-text-primary)]"
             >
-              {resolvedToday === undefined ? "—" : String(resolvedToday)}
+              {resolvedToday === undefined ? '—' : String(resolvedToday)}
             </strong>
           </span>
           <span>
-            Muni Issues:{" "}
+            Muni Issues:{' '}
             <strong
               data-testid="statusbar-muni-issues"
               className="text-[var(--color-text-primary)]"
             >
-              {muniIssues ? `${String(muniIssues.resolved)}/${String(muniIssues.total)}` : "—"}
+              {muniIssues ? `${String(muniIssues.resolved)}/${String(muniIssues.total)}` : '—'}
             </strong>
           </span>
           <span>
-            Stalled:{" "}
+            Stalled:{' '}
             <strong
               data-testid="statusbar-stalled"
               className={
                 stalledDispatchCount > 0
-                  ? "text-[var(--color-danger)]"
-                  : "text-[var(--color-text-primary)]"
+                  ? 'text-[var(--color-danger)]'
+                  : 'text-[var(--color-text-primary)]'
               }
             >
               {String(stalledDispatchCount)}
             </strong>
           </span>
           <span>
-            Push Rate:{" "}
+            Push Rate:{' '}
             <strong
               data-testid="statusbar-fcm-rate"
-              className={
-                isFcmHigh
-                  ? "text-[var(--color-success)]"
-                  : "text-[var(--color-warning)]"
-              }
+              className={isFcmHigh ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}
             >
               {fcmPercent}%
             </strong>
           </span>
           <span>
-            Avg Response:{" "}
-            <strong
-              data-testid="statusbar-avg-accept"
-              className="text-[var(--color-text-primary)]"
-            >
-              {avgAcceptSeconds !== null ? formatSeconds(avgAcceptSeconds) : "—"}
+            Avg Response:{' '}
+            <strong data-testid="statusbar-avg-accept" className="text-[var(--color-text-primary)]">
+              {avgAcceptSeconds !== null ? formatSeconds(avgAcceptSeconds) : '—'}
             </strong>
           </span>
           <span>
-            Surge:{" "}
+            Surge:{' '}
             <strong className="text-[var(--color-text-primary)]">
-              {isSurge ? "Active" : "Idle"}
+              {isSurge ? 'Active' : 'Idle'}
             </strong>
           </span>
         </div>

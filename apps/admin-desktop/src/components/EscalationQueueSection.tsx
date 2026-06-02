@@ -19,7 +19,9 @@ export function EscalationQueueSection({ stalledDispatches, onReDispatch, mode }
     if (mode === 'calm') return null
     return (
       <div className="rounded border border-[var(--color-success)]/20 bg-[var(--color-success)]/5 px-4 py-2">
-        <span className="text-sm text-[var(--color-success)]">All clear — no stalled dispatches</span>
+        <span className="text-sm text-[var(--color-success)]">
+          All clear — no stalled dispatches
+        </span>
       </div>
     )
   }
@@ -49,11 +51,17 @@ export function EscalationQueueSection({ stalledDispatches, onReDispatch, mode }
                 View Details
               </a>
             </div>
-            <div className="text-sm font-mono text-[var(--color-text-primary)]">{d.reportId.slice(0, 8)}</div>
+            <div className="text-sm font-mono text-[var(--color-text-primary)]">
+              {d.reportId.slice(0, 8)}
+            </div>
 
-            <div className="text-xs text-[var(--color-text-muted)]">Assigned to: {d.responderName}</div>
+            <div className="text-xs text-[var(--color-text-muted)]">
+              Assigned to: {d.responderName}
+            </div>
 
-            <div className="text-xs text-[var(--color-warning)]">Escalated {d.escalationCount}x</div>
+            <div className="text-xs text-[var(--color-warning)]">
+              Escalated {d.escalationCount}x
+            </div>
 
             <button
               type="button"

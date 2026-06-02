@@ -5,7 +5,8 @@ function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
   const selector =
     'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
   return Array.from(container.querySelectorAll<HTMLElement>(selector)).filter(
-    (el) => !el.hasAttribute('disabled') && !el.getAttribute('aria-disabled') && el.offsetParent !== null,
+    (el) =>
+      !el.hasAttribute('disabled') && !el.getAttribute('aria-disabled') && el.offsetParent !== null,
   )
 }
 
@@ -18,29 +19,32 @@ export function useFocusTrap({ isActive, onEscape }: UseFocusTrapOptions) {
   const containerRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
-  const handleTabKey = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return
-      const focusable = getFocusableElements(containerRef.current)
-      if (focusable.length === 0) return
+  const handleTabKey = useCallback((e: KeyboardEvent) => {
+    if (e.key !== 'Tab') return
+    const focusable = getFocusableElements(containerRef.current)
+    if (focusable.length === 0) return
 
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
 
-      if (e.shiftKey) {
-        if (document.activeElement === first || !containerRef.current?.contains(document.activeElement)) {
-          e.preventDefault()
-          last?.focus()
-        }
-      } else {
-        if (document.activeElement === last || !containerRef.current?.contains(document.activeElement)) {
-          e.preventDefault()
-          first?.focus()
-        }
+    if (e.shiftKey) {
+      if (
+        document.activeElement === first ||
+        !containerRef.current?.contains(document.activeElement)
+      ) {
+        e.preventDefault()
+        last?.focus()
       }
-    },
-    [],
-  )
+    } else {
+      if (
+        document.activeElement === last ||
+        !containerRef.current?.contains(document.activeElement)
+      ) {
+        e.preventDefault()
+        first?.focus()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!isActive) return

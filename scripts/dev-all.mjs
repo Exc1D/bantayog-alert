@@ -12,10 +12,7 @@
  *   - admin-desktop     http://localhost:5175
  *   - responder-app     http://localhost:5174
  *
- * Run bootstrap script to seed test accounts after emulators are ready.
- *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 \
- *   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
- *   pnpm exec tsx scripts/bootstrap-staging.ts
+ * Seeds empty demo accounts automatically after emulators are ready.
  *
  * Press Ctrl-C once to terminate all processes cleanly.
  */
@@ -32,6 +29,7 @@ const colors = {
   citizen: '\x1b[32m', // green
   admin: '\x1b[34m', // blue
   responder: '\x1b[35m', // magenta
+  seed: '\x1b[33m', // yellow
   reset: '\x1b[0m',
   bold: '\x1b[1m',
 }
@@ -65,7 +63,7 @@ function start(name, color, cmd, args, opts = {}) {
   return child
 }
 
-function shutdown() {
+function shutdown(exitCode = 0) {
   console.log(`\n${colors.bold}Shutting down all processes...${colors.reset}`)
   for (const proc of procs) {
     proc.kill('SIGTERM')
@@ -75,16 +73,25 @@ function shutdown() {
     for (const proc of procs) {
       if (!proc.killed) proc.kill('SIGKILL')
     }
-    process.exit(0)
+    process.exit(exitCode)
   }, 5000)
 }
 
-process.on('SIGINT', shutdown)
-process.on('SIGTERM', shutdown)
+process.on('SIGINT', () => shutdown())
+process.on('SIGTERM', () => shutdown())
 
 // ── Start emulators ──────────────────────────────────────────────
-start('emulators', colors.emulators, 'pnpm', ['exec', 'firebase', 'emulators:start'], {
-  cwd: rootDir,
+const emulators = start(
+  'emulators',
+  colors.emulators,
+  'pnpm',
+  ['exec', 'firebase', 'emulators:start'],
+  {
+    cwd: rootDir,
+  },
+)
+emulators.on('exit', (code) => {
+  if (code !== null && code !== 0) shutdown(code)
 })
 
 // Wait 15s for emulators to be ready before starting dev servers
@@ -121,8 +128,23 @@ setTimeout(() => {
   console.log(`${colors.admin}  admin-desktop → http://localhost:5175${colors.reset}`)
   console.log(`${colors.responder}  responder-app → http://localhost:5174${colors.reset}`)
   console.log(`${colors.emulators}  Emulator UI   → http://127.0.0.1:4000${colors.reset}`)
-  console.log(`\nTo bootstrap test accounts, run in another terminal:`)
-  console.log(
-    `  FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 pnpm exec tsx scripts/bootstrap-staging.ts\n`,
+
+  const seed = start(
+    'demo-seed',
+    colors.seed,
+    'pnpm',
+    ['exec', 'tsx', 'scripts/seed-demo-accounts.ts'],
+    { cwd: rootDir },
   )
+  seed.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`${colors.seed}[demo-seed] Failed to prepare demo accounts.${colors.reset}`)
+      shutdown(1)
+      return
+    }
+
+    console.log(`\n${colors.bold}${colors.seed}Demo accounts ready:${colors.reset}`)
+    console.log(`  Admin     daet-admin-test-01@test.local / test123456`)
+    console.log(`  Responder bfp-responder-test-01@test.local / test123456\n`)
+  })
 }, 15000)

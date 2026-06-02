@@ -1,7 +1,8 @@
-import { useState, type SyntheticEvent } from 'react'
+import { useEffect, useState, type SyntheticEvent } from 'react'
 import { AlertTriangle, CheckCircle2, Flag, Info, MapPin, Send, ShieldCheck } from 'lucide-react'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { useSituationUpdates } from '../hooks/useSituationUpdates.js'
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
 import { hasFirebaseConfig } from '../services/firebase.js'
 import {
   createSituationUpdate,
@@ -11,8 +12,8 @@ import {
   type SituationUpdate,
 } from '../services/situation-updates.js'
 
-function timeAgo(timestamp: number): string {
-  const minutes = Math.floor((Date.now() - timestamp) / 60000)
+function timeAgo(timestamp: number, now = Date.now()): string {
+  const minutes = Math.floor((now - timestamp) / 60000)
   if (minutes < 1) return 'just now'
   if (minutes < 60) return `${String(minutes)}m ago`
   const hours = Math.floor(minutes / 60)
@@ -24,15 +25,57 @@ function locationLabel(update: SituationUpdate): string {
   return `${update.barangayLabel ? `${update.barangayLabel}, ` : ''}${update.municipalityLabel}`
 }
 
-function titleCase(value: string): string {
-  return value
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+function humanize(value: string): string {
+  const words = value.split('_').join(' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 function plural(count: number, singular: string, pluralLabel: string): string {
   return `${String(count)} ${count === 1 ? singular : pluralLabel}`
+}
+
+function feedStatusLabel({
+  loading,
+  error,
+  isOnline,
+  lastUpdatedAt,
+  now,
+}: {
+  loading: boolean
+  error: unknown
+  isOnline: boolean
+  lastUpdatedAt: number | null
+  now: number
+}): string {
+  if (loading) return 'Connecting to feed'
+  if (error) return 'Feed not updating'
+  if (!isOnline) return 'Offline. Showing saved feed view.'
+  if (lastUpdatedAt) return `Updated ${timeAgo(lastUpdatedAt, now)}`
+  return 'Waiting for live updates'
+}
+
+function missingComposerFields({
+  municipalityLabel,
+  hazardType,
+  condition,
+  body,
+}: {
+  municipalityLabel: string
+  hazardType: SituationHazardType | ''
+  condition: SituationCondition | ''
+  body: string
+}): string[] {
+  const missing: string[] = []
+  if (!municipalityLabel) missing.push('municipality')
+  if (!hazardType) missing.push('situation type')
+  if (!condition) missing.push('condition')
+  if (body.trim().length < 3) missing.push('a 3+ character update')
+  return missing
+}
+
+function sentenceList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? ''
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1) ?? ''}`
 }
 
 const HAZARD_OPTIONS: { value: SituationHazardType; label: string }[] = [
@@ -59,6 +102,70 @@ const CONDITION_OPTIONS: { value: SituationCondition; label: string }[] = [
   { value: 'power_outage', label: 'Power outage' },
   { value: 'other', label: 'Other' },
 ]
+
+const SITUATION_DRAFT_KEY = 'bantayog_situation_update_draft'
+
+interface SituationDraft {
+  municipalityLabel: string
+  barangayLabel: string
+  hazardType: SituationHazardType | ''
+  condition: SituationCondition | ''
+  body: string
+}
+
+function loadSituationDraft(): SituationDraft | null {
+  try {
+    const raw = localStorage.getItem(SITUATION_DRAFT_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const data = parsed as Record<string, unknown>
+    if (
+      typeof data.municipalityLabel !== 'string' ||
+      typeof data.barangayLabel !== 'string' ||
+      typeof data.hazardType !== 'string' ||
+      typeof data.condition !== 'string' ||
+      typeof data.body !== 'string'
+    ) {
+      return null
+    }
+    const isValidMunicipality =
+      data.municipalityLabel === '' ||
+      CAMARINES_NORTE_MUNICIPALITIES.some(
+        (municipality) => municipality.label === data.municipalityLabel,
+      )
+    const isValidHazard =
+      data.hazardType === '' || HAZARD_OPTIONS.some((option) => option.value === data.hazardType)
+    const isValidCondition =
+      data.condition === '' || CONDITION_OPTIONS.some((option) => option.value === data.condition)
+    if (
+      !isValidMunicipality ||
+      !isValidHazard ||
+      !isValidCondition ||
+      data.barangayLabel.length > 80 ||
+      data.body.length > 500
+    ) {
+      return null
+    }
+    return data as unknown as SituationDraft
+  } catch (err: unknown) {
+    console.warn('Failed to load situation update draft', err)
+    return null
+  }
+}
+
+function saveSituationDraft(draft: SituationDraft): void {
+  try {
+    localStorage.setItem(SITUATION_DRAFT_KEY, JSON.stringify(draft))
+  } catch (err: unknown) {
+    console.warn('Failed to save situation update draft', err)
+  }
+}
+
+function initialMunicipality(draft: SituationDraft | null, selectedMunicipality: string): string {
+  if (!draft?.municipalityLabel) return selectedMunicipality
+  return draft.municipalityLabel
+}
 
 const MUNICIPALITY_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'All' },
@@ -119,26 +226,84 @@ function CommunityPulse({ updates }: { updates: SituationUpdate[] }) {
   )
 }
 
+function FeedStatus({
+  loading,
+  error,
+  isOnline,
+  lastUpdatedAt,
+  now,
+  onRetry,
+}: {
+  loading: boolean
+  error: unknown
+  isOnline: boolean
+  lastUpdatedAt: number | null
+  now: number
+  onRetry: () => void
+}) {
+  const label = feedStatusLabel({ loading, error, isOnline, lastUpdatedAt, now })
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-lg bg-surface-100 px-3 text-xs font-semibold text-surface-600"
+    >
+      <span>{label}</span>
+      {error ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="min-h-9 rounded-full border border-surface-200 bg-white px-3 text-xs font-bold text-surface-800"
+        >
+          Try again
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 function SituationComposer({
   firebaseConfigured,
+  isOnline,
   selectedMunicipality,
   onPosted,
+  onClose,
 }: {
   firebaseConfigured: boolean
+  isOnline: boolean
   selectedMunicipality: string
   onPosted: (message: string) => void
+  onClose: () => void
 }) {
-  const [municipalityLabel, setMunicipalityLabel] = useState(selectedMunicipality || 'Daet')
-  const [barangayLabel, setBarangayLabel] = useState('')
-  const [hazardType, setHazardType] = useState<SituationHazardType>('typhoon')
-  const [condition, setCondition] = useState<SituationCondition>('heavy_rain')
-  const [body, setBody] = useState('')
+  const [savedDraft] = useState(loadSituationDraft)
+  const [municipalityLabel, setMunicipalityLabel] = useState(
+    initialMunicipality(savedDraft, selectedMunicipality),
+  )
+  const [barangayLabel, setBarangayLabel] = useState(savedDraft?.barangayLabel ?? '')
+  const [hazardType, setHazardType] = useState<SituationHazardType | ''>(
+    savedDraft?.hazardType ?? '',
+  )
+  const [condition, setCondition] = useState<SituationCondition | ''>(savedDraft?.condition ?? '')
+  const [body, setBody] = useState(savedDraft?.body ?? '')
   const [submitState, setSubmitState] = useState<'idle' | 'posting' | 'posted' | 'error'>('idle')
   const trimmedBody = body.trim()
+  const missingFields = missingComposerFields({ municipalityLabel, hazardType, condition, body })
+  const canPost =
+    firebaseConfigured &&
+    isOnline &&
+    municipalityLabel !== '' &&
+    hazardType !== '' &&
+    condition !== '' &&
+    trimmedBody.length >= 3 &&
+    submitState !== 'posting'
+
+  useEffect(() => {
+    saveSituationDraft({ municipalityLabel, barangayLabel, hazardType, condition, body })
+  }, [municipalityLabel, barangayLabel, hazardType, condition, body])
 
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
-    if (!firebaseConfigured || trimmedBody.length < 3 || submitState === 'posting') return
+    if (!canPost) return
     setSubmitState('posting')
     try {
       const trimmedBarangay = barangayLabel.trim()
@@ -179,6 +344,16 @@ function SituationComposer({
           <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
             Short local updates help neighbors compare conditions during typhoons and floods.
           </p>
+          <p className="m-0 mt-1 text-xs font-semibold text-brand-700">
+            Community update only. For emergencies, use Report.
+          </p>
+          <p className="m-0 mt-2 text-xs leading-relaxed text-surface-600">
+            Shared publicly as a citizen update. Do not include names, phone numbers, or private
+            details.
+          </p>
+          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
+            Reported posts go to admins for review.
+          </p>
         </div>
       </div>
 
@@ -191,8 +366,9 @@ function SituationComposer({
             onChange={(event) => {
               setMunicipalityLabel(event.target.value)
             }}
-            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
+            className="mt-1 h-11 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
           >
+            <option value="">Select municipality</option>
             {POST_MUNICIPALITY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -210,7 +386,7 @@ function SituationComposer({
             }}
             placeholder="Optional"
             maxLength={80}
-            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 text-sm text-surface-900"
+            className="mt-1 h-11 w-full rounded-lg border border-surface-200 bg-white px-3 text-sm text-surface-900"
           />
         </label>
       </div>
@@ -224,8 +400,9 @@ function SituationComposer({
             onChange={(event) => {
               setHazardType(event.target.value as SituationHazardType)
             }}
-            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
+            className="mt-1 h-11 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
           >
+            <option value="">Select type</option>
             {HAZARD_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -241,8 +418,9 @@ function SituationComposer({
             onChange={(event) => {
               setCondition(event.target.value as SituationCondition)
             }}
-            className="mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
+            className="mt-1 h-11 w-full rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-900"
           >
+            <option value="">Select condition</option>
             {CONDITION_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -267,17 +445,35 @@ function SituationComposer({
         />
       </label>
 
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <span className="text-[11px] text-surface-500">{String(trimmedBody.length)}/500</span>
+        {!isOnline ? (
+          <span className="text-[11px] font-medium text-warning-600">
+            Reconnect to post. Saved on this phone until posted.
+          </span>
+        ) : missingFields.length > 0 ? (
+          <span className="text-[11px] font-medium text-surface-500">
+            To post, add {sentenceList(missingFields)}.
+          </span>
+        ) : (
+          <span className="text-[11px] font-medium text-success-600">Ready to post publicly.</span>
+        )}
         {!firebaseConfigured && (
           <span className="text-[11px] font-medium text-warning-600">
             Live sharing unavailable here.
           </span>
         )}
         <button
+          type="button"
+          onClick={onClose}
+          className="ml-auto min-h-11 rounded-full border-none bg-transparent px-3 text-sm font-semibold text-surface-600"
+        >
+          Close
+        </button>
+        <button
           type="submit"
-          disabled={!firebaseConfigured || trimmedBody.length < 3 || submitState === 'posting'}
-          className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-full border-none bg-brand-600 px-4 text-sm font-bold text-white disabled:bg-surface-200 disabled:text-surface-500"
+          disabled={!canPost}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border-none bg-brand-600 px-4 text-sm font-bold text-white disabled:bg-surface-200 disabled:text-surface-500"
         >
           <Send size={15} />
           {submitState === 'posting' ? 'Posting' : 'Post update'}
@@ -300,8 +496,8 @@ function FeedCard({
   position: number
   setSize: number
 }) {
-  const hazardLabel = titleCase(update.hazardType)
-  const conditionLabel = titleCase(update.condition)
+  const hazardLabel = humanize(update.hazardType)
+  const conditionLabel = humanize(update.condition)
   const location = locationLabel(update)
   const headingId = `feed-post-${update.id}`
   const needsHelp = update.condition === 'needs_help'
@@ -333,7 +529,7 @@ function FeedCard({
                 <span className="truncate">{location}</span>
               </p>
             </div>
-            <span className="flex-shrink-0 text-xs text-surface-500">Public</span>
+            <span className="flex-shrink-0 text-xs text-surface-500">Unverified</span>
           </div>
         </div>
       </div>
@@ -402,8 +598,20 @@ export function FeedTab() {
   const [filters, setFilters] = useState({ municipality: '' })
   const [notice, setNotice] = useState<string | null>(null)
   const [reportingId, setReportingId] = useState<string | null>(null)
+  const [isComposerOpen, setIsComposerOpen] = useState(false)
+  const [feedClock, setFeedClock] = useState(() => Date.now())
   const firebaseConfigured = hasFirebaseConfig()
-  const { updates, loading, error } = useSituationUpdates(filters)
+  const { navigatorOnline } = useOnlineStatus()
+  const { updates, loading, error, lastUpdatedAt, retry } = useSituationUpdates(filters)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFeedClock(Date.now())
+    }, 60_000)
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
 
   async function handleReport(updateId: string): Promise<void> {
     if (reportingId) return
@@ -440,23 +648,48 @@ export function FeedTab() {
               }}
               className={
                 filters.municipality === value
-                  ? 'bg-surface-900 text-white rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
-                  : 'bg-surface-100 text-surface-600 rounded-full px-3 py-1.5 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
+                  ? 'bg-surface-900 text-white rounded-full px-3 py-1.5 min-h-11 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
+                  : 'bg-surface-100 text-surface-600 rounded-full px-3 py-1.5 min-h-11 text-xs font-medium flex-shrink-0 border-none cursor-pointer whitespace-nowrap'
               }
             >
               {label}
             </button>
           ))}
         </div>
+        <FeedStatus
+          loading={loading}
+          error={error}
+          isOnline={navigatorOnline}
+          lastUpdatedAt={lastUpdatedAt}
+          now={feedClock}
+          onRetry={retry}
+        />
       </div>
 
       <div className="py-3 pb-24">
-        <SituationComposer
-          key={filters.municipality || 'all'}
-          firebaseConfigured={firebaseConfigured}
-          selectedMunicipality={filters.municipality}
-          onPosted={setNotice}
-        />
+        {isComposerOpen ? (
+          <SituationComposer
+            key={filters.municipality || 'all'}
+            firebaseConfigured={firebaseConfigured}
+            isOnline={navigatorOnline}
+            selectedMunicipality={filters.municipality}
+            onPosted={setNotice}
+            onClose={() => {
+              setIsComposerOpen(false)
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setIsComposerOpen(true)
+            }}
+            className="mx-3 mb-2 flex min-h-11 w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl border border-surface-200 bg-white px-4 text-left text-sm font-semibold text-surface-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+          >
+            <MapPin size={18} className="text-brand-600" />
+            Share local update
+          </button>
+        )}
 
         {notice && (
           <div
@@ -468,11 +701,12 @@ export function FeedTab() {
         )}
 
         {loading ? (
-          <>
+          <div role="status" aria-live="polite">
+            <span className="sr-only">Loading situation updates</span>
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
-          </>
+          </div>
         ) : error ? (
           <div
             role="alert"
@@ -493,7 +727,9 @@ export function FeedTab() {
             </span>
             <p className="m-0 mb-1 font-bold text-surface-900 text-[15px]">No situation updates</p>
             <p className="m-0 text-[13px] text-surface-600 text-center">
-              Be the first to share what conditions are like in your area.
+              {filters.municipality
+                ? `No posts for ${filters.municipality} yet. Share what conditions are like there if it is safe.`
+                : 'Be the first to share what conditions are like in your area.'}
               <span className="block text-xs text-surface-500 mt-1 italic">
                 Magbahagi ng maikling update kung ligtas gawin.
               </span>

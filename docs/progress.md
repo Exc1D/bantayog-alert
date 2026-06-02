@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-06-02 — Project-Wide Security & Quality Audit
+
+Addressed all findings from the architecture/governance review:
+
+1. **P0 — Secret document leak in `request-lookup.ts` (FIXED):** Replaced `console.error(..., { secretHash, secretDoc })` with `console.error(..., secretHash)` so malformed secret_lookup docs never log sensitive data to Cloud Logging.
+2. **P1 — Firestore rules active-account bypasses (FIXED):**
+   - `report_inbox` create: added `request.auth.token.accountStatus == 'active'` inline check.
+   - `situation_updates` create: added `request.auth.token.accountStatus == 'active'` inline check. (Acknowledged that `isAuthed()` is too strict for anonymous paths, so the inline claim check is the correct middle ground.)
+   - `secret_lookup` read: restricted from "any authed user" to "only the report’s original reporter" by looking up `report_private/{reportId}.reporterUid == uid()`. This prevents authenticated information disclosure.
+   - Updated `secret-lookup.rules.test.ts` to seed `report_private/r-1` with `reporterUid: citizen-1` and added a negative assertion that `citizen-2` cannot read `secret_lookup/hash-1`.
+   - Kept `.rules` and `.template` in sync; only expected diff is `validResponderTransition` inlined in `.rules` vs `// @@TRANSITION_TABLES@@` in `.template`.
+3. **P2 — `typescript: ^6.0.3` (INVESTIGATED):** Confirmed that npm published `6.0.3` as an `npm:tsgo` alias/RC. The lockfile resolves it correctly and `tsc --version` reports `6.0.3`. No change needed.
+4. **P2 — `shared-data` + `shared-build-utils` micro-packages (DEFERRED):** Verified `shared-data` exports `CAMARINES_NORTE_MUNICIPALITY_IDS` and a `data/` dir for boundaries; `shared-build-utils` exports `assertNoEmulatorInProduction` used in all 3 app `vite.config.ts` files. While both are small, they have real consumers and build artifacts (`lib/`). Per `learnings.md`: "Don't mix package extraction with directory reorg. Finish one, let it bake." Deferred consolidation to a standalone refactor branch to avoid coupling structural churn with security fixes.
+5. **P2 — `shared-validators` test bloat (INVESTIGATED):** 13 test files across 36 source files. Each schema has one focused happy-path, edge-case, and error test. Not bloat. No change.
+6. **P3 — `admin-desktop` StrictMode (FIXED):** Added `<StrictMode>` wrapper around `<App />` in `apps/admin-desktop/src/main.tsx`, matching `citizen-pwa`.
+
+Verification: `pnpm --dir apps/admin-desktop lint` and `pnpm --dir apps/admin-desktop typecheck` pass. `pnpm --dir functions lint` passes. Rules `.rules` vs `.template` diff is limited to `validResponderTransition` inline vs templated.
+
+## 2026-06-02 - Citizen PWA Feed UX Completeness Hardening
+
+Hardened Situation Feed with live freshness heartbeat and retry, offline local composer draft preservation with validated hydration, public-sharing and moderation privacy copy, explicit missing-field guidance, municipality-specific empty state, and server-ordered latest-100 public query backed by the approved `situation_updates(visibility, createdAt desc)` composite index.
+
+Verification: focused Feed, hook, and service tests pass; focused Firestore emulator rules pass 10/10; full Citizen PWA suite passes 450/450; Citizen PWA typecheck, lint, and production build pass; focused Chromium Playwright evidence passes 6/6, including offline Feed draft restoration, disabled offline posting, and mobile overflow coverage.
+
+## 2026-05-31 - Citizen PWA E2E/Offline/A11y Evidence
+
+Replaced stale Citizen PWA Playwright coverage with deterministic current-flow evidence: report review with validated data, offline submit queue recovery copy, GPS denial fallback to manual municipality, empty lookup browser validation, and mobile accessibility checks for reduced motion, skip navigation, touch targets, and horizontal overflow. Also fixed a stale e2e geolocation mock type so the e2e TypeScript gate runs cleanly.
+
+Verification: focused Chromium Playwright spec passes 5/5, Citizen PWA typecheck passes, and `pnpm --dir e2e-tests exec tsc --noEmit` passes.
+
 ## 2026-05-29 — Admin Control for Citizen PWA Visibility
 
 Wired missing admin moderation for what citizens see on the Citizen PWA. Existing report publication remains the control path for Citizen Map/report visibility. Added backend-enforced visibility for citizen situation feed posts and official alerts, including admin callable moderation, scoped admin listeners, public-only Citizen alert queries, `situation_updates.municipalityId`, Firestore rules/index updates, and Feed page controls to hide/restore citizen posts and alerts. Focused tests, lint, typecheck, builds, and emulator rules tests pass.

@@ -277,7 +277,7 @@ export function MapTab() {
           role="alert"
           className="absolute left-0 right-0 bottom-0 z-[800] px-4 py-2 bg-surface-900/90 text-white text-center text-[0.8rem]"
         >
-          Offline — map data may be outdated
+          Offline. Map data may be outdated
         </div>
       ) : null}
 
