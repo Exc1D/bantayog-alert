@@ -85,7 +85,7 @@ const emulators = start(
   'emulators',
   colors.emulators,
   'pnpm',
-  ['exec', 'firebase', 'emulators:start'],
+  ['dlx', 'firebase-tools', 'emulators:start'],
   {
     cwd: rootDir,
   },
