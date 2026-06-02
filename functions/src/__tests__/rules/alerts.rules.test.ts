@@ -88,7 +88,11 @@ describe('alerts visibility rules', () => {
     )
     await assertSucceeds(
       getDocs(
-        query(collection(db, 'alerts'), where('affectedMunicipalityIds', 'array-contains', 'daet')),
+        query(
+          collection(db, 'alerts'),
+          where('affectedMunicipalityIds', 'array-contains', 'daet'),
+          where('visibility', '==', 'public'),
+        ),
       ),
     )
   })

@@ -48,7 +48,7 @@ describe('report_inbox rules', () => {
   })
 
   itif(!!env)('allows an anonymous authed user to create their own inbox entry', async () => {
-    const db = authed(env, 'anon-1', {})
+    const db = authed(env, 'anon-1', staffClaims({ role: 'citizen' }))
     await assertSucceeds(
       addDoc(collection(db, 'report_inbox'), {
         reporterUid: 'anon-1',
