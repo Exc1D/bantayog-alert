@@ -121,16 +121,16 @@ export const borderAutoShareTrigger = onDocumentCreated(
     const opsData = event.data?.data() ?? {}
     let boundaryGeohashSet: ReadonlySet<string> = new Set()
     try {
-    const mod = (await import('@bantayog/shared-types')) as {
-      BOUNDARY_GEOHASH_SET?: ReadonlySet<string>
-    }
-    boundaryGeohashSet = mod.BOUNDARY_GEOHASH_SET ?? new Set()
-  } catch (err) {
-    log({
-      severity: 'WARNING',
-      code: 'border.shared-data-missing',
-      message: `Failed to import @bantayog/shared-types: ${err instanceof Error ? err.message : String(err)}`,
-    })
+      const mod = (await import('@bantayog/shared-types')) as {
+        BOUNDARY_GEOHASH_SET?: ReadonlySet<string>
+      }
+      boundaryGeohashSet = mod.BOUNDARY_GEOHASH_SET ?? new Set()
+    } catch (err) {
+      log({
+        severity: 'WARNING',
+        code: 'border.shared-types-missing',
+        message: `Failed to import BOUNDARY_GEOHASH_SET from @bantayog/shared-types: ${err instanceof Error ? err.message : String(err)}`,
+      })
     }
     await borderAutoShareCore(adminDb, {
       reportId: event.params.reportId,

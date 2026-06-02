@@ -64,7 +64,7 @@ vi.mock('node:module', () => {
     const req = cr('/virtual/index.js');
     const origResolve = req.resolve.bind(req);
     req.resolve = (mod) => {
-        if (mod === '@bantayog/shared-data/municipality-boundaries.geojson') {
+        if (mod === '@bantayog/shared-types/municipality-boundaries.geojson') {
             return '/stubbed/path/boundary.json';
         }
         return origResolve(mod);
