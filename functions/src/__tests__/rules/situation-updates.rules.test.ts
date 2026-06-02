@@ -42,7 +42,7 @@ afterAll(async () => {
 
 describe('situation_updates rules', () => {
   itif('allows any signed-in citizen context to create its own public update', async () => {
-    const db = authed(env, 'citizen-1', {})
+    const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertSucceeds(addDoc(collection(db, 'situation_updates'), validUpdate))
   })
 
