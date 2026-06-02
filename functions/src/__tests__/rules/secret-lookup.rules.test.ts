@@ -29,6 +29,13 @@ beforeAll(async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db: any = ctx.firestore()
 
+    // Seed the secret_lookup doc and the report_private doc that links it
+    // to reporterUid 'citizen-1' per the new rule restriction.
+    await db.collection('report_private').doc('r-1').set({
+      reporterUid: 'citizen-1',
+      municipalityId: 'daet',
+    })
+
     await db
       .collection('secret_lookup')
       .doc('hash-1')
@@ -50,13 +57,9 @@ describe('secret_lookup rules', () => {
     await assertSucceeds(getDoc(doc(db, 'secret_lookup/hash-1')))
   })
 
-  itif(!!env)('municipal admin reads (positive)', async () => {
-    const db = authed(
-      env,
-      'daet-admin',
-      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-    )
-    await assertSucceeds(getDoc(doc(db, 'secret_lookup/hash-1')))
+  itif(!!env)('different authed user read fails (negative)', async () => {
+    const db = authed(env, 'citizen-2', staffClaims({ role: 'citizen' }))
+    await assertFails(getDoc(doc(db, 'secret_lookup/hash-1')))
   })
 
   itif(!!env)('unauthed read fails (negative)', async () => {

@@ -20,6 +20,8 @@
 - Citizen situation feeds are not emergency reports. Keep them on a separate public collection with short text limits, pseudonymous signed-in create, public read, no update/delete, and a moderation-report subcollection.
 - Pseudonymous citizen writes cannot use `isAuthed()` when that helper requires active account claims. Use `request.auth != null` plus strict field ownership/validation for anonymous-friendly citizen paths.
 - Chronological public feeds need an approved composite index before `where('visibility') + orderBy('createdAt')`; do not sneak index edits past the risky-change approval gate.
+- Public Feed `limit()` must follow server ordering; client sorting after `limit()` can silently omit newer documents. Pair `where('visibility') + orderBy('createdAt', 'desc')` with the approved composite index.
+- Community-update drafts may persist locally across close/reopen, but hydrate defensively and keep that storage separate from emergency-report queue semantics.
 - Filter invalid entries individually (`raw.filter(isStoredReport)`); discarding the whole array wipes all stored reports on one stale entry.
 - Track from localForage before `report_lookup` materializes; `onSnapshot` upgrades automatically.
 - Normalise incident-type aliases at the draft boundary (e.g. `public_disturbance` → `security`).
@@ -64,6 +66,10 @@
 
 ## Testing
 
+- Keep Citizen PWA e2e evidence inside `e2e-tests/specs/` unless Playwright `testDir` changes; files outside that tree are invisible to default runs.
+- For Citizen PWA offline evidence without emulators, assert the visible queued/recovery state. Backend replay needs a separate emulator-backed test.
+- When reduced-motion evidence must be explicit, call `page.emulateMedia({ reducedMotion: 'reduce' })` before navigation and assert `matchMedia`; fixture-level `test.use` can be obscured by project config.
+- In Playwright, label matching is fuzzy by default. Use `{ exact: true }` when a form label overlaps a nearby accessible group name, such as `Municipality` and `Filter by municipality`.
 - `vi.hoisted()` mocks must be created inside the hoisted callback.
 - A passing test is not enough; confirm it exercises the changed path.
 - Never mix Admin SDK and Client SDK Firestore calls in the same context.
@@ -188,6 +194,8 @@
 
 - `requireAuth` MUST check `accountStatus === 'active'` in addition to role.
 - Callable handlers without `requireAuth` must manually check both role AND `accountStatus`.
+- **Firestore rules `report_inbox` and `situation_updates` create must enforce `request.auth.token.accountStatus == 'active'` inline — `isAuthed()` is too strict for anonymous paths but `request.auth != null` alone allows suspended accounts.**
+- **Firestore rules `secret_lookup` read must verify that `report_private/{reportId}.reporterUid == request.auth.uid` to prevent information disclosure across authenticated users.**
 - Idempotency guard result persistence must be atomic (within a transaction).
 - `system_config` must never be world-readable — minimum `isAuthed()`.
 - SMS delivery webhooks need HMAC signature verification.

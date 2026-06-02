@@ -110,6 +110,11 @@ describe('ProfileTab', () => {
     expect(screen.getByText('Impact Path')).toBeInTheDocument()
     expect(screen.getByText('3/4 signals')).toBeInTheDocument()
     expect(screen.getByText(/watch for responder updates/i)).toBeInTheDocument()
+    expect(
+      screen
+        .getByText('Impact Path')
+        .compareDocumentPosition(screen.getByText('Reports Submitted')),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('shows sign out button for registered user', () => {

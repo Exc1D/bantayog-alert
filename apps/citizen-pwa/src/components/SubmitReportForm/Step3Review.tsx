@@ -110,7 +110,7 @@ export function Step3Review({
             </div>
             <p className="text-sm text-surface-700 leading-relaxed">
               <strong className="text-surface-900">We heard you. We are here.</strong> Narinig namin
-              kayo. Nandito kami. We&apos;ll notify you when help is on the way — please keep your
+              kayo. Nandito kami. We&apos;ll notify you when help is on the way. Please keep your
               phone line open.
             </p>
           </div>

@@ -79,7 +79,7 @@ export function RegisterPage() {
       setConfirmationResult({ confirm: (code: string) => result.confirm(code) })
       setStep('otp')
     } catch (e: unknown) {
-      toast(e instanceof Error ? e.message : 'Failed to send OTP', 'error')
+      toast(e instanceof Error ? e.message : 'Failed to send verification code', 'error')
     } finally {
       setLoading(false)
     }
@@ -92,7 +92,7 @@ export function RegisterPage() {
       await confirmationResult.confirm(otp)
       setStep('name')
     } catch (e: unknown) {
-      toast(e instanceof Error ? e.message : 'Invalid OTP', 'error')
+      toast(e instanceof Error ? e.message : 'Invalid verification code', 'error')
     } finally {
       setLoading(false)
     }
@@ -144,7 +144,7 @@ export function RegisterPage() {
         onClick={() => {
           void navigate(-1)
         }}
-        className="absolute top-4 left-4 p-1"
+        className="absolute top-4 left-4 flex min-h-11 min-w-11 items-center justify-center rounded-full"
         aria-label="Go back"
       >
         <ArrowLeft size={20} className="text-surface-900" />
@@ -210,7 +210,7 @@ export function RegisterPage() {
               disabled={loading}
               className="w-full h-14 rounded-xl text-white font-semibold text-base disabled:opacity-70 bg-brand-600 hover:bg-brand-700 transition-colors"
             >
-              {loading ? 'Sending…' : 'Send OTP'}
+              {loading ? 'Sending…' : 'Send verification code'}
             </button>
           </form>
         )}

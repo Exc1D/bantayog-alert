@@ -128,7 +128,18 @@ export const callables = {
     { updated: number }
   >('bulkAvailabilityOverride'),
   declareAlert: callable<
-    { hazardType: string; affectedMunicipalityIds: string[]; message: string; reportId?: string },
+    {
+      hazardType: string
+      affectedMunicipalityIds: string[]
+      message: string
+      reportId?: string
+      effectiveFrom?: number
+      effectiveUntil?: number
+      expectedResolutionAt?: number
+      affectedSectors?: string[]
+      affectedBarangayIds?: string[]
+      roadName?: string
+    },
     { alertId: string }
   >('declareAlert'),
   declareDataIncident: callable<

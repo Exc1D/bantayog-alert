@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 // navigate spy — must be hoisted
 const navigateSpy = vi.hoisted(() => vi.fn())
+const reportNowSpy = vi.hoisted(() => vi.fn())
 vi.mock('react-router-dom', async (importActual) => {
   const actual = await importActual<typeof import('react-router-dom')>()
   return { ...actual, useNavigate: () => navigateSpy }
@@ -17,6 +18,7 @@ vi.mock('../lib/store.js', () => ({
 beforeEach(() => {
   vi.useFakeTimers()
   navigateSpy.mockClear()
+  reportNowSpy.mockClear()
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -27,7 +29,7 @@ describe('SplashScreen', () => {
     const { SplashScreen } = await import('./SplashScreen.js')
     return render(
       <MemoryRouter>
-        <SplashScreen onDone={navigateSpy} />
+        <SplashScreen onDone={navigateSpy} onReportNow={reportNowSpy} />
       </MemoryRouter>,
     )
   }
@@ -40,7 +42,14 @@ describe('SplashScreen', () => {
   it('calls onDone after 1.6s', async () => {
     await renderSplash()
     expect(navigateSpy).not.toHaveBeenCalled()
-    vi.advanceTimersByTime(1600)
+    await act(() => vi.advanceTimersByTime(1600))
     expect(navigateSpy).toHaveBeenCalledOnce()
+  })
+
+  it('lets urgent users start a report without waiting for the animation', async () => {
+    await renderSplash()
+    fireEvent.click(screen.getByRole('button', { name: 'Report emergency now' }))
+    expect(reportNowSpy).toHaveBeenCalledOnce()
+    expect(navigateSpy).not.toHaveBeenCalled()
   })
 })

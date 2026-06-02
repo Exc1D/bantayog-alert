@@ -163,13 +163,13 @@ export function ContactFields({
                 onClick={() => {
                   onPatientCountChange(Math.max(0, patientCount - 1))
                 }}
-                className="w-10 h-10 rounded-xl bg-surface-100 text-surface-700 border border-surface-200 flex items-center justify-center font-bold text-lg disabled:opacity-40"
+                className="w-11 h-11 rounded-xl bg-surface-100 text-surface-700 border border-surface-200 flex items-center justify-center font-bold text-lg disabled:opacity-40"
                 disabled={patientCount === 0}
                 aria-label="−"
               >
                 −
               </button>
-              <div className="flex-1 h-10 rounded-xl bg-surface-100 flex items-center justify-center font-bold text-surface-900">
+              <div className="flex-1 h-11 rounded-xl bg-surface-100 flex items-center justify-center font-bold text-surface-900">
                 {patientCount}
               </div>
               <button
@@ -177,7 +177,7 @@ export function ContactFields({
                 onClick={() => {
                   onPatientCountChange(patientCount + 1)
                 }}
-                className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-lg active:bg-brand-600"
+                className="w-11 h-11 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-lg active:bg-brand-600"
                 aria-label="+"
               >
                 +

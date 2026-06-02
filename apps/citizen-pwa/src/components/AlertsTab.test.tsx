@@ -71,6 +71,7 @@ describe('AlertsTab', () => {
     mockAlerts.mockReturnValue({ alerts: [], loading: true })
     render(<AlertsTab />)
     expect(screen.getByText('Alerts')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading alerts')
     expect(screen.queryByText('No active alerts')).not.toBeInTheDocument()
   })
 

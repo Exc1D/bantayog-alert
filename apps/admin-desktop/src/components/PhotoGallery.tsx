@@ -44,9 +44,7 @@ export function PhotoGallery({ reportId, mediaUrls, initialFeaturedIds, onError 
             <label
               key={uploadId}
               className={`relative cursor-pointer overflow-hidden rounded border-2 ${
-                isSelected
-                  ? 'border-[var(--color-success)]'
-                  : 'border-white/10'
+                isSelected ? 'border-[var(--color-success)]' : 'border-white/10'
               }`}
             >
               <input
@@ -69,14 +67,9 @@ export function PhotoGallery({ reportId, mediaUrls, initialFeaturedIds, onError 
                 aria-label={`Select photo ${String(idx + 1)}`}
               />
               <span className="sr-only">
-                Photo {String(idx + 1)}{' '}
-                {isSelected ? '(selected)' : '(unselected)'}
+                Photo {String(idx + 1)} {isSelected ? '(selected)' : '(unselected)'}
               </span>
-              <img
-                src={url}
-                alt=""
-                className="h-[60px] w-[80px] object-cover"
-              />
+              <img src={url} alt="" className="h-[60px] w-[80px] object-cover" />
             </label>
           )
         })}

@@ -68,7 +68,7 @@ export async function requestLookupImpl(input: RequestLookupInput): Promise<Requ
       typeof secretDoc.reportId !== 'string' ||
       typeof secretDoc.expiresAt !== 'number'
     ) {
-      console.error('[requestLookup] secret_lookup doc malformed:', { secretHash, secretDoc })
+      console.error('[requestLookup] secret_lookup doc malformed for hash:', secretHash)
       throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Invalid secret record.')
     }
     if (secretDoc.expiresAt < Date.now()) {

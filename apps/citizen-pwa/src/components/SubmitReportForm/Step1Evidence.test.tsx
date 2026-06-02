@@ -72,4 +72,11 @@ describe('Step1Evidence — incident type validation', () => {
       expect.objectContaining({ reportType: 'flood', photoFile: null }),
     )
   })
+
+  it('reveals less common incident types on demand', () => {
+    renderStep1()
+    expect(screen.queryByRole('button', { name: /^landslide$/i })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /more incident types/i }))
+    expect(screen.getByRole('button', { name: /^landslide$/i })).toBeInTheDocument()
+  })
 })

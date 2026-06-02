@@ -1,4 +1,4 @@
-import { addDoc, collection, limit, onSnapshot, query, where } from 'firebase/firestore'
+import { addDoc, collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import type { QueryDocumentSnapshot, Unsubscribe } from 'firebase/firestore'
 import { db, ensureSignedIn } from './firebase.js'
 
@@ -138,6 +138,7 @@ export function subscribeSituationUpdates(
   const q = query(
     collection(db(), COLLECTION),
     where('visibility', '==', 'public'),
+    orderBy('createdAt', 'desc'),
     limit(FEED_LIMIT),
   )
   return onSnapshot(

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { hasFirebaseConfig } from '../services/firebase.js'
 import { subscribeSituationUpdates, type SituationUpdate } from '../services/situation-updates.js'
 
@@ -10,12 +10,20 @@ export function useSituationUpdates(filters: SituationUpdateFilters): {
   updates: SituationUpdate[]
   loading: boolean
   error: unknown
+  lastUpdatedAt: number | null
+  retry: () => void
 } {
   const firebaseConfigured = hasFirebaseConfig()
   const [updates, setUpdates] = useState<SituationUpdate[]>([])
   const [loading, setLoading] = useState(firebaseConfigured)
   const [error, setError] = useState<unknown>(null)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
+  const [retryToken, setRetryToken] = useState(0)
   const versionRef = useRef(0)
+
+  const retry = useCallback(() => {
+    setRetryToken((token) => token + 1)
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -24,6 +32,7 @@ export function useSituationUpdates(filters: SituationUpdateFilters): {
     if (!firebaseConfigured) {
       setUpdates([])
       setLoading(false)
+      setLastUpdatedAt(null)
       return undefined
     }
 
@@ -36,6 +45,7 @@ export function useSituationUpdates(filters: SituationUpdateFilters): {
           ? allUpdates.filter((update) => update.municipalityLabel === filters.municipality)
           : allUpdates
         setUpdates(filtered)
+        setLastUpdatedAt(Date.now())
         setLoading(false)
       },
       (err) => {
@@ -47,7 +57,7 @@ export function useSituationUpdates(filters: SituationUpdateFilters): {
     return () => {
       unsubscribe()
     }
-  }, [firebaseConfigured, filters.municipality])
+  }, [firebaseConfigured, filters.municipality, retryToken])
 
-  return { updates, loading, error }
+  return { updates, loading, error, lastUpdatedAt, retry }
 }
