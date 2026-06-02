@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CAMARINES_NORTE_MUNICIPALITY_IDS,
   type CamarinesNorteMunicipalityId,
-} from './index.js'
+} from './data.js'
 
 describe('shared-data constants', () => {
   it('contains all 12 Camarines Norte municipalities', () => {

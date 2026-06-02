@@ -1,9 +1,13 @@
-export function assertNoEmulatorInProduction(
-  command: string,
-  mode: string,
-  rawEmulator: string | undefined,
-  appName: string,
-): void {
+/**
+ * Build guard — refuse production builds when the emulator flag is enabled.
+ * Keep this at the root so all Vite configs can import it without a package.
+ *
+ * @param {string} command
+ * @param {string} mode
+ * @param {string | undefined} rawEmulator
+ * @param {string} appName
+ */
+export function assertNoEmulatorInProduction(command, mode, rawEmulator, appName) {
   const normalized = String(rawEmulator).trim().toLowerCase()
   const enabled = normalized === 'true' || normalized === '1'
 

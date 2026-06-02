@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     include: [
-      'packages/shared-data/src/**/*.test.ts',
+      'packages/shared-types/src/**/*.test.ts',
       'packages/shared-validators/src/**/*.test.ts',
       'packages/shared-firebase/src/**/*.test.ts',
       'e2e-tests/fixtures/**/*.test.ts',

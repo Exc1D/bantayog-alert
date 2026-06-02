@@ -13,7 +13,7 @@ let municipalityBoundaries: FeatureCollection | null = null
 function getMunicipalityBoundaries(): FeatureCollection {
   if (!municipalityBoundaries) {
     const require = createRequire(import.meta.url)
-    const filePath = require.resolve('@bantayog/shared-data/municipality-boundaries.geojson')
+    const filePath = require.resolve('@bantayog/shared-types/municipality-boundaries.geojson')
     municipalityBoundaries = JSON.parse(readFileSync(filePath, 'utf8')) as FeatureCollection
   }
   return municipalityBoundaries
@@ -121,16 +121,16 @@ export const borderAutoShareTrigger = onDocumentCreated(
     const opsData = event.data?.data() ?? {}
     let boundaryGeohashSet: ReadonlySet<string> = new Set()
     try {
-      const mod = (await import('@bantayog/shared-data')) as {
-        BOUNDARY_GEOHASH_SET?: ReadonlySet<string>
-      }
-      boundaryGeohashSet = mod.BOUNDARY_GEOHASH_SET ?? new Set()
-    } catch (err) {
-      log({
-        severity: 'WARNING',
-        code: 'border.shared-data-missing',
-        message: `Failed to import @bantayog/shared-data: ${err instanceof Error ? err.message : String(err)}`,
-      })
+    const mod = (await import('@bantayog/shared-types')) as {
+      BOUNDARY_GEOHASH_SET?: ReadonlySet<string>
+    }
+    boundaryGeohashSet = mod.BOUNDARY_GEOHASH_SET ?? new Set()
+  } catch (err) {
+    log({
+      severity: 'WARNING',
+      code: 'border.shared-data-missing',
+      message: `Failed to import @bantayog/shared-types: ${err instanceof Error ? err.message : String(err)}`,
+    })
     }
     await borderAutoShareCore(adminDb, {
       reportId: event.params.reportId,

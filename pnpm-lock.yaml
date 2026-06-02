@@ -78,9 +78,6 @@ importers:
 
   apps/admin-desktop:
     dependencies:
-      '@bantayog/shared-build-utils':
-        specifier: workspace:*
-        version: link:../../packages/shared-build-utils
       '@bantayog/shared-sms-parser':
         specifier: workspace:*
         version: link:../../packages/shared-sms-parser
@@ -202,9 +199,6 @@ importers:
 
   apps/citizen-pwa:
     dependencies:
-      '@bantayog/shared-build-utils':
-        specifier: workspace:*
-        version: link:../../packages/shared-build-utils
       '@bantayog/shared-firebase':
         specifier: workspace:*
         version: link:../../packages/shared-firebase
@@ -302,9 +296,6 @@ importers:
 
   apps/responder-app:
     dependencies:
-      '@bantayog/shared-build-utils':
-        specifier: workspace:*
-        version: link:../../packages/shared-build-utils
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -411,9 +402,6 @@ importers:
 
   functions:
     dependencies:
-      '@bantayog/shared-data':
-        specifier: workspace:*
-        version: link:../packages/shared-data
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../packages/shared-types
@@ -481,24 +469,6 @@ importers:
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
-
-  packages/shared-build-utils: {}
-
-  packages/shared-data:
-    dependencies:
-      '@bantayog/shared-types':
-        specifier: workspace:*
-        version: link:../shared-types
-      '@turf/turf':
-        specifier: ^7.3.5
-        version: 7.3.5
-      ngeohash:
-        specifier: ^0.6.3
-        version: 0.6.3
-    devDependencies:
-      '@types/ngeohash':
-        specifier: ^0.6.8
-        version: 0.6.8
 
   packages/shared-firebase:
     dependencies:
