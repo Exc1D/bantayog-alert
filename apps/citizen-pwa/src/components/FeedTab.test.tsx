@@ -86,19 +86,19 @@ describe('FeedTab', () => {
   it('uses the selected municipality as the composer default', () => {
     renderFeedTab()
     fireEvent.click(screen.getByRole('button', { name: 'Labo' }))
-    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
     expect(screen.getByLabelText('Municipality')).toHaveValue('Labo')
   })
 
   it('keeps the composer compact until the user chooses to share', () => {
     renderFeedTab()
-    expect(screen.getByRole('button', { name: /share local update/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /What's happening\? Share an update/i })).toBeInTheDocument()
     expect(screen.queryByLabelText('Municipality')).not.toBeInTheDocument()
   })
 
   it('opens the composer with neutral incident defaults', () => {
     renderFeedTab()
-    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
     expect(screen.getByLabelText('Municipality')).toHaveValue('')
     expect(screen.getByLabelText('Situation type')).toHaveValue('')
     expect(screen.getByLabelText('Current condition')).toHaveValue('')
@@ -107,7 +107,7 @@ describe('FeedTab', () => {
 
   it('explains public sharing, moderation, and missing fields before posting', () => {
     renderFeedTab()
-    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
     expect(screen.getByText(/shared publicly as a citizen update/i)).toBeInTheDocument()
     expect(screen.getByText(/reported posts go to admins for review/i)).toBeInTheDocument()
     expect(
@@ -120,7 +120,7 @@ describe('FeedTab', () => {
   it('preserves composer input and blocks posting while offline', () => {
     mockUseOnlineStatus.mockReturnValue({ isOnline: false, navigatorOnline: false })
     renderFeedTab()
-    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
     fireEvent.change(screen.getByLabelText('Municipality'), { target: { value: 'Labo' } })
     fireEvent.change(screen.getByLabelText('Situation type'), { target: { value: 'flood' } })
     fireEvent.change(screen.getByLabelText('Current condition'), {
@@ -136,7 +136,7 @@ describe('FeedTab', () => {
       'Water is rising near the bridge.',
     )
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
     expect(screen.getByLabelText('Share situation update')).toHaveValue(
       'Water is rising near the bridge.',
     )
@@ -161,7 +161,7 @@ describe('FeedTab', () => {
       }),
     )
     renderFeedTab()
-    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
 
     expect(screen.getByLabelText('Municipality')).toHaveValue('')
     expect(screen.getByLabelText('Share situation update')).toHaveValue('')
@@ -330,7 +330,7 @@ describe('FeedTab', () => {
 
   it('submits a community situation update from the composer', async () => {
     renderFeedTab()
-    fireEvent.click(screen.getByRole('button', { name: /share local update/i }))
+    fireEvent.click(screen.getByRole('button', { name: /What's happening\? Share an update/i }))
     fireEvent.change(screen.getByLabelText('Municipality'), { target: { value: 'Labo' } })
     fireEvent.change(screen.getByLabelText('Barangay (optional)'), {
       target: { value: 'Talobatib' },

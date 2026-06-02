@@ -1,5 +1,5 @@
 import { useEffect, useState, type SyntheticEvent } from 'react'
-import { AlertTriangle, CheckCircle2, Flag, Info, MapPin, Send, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Flag, Info, MapPin, Send, ShieldCheck, User } from 'lucide-react'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { useSituationUpdates } from '../hooks/useSituationUpdates.js'
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
@@ -667,6 +667,24 @@ export function FeedTab() {
       </div>
 
       <div className="py-3 pb-24">
+        {!isComposerOpen ? (
+          <button
+            type="button"
+            onClick={() => {
+              setIsComposerOpen(true)
+            }}
+            className="mx-3 mb-3 flex min-h-14 w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl border border-surface-200 bg-white px-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-[0.98] transition-transform"
+          >
+            <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
+              <User size={18} className="text-brand-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-surface-900 m-0">What's happening? Share an update</p>
+              <p className="text-xs text-surface-500 m-0 mt-0.5">Magbahagi ng maikling update</p>
+            </div>
+          </button>
+        ) : null}
+
         {isComposerOpen ? (
           <SituationComposer
             key={filters.municipality || 'all'}
@@ -678,18 +696,7 @@ export function FeedTab() {
               setIsComposerOpen(false)
             }}
           />
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setIsComposerOpen(true)
-            }}
-            className="mx-3 mb-2 flex min-h-11 w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl border border-surface-200 bg-white px-4 text-left text-sm font-semibold text-surface-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-          >
-            <MapPin size={18} className="text-brand-600" />
-            Share local update
-          </button>
-        )}
+        ) : null}
 
         {notice && (
           <div
