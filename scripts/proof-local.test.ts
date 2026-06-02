@@ -42,7 +42,7 @@ describe('local proof runner', () => {
       BANTAYOG_FIREBASE_PROJECT_ID: 'bantayog-alert-staging',
     })
     expect(plan.managedPorts.map((item) => item.port).sort((a, b) => a - b)).toEqual([
-      4000, 5001, 5002, 5007, 5008, 5173, 5174, 5175, 8081, 9000, 9099, 9199,
+      4000, 5001, 5173, 5174, 5175, 8081, 9000, 9099, 9199,
     ])
     expect(plan.managedPorts.find((item) => item.label === 'citizen-pwa')?.host).toBe('localhost')
     expect(plan.managedPorts.find((item) => item.label === 'responder-app')?.host).toBe('localhost')

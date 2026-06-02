@@ -35,10 +35,10 @@ describe('dev-all ports', () => {
     expect(script).toContain("process.on('SIGTERM', () => shutdown())")
   })
 
-  it('starts the interactive emulator subset without pubsub', () => {
+  it('starts the interactive emulator subset without hosting or pubsub', () => {
     const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
 
-    expect(script).toContain('auth,firestore,database,storage,functions,hosting')
-    expect(script).not.toContain('auth,firestore,database,storage,functions,hosting,pubsub')
+    expect(script).toContain('auth,firestore,database,storage,functions')
+    expect(script).not.toContain('auth,firestore,database,storage,functions,hosting')
   })
 })

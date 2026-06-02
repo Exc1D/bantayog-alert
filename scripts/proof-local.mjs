@@ -12,9 +12,6 @@ const PORT_TIMEOUT_MS = 180_000
 const MANAGED_PORTS = [
   { label: 'emulator ui', host: '127.0.0.1', port: 4000 },
   { label: 'functions emulator', host: '127.0.0.1', port: 5001 },
-  { label: 'citizen hosting emulator', host: '127.0.0.1', port: 5002 },
-  { label: 'admin hosting emulator', host: '127.0.0.1', port: 5007 },
-  { label: 'responder hosting emulator', host: '127.0.0.1', port: 5008 },
   { label: 'citizen-pwa', host: 'localhost', port: 5173 },
   { label: 'responder-app', host: 'localhost', port: 5174 },
   { label: 'admin-desktop', host: 'localhost', port: 5175 },
