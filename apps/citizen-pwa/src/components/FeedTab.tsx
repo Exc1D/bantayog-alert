@@ -1,5 +1,5 @@
 import { useEffect, useState, type SyntheticEvent } from 'react'
-import { AlertTriangle, CheckCircle2, Flag, Info, MapPin, Send, ShieldCheck, User } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronRight, Flag, Info, MapPin, Send, ShieldCheck, User } from 'lucide-react'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { useSituationUpdates } from '../hooks/useSituationUpdates.js'
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
@@ -680,8 +680,8 @@ export function FeedTab() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-surface-900 m-0">What's happening? Share an update</p>
-              <p className="text-xs text-surface-500 m-0 mt-0.5">Magbahagi ng maikling update</p>
             </div>
+            <ChevronRight size={18} className="text-surface-400 shrink-0" />
           </button>
         ) : null}
 
