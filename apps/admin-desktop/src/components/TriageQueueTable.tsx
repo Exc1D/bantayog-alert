@@ -101,14 +101,14 @@ export function TriageQueueTable({
           {reports.map((report) => {
             const actions = actionFlags(report.status)
             return (
-            <tr
-              key={report.id}
-              data-testid={`report-row-${report.id}`}
-              className="cursor-pointer border-b border-white/5 hover:bg-white/5"
-              onClick={() => {
-                onRowClick(report)
-              }}
-            >
+              <tr
+                key={report.id}
+                data-testid={`report-row-${report.id}`}
+                className="cursor-pointer border-b border-white/5 hover:bg-white/5"
+                onClick={() => {
+                  onRowClick(report)
+                }}
+              >
                 <td
                   className="px-4 py-3"
                   onClick={(e) => {

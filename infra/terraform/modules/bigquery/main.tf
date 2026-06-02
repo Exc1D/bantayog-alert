@@ -18,7 +18,7 @@ resource "google_bigquery_dataset" "audit" {
   }
 
   # Prevent public access — default access includes project viewers
-  default_table_expiration_ms = 0
+  default_table_expiration_ms = 3600000
 }
 
 resource "google_bigquery_table" "streaming_events" {

@@ -8,9 +8,21 @@ const STATUS_CONFIG: Record<
   string,
   { Icon: typeof CheckCircle; colorClass: string; ariaLabel: string }
 > = {
-  sent: { Icon: CheckCircle, colorClass: 'text-[var(--color-success)]', ariaLabel: 'FCM delivered to device' },
-  network_error: { Icon: XCircle, colorClass: 'text-[var(--color-danger)]', ariaLabel: 'FCM network error' },
-  no_token: { Icon: AlertCircle, colorClass: 'text-[var(--color-warning)]', ariaLabel: 'No FCM token' },
+  sent: {
+    Icon: CheckCircle,
+    colorClass: 'text-[var(--color-success)]',
+    ariaLabel: 'FCM delivered to device',
+  },
+  network_error: {
+    Icon: XCircle,
+    colorClass: 'text-[var(--color-danger)]',
+    ariaLabel: 'FCM network error',
+  },
+  no_token: {
+    Icon: AlertCircle,
+    colorClass: 'text-[var(--color-warning)]',
+    ariaLabel: 'No FCM token',
+  },
 }
 
 export function FcmStatusIcon({ result }: Props) {

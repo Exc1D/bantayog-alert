@@ -52,10 +52,15 @@ function asNumber(value: unknown): number | undefined {
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : undefined
 }
 
-function isValidCoord(lat: number | undefined, lng: number | undefined): { latitude: number; longitude: number } | null {
+function isValidCoord(
+  lat: number | undefined,
+  lng: number | undefined,
+): { latitude: number; longitude: number } | null {
   if (typeof lat !== 'number' || typeof lng !== 'number') return null
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null

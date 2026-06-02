@@ -238,3 +238,12 @@
 - Even trivial constants need regression tests — a 3-line test is cheaper than a production incident.
 - k6 load tests: nightly cron (not PR gate). Keep `workflow_dispatch` for ad-hoc runs.
 - e2e full-loop proof belongs in CI, not just local dev.
+
+## CI / Dependency Management (2026-06-02)
+
+- **Missing `esbuild` in root `devDependencies` breaks E2E.** `scripts/prepare-functions-deploy.ts` runs `pnpm exec esbuild`, but `esbuild` was only available transitively through `vite`. Always add CLI tools to root `devDependencies` if scripts in `.github/workflows/ci.yml` invoke them.
+- **Firebase emulator list in CI must match test requirements.** The Functions Emulator Test job must include `storage` in `--only <list>` if `storage.rules.test.ts` uses `@firebase/rules-unit-testing` with a `storage:` config block. Otherwise tests get "Storage test env not initialized".
+- **Emulator `getDocs(query)` with `resource.data` in list-query rules is fragile.** The emulator evaluates list-query rules with `resource.data` even for queries with `where` clauses. Hidden-alert `canReadAlertDoc` uses `exists(active_accounts)` which fails in emulator list evaluations. Fix: scope the client query by the same field used in rules (e.g., `visibility == 'public'`), or add explicit query-scoped `allow list:` block.
+- **Empty custom claims `{}` ≠ authenticated user with active account.** Firestore rules checking `request.auth.token.accountStatus == 'active'` will fail for `{}` claims (undefined). Use `staffClaims({ role: 'citizen' })` or explicitly include `accountStatus: 'active'` in test claims.
+- **Terraform `default_table_expiration_ms` must be ≥ 3600000 (1 hour).** Setting it to `0` causes `terraform validate` to fail even though the provider docs suggest `0` means "never expire". Use `3600000`.
+- **Dependabot PRs with `pnpm-lock.yaml` conflicts need manual resolution.** When multiple dependabot PRs bump different packages, merging one invalidates others' lockfiles. Consolidate by regenerating the lockfile from the merged `package.json`.

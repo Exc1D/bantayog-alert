@@ -2,7 +2,7 @@ name: Load Test
 
 on:
   schedule:
-    - cron: '0 3 * * *'   # 03:00 UTC daily — before morning deploy window
+    - cron: '0 3 * * *' # 03:00 UTC daily — before morning deploy window
   workflow_dispatch:
     inputs:
       scenario:

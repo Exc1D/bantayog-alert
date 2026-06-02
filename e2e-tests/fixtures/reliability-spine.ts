@@ -2,15 +2,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { getApps, initializeApp } from 'firebase-admin/app'
-import {
-  getAuth,
-  type Auth,
-  type UserRecord,
-} from 'firebase-admin/auth'
-import {
-  getDatabase,
-  type Database,
-} from 'firebase-admin/database'
+import { getAuth, type Auth, type UserRecord } from 'firebase-admin/auth'
+import { getDatabase, type Database } from 'firebase-admin/database'
 import {
   getFirestore,
   type DocumentData,
@@ -207,9 +200,7 @@ async function requireActiveAccount(
     throw new Error(`Staging proof ${input.label} role must be ${input.role}`)
   }
   if (data.municipalityId !== input.municipalityId) {
-    throw new Error(
-      `Staging proof ${input.label} municipalityId must be ${input.municipalityId}`,
-    )
+    throw new Error(`Staging proof ${input.label} municipalityId must be ${input.municipalityId}`)
   }
 }
 
@@ -290,10 +281,17 @@ export function isAuthUserNotFound(err: unknown): boolean {
       ? String((err as { code?: unknown }).code)
       : ''
   const message = err instanceof Error ? err.message : String(err)
-  return code === 'auth/user-not-found' || message.includes('auth/user-not-found') || message.includes('user not found')
+  return (
+    code === 'auth/user-not-found' ||
+    message.includes('auth/user-not-found') ||
+    message.includes('user not found')
+  )
 }
 
-async function seedAdminUser(auth: Auth, db: Firestore): Promise<{ email: string; password: string; uid: string }> {
+async function seedAdminUser(
+  auth: Auth,
+  db: Firestore,
+): Promise<{ email: string; password: string; uid: string }> {
   const email = 'daet-admin-test-01@test.local'
   const password = 'test123456'
   const uid = 'daet-admin-test-01'
@@ -373,16 +371,19 @@ async function seedResponderLocation(rtdb: Database, input: { uid: string }): Pr
 }
 
 async function seedProofMunicipality(db: Firestore): Promise<void> {
-  await db.collection('municipalities').doc('daet').set(
-    {
-      id: 'daet',
-      label: 'Daet',
-      provinceId: 'camarines-norte',
-      centroid: { lat: 14.1, lng: 122.95 },
-      schemaVersion: 1,
-    },
-    { merge: true },
-  )
+  await db
+    .collection('municipalities')
+    .doc('daet')
+    .set(
+      {
+        id: 'daet',
+        label: 'Daet',
+        provinceId: 'camarines-norte',
+        centroid: { lat: 14.1, lng: 122.95 },
+        schemaVersion: 1,
+      },
+      { merge: true },
+    )
 }
 
 export async function seedLocalProofAccounts(): Promise<ProofCredentials> {
@@ -435,7 +436,7 @@ export async function waitForQueryExactlyOne<T extends DocumentData>(
   while (Date.now() - startedAt < timeoutMs) {
     const snapshot = await read()
     if (snapshot.docs.length === 1) {
-      return snapshot.docs[0] as QueryDocumentSnapshot<T>
+      return snapshot.docs[0]
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs))
   }
@@ -474,10 +475,10 @@ export async function runManualInboxProcessor(): Promise<ManualInboxSummary> {
   const stdoutChunks: Buffer[] = []
   const stderrChunks: Buffer[] = []
   let exitSignal: NodeJS.Signals | null = null
-  child.stdout?.on('data', (chunk: Buffer) => {
+  child.stdout.on('data', (chunk: Buffer) => {
     stdoutChunks.push(chunk)
   })
-  child.stderr?.on('data', (chunk: Buffer) => {
+  child.stderr.on('data', (chunk: Buffer) => {
     stderrChunks.push(chunk)
   })
 
@@ -497,21 +498,20 @@ export async function runManualInboxProcessor(): Promise<ManualInboxSummary> {
 
   for (const rawLine of stdout.split(/\r?\n/)) {
     const line = rawLine.trimEnd()
-    const candidateMatch = line.match(/^Found (\d+) unprocessed inbox item\(s\)\.$/)
+    const candidateMatch = /^Found (\d+) unprocessed inbox item\(s\)\.$/.exec(line)
     if (candidateMatch) {
       candidateCount = Number(candidateMatch[1])
       continue
     }
 
-    const processingMatch = line.match(/^Processing inbox (.+)\.\.\.$/)
+    const processingMatch = /^Processing inbox (.+)\.\.\.$/.exec(line)
     if (processingMatch) {
       currentClientDraftRef = processingMatch[1]
       continue
     }
 
-    const processedMatch = line.match(
-      /^✅ Materialized: (true|false), Report ID: ([^,]+), Public Ref: (.+)$/,
-    )
+    const processedMatch =
+      /^✅ Materialized: (true|false), Report ID: ([^,]+), Public Ref: (.+)$/.exec(line)
     if (processedMatch && currentClientDraftRef) {
       const materialized = processedMatch[1] === 'true'
       results.push({
@@ -524,7 +524,7 @@ export async function runManualInboxProcessor(): Promise<ManualInboxSummary> {
       continue
     }
 
-    const failedMatch = line.match(/^❌ Failed: (.+)$/)
+    const failedMatch = /^❌ Failed: (.+)$/.exec(line)
     if (failedMatch && currentClientDraftRef) {
       results.push({
         clientDraftRef: currentClientDraftRef,
@@ -560,7 +560,7 @@ export async function cleanupProofRun(
   ledger: ProofLedger,
 ): Promise<void> {
   const { db, auth, rtdb } = services
-  const deletes: Array<{ label: string; run: () => Promise<unknown> }> = []
+  const deletes: { label: string; run: () => Promise<unknown> }[] = []
 
   if (ledger.publicRef && !ledger.reportId) {
     const lookup = await db.collection('report_lookup').doc(ledger.publicRef).get()

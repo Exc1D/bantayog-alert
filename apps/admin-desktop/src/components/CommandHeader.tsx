@@ -1,11 +1,4 @@
-import {
-  AlertTriangle,
-  Bell,
-  Keyboard,
-  LogOut,
-  Volume2,
-  VolumeX,
-} from 'lucide-react'
+import { AlertTriangle, Bell, Keyboard, LogOut, Volume2, VolumeX } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Tooltip } from './Tooltip'
 
