@@ -321,6 +321,7 @@ async function seedResponderUser(
   const email = 'bfp-responder-test-01@test.local'
   const password = 'test123456'
   const uid = 'bfp-responder-test-01'
+  const now = Date.now()
 
   await upsertAuthUser(auth, { uid, email, password })
   await auth.setCustomUserClaims(uid, {
@@ -329,26 +330,31 @@ async function seedResponderUser(
     municipalityId: 'daet',
     agencyId: 'bfp-daet',
   })
-  await db.collection('active_accounts').doc(uid).set({
-    uid,
-    role: 'responder',
-    accountStatus: 'active',
-    municipalityId: 'daet',
-    agencyId: 'bfp-daet',
-    permittedMunicipalityIds: [],
-    mfaEnrolled: true,
-    lastClaimIssuedAt: Date.now(),
-    updatedAt: Date.now(),
-  })
+  await db
+    .collection('active_accounts')
+    .doc(uid)
+    .set({
+      uid,
+      role: 'responder',
+      accountStatus: 'active',
+      municipalityId: 'daet',
+      agencyId: 'bfp-daet',
+      permittedMunicipalityIds: ['daet'],
+      mfaEnrolled: false,
+      lastClaimIssuedAt: now,
+      updatedAt: now,
+    })
   await db.collection('responders').doc(uid).set({
     uid,
     displayName: 'BFP Daet Test Responder',
     agency: 'BFP',
-    agencyId: 'BFP',
+    agencyId: 'bfp-daet',
     municipalityId: 'daet',
+    accountStatus: 'active',
     isActive: true,
     availabilityStatus: 'available',
-    updatedAt: Date.now(),
+    lastSeenAt: now,
+    updatedAt: now,
   })
 
   return { email, password, uid }
@@ -357,16 +363,17 @@ async function seedResponderUser(
 async function seedResponderLocation(rtdb: Database, input: { uid: string }): Promise<void> {
   await rtdb.ref(`responder_index/${input.uid}`).set({
     municipalityId: 'daet',
-    agencyId: 'BFP',
+    agencyId: 'bfp-daet',
   })
   await rtdb.ref(`responder_index/daet/${input.uid}`).set({
     isOnShift: true,
-    agencyId: 'BFP',
+    agencyId: 'bfp-daet',
   })
   await rtdb.ref(`responder_locations/${input.uid}`).set({
     uid: input.uid,
     displayName: 'BFP Daet Test Responder',
     agency: 'BFP',
+    agencyId: 'bfp-daet',
   })
 }
 

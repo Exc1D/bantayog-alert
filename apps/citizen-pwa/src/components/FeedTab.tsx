@@ -1,5 +1,15 @@
 import { useEffect, useState, type SyntheticEvent } from 'react'
-import { AlertTriangle, CheckCircle2, ChevronRight, Flag, Info, MapPin, Send, ShieldCheck, User } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  Flag,
+  Info,
+  MapPin,
+  Send,
+  ShieldCheck,
+  User,
+} from 'lucide-react'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { useSituationUpdates } from '../hooks/useSituationUpdates.js'
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
@@ -337,22 +347,20 @@ function SituationComposer({
         <div className="w-10 h-10 rounded-full bg-surface-900 text-white flex items-center justify-center shrink-0">
           <MapPin size={18} />
         </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="m-0 text-sm font-bold text-surface-900">
-              Share a quick local update
-            </h2>
-            <p className="m-0 mt-1 text-xs text-surface-500">
-              Help neighbors compare conditions during disasters.
-            </p>
-            <div className="m-0 mt-2 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700">
-                <Info size={12} /> Community only — not for emergencies
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-2 py-1 text-[11px] font-medium text-surface-600">
-                <ShieldCheck size={12} /> Public — no personal info
-              </span>
-            </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="m-0 text-sm font-bold text-surface-900">Share a quick local update</h2>
+          <p className="m-0 mt-1 text-xs text-surface-500">
+            Help neighbors compare conditions during disasters.
+          </p>
+          <div className="m-0 mt-2 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700">
+              <Info size={12} /> Community only — not for emergencies
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-2 py-1 text-[11px] font-medium text-surface-600">
+              <ShieldCheck size={12} /> Public — no personal info
+            </span>
           </div>
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -677,7 +685,9 @@ export function FeedTab() {
               <User size={18} className="text-brand-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-surface-900 m-0">What's happening? Share an update</p>
+              <p className="text-sm font-semibold text-surface-900 m-0">
+                What&apos;s happening? Share an update
+              </p>
             </div>
             <ChevronRight size={18} className="text-surface-400 shrink-0" />
           </button>

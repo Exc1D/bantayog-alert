@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import {
   cleanupProofRun,
   createProofLedger,
@@ -46,6 +46,52 @@ function monitorPage(page: Page, label: string) {
 
 function appUrl(baseUrl: string, pathname: string): string {
   return new URL(pathname, baseUrl).toString()
+}
+
+async function useResponderDemoViewport(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    const applyLargeText = () => {
+      document.documentElement.style.fontSize = '20px'
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyLargeText, { once: true })
+      return
+    }
+
+    applyLargeText()
+  })
+}
+
+async function assertNoHorizontalOverflow(page: Page): Promise<{
+  clientWidth: number
+  scrollWidth: number
+}> {
+  const metrics = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }))
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1)
+  return metrics
+}
+
+async function assertTimelineHintReadable(page: Page): Promise<{
+  hintWidth: number
+  timelineWidth: number
+}> {
+  const metrics = await page
+    .getByText(/next step: tap the action button below to advance/i)
+    .evaluate((node) => {
+      const hintBox = node.getBoundingClientRect()
+      const timelineBox = node.parentElement?.getBoundingClientRect()
+      if (timelineBox === undefined) throw new Error('Missing timeline container')
+      return {
+        hintWidth: Math.round(hintBox.width),
+        timelineWidth: Math.round(timelineBox.width),
+      }
+    })
+  expect(metrics.hintWidth).toBeGreaterThanOrEqual(Math.floor(metrics.timelineWidth * 0.7))
+  return metrics
 }
 
 async function signInAdmin(page: Page, baseUrl: string): Promise<void> {
@@ -155,7 +201,13 @@ async function declareAlert(page: Page, testRunId: string): Promise<void> {
   await modal.getByLabel(/alert type/i).selectOption('flood_advisory')
   await modal.getByRole('checkbox', { name: /daet/i }).check()
   await modal.getByLabel(/message/i).fill(`[TEST:${testRunId}] Flood proof alert`)
-  await modal.getByRole('button', { name: /^declare alert$/i }).click()
+  await modal.getByRole('button', { name: /^review declaration$/i }).click()
+  await page
+    .getByRole('alertdialog', { name: /declare public alert/i })
+    .getByRole('button', {
+      name: /^declare public alert$/i,
+    })
+    .click()
 }
 
 test.describe.configure({ mode: 'serial' })
@@ -175,7 +227,13 @@ test.describe('reliability spine', () => {
       window.localStorage.setItem('bantayog_onboarding_complete', 'true')
     })
     const adminContext = await browser.newContext()
-    const responderContext = await browser.newContext()
+    const responderContext = await browser.newContext({
+      hasTouch: true,
+      isMobile: true,
+      reducedMotion: 'reduce',
+      viewport: { width: 390, height: 844 },
+    })
+    await useResponderDemoViewport(responderContext)
     const citizenPage = await citizenContext.newPage()
     const adminPage = await adminContext.newPage()
     const responderPage = await responderContext.newPage()
@@ -382,20 +440,34 @@ test.describe('reliability spine', () => {
       await expect(responderPage.getByRole('button', { name: /^✓ accept$/i })).toBeVisible({
         timeout: 15_000,
       })
-      responderGuard.assertHealthy('C07')
-      logCheckpoint({
-        testRunId: ledger.testRunId,
-        checkpoint: 'C07',
-        status: 'passed',
-        target: ledger.target,
-        expected: 'Responder alerts surface the declaration and detail page shows the dispatch',
-        observed: {
-          alertId: ledger.alertId,
-          dispatchId: ledger.dispatchId,
-          reportId: ledger.reportId,
-          responderUid: ledger.responderUid,
-        },
-      })
+      await responderContext.setOffline(true)
+      try {
+        await expect(
+          responderPage.getByRole('progressbar', { name: /dispatch progress/i }),
+        ).toBeVisible()
+        await expect(responderPage.getByRole('button', { name: /^✓ accept$/i })).toBeVisible()
+        const offlineLayoutMetrics = await assertNoHorizontalOverflow(responderPage)
+        const pendingTimelineHintMetrics = await assertTimelineHintReadable(responderPage)
+        responderGuard.assertHealthy('C07')
+        logCheckpoint({
+          testRunId: ledger.testRunId,
+          checkpoint: 'C07',
+          status: 'passed',
+          meta: {
+            status: 'acknowledged',
+            dispatchId: ledger.dispatchId,
+            reportId: ledger.reportId,
+            responderUid: ledger.responderUid,
+            responderViewport: '390x844',
+            responderReducedMotion: 'reduce',
+            offlineDetailStable: true,
+            offlineLayoutMetrics,
+            pendingTimelineHintMetrics,
+          },
+        })
+      } finally {
+        await responderContext.setOffline(false)
+      }
 
       currentCheckpoint = 'C08'
       const dispatchId = ledger.dispatchId
@@ -407,6 +479,20 @@ test.describe('reliability spine', () => {
         .toBe('acknowledged')
       const enRouteButton = responderPage.getByRole('button', { name: /en route/i })
       await expect(enRouteButton).toBeVisible({ timeout: 15_000 })
+      const preArrivalToggle = responderPage.getByRole('button', { name: /pre-arrival info/i })
+      await expect(preArrivalToggle).toBeVisible({ timeout: 15_000 })
+      if ((await preArrivalToggle.getAttribute('aria-expanded')) !== 'true') {
+        await preArrivalToggle.click()
+      }
+      await expect(responderPage.getByText(/navigate to scene still works/i)).toBeVisible()
+      await expect(
+        responderPage.getByText(/location not available - use navigate to scene/i),
+      ).toBeVisible()
+      const acknowledgedLayoutMetrics = await assertNoHorizontalOverflow(responderPage)
+      await responderPage.screenshot({
+        fullPage: true,
+        path: testInfo.outputPath('responder-dispatch-mobile.png'),
+      })
       await enRouteButton.click()
       await expect
         .poll(async () => (await db.collection('dispatches').doc(dispatchId).get()).data()?.status)
@@ -445,6 +531,8 @@ test.describe('reliability spine', () => {
               .doc(ledger.reportId ?? '')
               .get()
           ).data()?.status,
+          preArrivalFallbackVisible: true,
+          acknowledgedLayoutMetrics,
         },
       })
 

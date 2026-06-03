@@ -196,6 +196,65 @@ describe('DispatchDetailPage', () => {
     expect(screen.getByTestId('dispatch-status-d-1')).toBeInTheDocument()
   })
 
+  it('explains location access before showing live distance', () => {
+    detailState.dispatch.status = 'acknowledged'
+    detailState.dispatch.uiStatus = 'acknowledged'
+    renderPage()
+
+    expect(screen.getByText(/enable location access/i)).toBeInTheDocument()
+    expect(screen.getByText(/navigate to scene still works/i)).toBeInTheDocument()
+  })
+
+  it('treats denied location access as recoverable pre-arrival state', async () => {
+    const originalGeolocation = navigator.geolocation
+    const deniedError = {
+      code: 1,
+      message: 'User denied Geolocation',
+      PERMISSION_DENIED: 1,
+      POSITION_UNAVAILABLE: 2,
+      TIMEOUT: 3,
+    } as GeolocationPositionError
+    Object.defineProperty(navigator, 'geolocation', {
+      value: {
+        getCurrentPosition: vi.fn((_success: PositionCallback, error?: PositionErrorCallback) => {
+          queueMicrotask(() => {
+            error?.(deniedError)
+          })
+        }),
+      },
+      configurable: true,
+    })
+    detailState.dispatch.status = 'acknowledged'
+    detailState.dispatch.uiStatus = 'acknowledged'
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    try {
+      renderPage()
+
+      await waitFor(() => {
+        expect(consoleWarn).toHaveBeenCalledWith(
+          '[DispatchDetailPage] geolocation unavailable:',
+          1,
+          'User denied Geolocation',
+        )
+      })
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: /pre-arrival info/i }))
+
+      expect(screen.getAllByText(/enable location access/i)).toHaveLength(2)
+      expect(consoleError).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(navigator, 'geolocation', {
+        value: originalGeolocation,
+        configurable: true,
+      })
+      consoleError.mockRestore()
+      consoleWarn.mockRestore()
+    }
+  })
+
   it('shows On Scene button when status is en_route', () => {
     detailState.dispatch.status = 'en_route'
     detailState.dispatch.uiStatus = 'heading_to_scene'

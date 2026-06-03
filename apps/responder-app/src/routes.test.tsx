@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+
+const pushClientState = vi.hoisted(() => ({
+  notificationTap: null as ((dispatchId: string) => void) | null,
+}))
 
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: () => ({ user: { uid: 'uid-1' } }),
@@ -58,7 +62,12 @@ vi.mock('./pages/TotpEnrollmentPage', () => ({
 }))
 vi.mock('./services/push-client', () => ({
   subscribeForegroundPush: () => () => undefined,
-  subscribeNotificationTap: () => () => undefined,
+  subscribeNotificationTap: (onTap: (dispatchId: string) => void) => {
+    pushClientState.notificationTap = onTap
+    return () => {
+      pushClientState.notificationTap = null
+    }
+  },
 }))
 
 async function renderAt(pathname: string) {
@@ -70,6 +79,7 @@ async function renderAt(pathname: string) {
 
 beforeEach(() => {
   window.history.pushState({}, '', '/')
+  pushClientState.notificationTap = null
 })
 
 afterEach(() => {
@@ -109,6 +119,20 @@ describe('AppRouter', () => {
 
   it('renders DispatchDetailPage at /dispatches/:id outside Shell', async () => {
     await renderAt('/dispatches/disp-1')
+    expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
+    expect(screen.getByTestId('dispatch-detail')).toBeInTheDocument()
+  })
+
+  it('routes notification taps to dispatch detail', async () => {
+    await renderAt('/')
+    await waitFor(() => {
+      expect(pushClientState.notificationTap).not.toBeNull()
+    })
+
+    act(() => {
+      pushClientState.notificationTap?.('disp-99')
+    })
+
     expect(screen.queryByTestId('shell')).not.toBeInTheDocument()
     expect(screen.getByTestId('dispatch-detail')).toBeInTheDocument()
   })

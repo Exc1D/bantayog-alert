@@ -41,7 +41,7 @@ const HAZARD_TYPE_LABELS: Record<string, string> = {
   landslide: 'Landslide',
   tsunami_warning: 'Tsunami Warning',
   drought: 'Drought / Dry Spell',
-  fire: 'Fire — Structural / Forest / Grass',
+  fire: 'Fire (Structural / Forest / Grass)',
   scheduled_power_interruption: 'Scheduled Power Interruption',
   emergency_power_interruption: 'Emergency Power Interruption',
   water_service_interruption: 'Water Service Interruption',
@@ -60,12 +60,12 @@ const HAZARD_TYPE_LABELS: Record<string, string> = {
   crime_alert: 'Crime Alert',
   health_advisory: 'Health Advisory',
   disease_outbreak: 'Disease Outbreak / Epidemic Alert',
-  other: 'Other — specify in message',
+  other: 'Other (specify in message)',
 }
 
 const HAZARD_GROUPS = [
   {
-    label: '🌧️ Weather & Flood',
+    label: 'Weather & Flood',
     types: [
       'tropical_cyclone',
       'heavy_rainfall_warning',
@@ -78,11 +78,11 @@ const HAZARD_GROUPS = [
     ],
   },
   {
-    label: '🌋 Geophysical & Natural',
+    label: 'Geophysical & Natural',
     types: ['earthquake', 'volcanic_eruption', 'landslide', 'tsunami_warning', 'drought', 'fire'],
   },
   {
-    label: '🔌 Utilities & Infrastructure',
+    label: 'Utilities & Infrastructure',
     types: [
       'scheduled_power_interruption',
       'emergency_power_interruption',
@@ -94,7 +94,7 @@ const HAZARD_GROUPS = [
     ],
   },
   {
-    label: '📋 Public Service Orders',
+    label: 'Public Service Orders',
     types: [
       'class_suspension',
       'work_suspension',
@@ -106,10 +106,10 @@ const HAZARD_GROUPS = [
     ],
   },
   {
-    label: '🛡️ Security & Health',
+    label: 'Security & Health',
     types: ['security_incident', 'crime_alert', 'health_advisory', 'disease_outbreak'],
   },
-  { label: '⚪ Other', types: ['other'] },
+  { label: 'Other', types: ['other'] },
 ]
 
 const SECTOR_LABELS: Record<string, string> = {
@@ -133,6 +133,11 @@ const REQUIRES_EFFECTIVE_PERIOD = new Set([
 ])
 
 const SHOWS_ROAD_NAME = new Set(['road_closure', 'bridge_closure'])
+
+function formatShortList(items: string[]): string {
+  if (items.length <= 3) return items.join(', ')
+  return `${items.slice(0, 3).join(', ')} +${String(items.length - 3)} more`
+}
 
 interface Props {
   open: boolean
@@ -160,11 +165,18 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const trapRef = useFocusTrap({
     isActive: open,
     onEscape: () => {
-      if (!submitting && !showUnsavedWarning) onClose()
+      if (submitting || showUnsavedWarning) return
+      if (showSubmitConfirm) {
+        setShowSubmitConfirm(false)
+        return
+      }
+      onClose()
     },
   })
 
@@ -203,6 +215,8 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
     setMessage('')
     setSubmitting(false)
     setShowUnsavedWarning(false)
+    setShowSubmitConfirm(false)
+    setSubmitError(null)
     setShowBarangaySelector(false)
     setSelectedBarangayIds(new Set())
     setSelectedSectors(new Set())
@@ -294,12 +308,16 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
 
   const handleRequestClose = useCallback(() => {
     if (submitting) return
+    if (showSubmitConfirm) {
+      setShowSubmitConfirm(false)
+      return
+    }
     if (hasUnsavedChanges) {
       setShowUnsavedWarning(true)
       return
     }
     onClose()
-  }, [submitting, hasUnsavedChanges, onClose])
+  }, [submitting, showSubmitConfirm, hasUnsavedChanges, onClose])
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -333,8 +351,30 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
 
   const isValid = Object.keys(validationErrors).length === 0
 
+  const selectedMunicipalityLabels = useMemo(
+    () =>
+      CAMARINES_NORTE_MUNICIPALITIES.filter((m) => selectedMunicipalityIds.has(m.id)).map(
+        (m) => m.label,
+      ),
+    [selectedMunicipalityIds],
+  )
+  const selectedMunicipalitySummary =
+    selectedMunicipalityLabels.length > 0
+      ? `Selected municipalities: ${formatShortList(selectedMunicipalityLabels)}`
+      : 'Selected municipalities: none'
+  const alertTypeLabel = hazardType
+    ? (HAZARD_TYPE_LABELS[hazardType] ?? hazardType)
+    : 'None selected'
+
+  const handleReviewSubmit = useCallback(() => {
+    if (!isValid) return
+    setSubmitError(null)
+    setShowSubmitConfirm(true)
+  }, [isValid])
+
   const handleSubmit = useCallback(async () => {
     if (!isValid) return
+    setSubmitError(null)
     setSubmitting(true)
     try {
       const payload = {
@@ -358,6 +398,8 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
       onClose()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to declare alert'
+      setSubmitError(`Alert was not declared. ${msg}`)
+      setShowSubmitConfirm(false)
       onError(msg)
     } finally {
       setSubmitting(false)
@@ -394,17 +436,26 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
         role="dialog"
         aria-modal="true"
         aria-labelledby="declare-alert-title"
+        aria-describedby="declare-alert-description"
         className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] shadow-xl"
       >
         <div className="flex items-start justify-between border-b border-white/10 p-6">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-[var(--color-danger)]" />
-            <h2
-              id="declare-alert-title"
-              className="text-lg font-semibold text-[var(--color-text-primary)]"
+          <div>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-[var(--color-danger)]" />
+              <h2
+                id="declare-alert-title"
+                className="text-lg font-semibold text-[var(--color-text-primary)]"
+              >
+                Declare Alert
+              </h2>
+            </div>
+            <p
+              id="declare-alert-description"
+              className="mt-1 text-xs text-[var(--color-text-muted)]"
             >
-              Declare Alert
-            </h2>
+              Publish an official public alert to the selected municipalities.
+            </p>
           </div>
           <button
             onClick={handleRequestClose}
@@ -420,11 +471,23 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
           className="flex flex-1 flex-col overflow-hidden"
           onSubmit={(e) => {
             e.preventDefault()
-            void handleSubmit()
+            handleReviewSubmit()
           }}
         >
           <div className="flex-1 overflow-y-auto p-6">
             <div className="space-y-5">
+              {submitError && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-3 py-2"
+                >
+                  <p className="text-sm font-medium text-[var(--color-danger)]">{submitError}</p>
+                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                    Review the details, then try again.
+                  </p>
+                </div>
+              )}
+
               {/* Hazard Type */}
               <div>
                 <label
@@ -464,6 +527,10 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
                 <p className="text-sm font-medium text-[var(--color-text-secondary)]">
                   Affected Municipalities (required)
                 </p>
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  Select where citizens should see this alert. No barangay selection means the whole
+                  municipality.
+                </p>
                 <div
                   className="mt-2 grid grid-cols-2 gap-2"
                   role="group"
@@ -491,6 +558,12 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
                     {validationErrors.municipalities}
                   </p>
                 )}
+                <p
+                  className="mt-2 text-xs font-medium text-[var(--color-text-primary)]"
+                  aria-live="polite"
+                >
+                  {selectedMunicipalitySummary}
+                </p>
                 {selectedMunicipalityIds.size > 0 && (
                   <button
                     type="button"
@@ -501,8 +574,8 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
                     aria-expanded={showBarangaySelector}
                   >
                     {showBarangaySelector
-                      ? '− Hide barangay selector'
-                      : '+ Specify barangays (advanced)'}
+                      ? 'Hide barangay selector'
+                      : 'Specify barangays (advanced)'}
                   </button>
                 )}
               </div>
@@ -528,7 +601,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
                             }}
                             className="h-3.5 w-3.5 accent-[var(--color-danger)]"
                           />
-                          {MUNICIPALITY_ID_TO_LABEL[municipalityId]} — select all barangays
+                          Select all barangays in {MUNICIPALITY_ID_TO_LABEL[municipalityId]}
                         </label>
                         <div className="grid grid-cols-2 gap-1 pl-5 text-xs">
                           {barangays.map((b) => (
@@ -750,11 +823,77 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
               {submitting && (
                 <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               )}
-              Declare Alert
+              {submitting ? 'Declaring alert...' : 'Review declaration'}
             </button>
           </div>
         </form>
       </div>
+      {showSubmitConfirm && (
+        <div
+          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60"
+          role="presentation"
+          onClick={(e) => {
+            if (!submitting && e.target === e.currentTarget) setShowSubmitConfirm(false)
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-6 shadow-xl"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="declare-confirm-title"
+            aria-describedby="declare-confirm-copy"
+          >
+            <h2
+              id="declare-confirm-title"
+              className="text-lg font-semibold text-[var(--color-text-primary)]"
+            >
+              Declare public alert?
+            </h2>
+            <p
+              id="declare-confirm-copy"
+              className="mt-2 text-sm text-[var(--color-text-secondary)]"
+            >
+              This publishes an official alert to citizens and responders in the selected scope.
+              Confirm only when the details are ready.
+            </p>
+            <div className="mt-4 space-y-2 rounded-md border border-white/10 bg-[var(--color-surface)] p-3 text-sm">
+              <div>
+                <p className="text-xs uppercase text-[var(--color-text-muted)]">Alert type</p>
+                <p className="font-medium text-[var(--color-text-primary)]">{alertTypeLabel}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase text-[var(--color-text-muted)]">Municipalities</p>
+                <p className="font-medium text-[var(--color-text-primary)]">
+                  {formatShortList(selectedMunicipalityLabels)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowSubmitConfirm(false)
+                }}
+                disabled={submitting}
+                className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 disabled:opacity-50"
+              >
+                Go back
+              </button>
+              <button
+                onClick={() => {
+                  void handleSubmit()
+                }}
+                disabled={submitting}
+                className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-4 py-2 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting && (
+                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                )}
+                {submitting ? 'Declaring alert...' : 'Declare public alert'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showUnsavedWarning && (
         <div
           className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60"
