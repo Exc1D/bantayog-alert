@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-06-03 - Fix E2E Full-Loop Proof CI Failure (PR #168)
+
+Fixed the `E2E Full-Loop Proof` CI failure by increasing the C00 visibility timeout from `15_000` to `60_000` for the admin-desktop and responder-app login page headings in `e2e-tests/specs/full-loop.spec.ts`. The root cause was that even after `proof-local.mjs` warmed the Vite routes, the first real browser navigation on a clean CI runner still incurred module-transform and React hydration overhead that exceeded the 15-second `toBeVisible` timeout. Verified with `pnpm lint` and `pnpm typecheck`.
+
 ## 2026-06-03 - Investor Demo Readiness
 
 Prepared the manual three-app investor flow for `pnpm dev:all`: account seeding now waits for Auth, Firestore, and RTDB; provisions canonical citizen, municipal admin, superadmin, and BFP responder accounts; and adds responder roster metadata without creating workflow records. Hardened Declare Alert municipal projection and scoped admin alert listeners/rules, preserved manual citizen report triage and dispatch, and removed emulator startup hangs from Functions registration, Cloud Logging protobuf initialization, and the manual inbox processor.

@@ -259,4 +259,5 @@
 - Firestore cannot prove hidden-alert list authorization from `array-contains` membership alone. Use a query-provable map projection such as `municipalityScope.<id> == true` when multi-municipality docs need per-municipality admin list access.
 - Load `@google-cloud/logging` lazily inside scheduled Functions handlers: its static import can erase the Firestore emulator protobuf root before trigger decoding.
 - Full-loop proof navigation must dismiss the admin onboarding tour immediately before map report selection because the tour may mount after route navigation.
+- **Vite dev-server cold start in CI exceeds naive `toBeVisible` timeouts.** Even after `waitForAppRoutes` probes succeed, the first real browser navigation to a Vite dev server on a clean CI runner incurs module-transform + React hydration overhead. E2E visibility assertions at C00 need `timeout: 60_000`, not `15_000`, or they will flake on the first load.
 - Firestore report-read rules must pass the matched `reportId` path variable into `canReadReportDoc`; report payloads do not carry their document ID.

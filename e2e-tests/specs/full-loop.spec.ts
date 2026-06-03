@@ -209,10 +209,10 @@ test.describe('reliability spine', () => {
         timeout: 15_000,
       })
       await expect(adminPage.getByRole('heading', { name: /bantayog alert/i })).toBeVisible({
-        timeout: 15_000,
+        timeout: 60_000,
       })
       await expect(responderPage.getByRole('heading', { name: /bantayog alert/i })).toBeVisible({
-        timeout: 15_000,
+        timeout: 60_000,
       })
       citizenGuard.assertHealthy('C00')
       adminGuard.assertHealthy('C00')
