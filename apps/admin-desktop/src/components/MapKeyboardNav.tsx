@@ -24,6 +24,7 @@ export function MapKeyboardNav({ reports, selectedReportId, onSelect }: Props) {
             <li key={report.id}>
               <button
                 type="button"
+                data-report-id={report.id}
                 onClick={() => {
                   onSelect(report.id)
                 }}

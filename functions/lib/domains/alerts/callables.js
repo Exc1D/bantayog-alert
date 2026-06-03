@@ -74,19 +74,25 @@ const declareAlertInputSchema = z.object({
 });
 export async function declareAlertCore(db, input, actor) {
     const validated = declareAlertInputSchema.parse(input);
+    const affectedMunicipalityIds = [...new Set(validated.affectedMunicipalityIds)];
     if (actor.claims?.role === 'municipal_admin') {
         const municipalityId = actor.claims.municipalityId;
         if (typeof municipalityId !== 'string' ||
-            validated.affectedMunicipalityIds.some((id) => id !== municipalityId)) {
+            affectedMunicipalityIds.some((id) => id !== municipalityId)) {
             throw new HttpsError('permission-denied', 'municipal_admin can only declare alerts for their municipality');
         }
     }
     const alertId = randomUUID();
     const now = Date.now();
+    const municipalityId = affectedMunicipalityIds.length === 1 ? affectedMunicipalityIds[0] : undefined;
+    const municipalityScope = Object.fromEntries(affectedMunicipalityIds.map((id) => [id, true]));
     const alertDoc = {
         alertId,
         alertType: 'alert',
         ...validated,
+        affectedMunicipalityIds,
+        municipalityScope,
+        ...(municipalityId ? { municipalityId } : {}),
         declaredBy: actor.uid,
         declaredAt: now,
         publishedAt: now,

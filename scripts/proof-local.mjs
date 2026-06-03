@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url'
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_PROJECT_ID = 'bantayog-alert-staging'
 const PORT_TIMEOUT_MS = 180_000
+const FUNCTIONS_READY_TIMEOUT_MS = 180_000
+const APP_ROUTE_READY_TIMEOUT_MS = 180_000
 
 const MANAGED_PORTS = [
   { label: 'emulator ui', host: '127.0.0.1', port: 4000 },
@@ -21,18 +23,35 @@ const MANAGED_PORTS = [
   { label: 'storage emulator', host: '127.0.0.1', port: 9199 },
 ]
 
+const APP_ROUTE_PROBES = [
+  { label: 'citizen-pwa route', url: 'http://localhost:5173/' },
+  { label: 'responder-app route', url: 'http://localhost:5174/' },
+  { label: 'admin-desktop route', url: 'http://localhost:5175/' },
+]
+
 export function buildPlan(env = process.env) {
   const projectId = env.BANTAYOG_FIREBASE_PROJECT_ID?.trim() || DEFAULT_PROJECT_ID
   return {
     steps: [
       'preflight-ports',
+      'prepare-app-packages',
       'prepare-functions',
       'start-local-stack',
       'wait-for-readiness',
+      'wait-for-functions',
+      'warm-app-routes',
       'run-proof',
       'shutdown',
     ],
     managedPorts: MANAGED_PORTS,
+    appRouteProbes: APP_ROUTE_PROBES,
+    functionsProbe: {
+      url: `http://127.0.0.1:5001/${encodeURIComponent(projectId)}/asia-southeast1/getOpsMetrics`,
+    },
+    packageBuild: {
+      command: 'pnpm',
+      args: ['--filter', './packages/*', '--if-present', 'build'],
+    },
     prepare: {
       command: 'pnpm',
       args: ['exec', 'tsx', 'scripts/prepare-functions-deploy.ts'],
@@ -40,6 +59,10 @@ export function buildPlan(env = process.env) {
     stack: {
       command: 'pnpm',
       args: ['dev:all'],
+      env: {
+        BANTAYOG_FIREBASE_PROJECT_ID: projectId,
+        VITE_FIREBASE_PROJECT_ID: projectId,
+      },
     },
     proof: {
       command: 'pnpm',
@@ -47,6 +70,7 @@ export function buildPlan(env = process.env) {
       env: {
         CI: 'true',
         BANTAYOG_FIREBASE_PROJECT_ID: projectId,
+        VITE_FIREBASE_PROJECT_ID: projectId,
       },
     },
   }
@@ -83,7 +107,7 @@ function startStack(plan) {
   logStep('Starting local Firebase/app stack')
   const child = spawn(plan.stack.command, plan.stack.args, {
     cwd: ROOT_DIR,
-    env: process.env,
+    env: { ...process.env, ...plan.stack.env },
     stdio: 'inherit',
     shell: false,
   })
@@ -146,6 +170,61 @@ async function waitForPorts(ports, timeoutMs) {
   }
 }
 
+async function waitForFunctions(url, timeoutMs) {
+  logStep('Waiting for Functions handler registration')
+  const startedAt = Date.now()
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ data: {} }),
+        signal: AbortSignal.timeout(1000),
+      })
+      if (response.status !== 404) {
+        console.log(`[proof:local] ready: functions handler ${url}`)
+        return
+      }
+    } catch {
+      // Functions may still be loading after the emulator port opens.
+    }
+    await delay(500)
+  }
+
+  throw new Error(`Timed out waiting for local Functions handler: ${url}`)
+}
+
+async function waitForAppRoutes(routes, timeoutMs) {
+  logStep('Warming app routes')
+  const startedAt = Date.now()
+  const pending = new Map(routes.map((item) => [item.url, item]))
+
+  while (pending.size > 0 && Date.now() - startedAt < timeoutMs) {
+    for (const [url, item] of [...pending.entries()]) {
+      try {
+        const htmlResponse = await fetch(url, { signal: AbortSignal.timeout(2000) })
+        const html = await htmlResponse.text()
+        const entryUrl = new URL('/src/main.tsx', url).toString()
+        const entryResponse = await fetch(entryUrl, { signal: AbortSignal.timeout(5000) })
+        const entryModule = await entryResponse.text()
+        if (htmlResponse.ok && html.includes('<div id="root"') && entryResponse.ok && entryModule) {
+          pending.delete(url)
+          console.log(`[proof:local] ready: ${item.label} ${url}`)
+        }
+      } catch {
+        // Vite may still be transforming its first request on a clean CI runner.
+      }
+    }
+    if (pending.size > 0) await delay(500)
+  }
+
+  if (pending.size > 0) {
+    const list = [...pending.values()].map((item) => `${item.label} ${item.url}`).join(', ')
+    throw new Error(`Timed out waiting for app routes: ${list}`)
+  }
+}
+
 async function stopStack(child) {
   if (!child || child.exitCode !== null) return
 
@@ -182,11 +261,17 @@ async function main() {
 
   try {
     await assertPortsFree(plan.managedPorts)
+    await runCommand(
+      'Preparing shared app packages',
+      plan.packageBuild.command,
+      plan.packageBuild.args,
+    )
     await runCommand('Preparing functions-dist', plan.prepare.command, plan.prepare.args)
     stack = startStack(plan)
     await waitForPorts(plan.managedPorts, PORT_TIMEOUT_MS)
-    await delay(3000)
-    await runCommand('Running C00-C09 reliability proof', plan.proof.command, plan.proof.args, {
+    await waitForFunctions(plan.functionsProbe.url, FUNCTIONS_READY_TIMEOUT_MS)
+    await waitForAppRoutes(plan.appRouteProbes, APP_ROUTE_READY_TIMEOUT_MS)
+    await runCommand('Running C00-C10 reliability proof', plan.proof.command, plan.proof.args, {
       env: { ...process.env, ...plan.proof.env },
     })
   } finally {

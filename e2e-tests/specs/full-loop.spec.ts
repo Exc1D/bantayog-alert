@@ -44,8 +44,12 @@ function monitorPage(page: Page, label: string) {
   return { assertHealthy }
 }
 
+function appUrl(baseUrl: string, pathname: string): string {
+  return new URL(pathname, baseUrl).toString()
+}
+
 async function signInAdmin(page: Page, baseUrl: string): Promise<void> {
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+  await page.goto(appUrl(baseUrl, '/login'), { waitUntil: 'domcontentloaded' })
   await page.getByLabel(/email/i).fill(ADMIN_EMAIL)
   await page.locator('#password').fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: /sign in/i }).click()
@@ -54,7 +58,7 @@ async function signInAdmin(page: Page, baseUrl: string): Promise<void> {
 }
 
 async function signInResponder(page: Page, baseUrl: string): Promise<void> {
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+  await page.goto(appUrl(baseUrl, '/login'), { waitUntil: 'domcontentloaded' })
   await page.getByLabel(/email/i).fill(RESPONDER_EMAIL)
   await page.locator('#password').fill(RESPONDER_PASSWORD)
   await page.getByRole('button', { name: /sign in/i }).click()
@@ -105,25 +109,16 @@ async function createCitizenReport(page: Page, testRunId: string): Promise<strin
 }
 
 async function openExactReportOnMap(page: Page, reportId: string): Promise<void> {
-  const markers = page.locator('.leaflet-marker-icon')
-  await expect(markers.first()).toBeVisible({ timeout: 20_000 })
-  const markerCount = await markers.count()
-  for (let index = 0; index < markerCount; index += 1) {
-    const markerBox = await markers.nth(index).boundingBox()
-    if (!markerBox) continue
-    await page.mouse.click(markerBox.x + markerBox.width / 2, markerBox.y + markerBox.height / 2)
-    const panel = page.getByRole('dialog', { name: /report detail/i })
-    const exactReport = panel.getByText(new RegExp(`Report #${reportId.slice(0, 8)}`))
-    if (
-      await exactReport
-        .waitFor({ state: 'visible', timeout: 2_000 })
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      return
-    }
-  }
-  throw new Error(`Could not find report ${reportId} on the admin map`)
+  const incident = page.locator(`[data-report-id="${reportId}"]`)
+  await expect(incident).toBeAttached({ timeout: 20_000 })
+  await dismissAdminTourIfPresent(page)
+  await incident.focus()
+  await incident.click()
+  await expect(
+    page
+      .getByRole('dialog', { name: /report detail/i })
+      .getByText(new RegExp(`Report #${reportId.slice(0, 8)}`)),
+  ).toBeVisible({ timeout: 10_000 })
 }
 
 async function chooseResponderAndDispatch(page: Page, responderUid: string): Promise<void> {
@@ -206,16 +201,18 @@ test.describe('reliability spine', () => {
       ledger.dispatchId = undefined
 
       await citizenPage.goto(env.citizenBaseUrl, { waitUntil: 'domcontentloaded' })
-      await adminPage.goto(env.adminBaseUrl, { waitUntil: 'domcontentloaded' })
-      await responderPage.goto(env.responderBaseUrl, { waitUntil: 'domcontentloaded' })
+      await adminPage.goto(appUrl(env.adminBaseUrl, '/login'), { waitUntil: 'domcontentloaded' })
+      await responderPage.goto(appUrl(env.responderBaseUrl, '/login'), {
+        waitUntil: 'domcontentloaded',
+      })
       await expect(citizenPage.getByRole('navigation', { name: /main navigation/i })).toBeVisible({
         timeout: 15_000,
       })
       await expect(adminPage.getByRole('heading', { name: /bantayog alert/i })).toBeVisible({
-        timeout: 15_000,
+        timeout: 60_000,
       })
       await expect(responderPage.getByRole('heading', { name: /bantayog alert/i })).toBeVisible({
-        timeout: 15_000,
+        timeout: 60_000,
       })
       citizenGuard.assertHealthy('C00')
       adminGuard.assertHealthy('C00')

@@ -116,6 +116,23 @@ export async function runManualInboxProcessor(
   return summary
 }
 
+export async function runManualInboxProcessorAndTerminate(
+  db: Firestore,
+  writeLine: (line: string) => void = console.log,
+  processInboxItem?: ProcessInboxManualSummaryDeps['processInboxItem'],
+): Promise<ProcessInboxManualSummary> {
+  try {
+    return await runManualInboxProcessor(db, writeLine, processInboxItem)
+  } finally {
+    try {
+      await db.terminate()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      writeLine(`Failed to terminate Firestore: ${message}`)
+    }
+  }
+}
+
 async function main(): Promise<void> {
   if (!process.env.FIRESTORE_EMULATOR_HOST) {
     console.error(
@@ -129,7 +146,7 @@ async function main(): Promise<void> {
     initializeApp({ projectId: PROJECT_ID })
   }
 
-  await runManualInboxProcessor(getFirestore())
+  await runManualInboxProcessorAndTerminate(getFirestore())
 }
 
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url)
