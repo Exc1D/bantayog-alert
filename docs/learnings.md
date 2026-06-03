@@ -255,6 +255,7 @@
 
 - `pnpm dev:all` must fail loudly until Auth, Firestore, and RTDB emulators accept connections; a listening process is not enough.
 - `pnpm dev:all` must pass one explicit Firebase project ID through emulator startup, Vite apps, and demo seeding; CI can otherwise wait on one project namespace while Functions registered under `.firebaserc` default.
+- `pnpm dev:all` must provide emulator-safe Firebase web env defaults for Vite apps. Local untracked `.env` files can hide missing `VITE_FIREBASE_*` keys that blank the admin/responder login pages in CI.
 - Account-only demo seeding still needs responder roster metadata in Firestore and RTDB so investors can perform dispatch manually without workflow automation.
 - Firestore cannot prove hidden-alert list authorization from `array-contains` membership alone. Use a query-provable map projection such as `municipalityScope.<id> == true` when multi-municipality docs need per-municipality admin list access.
 - Load `@google-cloud/logging` lazily inside scheduled Functions handlers: its static import can erase the Firestore emulator protobuf root before trigger decoding.

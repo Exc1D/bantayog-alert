@@ -35,9 +35,28 @@ function getProjectId() {
   )
 }
 
+function getFirebaseWebEnv(projectId) {
+  const messagingSenderId = process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '000000000000'
+
+  return {
+    VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
+    VITE_FIREBASE_AUTH_DOMAIN:
+      process.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
+    VITE_FIREBASE_APP_ID:
+      process.env.VITE_FIREBASE_APP_ID || `1:${messagingSenderId}:web:bantayog-demo`,
+    VITE_FIREBASE_MESSAGING_SENDER_ID: messagingSenderId,
+    VITE_FIREBASE_MSG_SENDER_ID: process.env.VITE_FIREBASE_MSG_SENDER_ID || messagingSenderId,
+    VITE_FIREBASE_STORAGE_BUCKET:
+      process.env.VITE_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
+    VITE_FIREBASE_DATABASE_URL:
+      process.env.VITE_FIREBASE_DATABASE_URL || `https://${projectId}-default-rtdb.firebaseio.com`,
+  }
+}
+
 const projectId = getProjectId()
 const childEnv = {
   ...process.env,
+  ...getFirebaseWebEnv(projectId),
   BANTAYOG_FIREBASE_PROJECT_ID: projectId,
   VITE_FIREBASE_PROJECT_ID: projectId,
   GCLOUD_PROJECT: projectId,

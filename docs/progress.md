@@ -2,7 +2,7 @@
 
 ## 2026-06-03 - Fix E2E Full-Loop Proof CI Failure (PR #168)
 
-Fixed the `E2E Full-Loop Proof` CI failure by increasing the C00 visibility timeout from `15_000` to `60_000` for the admin-desktop and responder-app login page headings in `e2e-tests/specs/full-loop.spec.ts`. The root cause was that even after `proof-local.mjs` warmed the Vite routes, the first real browser navigation on a clean CI runner still incurred module-transform and React hydration overhead that exceeded the 15-second `toBeVisible` timeout. Verified with `pnpm lint` and `pnpm typecheck`.
+Fixed the `E2E Full-Loop Proof` CI failure path by making `pnpm dev:all` inject emulator-safe Firebase web env defaults for all Vite apps while preserving real shell-provided values. The earlier C00 timeout increase handled clean-runner cold starts, but the latest CI run still showed the admin login page never rendering because CI does not have local untracked app `.env` files. Added a regression guard in `scripts/dev-all.ports.test.ts`.
 
 ## 2026-06-03 - Investor Demo Readiness
 
