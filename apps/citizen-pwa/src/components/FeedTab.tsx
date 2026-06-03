@@ -1,5 +1,15 @@
 import { useEffect, useState, type SyntheticEvent } from 'react'
-import { AlertTriangle, CheckCircle2, Flag, Info, MapPin, Send, ShieldCheck } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  Flag,
+  Info,
+  MapPin,
+  Send,
+  ShieldCheck,
+  User,
+} from 'lucide-react'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { useSituationUpdates } from '../hooks/useSituationUpdates.js'
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
@@ -338,22 +348,18 @@ function SituationComposer({
           <MapPin size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="m-0 text-sm font-bold text-surface-900">
-            Share what is happening near you
-          </h2>
-          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
-            Short local updates help neighbors compare conditions during typhoons and floods.
+          <h2 className="m-0 text-sm font-bold text-surface-900">Share a quick local update</h2>
+          <p className="m-0 mt-1 text-xs text-surface-500">
+            Help neighbors compare conditions during disasters.
           </p>
-          <p className="m-0 mt-1 text-xs font-semibold text-brand-700">
-            Community update only. For emergencies, use Report.
-          </p>
-          <p className="m-0 mt-2 text-xs leading-relaxed text-surface-600">
-            Shared publicly as a citizen update. Do not include names, phone numbers, or private
-            details.
-          </p>
-          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-500">
-            Reported posts go to admins for review.
-          </p>
+          <div className="m-0 mt-2 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700">
+              <Info size={12} /> Community only — not for emergencies
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-2 py-1 text-[11px] font-medium text-surface-600">
+              <ShieldCheck size={12} /> Public — no personal info
+            </span>
+          </div>
         </div>
       </div>
 
@@ -507,7 +513,7 @@ function FeedCard({
       aria-labelledby={headingId}
       aria-posinset={position}
       aria-setsize={setSize}
-      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-surface-100"
+      className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-surface-100 motion-fade-in card-hover"
     >
       <div className="flex items-start gap-3 p-4 pb-2">
         <span
@@ -583,11 +589,11 @@ function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05)] w-[calc(100%-1.5rem)]">
       <div className="p-4 flex gap-3">
-        <div className="w-10 h-10 rounded-full bg-surface-200 motion-safe:animate-pulse flex-shrink-0" />
+        <div className="w-10 h-10 rounded-full shimmer-gradient flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-3.5 w-[55%] bg-surface-200 rounded motion-safe:animate-pulse mb-2" />
-          <div className="h-3 w-[40%] bg-surface-200 rounded motion-safe:animate-pulse mb-3" />
-          <div className="h-4 w-14 bg-surface-200 rounded-full motion-safe:animate-pulse" />
+          <div className="h-3.5 w-[55%] rounded shimmer-gradient mb-2" />
+          <div className="h-3 w-[40%] rounded shimmer-gradient mb-3" />
+          <div className="h-4 w-14 rounded-full shimmer-gradient" />
         </div>
       </div>
     </div>
@@ -667,6 +673,26 @@ export function FeedTab() {
       </div>
 
       <div className="py-3 pb-24">
+        {!isComposerOpen ? (
+          <button
+            type="button"
+            onClick={() => {
+              setIsComposerOpen(true)
+            }}
+            className="mx-3 mb-3 flex min-h-14 w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl border border-surface-200 bg-white px-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-[0.98] transition-transform"
+          >
+            <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
+              <User size={18} className="text-brand-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-surface-900 m-0">
+                What&apos;s happening? Share an update
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-surface-400 shrink-0" />
+          </button>
+        ) : null}
+
         {isComposerOpen ? (
           <SituationComposer
             key={filters.municipality || 'all'}
@@ -678,18 +704,7 @@ export function FeedTab() {
               setIsComposerOpen(false)
             }}
           />
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setIsComposerOpen(true)
-            }}
-            className="mx-3 mb-2 flex min-h-11 w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl border border-surface-200 bg-white px-4 text-left text-sm font-semibold text-surface-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-          >
-            <MapPin size={18} className="text-brand-600" />
-            Share local update
-          </button>
-        )}
+        ) : null}
 
         {notice && (
           <div

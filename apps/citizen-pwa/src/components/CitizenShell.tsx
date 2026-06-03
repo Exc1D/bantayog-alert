@@ -250,9 +250,15 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                       onClick={() => {
                         handleNav(path)
                       }}
-                      className="absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
+                      className="fab-breathe absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
                     >
-                      <Icon size={30} strokeWidth={1.5} className="text-white" />
+                      <motion.div
+                        whileHover={prefersReducedMotion ? {} : { rotate: -8, scale: 1.05 }}
+                        whileTap={{ scale: 0.92 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                      >
+                        <Icon size={30} strokeWidth={1.5} className="text-white" />
+                      </motion.div>
                     </button>
                     <span className="absolute bottom-[14px] text-[10px] font-medium leading-none text-surface-600">
                       {label}
@@ -288,7 +294,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                   </span>
                   {unreadAlerts > 0 && label === 'Alerts' && (
                     <span
-                      className="absolute top-1 right-2 w-5 h-5 bg-error-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                      className="badge-shake absolute top-1 right-2 w-5 h-5 bg-error-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
                       aria-hidden="true"
                     >
                       {unreadAlerts > 9 ? '9+' : String(unreadAlerts)}

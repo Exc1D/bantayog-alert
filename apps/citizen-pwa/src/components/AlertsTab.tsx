@@ -56,10 +56,12 @@ function AlertCard({
   alert,
   onClick,
   isUnread,
+  style,
 }: {
   alert: AlertDoc & { issuedBy?: string }
   onClick: () => void
   isUnread: boolean
+  style?: React.CSSProperties
 }) {
   const { label, bg, color } = severityMeta(alert.severity)
   const icon = severityIcon(alert.severity)
@@ -71,7 +73,8 @@ function AlertCard({
       type="button"
       data-testid={`alert-card-${alert.id}`}
       onClick={onClick}
-      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative`}
+      className={`bg-white rounded-xl mx-3 my-2 overflow-hidden border ${borderClass} text-left w-full cursor-pointer hover:bg-surface-50 transition-colors relative motion-fade-in card-hover`}
+      style={style}
     >
       {/* Unread indicator dot */}
       {isUnread && (
@@ -125,14 +128,14 @@ function AlertCard({
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden border border-surface-200 motion-safe:animate-pulse">
+    <div className="bg-white rounded-xl mx-3 my-2 overflow-hidden border border-surface-200">
       <div className="p-4 flex gap-2">
-        <div className="w-6 h-6 rounded-full bg-surface-300 flex-shrink-0" />
+        <div className="w-6 h-6 rounded-full shimmer-gradient flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-3.5 w-[65%] bg-surface-300 rounded mb-2" />
-          <div className="h-3 w-[90%] bg-surface-300 rounded mb-1.5" />
-          <div className="h-3 w-[70%] bg-surface-300 rounded mb-2.5" />
-          <div className="h-4 w-14 bg-surface-300 rounded-full" />
+          <div className="h-3.5 w-[65%] rounded shimmer-gradient mb-2" />
+          <div className="h-3 w-[90%] rounded shimmer-gradient mb-1.5" />
+          <div className="h-3 w-[70%] rounded shimmer-gradient mb-2.5" />
+          <div className="h-4 w-14 rounded-full shimmer-gradient" />
         </div>
       </div>
     </div>
@@ -216,7 +219,7 @@ export function AlertsTab() {
             <p className="text-xs">You will be notified when new alerts are issued.</p>
           </div>
         ) : (
-          sorted.map((alert) => (
+          sorted.map((alert, index) => (
             <AlertCard
               key={alert.id}
               alert={alert}
@@ -224,6 +227,7 @@ export function AlertsTab() {
                 handleAlertClick(alert)
               }}
               isUnread={isUnread(alert.id)}
+              style={{ '--i': index } as React.CSSProperties}
             />
           ))
         )}

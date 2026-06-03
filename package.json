@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "node scripts/dev-all.mjs",
+    "dev:apps": "turbo run dev",
     "dev:all": "node scripts/dev-all.mjs",
     "proof:local": "node scripts/proof-local.mjs",
     "lint": "turbo run lint",

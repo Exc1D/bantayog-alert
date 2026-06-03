@@ -150,7 +150,7 @@ export function DispatchDetailPage() {
     }
 
     const handleError = (err: GeolocationPositionError) => {
-      console.error('[DispatchDetailPage] geolocation error:', err.code, err.message)
+      console.warn('[DispatchDetailPage] geolocation unavailable:', err.code, err.message)
       setDistanceMeters(null)
     }
 
@@ -303,6 +303,10 @@ export function DispatchDetailPage() {
             >
               🗺️ Navigate to Scene
             </a>
+            <p className={styles.onboardingHint}>
+              Enable location access to calculate live distance. Navigate to Scene still works if
+              location is off.
+            </p>
           </div>
         )}
 

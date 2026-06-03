@@ -150,6 +150,10 @@
   font-weight: 700;
 }
 
+.timeline .onboardingHint {
+  grid-column: 1 / -1;
+}
+
 .statusTitle {
   font-size: var(--font-size-sm);
   font-weight: 700;

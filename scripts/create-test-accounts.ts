@@ -185,19 +185,39 @@ async function seedActiveAccounts(db: ReturnType<typeof getFirestore>) {
   }
 }
 
+async function seedMunicipality(db: ReturnType<typeof getFirestore>) {
+  await db
+    .collection('municipalities')
+    .doc('daet')
+    .set(
+      {
+        id: 'daet',
+        label: 'Daet',
+        provinceId: 'camarines-norte',
+        centroid: { lat: 14.1, lng: 122.95 },
+        schemaVersion: 1,
+      },
+      { merge: true },
+    )
+  console.log('✓ municipalities/daet')
+}
+
 async function seedResponderRoster(
   db: ReturnType<typeof getFirestore>,
   rtdb: ReturnType<typeof getDatabase>,
 ) {
   const uid = 'bfp-responder-test-01'
+  const now = Date.now()
   await db.collection('responders').doc(uid).set({
     uid,
     displayName: 'BFP Daet Test Responder',
     agency: 'BFP',
     agencyId: 'bfp-daet',
     municipalityId: 'daet',
+    accountStatus: 'active',
     isActive: true,
     availabilityStatus: 'available',
+    lastSeenAt: now,
     updatedAt: Timestamp.now(),
   })
   await rtdb.ref('responder_index/bfp-responder-test-01').set({
@@ -213,6 +233,7 @@ async function seedResponderRoster(
     displayName: 'BFP Daet Test Responder',
     agency: 'BFP',
     agencyId: 'bfp-daet',
+    lastSeenAt: now,
   })
   console.log(`✓ responders/${uid} roster metadata`)
 }
@@ -222,6 +243,7 @@ main()
     const db = getFirestore()
     const rtdb = getDatabase()
     try {
+      await seedMunicipality(db)
       await seedActiveAccounts(db)
       await seedResponderRoster(db, rtdb)
     } finally {

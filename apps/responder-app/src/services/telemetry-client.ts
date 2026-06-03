@@ -44,7 +44,7 @@ export async function startTracking(
         (location?: Location, error?: CallbackError) => {
           if (error) {
             if (error.code === 'NOT_AUTHORIZED') {
-              console.error('[telemetry-client] location permission denied:', error.message)
+              console.warn('[telemetry-client] location permission denied:', error.message)
               void BackgroundGeolocation.openSettings()
             } else {
               console.error('[telemetry-client] location error:', error.message)
@@ -95,7 +95,7 @@ export async function startTracking(
       }
     },
     (err) => {
-      console.error('[telemetry-client] web geolocation error:', err.message)
+      console.warn('[telemetry-client] web geolocation unavailable:', err.code, err.message)
     },
     { enableHighAccuracy: true, maximumAge: 10000 },
   )

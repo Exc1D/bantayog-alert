@@ -39,10 +39,10 @@ describe('SplashScreen', () => {
     expect(screen.getByText('BANTAYOG')).toBeInTheDocument()
   })
 
-  it('calls onDone after 1.6s', async () => {
+  it('calls onDone after 2.5s', async () => {
     await renderSplash()
     expect(navigateSpy).not.toHaveBeenCalled()
-    await act(() => vi.advanceTimersByTime(1600))
+    await act(() => vi.advanceTimersByTime(2500))
     expect(navigateSpy).toHaveBeenCalledOnce()
   })
 

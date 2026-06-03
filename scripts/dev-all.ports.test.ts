@@ -23,6 +23,10 @@ describe('dev-all ports', () => {
     expect(accountSeed).toContain("'bfp-responder-test-01@test.local'")
     expect(accountSeed).toContain("collection('responders')")
     expect(accountSeed).toContain("ref('responder_locations/bfp-responder-test-01')")
+    expect(accountSeed).toContain("collection('municipalities')")
+    expect(accountSeed).toContain(".doc('daet')")
+    expect(accountSeed).toContain("accountStatus: 'active'")
+    expect(accountSeed).toContain('lastSeenAt')
     expect(script).not.toContain('scripts/bootstrap-staging.ts')
   })
 

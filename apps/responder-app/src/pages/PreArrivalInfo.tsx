@@ -47,7 +47,9 @@ function gearForType(reportType: string): readonly string[] {
 }
 
 function formatDistance(meters: number | null): string {
-  if (meters === null) return 'Location not available'
+  if (meters === null) {
+    return 'Location not available - use Navigate to Scene for routing; enable location access for live distance.'
+  }
   if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`
   return `${String(meters)} m`
 }
