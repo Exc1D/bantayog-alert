@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-06-03 - Fix E2E Full-Loop Proof CI Failure (PR #168)
+
+Fixed the `E2E Full-Loop Proof` CI failure path by making `pnpm dev:all` inject emulator-safe Firebase web env defaults for all Vite apps while preserving real shell-provided values. The earlier C00 timeout increase handled clean-runner cold starts, but the latest CI run still showed the admin login page never rendering because CI does not have local untracked app `.env` files. Added a regression guard in `scripts/dev-all.ports.test.ts`.
+
+## 2026-06-03 - Investor Demo Readiness
+
+Prepared the manual three-app investor flow for `pnpm dev:all`: account seeding now waits for Auth, Firestore, and RTDB; provisions canonical citizen, municipal admin, superadmin, and BFP responder accounts; and adds responder roster metadata without creating workflow records. Hardened Declare Alert municipal projection and scoped admin alert listeners/rules, preserved manual citizen report triage and dispatch, and removed emulator startup hangs from Functions registration, Cloud Logging protobuf initialization, and the manual inbox processor.
+
+The reliability proof now selects the exact admin report row, dismisses the onboarding tour at the protected click point, verifies citizen and responder alert visibility, verifies responder dispatch progression, exercises admin Feed hide/restore regulation, and confirms idempotent replay. Fixed responder report reads by passing the matched Firestore `reportId` into `canReadReportDoc`.
+
+Verification: focused unit and emulator rules regressions pass. Cold `pnpm proof:local` passes checkpoints `C00-C10` in 47.1s with no responder `[useReport] listener error`.
+
+PR #168 follow-up: addressed CI and review feedback by aligning `dev:all`/proof project IDs, normalizing the seeded responder agency ID to `bfp-daet`, projecting alert municipality scope with a query-provable map for multi-municipality alerts, deduplicating Declare Alert municipality input, and hardening CLI cleanup paths.
+
+Follow-up CI hardening: `proof:local` now builds shared app packages in its own fresh checkout and warms each Vite app route before Playwright C00, avoiding clean-runner cold-start races from stale/missing package `lib` sourcemaps. The proof also opens admin/responder login routes explicitly for pre-auth readiness instead of relying on protected-root auth redirects. The alert rules regression fixture now mirrors production multi-municipality alerts by omitting scalar `municipalityId`.
+
 ## 2026-06-02 — CI Green Main + Merge Dependency Batch
 
 Systematically fixed main CI failures and merged all eligible dependabot PRs (160–166). Skipped PR #167 per instructions.

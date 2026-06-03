@@ -82,11 +82,12 @@ export async function declareAlertCore(
   actor: { uid: string; claims?: Record<string, unknown> },
 ): Promise<{ alertId: string }> {
   const validated = declareAlertInputSchema.parse(input)
+  const affectedMunicipalityIds = [...new Set(validated.affectedMunicipalityIds)]
   if (actor.claims?.role === 'municipal_admin') {
     const municipalityId = actor.claims.municipalityId
     if (
       typeof municipalityId !== 'string' ||
-      validated.affectedMunicipalityIds.some((id) => id !== municipalityId)
+      affectedMunicipalityIds.some((id) => id !== municipalityId)
     ) {
       throw new HttpsError(
         'permission-denied',
@@ -96,11 +97,17 @@ export async function declareAlertCore(
   }
   const alertId = randomUUID()
   const now = Date.now()
+  const municipalityId =
+    affectedMunicipalityIds.length === 1 ? affectedMunicipalityIds[0] : undefined
+  const municipalityScope = Object.fromEntries(affectedMunicipalityIds.map((id) => [id, true]))
 
   const alertDoc: Record<string, unknown> = {
     alertId,
     alertType: 'alert',
     ...validated,
+    affectedMunicipalityIds,
+    municipalityScope,
+    ...(municipalityId ? { municipalityId } : {}),
     declaredBy: actor.uid,
     declaredAt: now,
     publishedAt: now,

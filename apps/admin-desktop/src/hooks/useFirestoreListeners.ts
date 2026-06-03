@@ -229,10 +229,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
     // alerts — scoped so municipal admins can moderate their citizen-visible alerts.
     const alertsRef =
       role === 'municipal_admin' && municipalityId
-        ? query(
-            collection(db, 'alerts'),
-            where('affectedMunicipalityIds', 'array-contains', municipalityId),
-          )
+        ? query(collection(db, 'alerts'), where(`municipalityScope.${municipalityId}`, '==', true))
         : role === 'agency_admin'
           ? query(collection(db, 'alerts'), where('visibility', '==', 'public'))
           : collection(db, 'alerts')

@@ -1,9 +1,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { BigQuery } from '@google-cloud/bigquery'
-import { Logging } from '@google-cloud/logging'
 
 const bq = new BigQuery()
-const logging = new Logging()
 
 export async function auditExportBatchCore(opts: {
   bqTable: { insert(rows: unknown[]): Promise<unknown> }
@@ -54,6 +52,8 @@ export async function auditExportBatchCore(opts: {
 export const auditExportBatch = onSchedule(
   { schedule: 'every 5 minutes', region: 'asia-southeast1', timeZone: 'UTC' },
   async () => {
+    const { Logging } = await import('@google-cloud/logging')
+    const logging = new Logging()
     const table = bq.dataset('bantayog_audit').table('batch_events')
     const log = logging.log('cloudaudit.googleapis.com%2Factivity')
     await auditExportBatchCore({ bqTable: table, loggingLog: log })

@@ -1,14 +1,26 @@
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+import { getDatabase } from 'firebase-admin/database'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081'
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099'
+process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000'
 
-const PROJECT_ID = 'bantayog-alert-staging'
+function getProjectId(): string {
+  return (
+    process.env.BANTAYOG_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.VITE_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim() ||
+    process.env.FIREBASE_PROJECT_ID?.trim() ||
+    'bantayog-alert-staging'
+  )
+}
+
+const PROJECT_ID = getProjectId()
 
 if (getApps().length === 0) {
-  initializeApp({ projectId: PROJECT_ID })
+  initializeApp({ projectId: PROJECT_ID, databaseURL: `http://127.0.0.1:9000?ns=${PROJECT_ID}` })
 }
 
 const auth = getAuth()
@@ -68,16 +80,27 @@ async function main() {
   console.log('Creating test accounts...\n')
 
   // Citizen account
-  await createAccount('citizen-test-01', 'citizen-test-01@test.local', 'test123456')
+  const createdCitizen = await createAccount(
+    'citizen-test-01',
+    'citizen-test-01@test.local',
+    'test123456',
+  )
+  if (!createdCitizen) throw new Error('Failed to provision citizen-test-01')
 
   // Admin account
-  await createAccount('daet-admin-test-01', 'daet-admin-test-01@test.local', 'test123456', {
-    role: 'municipal_admin',
-    municipalityId: 'daet',
-    accountStatus: 'active',
-    active: true,
-    permittedMunicipalityIds: ['daet'],
-  })
+  const createdAdmin = await createAccount(
+    'daet-admin-test-01',
+    'daet-admin-test-01@test.local',
+    'test123456',
+    {
+      role: 'municipal_admin',
+      municipalityId: 'daet',
+      accountStatus: 'active',
+      active: true,
+      permittedMunicipalityIds: ['daet'],
+    },
+  )
+  if (!createdAdmin) throw new Error('Failed to provision daet-admin-test-01')
 
   // Provincial superadmin account
   const createdSuperadmin = await createAccount(
@@ -97,19 +120,20 @@ async function main() {
 
   // Responder account
   const createdResponder = await createAccount(
-    'responder-test-01',
-    'responder-test-01@test.local',
+    'bfp-responder-test-01',
+    'bfp-responder-test-01@test.local',
     'test123456',
     {
       role: 'responder',
       municipalityId: 'daet',
+      agencyId: 'bfp-daet',
       accountStatus: 'active',
       active: true,
       permittedMunicipalityIds: ['daet'],
     },
   )
   if (!createdResponder) {
-    throw new Error('Failed to provision responder-test-01')
+    throw new Error('Failed to provision bfp-responder-test-01')
   }
 
   console.log('\n✓ Done! Test accounts ready.')
@@ -143,11 +167,11 @@ async function seedActiveAccounts(db: ReturnType<typeof getFirestore>) {
       updatedAt: ts,
     },
     {
-      uid: 'responder-test-01',
+      uid: 'bfp-responder-test-01',
       role: 'responder',
       accountStatus: 'active',
       municipalityId: 'daet',
-      agencyId: null,
+      agencyId: 'bfp-daet',
       permittedMunicipalityIds: ['daet'],
       mfaEnrolled: false,
       lastClaimIssuedAt: ts,
@@ -161,10 +185,51 @@ async function seedActiveAccounts(db: ReturnType<typeof getFirestore>) {
   }
 }
 
+async function seedResponderRoster(
+  db: ReturnType<typeof getFirestore>,
+  rtdb: ReturnType<typeof getDatabase>,
+) {
+  const uid = 'bfp-responder-test-01'
+  await db.collection('responders').doc(uid).set({
+    uid,
+    displayName: 'BFP Daet Test Responder',
+    agency: 'BFP',
+    agencyId: 'bfp-daet',
+    municipalityId: 'daet',
+    isActive: true,
+    availabilityStatus: 'available',
+    updatedAt: Timestamp.now(),
+  })
+  await rtdb.ref('responder_index/bfp-responder-test-01').set({
+    municipalityId: 'daet',
+    agencyId: 'bfp-daet',
+  })
+  await rtdb.ref('responder_index/daet/bfp-responder-test-01').set({
+    isOnShift: true,
+    agencyId: 'bfp-daet',
+  })
+  await rtdb.ref('responder_locations/bfp-responder-test-01').set({
+    uid,
+    displayName: 'BFP Daet Test Responder',
+    agency: 'BFP',
+    agencyId: 'bfp-daet',
+  })
+  console.log(`✓ responders/${uid} roster metadata`)
+}
+
 main()
   .then(async () => {
     const db = getFirestore()
-    await seedActiveAccounts(db)
+    const rtdb = getDatabase()
+    try {
+      await seedActiveAccounts(db)
+      await seedResponderRoster(db, rtdb)
+    } finally {
+      rtdb.goOffline()
+    }
     console.log('\n✓ Done! Test accounts and active_accounts seeded.')
   })
-  .catch(console.error)
+  .catch((err: unknown) => {
+    console.error(err)
+    process.exit(1)
+  })

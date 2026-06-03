@@ -23,24 +23,45 @@ describe('local proof runner', () => {
     const plan = JSON.parse(result.stdout) as {
       steps: string[]
       managedPorts: Array<{ label: string; host: string; port: number }>
+      functionsProbe: { url: string }
+      appRouteProbes: Array<{ label: string; url: string }>
+      packageBuild: { args: string[] }
       prepare: { args: string[] }
+      stack: { args: string[]; env: Record<string, string> }
       proof: { args: string[]; env: Record<string, string> }
     }
 
     expect(plan.steps).toEqual([
       'preflight-ports',
+      'prepare-app-packages',
       'prepare-functions',
       'start-local-stack',
       'wait-for-readiness',
+      'wait-for-functions',
+      'warm-app-routes',
       'run-proof',
       'shutdown',
     ])
+    expect(plan.packageBuild.args).toEqual(['--filter', './packages/*', '--if-present', 'build'])
     expect(plan.prepare.args).toContain('scripts/prepare-functions-deploy.ts')
+    expect(plan.stack.args).toEqual(['dev:all'])
+    expect(plan.stack.env).toMatchObject({
+      BANTAYOG_FIREBASE_PROJECT_ID: 'bantayog-alert-staging',
+      VITE_FIREBASE_PROJECT_ID: 'bantayog-alert-staging',
+    })
+    expect(plan.functionsProbe.url).toBe(
+      'http://127.0.0.1:5001/bantayog-alert-staging/asia-southeast1/getOpsMetrics',
+    )
     expect(plan.proof.args).toEqual(['--dir', 'e2e-tests', 'proof:local'])
     expect(plan.proof.env).toMatchObject({
       CI: 'true',
       BANTAYOG_FIREBASE_PROJECT_ID: 'bantayog-alert-staging',
     })
+    expect(plan.appRouteProbes).toEqual([
+      { label: 'citizen-pwa route', url: 'http://localhost:5173/' },
+      { label: 'responder-app route', url: 'http://localhost:5174/' },
+      { label: 'admin-desktop route', url: 'http://localhost:5175/' },
+    ])
     expect(plan.managedPorts.map((item) => item.port).sort((a, b) => a - b)).toEqual([
       4000, 5001, 5173, 5174, 5175, 8081, 9000, 9099, 9199,
     ])

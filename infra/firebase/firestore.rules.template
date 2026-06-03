@@ -36,10 +36,10 @@ service cloud.firestore {
       return (isMuniAdmin() && myMunicipality() == muniId)
           || (isSuperadmin() && (permittedMunis().size() == 0 || muniId in permittedMunis()));
     }
-    function canReadReportDoc(data) {
+    function canReadReportDoc(reportId, data) {
       return ('visibilityClass' in data && data.visibilityClass == 'public_alertable')
           || adminOf(data.municipalityId)
-          || (isResponder() && isActivePrivileged() && exists(/databases/$(database)/documents/dispatches/$(data.reportId + '_' + uid())));
+          || (isResponder() && isActivePrivileged() && exists(/databases/$(database)/documents/dispatches/$(reportId + '_' + uid())));
     }
     function canReadEventDoc(data) {
       return isActivePrivileged()
@@ -67,10 +67,23 @@ service cloud.firestore {
               && ('agencyId' in data.assignedTo)
               && data.assignedTo.agencyId == myAgency());
     }
+    function alertTargetsAnyMunicipality(data, muniIds) {
+      return ((('affectedMunicipalityIds' in data)
+               && data.affectedMunicipalityIds is list
+               && data.affectedMunicipalityIds.hasAny(muniIds))
+              || (('targetMunicipalityIds' in data)
+                  && data.targetMunicipalityIds is list
+                  && data.targetMunicipalityIds.hasAny(muniIds))
+              || (('municipalityScope' in data)
+                  && data.municipalityScope is map
+                  && data.municipalityScope.keys().hasAny(muniIds)));
+    }
     function canReadAlertDoc(data) {
       return (('visibility' in data) && data.visibility == 'public')
           || (isActivePrivileged()
-              && (isSuperadmin()
+              && ((isSuperadmin()
+                   && (permittedMunis().size() == 0
+                       || alertTargetsAnyMunicipality(data, permittedMunis())))
                   || (isMuniAdmin()
                       && ((('affectedMunicipalityIds' in data)
                            && data.affectedMunicipalityIds is list
@@ -78,6 +91,18 @@ service cloud.firestore {
                           || (('targetMunicipalityIds' in data)
                               && data.targetMunicipalityIds is list
                               && data.targetMunicipalityIds.hasAny([myMunicipality()]))))));
+    }
+    function canListAlertDoc(data) {
+      return (('visibility' in data) && data.visibility == 'public')
+          || (isActivePrivileged()
+              && ('municipalityScope' in data)
+              && data.municipalityScope is map
+              && ((isMuniAdmin()
+                  && myMunicipality() in data.municipalityScope
+                  && data.municipalityScope[myMunicipality()] == true)
+                  || (isSuperadmin()
+                      && (permittedMunis().size() == 0
+                          || data.municipalityScope.keys().hasAny(permittedMunis())))));
     }
     function canReadSituationUpdate(data) {
       return (('visibility' in data) && data.visibility == 'public')
@@ -150,7 +175,7 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if canReadReportDoc(resource.data)
+      allow read: if canReadReportDoc(reportId, resource.data)
                   || (request.auth != null
                       && get(/databases/$(database)/documents/report_private/$(reportId)).data.reporterUid == request.auth.uid);
       allow create: if false;
@@ -173,11 +198,11 @@ service cloud.firestore {
       allow delete: if false;
 
       match /status_log/{e} {
-        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow read: if canReadReportDoc(reportId, get(/databases/$(database)/documents/reports/$(reportId)).data);
         allow write: if false;
       }
       match /media/{m} {
-        allow read: if canReadReportDoc(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow read: if canReadReportDoc(reportId, get(/databases/$(database)/documents/reports/$(reportId)).data);
         allow write: if false;
       }
       match /messages/{m} {
@@ -409,7 +434,8 @@ service cloud.firestore {
     // ================================================================
 
     match /alerts/{a} {
-      allow read: if canReadAlertDoc(resource.data);
+      allow get: if canReadAlertDoc(resource.data);
+      allow list: if canListAlertDoc(resource.data);
       allow write: if false;
     }
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 const mockInsert = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockGetEntries = vi.hoisted(() => vi.fn().mockResolvedValue([[]]));
 vi.mock('@google-cloud/logging', () => ({
@@ -25,6 +26,15 @@ beforeEach(() => {
     mockGetEntries.mockClear();
 });
 describe('auditExportBatchCore', () => {
+    it('loads Cloud Logging lazily to preserve the Firestore emulator protobuf root', () => {
+        const sourceFile = import.meta.url.endsWith('.js')
+            ? '../audit-export-batch.js'
+            : '../audit-export-batch.ts';
+        const source = readFileSync(new URL(sourceFile, import.meta.url), 'utf8');
+        expect(source).not.toMatch(/^import .*@google-cloud\/logging/m);
+        expect(source).not.toMatch(/^const logging = new Logging\(/m);
+        expect(source).toContain("await import('@google-cloud/logging')");
+    });
     it('returns 0 when no log entries exist', async () => {
         mockGetEntries.mockResolvedValueOnce([[]]);
         const result = await auditExportBatchCore({
