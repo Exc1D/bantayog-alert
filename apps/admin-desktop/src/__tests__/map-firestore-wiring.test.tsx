@@ -146,7 +146,7 @@ describe('MapPage Firestore wiring', () => {
         <MapPage />
       </MemoryRouter>,
     )
-    expect(screen.getByText('Provincial Map — Camarines Norte')).toBeInTheDocument()
+    expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
     // Confirm useFirestoreListeners is invoked and wired to the page
     expect(mockUseFirestoreListeners).toHaveBeenCalledWith(
       expect.objectContaining({ windowType: 'map' }),

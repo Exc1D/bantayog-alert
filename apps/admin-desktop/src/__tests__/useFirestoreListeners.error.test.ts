@@ -74,8 +74,8 @@ describe('useFirestoreListeners error handling', () => {
       useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
     )
 
-    // Initial mount: 3 onSnapshot calls (reports, report_ops, alerts).
-    expect(effectRunCount).toBe(3)
+    // Initial mount: 4 onSnapshot calls (reports, report_ops, alerts, situation_updates).
+    expect(effectRunCount).toBe(4)
     expect(result.current.error).toBe('network error')
 
     // Drain every retry cycle. The shared scheduleRetry() helper keeps exactly
@@ -92,10 +92,10 @@ describe('useFirestoreListeners error handling', () => {
       })
     }
 
-    // Deterministic post-fix: 4 effect runs (initial + 3 retries) × 3 listeners
-    // = 12. After retryCount === MAX_RETRIES the scheduler is a no-op, so
+    // Deterministic post-fix: 4 effect runs (initial + 3 retries) × 4 listeners
+    // = 16. After retryCount === MAX_RETRIES the scheduler is a no-op, so
     // further timer ticks add nothing.
-    expect(effectRunCount).toBe(12)
+    expect(effectRunCount).toBe(16)
 
     vi.useRealTimers()
   })
@@ -124,11 +124,11 @@ describe('useFirestoreListeners error handling', () => {
 
     renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
 
-    // Initial mount: 3 listeners subscribed once each.
-    expect(effectRunCount).toBe(3)
+    // Initial mount: 4 listeners subscribed once each.
+    expect(effectRunCount).toBe(4)
 
     // Drive the budget to MAX_RETRIES. Each retry cycle re-subscribes all
-    // three listeners → +3 per cycle. After 3 retries the budget is
+    // four listeners → +4 per cycle. After 3 retries the budget is
     // exhausted; the 4th attempt is a no-op (scheduleRetry short-circuits),
     // so timer drain produces nothing further.
     for (let i = 0; i < 4; i++) {
@@ -137,24 +137,24 @@ describe('useFirestoreListeners error handling', () => {
         await vi.runAllTimersAsync()
       })
     }
-    expect(effectRunCount).toBe(12)
+    expect(effectRunCount).toBe(16)
 
     // Listener recovers. resetRetryBudget() inside the success callback flips
     // retryCount 3 → 0, which is a dep-array change, so the effect re-runs
-    // and re-subscribes (+3).
+    // and re-subscribes (+4).
     act(() => {
       latestNext?.({ docs: [] })
     })
-    expect(effectRunCount).toBe(15)
+    expect(effectRunCount).toBe(20)
 
     // After the reset, a fresh error must schedule a new retry. Without the
     // fix, scheduleRetry would still see retryCount === MAX_RETRIES and
-    // short-circuit, leaving effectRunCount stuck at 15.
+    // short-circuit, leaving effectRunCount stuck at 20.
     await act(async () => {
       latestError?.(new Error('transient again'))
       await vi.runAllTimersAsync()
     })
-    expect(effectRunCount).toBe(18)
+    expect(effectRunCount).toBe(24)
 
     vi.useRealTimers()
   })
@@ -165,8 +165,8 @@ describe('useFirestoreListeners error handling', () => {
     )
 
     unmount()
-    // Map: 4 onSnapshot (reports, report_ops, alerts, responders) + 1 onValue (responder_locations) = 5 unsubscribes
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(5)
+    // Map: 5 onSnapshot (reports, report_ops, alerts, situation_updates, responders) + 1 onValue (responder_locations) = 6 unsubscribes
+    expect(mockUnsubscribe).toHaveBeenCalledTimes(6)
   })
 
   it('clears retry timer on unmount', async () => {

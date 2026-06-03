@@ -54,14 +54,14 @@ describe('useFirestoreListeners', () => {
 
   it('sets up dashboard listeners on mount', () => {
     renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
-    // Dashboard: reports, report_ops, alerts = 3 onSnapshot calls
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(3)
+    // Dashboard: reports, report_ops, alerts, situation_updates = 4 onSnapshot calls
+    expect(mockOnSnapshot).toHaveBeenCalledTimes(4)
   })
 
   it('sets up map listeners on mount', () => {
     renderHook(() => useFirestoreListeners({ windowType: 'map', db: mockDb, rtdb: mockRtdb }))
-    // Map: reports, report_ops, alerts, responder roster = 4 onSnapshot + RTDB locations.
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(4)
+    // Map: reports, report_ops, alerts, situation_updates, responder roster = 5 onSnapshot + RTDB locations.
+    expect(mockOnSnapshot).toHaveBeenCalledTimes(5)
     expect(mockOnValue).toHaveBeenCalled()
   })
 
@@ -80,7 +80,7 @@ describe('useFirestoreListeners', () => {
       useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
     )
     unmount()
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(3)
+    expect(mockUnsubscribe).toHaveBeenCalledTimes(4)
   })
 
   it('updates data when snapshot arrives', async () => {

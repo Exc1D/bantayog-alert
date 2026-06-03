@@ -32,8 +32,8 @@ vi.mock('./pages/SettingsPage.js', () => ({
 
 vi.mock('./pages/SplashScreen.js', () => ({
   SplashScreen: ({ onDone }: { onDone?: () => void }) => {
-    // Call onDone immediately so the splash doesn't block route tests
-    onDone?.()
+    // Defer onDone to microtask so it doesn't trigger setState during render.
+    void Promise.resolve().then(() => onDone?.())
     return null
   },
 }))
