@@ -1259,7 +1259,7 @@ body {
 /* === Premium UX: Subtle animations (Lesson 2) === */
 
 /* Fade-in-up for lists and cards on first paint */
-@keyframes fadeInUp {
+@keyframes fade-in-up {
   from {
     opacity: 0;
     transform: translateY(4px);
@@ -1271,12 +1271,12 @@ body {
 }
 
 .motion-fade-in {
-  animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-in-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Stagger children via CSS custom property delay */
 .motion-stagger > * {
-  animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-in-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--i, 0) * 40ms);
 }
 
@@ -1284,15 +1284,15 @@ body {
 .shimmer-gradient {
   background: linear-gradient(
     90deg,
-    var(--color-surface-100) 25%,
-    var(--color-surface-200) 50%,
-    var(--color-surface-100) 75%
+    var(--surface-100) 25%,
+    var(--surface-200) 50%,
+    var(--surface-100) 75%
   );
   background-size: 200% 100%;
-  animation: shimmerSweep 1.5s infinite linear;
+  animation: shimmer-sweep 1.5s infinite linear;
 }
 
-@keyframes shimmerSweep {
+@keyframes shimmer-sweep {
   0% {
     background-position: 200% 0;
   }
@@ -1302,7 +1302,7 @@ body {
 }
 
 /* Toggle glow when checked */
-@keyframes glowCheck {
+@keyframes glow-check {
   0% {
     box-shadow: 0 0 0 rgba(15, 148, 136, 0);
   }
@@ -1326,7 +1326,7 @@ body {
 /* === Premium UX: Alive & Fun (Lesson 6) === */
 
 /* Center button (FAB) subtle pulse-breathe — signals primary action */
-@keyframes fabBreathe {
+@keyframes fab-breathe {
   0%,
   100% {
     box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
@@ -1337,11 +1337,11 @@ body {
 }
 
 .fab-breathe {
-  animation: fabBreathe 2.5s ease-in-out infinite;
+  animation: fab-breathe 2.5s ease-in-out infinite;
 }
 
 /* Alert badge gentle bell-ring shake */
-@keyframes badgeRing {
+@keyframes badge-ring {
   0%,
   100% {
     transform: rotate(0deg);
@@ -1367,13 +1367,15 @@ body {
 }
 
 .badge-shake {
-  animation: badgeRing 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  animation: badge-ring 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   transform-origin: 50% 0%;
 }
 
 /* Card hover lift — subtle depth on desktop hover, press state on touch */
 .card-hover {
-  transition: transform 0.18s var(--ease-spring), box-shadow 0.18s ease;
+  transition:
+    transform 0.18s var(--ease-spring),
+    box-shadow 0.18s ease;
 }
 
 .card-hover:hover:not(:active) {
@@ -1395,7 +1397,7 @@ body {
 }
 
 /* Subtle rotation for the center button icon */
-@keyframes iconRotateIn {
+@keyframes icon-rotate-in {
   from {
     transform: rotate(-45deg) scale(0.8);
     opacity: 0;
@@ -1407,11 +1409,11 @@ body {
 }
 
 .icon-rotate-in {
-  animation: iconRotateIn 0.3s var(--ease-spring) forwards;
+  animation: icon-rotate-in 0.3s var(--ease-spring) forwards;
 }
 
 /* Staggered list entrance utility */
-@keyframes slideInStagger {
+@keyframes slide-in-stagger {
   from {
     opacity: 0;
     transform: translateY(8px) scale(0.975);
@@ -1427,7 +1429,7 @@ body {
 }
 
 .slide-in-stagger.visible {
-  animation: slideInStagger 0.25s var(--ease-spring) forwards;
+  animation: slide-in-stagger 0.25s var(--ease-spring) forwards;
 }
 
 /* Reduced-motion guard for new animations */

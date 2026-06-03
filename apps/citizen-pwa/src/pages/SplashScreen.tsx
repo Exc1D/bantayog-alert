@@ -4,10 +4,7 @@ import { Shield, AlertTriangle } from 'lucide-react'
 import { useUIStore } from '../lib/store.js'
 import { useNavigate } from 'react-router-dom'
 
-const STATUS_MESSAGES = [
-  'Getting things ready for you...',
-  'Preparing your community feed...',
-]
+const STATUS_MESSAGES = ['Getting things ready for you...', 'Preparing your community feed...']
 
 const EASE_REVEAL: [number, number, number, number] = [0.16, 1, 0.3, 1]
 

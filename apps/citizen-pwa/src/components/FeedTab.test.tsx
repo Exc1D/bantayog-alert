@@ -92,7 +92,9 @@ describe('FeedTab', () => {
 
   it('keeps the composer compact until the user chooses to share', () => {
     renderFeedTab()
-    expect(screen.getByRole('button', { name: /What's happening\? Share an update/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /What's happening\? Share an update/i }),
+    ).toBeInTheDocument()
     expect(screen.queryByLabelText('Municipality')).not.toBeInTheDocument()
   })
 

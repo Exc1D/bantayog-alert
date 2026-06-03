@@ -244,21 +244,21 @@ export function CitizenShell({ children }: { children: ReactNode }) {
               if (isCenter) {
                 return (
                   <div key={path} className="relative h-16 w-16 flex items-center justify-center">
-                  <button
-                    type="button"
-                    aria-label={label}
-                    onClick={() => {
-                      handleNav(path)
-                    }}
-                    className="fab-breathe absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
-                  >
-                    <motion.div
-                      whileHover={prefersReducedMotion ? {} : { rotate: -8, scale: 1.05 }}
-                      whileTap={{ scale: 0.92 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                    <button
+                      type="button"
+                      aria-label={label}
+                      onClick={() => {
+                        handleNav(path)
+                      }}
+                      className="fab-breathe absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
                     >
-                      <Icon size={30} strokeWidth={1.5} className="text-white" />
-                    </motion.div>
+                      <motion.div
+                        whileHover={prefersReducedMotion ? {} : { rotate: -8, scale: 1.05 }}
+                        whileTap={{ scale: 0.92 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                      >
+                        <Icon size={30} strokeWidth={1.5} className="text-white" />
+                      </motion.div>
                     </button>
                     <span className="absolute bottom-[14px] text-[10px] font-medium leading-none text-surface-600">
                       {label}
