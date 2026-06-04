@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 const GPS_TIMEOUT_MS = 10_000
 
@@ -83,9 +83,11 @@ export function useGpsLocation(autoAttemptOnMount = false): UseGpsLocationResult
     setLocationError(null)
   }, [])
 
+  const hasAutoAttemptedRef = useRef(false)
+
   useEffect(() => {
-    if (autoAttemptOnMount) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (autoAttemptOnMount && !hasAutoAttemptedRef.current) {
+      hasAutoAttemptedRef.current = true
       void attemptGps()
     }
   }, [autoAttemptOnMount, attemptGps])

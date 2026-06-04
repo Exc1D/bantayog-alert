@@ -56,7 +56,8 @@ export function getFirebaseApp() {
   if (_app) return _app
   const env = requireFirebaseEnv()
   _app = createFirebaseWebApp(env)
-  createAppCheck(_app, env)
+  const isEmulator = import.meta.env.VITE_USE_EMULATOR === 'true'
+  createAppCheck(_app, env, isEmulator)
   return _app
 }
 
