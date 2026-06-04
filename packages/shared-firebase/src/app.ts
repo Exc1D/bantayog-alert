@@ -26,7 +26,7 @@ export function createFirebaseWebApp(env: FirebaseWebEnv): FirebaseApp {
 export function createAppCheck(
   app: FirebaseApp,
   env: FirebaseWebEnv,
-  isEmulator = false,
+  isEmulator: boolean,
 ): AppCheck | null {
   if (isEmulator) {
     return initializeAppCheck(app, {

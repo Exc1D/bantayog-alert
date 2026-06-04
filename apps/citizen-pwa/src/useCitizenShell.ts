@@ -78,7 +78,7 @@ export function useCitizenShell(): ShellState {
     const cleanup = cleanupRef
 
     try {
-      createAppCheck(app, env)
+      createAppCheck(app, env, import.meta.env.VITE_USE_EMULATOR === 'true')
       if (!unmounted.current) {
         setState((current) => ({ ...current, appCheckState: 'active' }))
       }
