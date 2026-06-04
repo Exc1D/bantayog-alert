@@ -14,6 +14,9 @@
 - Responder GPS denial during dispatch detail is recoverable. Log it as `console.warn`, show fallback copy, and include mobile reduced-motion/offline/overflow checks in demo proof.
 - Zombie emulator Java processes block ports. Clear them before starting emulators when port binding gets weird.
 - Functions dependencies must match the declared runtime. Check `engines.node` before accepting dependency bumps.
+- App Check emulator mismatch: when `VITE_USE_EMULATOR=true`, `createAppCheck` MUST use `CustomProvider` with a dummy token. `ReCaptchaV3Provider` against emulator project = 400 cascade (AppCheck/auth/Functions all fail). Other apps (responder-app, admin-desktop) already do this inline; citizen-pwa uses `@bantayog/shared-firebase` which was missing the emulator branch.
+- React Strict Mode double-invokes mount effects. Hooks that trigger side-effects on mount (e.g. `useGpsLocation(autoAttemptOnMount)`) need a `useRef` guard to prevent duplicate calls, otherwise users see multiple GPS prompts / repeated state transitions.
+- App Check error codes use `appCheck/` prefix, not `auth/`. Retry logic that only checks `code.startsWith('auth/')` will burn retries on unrecoverable App Check throttling.
 
 ## Firestore / Rules / Data Access
 
@@ -71,6 +74,9 @@
 - Responder accept must support both claim eras via `isAccountActive()`.
 - Seeded reports used in proof need matching `report_ops` and `dispatches` docs.
 - Admin map triage controls must mirror backend report transitions; visible no-op command-center actions are P0 UX defects.
+- Admin dashboard widgets must end in an operator action. Report lifecycle counts should expose the next valid backend transition or deep-link to the Map/Feed surface that owns it.
+- Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
+- Admin Map must not subscribe to RTDB parent paths such as `responder_locations`; existing rules only allow scoped child reads, so parent listeners surface false permission-denied banners during dispatch.
 - Mode/state precedence: actionable states such as surge win over data-quality states such as degraded.
 - Lease monitors with `monitorLeaseAt` plus expiry, and add circuit breakers for oversized query results.
 

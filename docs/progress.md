@@ -1,5 +1,31 @@
 # Progress
 
+## 2026-06-04 - Emulator Report Submission Fix
+
+- Diagnosed and fixed three interlocking issues breaking report submission in `pnpm dev:all` emulator mode:
+  1. **App Check 400 cascade**: `packages/shared-firebase/src/app.ts` unconditionally used `ReCaptchaV3Provider`; against the emulator this always 400, throttling auth + function calls. Added `isEmulator` param and `CustomProvider` with dummy token when `VITE_USE_EMULATOR=true`.
+  2. **GPS double-invocation**: `useGpsLocation(autoAttemptOnMount)` lacked a ref guard, so React Strict Mode invoked it twice, causing duplicate console errors and apparent "screen refreshed three times". Added `hasAutoAttemptedRef` guard + regression test with `StrictMode` wrapper.
+  3. **appCheck/ not treated as non-retryable**: `isNonRetryableError` only checked `auth/` prefix, so App Check throttling consumed all 3 retries before giving up. Extended to also catch `appCheck/` errors.
+- Verified: all 451 citizen-pwa tests pass, typecheck and lint pass across the monorepo.
+
+## 2026-06-04 - Admin Desktop Report Flow Browser Proof
+
+- Ran `pnpm dev:all` against a clean local emulator stack and walked the live report loop: Citizen PWA manual fire report -> Admin Feed moderation/publish -> Admin Map verified dispatch -> Dispatch Monitor active row -> Citizen active-report status.
+- Fixed a live Admin Map blocker where `useFirestoreListeners` subscribed to the denied RTDB `responder_locations` parent path; map dispatch now relies on the scoped Firestore responder roster and no longer shows the false permission banner.
+- Corrected Admin Feed wording from public feed preview to public map preview after browser proof showed Citizen Feed is the separate situation-update surface, while emergency reports publish to the citizen map/status flow.
+
+## 2026-06-04 - Admin Desktop Feed / Dispatch Operational Pass
+
+- Reframed the Feed tab as a Public Information Desk without changing the backend moderation path: raw reports, scrubbed publication, official alerts, citizen posts, and public preview now read as citizen-facing information work instead of generic feed cards.
+- Turned the Dispatch responder list into a roster workbench: scoped responder reads now include unavailable/off-duty/suspended roster entries, agency admins can add responders through `createResponder`, and selected responders can be marked available/off-duty/unavailable through `bulkAvailabilityOverride`.
+- Verification: red-first focused tests now cover full-scope roster reads, roster metadata, first-responder add from an empty roster, bulk availability override, agency-admin gating, and Feed public-information copy.
+
+## 2026-06-04 - Admin Desktop Dashboard Command Queue
+
+- Started the admin-desktop functionality refactor by turning the Dashboard from a read-only metrics wall into an operational report command surface.
+- Added a Report command queue for `new` and `awaiting_verify` reports: new reports can be sent to review, awaiting reports can be verified for dispatch, and every queued report can open the Map with `reportId` selected for the existing dispatch flow.
+- Verification: red-first focused Dashboard test now covers queue rendering, `verifyReport` calls for both lifecycle states, and Map navigation.
+
 ## 2026-06-04 - Local Demo Spine Repaired
 
 - Fixed the real `pnpm dev` demo path, not just the proof fixture. Normal dev seed now creates `municipalities/daet` and active BFP responder roster fields (`agencyId: bfp-daet`, `accountStatus`, `lastSeenAt`) so Citizen manual-Daet reports materialize for Admin Map dispatch.

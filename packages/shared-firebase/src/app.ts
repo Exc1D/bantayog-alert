@@ -1,5 +1,10 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app'
-import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check'
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+  CustomProvider,
+  type AppCheck,
+} from 'firebase/app-check'
 import type { FirebaseWebEnv } from './env.js'
 
 export function createFirebaseWebApp(env: FirebaseWebEnv): FirebaseApp {
@@ -18,10 +23,27 @@ export function createFirebaseWebApp(env: FirebaseWebEnv): FirebaseApp {
   })
 }
 
-export function createAppCheck(app: FirebaseApp, env: FirebaseWebEnv): AppCheck | null {
-  if (!env.appCheckSiteKey) return null
+export function createAppCheck(
+  app: FirebaseApp,
+  env: FirebaseWebEnv,
+  isEmulator: boolean,
+): AppCheck | null {
+  if (isEmulator) {
+    return initializeAppCheck(app, {
+      provider: new CustomProvider({
+        getToken: () =>
+          Promise.resolve({
+            token: 'citizen-pwa-emulator-app-check',
+            expireTimeMillis: Date.now() + 60 * 60 * 1000,
+          }),
+      }),
+      isTokenAutoRefreshEnabled: false,
+    })
+  }
+  const siteKey = env.appCheckSiteKey
+  if (!siteKey) return null
   return initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(env.appCheckSiteKey),
+    provider: new ReCaptchaV3Provider(siteKey),
     isTokenAutoRefreshEnabled: true,
   })
 }

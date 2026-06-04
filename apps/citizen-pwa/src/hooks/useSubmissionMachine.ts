@@ -135,12 +135,12 @@ function isNetworkError(err: unknown): boolean {
   return false
 }
 
-// Firebase auth errors (including App Check enforcement failures) will not
-// succeed on retry — go terminal immediately to avoid burning all retries.
+// Firebase auth and App Check errors will not succeed on retry — go terminal
+// immediately to avoid burning all retries on unrecoverable token issues.
 function isNonRetryableError(err: unknown): boolean {
   if (err !== null && typeof err === 'object' && 'code' in err) {
     const code = String(err.code)
-    return code.startsWith('auth/')
+    return code.startsWith('auth/') || code.startsWith('appCheck/')
   }
   return false
 }

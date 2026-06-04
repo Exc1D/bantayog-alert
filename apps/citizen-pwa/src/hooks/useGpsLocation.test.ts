@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
+import * as React from 'react'
 
 import { useGpsLocation } from './useGpsLocation.js'
 
@@ -137,6 +138,22 @@ describe('useGpsLocation', () => {
     expect(result.current.location).toEqual({ lat: 14.1, lng: 122.9 })
     expect(result.current.locationMethod).toBe('gps')
     expect(result.current.isLoading).toBe(false)
+  })
+
+  it('only auto-attempts once across Strict Mode remounts', async () => {
+    mockGetCurrentPosition.mockImplementation((success: PositionCallback) => {
+      success({
+        coords: { latitude: 14.1, longitude: 122.9 },
+      } as GeolocationPosition)
+    })
+    const { result } = renderHook(() => useGpsLocation(true), {
+      wrapper: ({ children }) => React.createElement(React.StrictMode, null, children),
+    })
+    await waitFor(() => {
+      expect(result.current.location).not.toBeNull()
+    })
+    // StrictMode double-invokes effects, but the ref guard prevents a second GPS call.
+    expect(mockGetCurrentPosition).toHaveBeenCalledTimes(1)
   })
 
   it('does not auto-attempt on mount when disabled', () => {
