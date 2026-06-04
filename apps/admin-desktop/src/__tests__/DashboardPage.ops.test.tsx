@@ -76,7 +76,7 @@ vi.mock('../hooks/useResponderFleet', () => ({
         uid: 'u1',
         displayName: 'Responder A',
         availabilityStatus: 'available',
-        lastSeenAt: Date.now(),
+        lastActivityAt: Date.now(),
         onlineStatus: 'online' as const,
       },
     ],

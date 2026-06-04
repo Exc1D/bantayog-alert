@@ -73,6 +73,7 @@
 - Dispatch docs must satisfy schema and rules: `dispatchedByRole`, `statusUpdatedAt`, `idempotencyKey`, `municipalityId`, and omitted optional fields instead of `undefined`/`null`.
 - Responder accept must support both claim eras via `isAccountActive()`.
 - Seeded reports used in proof need matching `report_ops` and `dispatches` docs.
+- Admin responder presence must use the freshest activity timestamp available (`lastSeenAt`, `lastTelemetryAt`, or availability `updatedAt`). Availability changes can be newer than telemetry, and using only `lastSeenAt` makes a just-available responder look Away.
 - Admin map triage controls must mirror backend report transitions; visible no-op command-center actions are P0 UX defects.
 - Admin dashboard widgets must end in an operator action. Report lifecycle counts should expose the next valid backend transition or deep-link to the Map/Feed surface that owns it.
 - Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
