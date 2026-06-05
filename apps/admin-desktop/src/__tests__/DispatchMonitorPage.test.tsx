@@ -73,7 +73,7 @@ const defaultResponders = [
     uid: 'r1',
     displayName: 'Alice',
     availabilityStatus: 'available' as const,
-    lastSeenAt: Date.now(),
+    lastActivityAt: Date.now(),
     onlineStatus: 'online' as const,
   },
 ]

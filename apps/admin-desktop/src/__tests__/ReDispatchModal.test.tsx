@@ -10,7 +10,7 @@ function responderStub(
   return {
     displayName: 'John Doe',
     availabilityStatus: 'available',
-    lastSeenAt: Date.now(),
+    lastActivityAt: Date.now(),
     onlineStatus: 'online',
     ...overrides,
   }
@@ -50,25 +50,25 @@ describe('ReDispatchModal', () => {
       responderStub({
         uid: 'r1',
         displayName: 'Alice',
-        lastSeenAt: 3000,
+        lastActivityAt: 3000,
         onlineStatus: 'online',
       }),
       responderStub({
         uid: 'r2',
         displayName: 'Bob',
-        lastSeenAt: 2000,
+        lastActivityAt: 2000,
         onlineStatus: 'away',
       }),
       responderStub({
         uid: 'r3',
         displayName: 'Charlie',
-        lastSeenAt: 1000,
+        lastActivityAt: 1000,
         onlineStatus: 'offline',
       }),
       responderStub({
         uid: 'r4',
         displayName: 'David',
-        lastSeenAt: 500,
+        lastActivityAt: 500,
         onlineStatus: 'online',
       }),
     ]
@@ -78,7 +78,7 @@ describe('ReDispatchModal', () => {
       expect(screen.getByText(/recommended/i)).toBeInTheDocument()
     })
 
-    it('shows only top 3 candidates sorted by lastSeenAt desc', () => {
+    it('shows only top 3 candidates sorted by lastActivityAt desc', () => {
       render(<ReDispatchModal {...baseProps} responders={responders} />)
       expect(screen.getByText('Alice')).toBeInTheDocument()
       expect(screen.getByText('Bob')).toBeInTheDocument()
@@ -158,7 +158,7 @@ describe('ReDispatchModal', () => {
       responderStub({
         uid: 'r1',
         displayName: 'Alice',
-        lastSeenAt: 3000,
+        lastActivityAt: 3000,
         onlineStatus: 'online',
       }),
     ]
@@ -242,12 +242,12 @@ describe('ReDispatchModal', () => {
         responderStub({
           uid: 'r1',
           displayName: 'Alice',
-          lastSeenAt: 3000,
+          lastActivityAt: 3000,
         }),
         responderStub({
           uid: 'r2',
           displayName: 'Bob',
-          lastSeenAt: 2000,
+          lastActivityAt: 2000,
         }),
       ]
       render(

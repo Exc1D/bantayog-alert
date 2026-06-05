@@ -231,6 +231,47 @@ describe('useResponderFleet', () => {
     expect(result.current.responders[2]).toMatchObject({ uid: 'r3', onlineStatus: 'offline' })
   })
 
+  it('uses recent availability updates when telemetry is stale', async () => {
+    useAuthMock.mockReturnValue({
+      user: { uid: 'admin-1' },
+      claims: { role: 'municipal_admin', municipalityId: 'M001' },
+      loading: false,
+    })
+
+    const now = Date.now()
+    let callback: ((snap: { docs: { id: string; data: () => unknown }[] }) => void) | null = null
+
+    mockOnSnapshot.mockImplementation((_ref: unknown, next: unknown) => {
+      callback = next as typeof callback
+      return mockUnsubscribe
+    })
+
+    const { result } = renderHook(() => useResponderFleet(mockDb))
+
+    act(() => {
+      callback?.({
+        docs: [
+          {
+            id: 'r1',
+            data: () => ({
+              displayName: 'Alice',
+              availabilityStatus: 'available',
+              lastSeenAt: now - 10 * 60_000,
+              updatedAt: now - 30_000,
+            }),
+          },
+        ],
+      })
+    })
+
+    await waitFor(() => {
+      expect(result.current.responders[0]).toMatchObject({
+        uid: 'r1',
+        onlineStatus: 'online',
+      })
+    })
+  })
+
   it('derives online status using exact thresholds', async () => {
     useAuthMock.mockReturnValue({
       user: { uid: 'admin-1' },
@@ -404,7 +445,7 @@ describe('useResponderFleet', () => {
         uid: 'r1',
         displayName: 'Alice',
         availabilityStatus: 'available',
-        lastSeenAt: now,
+        lastActivityAt: now,
         municipalityId: 'M001',
         agencyId: 'A001',
         onlineStatus: 'online',

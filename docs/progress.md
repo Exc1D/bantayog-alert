@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-06-05 - Admin Responder Presence Correction
+
+- Fixed the admin roster status mismatch where a responder who had just set themselves Available could still appear Away because Admin Desktop derived presence only from stale `lastSeenAt`.
+- Admin roster mapping now uses the freshest known activity timestamp across `lastSeenAt`, `lastTelemetryAt`, and availability `updatedAt`, preserving the existing active/available query and role scoping.
+- Verification: red-first `useResponderFleet` regression now covers stale telemetry plus fresh availability update, and the focused Admin Desktop hook test passes.
+
 ## 2026-06-04 - Emulator Report Submission Fix
 
 - Diagnosed and fixed three interlocking issues breaking report submission in `pnpm dev:all` emulator mode:

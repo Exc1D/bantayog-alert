@@ -14,7 +14,7 @@ export interface ResponderFleetMember {
   uid: string
   displayName: string
   availabilityStatus: 'available' | 'unavailable' | 'off_duty'
-  lastSeenAt: number
+  lastActivityAt: number
   municipalityId?: string
   agencyId?: string
   onlineStatus: 'online' | 'away' | 'offline'
@@ -24,6 +24,8 @@ interface ResponderDoc {
   displayName?: string
   availabilityStatus?: 'available' | 'unavailable' | 'off_duty'
   lastSeenAt?: number
+  lastTelemetryAt?: number
+  updatedAt?: number
   municipalityId?: string
   agencyId?: string
 }
@@ -104,12 +106,13 @@ export function useResponderFleet(db: Firestore) {
         const data = snapshot.docs.map((d) => {
           const doc = d.data() as ResponderDoc
           const lastSeenAt = doc.lastSeenAt ?? 0
+          const activityAt = Math.max(lastSeenAt, doc.lastTelemetryAt ?? 0, doc.updatedAt ?? 0)
           return {
             uid: d.id,
             displayName: doc.displayName ?? '',
             availabilityStatus: doc.availabilityStatus ?? 'unavailable',
-            lastSeenAt,
-            onlineStatus: deriveOnlineStatus(lastSeenAt),
+            lastActivityAt: activityAt,
+            onlineStatus: deriveOnlineStatus(activityAt),
             ...(doc.municipalityId && { municipalityId: doc.municipalityId }),
             ...(doc.agencyId && { agencyId: doc.agencyId }),
           }

@@ -38,7 +38,7 @@ export function ReDispatchModal({
 
   const available = responders.filter((r) => !previouslyNotified.includes(r.uid))
 
-  const suggested = [...available].sort((a, b) => b.lastSeenAt - a.lastSeenAt).slice(0, 3)
+  const suggested = [...available].sort((a, b) => b.lastActivityAt - a.lastActivityAt).slice(0, 3)
 
   const hasCandidates = suggested.length > 0
 
@@ -57,7 +57,7 @@ export function ReDispatchModal({
 
   const handleConfirmForce = () => {
     if (isLoading) return
-    const best = [...responders].sort((a, b) => b.lastSeenAt - a.lastSeenAt)[0]
+    const best = [...responders].sort((a, b) => b.lastActivityAt - a.lastActivityAt)[0]
     if (best) {
       onDispatch(best.uid, true)
     }
