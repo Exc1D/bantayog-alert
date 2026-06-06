@@ -54,18 +54,34 @@ function CreateResponderForm({
           className="mt-3 grid gap-2 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault()
+            const trimmedDisplayName = displayName.trim()
+            const trimmedPhone = phone.trim()
+            const trimmedAgencyId = agencyId.trim()
+            if (!trimmedDisplayName || !trimmedPhone || !trimmedAgencyId) return
             const trimmedMunicipality = municipalityId.trim()
             const specializationList = specializations
               .split(',')
               .map((item) => item.trim())
               .filter(Boolean)
-            void onCreateResponder({
-              displayName: displayName.trim(),
-              phone: phone.trim(),
-              agencyId: agencyId.trim(),
-              ...(trimmedMunicipality ? { municipalityId: trimmedMunicipality } : {}),
-              ...(specializationList.length > 0 ? { specializations: specializationList } : {}),
-            })
+            void (async () => {
+              try {
+                await onCreateResponder({
+                  displayName: trimmedDisplayName,
+                  phone: trimmedPhone,
+                  agencyId: trimmedAgencyId,
+                  ...(trimmedMunicipality ? { municipalityId: trimmedMunicipality } : {}),
+                  ...(specializationList.length > 0 ? { specializations: specializationList } : {}),
+                })
+                setDisplayName('')
+                setPhone('')
+                setAgencyId('')
+                setMunicipalityId('')
+                setSpecializations('')
+                setOpen(false)
+              } catch {
+                // leave form open for retry
+              }
+            })()
           }}
         >
           <input

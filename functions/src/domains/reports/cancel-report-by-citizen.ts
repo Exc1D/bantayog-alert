@@ -77,20 +77,30 @@ export async function cancelReportByCitizenCore(
           withdrawnBy: deps.actor.uid,
           cancelledAt: nowMs,
           updatedAt: nowMs,
+          lastStatusAt: nowMs,
+          lastStatusBy: deps.actor.uid,
         })
 
         const opsRef = db.collection('report_ops').doc(deps.reportId)
-        tx.set(
-          opsRef,
-          {
-            status: 'cancelled',
-            cancelReason: 'citizen_withdrew',
-            withdrawnAt: nowMs,
-            withdrawnBy: deps.actor.uid,
-            updatedAt: nowMs,
-          },
-          { merge: true },
-        )
+        const opsSnap = await tx.get(opsRef)
+        const opsUpdate: Record<string, unknown> = {
+          status: 'cancelled',
+          cancelReason: 'citizen_withdrew',
+          withdrawnAt: nowMs,
+          withdrawnBy: deps.actor.uid,
+          updatedAt: nowMs,
+          lastStatusAt: nowMs,
+          lastStatusBy: deps.actor.uid,
+        }
+        if (opsSnap.exists) {
+          tx.update(opsRef, opsUpdate)
+        } else {
+          tx.create(opsRef, {
+            reportId: deps.reportId,
+            schemaVersion: 1,
+            ...opsUpdate,
+          })
+        }
 
         const eventRef = db.collection('report_events').doc()
         tx.set(eventRef, {

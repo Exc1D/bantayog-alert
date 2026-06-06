@@ -540,14 +540,14 @@ test.describe('reliability spine', () => {
       const alertId = ledger.alertId
       if (!alertId) throw new Error('Missing alertId before feed moderation')
       await adminPage.goto(`${env.adminBaseUrl}/feed`, { waitUntil: 'domcontentloaded' })
-      const hideAlertButton = adminPage.getByRole('button', { name: `Hide alert ${alertId}` })
-      await expect(hideAlertButton).toBeVisible({ timeout: 15_000 })
-      await hideAlertButton.click()
+      const retireAlertButton = adminPage.getByRole('button', { name: `Retire alert ${alertId}` })
+      await expect(retireAlertButton).toBeVisible({ timeout: 15_000 })
+      await retireAlertButton.click()
       await expect
         .poll(async () => (await db.collection('alerts').doc(alertId).get()).data()?.visibility)
         .toBe('internal')
       const restoreAlertButton = adminPage.getByRole('button', {
-        name: `Restore alert ${alertId}`,
+        name: `Restore retired alert ${alertId}`,
       })
       await expect(restoreAlertButton).toBeVisible({ timeout: 15_000 })
       await restoreAlertButton.click()

@@ -120,11 +120,12 @@ export function DispatchMonitorPage() {
   }) => {
     setCreatingResponder(true)
     setDispatchError(null)
+    const idempotencyKey = generateIdempotencyKey()
     try {
       await withRetry(() =>
         callables.createResponder({
           ...input,
-          idempotencyKey: generateIdempotencyKey(),
+          idempotencyKey,
         }),
       )
       setSuccessMessage('Responder account created')

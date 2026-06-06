@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ResponderAvailabilityPanel } from '../components/ResponderAvailabilityPanel'
 import type { ResponderFleetMember } from '../hooks/useResponderFleet'
 
@@ -84,5 +85,35 @@ describe('ResponderAvailabilityPanel', () => {
     const { container } = render(<ResponderAvailabilityPanel responders={mockResponders} />)
     const scrollable = container.querySelector('.max-h-64.overflow-y-auto')
     expect(scrollable).not.toBeNull()
+  })
+
+  it('trims fields and parses comma-separated specializations on submit', async () => {
+    const onCreateResponder = vi.fn(() => Promise.resolve())
+    const user = userEvent.setup()
+    render(<ResponderAvailabilityPanel responders={[]} onCreateResponder={onCreateResponder} />)
+    await user.click(screen.getByRole('button', { name: /create responder account/i }))
+
+    const nameInput = screen.getByLabelText('Responder display name')
+    const phoneInput = screen.getByLabelText('Responder phone')
+    const agencyInput = screen.getByLabelText('Responder agency')
+    const municipalityInput = screen.getByLabelText('Responder municipality')
+    const specializationsInput = screen.getByLabelText('Responder specializations')
+
+    await user.type(nameInput, '  Juan Dela Cruz  ')
+    await user.type(phoneInput, '+639171234567')
+    await user.type(agencyInput, 'bfp-daet')
+    await user.type(municipalityInput, 'daet')
+    await user.type(specializationsInput, 'fire,  rescue ,  medical ')
+
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(onCreateResponder).toHaveBeenCalledTimes(1)
+    expect(onCreateResponder).toHaveBeenCalledWith({
+      displayName: 'Juan Dela Cruz',
+      phone: '+639171234567',
+      agencyId: 'bfp-daet',
+      municipalityId: 'daet',
+      specializations: ['fire', 'rescue', 'medical'],
+    })
   })
 })

@@ -223,15 +223,18 @@ export default function FeedPage() {
     }
   }
 
-  useEffect(() => {
-    if (!successMessage) return
-    const timer = setTimeout(() => {
-      setSuccessMessage(null)
-    }, 4000)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [successMessage])
+  // SuccessBanner now owns its own auto-dismiss (4s). FeedPage must NOT
+  // duplicate the timer, otherwise both race to clear successMessage and the
+  // banner may flicker or disappear early.
+  // useEffect(() => {
+  //   if (!successMessage) return
+  //   const timer = setTimeout(() => {
+  //     setSuccessMessage(null)
+  //   }, 4000)
+  //   return () => {
+  //     clearTimeout(timer)
+  //   }
+  // }, [successMessage])
 
   const newReports = useMemo(
     () => feedReports.filter(({ report }) => report.status === 'new'),

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Map, Rss, CirclePlus, Bell, User, WifiOff, FileText, X, Siren } from 'lucide-react'
@@ -42,6 +42,8 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const [hasDraft, setHasDraft] = useState(false)
   const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false)
   const [dismissedModalAlertId, setDismissedModalAlertId] = useState<string | null>(null)
+  const modalAlertRef = useRef<HTMLDivElement | null>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
 
   // Check for an in-progress wizard snapshot on mount. Hide the banner when
   // the user is already on the /report route (they're actively filling it).
@@ -66,6 +68,42 @@ export function CitizenShell({ children }: { children: ReactNode }) {
     [alerts],
   )
   const modalAlert = newestAlert?.id === dismissedModalAlertId ? null : newestAlert
+
+  // Focus trap + Escape handling for foreground alert modal
+  useEffect(() => {
+    if (!modalAlert) return
+    previousFocusRef.current = document.activeElement as HTMLElement | null
+    // Focus the dialog container on open (screen readers will announce it)
+    modalAlertRef.current?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        markAsRead(modalAlert.id)
+        setDismissedModalAlertId(modalAlert.id)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = modalAlertRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      )
+      if (!focusable || focusable.length === 0) return
+      const first = focusable.item(0)
+      const last = focusable.item(focusable.length - 1)
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      previousFocusRef.current?.focus()
+    }
+  }, [modalAlert, markAsRead])
 
   const handleNav = (path: string) => {
     const currentIndex = TAB_PATHS.indexOf(pathname as TabPath)
@@ -113,6 +151,8 @@ export function CitizenShell({ children }: { children: ReactNode }) {
         {modalAlert && (
           <div className="fixed inset-0 z-[10000] bg-surface-900/60">
             <div
+              ref={modalAlertRef}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-labelledby="foreground-alert-title"

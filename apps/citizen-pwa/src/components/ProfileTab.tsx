@@ -30,6 +30,7 @@ import {
 } from '../utils/incident-meta.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
 import type { MyReport } from './MapTab/types.js'
+import type { ReportStatus } from '@bantayog/shared-types'
 
 function timeAgo(ts: number): string {
   const minutes = Math.floor((Date.now() - ts) / 60000)
@@ -214,7 +215,11 @@ function MilestoneTracker({ reports }: { reports: MyReport[] }) {
 }
 
 /* ── Report card ── */
-const WITHDRAWABLE_STATUSES = new Set(['queued', 'new', 'awaiting_verify'])
+export const WITHDRAWABLE_STATUSES = new Set<ReportStatus | 'queued'>([
+  'queued',
+  'new',
+  'awaiting_verify',
+])
 
 function ReportCard({
   report,

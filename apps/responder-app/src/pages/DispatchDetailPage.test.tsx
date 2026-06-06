@@ -331,7 +331,7 @@ describe('DispatchDetailPage', () => {
 
     const ring = screen.getByRole('progressbar', { name: /dispatch progress/i })
     expect(ring).toHaveAttribute('aria-valuetext', 'Pending acceptance')
-    expect(screen.queryByText('Accepted')?.closest('[aria-current="step"]')).toBeNull()
+    expect(ring).toHaveAttribute('aria-valuenow', '0')
   })
 
   it('disables field-note editing until the draft finishes loading', () => {

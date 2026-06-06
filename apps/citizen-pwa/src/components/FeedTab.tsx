@@ -611,7 +611,11 @@ export function FeedTab() {
   const { navigatorOnline } = useOnlineStatus()
   const { updates, loading, error, lastUpdatedAt, retry } = useSituationUpdates(filters)
   const visibleUpdates = useMemo(
-    () => updates.filter((update) => feedClock - update.createdAt <= PUBLIC_REPORT_FEED_WINDOW_MS),
+    () =>
+      updates.filter((update) => {
+        const age = feedClock - update.createdAt
+        return Number.isFinite(age) && age >= 0 && age <= PUBLIC_REPORT_FEED_WINDOW_MS
+      }),
     [feedClock, updates],
   )
 
