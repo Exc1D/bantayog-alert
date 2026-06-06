@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Map, Rss, CirclePlus, Bell, User, WifiOff, FileText } from 'lucide-react'
+import { Map, Rss, CirclePlus, Bell, User, WifiOff, FileText, X, Siren } from 'lucide-react'
 import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import { ReportStatusPill } from './ReportStatusPill.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
@@ -34,13 +34,14 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
   const { isOnline, queueCount } = useOfflineQueueCount()
   const { alerts } = useAlerts()
-  const { unreadCount } = useAlertReadState()
+  const { unreadCount, markAsRead } = useAlertReadState()
   const navDirection = useUIStore((s) => s.navDirection)
   const setNavDirection = useUIStore((s) => s.setNavDirection)
   const showOfflineBanner = !isOnline
   const prefersReducedMotion = useReducedMotion()
   const [hasDraft, setHasDraft] = useState(false)
   const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false)
+  const [dismissedModalAlertId, setDismissedModalAlertId] = useState<string | null>(null)
 
   // Check for an in-progress wizard snapshot on mount. Hide the banner when
   // the user is already on the /report route (they're actively filling it).
@@ -60,6 +61,11 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   // Calculate unread alerts count
   const alertIds = useMemo(() => alerts.map((a) => a.id), [alerts])
   const unreadAlerts = unreadCount(alertIds)
+  const newestAlert = useMemo(
+    () => [...alerts].sort((a, b) => b.publishedAt - a.publishedAt)[0] ?? null,
+    [alerts],
+  )
+  const modalAlert = newestAlert?.id === dismissedModalAlertId ? null : newestAlert
 
   const handleNav = (path: string) => {
     const currentIndex = TAB_PATHS.indexOf(pathname as TabPath)
@@ -104,6 +110,54 @@ export function CitizenShell({ children }: { children: ReactNode }) {
         descendants (MapTab, motion.div) can resolve inset-0 correctly.
         overflow-x-hidden clips the horizontal page-transition slide. */}
       <div className="h-[100dvh] flex flex-col overflow-x-hidden bg-surface-100">
+        {modalAlert && (
+          <div className="fixed inset-0 z-[10000] bg-surface-900/60">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="foreground-alert-title"
+              className="absolute left-1/2 top-1/2 w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-5 shadow-2xl"
+            >
+              <div className="mb-3 flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-600/10 text-danger-600">
+                  <Siren size={20} aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2
+                    id="foreground-alert-title"
+                    className="m-0 text-lg font-bold text-surface-900"
+                  >
+                    {modalAlert.title}
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-surface-700">{modalAlert.body}</p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Dismiss alert notification"
+                  className="rounded-full p-2 text-surface-500 active:bg-surface-100"
+                  onClick={() => {
+                    markAsRead(modalAlert.id)
+                    setDismissedModalAlertId(modalAlert.id)
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <button
+                type="button"
+                className="mt-2 h-11 w-full rounded-lg border-none bg-brand-600 text-sm font-bold text-white"
+                onClick={() => {
+                  markAsRead(modalAlert.id)
+                  setDismissedModalAlertId(modalAlert.id)
+                  handleNav('/alerts')
+                }}
+              >
+                View alert
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Offline banner — shrinks the flex-1 main area when visible */}
         <AnimatePresence>
           {showOfflineBanner && (
@@ -227,7 +281,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           </AnimatePresence>
         </main>
 
-        <ReportStatusPill />
+        <ReportStatusPill suppressResponderNotice={modalAlert !== null} />
 
         {/* Bottom nav — in flex flow so its height is subtracted from main.
           The FAB's -mt-6 intentionally overlaps into main; that's fine since

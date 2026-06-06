@@ -313,14 +313,15 @@ describe('DispatchDetailPage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Dispatch Cancelled/i)
   })
 
-  it('renders accessible state machine timeline', () => {
+  it('renders accessible state machine progress ring', () => {
     detailState.dispatch.status = 'en_route'
     detailState.dispatch.uiStatus = 'heading_to_scene'
     renderPage()
 
-    const timeline = screen.getByRole('progressbar', { name: /dispatch progress/i })
-    expect(timeline).toHaveAttribute('aria-valuenow', '2')
-    expect(timeline).toHaveAttribute('aria-valuetext', 'En Route')
+    const ring = screen.getByRole('progressbar', { name: /dispatch progress/i })
+    expect(ring).toHaveAttribute('aria-valuenow', '60')
+    expect(ring).toHaveAttribute('aria-valuetext', 'En Route')
+    expect(screen.getByText('60%')).toBeInTheDocument()
   })
 
   it('keeps pending dispatches out of the accepted timeline step', () => {
@@ -328,8 +329,8 @@ describe('DispatchDetailPage', () => {
     detailState.dispatch.uiStatus = 'pending'
     renderPage()
 
-    const timeline = screen.getByRole('progressbar', { name: /dispatch progress/i })
-    expect(timeline).toHaveAttribute('aria-valuetext', 'Pending acceptance')
+    const ring = screen.getByRole('progressbar', { name: /dispatch progress/i })
+    expect(ring).toHaveAttribute('aria-valuetext', 'Pending acceptance')
     expect(screen.queryByText('Accepted')?.closest('[aria-current="step"]')).toBeNull()
   })
 

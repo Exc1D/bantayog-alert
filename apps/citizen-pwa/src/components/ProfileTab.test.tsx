@@ -11,6 +11,7 @@ const { mockOnAuthStateChanged, mockUseMyActiveReports } = vi.hoisted(() => ({
 
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: (...args: unknown[]) => mockOnAuthStateChanged(...args),
+  signOut: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../services/firebase.js', () => ({
@@ -20,6 +21,18 @@ vi.mock('../services/firebase.js', () => ({
 
 vi.mock('../hooks/useMyActiveReports.js', () => ({
   useMyActiveReports: () => mockUseMyActiveReports(),
+}))
+
+vi.mock('../services/callables.js', () => ({
+  cancelReport: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('../services/localForageReports.js', () => ({
+  deleteReport: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('../hooks/useToast.js', () => ({
+  useToast: () => ({ toast: vi.fn() }),
 }))
 
 vi.mock('./DeleteAccountFlow.js', () => ({
@@ -72,6 +85,32 @@ describe('ProfileTab', () => {
     })
     renderProfileTab()
     expect(screen.getByText('No reports yet')).toBeInTheDocument()
+  })
+
+  it('shows a withdraw action for unverified reports in the profile report list', () => {
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
+      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
+      return () => {}
+    })
+    mockUseMyActiveReports.mockReturnValue({
+      loading: false,
+      reports: [
+        {
+          publicRef: 'ref-1',
+          reportType: 'flood',
+          severity: 'medium',
+          lat: 14.1,
+          lng: 122.9,
+          submittedAt: 1713350400000,
+          status: 'awaiting_verify',
+          id: 'report-1',
+        },
+      ],
+    })
+
+    renderProfileTab()
+
+    expect(screen.getByRole('button', { name: /withdraw report ref-1/i })).toBeInTheDocument()
   })
 
   it('shows impact path progress from real report statuses', () => {

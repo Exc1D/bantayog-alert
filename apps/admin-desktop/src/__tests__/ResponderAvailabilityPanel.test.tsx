@@ -38,6 +38,16 @@ describe('ResponderAvailabilityPanel', () => {
     expect(screen.getByText('Responders (3)')).toBeInTheDocument()
   })
 
+  it('shows the responder account creation action when wired', () => {
+    render(
+      <ResponderAvailabilityPanel
+        responders={mockResponders}
+        onCreateResponder={() => Promise.resolve()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /create responder account/i })).toBeInTheDocument()
+  })
+
   it('renders display names for each responder', () => {
     render(<ResponderAvailabilityPanel responders={mockResponders} />)
     expect(screen.getByText('Santos')).toBeInTheDocument()

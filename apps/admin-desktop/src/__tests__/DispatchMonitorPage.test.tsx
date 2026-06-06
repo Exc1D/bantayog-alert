@@ -12,6 +12,7 @@ const mockEscalateDispatch = vi.hoisted(() =>
 vi.mock('../services/callables', () => ({
   callables: {
     escalateDispatch: mockEscalateDispatch,
+    createResponder: vi.fn().mockResolvedValue({ uid: 'new-responder' }),
     getOpsMetrics: vi.fn().mockResolvedValue({
       metrics: {
         avgAcceptSeconds: 42,

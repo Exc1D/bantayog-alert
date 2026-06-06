@@ -1,6 +1,5 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
-import { getStorage } from 'firebase-admin/storage'
 import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
@@ -46,10 +45,6 @@ export async function cancelReportByCitizenCore(
       now: () => deps.now.toMillis(),
     },
     async () => {
-      const lookupQ = db.collection('report_lookup').where('reportId', '==', deps.reportId).limit(1)
-      const lookupSnap = await lookupQ.get()
-      const lookupDoc = lookupSnap.docs[0]
-
       return db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)
         const snap = await tx.get(reportRef)
@@ -73,15 +68,29 @@ export async function cancelReportByCitizenCore(
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'You do not own this report')
         }
 
-        tx.delete(reportRef)
-        tx.delete(privateRef)
+        const nowMs = deps.now.toMillis()
+        tx.update(reportRef, {
+          status: 'cancelled',
+          cancelReason: 'citizen_withdrew',
+          visibilityClass: 'internal',
+          withdrawnAt: nowMs,
+          withdrawnBy: deps.actor.uid,
+          cancelledAt: nowMs,
+          updatedAt: nowMs,
+        })
 
-        const contactsRef = db.collection('report_contacts').doc(deps.reportId)
-        tx.delete(contactsRef)
-
-        if (lookupDoc) {
-          tx.delete(lookupDoc.ref)
-        }
+        const opsRef = db.collection('report_ops').doc(deps.reportId)
+        tx.set(
+          opsRef,
+          {
+            status: 'cancelled',
+            cancelReason: 'citizen_withdrew',
+            withdrawnAt: nowMs,
+            withdrawnBy: deps.actor.uid,
+            updatedAt: nowMs,
+          },
+          { merge: true },
+        )
 
         const eventRef = db.collection('report_events').doc()
         tx.set(eventRef, {
@@ -91,7 +100,7 @@ export async function cancelReportByCitizenCore(
           to: 'citizen_cancelled',
           actor: deps.actor.uid,
           actorRole: deps.actor.claims.role ?? 'citizen',
-          at: deps.now.toMillis(),
+          at: nowMs,
           correlationId,
           schemaVersion: 1,
         })
@@ -111,21 +120,6 @@ export async function cancelReportByCitizenCore(
       })
     },
   )
-
-  const storage = getStorage()
-  try {
-    const [files] = await storage.bucket().getFiles({ prefix: `report_media/${deps.reportId}/` })
-    for (const file of files) {
-      await file.delete()
-    }
-  } catch (err: unknown) {
-    log({
-      severity: 'WARNING',
-      code: 'report.citizen_cancelled_media_cleanup_failed',
-      message: `Report ${deps.reportId} cancelled, but media cleanup failed`,
-      data: { correlationId, reportId: deps.reportId, err: String(err) },
-    })
-  }
 
   return result
 }

@@ -74,7 +74,7 @@ export function MapTab() {
         if (reportId) {
           try {
             await cancelReport(reportId)
-            toast('Report cancelled', 'success')
+            toast('Report withdrawn', 'success')
           } catch {
             toast('Failed to cancel report', 'error')
             return

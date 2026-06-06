@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Check } from 'lucide-react'
 import { useDispatch } from '../hooks/useDispatch'
 import { useReport } from '../hooks/useReport'
 import { useAcceptDispatch } from '../hooks/useAcceptDispatch'
@@ -13,7 +12,8 @@ import { CancelledScreen } from './CancelledScreen'
 import { RaceLossScreen } from './RaceLossScreen'
 import { PreArrivalInfo } from './PreArrivalInfo'
 import { getReportTypeLabel } from '../lib/incident-labels'
-import { getStepValue } from '../lib/dispatch-progress'
+import { getDispatchProgress, getStepValue } from '../lib/dispatch-progress'
+import { DispatchRing } from '../components/DispatchRing'
 import styles from './DispatchDetailPage.module.css'
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -262,32 +262,41 @@ export function DispatchDetailPage() {
         )}
 
         <div
-          className={styles.timeline}
+          className={styles.progressCard}
           role="progressbar"
           aria-label="Dispatch progress"
           aria-valuemin={0}
-          aria-valuemax={4}
-          aria-valuenow={step.value}
+          aria-valuemax={100}
+          aria-valuenow={getDispatchProgress(dispatch.status)}
           aria-valuetext={step.text}
         >
-          {TIMELINE_STEPS.map((label, index) => (
-            <span
-              key={label}
-              className={[
-                styles.timelineStep,
-                index < step.value ? styles.timelineDone : '',
-                !isPendingTimeline && index === step.value ? styles.timelineCurrent : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              {...(!isPendingTimeline && index === step.value
-                ? { 'aria-current': 'step' as const }
-                : {})}
-            >
-              {index < step.value && <Check size={14} aria-hidden="true" />}
-              <span>{label}</span>
+          <DispatchRing
+            mode="progress"
+            percent={getDispatchProgress(dispatch.status)}
+            tone={dispatch.status === 'resolved' ? 'success' : 'accent'}
+            ariaLabel={`Dispatch progress ${String(getDispatchProgress(dispatch.status))} percent`}
+          >
+            <span className={styles.progressPercent}>
+              {String(getDispatchProgress(dispatch.status))}%
             </span>
-          ))}
+            <span className={styles.progressLabel}>{step.text}</span>
+          </DispatchRing>
+          <div className={styles.progressSteps} aria-hidden="true">
+            {TIMELINE_STEPS.map((label, index) => (
+              <span
+                key={label}
+                className={[
+                  styles.progressStep,
+                  index < step.value ? styles.progressStepDone : '',
+                  !isPendingTimeline && index === step.value ? styles.progressStepCurrent : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
           <span className={styles.onboardingHint}>
             Next step: tap the action button below to advance.
           </span>

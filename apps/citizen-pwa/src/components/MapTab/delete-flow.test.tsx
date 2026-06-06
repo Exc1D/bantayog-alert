@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────
@@ -127,7 +127,7 @@ describe('Citizen Delete Report Flow', () => {
     ]
   })
 
-  it('allows citizens to delete their own unverified reports from the map', async () => {
+  it('allows citizens to withdraw their own unverified reports from the map', async () => {
     render(
       <MemoryRouter>
         <MapTab />
@@ -149,36 +149,42 @@ describe('Citizen Delete Report Flow', () => {
       (call: unknown[]) => call[0] === 'click',
     )?.[1] as (() => void) | undefined
     expect(clickHandler).toBeDefined()
-    clickHandler!()
+    act(() => {
+      clickHandler!()
+    })
 
     // ── Step 2: PeekSheet appears with Delete button ──────────────
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Track/i })).toBeInTheDocument()
     })
-    const deleteBtn = screen.getByRole('button', { name: /Delete/i })
+    const deleteBtn = screen.getByRole('button', { name: /Withdraw/i })
     expect(deleteBtn).toBeInTheDocument()
 
     // ── Step 3: Click Delete ──────────────────────────────────────
-    fireEvent.click(deleteBtn)
+    act(() => {
+      fireEvent.click(deleteBtn)
+    })
 
     // ── Step 4: DeleteSheet confirmation appears ───────────────────
     await waitFor(() => {
       expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     })
-    expect(screen.getByText(/Delete this report/i)).toBeInTheDocument()
+    expect(screen.getByText(/Withdraw this report/i)).toBeInTheDocument()
     expect(screen.getByText('FL-2024-001')).toBeInTheDocument()
 
-    // ── Step 5: Click "Delete Report" to confirm ──────────────────
-    // Note: the confirmation button text is exactly "Delete Report" (capital R)
-    const confirmBtn = screen.getByRole('button', { name: 'Delete Report' })
-    fireEvent.click(confirmBtn)
+    // ── Step 5: Click "Withdraw Report" to confirm ──────────────────
+    const confirmBtn = screen.getByRole('button', { name: 'Withdraw Report' })
+    await act(async () => {
+      fireEvent.click(confirmBtn)
+      await Promise.resolve()
+    })
 
     // ── Step 6: Backend called, toast shown ───────────────────────
     await waitFor(() => {
       expect(mockCancelReport).toHaveBeenCalledWith('report-id-123')
       expect(mockDeleteReport).toHaveBeenCalledWith('FL-2024-001')
     })
-    expect(mockToast).toHaveBeenCalledWith('Report cancelled', 'success')
+    expect(mockToast).toHaveBeenCalledWith('Report withdrawn', 'success')
 
     // ── Step 7: Sheet closes ──────────────────────────────────────
     await waitFor(() => {
@@ -219,12 +225,14 @@ describe('Citizen Delete Report Flow', () => {
     const clickHandler = markerInstance.on.mock.calls.find(
       (call: unknown[]) => call[0] === 'click',
     )?.[1] as (() => void) | undefined
-    clickHandler!()
+    act(() => {
+      clickHandler!()
+    })
 
-    // PeekSheet shows Track, but no Delete
+    // PeekSheet shows Track, but no Withdraw
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Track/i })).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: /Delete/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Withdraw/i })).not.toBeInTheDocument()
   })
 })

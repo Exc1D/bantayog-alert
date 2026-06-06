@@ -53,4 +53,12 @@ describe('SuccessBanner', () => {
     fireEvent.click(screen.getByLabelText('Dismiss'))
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
+
+  it('renders as a centered prominent action notification', () => {
+    render(<SuccessBanner message="It worked!" onDismiss={vi.fn()} />)
+    const notice = screen.getByRole('status')
+    expect(notice.className).toContain('fixed')
+    expect(notice.className).toContain('left-1/2')
+    expect(notice.className).toContain('z-[80]')
+  })
 })

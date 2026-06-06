@@ -121,37 +121,51 @@
   border: 1px solid var(--border-default);
 }
 
-.timeline {
-  padding: 16px 8px;
+.progressCard {
+  padding: var(--space-4);
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: 24px;
   background: var(--surface-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.progressPercent {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.progressLabel {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--amber-accent);
+}
+
+.progressSteps {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 
-.timelineStep {
+.progressStep {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 10px; /* kept for timeline steps - intentionally small */
+  font-size: 10px;
   text-align: center;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
 }
 
-.timelineDone {
+.progressStepDone {
   color: var(--green-success);
 }
 
-.timelineCurrent {
+.progressStepCurrent {
   color: var(--amber-accent);
   font-weight: 700;
-}
-
-.timeline .onboardingHint {
-  grid-column: 1 / -1;
 }
 
 .statusTitle {
