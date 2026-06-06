@@ -21,7 +21,7 @@ import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { useUrlSync } from '../hooks/useUrlSync'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { callables } from '../services/callables'
-import { db, rtdb } from '../app/firebase'
+import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
@@ -88,7 +88,6 @@ export default function MapPage() {
   } = useFirestoreListeners({
     windowType: 'map',
     db,
-    rtdb,
   })
 
   const { sendSync, subscribe } = useWindowSyncContext()

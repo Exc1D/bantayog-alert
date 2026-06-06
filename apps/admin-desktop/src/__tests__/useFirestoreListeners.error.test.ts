@@ -35,7 +35,6 @@ vi.mock('@bantayog/shared-ui', () => ({
 import { useFirestoreListeners, isReportOpsDoc } from '../hooks/useFirestoreListeners'
 
 const mockDb = {} as never
-const mockRtdb = {} as never
 
 describe('useFirestoreListeners error handling', () => {
   beforeEach(() => {
@@ -53,7 +52,7 @@ describe('useFirestoreListeners error handling', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     expect(result.current.error).toBe('permission denied')
@@ -71,7 +70,7 @@ describe('useFirestoreListeners error handling', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     // Initial mount: 4 onSnapshot calls (reports, report_ops, alerts, situation_updates).
@@ -122,7 +121,7 @@ describe('useFirestoreListeners error handling', () => {
       return mockUnsubscribe
     })
 
-    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
+    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb }))
 
     // Initial mount: 4 listeners subscribed once each.
     expect(effectRunCount).toBe(4)
@@ -160,9 +159,7 @@ describe('useFirestoreListeners error handling', () => {
   })
 
   it('does not subscribe to denied RTDB parent locations on map mount', () => {
-    const { unmount } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'map', db: mockDb, rtdb: mockRtdb }),
-    )
+    const { unmount } = renderHook(() => useFirestoreListeners({ windowType: 'map', db: mockDb }))
 
     expect(mockOnValue).not.toHaveBeenCalled()
     unmount()
@@ -180,7 +177,7 @@ describe('useFirestoreListeners error handling', () => {
     })
 
     const { unmount } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     // Trigger error to schedule retry
@@ -224,7 +221,7 @@ describe('useFirestoreListeners error handling', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     await waitFor(() => {

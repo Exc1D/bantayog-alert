@@ -3,7 +3,6 @@ import { renderHook, act } from '@testing-library/react'
 
 const mockUnsubscribe = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
-const mockOnValue = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
 const mockCollection = vi.hoisted(() =>
   vi.fn().mockImplementation((_db: unknown, path: string) => ({ kind: 'collection', path })),
 )
@@ -13,7 +12,6 @@ const mockQuery = vi.hoisted(() =>
 const mockWhere = vi.hoisted(() =>
   vi.fn().mockImplementation((field, op, value) => ({ kind: 'where', field, op, value })),
 )
-const mockRef = vi.hoisted(() => vi.fn().mockReturnValue({ kind: 'rtdb-ref' }))
 const useAuthMock = vi.hoisted(() => vi.fn())
 
 vi.mock('firebase/firestore', () => ({
@@ -24,11 +22,6 @@ vi.mock('firebase/firestore', () => ({
   where: mockWhere,
 }))
 
-vi.mock('firebase/database', () => ({
-  ref: mockRef,
-  onValue: mockOnValue,
-}))
-
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: useAuthMock,
 }))
@@ -36,7 +29,6 @@ vi.mock('@bantayog/shared-ui', () => ({
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 
 const mockDb = {} as never
-const mockRtdb = {} as never
 
 interface WhereCall {
   field: string
@@ -56,7 +48,6 @@ describe('useFirestoreListeners — role scoping', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockOnSnapshot.mockReturnValue(mockUnsubscribe)
-    mockOnValue.mockReturnValue(mockUnsubscribe)
   })
 
   it('provincial_superadmin: leaves reports + report_ops unscoped', () => {
@@ -66,7 +57,7 @@ describe('useFirestoreListeners — role scoping', () => {
       loading: false,
     })
 
-    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
+    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb }))
 
     expect(mockWhere).not.toHaveBeenCalled()
     expect(mockOnSnapshot).toHaveBeenCalledTimes(4)
@@ -79,7 +70,7 @@ describe('useFirestoreListeners — role scoping', () => {
       loading: false,
     })
 
-    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
+    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb }))
 
     const calls = whereCalls()
     expect(calls).toContainEqual({ field: 'municipalityId', op: '==', value: 'M001' })
@@ -94,7 +85,7 @@ describe('useFirestoreListeners — role scoping', () => {
       loading: false,
     })
 
-    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
+    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb }))
 
     const calls = whereCalls()
     // reports docs do not have agencyId; we query the full collection and
@@ -111,7 +102,7 @@ describe('useFirestoreListeners — role scoping', () => {
       loading: false,
     })
 
-    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
+    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb }))
 
     const alertsCall = mockOnSnapshot.mock.calls.find((call) => {
       const ref = call[0] as { kind?: string; ref?: { path?: string } } | undefined
@@ -130,7 +121,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     expect(mockOnSnapshot).not.toHaveBeenCalled()
@@ -150,7 +141,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     expect(mockOnSnapshot).not.toHaveBeenCalled()
@@ -166,7 +157,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     expect(mockOnSnapshot).not.toHaveBeenCalled()
@@ -182,7 +173,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     expect(mockOnSnapshot).not.toHaveBeenCalled()
@@ -197,7 +188,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     expect(mockOnSnapshot).not.toHaveBeenCalled()
@@ -222,7 +213,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result, rerender } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     act(() => {
@@ -280,7 +271,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result, rerender } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     act(() => {
@@ -339,7 +330,7 @@ describe('useFirestoreListeners — role scoping', () => {
     })
 
     const { result, rerender } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     // Force the listener into an error state on the M001 scope.
