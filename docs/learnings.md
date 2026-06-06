@@ -113,6 +113,7 @@
 - Type assertions are expected at callable boundaries where `req.auth.token` values enter typed interfaces.
 - Schema union changes, such as `dispatchStatusSchema`, require downstream rebuilds.
 - For oversized modal refactors, extract pure policy first (defaults, validation, payload builders) and prove it with focused tests before moving JSX or caller workflows.
+- When extracting nested alertdialogs, preserve role/name, disabled/loading states, and backdrop behavior; shared modal reuse is only safe when those contracts already match.
 
 ## UX / A11y
 
