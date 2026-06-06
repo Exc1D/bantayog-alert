@@ -1,10 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  shiftHandoffDocSchema,
   commandChannelThreadDocSchema,
   commandChannelMessageDocSchema,
   agencyAssistanceRequestDocSchema,
-  fieldModeSessionDocSchema,
 } from './coordination'
 
 describe('Coordination Schemas', () => {
@@ -21,70 +19,8 @@ describe('Coordination Schemas', () => {
     expect(validators).not.toHaveProperty('breakglassEventDocSchema')
     expect(validators).not.toHaveProperty('reportSmsConsentDocSchema')
     expect(validators).not.toHaveProperty('ReportSmsConsentDoc')
-  })
-
-  describe('shiftHandoffDocSchema', () => {
-    it('accepts valid shift handoff document', () => {
-      const validDoc = {
-        fromUid: 'responder-1',
-        toUid: 'responder-2',
-        municipalityId: 'daet',
-        activeIncidentSnapshot: ['incident-1', 'incident-2'],
-        notes: 'Shift change normal',
-        status: 'pending' as const,
-        createdAt: 1713350400000,
-        acceptedAt: 1713350401000,
-        expiresAt: 1713436800000,
-        schemaVersion: 1,
-      }
-      expect(() => shiftHandoffDocSchema.parse(validDoc)).not.toThrow()
-    })
-
-    it('accepts a handoff without toUid', () => {
-      const validDoc = {
-        fromUid: 'responder-1',
-        municipalityId: 'daet',
-        activeIncidentSnapshot: ['incident-1', 'incident-2'],
-        notes: 'Shift change normal',
-        status: 'pending' as const,
-        createdAt: 1713350400000,
-        escalatedAt: 1713350405000,
-        expiresAt: 1713436800000,
-        schemaVersion: 1,
-      }
-      expect(() => shiftHandoffDocSchema.parse(validDoc)).not.toThrow()
-    })
-
-    it('rejects invalid status literal', () => {
-      const invalidDoc = {
-        fromUid: 'responder-1',
-        toUid: 'responder-2',
-        municipalityId: 'daet',
-        activeIncidentSnapshot: [],
-        notes: 'Test',
-        status: 'invalid-status',
-        createdAt: 1713350400000,
-        expiresAt: 1713436800000,
-        schemaVersion: 1,
-      }
-      expect(() => shiftHandoffDocSchema.parse(invalidDoc)).toThrow()
-    })
-
-    it('rejects unknown keys via strict mode', () => {
-      const docWithExtraKey = {
-        fromUid: 'responder-1',
-        toUid: 'responder-2',
-        municipalityId: 'daet',
-        activeIncidentSnapshot: [],
-        notes: 'Test',
-        status: 'pending' as const,
-        createdAt: 1713350400000,
-        expiresAt: 1713436800000,
-        schemaVersion: 1,
-        unknownField: 'should not be allowed',
-      }
-      expect(() => shiftHandoffDocSchema.parse(docWithExtraKey)).toThrow()
-    })
+    expect(validators).not.toHaveProperty('shiftHandoffDocSchema')
+    expect(validators).not.toHaveProperty('fieldModeSessionDocSchema')
   })
 
   describe('commandChannelThreadDocSchema', () => {
@@ -270,32 +206,6 @@ describe('Coordination Schemas', () => {
         schemaVersion: 1,
       }
       expect(() => agencyAssistanceRequestDocSchema.parse(validDoc)).not.toThrow()
-    })
-  })
-
-  describe('fieldModeSessionDocSchema', () => {
-    it('accepts valid field mode session document', () => {
-      const validDoc = {
-        uid: 'admin-1',
-        municipalityId: 'daet',
-        enteredAt: 1713350400000,
-        expiresAt: 1713393600000,
-        isActive: true,
-        schemaVersion: 1,
-      }
-      expect(() => fieldModeSessionDocSchema.parse(validDoc)).not.toThrow()
-    })
-
-    it('rejects when expiresAt is not after enteredAt', () => {
-      const invalidDoc = {
-        uid: 'admin-1',
-        municipalityId: 'daet',
-        enteredAt: 1713350400000,
-        expiresAt: 1713350399999,
-        isActive: true,
-        schemaVersion: 1,
-      }
-      expect(() => fieldModeSessionDocSchema.parse(invalidDoc)).toThrow()
     })
   })
 })

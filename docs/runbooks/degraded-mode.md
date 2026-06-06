@@ -13,16 +13,15 @@ Cloud Monitoring alert fires (Functions error rate elevated). Ops on-call email 
 **First-responder action:**
 
 1. Confirm Firebase Hosting status at https://status.firebase.google.com
-2. Post SMS instructions to barangay announcement channels:
-   `BANTAYOG <type> <barangay name>` — example: `BANTAYOG BAHA DAET CENTRO`
-3. Notify MDRRMO admins via direct SMS: "Citizen PWA temporarily down. Citizens may
-   report via SMS: BANTAYOG TYPE BARANGAY"
+2. Post hotline and walk-in reporting instructions to barangay announcement channels.
+3. Notify MDRRMO admins: "Citizen PWA temporarily down. Use paper/manual intake.
+   Hotline: [PDRRMO direct phone number]"
 4. Post status update to PDRRMO Facebook page.
 
 **Escalation:** If unresolved >30 min, escalate to PDRRMO Director.
 
 **Recovery:** Firebase Hosting self-heals. Verify by loading the public URL.
-No data loss — SMS reports in sms_inbox are processed normally on recovery.
+Manual intake records should be reconciled by MDRRMO staff after recovery.
 
 **Rollback if bad deploy caused it:**
 
@@ -48,7 +47,7 @@ Backend on-call email notified.
    ```
 3. If Firebase platform issue, set manual ops mode:
    In Firestore console: `system_config/manual_ops_mode` → `{ enabled: true, reason: "Functions unavailable", setAt: <timestamp> }`
-4. Notify MDRRMO admins via SMS: "System in manual operations mode. Use paper forms.
+4. Notify MDRRMO admins: "System in manual operations mode. Use paper forms.
    Hotline: [PDRRMO direct phone number]"
 
 **Escalation:** If unresolved >1h, open Firebase support ticket: https://firebase.google.com/support
@@ -58,26 +57,21 @@ Backend on-call email notified.
 
 ---
 
-## Scenario 3 — SMS Provider Down (Both Semaphore + Globe Labs)
+## Scenario 3 — Public Communications Channel Disrupted
 
-**Detection:** SMS delivery success rate drops to 0 on both providers.
-Dead-letter queue alert fires (ops on-call email).
-Check sms_outbox in Firestore for status="dead_letter".
+**Detection:** Barangay or public announcement channel cannot reach citizens.
+Ops on-call or PDRRMO communications lead confirms the channel outage.
 
 **First-responder action:**
 
-1. Check provider status:
-   - Semaphore: https://semaphore.co
-   - Globe Labs: https://developer.globelabs.com.ph
-2. Publish PDRRMO direct phone hotline to all channels:
-   Facebook + barangay channels: "SMS reporting temporarily unavailable. Call PDRRMO: [phone number]"
-3. Web PWA remains fully functional — redirect citizens to web.
+1. Publish PDRRMO direct phone hotline through every available alternate channel.
+2. Ask barangay focal persons to relay the hotline and walk-in reporting locations.
+3. Web PWA remains fully functional when hosting is healthy — redirect citizens to web.
 
-**Escalation:** Semaphore: semaphore.co support. Globe Labs: developer support via API portal.
+**Escalation:** If no public channel is available within 30 minutes, escalate to PDRRMO Director.
 
-**Recovery:** Providers auto-recover. Circuit-breaker restores active provider automatically.
-reconcileSmsDeliveryStatus replays queued messages. Monitor sms_outbox for status="sent".
-No manual replay needed.
+**Recovery:** Communications lead confirms the primary channel is usable again.
+Reconcile any manual hotline or walk-in reports into the normal report workflow.
 
 ---
 
@@ -92,7 +86,7 @@ Cloud Monitoring RTDB alert fires. Ops on-call email notified.
 **First-responder action:**
 
 1. Confirm RTDB unavailability at https://status.firebase.google.com
-2. Notify MDRRMO admins via SMS: "Responder map may be stale. Contact dispatched
+2. Notify MDRRMO admins: "Responder map may be stale. Contact dispatched
    responders by phone for location updates. All other functions are normal."
 3. Instruct responders via radio/phone to verbally relay position to dispatch.
 
@@ -115,4 +109,3 @@ Run before Track 3 (Track 2 tabletop — discovery) and on Track 3 day (fidelity
 - [ ] Smoke test command: `npx tsx functions/scripts/smoke-test-prod.ts bantayog-alert` — path confirmed
 - [ ] PDRRMO hotline number: [FILL IN] — verified reachable
 - [ ] Firebase support URL: https://firebase.google.com/support — confirmed accessible
-- [ ] Semaphore status URL: https://semaphore.co — confirmed accessible

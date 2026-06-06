@@ -21,11 +21,6 @@ const CHECKBOX_OPTIONS = [
     hint: 'Live GPS positions of active responders',
   },
   {
-    id: 'provincial_resources',
-    label: 'Provincial Resources',
-    hint: 'Hospitals, evacuation centers, and supply depots',
-  },
-  {
     id: 'municipal_labels',
     label: 'Municipal Labels',
     hint: 'Boundary lines and municipality names',

@@ -93,12 +93,6 @@ export const callables = {
     { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
     { success: true; mergedCount: number } | { success: false; errorCode: string }
   >('mergeDuplicates'),
-  addCommandChannelMessage: callable<
-    { threadId: string; body: string; idempotencyKey: IdempotencyKey },
-    { status: 'sent' }
-  >('addCommandChannelMessage'),
-  enterFieldMode: callableVoid<{ status: 'entered'; expiresAt: number }>('enterFieldMode'),
-  exitFieldMode: callableVoid<{ status: 'exited' }>('exitFieldMode'),
   acceptAgencyAssistance: callable<
     { requestId: string; idempotencyKey: IdempotencyKey },
     { status: 'accepted' }
@@ -107,14 +101,6 @@ export const callables = {
     { requestId: string; reason: string; idempotencyKey: IdempotencyKey },
     { status: 'declined' }
   >('declineAgencyAssistance'),
-  initiateShiftHandoff: callable<
-    { notes: string; idempotencyKey: IdempotencyKey },
-    { success: boolean; handoffId: string }
-  >('initiateShiftHandoff'),
-  acceptShiftHandoff: callable<
-    { handoffId: string; idempotencyKey: IdempotencyKey },
-    { success: boolean }
-  >('acceptShiftHandoff'),
   suspendResponder: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
@@ -142,21 +128,6 @@ export const callables = {
     },
     { alertId: string }
   >('declareAlert'),
-  declareDataIncident: callable<
-    {
-      incidentType: string
-      severity: string
-      affectedCollections: string[]
-      affectedDataClasses: string[]
-      estimatedAffectedSubjects?: number
-      summary: string
-    },
-    { incidentId: string }
-  >('declareDataIncident'),
-  recordIncidentResponseEvent: callable<
-    { incidentId: string; phase: string; notes?: string },
-    { eventId: string }
-  >('recordIncidentResponseEvent'),
   setRetentionExempt: callable<
     { collection: string; documentId: string; exempt: boolean; reason: string },
     unknown
@@ -172,19 +143,6 @@ export const callables = {
   toggleMutualAidVisibility: callable<{ agencyId: string; visible: boolean }, unknown>(
     'toggleMutualAidVisibility',
   ),
-  upsertProvincialResource: callable<
-    {
-      id?: string
-      name: string
-      type: string
-      quantity: number
-      unit: string
-      location: string
-      available: boolean
-    },
-    { id: string }
-  >('upsertProvincialResource'),
-  archiveProvincialResource: callable<{ id: string }, unknown>('archiveProvincialResource'),
   suspendUser: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }

@@ -1,17 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { agencyAssistanceRequestDocSchema } from './coordination.js'
 import { hazardZoneDocSchema } from './hazard.js'
-import { incidentResponseEventSchema } from './incident-response.js'
 import { moderationIncidentDocSchema } from './moderation.js'
 import { rateLimitDocSchema } from './rate-limits.js'
 import { idempotencyKeyDocSchema } from './idempotency-keys.js'
 import { deadLetterDocSchema } from './dead-letters.js'
 import { alertDocSchema } from './alerts-emergencies.js'
-import {
-  CAMARINES_NORTE_MUNICIPALITIES,
-  hazardSignalDocSchema,
-  hazardSignalStatusDocSchema,
-} from './index.js'
+import { hazardZoneDocSchema as exportedHazardZoneDocSchema } from './index.js'
+import * as exportedValidators from './index.js'
+import * as hazardSchemas from './hazard.js'
 
 const ts = 1713350400000
 
@@ -50,72 +47,12 @@ describe('hazard schemas', () => {
     ).toThrow()
   })
 
-  it('accepts a manual tcws signal lifecycle document', () => {
-    expect(
-      hazardSignalDocSchema.parse({
-        hazardType: 'tropical_cyclone',
-        signalLevel: 4,
-        source: 'manual',
-        scopeType: 'province',
-        affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
-        status: 'active',
-        validFrom: ts,
-        validUntil: ts + 60 * 60 * 1000,
-        recordedAt: ts,
-        rawSource: 'manual',
-        recordedBy: 'super-1',
-        reason: 'PAGASA radio confirmation',
-        schemaVersion: 1,
-      }),
-    ).toMatchObject({ status: 'active', signalLevel: 4 })
-  })
-
-  it('rejects province scope when affectedMunicipalityIds is not the canonical municipality set', () => {
-    // Replace the last real municipality ID with a fake one — still length-correct,
-    // so this specifically exercises the Set-equality refinement, not just min(1).
-    const wrongIds = [
-      ...CAMARINES_NORTE_MUNICIPALITIES.slice(0, -1).map((m) => m.id),
-      'not-a-real-municipality',
-    ]
-    expect(() =>
-      hazardSignalDocSchema.parse({
-        hazardType: 'tropical_cyclone',
-        signalLevel: 3,
-        source: 'manual',
-        scopeType: 'province',
-        affectedMunicipalityIds: wrongIds,
-        status: 'active',
-        validFrom: ts,
-        validUntil: ts + 1,
-        recordedAt: ts,
-        rawSource: 'manual',
-        recordedBy: 'super-1',
-        reason: 'test',
-        schemaVersion: 1,
-      }),
-    ).toThrow()
-  })
-
-  it('accepts a projected hazard signal status document', () => {
-    expect(
-      hazardSignalStatusDocSchema.parse({
-        active: true,
-        effectiveSignalId: 'sig-1',
-        effectiveLevel: 4,
-        effectiveSource: 'manual',
-        scopeType: 'province',
-        affectedMunicipalityIds: CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id),
-        effectiveScopes: [
-          { municipalityId: 'daet', signalLevel: 4, source: 'manual', signalId: 'sig-1' },
-        ],
-        validUntil: ts + 60 * 60 * 1000,
-        manualOverrideActive: true,
-        scraperDegraded: false,
-        lastProjectedAt: ts,
-        degradedReasons: [],
-        schemaVersion: 1,
-      }),
-    ).toMatchObject({ active: true })
+  it('does not export retired hazard signal schemas', () => {
+    expect(exportedValidators).not.toHaveProperty('hazardSignalDocSchema')
+    expect(exportedValidators).not.toHaveProperty('hazardSignalStatusDocSchema')
+    expect(hazardSchemas).not.toHaveProperty('hazardSignalDocSchema')
+    expect(hazardSchemas).not.toHaveProperty('hazardSignalStatusDocSchema')
+    expect(exportedHazardZoneDocSchema).toBe(hazardZoneDocSchema)
   })
 })
 
@@ -173,22 +110,6 @@ describe('alerts/emergencies schemas', () => {
         publishedBy: 'super-1',
       }),
     ).toThrow()
-  })
-})
-
-describe('incident response schema', () => {
-  it('accepts declaration event', () => {
-    expect(
-      incidentResponseEventSchema.parse({
-        incidentId: 'i-1',
-        phase: 'declared',
-        actor: 'super-1',
-        discoveredAt: ts,
-        notes: 'privileged-read anomaly',
-        createdAt: ts,
-        correlationId: 'c-1',
-      }),
-    ).toMatchObject({ phase: 'declared' })
   })
 })
 

@@ -1,6 +1,6 @@
 locals {
   # Secret shells — the NAMES and IAM are IaC; the VALUES are injected
-  # out-of-band by humans via break-glass procedure per design spec §5.5.
+  # out-of-band by authorized humans.
   secret_ids = [
     "SEMAPHORE_API_KEY",
     "GLOBE_LABS_SECRET",
@@ -23,7 +23,7 @@ resource "google_secret_manager_secret" "shells" {
 
   labels = {
     managed_by = "terraform"
-    injected   = "human_breakglass"
+    injected   = "human_out_of_band"
   }
 }
 

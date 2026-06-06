@@ -191,24 +191,6 @@ describe('public collections rules', () => {
     })
   })
 
-  describe('incident_response_events', () => {
-    itif(!!env)('incident response events are callable-only reads', async () => {
-      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
-      await assertFails(getDocs(collection(db, 'incident_response_events')))
-    })
-
-    itif(!!env)('incident response events are callable-only writes', async () => {
-      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
-      await assertFails(
-        addDoc(collection(db, 'incident_response_events'), {
-          incidentId: 'test',
-          action: 'test',
-          timestamp: ts,
-        }),
-      )
-    })
-  })
-
   describe('rate_limits', () => {
     itif(!!env)('rate limits are callable-only reads', async () => {
       const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
@@ -311,15 +293,6 @@ describe('privileged read tests for callable collections', () => {
     },
   )
 
-  itif(!!env)('superadmin with active privileged claim can read shift_handoffs', async () => {
-    const db = authed(
-      env,
-      'super-1',
-      staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-    )
-    await assertSucceeds(getDocs(collection(db, 'shift_handoffs')))
-  })
-
   itif(!!env)('superadmin without active privileged claim cannot read audit_logs', async () => {
     const db = authed(
       env,
@@ -333,43 +306,7 @@ describe('privileged read tests for callable collections', () => {
     await assertFails(getDocs(collection(db, 'audit_logs')))
   })
 
-  itif(!!env)(
-    'superadmin with active privileged claim can read incident_response_events',
-    async () => {
-      const db = authed(
-        env,
-        'super-1',
-        staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-      )
-      await assertSucceeds(getDocs(collection(db, 'incident_response_events')))
-    },
-  )
-
   describe('Phase 7 collections', () => {
-    itif(!!env)('any authed user can read provincial_resources', async () => {
-      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
-      await assertSucceeds(getDocs(collection(db, 'provincial_resources')))
-    })
-
-    itif(!!env)('unauthed user cannot read provincial_resources', async () => {
-      const db = unauthed(env)
-      await assertFails(getDocs(collection(db, 'provincial_resources')))
-    })
-
-    itif(!!env)('superadmin with active privileged claim can read data_incidents', async () => {
-      const db = authed(
-        env,
-        'super-1',
-        staffClaims({ role: 'provincial_superadmin', permittedMunicipalityIds: ['daet'] }),
-      )
-      await assertSucceeds(getDocs(collection(db, 'data_incidents')))
-    })
-
-    itif(!!env)('non-superadmin cannot read data_incidents', async () => {
-      const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
-      await assertFails(getDocs(collection(db, 'data_incidents')))
-    })
-
     itif(!!env)('superadmin with active privileged claim can read erasure_requests', async () => {
       const db = authed(
         env,
@@ -396,34 +333,6 @@ describe('privileged read tests for callable collections', () => {
     itif(!!env)('non-superadmin cannot read system_health', async () => {
       const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
       await assertFails(getDocs(collection(db, 'system_health')))
-    })
-
-    itif(!!env)('suspended superadmin cannot read data_incidents', async () => {
-      const db = authed(
-        env,
-        'super-1',
-        staffClaims({
-          role: 'provincial_superadmin',
-          permittedMunicipalityIds: ['daet'],
-          accountStatus: 'suspended',
-        }),
-      )
-      await assertFails(getDocs(collection(db, 'data_incidents')))
-    })
-
-    itif(!!env)('suspended superadmin cannot write data_incidents', async () => {
-      const db = authed(
-        env,
-        'super-1',
-        staffClaims({
-          role: 'provincial_superadmin',
-          permittedMunicipalityIds: ['daet'],
-          accountStatus: 'suspended',
-        }),
-      )
-      await assertFails(
-        addDoc(collection(db, 'data_incidents'), { schemaVersion: 1, createdAt: ts }),
-      )
     })
 
     itif(!!env)('suspended superadmin cannot read erasure_requests', async () => {

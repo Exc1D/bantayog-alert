@@ -53,36 +53,4 @@ export const commandChannelMessageDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
-export const shiftHandoffDocSchema = z
-    .object({
-    fromUid: z.string().min(1),
-    toUid: z.string().min(1).optional(),
-    municipalityId: z.string().min(1),
-    activeIncidentSnapshot: z.array(z.string()),
-    notes: z.string().max(2000),
-    status: z.enum(['pending', 'accepted', 'expired']),
-    createdAt: z.number().int(),
-    acceptedAt: z.number().int().optional(),
-    escalatedAt: z.number().int().optional(),
-    expiresAt: z.number().int(),
-    schemaVersion: z.number().int().positive(),
-})
-    .strict()
-    .refine((d) => d.expiresAt > d.createdAt, {
-    message: 'expiresAt must be after createdAt',
-});
-export const fieldModeSessionDocSchema = z
-    .object({
-    uid: z.string().min(1),
-    municipalityId: z.string().min(1),
-    enteredAt: z.number().int(),
-    expiresAt: z.number().int(),
-    exitedAt: z.number().int().optional(),
-    isActive: z.boolean(),
-    schemaVersion: z.number().int().positive(),
-})
-    .strict()
-    .refine((d) => d.expiresAt > d.enteredAt, {
-    message: 'expiresAt must be after enteredAt',
-});
 //# sourceMappingURL=coordination.js.map

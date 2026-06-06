@@ -133,6 +133,8 @@
 
 ## Build / Monorepo / Infra
 
+- Retiring a feature means removing the full surface together: Function export, frontend callable wrapper, validator/type contract, rules/indexes, direct tests, runbooks, and monitoring. Leaving one layer behind creates accidental-revival or incident-response risk.
+- Do not remove command-channel Firestore rules just because the manual message callable is retired. Report sharing and agency assistance still create command-channel records, so the storage read rules remain part of live coordination.
 - Vite 8/Rolldown expects `manualChunks` as a function.
 - Shared packages need app runtime deps as `peerDependencies`.
 - Remove stale `lib/*.js`, `.d.ts`, and maps after renames.

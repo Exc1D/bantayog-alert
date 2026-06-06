@@ -8,7 +8,6 @@ export interface CustomClaims {
     accountStatus: AccountStatus;
     mfaEnrolled: boolean;
     lastClaimIssuedAt: number;
-    breakGlassSession?: boolean;
 }
 export interface ActiveAccountDoc {
     uid: UserUid;

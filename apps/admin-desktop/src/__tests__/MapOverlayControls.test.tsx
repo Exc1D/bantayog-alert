@@ -71,7 +71,6 @@ describe('MapOverlayControls', () => {
     expect(screen.queryByRole('checkbox', { name: 'Responder Locations' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'More' }))
     expect(screen.getByRole('checkbox', { name: 'Responder Locations' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Provincial Resources' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Municipal Labels' })).toBeInTheDocument()
   })
 

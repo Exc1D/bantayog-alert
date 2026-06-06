@@ -24,7 +24,6 @@ vi.mock('firebase-functions/v2/https', () => ({
 }))
 
 import { declareAlertCore } from '../callables.js'
-import { declareDataIncidentCore } from '../declare-data-incident.js'
 import { ZodError } from 'zod'
 
 function createMockDb() {
@@ -263,27 +262,4 @@ describe('declareAlertCore', () => {
     expect(mockDb._setFn).toHaveBeenCalledTimes(1)
     expect(consoleErrorSpy).toHaveBeenCalledWith('FCM push failed:', expect.any(Error))
   })
-})
-
-describe('declareDataIncidentCore', () => {
-  it.each(['payments', 'unknown_collection'])(
-    'rejects %s as an affected collection',
-    async (affectedCollection) => {
-      const mockDb = createMockDb()
-
-      await expect(
-        declareDataIncidentCore(
-          mockDb,
-          {
-            incidentType: 'data_loss',
-            severity: 'high',
-            affectedCollections: [affectedCollection],
-            affectedDataClasses: ['contact_info'],
-            summary: 'The collection is outside the MVP incident surface.',
-          },
-          { uid: 'admin-1' },
-        ),
-      ).rejects.toThrow(ZodError)
-    },
-  )
 })

@@ -29,7 +29,7 @@ Target RTO: ≤ 4 hours (Arch Spec §13.2)
 
 - [ ] Step 2: Wipe Firestore collections (staging only — simulate data loss)
       Use Firebase console or Admin SDK to delete all documents in:
-      report_inbox, dispatches, sms_inbox, alerts, system_config
+      report_inbox, dispatches, alerts, system_config
       Completed at: **\*\*\*\***\_\_\_**\*\*\*\***
 
 - [ ] Step 3: Restore from export
@@ -51,11 +51,10 @@ Target RTO: ≤ 4 hours (Arch Spec §13.2)
 
   Completed at: **\*\*\*\***\_\_\_**\*\*\*\***
 
-- [ ] Step 5: Re-seed system_config and break-glass config
+- [ ] Step 5: Re-seed system_config
 
   ```
   npx tsx functions/scripts/bootstrap-phase1.ts --project bantayog-alert-staging
-  npx tsx scripts/seed-break-glass-config.ts --project bantayog-alert-staging
   ```
 
   Completed at: **\*\*\*\***\_\_\_**\*\*\*\***

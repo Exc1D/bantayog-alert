@@ -55,13 +55,6 @@ describe('callables backend/frontend coverage', () => {
   })
 
   const coveredBackendOnlyCallables = {
-    addCommandChannelMessage: {
-      threadId: 'thread-1',
-      body: 'Need status update',
-      idempotencyKey: 'a1b2c3d4-0000-4000-8000-000000000001',
-    },
-    enterFieldMode: undefined,
-    exitFieldMode: undefined,
     mergeDuplicates: {
       primaryReportId: 'report-1',
       duplicateReportIds: ['report-2'],
@@ -94,13 +87,27 @@ describe('callables backend/frontend coverage', () => {
         ...args: unknown[]
       ) => Promise<unknown>
 
-      if (payload === undefined) {
-        await callable()
-      } else {
-        await callable(payload)
-      }
+      await callable(payload)
 
       expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), name)
     },
   )
+})
+
+describe('retired admin callable wrappers', () => {
+  const retiredCallableNames = [
+    'addCommandChannelMessage',
+    'enterFieldMode',
+    'exitFieldMode',
+    'initiateShiftHandoff',
+    'acceptShiftHandoff',
+    'declareDataIncident',
+    'recordIncidentResponseEvent',
+    'upsertProvincialResource',
+    'archiveProvincialResource',
+  ] as const
+
+  it.each(retiredCallableNames)('does not expose %s', (name) => {
+    expect(callables).not.toHaveProperty(name)
+  })
 })

@@ -62,10 +62,11 @@ git add .terraform.lock.hcl
 
 ## Secret value injection
 
-After `terraform apply` creates secret shells, inject values via break-glass procedure:
+After `terraform apply` creates secret shells, inject values through the approved
+out-of-band secret injection procedure:
 
 ```bash
-echo -n "ACTUAL_VALUE" | gcloud secrets versions add SEMAPHORE_API_KEY \
+echo -n "ACTUAL_VALUE" | gcloud secrets versions add SENTRY_DSN \
   --data-file=- \
   --project=bantayog-alert-dev
 ```
