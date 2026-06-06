@@ -54,6 +54,11 @@ export function defaultSectorsForHazardType(hazardType: string): Set<string> {
   return new Set()
 }
 
+function safeParseDateTime(value: string): number | null {
+  const ts = new Date(value).getTime()
+  return Number.isFinite(ts) ? ts : null
+}
+
 export function validateDeclareAlertForm(
   values: DeclareAlertValidationInput,
 ): DeclareAlertValidationErrors {
@@ -67,7 +72,15 @@ export function validateDeclareAlertForm(
     if (!values.effectiveUntil) errors.effectiveUntil = 'End time is required for this alert type'
   }
   if (values.effectiveFrom && values.effectiveUntil) {
-    if (new Date(values.effectiveUntil).getTime() <= new Date(values.effectiveFrom).getTime()) {
+    const fromMs = safeParseDateTime(values.effectiveFrom)
+    const untilMs = safeParseDateTime(values.effectiveUntil)
+    if (fromMs == null) {
+      errors.effectiveFrom = 'Invalid start time'
+    }
+    if (untilMs == null) {
+      errors.effectiveUntil = 'Invalid end time'
+    }
+    if (fromMs != null && untilMs != null && untilMs <= fromMs) {
       errors.effectiveUntil = 'End time must be after start time'
     }
   }
@@ -79,22 +92,35 @@ export function validateDeclareAlertForm(
 }
 
 export function buildDeclareAlertPayload(values: DeclareAlertPayloadInput): DeclareAlertPayload {
-  return {
+  const payload: DeclareAlertPayload = {
     hazardType: values.hazardType,
     affectedMunicipalityIds: Array.from(values.selectedMunicipalityIds),
     message: values.message.trim(),
     ...(values.reportId ? { reportId: values.reportId } : {}),
-    ...(values.effectiveFrom ? { effectiveFrom: new Date(values.effectiveFrom).getTime() } : {}),
-    ...(values.effectiveUntil ? { effectiveUntil: new Date(values.effectiveUntil).getTime() } : {}),
-    ...(values.expectedResolutionAt
-      ? { expectedResolutionAt: new Date(values.expectedResolutionAt).getTime() }
-      : {}),
-    ...(values.selectedSectors.size > 0
-      ? { affectedSectors: Array.from(values.selectedSectors) }
-      : {}),
-    ...(values.selectedBarangayIds.size > 0
-      ? { affectedBarangayIds: Array.from(values.selectedBarangayIds) }
-      : {}),
-    ...(values.roadName.trim() ? { roadName: values.roadName.trim() } : {}),
   }
+
+  if (values.effectiveFrom) {
+    const ts = safeParseDateTime(values.effectiveFrom)
+    if (ts != null) payload.effectiveFrom = ts
+  }
+  if (values.effectiveUntil) {
+    const ts = safeParseDateTime(values.effectiveUntil)
+    if (ts != null) payload.effectiveUntil = ts
+  }
+  if (values.expectedResolutionAt) {
+    const ts = safeParseDateTime(values.expectedResolutionAt)
+    if (ts != null) payload.expectedResolutionAt = ts
+  }
+
+  if (values.selectedSectors.size > 0) {
+    payload.affectedSectors = Array.from(values.selectedSectors)
+  }
+  if (values.selectedBarangayIds.size > 0) {
+    payload.affectedBarangayIds = Array.from(values.selectedBarangayIds)
+  }
+  if (values.roadName.trim()) {
+    payload.roadName = values.roadName.trim()
+  }
+
+  return payload
 }

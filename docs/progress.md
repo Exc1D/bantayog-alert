@@ -3,7 +3,7 @@
 ## 2026-06-06 - Declare Alert Modal Policy Extraction
 
 - Started the targeted refactor pass with the oversized Admin Desktop `DeclareAlertModal`: extracted pure form policy for default sectors, validation, and callable payload construction into `declare-alert-form.ts` without changing the modal UI or page callers.
-- Verification: red-first helper test failed on the missing module, then the helper/modal focused tests, Admin Desktop typecheck, and Admin Desktop lint passed.
+- Verification: red-first helper test failed on the missing module, then the helper/modal-focused tests, Admin Desktop typecheck, and Admin Desktop lint passed.
 
 ## 2026-06-05 - Simplicity Audit + Dashboard Command Queue Completion
 

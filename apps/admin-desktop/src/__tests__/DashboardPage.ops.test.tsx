@@ -195,9 +195,7 @@ describe('DashboardPage ops redesign', () => {
         }),
       )
     })
-    expect(
-      screen.getAllByRole('status').some((el) => el.textContent.includes('Report sent to review')),
-    ).toBe(true)
+    expect(await screen.findByText('Report sent to review')).toBeInTheDocument()
   })
 
   it('verifies awaiting reports from the dashboard queue', async () => {
@@ -212,9 +210,7 @@ describe('DashboardPage ops redesign', () => {
         }),
       )
     })
-    expect(
-      screen.getAllByRole('status').some((el) => el.textContent.includes('Report verified')),
-    ).toBe(true)
+    expect(await screen.findByText('Report verified')).toBeInTheDocument()
   })
 
   it('opens verified reports on the map for dispatch', () => {

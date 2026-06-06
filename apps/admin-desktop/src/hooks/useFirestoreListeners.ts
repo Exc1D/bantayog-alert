@@ -7,13 +7,11 @@ import {
   type Firestore,
   type Query,
 } from 'firebase/firestore'
-import type { Database } from 'firebase/database'
 import { useAuth } from '@bantayog/shared-ui'
 
 interface Props {
   windowType: 'dashboard' | 'map'
   db?: Firestore
-  rtdb?: Database
 }
 
 export interface ReportDoc {

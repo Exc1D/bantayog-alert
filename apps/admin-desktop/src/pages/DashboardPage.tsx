@@ -181,10 +181,9 @@ export default function DashboardPage() {
   const handleVerifyReport = useCallback(async (reportId: string) => {
     setVerifyingReportIds((prev) => new Set(prev).add(reportId))
     setActionError(null)
+    const idempotencyKey = generateIdempotencyKey()
     try {
-      const result = await withRetry(() =>
-        callables.verifyReport({ reportId, idempotencyKey: generateIdempotencyKey() }),
-      )
+      const result = await withRetry(() => callables.verifyReport({ reportId, idempotencyKey }))
       setSuccessMessage(result.status === 'verified' ? 'Report verified' : 'Report sent to review')
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Report verification failed')
