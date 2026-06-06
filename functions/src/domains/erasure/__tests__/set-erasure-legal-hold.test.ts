@@ -4,7 +4,7 @@ import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 import { setErasureLegalHoldCore } from '../set-erasure-legal-hold.js'
 
-vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
+vi.mock('../../ops/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
 
 const guarded = await guardInitTestEnvironment(
   {

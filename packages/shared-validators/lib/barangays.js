@@ -1,6 +1,7 @@
-// ─── Barangay Gazetteer ───────────────────────────────────────────────────────
-const FALLBACK_BARANGAYS = [
-    // Basud (29 barangays)
+/**
+ * Canonical barangay data for Camarines Norte municipalities.
+ */
+export const CAMARINES_NORTE_BARANGAYS = [
     { name: 'Angas', municipality: 'Basud' },
     { name: 'Bactas', municipality: 'Basud' },
     { name: 'Binatagan', municipality: 'Basud' },
@@ -30,7 +31,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Tacad', municipality: 'Basud' },
     { name: 'Taisan', municipality: 'Basud' },
     { name: 'Tuaca', municipality: 'Basud' },
-    // Capalonga (22 barangays)
     { name: 'Alayao', municipality: 'Capalonga' },
     { name: 'Binawangan', municipality: 'Capalonga' },
     { name: 'Calabaca', municipality: 'Capalonga' },
@@ -53,7 +53,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Ubang', municipality: 'Capalonga' },
     { name: 'Villa Aurora', municipality: 'Capalonga' },
     { name: 'Villa Belen', municipality: 'Capalonga' },
-    // Daet (25 barangays)
     { name: 'Alawihao', municipality: 'Daet' },
     { name: 'Awitan', municipality: 'Daet' },
     { name: 'Bagasbas', municipality: 'Daet' },
@@ -79,7 +78,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Mancruz', municipality: 'Daet' },
     { name: 'Pamorangon', municipality: 'Daet' },
     { name: 'San Isidro', municipality: 'Daet' },
-    // Jose Panganiban (27 barangays)
     { name: 'Bagong Bayan', municipality: 'Jose Panganiban' },
     { name: 'Calero', municipality: 'Jose Panganiban' },
     { name: 'Dahican', municipality: 'Jose Panganiban' },
@@ -107,7 +105,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Santa Rosa Sur', municipality: 'Jose Panganiban' },
     { name: 'South Poblacion', municipality: 'Jose Panganiban' },
     { name: 'Tamisan', municipality: 'Jose Panganiban' },
-    // Labo (52 barangays)
     { name: 'Anahaw', municipality: 'Labo' },
     { name: 'Anameam', municipality: 'Labo' },
     { name: 'Awitan', municipality: 'Labo' },
@@ -160,7 +157,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Talobatib', municipality: 'Labo' },
     { name: 'Tigbinan', municipality: 'Labo' },
     { name: 'Tulay na Lupa', municipality: 'Labo' },
-    // Mercedes (27 barangays)
     { name: 'Apuao', municipality: 'Mercedes' },
     { name: 'Barangay I', municipality: 'Mercedes' },
     { name: 'Barangay II', municipality: 'Mercedes' },
@@ -187,7 +183,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Quinapaguian', municipality: 'Mercedes' },
     { name: 'San Roque', municipality: 'Mercedes' },
     { name: 'Tarum', municipality: 'Mercedes' },
-    // Paracale (31 barangays)
     { name: 'Awitan', municipality: 'Paracale' },
     { name: 'Bagumbayan', municipality: 'Paracale' },
     { name: 'Bakal', municipality: 'Paracale' },
@@ -215,7 +210,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Talusan', municipality: 'Paracale' },
     { name: 'Tawig', municipality: 'Paracale' },
     { name: 'Tugos', municipality: 'Paracale' },
-    // San Lorenzo Ruiz (12 barangays)
     { name: 'Daculang Bolo', municipality: 'San Lorenzo Ruiz' },
     { name: 'Dagotdotan', municipality: 'San Lorenzo Ruiz' },
     { name: 'Langga', municipality: 'San Lorenzo Ruiz' },
@@ -228,7 +222,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'San Antonio', municipality: 'San Lorenzo Ruiz' },
     { name: 'San Isidro', municipality: 'San Lorenzo Ruiz' },
     { name: 'San Ramon', municipality: 'San Lorenzo Ruiz' },
-    // San Vicente (9 barangays)
     { name: 'Asdum', municipality: 'San Vicente' },
     { name: 'Cabanbanan', municipality: 'San Vicente' },
     { name: 'Calabagas', municipality: 'San Vicente' },
@@ -238,7 +231,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Poblacion District I', municipality: 'San Vicente' },
     { name: 'Poblacion District II', municipality: 'San Vicente' },
     { name: 'San Jose', municipality: 'San Vicente' },
-    // Santa Elena (20 barangays)
     { name: 'Basiad', municipality: 'Santa Elena' },
     { name: 'Bulala', municipality: 'Santa Elena' },
     { name: 'Don Tomas', municipality: 'Santa Elena' },
@@ -258,7 +250,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Santa Elena', municipality: 'Santa Elena' },
     { name: 'Tabugon', municipality: 'Santa Elena' },
     { name: 'Villa San Isidro', municipality: 'Santa Elena' },
-    // Talisay (15 barangays)
     { name: 'Binanuaan', municipality: 'Talisay' },
     { name: 'Caawigan', municipality: 'Talisay' },
     { name: 'Cahabaan', municipality: 'Talisay' },
@@ -274,7 +265,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Santa Cruz', municipality: 'Talisay' },
     { name: 'Santa Elena', municipality: 'Talisay' },
     { name: 'Santo Niño', municipality: 'Talisay' },
-    // Vinzons (19 barangays)
     { name: 'Aguit-it', municipality: 'Vinzons' },
     { name: 'Banocboc', municipality: 'Vinzons' },
     { name: 'Barangay I', municipality: 'Vinzons' },
@@ -296,8 +286,6 @@ const FALLBACK_BARANGAYS = [
     { name: 'Sula', municipality: 'Vinzons' },
 ];
 export function getBarangayGazetteer() {
-    // TODO: When @bantayog/shared-data exports BARANGAY_GAZETTEER, load it here.
-    // For now the fallback embeds the complete Camarines Norte barangay list.
-    return FALLBACK_BARANGAYS;
+    return CAMARINES_NORTE_BARANGAYS;
 }
-//# sourceMappingURL=gazetteer.js.map
+//# sourceMappingURL=barangays.js.map

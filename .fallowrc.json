@@ -1,0 +1,8 @@
+{
+  "ignorePatterns": [
+    "functions/lib/**",
+    "functions-dist/**",
+    "packages/shared-firebase/lib/**",
+    "packages/shared-ui/lib/**"
+  ]
+}

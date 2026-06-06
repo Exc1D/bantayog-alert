@@ -31,6 +31,96 @@ import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import type { MunicipalPerformance, Report } from '../types'
 
+type DispatchLifecycleRow = ReturnType<typeof useDispatchLifecycle>['rows'][number]
+type ResponderFleetRow = ReturnType<typeof useResponderFleet>['responders'][number]
+type DashboardReportDoc = ReturnType<typeof useFirestoreListeners>['reports'][number]
+type OpsMetricsSnapshot = ReturnType<typeof useOpsMetrics>['metrics']
+
+interface StalledDispatch {
+  dispatchId: string
+  escalationCount: number
+  reportId: string
+  responderName: string
+}
+
+interface ReportAction {
+  ariaLabel: string
+  canAdvance: boolean
+  disabled: boolean
+  label: string
+}
+
+interface ReportCommandCardProps {
+  isVerifying: boolean
+  onMapDispatch: (reportId: string) => void
+  onVerifyReport: (reportId: string) => void
+  report: Report
+}
+
+interface ReportCommandQueueSectionProps {
+  onMapDispatch: (reportId: string) => void
+  onReviewFeed: () => void
+  onVerifyReport: (reportId: string) => void
+  reports: Report[]
+  verifyingReportIds: Set<string>
+}
+
+interface DashboardMainContentProps {
+  mode: DashboardMode
+  municipalData: MunicipalPerformance[]
+  onMapDispatch: (reportId: string) => void
+  onReDispatch: (dispatchId: string) => void
+  onReviewFeed: () => void
+  onSelectMunicipality: (municipality: string) => void
+  onVerifyReport: (reportId: string) => void
+  reportCommandQueue: Report[]
+  reportCount: number
+  responders: ResponderFleetRow[]
+  rows: DispatchLifecycleRow[]
+  stalledDispatches: StalledDispatch[]
+  verifyingReportIds: Set<string>
+}
+
+interface DashboardFeedbackBannersProps {
+  actionError: string | null
+  onDismissActionError: () => void
+  onDismissSuccess: () => void
+  successMessage: string | null
+}
+
+interface DashboardModalsProps {
+  alertModalOpen: boolean
+  helpModalOpen: boolean
+  isDispatching: boolean
+  onAlertError: (message: string) => void
+  onCloseAlert: () => void
+  onCloseHelp: () => void
+  onCloseReDispatch: () => void
+  onDispatch: (responderUid: string) => void
+  previouslyNotified: string[]
+  reDispatchModalOpen: boolean
+  responders: ResponderFleetRow[]
+}
+
+interface DashboardStatusBarProps {
+  activeCount: number
+  lastDataUpdateAt: number
+  mode: DashboardMode
+  municipalData: MunicipalPerformance[]
+  opsMetrics: OpsMetricsSnapshot
+  pendingTriage: number
+  responderCount: number
+  stalledDispatchCount: number
+}
+
+const DASHBOARD_SHORTCUTS = [
+  { key: 'R', description: 'Focus first Re-dispatch button' },
+  { key: 'D', description: 'Navigate to Dispatch Monitor' },
+  { key: 'F', description: 'Navigate to Feed' },
+  { key: '?', description: 'Show keyboard shortcuts' },
+  { key: 'Esc', description: 'Close help' },
+]
+
 function computeDashboardMode(
   stalledCount: number,
   activeCount: number,
@@ -40,6 +130,410 @@ function computeDashboardMode(
 ): DashboardMode {
   const dataFreshness = Date.now() - lastDataUpdateAt
   return deriveDashboardMode(stalledCount, activeCount, fcmRate, hookErrors, dataFreshness)
+}
+
+function collectHookErrors(errors: (string | null | undefined)[]): string[] {
+  return errors.filter((error): error is string => typeof error === 'string' && error.length > 0)
+}
+
+function isAnyDataSourceLoading(loadingStates: boolean[]): boolean {
+  return loadingStates.some(Boolean)
+}
+
+function getActiveDispatchCount(rows: DispatchLifecycleRow[]): number {
+  return rows.filter((row) => row.status !== 'needs_admin').length
+}
+
+function getStalledDispatches(rows: DispatchLifecycleRow[]): StalledDispatch[] {
+  return rows
+    .filter((row) => row.status === 'needs_admin')
+    .map((row) => ({
+      dispatchId: row.dispatchId,
+      escalationCount: row.escalationCount,
+      reportId: row.reportId,
+      responderName: row.responderName,
+    }))
+}
+
+function mapDashboardReports(reports: DashboardReportDoc[]): Report[] {
+  return reports.map((report) => mapReportDocToReportLoose(report))
+}
+
+function buildMunicipalData(reports: Report[]): MunicipalPerformance[] {
+  const byMuni = new Map<string, Report[]>()
+  reports.forEach((report) => {
+    const municipality = report.municipality || 'Unknown'
+    const list = byMuni.get(municipality) ?? []
+    list.push(report)
+    byMuni.set(municipality, list)
+  })
+
+  return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
+    activeIncidents: muniReports.filter((report) => ACTIVE_REPORT_STATUSES.includes(report.status))
+      .length,
+    municipality,
+  }))
+}
+
+function countPendingTriage(reports: Report[]): number {
+  return reports.filter((report) => report.status === 'new' || report.status === 'awaiting_verify')
+    .length
+}
+
+function buildReportCommandQueue(reports: Report[]): Report[] {
+  return reports
+    .filter(
+      (report) =>
+        report.status === 'new' ||
+        report.status === 'awaiting_verify' ||
+        report.status === 'verified',
+    )
+    .slice(0, 6)
+}
+
+function getAffectedMunicipalities(municipalData: MunicipalPerformance[]): string[] {
+  return municipalData
+    .filter((municipality) => municipality.activeIncidents > 0)
+    .map((municipality) => municipality.municipality)
+}
+
+function getUncoveredMunicipalityCount(municipalData: MunicipalPerformance[]): number {
+  return municipalData.filter((municipality) => (municipality.activeResponders ?? 0) === 0).length
+}
+
+function getModeFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number {
+  return opsMetrics?.fcmSuccessRate ?? 1.0
+}
+
+function getStatusFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number {
+  return opsMetrics?.fcmSuccessRate ?? 0
+}
+
+function getAvgAcceptSeconds(opsMetrics: OpsMetricsSnapshot): number | null {
+  return opsMetrics?.avgAcceptSeconds ?? null
+}
+
+function getAvgResponseMinutes(opsMetrics: OpsMetricsSnapshot): number {
+  const seconds = getAvgAcceptSeconds(opsMetrics)
+  return seconds ? Math.round(seconds / 60) : 0
+}
+
+function getPreviouslyNotified(
+  rows: DispatchLifecycleRow[],
+  selectedDispatchId: string | null,
+): string[] {
+  if (!selectedDispatchId) return []
+  return (
+    rows.find((row) => row.dispatchId === selectedDispatchId)?.previouslyNotifiedResponderUids ?? []
+  )
+}
+
+function getReportAction(report: Report, isVerifying: boolean): ReportAction {
+  if (report.status === 'verified') {
+    return {
+      ariaLabel: `Dispatch report ${report.id} on map`,
+      canAdvance: false,
+      disabled: false,
+      label: 'Map dispatch',
+    }
+  }
+
+  const isNewReport = report.status === 'new'
+  return {
+    ariaLabel: isNewReport ? `Send report ${report.id} to review` : `Verify report ${report.id}`,
+    canAdvance: true,
+    disabled: isVerifying,
+    label: isVerifying ? 'Working...' : isNewReport ? 'Send to review' : 'Verify',
+  }
+}
+
+function isInitialDashboardLoading(
+  isLoading: boolean,
+  rows: DispatchLifecycleRow[],
+  reports: DashboardReportDoc[],
+): boolean {
+  return isLoading && rows.length === 0 && reports.length === 0
+}
+
+function hasAnyDataSourceLoaded(loadingStates: boolean[]): boolean {
+  return loadingStates.some((loading) => !loading)
+}
+
+function getStaleDataState(now: number, lastDataUpdateAt: number) {
+  const staleAgeMs = now - lastDataUpdateAt
+  const isStale = staleAgeMs > 5 * 60 * 1000
+  return {
+    isStale,
+    staleMinutes: isStale ? Math.round(staleAgeMs / 60000) : 0,
+  }
+}
+
+function DashboardLoadingState({ error }: { error: string | null }) {
+  return (
+    <>
+      {error && (
+        <OfflineBanner
+          error={error}
+          onRetry={() => {
+            window.location.reload()
+          }}
+        />
+      )}
+      <PageSkeleton variant="dashboard" />
+    </>
+  )
+}
+
+function StaleDataBanner({ staleMinutes }: { staleMinutes: number }) {
+  return (
+    <div
+      className="flex items-center justify-center gap-2 bg-[var(--color-warning)]/20 px-4 py-1.5 text-xs text-[var(--color-warning)]"
+      role="status"
+    >
+      Data may be stale · last update {staleMinutes}m ago
+    </div>
+  )
+}
+
+function DashboardOfflineBanner({ error }: { error: string | null }) {
+  if (!error) return null
+
+  return (
+    <OfflineBanner
+      error={error}
+      onRetry={() => {
+        window.location.reload()
+      }}
+    />
+  )
+}
+
+function DashboardFeedbackBanners({
+  actionError,
+  onDismissActionError,
+  onDismissSuccess,
+  successMessage,
+}: DashboardFeedbackBannersProps) {
+  return (
+    <>
+      {successMessage && <SuccessBanner message={successMessage} onDismiss={onDismissSuccess} />}
+      {actionError && <ActionErrorBanner message={actionError} onDismiss={onDismissActionError} />}
+    </>
+  )
+}
+
+function DashboardStaleDataBanner({
+  error,
+  isStale,
+  staleMinutes,
+}: {
+  error: string | null
+  isStale: boolean
+  staleMinutes: number
+}) {
+  if (error || !isStale) return null
+  return <StaleDataBanner staleMinutes={staleMinutes} />
+}
+
+function DashboardStatusBar({
+  activeCount,
+  lastDataUpdateAt,
+  mode,
+  municipalData,
+  opsMetrics,
+  pendingTriage,
+  responderCount,
+  stalledDispatchCount,
+}: DashboardStatusBarProps) {
+  return (
+    <StatusBar
+      activeIncidents={activeCount}
+      avgResponseTime={getAvgResponseMinutes(opsMetrics)}
+      avgAcceptSeconds={getAvgAcceptSeconds(opsMetrics)}
+      fcmSuccessRate={getStatusFcmSuccessRate(opsMetrics)}
+      pendingTriage={pendingTriage}
+      mode={mode}
+      affectedMunicipalities={getAffectedMunicipalities(municipalData)}
+      stalledDispatchCount={stalledDispatchCount}
+      totalResponders={responderCount}
+      uncoveredMunicipalities={getUncoveredMunicipalityCount(municipalData)}
+      lastDataUpdateAt={lastDataUpdateAt}
+    />
+  )
+}
+
+function ReportCommandCard({
+  isVerifying,
+  onMapDispatch,
+  onVerifyReport,
+  report,
+}: ReportCommandCardProps) {
+  const action = getReportAction(report, isVerifying)
+
+  return (
+    <article className="rounded border border-white/10 bg-white/5 p-3">
+      <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+        {report.description.trim() || 'Report details pending'}
+      </p>
+      <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
+        {report.municipality || 'Unknown municipality'} · {report.barangay || 'Unknown barangay'}
+      </p>
+      <button
+        type="button"
+        className="mt-3 rounded bg-[var(--color-carto-blue)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        aria-label={action.ariaLabel}
+        disabled={action.disabled}
+        onClick={() => {
+          if (action.canAdvance) onVerifyReport(report.id)
+          else onMapDispatch(report.id)
+        }}
+      >
+        {action.label}
+      </button>
+    </article>
+  )
+}
+
+function ReportCommandQueueSection({
+  onMapDispatch,
+  onReviewFeed,
+  onVerifyReport,
+  reports,
+  verifyingReportIds,
+}: ReportCommandQueueSectionProps) {
+  if (reports.length === 0) return null
+
+  return (
+    <section
+      aria-labelledby="report-command-queue-title"
+      className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2
+            id="report-command-queue-title"
+            className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-primary)]"
+          >
+            Report command queue
+          </h2>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+            Send new reports to review. Verify reviewed reports for Map dispatch.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="rounded border border-white/10 px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/5"
+          onClick={onReviewFeed}
+        >
+          Review feed
+        </button>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {reports.map((report) => (
+          <ReportCommandCard
+            key={report.id}
+            isVerifying={verifyingReportIds.has(report.id)}
+            onMapDispatch={onMapDispatch}
+            onVerifyReport={onVerifyReport}
+            report={report}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function DashboardMainContent({
+  mode,
+  municipalData,
+  onMapDispatch,
+  onReDispatch,
+  onReviewFeed,
+  onSelectMunicipality,
+  onVerifyReport,
+  reportCommandQueue,
+  reportCount,
+  responders,
+  rows,
+  stalledDispatches,
+  verifyingReportIds,
+}: DashboardMainContentProps) {
+  const showAllClear = rows.length === 0 && responders.length === 0 && reportCount === 0
+
+  return (
+    <main className="flex-1 overflow-auto p-4">
+      <h1 className="sr-only">Operations Dashboard</h1>
+      {showAllClear ? (
+        <AllClearState />
+      ) : (
+        <div className={`space-y-4 ${mode === 'degraded' ? 'opacity-50' : ''}`}>
+          {mode !== 'calm' && (
+            <EscalationQueueSection
+              stalledDispatches={stalledDispatches}
+              onReDispatch={onReDispatch}
+              mode={mode}
+            />
+          )}
+          <ReportCommandQueueSection
+            reports={reportCommandQueue}
+            verifyingReportIds={verifyingReportIds}
+            onVerifyReport={onVerifyReport}
+            onReviewFeed={onReviewFeed}
+            onMapDispatch={onMapDispatch}
+          />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
+            <div className="space-y-4">
+              {mode !== 'surge' && <DispatchVolumeChart rows={rows} />}
+              <RecentEventsFeed rows={rows} />
+            </div>
+            <div className="space-y-4">
+              <ResponderAvailabilityPanel responders={responders} />
+              {mode !== 'surge' && (
+                <MunicipalPerformanceTable
+                  data={municipalData}
+                  onSelectMunicipality={onSelectMunicipality}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  )
+}
+
+function DashboardModals({
+  alertModalOpen,
+  helpModalOpen,
+  isDispatching,
+  onAlertError,
+  onCloseAlert,
+  onCloseHelp,
+  onCloseReDispatch,
+  onDispatch,
+  previouslyNotified,
+  reDispatchModalOpen,
+  responders,
+}: DashboardModalsProps) {
+  return (
+    <>
+      <HelpModal open={helpModalOpen} onClose={onCloseHelp} shortcuts={DASHBOARD_SHORTCUTS} />
+      <DeclareAlertModal
+        open={alertModalOpen}
+        onClose={onCloseAlert}
+        onSuccess={onCloseAlert}
+        onError={onAlertError}
+      />
+      <ReDispatchModal
+        isOpen={reDispatchModalOpen}
+        onClose={onCloseReDispatch}
+        onDispatch={onDispatch}
+        responders={responders}
+        previouslyNotified={previouslyNotified}
+        isLoading={isDispatching}
+      />
+    </>
+  )
 }
 
 export default function DashboardPage() {
@@ -66,74 +560,42 @@ export default function DashboardPage() {
   const [verifyingReportIds, setVerifyingReportIds] = useState<Set<string>>(() => new Set())
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
 
-  const stalledDispatches = rows
-    .filter((r) => r.status === 'needs_admin')
-    .map((r) => ({
-      dispatchId: r.dispatchId,
-      reportId: r.reportId,
-      responderName: r.responderName,
-      escalationCount: r.escalationCount,
-    }))
-
-  const activeCount = rows.filter((r) => r.status !== 'needs_admin').length
-
-  const hookErrors: string[] = []
-  if (lifecycleError) hookErrors.push(lifecycleError)
-  if (fleetError) hookErrors.push(fleetError)
-  if (metricsError) hookErrors.push(metricsError)
-  if (reportsError) hookErrors.push(reportsError)
+  const stalledDispatches = useMemo(() => getStalledDispatches(rows), [rows])
+  const activeCount = useMemo(() => getActiveDispatchCount(rows), [rows])
+  const mappedReports = useMemo(() => mapDashboardReports(reports), [reports])
+  const hookErrors = useMemo(
+    () => collectHookErrors([lifecycleError, fleetError, metricsError, reportsError]),
+    [fleetError, lifecycleError, metricsError, reportsError],
+  )
 
   const mode: DashboardMode = computeDashboardMode(
     stalledDispatches.length,
     activeCount,
-    opsMetrics?.fcmSuccessRate ?? 1.0,
+    getModeFcmSuccessRate(opsMetrics),
     hookErrors,
     lastDataUpdateAt,
   )
 
   useEffect(() => {
-    if (!lifecycleLoading || !fleetLoading || !metricsLoading || !reportsLoading) {
+    if (hasAnyDataSourceLoaded([lifecycleLoading, fleetLoading, metricsLoading, reportsLoading])) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLastDataUpdateAt(Date.now())
     }
   }, [lifecycleLoading, fleetLoading, metricsLoading, reportsLoading])
 
-  const isLoading = lifecycleLoading || fleetLoading || metricsLoading || reportsLoading
-  const error = lifecycleError ?? fleetError ?? metricsError ?? reportsError
-
-  const municipalData: MunicipalPerformance[] = useMemo(() => {
-    const byMuni = new Map<string, Report[]>()
-    reports.forEach((r) => {
-      const mapped = mapReportDocToReportLoose(r)
-      const key = mapped.municipality || 'Unknown'
-      const list = byMuni.get(key) ?? []
-      list.push(mapped)
-      byMuni.set(key, list)
-    })
-    return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
-      municipality,
-      activeIncidents: muniReports.filter((r) => ACTIVE_REPORT_STATUSES.includes(r.status)).length,
-    }))
-  }, [reports])
-
-  const pendingTriage = useMemo(
-    () =>
-      reports.filter((r) => {
-        const mapped = mapReportDocToReportLoose(r)
-        return mapped.status === 'new' || mapped.status === 'awaiting_verify'
-      }).length,
-    [reports],
-  )
-
-  const reportCommandQueue = useMemo(
-    () =>
-      reports
-        .map((r) => mapReportDocToReportLoose(r))
-        .filter(
-          (r) => r.status === 'new' || r.status === 'awaiting_verify' || r.status === 'verified',
-        )
-        .slice(0, 6),
-    [reports],
+  const isLoading = isAnyDataSourceLoading([
+    lifecycleLoading,
+    fleetLoading,
+    metricsLoading,
+    reportsLoading,
+  ])
+  const error = hookErrors[0] ?? null
+  const municipalData = useMemo(() => buildMunicipalData(mappedReports), [mappedReports])
+  const pendingTriage = useMemo(() => countPendingTriage(mappedReports), [mappedReports])
+  const reportCommandQueue = useMemo(() => buildReportCommandQueue(mappedReports), [mappedReports])
+  const previouslyNotified = useMemo(
+    () => getPreviouslyNotified(rows, selectedDispatchId),
+    [rows, selectedDispatchId],
   )
 
   const navigate = useNavigate()
@@ -241,35 +703,15 @@ export default function DashboardPage() {
     }
   }, [])
 
-  const isStale = now - lastDataUpdateAt > 5 * 60 * 1000
-  const staleMinutes = isStale ? Math.round((now - lastDataUpdateAt) / 60000) : 0
+  const staleData = getStaleDataState(now, lastDataUpdateAt)
 
-  if (isLoading && rows.length === 0 && reports.length === 0) {
-    return (
-      <>
-        {error && (
-          <OfflineBanner
-            error={error}
-            onRetry={() => {
-              window.location.reload()
-            }}
-          />
-        )}
-        <PageSkeleton variant="dashboard" />
-      </>
-    )
+  if (isInitialDashboardLoading(isLoading, rows, reports)) {
+    return <DashboardLoadingState error={error} />
   }
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-      {error && (
-        <OfflineBanner
-          error={error}
-          onRetry={() => {
-            window.location.reload()
-          }}
-        />
-      )}
+      <DashboardOfflineBanner error={error} />
       <CommandHeader
         title="PDRRMO Camarines Norte"
         windowRole="dashboard"
@@ -283,197 +725,75 @@ export default function DashboardPage() {
           void signOut()
         }}
       />
-      {successMessage && (
-        <SuccessBanner
-          message={successMessage}
-          onDismiss={() => {
-            setSuccessMessage(null)
-          }}
-        />
-      )}
-      {actionError && (
-        <ActionErrorBanner
-          message={actionError}
-          onDismiss={() => {
-            setActionError(null)
-          }}
-        />
-      )}
-      <StatusBar
-        activeIncidents={activeCount}
-        avgResponseTime={
-          opsMetrics?.avgAcceptSeconds ? Math.round(opsMetrics.avgAcceptSeconds / 60) : 0
-        }
-        avgAcceptSeconds={opsMetrics?.avgAcceptSeconds ?? null}
-        fcmSuccessRate={opsMetrics?.fcmSuccessRate ?? 0}
-        pendingTriage={pendingTriage}
-        mode={mode}
-        affectedMunicipalities={municipalData
-          .filter((m) => m.activeIncidents > 0)
-          .map((m) => m.municipality)}
-        stalledDispatchCount={stalledDispatches.length}
-        totalResponders={responders.length}
-        uncoveredMunicipalities={
-          municipalData.filter((m) => (m.activeResponders ?? 0) === 0).length
-        }
+      <DashboardFeedbackBanners
+        actionError={actionError}
+        onDismissActionError={() => {
+          setActionError(null)
+        }}
+        onDismissSuccess={() => {
+          setSuccessMessage(null)
+        }}
+        successMessage={successMessage}
+      />
+      <DashboardStatusBar
+        activeCount={activeCount}
         lastDataUpdateAt={lastDataUpdateAt}
+        mode={mode}
+        municipalData={municipalData}
+        opsMetrics={opsMetrics}
+        pendingTriage={pendingTriage}
+        responderCount={responders.length}
+        stalledDispatchCount={stalledDispatches.length}
       />
-      {isStale && !error && (
-        <div
-          className="flex items-center justify-center gap-2 bg-[var(--color-warning)]/20 px-4 py-1.5 text-xs text-[var(--color-warning)]"
-          role="status"
-        >
-          Data may be stale · last update {staleMinutes}m ago
-        </div>
-      )}
-      <main className="flex-1 overflow-auto p-4">
-        <h1 className="sr-only">Operations Dashboard</h1>
-        {rows.length === 0 && responders.length === 0 && reports.length === 0 ? (
-          <AllClearState />
-        ) : (
-          <div className={`space-y-4 ${mode === 'degraded' ? 'opacity-50' : ''}`}>
-            {mode !== 'calm' && (
-              <EscalationQueueSection
-                stalledDispatches={stalledDispatches}
-                onReDispatch={handleReDispatch}
-                mode={mode}
-              />
-            )}
-            {reportCommandQueue.length > 0 && (
-              <section
-                aria-labelledby="report-command-queue-title"
-                className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
-              >
-                <div className="flex flex-wrap items-end justify-between gap-2">
-                  <div>
-                    <h2
-                      id="report-command-queue-title"
-                      className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-primary)]"
-                    >
-                      Report command queue
-                    </h2>
-                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                      Send new reports to review. Verify reviewed reports for Map dispatch.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded border border-white/10 px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/5"
-                    onClick={() => {
-                      void navigate('/feed')
-                    }}
-                  >
-                    Review feed
-                  </button>
-                </div>
-                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {reportCommandQueue.map((report) => {
-                    const canAdvance =
-                      report.status === 'new' || report.status === 'awaiting_verify'
-                    const isNewReport = report.status === 'new'
-                    const isVerifying = verifyingReportIds.has(report.id)
-                    return (
-                      <article
-                        key={report.id}
-                        className="rounded border border-white/10 bg-white/5 p-3"
-                      >
-                        <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                          {report.description.trim() || 'Report details pending'}
-                        </p>
-                        <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
-                          {report.municipality || 'Unknown municipality'} ·{' '}
-                          {report.barangay || 'Unknown barangay'}
-                        </p>
-                        <button
-                          type="button"
-                          className="mt-3 rounded bg-[var(--color-carto-blue)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                          aria-label={
-                            canAdvance
-                              ? isNewReport
-                                ? `Send report ${report.id} to review`
-                                : `Verify report ${report.id}`
-                              : `Dispatch report ${report.id} on map`
-                          }
-                          disabled={canAdvance && isVerifying}
-                          onClick={() => {
-                            if (canAdvance) void handleVerifyReport(report.id)
-                            else void navigate(`/map?reportId=${encodeURIComponent(report.id)}`)
-                          }}
-                        >
-                          {canAdvance
-                            ? isVerifying
-                              ? 'Working...'
-                              : isNewReport
-                                ? 'Send to review'
-                                : 'Verify'
-                            : 'Map dispatch'}
-                        </button>
-                      </article>
-                    )
-                  })}
-                </div>
-              </section>
-            )}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
-              <div className="space-y-4">
-                {mode !== 'surge' && <DispatchVolumeChart rows={rows} />}
-                <RecentEventsFeed rows={rows} />
-              </div>
-              <div className="space-y-4">
-                <ResponderAvailabilityPanel responders={responders} />
-                {mode !== 'surge' && (
-                  <MunicipalPerformanceTable
-                    data={municipalData}
-                    onSelectMunicipality={handleSelectMunicipality}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-      <HelpModal
-        open={helpModalOpen}
-        onClose={() => {
-          setHelpModalOpen(false)
-        }}
-        shortcuts={[
-          { key: 'R', description: 'Focus first Re-dispatch button' },
-          { key: 'D', description: 'Navigate to Dispatch Monitor' },
-          { key: 'F', description: 'Navigate to Feed' },
-          { key: '?', description: 'Show keyboard shortcuts' },
-          { key: 'Esc', description: 'Close help' },
-        ]}
+      <DashboardStaleDataBanner
+        error={error}
+        isStale={staleData.isStale}
+        staleMinutes={staleData.staleMinutes}
       />
-      <DeclareAlertModal
-        open={alertModalOpen}
-        onClose={() => {
-          setAlertModalOpen(false)
+      <DashboardMainContent
+        mode={mode}
+        municipalData={municipalData}
+        onMapDispatch={(reportId) => {
+          void navigate(`/map?reportId=${encodeURIComponent(reportId)}`)
         }}
-        onSuccess={() => {
-          setAlertModalOpen(false)
+        onReDispatch={handleReDispatch}
+        onReviewFeed={() => {
+          void navigate('/feed')
         }}
-        onError={(msg) => {
+        onSelectMunicipality={handleSelectMunicipality}
+        onVerifyReport={(reportId) => {
+          void handleVerifyReport(reportId)
+        }}
+        reportCommandQueue={reportCommandQueue}
+        reportCount={reports.length}
+        responders={responders}
+        rows={rows}
+        stalledDispatches={stalledDispatches}
+        verifyingReportIds={verifyingReportIds}
+      />
+      <DashboardModals
+        alertModalOpen={alertModalOpen}
+        helpModalOpen={helpModalOpen}
+        isDispatching={isDispatching}
+        onAlertError={(msg) => {
           console.error('Alert declaration failed:', msg)
         }}
-      />
-      <ReDispatchModal
-        isOpen={reDispatchModalOpen}
-        onClose={() => {
+        onCloseAlert={() => {
+          setAlertModalOpen(false)
+        }}
+        onCloseHelp={() => {
+          setHelpModalOpen(false)
+        }}
+        onCloseReDispatch={() => {
           setReDispatchModalOpen(false)
           setSelectedDispatchId(null)
         }}
         onDispatch={(uid) => {
           void handleConfirmReDispatch(uid)
         }}
+        previouslyNotified={previouslyNotified}
         responders={responders}
-        previouslyNotified={
-          selectedDispatchId
-            ? (rows.find((r) => r.dispatchId === selectedDispatchId)
-                ?.previouslyNotifiedResponderUids ?? [])
-            : []
-        }
-        isLoading={isDispatching}
+        reDispatchModalOpen={reDispatchModalOpen}
       />
     </div>
   )

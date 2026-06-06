@@ -8,7 +8,7 @@ const { mockUpdateUser } = vi.hoisted(() => ({ mockUpdateUser: vi.fn() }))
 vi.mock('firebase-admin/auth', () => ({
   getAuth: () => ({ updateUser: mockUpdateUser }),
 }))
-vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
+vi.mock('../../ops/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
 
 const guarded = await guardInitTestEnvironment(
   {

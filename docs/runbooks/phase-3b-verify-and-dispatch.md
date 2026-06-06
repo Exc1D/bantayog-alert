@@ -49,14 +49,9 @@ Open http://localhost:5173 (or the port shown in terminal).
 
 **Expected:** Redirected to Triage Queue page showing municipality "daet".
 
-### 3. Submit a test report (via Phase 3a acceptance script)
+### 3. Submit a test report
 
-```bash
-firebase emulators:exec --only firestore,auth,functions \
-  "pnpm exec tsx scripts/phase-3a/acceptance.ts"
-```
-
-Or manually submit via citizen PWA at http://localhost:5174.
+Manually submit via Citizen PWA at http://localhost:5174.
 
 **Expected:** Report appears in queue with status `new` within ~2 seconds.
 

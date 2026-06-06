@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-06-06 - Fallow Duplicate E2E Cleanup
+
+- Re-ran full Fallow after the dead-code cleanup: dead-code stayed at 0, while broad legacy health and duplication findings remained.
+- Removed the weaker duplicate Admin Desktop UI/UX Playwright spec and kept `comprehensive-ui-ux.spec.ts`, which preserves the same inspection coverage with stronger login/setup handling.
+- Refactored the Responder dispatch detail surface out of a single high-complexity render function into named same-file sections/hooks; Fallow moved it out of the full-report top hotspots and changed-file audit no longer flags it.
+- Consolidated repeated Admin e2e Firebase Auth emulator calls and Citizen query-cache IndexedDB open/upgrade logic; also settled the Citizen App smoke test so it passes without React `act(...)` warning noise.
+- Retired standalone phase/boundary scripts that were no longer package entry points, then corrected stale runbook/checklist references; Fallow critical health findings dropped from 23 to 18 at that point.
+- Refactored Responder Profile and Admin Dashboard out of Fallow's hotspot list while preserving focused behavior tests; Dashboard dropped from 40/28 complexity to no remaining finding.
+- Consolidated three duplicate Camarines Norte barangay lists into `@bantayog/shared-validators` and removed the stale `shared-sms-parser` workspace package; Fallow duplicated lines dropped from 22,393 to 21,257 and dead-code stayed at 0.
+
+## 2026-06-06 - Fallow Dead-Code Cleanup
+
+- Ran Fallow across the monorepo and cleaned the concrete dead-code layer: removed stale one-off scripts, fixed stale Functions domain test mock paths, fixed root script dependency declarations, pruned misplaced unused package dependencies, and broke the Citizen query-provider re-export cycle.
+- Added Fallow ignore coverage for generated output directories that are not source-of-truth entry points, so future Fallow reports do not count compiled `functions/lib` or stale declaration output as source debt.
+- Verification: Fallow dead-code now reports 0 issues; focused Functions tests passed for the edited test files, Citizen App smoke test passed without localhost probe noise, Citizen/Functions lint and typecheck passed, and root lint/typecheck passed with only the known root-process Functions Node 22 engine warning.
+
 ## 2026-06-06 - Retired Feature Residue Removal
 
 - Removed the approved dead backend/admin surfaces for field mode, shift handoff, data incident declaration/events, provincial resources, command-channel manual message posting, and the retired dispatch timeout sweep from source exports, Admin callable wrappers, direct tests, and scheduled sweep code.

@@ -17,7 +17,7 @@ vi.mock('firebase-admin/storage', () => ({
     }),
   }),
 }))
-vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
+vi.mock('../../ops/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
 
 const guarded = await guardInitTestEnvironment(
   {

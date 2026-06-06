@@ -21,6 +21,9 @@ importers:
         specifier: ^0.6.3
         version: 0.6.3
     devDependencies:
+      '@bantayog/shared-validators':
+        specifier: workspace:*
+        version: link:packages/shared-validators
       '@eslint/js':
         specifier: ^9.12.0
         version: 9.39.4
@@ -45,6 +48,9 @@ importers:
       eslint-plugin-react-hooks:
         specifier: ^7.1.1
         version: 7.1.1(eslint@9.39.4(jiti@1.21.7))
+      firebase:
+        specifier: ^12.13.0
+        version: 12.13.0
       firebase-admin:
         specifier: ^13.10.0
         version: 13.10.0
@@ -81,9 +87,6 @@ importers:
 
   apps/admin-desktop:
     dependencies:
-      '@bantayog/shared-sms-parser':
-        specifier: workspace:*
-        version: link:../../packages/shared-sms-parser
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -96,18 +99,12 @@ importers:
       '@sentry/react':
         specifier: ^10.53.1
         version: 10.53.1(react@19.2.6)
-      '@tanstack/react-query':
-        specifier: ^5.99.2
-        version: 5.99.2(react@19.2.6)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
       firebase:
         specifier: ^12.13.0
         version: 12.13.0
-      framer-motion:
-        specifier: ^12.0.0
-        version: 12.38.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -226,9 +223,6 @@ importers:
       react-dom:
         specifier: ^19.2.6
         version: 19.2.6(react@19.2.6)
-      react-leaflet:
-        specifier: ^5.0.0
-        version: 5.0.0(leaflet@1.9.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react-router-dom:
         specifier: ^7.14.2
         version: 7.14.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -363,9 +357,6 @@ importers:
 
   e2e-tests:
     devDependencies:
-      '@bantayog/shared-validators':
-        specifier: workspace:*
-        version: link:../packages/shared-validators
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.59.1
@@ -396,9 +387,6 @@ importers:
       '@types/geojson':
         specifier: ^7946.0.16
         version: 7946.0.16
-      bcryptjs:
-        specifier: ^2.4.3
-        version: 2.4.3
       file-type:
         specifier: ^21.0.0
         version: 21.3.4
@@ -424,9 +412,6 @@ importers:
       '@firebase/rules-unit-testing':
         specifier: ^5.0.0
         version: 5.0.0(firebase@12.13.0)
-      '@types/bcryptjs':
-        specifier: ^2.4.6
-        version: 2.4.6
       '@types/ngeohash':
         specifier: ^0.6.8
         version: 0.6.8
@@ -448,15 +433,6 @@ importers:
       firebase:
         specifier: ^12.13.0
         version: 12.13.0
-
-  packages/shared-sms-parser:
-    dependencies:
-      '@bantayog/shared-types':
-        specifier: workspace:*
-        version: link:../shared-types
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
   packages/shared-state-machines:
     dependencies:
@@ -2061,9 +2037,6 @@ packages:
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
 
-  '@types/bcryptjs@2.4.6':
-    resolution: {integrity: sha512-9xlo6R2qDs5uixm0bcIqCeMCE6HiQsIyel9KQySStiyqNl2tnj2mP3DX1Nf56MD6KMenNNlBBsy3LJ7gUEQPXQ==}
-
   '@types/body-parser@1.19.6':
     resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
 
@@ -2504,9 +2477,6 @@ packages:
     resolution: {integrity: sha512-1AaXxEPfXT+GvTBJFuy4yXVHWJBXa4OdbIebGN/wX5DlsIkU0+wzGnd2lOzokSk51d5LUmqjgBLRLlypLUqInQ==}
     engines: {node: '>=6.0.0'}
     hasBin: true
-
-  bcryptjs@2.4.3:
-    resolution: {integrity: sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ==}
 
   big-integer@1.6.52:
     resolution: {integrity: sha512-QxD8cf2eVqJOOz63z6JIN9BzvVs/dlySa5HGSBH5xtR8dPteIRQnBxxKqkNTiT6jbDTF6jAfrd4oMcND9RGbQg==}
@@ -7856,8 +7826,6 @@ snapshots:
 
   '@types/aria-query@5.0.4': {}
 
-  '@types/bcryptjs@2.4.6': {}
-
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
@@ -8382,8 +8350,6 @@ snapshots:
   base64-js@1.5.1: {}
 
   baseline-browser-mapping@2.10.20: {}
-
-  bcryptjs@2.4.3: {}
 
   big-integer@1.6.52: {}
 

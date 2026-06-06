@@ -23,7 +23,7 @@ vi.mock('firebase-functions/v2/https', async () => {
 })
 
 let adminDb: Firestore
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   get adminDb() {
     return adminDb
   },

@@ -23,7 +23,7 @@ vi.mock('firebase-admin/storage', () => ({
     }),
   }),
 }))
-vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
+vi.mock('../../ops/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }))
 
 let env: RulesTestEnvironment | undefined
 let available = false

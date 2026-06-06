@@ -1,5 +1,7 @@
-import { getBarangayGazetteer } from '@bantayog/shared-sms-parser'
-import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
+import {
+  CAMARINES_NORTE_BARANGAYS,
+  CAMARINES_NORTE_MUNICIPALITIES,
+} from '@bantayog/shared-validators'
 
 export const MUNICIPALITIES = CAMARINES_NORTE_MUNICIPALITIES
 
@@ -17,8 +19,7 @@ export function getBarangaysByMunicipality(): Record<string, string[]> {
   if (barangaysByMunicipalityCache) return barangaysByMunicipalityCache
 
   const result: Record<string, string[]> = {}
-  const gazetteer = getBarangayGazetteer()
-  for (const b of gazetteer) {
+  for (const b of CAMARINES_NORTE_BARANGAYS) {
     const municipalityId = MUNICIPALITY_LABEL_TO_ID[b.municipality]
     if (municipalityId) {
       result[municipalityId] ??= []

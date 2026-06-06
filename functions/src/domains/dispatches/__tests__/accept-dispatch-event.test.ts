@@ -10,7 +10,7 @@ const mockUpdate = vi.hoisted(() => vi.fn())
 const mockSet = vi.hoisted(() => vi.fn())
 const mockGet = vi.hoisted(() => vi.fn())
 
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   adminDb: {
     collection: mockDbCollection,
     doc: mockDbDoc,
@@ -18,7 +18,7 @@ vi.mock('../../admin-init.js', () => ({
   },
 }))
 
-vi.mock('../../services/rate-limit.js', () => ({
+vi.mock('../../shared/rate-limit.js', () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
 }))
 

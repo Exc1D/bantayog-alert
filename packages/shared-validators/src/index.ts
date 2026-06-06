@@ -72,6 +72,8 @@ export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
 export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'
 export type { MunicipalityDoc } from './municipalities.js'
+export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js'
+export type { BarangayEntry } from './barangays.js'
 export {
   dispatchToReportState,
   REPORT_STATES,

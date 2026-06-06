@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback } from 'react'
-import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
-import { FALLBACK_BARANGAYS } from '../data/fallback-barangays'
+import {
+  CAMARINES_NORTE_BARANGAYS,
+  CAMARINES_NORTE_MUNICIPALITIES,
+} from '@bantayog/shared-validators'
 
 const MUNICIPALITY_LABELS = Object.fromEntries(
   CAMARINES_NORTE_MUNICIPALITIES.map((m) => [m.id, m.label]),
@@ -28,7 +30,7 @@ export function useMunicipalityBarangays(): UseMunicipalityBarangaysResult {
 
   const barangayOptions = useMemo(() => {
     if (!selectedMunicipalityId) return []
-    return FALLBACK_BARANGAYS.filter(
+    return CAMARINES_NORTE_BARANGAYS.filter(
       (b) => MUNICIPALITY_LABELS[selectedMunicipalityId] === b.municipality,
     ).sort((a, b) => a.name.localeCompare(b.name))
   }, [selectedMunicipalityId])

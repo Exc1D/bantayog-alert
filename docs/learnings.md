@@ -97,6 +97,7 @@
 - Pre-auth E2E readiness should hit explicit login routes; protected roots can linger on auth-loading spinners.
 - Callable tests should assert runtime client codes such as `not-found`, not internal enum names.
 - Passing tests with noisy stderr are not clean. Wrap async hook tails, fake timer advancement, and synthetic event/message delivery in `act(...)`; wiring tests should mock unrelated polling hooks so they do not probe offline emulators.
+- App-level Citizen smoke tests must stub `fetch` because `useOnlineStatus()` probes `/__/firebase.json`; otherwise a passing render test can still print localhost `ECONNREFUSED` noise.
 - Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
 
 ## React / TypeScript
@@ -145,6 +146,11 @@
 - Terraform BigQuery `default_table_expiration_ms` must be at least `3600000`.
 - Dependabot lockfile conflicts often need a consolidated lockfile regeneration after one PR lands.
 - Node 20 has global `fetch`; use `AbortSignal.timeout(ms)` instead of adding `node-fetch`.
+- Keep Fallow focused on source-of-truth files: ignore generated `functions/lib` and declaration-only `lib` outputs when package entry points use `src`, but fix live source/test imports and delete retired scripts instead of suppressing them.
+- When Fallow flags near-identical Playwright audit specs, keep the variant with authentication/setup hardening and delete the weaker duplicate instead of extracting a shared helper around stale coverage.
+- For Fallow health cleanup, prefer extracting named render sections and hooks over adding suppressions; then use `fallow audit --base HEAD` to make sure touched files did not retain new complexity findings.
+- Canonical province geography belongs with `@bantayog/shared-validators` municipality constants. Do not recreate app-local barangay arrays or revive `shared-sms-parser` for non-SMS data sharing.
+- When removing a workspace package, remove live imports, manifest entries, lockfile references, lint-baseline rows, source, tests, and generated `lib` output together; then rebuild any package whose `exports` still point at `lib`.
 
 ## Ops / Compliance
 

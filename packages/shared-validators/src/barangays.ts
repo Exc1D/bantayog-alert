@@ -1,14 +1,13 @@
 /**
- * Fallback barangay data for Camarines Norte municipalities.
- * Used when GPS is unavailable and user selects municipality manually.
+ * Canonical barangay data for Camarines Norte municipalities.
  */
 
-export interface FallbackBarangay {
+export interface BarangayEntry {
   name: string
   municipality: string
 }
 
-export const FALLBACK_BARANGAYS: FallbackBarangay[] = [
+export const CAMARINES_NORTE_BARANGAYS: BarangayEntry[] = [
   { name: 'Angas', municipality: 'Basud' },
   { name: 'Bactas', municipality: 'Basud' },
   { name: 'Binatagan', municipality: 'Basud' },
@@ -292,3 +291,7 @@ export const FALLBACK_BARANGAYS: FallbackBarangay[] = [
   { name: 'Singi', municipality: 'Vinzons' },
   { name: 'Sula', municipality: 'Vinzons' },
 ]
+
+export function getBarangayGazetteer(): BarangayEntry[] {
+  return CAMARINES_NORTE_BARANGAYS
+}

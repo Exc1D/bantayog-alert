@@ -7,7 +7,7 @@ import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
 let adminDb: Firestore
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
   get adminDb() {
     return adminDb
   },

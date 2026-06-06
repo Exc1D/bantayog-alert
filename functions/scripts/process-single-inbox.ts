@@ -3,7 +3,7 @@
  */
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
-import { processInboxItemCore } from '../src/triggers/process-inbox-item.js'
+import { processInboxItemCore } from '../src/domains/reports/process-inbox-item.js'
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   console.error(

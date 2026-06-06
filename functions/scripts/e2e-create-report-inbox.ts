@@ -10,7 +10,7 @@
 
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
-import { processInboxItemCore } from '../src/triggers/process-inbox-item.js'
+import { processInboxItemCore } from '../src/domains/reports/process-inbox-item.js'
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   console.error(
@@ -58,50 +58,53 @@ function buildTestInbox(): Record<string, unknown> {
 
 async function main() {
   const TEST_INBOX = buildTestInbox()
+  const docId = 'test-e2e-' + Date.now()
   let reportId: string | undefined
-  let docId: string | undefined
 
   try {
     console.log('🧪 E2E test: creating report_inbox item on emulator...\n')
 
-    docId = 'test-e2e-' + Date.now()
     await db.collection('report_inbox').doc(docId).set(TEST_INBOX)
     console.log(`✅ Created report_inbox/${docId}`)
 
-    console.log('\n🔧 Processing inbox item...')
-    const result = await processInboxItemCore({ db, inboxId: docId })
-    console.log(
-      `  ✅ Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}\n`,
-    )
-    reportId = result.reportId
-
-    // Verify the report was materialized
-    const reportDoc = await db.collection('reports').doc(reportId).get()
-    if (reportDoc.exists) {
-      console.log(`✅ Report ${reportId} exists in 'reports' collection`)
-    } else {
-      console.log(`❌ Report ${reportId} NOT found in 'reports'`)
-      process.exit(1)
-    }
+    reportId = await materializeInbox(docId)
+    await verifyReportExists(reportId)
 
     console.log('\n🎉 E2E test passed!')
   } finally {
-    console.log('\n🧹 Cleaning up...')
-    if (docId) {
-      try {
-        await db.collection('report_inbox').doc(docId).delete()
-      } catch {
-        // Inbox doc may already be deleted by materialization
-      }
-    }
-    if (reportId) {
-      try {
-        await db.collection('reports').doc(reportId).delete()
-      } catch {
-        // Report doc may not exist if materialization failed
-      }
-    }
-    console.log('✅ Cleanup complete.')
+    await cleanupTestDocs(docId, reportId)
+  }
+}
+
+async function materializeInbox(docId: string): Promise<string> {
+  console.log('\n🔧 Processing inbox item...')
+  const result = await processInboxItemCore({ db, inboxId: docId })
+  console.log(
+    `  ✅ Materialized: ${result.materialized}, Report ID: ${result.reportId}, Public Ref: ${result.publicRef}\n`,
+  )
+  return result.reportId
+}
+
+async function verifyReportExists(reportId: string): Promise<void> {
+  const reportDoc = await db.collection('reports').doc(reportId).get()
+  if (!reportDoc.exists) {
+    throw new Error(`Report ${reportId} NOT found in 'reports'`)
+  }
+  console.log(`✅ Report ${reportId} exists in 'reports' collection`)
+}
+
+async function cleanupTestDocs(docId: string, reportId: string | undefined): Promise<void> {
+  console.log('\n🧹 Cleaning up...')
+  await deleteIfPresent('report_inbox', docId)
+  if (reportId) await deleteIfPresent('reports', reportId)
+  console.log('✅ Cleanup complete.')
+}
+
+async function deleteIfPresent(collectionPath: string, docId: string): Promise<void> {
+  try {
+    await db.collection(collectionPath).doc(docId).delete()
+  } catch {
+    // Materialization may already have removed this test document.
   }
 }
 

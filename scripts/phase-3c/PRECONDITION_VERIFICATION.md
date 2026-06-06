@@ -198,7 +198,7 @@ Once all preconditions are verified:
 
 ---
 
-**Verification Script:** `scripts/phase-3c/verify-preconditions.ts` (automates staging checks when run with `--env=staging`)
+**Note:** The retired one-off precondition script has been removed. Use the manual checklist above and the active Phase 3c acceptance flow.
 
 ---
 

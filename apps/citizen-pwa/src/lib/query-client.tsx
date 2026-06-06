@@ -1,8 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { persistQueryClient, persistQueryClientRestore, type Persister, type PersistedClient } from '@tanstack/query-persist-client-core'
 
-export { QueryProvider } from './QueryProvider'
-
 const DB_NAME = 'bantayog-query-cache'
 const STORE_NAME = 'persist'
 const KEY = 'query-cache'
@@ -38,6 +36,31 @@ function estimateSize(client: PersistedClient): number {
   return new Blob([JSON.stringify(client)]).size
 }
 
+function requestError(error: DOMException | null): Error {
+  return new Error(String(error))
+}
+
+function ensurePersistStore(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(STORE_NAME)) {
+    db.createObjectStore(STORE_NAME)
+  }
+}
+
+function openPersistDb(): Promise<IDBDatabase> {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1)
+    request.onerror = () => {
+      reject(requestError(request.error))
+    }
+    request.onsuccess = () => {
+      resolve(request.result)
+    }
+    request.onupgradeneeded = () => {
+      ensurePersistStore(request.result)
+    }
+  })
+}
+
 function createIndexedDBPersister(): Persister {
   return {
     persistClient: async (client) => {
@@ -52,100 +75,54 @@ function createIndexedDBPersister(): Persister {
       // Skip if cache exceeds size limit
       if (estimateSize(sanitized) > MAX_CACHE_SIZE_BYTES) return
 
+      const db = await openPersistDb()
       return new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1)
-        request.onerror = () => {
-          reject(new Error(String(request.error)))
+        const tx = db.transaction(STORE_NAME, 'readwrite')
+        const store = tx.objectStore(STORE_NAME)
+        store.put(JSON.stringify(sanitized), KEY)
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
         }
-        request.onsuccess = () => {
-          const db = request.result
-          const tx = db.transaction(STORE_NAME, 'readwrite')
-          const store = tx.objectStore(STORE_NAME)
-          store.put(JSON.stringify(sanitized), KEY)
-          tx.oncomplete = () => {
-            db.close()
-            resolve()
-          }
-          tx.onerror = () => {
-            db.close()
-            reject(new Error(String(tx.error)))
-          }
-        }
-        request.onupgradeneeded = () => {
-          const db = request.result
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            db.createObjectStore(STORE_NAME)
-          }
+        tx.onerror = () => {
+          db.close()
+          reject(requestError(tx.error))
         }
       })
     },
     restoreClient: async () => {
+      const db = await openPersistDb()
       return new Promise<PersistedClient | undefined>((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1)
-        request.onerror = () => {
-          reject(new Error(String(request.error)))
-        }
-        request.onsuccess = () => {
-          const db = request.result
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            db.close()
+        const tx = db.transaction(STORE_NAME, 'readonly')
+        const store = tx.objectStore(STORE_NAME)
+        const getRequest = store.get(KEY)
+        getRequest.onsuccess = () => {
+          db.close()
+          if (getRequest.result) {
+            resolve(JSON.parse(getRequest.result as string) as PersistedClient)
+          } else {
             resolve(undefined)
-            return
-          }
-          const tx = db.transaction(STORE_NAME, 'readonly')
-          const store = tx.objectStore(STORE_NAME)
-          const getRequest = store.get(KEY)
-          getRequest.onsuccess = () => {
-            db.close()
-            if (getRequest.result) {
-              resolve(JSON.parse(getRequest.result as string) as PersistedClient)
-            } else {
-              resolve(undefined)
-            }
-          }
-          getRequest.onerror = () => {
-            db.close()
-            reject(new Error(String(getRequest.error)))
           }
         }
-        request.onupgradeneeded = () => {
-          const db = request.result
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            db.createObjectStore(STORE_NAME)
-          }
+        getRequest.onerror = () => {
+          db.close()
+          reject(requestError(getRequest.error))
         }
       })
     },
     removeClient: async () => {
+      const db = await openPersistDb()
       return new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1)
-        request.onerror = () => {
-          reject(new Error(String(request.error)))
+        const tx = db.transaction(STORE_NAME, 'readwrite')
+        const store = tx.objectStore(STORE_NAME)
+        store.delete(KEY)
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
         }
-        request.onsuccess = () => {
-          const db = request.result
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            db.close()
-            resolve()
-            return
-          }
-          const tx = db.transaction(STORE_NAME, 'readwrite')
-          const store = tx.objectStore(STORE_NAME)
-          store.delete(KEY)
-          tx.oncomplete = () => {
-            db.close()
-            resolve()
-          }
-          tx.onerror = () => {
-            db.close()
-            reject(new Error(String(tx.error)))
-          }
-        }
-        request.onupgradeneeded = () => {
-          const db = request.result
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            db.createObjectStore(STORE_NAME)
-          }
+        tx.onerror = () => {
+          db.close()
+          reject(requestError(tx.error))
         }
       })
     },
