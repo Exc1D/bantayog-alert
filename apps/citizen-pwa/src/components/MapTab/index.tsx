@@ -13,6 +13,7 @@ import { useMyActiveReports } from '../../hooks/useMyActiveReports.js'
 import { cancelReport } from '../../services/callables.js'
 import { deleteReport } from '../../services/localForageReports.js'
 import { useToast } from '../../hooks/useToast.js'
+import { WITHDRAWABLE_STATUSES } from '../ProfileTab.js'
 import type { Filters, MyReport, PublicIncident } from './types.js'
 
 const DAET_CENTER: [number, number] = [14.1115, 122.9558]
@@ -74,9 +75,9 @@ export function MapTab() {
         if (reportId) {
           try {
             await cancelReport(reportId)
-            toast('Report cancelled', 'success')
+            toast('Report withdrawn', 'success')
           } catch {
-            toast('Failed to cancel report', 'error')
+            toast('Failed to withdraw report', 'error')
             return
           }
         }
@@ -293,7 +294,7 @@ export function MapTab() {
         }}
         {...(selectedPin?.type === 'myReport' &&
         selectedMyReport &&
-        ['queued', 'new', 'awaiting_verify'].includes(selectedMyReport.status)
+        WITHDRAWABLE_STATUSES.has(selectedMyReport.status)
           ? {
               onDelete: () => {
                 setDeleteSheetOpen(true)

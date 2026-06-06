@@ -272,14 +272,14 @@ describe('FeedPage', () => {
     })
   })
 
-  it('lets admins hide official alerts through the backend', async () => {
+  it('lets admins retire official alerts through the backend', async () => {
     render(
       <MemoryRouter>
         <FeedPage />
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Hide alert alert-1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retire alert alert-1' }))
 
     await waitFor(() => {
       expect(mockSetCitizenContentVisibility).toHaveBeenCalledWith(
@@ -287,7 +287,7 @@ describe('FeedPage', () => {
           surface: 'alerts',
           contentId: 'alert-1',
           visibility: 'internal',
-          reason: 'sensitive_content',
+          reason: 'other',
         }),
       )
     })
@@ -304,7 +304,9 @@ describe('FeedPage', () => {
     expect(
       within(alerts).getByText('Legacy alert without visibility should not be treated as public.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Restore alert alert-legacy' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Restore retired alert alert-legacy' }),
+    ).toBeInTheDocument()
   })
 
   it('publishes scrubbed copy through verifyReport', async () => {

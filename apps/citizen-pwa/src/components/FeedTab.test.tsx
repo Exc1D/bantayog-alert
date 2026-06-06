@@ -73,6 +73,45 @@ describe('FeedTab', () => {
     expect(screen.getByText('No situation updates')).toBeInTheDocument()
   })
 
+  it('only shows verified public report-style feed updates from the last 24 hours', () => {
+    const now = Date.now()
+    mockUseSituationUpdates.mockReturnValue({
+      updates: [
+        {
+          id: 'fresh',
+          authorUid: 'system',
+          createdAt: now - 23 * 60 * 60 * 1000,
+          municipalityId: 'daet',
+          municipalityLabel: 'Daet',
+          hazardType: 'flood',
+          condition: 'needs_help',
+          body: 'Fresh verified report visible to neighbors.',
+          visibility: 'public',
+        },
+        {
+          id: 'old',
+          authorUid: 'system',
+          createdAt: now - 25 * 60 * 60 * 1000,
+          municipalityId: 'daet',
+          municipalityLabel: 'Daet',
+          hazardType: 'fire',
+          condition: 'needs_help',
+          body: 'Old verified report should age out.',
+          visibility: 'public',
+        },
+      ],
+      loading: false,
+      error: null,
+      lastUpdatedAt: now,
+      retry: vi.fn(),
+    })
+
+    renderFeedTab()
+
+    expect(screen.getByText('Fresh verified report visible to neighbors.')).toBeInTheDocument()
+    expect(screen.queryByText('Old verified report should age out.')).not.toBeInTheDocument()
+  })
+
   it('renders filter chips without border', () => {
     renderFeedTab()
     const chips = screen.getAllByRole('button')

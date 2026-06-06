@@ -84,11 +84,11 @@ export function PeekSheet({ sheetPhase, pin, onExpand, onDismiss, onDelete }: Pr
           {pin.type === 'myReport' && onDelete ? (
             <button
               type="button"
-              aria-label="Delete report"
+              aria-label="Withdraw report"
               onClick={onDelete}
               className="text-danger-500 text-sm font-medium"
             >
-              Delete
+              Withdraw
             </button>
           ) : null}
           <button

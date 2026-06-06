@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
@@ -20,21 +20,15 @@ vi.mock('firebase-admin/storage', () => ({
 import { cancelReportByCitizenCore } from '../cancel-report-by-citizen.js'
 import { seedReportAtStatus, seedActiveAccount } from '../../../__tests__/helpers/seed-factories.js'
 
-let testEnv: RulesTestEnvironment | undefined
-let available = false
-
-beforeAll(async () => {
-  const guarded = await guardInitTestEnvironment(
-    {
-      projectId: 'cancel-report-by-citizen-test',
-      firestore: { host: 'localhost', port: 8081 },
-    },
-    'cancel-report-by-citizen',
-  )
-  testEnv = guarded.env
-  available = guarded.available
-  if (!available) return
-})
+const guarded = await guardInitTestEnvironment(
+  {
+    projectId: 'cancel-report-by-citizen-test',
+    firestore: { host: 'localhost', port: 8081 },
+  },
+  'cancel-report-by-citizen',
+)
+const testEnv: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
 
 beforeEach(async () => {
   if (!available || !testEnv) return
@@ -46,7 +40,7 @@ afterAll(async () => {
 })
 
 describe('cancelReportByCitizenCore', () => {
-  itif(available)('deletes report when status is new and citizen owns it', async () => {
+  itif(available)('withdraws report when status is new and citizen owns it', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
@@ -71,40 +65,54 @@ describe('cancelReportByCitizenCore', () => {
 
       expect(result.reportId).toBe(reportId)
       const snap = await db.collection('reports').doc(reportId).get()
-      expect(snap.exists).toBe(false)
+      expect(snap.exists).toBe(true)
+      expect(snap.data()).toMatchObject({
+        status: 'cancelled',
+        cancelReason: 'citizen_withdrew',
+        visibilityClass: 'internal',
+        withdrawnBy: 'citizen-1',
+      })
     })
   })
 
-  itif(available)('deletes report when status is awaiting_verify and citizen owns it', async () => {
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
-        municipalityId: 'daet',
-        reporterUid: 'citizen-1',
-      })
-      await seedActiveAccount(testEnv!, {
-        uid: 'citizen-1',
-        role: 'citizen',
-        municipalityId: 'daet',
-      })
-
-      const result = await cancelReportByCitizenCore(db, {
-        reportId,
-        idempotencyKey: crypto.randomUUID(),
-        actor: {
+  itif(available)(
+    'withdraws report when status is awaiting_verify and citizen owns it',
+    async () => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as any
+        const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
+          municipalityId: 'daet',
+          reporterUid: 'citizen-1',
+        })
+        await seedActiveAccount(testEnv!, {
           uid: 'citizen-1',
-          claims: { role: 'citizen' },
-        },
-        now: Timestamp.now(),
-      })
+          role: 'citizen',
+          municipalityId: 'daet',
+        })
 
-      expect(result.reportId).toBe(reportId)
-      const reportSnap = await db.collection('reports').doc(reportId).get()
-      expect(reportSnap.exists).toBe(false)
-      const privateSnap = await db.collection('report_private').doc(reportId).get()
-      expect(privateSnap.exists).toBe(false)
-    })
-  })
+        const result = await cancelReportByCitizenCore(db, {
+          reportId,
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'citizen-1',
+            claims: { role: 'citizen' },
+          },
+          now: Timestamp.now(),
+        })
+
+        expect(result.reportId).toBe(reportId)
+        const reportSnap = await db.collection('reports').doc(reportId).get()
+        expect(reportSnap.exists).toBe(true)
+        expect(reportSnap.data()).toMatchObject({
+          status: 'cancelled',
+          cancelReason: 'citizen_withdrew',
+          visibilityClass: 'internal',
+        })
+        const privateSnap = await db.collection('report_private').doc(reportId).get()
+        expect(privateSnap.exists).toBe(true)
+      })
+    },
+  )
 
   itif(available)('writes a report_events entry with eventType citizen_cancelled', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
@@ -259,7 +267,7 @@ describe('cancelReportByCitizenCore', () => {
     })
   })
 
-  itif(available)('also deletes report_contacts and report_lookup when cancelling', async () => {
+  itif(available)('preserves report_contacts and report_lookup when withdrawing', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
@@ -271,6 +279,19 @@ describe('cancelReportByCitizenCore', () => {
         role: 'citizen',
         municipalityId: 'daet',
       })
+      await db.collection('report_contacts').doc(reportId).set({
+        reportId,
+        phone: '+639171234567',
+        createdAt: 1713350400000,
+        schemaVersion: 1,
+      })
+      await db.collection('report_lookup').doc('lookup-preserved').set({
+        publicRef: 'FL-LOOKUP-001',
+        reportId,
+        createdAt: 1713350400000,
+        schemaVersion: 1,
+      })
+      expect((await db.collection('report_contacts').doc(reportId).get()).exists).toBe(true)
 
       await cancelReportByCitizenCore(db, {
         reportId,
@@ -283,9 +304,13 @@ describe('cancelReportByCitizenCore', () => {
       })
 
       const contactsSnap = await db.collection('report_contacts').doc(reportId).get()
-      expect(contactsSnap.exists).toBe(false)
-      const lookupSnap = await db.collection('report_lookup').doc(reportId).get()
-      expect(lookupSnap.exists).toBe(false)
+      expect(contactsSnap.exists).toBe(true)
+      const lookupSnap = await db
+        .collection('report_lookup')
+        .where('reportId', '==', reportId)
+        .limit(1)
+        .get()
+      expect(lookupSnap.empty).toBe(false)
     })
   })
 })

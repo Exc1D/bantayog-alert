@@ -18,6 +18,10 @@ import {
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
+import { cancelReport } from '../services/callables.js'
+import { deleteReport } from '../services/localForageReports.js'
+import { useToast } from '../hooks/useToast.js'
+import { DeleteSheet } from './DeleteSheet.js'
 import {
   incidentIcon,
   incidentLabel,
@@ -26,6 +30,7 @@ import {
 } from '../utils/incident-meta.js'
 import { auth, hasFirebaseConfig } from '../services/firebase.js'
 import type { MyReport } from './MapTab/types.js'
+import type { ReportStatus } from '@bantayog/shared-types'
 
 function timeAgo(ts: number): string {
   const minutes = Math.floor((Date.now() - ts) / 60000)
@@ -210,18 +215,28 @@ function MilestoneTracker({ reports }: { reports: MyReport[] }) {
 }
 
 /* ── Report card ── */
-function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) {
+export const WITHDRAWABLE_STATUSES = new Set<ReportStatus | 'queued'>([
+  'queued',
+  'new',
+  'awaiting_verify',
+])
+
+function ReportCard({
+  report,
+  onTap,
+  onWithdraw,
+}: {
+  report: MyReport
+  onTap: () => void
+  onWithdraw?: () => void
+}) {
   const icon = incidentIcon(report.reportType)
   const label = incidentLabel(report.reportType)
   const { label: statusLabel, bg, color } = statusMeta(report.status)
   const dot = severityDotColor(report.severity)
 
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      className="w-full text-left cursor-pointer bg-white rounded-xl p-3.5 mb-2 border border-surface-200 shadow-sm active:scale-[0.99] transition-transform"
-    >
+    <article className="w-full text-left cursor-pointer bg-white rounded-xl p-3.5 mb-2 border border-surface-200 shadow-sm active:scale-[0.99] transition-transform">
       <div className="flex gap-2.5 items-start">
         <span aria-hidden="true" className="shrink-0 leading-snug flex items-center">
           {icon}
@@ -253,9 +268,28 @@ function ReportCard({ report, onTap }: { report: MyReport; onTap: () => void }) 
             </span>
             <span className="text-[0.6875rem] text-surface-400">Ref: {report.publicRef}</span>
           </div>
+          <div className="mt-3 flex items-center gap-2">
+            {onWithdraw && (
+              <button
+                type="button"
+                onClick={onWithdraw}
+                className="min-h-9 rounded-lg border border-danger-500/30 bg-danger-500/10 px-3 text-xs font-bold text-danger-600"
+                aria-label={`Withdraw report ${report.publicRef}`}
+              >
+                Withdraw
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onTap}
+              className="ml-auto min-h-9 rounded-lg border border-brand-200 bg-brand-50 px-3 text-xs font-bold text-brand-600"
+            >
+              Track
+            </button>
+          </div>
         </div>
       </div>
-    </button>
+    </article>
   )
 }
 
@@ -279,8 +313,10 @@ function SkeletonCard() {
 export function ProfileTab() {
   const navigate = useNavigate()
   const { reports, loading } = useMyActiveReports()
+  const { toast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(() => hasFirebaseConfig())
+  const [withdrawReport, setWithdrawReport] = useState<MyReport | null>(null)
 
   useEffect(() => {
     if (!hasFirebaseConfig()) return
@@ -339,6 +375,24 @@ export function ProfileTab() {
     } catch {
       // user cancelled or API unavailable
     }
+  }
+
+  const handleWithdrawReport = async (report: MyReport) => {
+    if (report.id) {
+      try {
+        await cancelReport(report.id)
+        toast('Report withdrawn', 'success')
+      } catch {
+        toast('Failed to withdraw report', 'error')
+        return
+      }
+    }
+    try {
+      await deleteReport(report.publicRef)
+    } catch (err: unknown) {
+      console.warn('Failed to cleanup local report cache after withdraw', err)
+    }
+    setWithdrawReport(null)
   }
 
   if (authLoading) {
@@ -674,10 +728,29 @@ export function ProfileTab() {
               onTap={() => {
                 void navigate('/')
               }}
+              {...(WITHDRAWABLE_STATUSES.has(report.status)
+                ? {
+                    onWithdraw: () => {
+                      setWithdrawReport(report)
+                    },
+                  }
+                : {})}
             />
           ))
         )}
       </div>
+
+      <DeleteSheet
+        open={withdrawReport !== null}
+        publicRef={withdrawReport?.publicRef ?? ''}
+        reportType={withdrawReport ? incidentLabel(withdrawReport.reportType) : ''}
+        onConfirm={() => {
+          if (withdrawReport) void handleWithdrawReport(withdrawReport)
+        }}
+        onCancel={() => {
+          setWithdrawReport(null)
+        }}
+      />
 
       {/* Sign out */}
       <div className="mx-4 mt-5 pt-5 border-t border-surface-200 pb-2 flex justify-center">

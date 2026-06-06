@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-06 - Audit-Preserving Actions + Dispatch UX
+
+- Implemented Option B semantics for citizen report deletion: citizens now withdraw unverified reports from Map/Profile, while the backend preserves the report, private/contact/lookup audit trail, and records `cancelReason: citizen_withdrew`.
+- Made Admin Desktop action notifications centered and more prominent, renamed official-alert delete affordances to retire/restore, and wired responder account creation into Dispatch through the existing `createResponder` callable.
+- Added Citizen foreground alert and responder-on-way modal notifications, kept verified situation updates visible in Feed for 24 hours, and replaced the responder dispatch state list with an accessible progress ring.
+- Verification: red-first targeted tests failed on the missing behaviors, then Admin/Citizen/Responder typecheck + lint passed; focused Admin/Citizen/Responder tests passed; Functions typecheck/lint/build passed under Node 22; `cancel-report-by-citizen` ran under Firestore + RTDB emulators with 8 passing tests.
+
 ## 2026-06-06 - Declare Alert Modal Policy Extraction
 
 - Started the targeted refactor pass with the oversized Admin Desktop `DeclareAlertModal`: extracted pure form policy for default sectors, validation, and callable payload construction into `declare-alert-form.ts` without changing the modal UI or page callers.

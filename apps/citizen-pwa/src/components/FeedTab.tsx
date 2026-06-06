@@ -1,4 +1,4 @@
-import { useEffect, useState, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useState, type SyntheticEvent } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -185,6 +185,7 @@ const MUNICIPALITY_OPTIONS: { value: string; label: string }[] = [
 ]
 
 const POST_MUNICIPALITY_OPTIONS = MUNICIPALITY_OPTIONS.filter((option) => option.value)
+const PUBLIC_REPORT_FEED_WINDOW_MS = 24 * 60 * 60 * 1000
 const MUNICIPALITY_LABEL_TO_ID = Object.fromEntries(
   CAMARINES_NORTE_MUNICIPALITIES.map((municipality) => [municipality.label, municipality.id]),
 )
@@ -609,6 +610,14 @@ export function FeedTab() {
   const firebaseConfigured = hasFirebaseConfig()
   const { navigatorOnline } = useOnlineStatus()
   const { updates, loading, error, lastUpdatedAt, retry } = useSituationUpdates(filters)
+  const visibleUpdates = useMemo(
+    () =>
+      updates.filter((update) => {
+        const age = feedClock - update.createdAt
+        return Number.isFinite(age) && age >= 0 && age <= PUBLIC_REPORT_FEED_WINDOW_MS
+      }),
+    [feedClock, updates],
+  )
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -730,7 +739,7 @@ export function FeedTab() {
             <p className="m-0 mb-1 font-bold">Could not load situation updates</p>
             <p className="m-0 text-xs">Hindi makuha ang mga update. Subukan ulit.</p>
           </div>
-        ) : updates.length === 0 ? (
+        ) : visibleUpdates.length === 0 ? (
           <div
             role="status"
             aria-live="polite"
@@ -752,14 +761,14 @@ export function FeedTab() {
           </div>
         ) : (
           <>
-            <CommunityPulse updates={updates} />
+            <CommunityPulse updates={visibleUpdates} />
             <div role="feed" aria-label="Community situation feed">
-              {updates.map((update, index) => (
+              {visibleUpdates.map((update, index) => (
                 <FeedCard
                   key={update.id}
                   update={update}
                   position={index + 1}
-                  setSize={updates.length}
+                  setSize={visibleUpdates.length}
                   reporting={reportingId === update.id}
                   onReport={() => {
                     void handleReport(update.id)

@@ -54,6 +54,7 @@
 ## Citizen PWA / Offline
 
 - Citizen-visible data needs backend-enforced visibility. Alerts and situation posts carry `visibility`; Citizen queries only read public docs; admin moderation goes through audited callables.
+- Citizen-facing delete copy for disaster reports must mean audit-preserving withdrawal, not hard delete. Keep report/private/contact/lookup records and move the public lifecycle to internal/cancelled with an explicit withdrawal reason.
 - Situation updates are not emergency reports. Keep them separate, short, pseudonymous, public-read, no update/delete, and moderatable.
 - Situation updates need `municipalityId`; labels are display-only.
 - Ethical retention uses situational awareness and lifecycle competence, not streaks, leaderboards, popularity, or pressure to submit.

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './CitizenShell.js'
 
@@ -69,6 +69,14 @@ function renderShell(
   opts?: {
     offline?: boolean
     queueCount?: number
+    alerts?: {
+      id: string
+      title: string
+      body: string
+      severity: 'info' | 'low' | 'medium' | 'high' | 'critical'
+      publishedAt: number
+      publishedBy: string
+    }[]
     activeReports?: {
       publicRef: string
       reportType: string
@@ -92,8 +100,9 @@ function renderShell(
   mockUseMyActiveReports.mockReturnValue({ reports: opts?.activeReports ?? [], loading: false })
   mockUseAlertReadState.mockReturnValue({
     unreadCount: () => 0,
+    markAsRead: vi.fn(),
   })
-  mockUseAlerts.mockReturnValue({ alerts: [] })
+  mockUseAlerts.mockReturnValue({ alerts: opts?.alerts ?? [] })
   mockUseReducedMotion.mockReturnValue(false)
 
   const router = createMemoryRouter(
@@ -167,8 +176,50 @@ describe('CitizenShell', () => {
     expect(screen.getByRole('button', { name: /active report/i })).toBeInTheDocument()
   })
 
+  it('shows a centered notification when responders are on their way', () => {
+    renderShell('/', {
+      activeReports: [
+        {
+          publicRef: 'a1b2c3d4',
+          reportType: 'flood',
+          severity: 'high',
+          lat: 14.11,
+          lng: 122.95,
+          submittedAt: 1713350400000,
+          status: 'assigned',
+          municipalityLabel: 'Daet',
+        },
+      ],
+    })
+
+    const dialog = screen.getByRole('dialog', { name: /responders are on their way/i })
+    expect(dialog).toHaveTextContent('Flood')
+    expect(dialog.className).toContain('top-1/2')
+  })
+
   it('does not render the status pill when no active reports', () => {
     renderShell('/')
     expect(screen.queryByRole('button', { name: /active report/i })).not.toBeInTheDocument()
+  })
+
+  it('shows a centered modal notification for received alerts', () => {
+    act(() => {
+      renderShell('/', {
+        alerts: [
+          {
+            id: 'alert-1',
+            title: 'Flood Alert',
+            body: 'Responders are on their way to low-lying areas.',
+            severity: 'high',
+            publishedAt: 1713350800000,
+            publishedBy: 'admin-1',
+          },
+        ],
+      })
+    })
+
+    const dialog = screen.getByRole('dialog', { name: /flood alert/i })
+    expect(dialog).toHaveTextContent('Responders are on their way')
+    expect(dialog.className).toContain('top-1/2')
   })
 })

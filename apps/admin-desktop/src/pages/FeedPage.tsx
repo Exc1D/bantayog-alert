@@ -9,6 +9,8 @@ import { ConfirmationModal } from '../components/ConfirmationModal'
 import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { HelpModal } from '../components/HelpModal'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { SuccessBanner } from '../components/SuccessBanner'
+import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
@@ -196,13 +198,19 @@ export default function FeedPage() {
           surface,
           contentId,
           visibility,
-          reason: 'sensitive_content',
+          reason: surface === 'alerts' ? 'other' : 'sensitive_content',
           idempotencyKey: generateIdempotencyKey(),
         }),
       )
       setActionError(null)
       setSuccessMessage(
-        visibility === 'public' ? 'Naibalik sa Citizen PWA.' : 'Naitago sa Citizen PWA.',
+        surface === 'alerts'
+          ? visibility === 'public'
+            ? 'Alert restored to Citizen PWA.'
+            : 'Alert retired from Citizen PWA.'
+          : visibility === 'public'
+            ? 'Naibalik sa Citizen PWA.'
+            : 'Naitago sa Citizen PWA.',
       )
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Visibility update failed')
@@ -215,15 +223,18 @@ export default function FeedPage() {
     }
   }
 
-  useEffect(() => {
-    if (!successMessage) return
-    const timer = setTimeout(() => {
-      setSuccessMessage(null)
-    }, 4000)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [successMessage])
+  // SuccessBanner now owns its own auto-dismiss (4s). FeedPage must NOT
+  // duplicate the timer, otherwise both race to clear successMessage and the
+  // banner may flicker or disappear early.
+  // useEffect(() => {
+  //   if (!successMessage) return
+  //   const timer = setTimeout(() => {
+  //     setSuccessMessage(null)
+  //   }, 4000)
+  //   return () => {
+  //     clearTimeout(timer)
+  //   }
+  // }, [successMessage])
 
   const newReports = useMemo(
     () => feedReports.filter(({ report }) => report.status === 'new'),
@@ -391,30 +402,21 @@ export default function FeedPage() {
             </nav>
 
             {successMessage && (
-              <div
-                className="rounded-lg border border-[var(--color-success)] bg-[var(--color-success)]/10 px-4 py-3 text-sm text-[var(--color-success)]"
-                role="status"
-              >
-                {successMessage}
-              </div>
+              <SuccessBanner
+                message={successMessage}
+                onDismiss={() => {
+                  setSuccessMessage(null)
+                }}
+              />
             )}
 
             {actionError && (
-              <div
-                className="rounded-lg border border-[var(--color-danger)] bg-[var(--color-danger)]/10 px-4 py-3 text-sm text-[var(--color-danger)]"
-                role="alert"
-              >
-                {actionError}
-                <button
-                  onClick={() => {
-                    setActionError(null)
-                  }}
-                  className="ml-3 underline"
-                  aria-label="Dismiss error"
-                >
-                  Dismiss
-                </button>
-              </div>
+              <ActionErrorBanner
+                message={actionError}
+                onDismiss={() => {
+                  setActionError(null)
+                }}
+              />
             )}
             {mediaError && (
               <div
@@ -543,9 +545,9 @@ export default function FeedPage() {
                               }
                             }}
                             className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label={`${isPublic ? 'Hide' : 'Restore'} alert ${alertId}`}
+                            aria-label={`${isPublic ? 'Retire' : 'Restore retired'} alert ${alertId}`}
                           >
-                            {pending ? 'Updating...' : isPublic ? 'Hide' : 'Restore'}
+                            {pending ? 'Updating...' : isPublic ? 'Retire' : 'Restore'}
                           </button>
                         </div>
                       </article>

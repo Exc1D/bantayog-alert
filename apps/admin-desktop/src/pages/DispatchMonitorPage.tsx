@@ -37,6 +37,7 @@ export function DispatchMonitorPage() {
   const [isDispatching, setIsDispatching] = useState(false)
   const [dispatchError, setDispatchError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [creatingResponder, setCreatingResponder] = useState(false)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
@@ -107,6 +108,31 @@ export function DispatchMonitorPage() {
       setDispatchError(message)
     } finally {
       setIsDispatching(false)
+    }
+  }
+
+  const handleCreateResponder = async (input: {
+    displayName: string
+    phone: string
+    agencyId: string
+    municipalityId?: string
+    specializations?: string[]
+  }) => {
+    setCreatingResponder(true)
+    setDispatchError(null)
+    const idempotencyKey = generateIdempotencyKey()
+    try {
+      await withRetry(() =>
+        callables.createResponder({
+          ...input,
+          idempotencyKey,
+        }),
+      )
+      setSuccessMessage('Responder account created')
+    } catch (err) {
+      setDispatchError(err instanceof Error ? err.message : 'Responder account creation failed')
+    } finally {
+      setCreatingResponder(false)
     }
   }
 
@@ -239,7 +265,11 @@ export function DispatchMonitorPage() {
 
           <DispatchLifecycleTable rows={rows} highlightDispatchId={highlightDispatchId} />
 
-          <ResponderAvailabilityPanel responders={responders} />
+          <ResponderAvailabilityPanel
+            responders={responders}
+            onCreateResponder={handleCreateResponder}
+            creatingResponder={creatingResponder}
+          />
         </div>
       </main>
 
