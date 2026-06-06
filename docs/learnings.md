@@ -76,8 +76,9 @@
 - Admin responder presence must use the freshest activity timestamp available (`lastSeenAt`, `lastTelemetryAt`, or availability `updatedAt`). Availability changes can be newer than telemetry, and using only `lastSeenAt` makes a just-available responder look Away.
 - Admin map triage controls must mirror backend report transitions; visible no-op command-center actions are P0 UX defects.
 - Admin dashboard widgets must end in an operator action. Report lifecycle counts should expose the next valid backend transition or deep-link to the Map/Feed surface that owns it.
+- Dashboard report commands should stay narrow: advance `new` to review, verify `awaiting_verify`, deep-link verified reports to Map dispatch, and leave rejection or scrubbed publication to Feed.
+- Do not subscribe Admin Map to RTDB `responder_locations` parent reads. Rules deny that path; use scoped Firestore responder roster data unless a scoped child GPS listener is explicitly implemented.
 - Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
-- Admin Map must not subscribe to RTDB parent paths such as `responder_locations`; existing rules only allow scoped child reads, so parent listeners surface false permission-denied banners during dispatch.
 - Mode/state precedence: actionable states such as surge win over data-quality states such as degraded.
 - Lease monitors with `monitorLeaseAt` plus expiry, and add circuit breakers for oversized query results.
 
@@ -94,6 +95,7 @@
 - E2E jobs with fresh checkouts must build workspace package `lib` outputs before Vite starts; `needs: build` does not carry artifacts automatically.
 - Pre-auth E2E readiness should hit explicit login routes; protected roots can linger on auth-loading spinners.
 - Callable tests should assert runtime client codes such as `not-found`, not internal enum names.
+- Passing tests with noisy stderr are not clean. Wrap async hook tails, fake timer advancement, and synthetic event/message delivery in `act(...)`; wiring tests should mock unrelated polling hooks so they do not probe offline emulators.
 - Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
 
 ## React / TypeScript
@@ -110,6 +112,7 @@
 - Use `catch (err: unknown)` and narrow. Avoid `any`, `@ts-ignore`, and `_`-prefixed unused catch variables.
 - Type assertions are expected at callable boundaries where `req.auth.token` values enter typed interfaces.
 - Schema union changes, such as `dispatchStatusSchema`, require downstream rebuilds.
+- For oversized modal refactors, extract pure policy first (defaults, validation, payload builders) and prove it with focused tests before moving JSX or caller workflows.
 
 ## UX / A11y
 

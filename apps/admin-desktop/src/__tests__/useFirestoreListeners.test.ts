@@ -3,12 +3,10 @@ import { renderHook, waitFor } from '@testing-library/react'
 
 const mockUnsubscribe = vi.hoisted(() => vi.fn())
 const mockOnSnapshot = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
-const mockOnValue = vi.hoisted(() => vi.fn().mockReturnValue(mockUnsubscribe))
 const mockCollection = vi.hoisted(() => vi.fn().mockReturnValue({}))
 const mockDoc = vi.hoisted(() => vi.fn().mockReturnValue({}))
 const mockQuery = vi.hoisted(() => vi.fn().mockImplementation((ref) => ref))
 const mockWhere = vi.hoisted(() => vi.fn().mockReturnValue({}))
-const mockRef = vi.hoisted(() => vi.fn().mockReturnValue({}))
 const useAuthMock = vi.hoisted(() =>
   vi.fn().mockReturnValue({
     user: { uid: 'super-1' },
@@ -25,11 +23,6 @@ vi.mock('firebase/firestore', () => ({
   where: mockWhere,
 }))
 
-vi.mock('firebase/database', () => ({
-  ref: mockRef,
-  onValue: mockOnValue,
-}))
-
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: useAuthMock,
 }))
@@ -37,7 +30,6 @@ vi.mock('@bantayog/shared-ui', () => ({
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 
 const mockDb = {} as never
-const mockRtdb = {} as never
 
 describe('useFirestoreListeners', () => {
   beforeEach(() => {
@@ -47,27 +39,26 @@ describe('useFirestoreListeners', () => {
 
   it('initializes with loading state', () => {
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
     expect(result.current.loading).toBe(true)
   })
 
   it('sets up dashboard listeners on mount', () => {
-    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }))
+    renderHook(() => useFirestoreListeners({ windowType: 'dashboard', db: mockDb }))
     // Dashboard: reports, report_ops, alerts, situation_updates = 4 onSnapshot calls
     expect(mockOnSnapshot).toHaveBeenCalledTimes(4)
   })
 
   it('sets up map listeners on mount', () => {
-    renderHook(() => useFirestoreListeners({ windowType: 'map', db: mockDb, rtdb: mockRtdb }))
-    // Map: reports, report_ops, alerts, situation_updates, responder roster = 5 onSnapshot + RTDB locations.
+    renderHook(() => useFirestoreListeners({ windowType: 'map', db: mockDb }))
+    // Map: reports, report_ops, alerts, situation_updates, responder roster = 5 Firestore listeners.
     expect(mockOnSnapshot).toHaveBeenCalledTimes(5)
-    expect(mockOnValue).toHaveBeenCalled()
   })
 
   it('includes reportOps and alerts in dashboard result', async () => {
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
     await waitFor(() => {
       expect(result.current.reportOps).toBeDefined()
@@ -77,7 +68,7 @@ describe('useFirestoreListeners', () => {
 
   it('unsubscribes all listeners on unmount', () => {
     const { unmount } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
     unmount()
     expect(mockUnsubscribe).toHaveBeenCalledTimes(4)
@@ -90,7 +81,7 @@ describe('useFirestoreListeners', () => {
     })
 
     const { result } = renderHook(() =>
-      useFirestoreListeners({ windowType: 'dashboard', db: mockDb, rtdb: mockRtdb }),
+      useFirestoreListeners({ windowType: 'dashboard', db: mockDb }),
     )
 
     await waitFor(() => {

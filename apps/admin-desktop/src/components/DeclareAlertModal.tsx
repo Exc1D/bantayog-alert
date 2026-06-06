@@ -4,6 +4,13 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
 import { callables } from '../services/callables'
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { getBarangayGazetteer } from '@bantayog/shared-sms-parser'
+import {
+  buildDeclareAlertPayload,
+  defaultSectorsForHazardType,
+  REQUIRES_EFFECTIVE_PERIOD,
+  SHOWS_ROAD_NAME,
+  validateDeclareAlertForm,
+} from './declare-alert-form'
 
 // Map municipality ID to label
 const MUNICIPALITY_ID_TO_LABEL = Object.fromEntries(
@@ -124,16 +131,6 @@ const SECTOR_LABELS: Record<string, string> = {
 
 const SECTOR_TYPES = Object.keys(SECTOR_LABELS)
 
-const REQUIRES_EFFECTIVE_PERIOD = new Set([
-  'scheduled_power_interruption',
-  'class_suspension',
-  'work_suspension',
-  'transport_suspension',
-  'curfew',
-])
-
-const SHOWS_ROAD_NAME = new Set(['road_closure', 'bridge_closure'])
-
 function formatShortList(items: string[]): string {
   if (items.length <= 3) return items.join(', ')
   return `${items.slice(0, 3).join(', ')} +${String(items.length - 3)} more`
@@ -237,13 +234,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
 
   const handleHazardTypeChange = useCallback((type: string) => {
     setHazardType(type)
-    if (type === 'class_suspension') {
-      setSelectedSectors(new Set(['public_schools', 'private_schools']))
-    } else if (type === 'work_suspension') {
-      setSelectedSectors(new Set(['government_offices', 'private_business']))
-    } else {
-      setSelectedSectors(new Set())
-    }
+    setSelectedSectors(defaultSectorsForHazardType(type))
     if (!SHOWS_ROAD_NAME.has(type)) {
       setRoadName('')
     }
@@ -329,25 +320,15 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
   )
 
   const validationErrors = useMemo(() => {
-    const errors: Record<string, string> = {}
-    if (!hazardType) errors.hazardType = 'Select an alert type'
-    if (selectedMunicipalityIds.size === 0)
-      errors.municipalities = 'Select at least one municipality'
-    if (REQUIRES_EFFECTIVE_PERIOD.has(hazardType)) {
-      if (!effectiveFrom) errors.effectiveFrom = 'Start time is required for this alert type'
-      if (!effectiveUntil) errors.effectiveUntil = 'End time is required for this alert type'
-    }
-    if (effectiveFrom && effectiveUntil) {
-      if (new Date(effectiveUntil).getTime() <= new Date(effectiveFrom).getTime()) {
-        errors.effectiveUntil = 'End time must be after start time'
-      }
-    }
-    if (SHOWS_ROAD_NAME.has(hazardType) && !roadName.trim()) {
-      errors.roadName = 'Road name is required for this alert type'
-    }
-    if (!message.trim()) errors.message = 'Message is required'
-    return errors
-  }, [hazardType, selectedMunicipalityIds.size, effectiveFrom, effectiveUntil, roadName, message])
+    return validateDeclareAlertForm({
+      hazardType,
+      selectedMunicipalityIds,
+      message,
+      effectiveFrom,
+      effectiveUntil,
+      roadName,
+    })
+  }, [hazardType, selectedMunicipalityIds, effectiveFrom, effectiveUntil, roadName, message])
 
   const isValid = Object.keys(validationErrors).length === 0
 
@@ -377,22 +358,18 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
     setSubmitError(null)
     setSubmitting(true)
     try {
-      const payload = {
+      const payload = buildDeclareAlertPayload({
         hazardType,
-        affectedMunicipalityIds: Array.from(selectedMunicipalityIds),
-        message: message.trim(),
-        ...(prefill?.reportId ? { reportId: prefill.reportId } : {}),
-        ...(effectiveFrom ? { effectiveFrom: new Date(effectiveFrom).getTime() } : {}),
-        ...(effectiveUntil ? { effectiveUntil: new Date(effectiveUntil).getTime() } : {}),
-        ...(expectedResolutionAt
-          ? { expectedResolutionAt: new Date(expectedResolutionAt).getTime() }
-          : {}),
-        ...(selectedSectors.size > 0 ? { affectedSectors: Array.from(selectedSectors) } : {}),
-        ...(selectedBarangayIds.size > 0
-          ? { affectedBarangayIds: Array.from(selectedBarangayIds) }
-          : {}),
-        ...(roadName.trim() ? { roadName: roadName.trim() } : {}),
-      }
+        selectedMunicipalityIds,
+        message,
+        effectiveFrom,
+        effectiveUntil,
+        expectedResolutionAt,
+        selectedSectors,
+        selectedBarangayIds,
+        roadName,
+        reportId: prefill?.reportId,
+      })
       const result = await callables.declareAlert(payload)
       onSuccess(result.alertId)
       onClose()

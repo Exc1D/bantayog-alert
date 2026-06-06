@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-06-06 - Declare Alert Modal Policy Extraction
+
+- Started the targeted refactor pass with the oversized Admin Desktop `DeclareAlertModal`: extracted pure form policy for default sectors, validation, and callable payload construction into `declare-alert-form.ts` without changing the modal UI or page callers.
+- Verification: red-first helper test failed on the missing module, then the helper/modal-focused tests, Admin Desktop typecheck, and Admin Desktop lint passed.
+
+## 2026-06-05 - Simplicity Audit + Dashboard Command Queue Completion
+
+- Ran the first no-code simplicity audit pass: package consolidation is still a standalone refactor candidate, but the highest-confidence simplification was the admin Dashboard workflow gap, not deleting packages.
+- Completed the Dashboard report command queue against existing callables and surfaces: new reports can be sent to review, reviewed reports can be verified, verified reports deep-link to `/map?reportId=...`, rejection stays Feed-owned, and responder assignment stays Map-owned.
+- Fixed the browser-discovered Admin Map permission banner by removing the denied RTDB `responder_locations` parent listener; Map dispatch now uses the scoped Firestore responder roster.
+- Verification: red-first Dashboard ops and listener tests failed on the missing queue / denied RTDB parent listener, then passed with `dashboard-redispatch`; Admin Desktop lint/typecheck, root lint/typecheck/test, and live Citizen/Admin/Responder browser smoke pass.
+- Cleaned up the Admin Desktop full-suite warning noise: async hook tests now settle updates inside `act(...)`, cross-window message delivery is wrapped in `act(...)`, and the dashboard Firestore wiring test no longer mounts real ops metrics against the Functions emulator.
+
 ## 2026-06-05 - Admin Responder Presence Correction
 
 - Fixed the admin roster status mismatch where a responder who had just set themselves Available could still appear Away because Admin Desktop derived presence only from stale `lastSeenAt`.
