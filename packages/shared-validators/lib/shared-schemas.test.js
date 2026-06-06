@@ -6,7 +6,7 @@ import { rateLimitDocSchema } from './rate-limits.js';
 import { idempotencyKeyDocSchema } from './idempotency-keys.js';
 import { deadLetterDocSchema } from './dead-letters.js';
 import { alertDocSchema } from './alerts-emergencies.js';
-import { hazardZoneDocSchema as exportedHazardZoneDocSchema, } from './index.js';
+import { hazardZoneDocSchema as exportedHazardZoneDocSchema } from './index.js';
 import * as exportedValidators from './index.js';
 import * as hazardSchemas from './hazard.js';
 const ts = 1713350400000;
