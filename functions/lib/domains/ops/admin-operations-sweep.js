@@ -57,55 +57,6 @@ export async function adminOperationsSweepCore(db, deps) {
             }
         });
     }
-    // Shift handoff escalation: pending > 30min with no escalatedAt
-    const pendingHandoffs = await db
-        .collection('shift_handoffs')
-        .where('status', '==', 'pending')
-        .where('createdAt', '<', cutoff)
-        .where('escalatedAt', '==', null)
-        .get();
-    const toEscalateHandoffs = pendingHandoffs.docs;
-    for (let i = 0; i < toEscalateHandoffs.length; i += BATCH_SIZE) {
-        const batch = toEscalateHandoffs.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(batch.map(async (d) => {
-            const outcome = await db.runTransaction(async (tx) => {
-                const latest = await tx.get(d.ref);
-                const latestData = latest.data();
-                if (latestData?.status === 'pending' && latestData.escalatedAt == null) {
-                    tx.update(d.ref, { escalatedAt: deps.now.toMillis() });
-                    return { id: d.id, action: 'escalated' };
-                }
-                return { id: d.id, action: 'skipped' };
-            });
-            if (outcome.action === 'escalated') {
-                log({
-                    severity: 'INFO',
-                    code: 'sweep.handoff.escalated',
-                    message: `Escalated handoff ${outcome.id}`,
-                });
-            }
-            else {
-                log({
-                    severity: 'INFO',
-                    code: 'sweep.handoff.skipped',
-                    message: `Skipped handoff ${outcome.id}`,
-                });
-            }
-        }));
-        results.forEach((result, idx) => {
-            if (result.status === 'rejected') {
-                const doc = batch[idx];
-                if (!doc)
-                    return;
-                log({
-                    severity: 'ERROR',
-                    code: 'sweep.handoff.escalate_failed',
-                    message: `Failed to escalate handoff ${doc.id}: ${String(result.reason)}`,
-                    data: { docId: doc.id, error: String(result.reason) },
-                });
-            }
-        });
-    }
 }
 export const adminOperationsSweep = onSchedule({ schedule: 'every 10 minutes', region: 'asia-southeast1', timeoutSeconds: 120 }, async () => {
     try {

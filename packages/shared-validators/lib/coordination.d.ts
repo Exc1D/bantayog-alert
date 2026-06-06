@@ -63,35 +63,7 @@ export declare const commandChannelMessageDocSchema: z.ZodObject<{
     createdAt: z.ZodNumber;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
-export declare const shiftHandoffDocSchema: z.ZodObject<{
-    fromUid: z.ZodString;
-    toUid: z.ZodOptional<z.ZodString>;
-    municipalityId: z.ZodString;
-    activeIncidentSnapshot: z.ZodArray<z.ZodString>;
-    notes: z.ZodString;
-    status: z.ZodEnum<{
-        pending: "pending";
-        accepted: "accepted";
-        expired: "expired";
-    }>;
-    createdAt: z.ZodNumber;
-    acceptedAt: z.ZodOptional<z.ZodNumber>;
-    escalatedAt: z.ZodOptional<z.ZodNumber>;
-    expiresAt: z.ZodNumber;
-    schemaVersion: z.ZodNumber;
-}, z.core.$strict>;
-export declare const fieldModeSessionDocSchema: z.ZodObject<{
-    uid: z.ZodString;
-    municipalityId: z.ZodString;
-    enteredAt: z.ZodNumber;
-    expiresAt: z.ZodNumber;
-    exitedAt: z.ZodOptional<z.ZodNumber>;
-    isActive: z.ZodBoolean;
-    schemaVersion: z.ZodNumber;
-}, z.core.$strict>;
 export type AgencyAssistanceRequestDoc = z.infer<typeof agencyAssistanceRequestDocSchema>;
 export type CommandChannelThreadDoc = z.infer<typeof commandChannelThreadDocSchema>;
 export type CommandChannelMessageDoc = z.infer<typeof commandChannelMessageDocSchema>;
-export type ShiftHandoffDoc = z.infer<typeof shiftHandoffDocSchema>;
-export type FieldModeSessionDoc = z.infer<typeof fieldModeSessionDocSchema>;
 //# sourceMappingURL=coordination.d.ts.map

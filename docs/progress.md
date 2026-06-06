@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-06-06 - Retired Feature Residue Removal
+
+- Removed the approved dead backend/admin surfaces for field mode, shift handoff, data incident declaration/events, provincial resources, command-channel manual message posting, and the retired dispatch timeout sweep from source exports, Admin callable wrappers, direct tests, and scheduled sweep code.
+- Removed PAGASA hazard signal validator contracts while preserving hazard-zone reference/custom zone schemas, and removed the stale `breakGlassSession` shared auth claim.
+- Removed retired Firestore rules/index entries for `field_mode_sessions`, `shift_handoffs`, `incident_response_events`, `data_incidents`, and `provincial_resources`; kept command-channel collection rules because report sharing and agency assistance still use those records.
+- Cleaned operator-facing runbooks and monitoring so degraded-mode, restore, Track 3 cutover, and logging metrics no longer instruct operators to use retired SMS/NDRRMC/PAGASA/break-glass paths.
+- Remaining Admin callable wrappers with no Admin Desktop source reference after this sweep: `cancelDispatch`, `closeReport`, `shareReport`, `mergeDuplicates`, `acceptAgencyAssistance`, `declineAgencyAssistance`, `suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride`, `setRetentionExempt`, `setErasureLegalHold`, `approveErasureRequest`, `toggleMutualAidVisibility`, `suspendUser`, `revokeUser`, `resetUserTotp`, `requestAgencyAssistance`, `listScopedOperationsMap`, `createUser`, `reopenReport`. These need a product decision: wire UI, document backend-only use, or retire.
+
 ## 2026-06-06 - Audit-Preserving Actions + Dispatch UX
 
 - Implemented Option B semantics for citizen report deletion: citizens now withdraw unverified reports from Map/Profile, while the backend preserves the report, private/contact/lookup audit trail, and records `cancelReason: citizen_withdrew`.

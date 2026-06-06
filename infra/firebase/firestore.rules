@@ -308,15 +308,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /field_mode_sessions/{sessionUid} {
-      allow read: if isAuthed() && (request.auth.uid == sessionUid || isSuperadmin());
-      allow write: if isAuthed()
-                   && request.auth.uid == sessionUid
-                   && request.resource.data.uid == sessionUid
-                   && isActivePrivileged()
-                   && !isSuperadmin();
-    }
-
     match /report_notes/{n} {
       allow read: if isActivePrivileged()
                   && (isMuniAdmin() || isAgencyAdmin() || isSuperadmin());
@@ -525,11 +516,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /incident_response_events/{id} {
-      allow read: if isSuperadmin() && isActivePrivileged();
-      allow write: if false;
-    }
-
     match /report_events/{eventId} {
       allow read: if canReadEventDoc(resource.data);
       allow write: if false;
@@ -542,8 +528,7 @@ service cloud.firestore {
 
     // ================================================================
     // Phase 2: coordination — agency_assistance_requests,
-    // command_channel_threads, command_channel_messages,
-    // shift_handoffs.
+    // command_channel_threads, command_channel_messages.
     // ================================================================
 
     match /agency_assistance_requests/{requestId} {
@@ -569,14 +554,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /shift_handoffs/{handoffId} {
-      allow read: if isActivePrivileged()
-                  && (request.auth.uid == resource.data.fromUid
-                      || request.auth.uid == resource.data.toUid
-                      || isSuperadmin());
-      allow write: if false;
-    }
-
     // ================================================================
     // Phase 2: hazard zones — read-only reference and custom flood zones
     // ================================================================
@@ -597,19 +574,8 @@ service cloud.firestore {
     }
 
     // ================================================================
-    // Phase 7: data incidents, provincial resources, erasure requests,
-    // system health.
+    // Phase 7: erasure requests and system health.
     // ================================================================
-
-    match /data_incidents/{id} {
-      allow read: if isSuperadmin() && isActivePrivileged();
-      allow write: if false;
-    }
-
-    match /provincial_resources/{id} {
-      allow read: if isAuthed();
-      allow write: if false;
-    }
 
     match /erasure_requests/{id} {
       allow create: if isAuthed()

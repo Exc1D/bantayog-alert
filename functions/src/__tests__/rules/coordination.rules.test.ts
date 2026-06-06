@@ -70,25 +70,6 @@ describe('coordination collections rules', () => {
     })
   })
 
-  describe('shift_handoffs', () => {
-    itif(!!env)('shift handoffs are callable-only reads', async () => {
-      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
-      await assertFails(getDocs(collection(db, 'shift_handoffs')))
-    })
-
-    itif(!!env)('shift handoffs are callable-only writes', async () => {
-      const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))
-      await assertFails(
-        addDoc(collection(db, 'shift_handoffs'), {
-          municipalityId: 'daet',
-          fromResponderUid: 'resp-1',
-          toResponderUid: 'resp-2',
-          handedOffAt: ts,
-        }),
-      )
-    })
-  })
-
   describe('command_channel_threads (callable)', () => {
     itif(!!env)('command channel threads are callable-only reads', async () => {
       const db = authed(env, 'daet-admin', staffClaims({ role: 'municipal_admin' }))

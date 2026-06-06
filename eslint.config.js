@@ -31,6 +31,8 @@ export default tseslint.config(
       // Playwright e2e tests — isolated from main TS project.
       'apps/admin-desktop/e2e/**',
       'apps/admin-desktop/playwright.config.ts',
+      // shared-types test files — excluded from build tsconfig.
+      'packages/shared-types/**/*.test.ts',
     ],
   },
 

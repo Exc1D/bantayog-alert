@@ -105,40 +105,4 @@ describe('adminOperationsSweep — agency assistance escalation', () => {
         expect(snap.data()?.escalatedAt).toBe(originalEscalatedAt); // unchanged
     });
 });
-describe('adminOperationsSweep — shift handoff escalation', () => {
-    itif(available)('ignores handoffs pending less than 30 minutes', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
-            await setDoc(doc(ctx.firestore(), 'shift_handoffs', 'h1'), {
-                fromUid: 'admin-1',
-                municipalityId: 'daet',
-                notes: '',
-                activeIncidentSnapshot: [],
-                status: 'pending',
-                createdAt: ts - THIRTY_MIN_MS + 60000,
-                expiresAt: ts + 1800000,
-                escalatedAt: null,
-            });
-        });
-        await adminOperationsSweepCore(adminDb, { now: Timestamp.fromMillis(ts) });
-        const snap = await adminDb.collection('shift_handoffs').doc('h1').get();
-        expect(snap.data()?.escalatedAt).toBeNull();
-    });
-    itif(available)('sets escalatedAt on handoffs pending over 30 minutes', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
-            await setDoc(doc(ctx.firestore(), 'shift_handoffs', 'h1'), {
-                fromUid: 'admin-1',
-                municipalityId: 'daet',
-                notes: '',
-                activeIncidentSnapshot: [],
-                status: 'pending',
-                createdAt: ts - THIRTY_MIN_MS - 1,
-                expiresAt: ts + 1800000,
-                escalatedAt: null,
-            });
-        });
-        await adminOperationsSweepCore(adminDb, { now: Timestamp.fromMillis(ts) });
-        const snap = await adminDb.collection('shift_handoffs').doc('h1').get();
-        expect(snap.data()?.escalatedAt).toBe(ts);
-    });
-});
 //# sourceMappingURL=admin-operations-sweep.test.js.map

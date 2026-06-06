@@ -14,7 +14,7 @@
 - [ ] All Track 2 exit gates confirmed green
 - [ ] BFP pilot responder scheduled and briefed on drill scenario
 - [ ] PDRRMO Director confirmed available for Step 7 signoff
-- [ ] Globe Labs keyword confirmation received. Date: \_\_\_
+- [ ] Citizen PWA public intake test account and test location confirmed
 - [ ] Pilot-launch statement: pre-approved template printed and ready to sign
 - [ ] Rollback commands tested in staging (git checkout v1.0.0-pilot, firebase hosting rollback)
 - [ ] pilot-staff-manifest.csv prepared with 3+ MDRRMO + 10+ BFP accounts
@@ -103,21 +103,24 @@ Rollback: `firebase hosting:channel:rollback live --project bantayog-alert`
 
 ---
 
-## Step 5 — Activate Globe Labs SMS keyword
+## Step 5 — Confirm public report intake
 
-Send one test SMS from a non-staff number: `BANTAYOG TEST`
+Submit one non-emergency test report through the Citizen PWA using the approved pilot
+test account and test location.
 
 Confirm:
 
-- Message appears in prod sms_inbox collection
-- Auto-reply is received on the test device
+- Report appears in the Admin Feed/Map for the target municipality
+- Public reference and lookup path are created
+- Test report is closed or withdrawn before proceeding
 
-This is the operational point of no return for SMS.
+This confirms the public intake path without relying on retired keyword routing.
 
-If Globe Labs confirmation was not received: halt here. Proceed through Steps 6 and 7,
-note SMS deferral in pilot-launch statement signature block.
+If the report does not appear within the expected window, halt here and investigate
+the Citizen PWA, Firestore, and Functions health checks.
 
-Rollback: deactivate keyword via Globe Labs portal. Treat as irreversible within the session.
+Rollback: close or withdraw the test report and record the public reference in the
+cutover log.
 
 ---
 
@@ -184,7 +187,7 @@ Update docs/progress.md:
 - [ ] Runbook fidelity check passed; no new gaps found
 - [ ] All pilot staff accounts provisioned; status log committed
 - [ ] Public URL live; privacy notice renders correctly in fresh browser
-- [ ] SMS keyword active (or deferral noted in pilot-launch statement)
+- [ ] Public report intake confirmed via Citizen PWA test submission
 - [ ] First report confirmed resolved in prod; SLO baseline measurements recorded
 - [ ] PDRRMO Director signature obtained; signed PDF filed at docs/pilot-launch-statement-signed.pdf
 - [ ] 30-day clock start time recorded in docs/progress.md
