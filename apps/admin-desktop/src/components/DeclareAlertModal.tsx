@@ -2,8 +2,6 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { X, AlertTriangle } from 'lucide-react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { callables } from '../services/callables'
-import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
-import { getBarangayGazetteer } from '@bantayog/shared-sms-parser'
 import {
   buildDeclareAlertPayload,
   defaultSectorsForHazardType,
@@ -11,130 +9,21 @@ import {
   SHOWS_ROAD_NAME,
   validateDeclareAlertForm,
 } from './declare-alert-form'
-
-// Map municipality ID to label
-const MUNICIPALITY_ID_TO_LABEL = Object.fromEntries(
-  CAMARINES_NORTE_MUNICIPALITIES.map((m) => [m.id, m.label]),
-)
-
-// Map municipality label to ID
-const MUNICIPALITY_LABEL_TO_ID = Object.fromEntries(
-  CAMARINES_NORTE_MUNICIPALITIES.map((m) => [m.label, m.id]),
-)
-
-// Build barangays by municipality ID
-const BARANGAYS_BY_MUNICIPALITY: Record<string, string[]> = {}
-const gazetteer = getBarangayGazetteer()
-for (const b of gazetteer) {
-  const municipalityId = MUNICIPALITY_LABEL_TO_ID[b.municipality]
-  if (municipalityId) {
-    BARANGAYS_BY_MUNICIPALITY[municipalityId] ??= []
-    BARANGAYS_BY_MUNICIPALITY[municipalityId].push(b.name)
-  }
-}
-
-// Hazard type labels
-const HAZARD_TYPE_LABELS: Record<string, string> = {
-  tropical_cyclone: 'Tropical Cyclone (Typhoon)',
-  heavy_rainfall_warning: 'Heavy Rainfall Warning',
-  thunderstorm_advisory: 'Thunderstorm Advisory',
-  flood_advisory: 'Flood Advisory / Warning',
-  storm_surge_warning: 'Storm Surge Warning',
-  gale_warning: 'Gale Warning',
-  heat_index_warning: 'Heat Index Warning',
-  cold_surge_advisory: 'Cold Surge Advisory',
-  earthquake: 'Earthquake',
-  volcanic_eruption: 'Volcanic Eruption / Activity',
-  landslide: 'Landslide',
-  tsunami_warning: 'Tsunami Warning',
-  drought: 'Drought / Dry Spell',
-  fire: 'Fire (Structural / Forest / Grass)',
-  scheduled_power_interruption: 'Scheduled Power Interruption',
-  emergency_power_interruption: 'Emergency Power Interruption',
-  water_service_interruption: 'Water Service Interruption',
-  road_closure: 'Road Closure',
-  bridge_closure: 'Bridge Closure',
-  telecommunication_outage: 'Telecommunication Outage',
-  structural_damage: 'Structural / Building Damage',
-  class_suspension: 'Class Suspension',
-  work_suspension: 'Work Suspension',
-  transport_suspension: 'Transport Suspension',
-  curfew: 'Curfew',
-  state_of_calamity: 'State of Calamity',
-  preemptive_evacuation: 'Pre-emptive Evacuation',
-  evacuation_order: 'Evacuation Order',
-  security_incident: 'Security Incident',
-  crime_alert: 'Crime Alert',
-  health_advisory: 'Health Advisory',
-  disease_outbreak: 'Disease Outbreak / Epidemic Alert',
-  other: 'Other (specify in message)',
-}
-
-const HAZARD_GROUPS = [
-  {
-    label: 'Weather & Flood',
-    types: [
-      'tropical_cyclone',
-      'heavy_rainfall_warning',
-      'thunderstorm_advisory',
-      'flood_advisory',
-      'storm_surge_warning',
-      'gale_warning',
-      'heat_index_warning',
-      'cold_surge_advisory',
-    ],
-  },
-  {
-    label: 'Geophysical & Natural',
-    types: ['earthquake', 'volcanic_eruption', 'landslide', 'tsunami_warning', 'drought', 'fire'],
-  },
-  {
-    label: 'Utilities & Infrastructure',
-    types: [
-      'scheduled_power_interruption',
-      'emergency_power_interruption',
-      'water_service_interruption',
-      'road_closure',
-      'bridge_closure',
-      'telecommunication_outage',
-      'structural_damage',
-    ],
-  },
-  {
-    label: 'Public Service Orders',
-    types: [
-      'class_suspension',
-      'work_suspension',
-      'transport_suspension',
-      'curfew',
-      'state_of_calamity',
-      'preemptive_evacuation',
-      'evacuation_order',
-    ],
-  },
-  {
-    label: 'Security & Health',
-    types: ['security_incident', 'crime_alert', 'health_advisory', 'disease_outbreak'],
-  },
-  { label: 'Other', types: ['other'] },
-]
-
-const SECTOR_LABELS: Record<string, string> = {
-  public_schools: 'Public Schools',
-  private_schools: 'Private Schools',
-  government_offices: 'Government Offices',
-  private_business: 'Private Business',
-  healthcare: 'Healthcare',
-  transportation: 'Transportation',
-  all: 'All Sectors',
-}
-
-const SECTOR_TYPES = Object.keys(SECTOR_LABELS)
-
-function formatShortList(items: string[]): string {
-  if (items.length <= 3) return items.join(', ')
-  return `${items.slice(0, 3).join(', ')} +${String(items.length - 3)} more`
-}
+import {
+  DeclareAlertSubmitConfirmDialog,
+  DeclareAlertUnsavedChangesDialog,
+} from './declare-alert-dialogs'
+import {
+  ALLOWED_MUNICIPALITY_IDS,
+  BARANGAYS_BY_MUNICIPALITY,
+  HAZARD_GROUPS,
+  HAZARD_TYPE_LABELS,
+  MUNICIPALITIES,
+  MUNICIPALITY_ID_TO_LABEL,
+  SECTOR_LABELS,
+  SECTOR_TYPES,
+  formatShortList,
+} from './declare-alert-options'
 
 interface Props {
   open: boolean
@@ -223,8 +112,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
     setRoadName('')
     const next = new Set<string>()
     if (prefill?.municipalityId) {
-      const allowedIds = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
-      if (allowedIds.has(prefill.municipalityId)) {
+      if (ALLOWED_MUNICIPALITY_IDS.has(prefill.municipalityId)) {
         next.add(prefill.municipalityId)
       }
     }
@@ -333,10 +221,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
   const isValid = Object.keys(validationErrors).length === 0
 
   const selectedMunicipalityLabels = useMemo(
-    () =>
-      CAMARINES_NORTE_MUNICIPALITIES.filter((m) => selectedMunicipalityIds.has(m.id)).map(
-        (m) => m.label,
-      ),
+    () => MUNICIPALITIES.filter((m) => selectedMunicipalityIds.has(m.id)).map((m) => m.label),
     [selectedMunicipalityIds],
   )
   const selectedMunicipalitySummary =
@@ -513,7 +398,7 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
                   role="group"
                   aria-label="Affected Municipalities"
                 >
-                  {CAMARINES_NORTE_MUNICIPALITIES.map((m) => (
+                  {MUNICIPALITIES.map((m) => (
                     <label
                       key={m.id}
                       className="flex cursor-pointer items-center gap-2 rounded border border-white/5 bg-[var(--color-surface)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-white/5"
@@ -806,115 +691,28 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
         </form>
       </div>
       {showSubmitConfirm && (
-        <div
-          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60"
-          role="presentation"
-          onClick={(e) => {
-            if (!submitting && e.target === e.currentTarget) setShowSubmitConfirm(false)
+        <DeclareAlertSubmitConfirmDialog
+          submitting={submitting}
+          alertTypeLabel={alertTypeLabel}
+          selectedMunicipalityLabels={selectedMunicipalityLabels}
+          onGoBack={() => {
+            setShowSubmitConfirm(false)
           }}
-        >
-          <div
-            className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-6 shadow-xl"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="declare-confirm-title"
-            aria-describedby="declare-confirm-copy"
-          >
-            <h2
-              id="declare-confirm-title"
-              className="text-lg font-semibold text-[var(--color-text-primary)]"
-            >
-              Declare public alert?
-            </h2>
-            <p
-              id="declare-confirm-copy"
-              className="mt-2 text-sm text-[var(--color-text-secondary)]"
-            >
-              This publishes an official alert to citizens and responders in the selected scope.
-              Confirm only when the details are ready.
-            </p>
-            <div className="mt-4 space-y-2 rounded-md border border-white/10 bg-[var(--color-surface)] p-3 text-sm">
-              <div>
-                <p className="text-xs uppercase text-[var(--color-text-muted)]">Alert type</p>
-                <p className="font-medium text-[var(--color-text-primary)]">{alertTypeLabel}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase text-[var(--color-text-muted)]">Municipalities</p>
-                <p className="font-medium text-[var(--color-text-primary)]">
-                  {formatShortList(selectedMunicipalityLabels)}
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowSubmitConfirm(false)
-                }}
-                disabled={submitting}
-                className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 disabled:opacity-50"
-              >
-                Go back
-              </button>
-              <button
-                onClick={() => {
-                  void handleSubmit()
-                }}
-                disabled={submitting}
-                className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-4 py-2 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {submitting && (
-                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                )}
-                {submitting ? 'Declaring alert...' : 'Declare public alert'}
-              </button>
-            </div>
-          </div>
-        </div>
+          onSubmit={() => {
+            void handleSubmit()
+          }}
+        />
       )}
       {showUnsavedWarning && (
-        <div
-          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60"
-          role="presentation"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowUnsavedWarning(false)
+        <DeclareAlertUnsavedChangesDialog
+          onKeepEditing={() => {
+            setShowUnsavedWarning(false)
           }}
-        >
-          <div
-            className="w-full max-w-sm rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-6 shadow-xl"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="unsaved-title"
-          >
-            <h2
-              id="unsaved-title"
-              className="text-lg font-semibold text-[var(--color-text-primary)]"
-            >
-              Unsaved Changes
-            </h2>
-            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-              You have unsaved changes in this alert form. Closing will discard them.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowUnsavedWarning(false)
-                }}
-                className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10"
-              >
-                Keep Editing
-              </button>
-              <button
-                onClick={() => {
-                  setShowUnsavedWarning(false)
-                  onClose()
-                }}
-                className="rounded-md bg-[var(--color-danger)] px-4 py-2 text-sm text-white hover:opacity-90"
-              >
-                Discard Changes
-              </button>
-            </div>
-          </div>
-        </div>
+          onDiscard={() => {
+            setShowUnsavedWarning(false)
+            onClose()
+          }}
+        />
       )}
     </div>
   )

@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DeclareAlertModal } from './DeclareAlertModal'
+import { DeclareAlertUnsavedChangesDialog } from './declare-alert-dialogs'
 
 const mockDeclareAlert = vi.hoisted(() => vi.fn())
 
@@ -57,5 +58,19 @@ describe('DeclareAlertModal', () => {
     expect(
       screen.queryByRole('alertdialog', { name: 'Declare public alert?' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('keeps the unsaved changes dialog behavior in a small component', async () => {
+    const user = userEvent.setup()
+    const onKeepEditing = vi.fn()
+    const onDiscard = vi.fn()
+
+    render(<DeclareAlertUnsavedChangesDialog onKeepEditing={onKeepEditing} onDiscard={onDiscard} />)
+
+    await user.click(screen.getByRole('button', { name: 'Keep Editing' }))
+    expect(onKeepEditing).toHaveBeenCalledOnce()
+
+    await user.click(screen.getByRole('button', { name: 'Discard Changes' }))
+    expect(onDiscard).toHaveBeenCalledOnce()
   })
 })
