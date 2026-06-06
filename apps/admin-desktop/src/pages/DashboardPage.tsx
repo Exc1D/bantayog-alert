@@ -63,6 +63,7 @@ export default function DashboardPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDispatching, setIsDispatching] = useState(false)
+  const [verifyingReportIds, setVerifyingReportIds] = useState<Set<string>>(() => new Set())
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
 
   const stalledDispatches = rows
@@ -124,6 +125,17 @@ export default function DashboardPage() {
     [reports],
   )
 
+  const reportCommandQueue = useMemo(
+    () =>
+      reports
+        .map((r) => mapReportDocToReportLoose(r))
+        .filter(
+          (r) => r.status === 'new' || r.status === 'awaiting_verify' || r.status === 'verified',
+        )
+        .slice(0, 6),
+    [reports],
+  )
+
   const navigate = useNavigate()
 
   const handleReDispatch = useCallback((dispatchId: string) => {
@@ -165,6 +177,26 @@ export default function DashboardPage() {
     },
     [navigate],
   )
+
+  const handleVerifyReport = useCallback(async (reportId: string) => {
+    setVerifyingReportIds((prev) => new Set(prev).add(reportId))
+    setActionError(null)
+    try {
+      const result = await withRetry(() =>
+        callables.verifyReport({ reportId, idempotencyKey: generateIdempotencyKey() }),
+      )
+      setSuccessMessage(result.status === 'verified' ? 'Report verified' : 'Report sent to review')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Report verification failed')
+      setSuccessMessage(null)
+    } finally {
+      setVerifyingReportIds((prev) => {
+        const next = new Set(prev)
+        next.delete(reportId)
+        return next
+      })
+    }
+  }, [])
 
   useKeyboardShortcuts([
     {
@@ -307,6 +339,81 @@ export default function DashboardPage() {
                 onReDispatch={handleReDispatch}
                 mode={mode}
               />
+            )}
+            {reportCommandQueue.length > 0 && (
+              <section
+                aria-labelledby="report-command-queue-title"
+                className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
+              >
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <h2
+                      id="report-command-queue-title"
+                      className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-primary)]"
+                    >
+                      Report command queue
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      Send new reports to review. Verify reviewed reports for Map dispatch.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded border border-white/10 px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/5"
+                    onClick={() => {
+                      void navigate('/feed')
+                    }}
+                  >
+                    Review feed
+                  </button>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {reportCommandQueue.map((report) => {
+                    const canAdvance =
+                      report.status === 'new' || report.status === 'awaiting_verify'
+                    const isNewReport = report.status === 'new'
+                    const isVerifying = verifyingReportIds.has(report.id)
+                    return (
+                      <article
+                        key={report.id}
+                        className="rounded border border-white/10 bg-white/5 p-3"
+                      >
+                        <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                          {report.description.trim() || 'Report details pending'}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
+                          {report.municipality || 'Unknown municipality'} ·{' '}
+                          {report.barangay || 'Unknown barangay'}
+                        </p>
+                        <button
+                          type="button"
+                          className="mt-3 rounded bg-[var(--color-carto-blue)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label={
+                            canAdvance
+                              ? isNewReport
+                                ? `Send report ${report.id} to review`
+                                : `Verify report ${report.id}`
+                              : `Dispatch report ${report.id} on map`
+                          }
+                          disabled={canAdvance && isVerifying}
+                          onClick={() => {
+                            if (canAdvance) void handleVerifyReport(report.id)
+                            else void navigate(`/map?reportId=${encodeURIComponent(report.id)}`)
+                          }}
+                        >
+                          {canAdvance
+                            ? isVerifying
+                              ? 'Working...'
+                              : isNewReport
+                                ? 'Send to review'
+                                : 'Verify'
+                            : 'Map dispatch'}
+                        </button>
+                      </article>
+                    )
+                  })}
+                </div>
+              </section>
             )}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
               <div className="space-y-4">

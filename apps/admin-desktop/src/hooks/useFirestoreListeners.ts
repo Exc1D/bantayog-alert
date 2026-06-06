@@ -7,7 +7,7 @@ import {
   type Firestore,
   type Query,
 } from 'firebase/firestore'
-import { ref, onValue, type Database } from 'firebase/database'
+import type { Database } from 'firebase/database'
 import { useAuth } from '@bantayog/shared-ui'
 
 interface Props {
@@ -106,7 +106,7 @@ function snapshotError(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
+export function useFirestoreListeners({ windowType, db }: Props) {
   const { claims, loading: authLoading } = useAuth()
   const role = typeof claims?.role === 'string' ? claims.role : null
   const municipalityId = typeof claims?.municipalityId === 'string' ? claims.municipalityId : null
@@ -302,22 +302,6 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
       )
     }
 
-    // map-only: responder locations (RTDB)
-    if (windowType === 'map' && rtdb) {
-      unsubscribers.push(
-        onValue(
-          ref(rtdb, 'responder_locations'),
-          (snapshot) => {
-            const data = (snapshot.val() ?? {}) as Record<string, unknown>
-            setResponders(Object.entries(data))
-          },
-          (err) => {
-            setError(snapshotError(err))
-          },
-        ),
-      )
-    }
-
     return () => {
       clearTimeout(loadingTimeout)
       if (retryTimerRef.current) {
@@ -328,7 +312,7 @@ export function useFirestoreListeners({ windowType, db, rtdb }: Props) {
         unsub()
       })
     }
-  }, [windowType, db, rtdb, retryCount, role, municipalityId, agencyId, authLoading])
+  }, [windowType, db, retryCount, role, municipalityId, agencyId, authLoading])
 
   return { loading, error, reports, reportOps, alerts, situationUpdates, responders }
 }

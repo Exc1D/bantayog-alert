@@ -31,6 +31,23 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
   }),
 }))
 
+vi.mock('../hooks/useOpsMetrics', () => ({
+  useOpsMetrics: () => ({
+    metrics: {
+      avgAcceptSeconds: 120,
+      fcmSuccessRate: 1,
+      totalDispatches: 0,
+      acceptedCount: 0,
+      declinedCount: 0,
+      escalatedCount: 0,
+      needsAdminCount: 0,
+    },
+    loading: false,
+    error: null,
+    lastPollAt: null,
+  }),
+}))
+
 describe('DashboardPage Firestore wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()

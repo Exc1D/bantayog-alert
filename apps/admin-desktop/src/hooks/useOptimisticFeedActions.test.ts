@@ -2,9 +2,20 @@ import { describe, it, expect, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useOptimisticFeedActions } from '../hooks/useOptimisticFeedActions'
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('useOptimisticFeedActions', () => {
-  it('immediately updates local state before backend resolves', () => {
-    const verifyBackend = vi.fn().mockResolvedValue(undefined)
+  it('immediately updates local state before backend resolves', async () => {
+    const backendDone = createDeferred<undefined>()
+    const verifyBackend = vi.fn(() => backendDone.promise)
     const onSuccess = vi.fn()
 
     const { result } = renderHook(() =>
@@ -15,8 +26,9 @@ describe('useOptimisticFeedActions', () => {
       }),
     )
 
+    let actionPromise: Promise<void> | undefined
     act(() => {
-      void result.current.optimisticVerify('r1')
+      actionPromise = result.current.optimisticVerify('r1')
     })
 
     // Status should immediately change to 'verified'
@@ -24,6 +36,11 @@ describe('useOptimisticFeedActions', () => {
 
     // Backend should have been called
     expect(verifyBackend).toHaveBeenCalledWith('r1')
+
+    await act(async () => {
+      backendDone.resolve(undefined)
+      await actionPromise
+    })
   })
 
   it('rolls back on backend failure', async () => {
@@ -74,8 +91,9 @@ describe('useOptimisticFeedActions', () => {
   })
 
   describe('optimisticUnpublish', () => {
-    it('immediately updates local state before backend resolves', () => {
-      const unpublishBackend = vi.fn().mockResolvedValue(undefined)
+    it('immediately updates local state before backend resolves', async () => {
+      const backendDone = createDeferred<undefined>()
+      const unpublishBackend = vi.fn(() => backendDone.promise)
       const onSuccess = vi.fn()
 
       const { result } = renderHook(() =>
@@ -86,13 +104,19 @@ describe('useOptimisticFeedActions', () => {
         }),
       )
 
+      let actionPromise: Promise<void> | undefined
       act(() => {
-        void result.current.optimisticUnpublish('r1')
+        actionPromise = result.current.optimisticUnpublish('r1')
       })
 
       // Status should immediately change to 'verified'
       expect(result.current.optimisticReports.find((r) => r.id === 'r1')?.status).toBe('verified')
       expect(unpublishBackend).toHaveBeenCalledWith('r1')
+
+      await act(async () => {
+        backendDone.resolve(undefined)
+        await actionPromise
+      })
     })
 
     it('rolls back on backend failure', async () => {

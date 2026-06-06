@@ -1,9 +1,17 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 
 const mockNavigate = vi.fn()
+const mockVerifyReport = vi.hoisted(() =>
+  vi.fn(({ reportId }: { reportId: string }) =>
+    Promise.resolve({
+      status: reportId === 'r-new' ? 'awaiting_verify' : 'verified',
+      reportId,
+    }),
+  ),
+)
 
 function renderWithRouter(ui: React.ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>)
@@ -32,6 +40,12 @@ vi.mock('@bantayog/shared-ui', () => ({
     loading: false,
     claims: { role: 'provincial_superadmin' },
   }),
+}))
+
+vi.mock('../services/callables', () => ({
+  callables: {
+    verifyReport: mockVerifyReport,
+  },
 }))
 
 vi.mock('../hooks/useDispatchLifecycle', () => ({
@@ -105,12 +119,33 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: () => ({
     reports: [
       {
-        id: 'rpt1',
+        id: 'r-new',
+        type: 'flood',
+        severity: 'medium',
+        municipality: 'Daet',
+        barangay: 'Bagasbas',
+        createdAt: Date.now(),
+        description: 'Rising creek',
+        status: 'new',
+      },
+      {
+        id: 'r-awaiting',
         type: 'flood',
         severity: 'high',
         municipality: 'Daet',
         barangay: 'Centro',
         createdAt: Date.now(),
+        description: 'Flooded road',
+        status: 'awaiting_verify',
+      },
+      {
+        id: 'r-verified',
+        type: 'fire',
+        severity: 'critical',
+        municipality: 'Basud',
+        barangay: 'Poblacion',
+        createdAt: Date.now(),
+        description: 'House fire',
         status: 'verified',
       },
     ],
@@ -121,6 +156,11 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
 }))
 
 describe('DashboardPage ops redesign', () => {
+  beforeEach(() => {
+    mockNavigate.mockClear()
+    mockVerifyReport.mockClear()
+  })
+
   it('renders StatusBar metrics', () => {
     renderWithRouter(<DashboardPage />)
     // StatusBar primary metrics in the situation strip
@@ -130,9 +170,57 @@ describe('DashboardPage ops redesign', () => {
     expect(screen.getByTestId('statusbar-stalled')).toBeInTheDocument()
   })
 
-  it('does not render triage queue', () => {
+  it('renders an actionable report command queue', () => {
     renderWithRouter(<DashboardPage />)
-    expect(screen.queryByText('Triage Queue')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Report command queue/i })).toBeInTheDocument()
+    expect(screen.getByText('Rising creek')).toBeInTheDocument()
+    expect(screen.getByText('Flooded road')).toBeInTheDocument()
+    expect(screen.getByText('House fire')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Send report r-new to review/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Verify report r-awaiting/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Dispatch report r-verified on map/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('sends new reports to review from the dashboard queue', async () => {
+    renderWithRouter(<DashboardPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Send report r-new to review/i }))
+
+    await waitFor(() => {
+      expect(mockVerifyReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reportId: 'r-new',
+          idempotencyKey: expect.any(String),
+        }),
+      )
+    })
+    expect(
+      screen.getAllByRole('status').some((el) => el.textContent.includes('Report sent to review')),
+    ).toBe(true)
+  })
+
+  it('verifies awaiting reports from the dashboard queue', async () => {
+    renderWithRouter(<DashboardPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Verify report r-awaiting/i }))
+
+    await waitFor(() => {
+      expect(mockVerifyReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reportId: 'r-awaiting',
+          idempotencyKey: expect.any(String),
+        }),
+      )
+    })
+    expect(
+      screen.getAllByRole('status').some((el) => el.textContent.includes('Report verified')),
+    ).toBe(true)
+  })
+
+  it('opens verified reports on the map for dispatch', () => {
+    renderWithRouter(<DashboardPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Dispatch report r-verified on map/i }))
+    expect(mockNavigate).toHaveBeenCalledWith('/map?reportId=r-verified')
   })
 
   it('has sr-only h1', () => {

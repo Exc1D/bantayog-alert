@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { WindowSyncProvider, useWindowSyncContext } from '../providers/WindowSyncProvider'
 
@@ -103,11 +103,13 @@ describe('Cross-window sync', () => {
       expect(listeners.size).toBeGreaterThan(0)
     })
 
-    listeners.forEach((fn) => {
-      fn({
-        type: 'select:municipality',
-        municipalityId: 'm1',
-        source: 'map',
+    act(() => {
+      listeners.forEach((fn) => {
+        fn({
+          type: 'select:municipality',
+          municipalityId: 'm1',
+          source: 'map',
+        })
       })
     })
 

@@ -159,14 +159,15 @@ describe('useFirestoreListeners error handling', () => {
     vi.useRealTimers()
   })
 
-  it('unsubscribes RTDB listener on unmount', () => {
+  it('does not subscribe to denied RTDB parent locations on map mount', () => {
     const { unmount } = renderHook(() =>
       useFirestoreListeners({ windowType: 'map', db: mockDb, rtdb: mockRtdb }),
     )
 
+    expect(mockOnValue).not.toHaveBeenCalled()
     unmount()
-    // Map: 5 onSnapshot (reports, report_ops, alerts, situation_updates, responders) + 1 onValue (responder_locations) = 6 unsubscribes
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(6)
+    // Map: reports, report_ops, alerts, situation_updates, responders.
+    expect(mockUnsubscribe).toHaveBeenCalledTimes(5)
   })
 
   it('clears retry timer on unmount', async () => {
