@@ -68,6 +68,9 @@ export async function cancelReportByCitizenCore(
           throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'You do not own this report')
         }
 
+        const opsRef = db.collection('report_ops').doc(deps.reportId)
+        const opsSnap = await tx.get(opsRef)
+
         const nowMs = deps.now.toMillis()
         tx.update(reportRef, {
           status: 'cancelled',
@@ -80,9 +83,6 @@ export async function cancelReportByCitizenCore(
           lastStatusAt: nowMs,
           lastStatusBy: deps.actor.uid,
         })
-
-        const opsRef = db.collection('report_ops').doc(deps.reportId)
-        const opsSnap = await tx.get(opsRef)
         const opsUpdate: Record<string, unknown> = {
           status: 'cancelled',
           cancelReason: 'citizen_withdrew',
