@@ -11,15 +11,25 @@ const MUNICIPALITY_LABEL_TO_ID = Object.fromEntries(MUNICIPALITIES.map((m) => [m
 
 export const ALLOWED_MUNICIPALITY_IDS = new Set(MUNICIPALITIES.map((m) => m.id))
 
-export const BARANGAYS_BY_MUNICIPALITY: Record<string, string[]> = {}
-const gazetteer = getBarangayGazetteer()
-for (const b of gazetteer) {
-  const municipalityId = MUNICIPALITY_LABEL_TO_ID[b.municipality]
-  if (municipalityId) {
-    BARANGAYS_BY_MUNICIPALITY[municipalityId] ??= []
-    BARANGAYS_BY_MUNICIPALITY[municipalityId].push(b.name)
+let barangaysByMunicipalityCache: Record<string, string[]> | null = null
+
+export function getBarangaysByMunicipality(): Record<string, string[]> {
+  if (barangaysByMunicipalityCache) return barangaysByMunicipalityCache
+
+  const result: Record<string, string[]> = {}
+  const gazetteer = getBarangayGazetteer()
+  for (const b of gazetteer) {
+    const municipalityId = MUNICIPALITY_LABEL_TO_ID[b.municipality]
+    if (municipalityId) {
+      result[municipalityId] ??= []
+      result[municipalityId].push(b.name)
+    }
   }
+  barangaysByMunicipalityCache = result
+  return result
 }
+
+export const BARANGAYS_BY_MUNICIPALITY = getBarangaysByMunicipality()
 
 export const HAZARD_TYPE_LABELS: Record<string, string> = {
   tropical_cyclone: 'Tropical Cyclone (Typhoon)',

@@ -3,8 +3,8 @@
 ## 2026-06-06 - Declare Alert Modal Policy Extraction
 
 - Started the targeted refactor pass with the oversized Admin Desktop `DeclareAlertModal`: extracted pure form policy for default sectors, validation, and callable payload construction into `declare-alert-form.ts` without changing the modal UI or page callers.
-- Continued the same narrow refactor by extracting the submit confirmation and unsaved-changes alertdialogs into small typed components inside `DeclareAlertModal.tsx`, preserving copy, roles, loading state, and backdrop behavior.
-- Moved those alertdialog components into `declare-alert-dialogs.tsx`, leaving the shared modal focused on form state, validation, and submit orchestration while preserving the multi-entry-point Declare Alert contract.
+- Continued the same narrow refactor by extracting the submit confirmation and unsaved-changes alert dialogs into small typed components inside `DeclareAlertModal.tsx`, preserving copy, roles, loading state, and backdrop behavior.
+- Moved those alert dialog components into `declare-alert-dialogs.tsx`, leaving the shared modal focused on form state, validation, and submit orchestration while preserving the multi-entry-point Declare Alert contract.
 - Extracted the remaining static hazard, sector, municipality, barangay, and summary-list options into `declare-alert-options.ts`, removing option-data construction from the modal render module.
 - Verification: red-first helper/dialog tests failed on missing modules, then the helper/modal-focused tests, Admin Desktop typecheck, and Admin Desktop lint passed.
 
