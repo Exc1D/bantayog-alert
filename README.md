@@ -3,13 +3,15 @@
 Local incident reporting and response coordination platform for LGUs and DRRM
 offices in Camarines Norte, Philippines.
 
-## MVP Architecture Direction
+## MVP Direction
 
-Bantayog Alert is currently being aligned around the MVP incident lifecycle for
-local incident reporting and response coordination.
+Bantayog Alert is being narrowed around the MVP incident lifecycle for local
+incident reporting and response coordination.
 
-- [Architecture alignment](docs/architecture/architecture-alignment.md)
-- [Architecture checklist](docs/architecture/architecture-checklist.md)
+- [MVP scope](docs/mvp-scope.md)
+- [Phase 0 architecture map](docs/architecture/phase-0-map.md)
+- [Phase 0 checklist](docs/phase-0-checklist.md)
+- [Phase 1 backlog](docs/phase-1-backlog.md)
 - [Architecture decision records](docs/adr/)
 
 Driver documents live in `prd/`:
