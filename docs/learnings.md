@@ -134,6 +134,7 @@
 
 ## Build / Monorepo / Infra
 
+- Greenfield Incident/PostGIS work starts at shared contracts: keep operational status, verification status, and publication status as separate axes, and project citizen map/feed data through a strict public read model that rejects reporter identity fields.
 - Retiring a feature means removing the full surface together: Function export, frontend callable wrapper, validator/type contract, rules/indexes, direct tests, runbooks, and monitoring. Leaving one layer behind creates accidental-revival or incident-response risk.
 - Do not remove command-channel Firestore rules just because the manual message callable is retired. Report sharing and agency assistance still create command-channel records, so the storage read rules remain part of live coordination.
 - Vite 8/Rolldown expects `manualChunks` as a function.

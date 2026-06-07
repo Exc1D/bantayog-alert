@@ -21,6 +21,20 @@ export {
   inboxPayloadSchema,
   hazardTagSchema,
 } from './reports.js'
+export {
+  auditEventSchema,
+  commandEnvelopeSchema,
+  incidentCoreSchema,
+  incidentLocationSchema,
+  operationalStatusSchema,
+  postgisPointSchema,
+  publicationStatusSchema,
+  publicIncidentBBoxQuerySchema,
+  publicIncidentCardSchema,
+  reporterPrivacyRecordSchema,
+  responderNearbyQuerySchema,
+  verificationStatusSchema,
+} from './incident-core.js'
 export type {
   ReportDoc,
   ReportPrivateDoc,
@@ -34,6 +48,20 @@ export type {
   InboxPayload,
   HazardTag,
 } from './reports.js'
+export type {
+  AuditEvent,
+  CommandEnvelope,
+  IncidentCore,
+  IncidentLocation,
+  OperationalStatus,
+  PostgisPoint,
+  PublicationStatus,
+  PublicIncidentBBoxQuery,
+  PublicIncidentCard,
+  ReporterPrivacyRecord,
+  ResponderNearbyQuery,
+  VerificationStatus,
+} from './incident-core.js'
 export {
   dispatchDocSchema,
   dispatchStatusSchema,

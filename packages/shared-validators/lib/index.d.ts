@@ -4,7 +4,9 @@ export { activeAccountSchema, claimRevocationSchema, setStaffClaimsInputSchema, 
 export { minAppVersionSchema, semverLt } from './config.js';
 export { alertSchema } from './alerts.js';
 export { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportSharingDocSchema, reportNoteDocSchema, reportSharingEventDocSchema, reportContactsDocSchema, reportLookupDocSchema, reportInboxDocSchema, inboxPayloadSchema, hazardTagSchema, } from './reports.js';
+export { auditEventSchema, commandEnvelopeSchema, incidentCoreSchema, incidentLocationSchema, operationalStatusSchema, postgisPointSchema, publicationStatusSchema, publicIncidentBBoxQuerySchema, publicIncidentCardSchema, reporterPrivacyRecordSchema, responderNearbyQuerySchema, verificationStatusSchema, } from './incident-core.js';
 export type { ReportDoc, ReportPrivateDoc, ReportOpsDoc, ReportSharingDoc, ReportNoteDoc, ReportSharingEventDoc, ReportContactsDoc, ReportLookupDoc, ReportInboxDoc, InboxPayload, HazardTag, } from './reports.js';
+export type { AuditEvent, CommandEnvelope, IncidentCore, IncidentLocation, OperationalStatus, PostgisPoint, PublicationStatus, PublicIncidentBBoxQuery, PublicIncidentCard, ReporterPrivacyRecord, ResponderNearbyQuery, VerificationStatus, } from './incident-core.js';
 export { dispatchDocSchema, dispatchStatusSchema, advanceDispatchRequestSchema, } from './dispatches.js';
 export type { DispatchDoc, AdvanceDispatchRequest, AdvanceDispatchTarget } from './dispatches.js';
 export { reportEventSchema, dispatchEventSchema } from './events.js';

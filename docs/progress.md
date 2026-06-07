@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-06-07 - Greenfield Incident-Core Contract Seed
+
+- Started the greenfield Incident/PostGIS rebuild as a safe contract slice in `@bantayog/shared-validators`: added strict incident-core schemas for separate operational, verification, and publication axes; PostGIS-ready point/bbox/nearby-responder inputs; grouped command envelopes; audit events; private reporter privacy records; and sanitized public incident cards.
+- Preserved the public map/read-model boundary by proving citizen-facing incident cards reject private reporter fields instead of reading operational report/private documents directly.
+- Verification: red-first `incident-core` test failed before the module existed, then `pnpm --dir packages/shared-validators exec vitest run src/incident-core.test.ts`, `pnpm --dir packages/shared-validators exec tsc --noEmit`, `pnpm --dir packages/shared-validators exec eslint src`, and `pnpm --dir packages/shared-validators build` passed.
+
 ## 2026-06-06 - Fallow Duplicate E2E Cleanup
 
 - Re-ran full Fallow after the dead-code cleanup: dead-code stayed at 0, while broad legacy health and duplication findings remained.
