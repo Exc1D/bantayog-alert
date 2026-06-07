@@ -63,6 +63,7 @@
 - Keep in-progress wizard state separate from finalized drafts awaiting submission.
 - Do not persist `File`/`Blob` at per-keystroke cadence. Gate snapshot saves on `hasLoadedSnapshot`.
 - Normalize incident-type aliases at the draft boundary.
+- Phase 1 Citizen report triage fields must stay aligned across wizard snapshot, local draft, callable payload, shared validator schema, and `report_ops`; changing only the visible form recreates blind admin intake.
 - Background Sync is Chromium-only; iOS needs an in-app retry path. Service workers cannot use Firebase JS SDK; use Firestore REST with a valid ID token from IndexedDB auth state.
 - Cold offline boot needs a precached app shell and cached `index.html` for failed navigations.
 - Canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser compression path.

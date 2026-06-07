@@ -139,6 +139,92 @@ describe('submitReport', () => {
     })
   })
 
+  it('writes triage details and nearest landmark into the inbox payload', async () => {
+    const deps: SubmitReportDeps = {
+      ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
+      requestUploadUrl: vi.fn(),
+      putBlob: vi.fn(),
+      writeInbox: vi.fn().mockResolvedValue('ibx-6'),
+      randomUUID: vi.fn().mockReturnValue('uuid-f'),
+      randomPublicRef: vi.fn().mockReturnValue('ref7777'),
+      randomSecret: vi.fn().mockReturnValue('s6'),
+      sha256Hex: vi.fn().mockResolvedValue('l'.repeat(64)),
+      now: () => 1,
+    }
+
+    await submitReport(deps, {
+      reportType: 'flood',
+      severity: 'high',
+      description: 'Water is entering houses near the creek.',
+      publicLocation: { lat: 14.1, lng: 122.9 },
+      municipalityId: 'daet',
+      barangayId: 'bagasbas',
+      nearestLandmark: 'Near the bridge',
+      triage: {
+        peopleInjured: true,
+        peopleTrapped: false,
+        locationConfidence: 'approximate',
+        urgencyReason: 'Water is rising fast.',
+      },
+    })
+
+    const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0]![0]! as {
+      payload: {
+        description: string
+        severity: string
+        nearestLandmark?: string
+        triage?: unknown
+      }
+    }
+    expect(inboxDoc.payload.description).toBe('Water is entering houses near the creek.')
+    expect(inboxDoc.payload.severity).toBe('high')
+    expect(inboxDoc.payload.nearestLandmark).toBe('Near the bridge')
+    expect(inboxDoc.payload.triage).toEqual({
+      peopleInjured: true,
+      peopleTrapped: false,
+      locationConfidence: 'approximate',
+      urgencyReason: 'Water is rising fast.',
+    })
+  })
+
+  it('omits optional urgencyReason when it is not provided', async () => {
+    const deps: SubmitReportDeps = {
+      ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
+      requestUploadUrl: vi.fn(),
+      putBlob: vi.fn(),
+      writeInbox: vi.fn().mockResolvedValue('ibx-7'),
+      randomUUID: vi.fn().mockReturnValue('uuid-g'),
+      randomPublicRef: vi.fn().mockReturnValue('ref8888'),
+      randomSecret: vi.fn().mockReturnValue('s7'),
+      sha256Hex: vi.fn().mockResolvedValue('m'.repeat(64)),
+      now: () => 1,
+    }
+
+    await submitReport(deps, {
+      reportType: 'other',
+      severity: 'low',
+      description: 'A tree branch is blocking part of the road.',
+      publicLocation: { lat: 14.1, lng: 122.9 },
+      triage: {
+        peopleInjured: false,
+        peopleTrapped: false,
+        locationConfidence: 'manual',
+      },
+    })
+
+    const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0]![0]! as {
+      payload: { triage?: { urgencyReason?: string } }
+    }
+    expect(inboxDoc.payload.triage).toEqual({
+      peopleInjured: false,
+      peopleTrapped: false,
+      locationConfidence: 'manual',
+    })
+    expect(inboxDoc.payload.triage?.urgencyReason).toBeUndefined()
+  })
+
   it('omits contact when not provided', async () => {
     const deps: SubmitReportDeps = {
       ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
@@ -222,6 +308,40 @@ describe('createDraft', () => {
     expect(mockDraftStoreSave).toHaveBeenCalledWith(
       expect.objectContaining({
         reportType: 'security',
+      }),
+    )
+  })
+
+  it('persists triage details and location confidence in the draft', async () => {
+    const { draft } = await createDraft({
+      reportType: 'flood',
+      barangay: 'Bagasbas',
+      description: 'Water is rising beside the school.',
+      severity: 'high',
+      location: { lat: 14.12, lng: 122.95 },
+      clientDraftRef: 'client-ref-triage',
+      triage: {
+        peopleInjured: true,
+        peopleTrapped: true,
+        locationConfidence: 'exact',
+        urgencyReason: 'Residents are trapped upstairs.',
+      },
+    })
+
+    expect(draft.triage).toEqual({
+      peopleInjured: true,
+      peopleTrapped: true,
+      locationConfidence: 'exact',
+      urgencyReason: 'Residents are trapped upstairs.',
+    })
+    expect(mockDraftStoreSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        triage: {
+          peopleInjured: true,
+          peopleTrapped: true,
+          locationConfidence: 'exact',
+          urgencyReason: 'Residents are trapped upstairs.',
+        },
       }),
     )
   })

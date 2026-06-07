@@ -10,13 +10,15 @@ import { MunicipalitySelector } from './MunicipalitySelector'
 import { BarangaySelector } from './BarangaySelector'
 import { ContactFields } from './ContactFields'
 
+type LocationConfidence = 'exact' | 'approximate' | 'manual'
+
 interface Step2WhoWhereProps {
   onNext: (data: {
     location: { lat: number; lng: number }
     reporterName: string
     reporterMsisdn: string
-    patientCount: number
     locationMethod: 'gps' | 'manual'
+    locationConfidence: LocationConfidence
     municipalityId?: string
     municipalityLabel?: string
     barangayId?: string
@@ -28,8 +30,8 @@ interface Step2WhoWhereProps {
     location?: { lat: number; lng: number }
     reporterName?: string
     reporterMsisdn?: string
-    patientCount?: number
     locationMethod?: 'gps' | 'manual'
+    locationConfidence?: LocationConfidence
     municipalityId?: string
     barangayId?: string
     nearestLandmark?: string
@@ -59,11 +61,14 @@ export function Step2WhoWhere({
     handleSelectBarangay,
   } = useMunicipalityBarangays()
 
-  const [nearestLandmark, setNearestLandmark] = useState<string>('')
-  const [reporterName, setReporterName] = useState('')
-  const [reporterMsisdn, setReporterMsisdn] = useState('')
-  const [anyoneHurt, setAnyoneHurt] = useState(false)
-  const [patientCount, setPatientCount] = useState(0)
+  const [nearestLandmark, setNearestLandmark] = useState<string>(
+    initialValues?.nearestLandmark ?? '',
+  )
+  const [reporterName, setReporterName] = useState(initialValues?.reporterName ?? '')
+  const [reporterMsisdn, setReporterMsisdn] = useState(initialValues?.reporterMsisdn ?? '')
+  const [locationConfidence, setLocationConfidence] = useState<LocationConfidence>(
+    initialValues?.locationConfidence ?? 'manual',
+  )
   const [nameError, setNameError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [hasMemory, setHasMemory] = useState(false)
@@ -74,17 +79,6 @@ export function Step2WhoWhere({
     if (!initialValues) return
 
     if (initialValues.locationMethod) setLocationMethod(initialValues.locationMethod)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (initialValues.reporterName) setReporterName(initialValues.reporterName)
-
-    if (initialValues.reporterMsisdn) setReporterMsisdn(initialValues.reporterMsisdn)
-    if (initialValues.patientCount) {
-      setPatientCount(initialValues.patientCount)
-
-      setAnyoneHurt(initialValues.patientCount > 0)
-    }
-
-    if (initialValues.nearestLandmark) setNearestLandmark(initialValues.nearestLandmark)
     // Municipality / barangay are handled via useMunicipalityBarangays; those
     // hooks don't expose setters, so we rely on localStorage/sessionStorage
     // pre-fill below for reporter fields, and the user re-selects location.
@@ -155,8 +149,8 @@ export function Step2WhoWhere({
       location: finalLocation ?? { lat: 0, lng: 0 },
       reporterName,
       reporterMsisdn,
-      patientCount: anyoneHurt ? patientCount : 0,
       locationMethod: locationMethod ?? 'manual',
+      locationConfidence,
       ...(locationMethod === 'manual' && selectedMunicipalityId
         ? {
             municipalityId: selectedMunicipalityId,
@@ -218,6 +212,7 @@ export function Step2WhoWhere({
                 type="button"
                 className="w-full flex items-center gap-3 px-4 py-3.5 bg-white border border-surface-200 rounded-xl cursor-pointer text-sm font-semibold text-surface-900 active:bg-surface-50 transition-colors text-left"
                 onClick={() => {
+                  setLocationConfidence('exact')
                   void attemptGps()
                 }}
               >
@@ -231,6 +226,7 @@ export function Step2WhoWhere({
                 className="w-full flex items-center gap-3 px-4 py-3.5 bg-white border border-surface-200 rounded-xl cursor-pointer text-sm font-semibold text-surface-900 active:bg-surface-50 transition-colors text-left"
                 onClick={() => {
                   setLocationMethod('manual')
+                  setLocationConfidence('manual')
                 }}
               >
                 <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center">
@@ -257,6 +253,7 @@ export function Step2WhoWhere({
                 onClick={() => {
                   resetGps()
                   setLocationMethod('manual')
+                  setLocationConfidence('manual')
                 }}
               >
                 <div className="w-8 h-8 rounded-full bg-surface-100 flex items-center justify-center">
@@ -337,9 +334,56 @@ export function Step2WhoWhere({
               />
             </div>
           ) : null}
+
+          {locationMethod !== null ? (
+            <div className="rounded-xl border border-surface-200 bg-white p-4">
+              <p className="text-sm font-semibold text-surface-700 mb-3">
+                How confident are you about this location?
+              </p>
+              <div className="grid gap-2">
+                {[
+                  {
+                    value: 'exact' as const,
+                    label: 'Exact spot',
+                    detail: 'GPS pin or address is where the incident happened.',
+                  },
+                  {
+                    value: 'approximate' as const,
+                    label: 'Approximate area',
+                    detail: 'The incident is nearby, but the exact spot may need confirmation.',
+                  },
+                  {
+                    value: 'manual' as const,
+                    label: 'Manual place only',
+                    detail: 'Municipality, barangay, or landmark needs operator follow-up.',
+                  },
+                ].map((option) => {
+                  const isSelected = locationConfidence === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => {
+                        setLocationConfidence(option.value)
+                      }}
+                      className={`min-h-14 rounded-xl border-2 px-3 py-2 text-left transition-all active:scale-[0.99] ${
+                        isSelected
+                          ? 'border-brand-500 bg-brand-50 text-surface-900'
+                          : 'border-surface-200 bg-white text-surface-700'
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold">{option.label}</span>
+                      <span className="block text-xs text-surface-500">{option.detail}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        {/* Contact + Is anyone hurt */}
+        {/* Contact */}
         {locationMethod !== null && (
           <ContactFields
             reporterName={reporterName}
@@ -354,10 +398,6 @@ export function Step2WhoWhere({
             onPhoneErrorClear={() => {
               setPhoneError(null)
             }}
-            anyoneHurt={anyoneHurt}
-            onAnyoneHurtChange={setAnyoneHurt}
-            patientCount={patientCount}
-            onPatientCountChange={setPatientCount}
             hasMemory={hasMemory}
           />
         )}

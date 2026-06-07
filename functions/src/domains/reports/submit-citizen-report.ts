@@ -18,6 +18,14 @@ import {
   type CitizenReportMaterializationResult,
 } from './process-inbox-item.js'
 
+const submitCitizenPayloadSchema = inboxPayloadSchema.refine(
+  (payload) => payload.source !== 'web' || payload.triage !== undefined,
+  {
+    path: ['triage'],
+    message: 'triage is required for web submissions',
+  },
+)
+
 export const submitCitizenReportSchema = z
   .object({
     clientCreatedAt: z.number().int(),
@@ -25,7 +33,7 @@ export const submitCitizenReportSchema = z
     publicRef: z.string().regex(/^[a-z0-9]{8}$/),
     secretHash: z.string().regex(/^[a-f0-9]{64}$/),
     correlationId: z.uuid(),
-    payload: inboxPayloadSchema,
+    payload: submitCitizenPayloadSchema,
   })
   .strict()
 

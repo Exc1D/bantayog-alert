@@ -69,6 +69,12 @@ function baseInput(overrides: Partial<Parameters<typeof submitCitizenReportCore>
       source: 'web' as const,
       publicLocation: { lat: 14.11, lng: 122.95 },
       municipalityId: 'daet',
+      triage: {
+        peopleInjured: true,
+        peopleTrapped: false,
+        locationConfidence: 'approximate' as const,
+        urgencyReason: 'Water is entering homes.',
+      },
     },
     now: () => 1713350401000,
     ...overrides,
@@ -100,6 +106,12 @@ describe('submitCitizenReportCore', () => {
         expect(opsSnap.data()?.reportId).toBe(result.reportId)
         expect(opsSnap.data()?.status).toBe('new')
         expect(opsSnap.data()?.reportType).toBe('flood')
+        expect(opsSnap.data()?.triage).toEqual({
+          peopleInjured: true,
+          peopleTrapped: false,
+          locationConfidence: 'approximate',
+          urgencyReason: 'Water is entering homes.',
+        })
 
         const lookupSnap = await getDoc(doc(ctx.firestore(), 'report_lookup', 'call1234'))
         expect(lookupSnap.data()?.reportId).toBe(result.reportId)

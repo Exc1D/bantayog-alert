@@ -9,12 +9,6 @@ interface ContactFieldsProps {
   phoneError: string | null
   onPhoneErrorClear: () => void
 
-  anyoneHurt: boolean
-  onAnyoneHurtChange: (hurt: boolean) => void
-
-  patientCount: number
-  onPatientCountChange: (count: number) => void
-
   hasMemory?: boolean
 }
 
@@ -27,10 +21,6 @@ export function ContactFields({
   onReporterMsisdnChange,
   phoneError,
   onPhoneErrorClear,
-  anyoneHurt,
-  onAnyoneHurtChange,
-  patientCount,
-  onPatientCountChange,
   hasMemory = false,
 }: ContactFieldsProps) {
   return (
@@ -113,78 +103,6 @@ export function ContactFields({
           this number if they need more details.{' '}
           <em className="text-surface-400">Mas mabilis kang matutulungan.</em>
         </p>
-      </div>
-
-      {/* Is anyone hurt? */}
-      <div className="bg-danger-500/5 border-2 border-danger-500/20 rounded-xl p-4">
-        <p className="text-sm font-semibold text-surface-700 mb-3">
-          Is anyone hurt?
-          <em className="font-normal text-surface-400 ml-1">May injured ba?</em>
-        </p>
-        <div className="flex gap-2 mb-2">
-          <button
-            type="button"
-            aria-pressed={anyoneHurt}
-            onClick={() => {
-              onAnyoneHurtChange(true)
-            }}
-            className={`flex-1 min-h-[44px] rounded-xl text-sm font-semibold border-2 transition-all active:scale-[0.98] ${
-              anyoneHurt
-                ? 'bg-danger-500 border-danger-500 text-white'
-                : 'bg-white border-surface-200 text-surface-700'
-            }`}
-          >
-            Yes
-          </button>
-          <button
-            type="button"
-            aria-pressed={!anyoneHurt}
-            onClick={() => {
-              onAnyoneHurtChange(false)
-            }}
-            className={`flex-1 min-h-[44px] rounded-xl text-sm font-semibold border-2 transition-all active:scale-[0.98] ${
-              !anyoneHurt
-                ? 'bg-brand-500 border-brand-500 text-white'
-                : 'bg-white border-surface-200 text-surface-700'
-            }`}
-          >
-            No
-          </button>
-        </div>
-
-        {anyoneHurt && (
-          <div className="bg-white rounded-xl p-3 mt-2 animate-[slideIn_0.2s_ease]">
-            <p className="text-xs font-bold text-surface-700 uppercase tracking-wide mb-2">
-              How many patients?
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onPatientCountChange(Math.max(0, patientCount - 1))
-                }}
-                className="w-11 h-11 rounded-xl bg-surface-100 text-surface-700 border border-surface-200 flex items-center justify-center font-bold text-lg disabled:opacity-40"
-                disabled={patientCount === 0}
-                aria-label="−"
-              >
-                −
-              </button>
-              <div className="flex-1 h-11 rounded-xl bg-surface-100 flex items-center justify-center font-bold text-surface-900">
-                {patientCount}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onPatientCountChange(patientCount + 1)
-                }}
-                className="w-11 h-11 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-lg active:bg-brand-600"
-                aria-label="+"
-              >
-                +
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

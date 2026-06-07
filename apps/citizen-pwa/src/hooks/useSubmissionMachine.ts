@@ -74,6 +74,7 @@ function buildSubmitCitizenReportInput(draft: Draft): SubmitCitizenReportInput {
       severity: draft.severity,
       source: 'web',
       clientDraftRef: draft.clientDraftRef,
+      ...(draft.triage ? { triage: draft.triage } : {}),
       ...(draft.location ? { publicLocation: draft.location } : {}),
       ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
       ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),

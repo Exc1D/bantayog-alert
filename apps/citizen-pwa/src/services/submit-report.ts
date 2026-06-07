@@ -1,12 +1,13 @@
 import { normalizeMsisdn } from '@bantayog/shared-validators'
 import type { ReportType } from '@bantayog/shared-types'
-import type { Draft } from './draft-store'
+import type { Draft, DraftTriage } from './draft-store'
 import { draftStore } from './draft-store'
 
 export interface SubmitReportInput {
   reportType: string
   severity: 'low' | 'medium' | 'high'
   description: string
+  triage?: DraftTriage
   publicLocation: { lat: number; lng: number }
   photo?: Blob
   contact?: { phone: string; smsConsent: true }
@@ -49,6 +50,7 @@ export interface CreateDraftInput {
   barangayId?: string
   description: string
   severity: Draft['severity']
+  triage?: DraftTriage
   location?: { lat: number; lng: number }
   nearestLandmark?: string
   clientDraftRef: string
@@ -80,6 +82,16 @@ function canonicalizeReportType(reportType: string): ReportType {
     throw new Error(`Unsupported report type: ${reportType}`)
   }
   return reportType as ReportType
+}
+
+function normalizeTriage(triage: DraftTriage): DraftTriage {
+  const urgencyReason = triage.urgencyReason?.trim()
+  return {
+    peopleInjured: triage.peopleInjured,
+    peopleTrapped: triage.peopleTrapped,
+    locationConfidence: triage.locationConfidence,
+    ...(urgencyReason ? { urgencyReason } : {}),
+  }
 }
 
 function randomPublicRef(): string {
@@ -125,6 +137,7 @@ export async function createDraft(
     barangay: input.barangay,
     description: input.description,
     severity: input.severity,
+    ...(input.triage ? { triage: normalizeTriage(input.triage) } : {}),
     clientDraftRef: input.clientDraftRef,
     publicRef,
     secretHash,
@@ -189,6 +202,7 @@ export async function submitReport(
       source: 'web',
       publicLocation: input.publicLocation,
       pendingMediaIds,
+      ...(input.triage ? { triage: normalizeTriage(input.triage) } : {}),
       ...(input.municipalityId
         ? {
             municipalityId: input.municipalityId,

@@ -19,10 +19,21 @@ const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const COMMON_INCIDENT_COUNT = 4
 
 interface Step1EvidenceProps {
-  onNext: (data: { reportType: string; photoFile: File | null }) => void
+  onNext: (data: {
+    reportType: string
+    description: string
+    peopleInjured: boolean
+    peopleTrapped: boolean
+    urgencyReason?: string
+    photoFile: File | null
+  }) => void
   onBack: () => void
   isSubmitting?: boolean
   initialReportType?: string
+  initialDescription?: string
+  initialPeopleInjured?: boolean
+  initialPeopleTrapped?: boolean
+  initialUrgencyReason?: string
 }
 
 const INCIDENT_TYPES = [
@@ -105,15 +116,24 @@ export function Step1Evidence({
   onBack,
   isSubmitting = false,
   initialReportType = '',
+  initialDescription = '',
+  initialPeopleInjured = false,
+  initialPeopleTrapped = false,
+  initialUrgencyReason = '',
 }: Step1EvidenceProps) {
   // Default to empty so the user must actively pick a type. This is what
   // gates the "Skip photo for now" path — without it, Skip silently
   // submitted whatever the seeded default was.
   const [reportType, setReportType] = useState(initialReportType)
+  const [description, setDescription] = useState(initialDescription)
+  const [peopleInjured, setPeopleInjured] = useState(initialPeopleInjured)
+  const [peopleTrapped, setPeopleTrapped] = useState(initialPeopleTrapped)
+  const [urgencyReason, setUrgencyReason] = useState(initialUrgencyReason)
   const [showAllIncidentTypes, setShowAllIncidentTypes] = useState(() =>
     INCIDENT_TYPES.slice(COMMON_INCIDENT_COUNT).some(({ value }) => value === initialReportType),
   )
   const [reportTypeError, setReportTypeError] = useState<string | null>(null)
+  const [descriptionError, setDescriptionError] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -184,12 +204,26 @@ export function Step1Evidence({
   }
 
   const handleNext = () => {
+    const trimmedDescription = description.trim()
+    const trimmedUrgencyReason = urgencyReason.trim()
     if (!reportType) {
       setReportTypeError('Please select an incident type to continue.')
       return
     }
+    if (!trimmedDescription) {
+      setDescriptionError('Please describe what happened to continue.')
+      return
+    }
     setReportTypeError(null)
-    onNext({ reportType, photoFile })
+    setDescriptionError(null)
+    onNext({
+      reportType,
+      description: trimmedDescription,
+      peopleInjured,
+      peopleTrapped,
+      ...(trimmedUrgencyReason ? { urgencyReason: trimmedUrgencyReason } : {}),
+      photoFile,
+    })
   }
 
   return (
@@ -227,6 +261,184 @@ export function Step1Evidence({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-6">
+        {/* Incident type grid */}
+        <div>
+          <p className="text-sm font-semibold text-surface-700 mb-3 block">
+            What type of incident is this?
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {(showAllIncidentTypes
+              ? INCIDENT_TYPES
+              : INCIDENT_TYPES.slice(0, COMMON_INCIDENT_COUNT)
+            ).map(({ value, label, Icon, colorClass, selBorder, selBg, selText }) => {
+              const isSelected = reportType === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setReportType(value)
+                    setReportTypeError(null)
+                  }}
+                  className={`flex flex-col items-center justify-center gap-2 min-h-[80px] px-3 py-3 rounded-xl border-2 transition-all active:scale-95 ${
+                    isSelected
+                      ? `${selBorder} ${selBg} shadow-sm`
+                      : 'border-surface-200 bg-white hover:border-surface-300'
+                  }`}
+                >
+                  <Icon size={28} className={isSelected ? selText : colorClass} />
+                  <span
+                    className={`text-sm font-medium ${isSelected ? selText : 'text-surface-600'}`}
+                  >
+                    {label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAllIncidentTypes((isShowingAll) => !isShowingAll)
+            }}
+            className="mt-2 flex min-h-11 w-full items-center justify-center rounded-lg bg-transparent text-sm font-semibold text-brand-600"
+          >
+            {showAllIncidentTypes ? 'Show fewer incident types' : 'More incident types'}
+          </button>
+          {reportTypeError && (
+            <p role="alert" className="mt-2 text-xs text-danger-500 font-medium">
+              {reportTypeError}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            htmlFor="report-description"
+            className="text-sm font-semibold text-surface-700 mb-2 block"
+          >
+            Short description
+          </label>
+          <textarea
+            id="report-description"
+            value={description}
+            aria-invalid={Boolean(descriptionError)}
+            aria-describedby={descriptionError ? 'report-description-error' : undefined}
+            onChange={(e) => {
+              setDescription(e.target.value)
+              setDescriptionError(null)
+            }}
+            placeholder="What happened? Where is the danger?"
+            className="min-h-28 w-full resize-none rounded-xl border-2 border-surface-200 bg-white px-4 py-3 text-base text-surface-900 placeholder:text-surface-300 focus:border-brand-500 focus:outline-none transition-colors"
+            maxLength={500}
+          />
+          {descriptionError && (
+            <p
+              id="report-description-error"
+              role="alert"
+              className="mt-2 text-xs text-danger-500 font-medium"
+            >
+              {descriptionError}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3 rounded-xl border border-surface-200 bg-white p-4">
+          <div>
+            <p className="text-sm font-semibold text-surface-700 mb-2">Are there people injured?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                aria-label="People injured yes"
+                aria-pressed={peopleInjured}
+                onClick={() => {
+                  setPeopleInjured(true)
+                }}
+                className={`min-h-11 rounded-xl border-2 text-sm font-semibold transition-all active:scale-[0.98] ${
+                  peopleInjured
+                    ? 'border-danger-500 bg-danger-500 text-white'
+                    : 'border-surface-200 bg-white text-surface-700'
+                }`}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                aria-label="People injured no"
+                aria-pressed={!peopleInjured}
+                onClick={() => {
+                  setPeopleInjured(false)
+                }}
+                className={`min-h-11 rounded-xl border-2 text-sm font-semibold transition-all active:scale-[0.98] ${
+                  !peopleInjured
+                    ? 'border-brand-500 bg-brand-500 text-white'
+                    : 'border-surface-200 bg-white text-surface-700'
+                }`}
+              >
+                No
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-surface-700 mb-2">
+              Are people trapped or unable to leave?
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                aria-label="People trapped yes"
+                aria-pressed={peopleTrapped}
+                onClick={() => {
+                  setPeopleTrapped(true)
+                }}
+                className={`min-h-11 rounded-xl border-2 text-sm font-semibold transition-all active:scale-[0.98] ${
+                  peopleTrapped
+                    ? 'border-danger-500 bg-danger-500 text-white'
+                    : 'border-surface-200 bg-white text-surface-700'
+                }`}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                aria-label="People trapped no"
+                aria-pressed={!peopleTrapped}
+                onClick={() => {
+                  setPeopleTrapped(false)
+                }}
+                className={`min-h-11 rounded-xl border-2 text-sm font-semibold transition-all active:scale-[0.98] ${
+                  !peopleTrapped
+                    ? 'border-brand-500 bg-brand-500 text-white'
+                    : 'border-surface-200 bg-white text-surface-700'
+                }`}
+              >
+                No
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="urgency-reason"
+              className="text-sm font-semibold text-surface-700 mb-2 block"
+            >
+              Why is this urgent?
+              <span className="font-normal text-surface-400 ml-1">(optional)</span>
+            </label>
+            <textarea
+              id="urgency-reason"
+              value={urgencyReason}
+              onChange={(e) => {
+                setUrgencyReason(e.target.value)
+              }}
+              placeholder="Example: water is rising fast or someone cannot leave"
+              className="min-h-20 w-full resize-none rounded-xl border-2 border-surface-200 bg-surface-50 px-4 py-3 text-base text-surface-900 placeholder:text-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none transition-colors"
+              maxLength={500}
+            />
+          </div>
+        </div>
+
         {/* Photo capture */}
         <div>
           <label
@@ -234,6 +446,7 @@ export function Step1Evidence({
             className="text-sm font-semibold text-surface-700 mb-2 block"
           >
             Photo Evidence
+            <span className="font-normal text-surface-400 ml-1">(optional)</span>
           </label>
           <input
             type="file"
@@ -299,57 +512,6 @@ export function Step1Evidence({
             </button>
           )}
         </div>
-
-        {/* Incident type grid */}
-        <div>
-          <p className="text-sm font-semibold text-surface-700 mb-3 block">
-            What type of incident is this?
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {(showAllIncidentTypes
-              ? INCIDENT_TYPES
-              : INCIDENT_TYPES.slice(0, COMMON_INCIDENT_COUNT)
-            ).map(({ value, label, Icon, colorClass, selBorder, selBg, selText }) => {
-              const isSelected = reportType === value
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => {
-                    setReportType(value)
-                    setReportTypeError(null)
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2 min-h-[80px] px-3 py-3 rounded-xl border-2 transition-all active:scale-95 ${
-                    isSelected
-                      ? `${selBorder} ${selBg} shadow-sm`
-                      : 'border-surface-200 bg-white hover:border-surface-300'
-                  }`}
-                >
-                  <Icon size={28} className={isSelected ? selText : colorClass} />
-                  <span
-                    className={`text-sm font-medium ${isSelected ? selText : 'text-surface-600'}`}
-                  >
-                    {label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowAllIncidentTypes((isShowingAll) => !isShowingAll)
-            }}
-            className="mt-2 flex min-h-11 w-full items-center justify-center rounded-lg bg-transparent text-sm font-semibold text-brand-600"
-          >
-            {showAllIncidentTypes ? 'Show fewer incident types' : 'More incident types'}
-          </button>
-          {reportTypeError && (
-            <p role="alert" className="mt-2 text-xs text-danger-500 font-medium">
-              {reportTypeError}
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Bottom action */}
@@ -358,7 +520,7 @@ export function Step1Evidence({
           variant="primary"
           fullWidth
           onClick={handleNext}
-          disabled={!reportType || isSubmitting}
+          disabled={!reportType || !description.trim() || isSubmitting}
         >
           {isSubmitting ? 'Please wait...' : 'Continue'}
         </Button>

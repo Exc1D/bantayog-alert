@@ -328,6 +328,33 @@ describe('inboxPayloadSchema contact extension', () => {
     it('accepts payload without contact (existing behavior preserved)', () => {
         expect(() => inboxPayloadSchema.parse(basePayload)).not.toThrow();
     });
+    it('accepts MVP triage details with location confidence', () => {
+        expect(inboxPayloadSchema.parse({
+            ...basePayload,
+            triage: {
+                peopleInjured: true,
+                peopleTrapped: false,
+                locationConfidence: 'approximate',
+                urgencyReason: 'Water is rising toward homes.',
+            },
+        })).toMatchObject({
+            triage: {
+                peopleInjured: true,
+                peopleTrapped: false,
+                locationConfidence: 'approximate',
+                urgencyReason: 'Water is rising toward homes.',
+            },
+        });
+    });
+    it('rejects triage details without location confidence', () => {
+        expect(() => inboxPayloadSchema.parse({
+            ...basePayload,
+            triage: {
+                peopleInjured: false,
+                peopleTrapped: false,
+            },
+        })).toThrow();
+    });
     it('accepts contact with smsConsent=true', () => {
         expect(() => inboxPayloadSchema.parse({
             ...basePayload,

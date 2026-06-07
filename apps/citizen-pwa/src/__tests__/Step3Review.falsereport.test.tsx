@@ -11,11 +11,15 @@ beforeEach(() => {
 
 const REPORT_DATA = {
   reportType: 'flood',
+  description: 'Water is entering homes near the creek.',
+  peopleInjured: false,
+  peopleTrapped: false,
+  locationConfidence: 'exact' as const,
   location: { lat: 14.0, lng: 122.0 },
   reporterName: 'Juan Dela Cruz',
   reporterMsisdn: '09171234567',
-  patientCount: 0,
   locationMethod: 'gps' as const,
+  photoAttached: false,
 }
 
 describe('Step3Review — inline false-report prevention', () => {

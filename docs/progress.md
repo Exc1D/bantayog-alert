@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-07 - Phase 1A Citizen Report Form Improvements
+
+- Added real Citizen intake fields for description, people injured, people trapped, location confidence, and optional urgency reason while keeping the existing three-step wizard and photo path.
+- Replaced hardcoded Citizen severity with `deriveReportSeverity`, then persisted triage through wizard snapshots, local drafts, callable submission, shared validators, and `report_ops` materialization.
+- Kept this Phase 1A slice narrow: no Admin triage console, SMS work, Firestore rules/index edits, deploy config, schema migration, or new dependencies.
+- Verification so far: focused Citizen tests passed, shared report validator tests passed, and the Functions callable test skipped because the Firestore emulator was unavailable.
+
 ## 2026-06-07 - Phase 0 Stabilize and Narrow Docs
 
 - Added the requested Phase 0 docs: MVP scope, Phase 0 architecture map, repo-level checklist, and Phase 1 backlog.

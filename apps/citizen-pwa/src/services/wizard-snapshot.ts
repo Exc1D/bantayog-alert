@@ -2,14 +2,18 @@ import localforage from 'localforage'
 
 interface SerializableStep1 {
   reportType: string
+  description: string
+  peopleInjured: boolean
+  peopleTrapped: boolean
+  urgencyReason?: string
 }
 
 interface SerializableStep2 {
   location: { lat: number; lng: number }
   reporterName: string
   reporterMsisdn: string
-  patientCount: number
   locationMethod: 'gps' | 'manual'
+  locationConfidence: 'exact' | 'approximate' | 'manual'
   municipalityId?: string
   municipalityLabel?: string
   barangayId?: string
