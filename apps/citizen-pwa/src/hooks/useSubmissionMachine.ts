@@ -63,7 +63,6 @@ export interface SubmitDraftOnlineDeps {
 
 function normalizeTriage(triage: Draft['triage']): Draft['triage'] | undefined {
   if (!triage) return undefined
-  const urgencyReason = triage.urgencyReason?.trim()
   // Defensive normalization: trim whitespace, drop empty urgencyReason.
   const urgencyReason = triage.urgencyReason?.trim()
   return {
