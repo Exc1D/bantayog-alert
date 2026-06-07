@@ -138,6 +138,9 @@
   loop, deferred modules, and future boundaries before moving files or changing
   runtime behavior. Keep ADRs practical and do not mix documentation alignment
   with folder migration, rules rewrites, or Cloud Functions rewrites.
+- Phase 0 documentation requests can overlap with existing alignment docs. Check
+  requested filenames before adding new docs so the repo does not end up with
+  duplicate ADR numbers or two competing checklists.
 - New Postgres/PostGIS migration work needs its own Stage 1 plan before SQL files exist; do not create `infra/postgres/migrations/*` until the full schema/RLS diff is shown and approved.
 - Postgres public reads need projection tables, not operational tables with polite column names. Keep `bantayog_public_read` on `public_*` tables only, and use explicit grants so privacy records are not exposed through broad `all tables` privileges.
 - In the PostGIS incident core, nullable `incident_id` is not a safe way to model general operational state. Keep incident-lifecycle rows incident-scoped, and put general responder availability on `responder_locations.status`.

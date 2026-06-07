@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-07 - Phase 0 Stabilize and Narrow Docs
+
+- Added the requested Phase 0 docs: MVP scope, Phase 0 architecture map, repo-level checklist, and Phase 1 backlog.
+- Renamed the mismatched ADR filenames for report projections and MVP role scope so each ADR number has one canonical requested file.
+- Normalized the requested feature-boundary README scaffolds around purpose, ownership, exclusions, and Phase 1 intended work without moving runtime code.
+- Kept the pass documentation-only: no Firestore rules, Cloud Functions behavior, dependencies, runtime folders, schema/migration files, deploys, or Phase 1 UI were changed.
+
 ## 2026-06-07 - Architecture Alignment for MVP Core Loop
 
 - Added `docs/architecture/architecture-alignment.md` to center Phase 0/1 work on the incident lifecycle: Citizen report → Admin triage → Verify/reject → Dispatch responder → Responder status update → Resolution → Citizen tracking.
