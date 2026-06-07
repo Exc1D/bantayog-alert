@@ -11,7 +11,6 @@ import { Button } from '../ui/Button'
 import { FallbackCards } from '../ui/FallbackCards'
 import { Timeline } from '../ui/Timeline'
 import { buildVariants } from './buildVariants'
-import type { RevealVariant } from './buildVariants'
 import { RevealHeader } from './RevealHeader'
 import { SecretCodeBlock } from './SecretCodeBlock'
 import { GuardianCTA } from './GuardianCTA'
@@ -149,7 +148,7 @@ export function RevealSheet({
 
   useVibrate(state)
 
-  const variant: RevealVariant = variants[state]
+  const variant = variants[state]
 
   const guardianIcon = useMemo(() => {
     if (state === 'success') return <Check size={16} />

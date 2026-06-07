@@ -1,3 +1,5 @@
+export type SheetState = 'success' | 'queued' | 'failed_retryable' | 'failed_terminal'
+
 export interface RevealVariant {
   headline: string
   subline: string
@@ -10,7 +12,7 @@ export interface RevealVariant {
   permissionText: string
 }
 
-export function buildVariants(mdrrmoLabel: string): Record<string, RevealVariant> {
+export function buildVariants(mdrrmoLabel: string): Record<SheetState, RevealVariant> {
   return {
     success: {
       headline: 'We heard you. We are here.',

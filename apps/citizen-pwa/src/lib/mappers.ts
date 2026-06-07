@@ -1,23 +1,5 @@
 import type { ReportStatus } from '@bantayog/shared-types'
-import type { ReportData } from '../hooks/useReport'
-
-const VALID_STATUSES: Set<string> = new Set([
-  'draft_inbox',
-  'new',
-  'awaiting_verify',
-  'verified',
-  'assigned',
-  'acknowledged',
-  'en_route',
-  'on_scene',
-  'resolved',
-  'closed',
-  'reopened',
-  'rejected',
-  'cancelled',
-  'cancelled_false_report',
-  'merged_as_duplicate',
-])
+import type { ReportData, ReportLocation, ReportTimelineEvent } from '../hooks/useReport'
 
 function toMillis(value: unknown): number | undefined {
   if (typeof value === 'number') {
@@ -35,6 +17,24 @@ function toMillis(value: unknown): number | undefined {
   return undefined
 }
 
+const VALID_STATUSES: ReadonlySet<string> = new Set([
+  'draft_inbox',
+  'new',
+  'awaiting_verify',
+  'verified',
+  'assigned',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+  'resolved',
+  'closed',
+  'reopened',
+  'rejected',
+  'cancelled',
+  'cancelled_false_report',
+  'merged_as_duplicate',
+])
+
 // Per-step timestamp fields written by callables (verifyReport, dispatchResponder,
 // closeReport, rejectReport, etc.). Each maps to a corresponding ReportStatus
 // transition the citizen wants to see in the tracking timeline.
@@ -51,13 +51,39 @@ const TIMESTAMP_TO_EVENT: ReadonlyArray<{ field: string; event: ReportStatus }> 
   { field: 'reopenedAt', event: 'reopened' },
 ]
 
+/* ── validation ─────────────────────────────────────────── */
+
+function assertValidStatus(status: unknown): asserts status is ReportStatus {
+  if (typeof status !== 'string' || !VALID_STATUSES.has(status)) {
+    throw new Error('Invalid report data: missing required fields')
+  }
+}
+
+function assertValidTimeline(data: Record<string, unknown>): void {
+  if (data.timeline !== undefined && !Array.isArray(data.timeline)) {
+    throw new Error('Invalid report data: missing required fields')
+  }
+}
+
+/* ── timestamp resolution ───────────────────────────────── */
+
+function resolveCreatedAt(data: Record<string, unknown>): number | undefined {
+  return toMillis(data.createdAt) ?? toMillis(data.submittedAt)
+}
+
+function resolveUpdatedAt(data: Record<string, unknown>): number | undefined {
+  return toMillis(data.updatedAt) ?? toMillis(data.lastStatusAt)
+}
+
+/* ── timeline builders ──────────────────────────────────── */
+
 function synthesizeTimeline(
   data: Record<string, unknown>,
   status: ReportStatus,
   createdAt: number | undefined,
   updatedAt: number | undefined,
-): { event: string; timestamp: number }[] {
-  const events: { event: string; timestamp: number }[] = []
+): ReportTimelineEvent[] {
+  const events: ReportTimelineEvent[] = []
   if (typeof createdAt === 'number') {
     events.push({ event: 'new', timestamp: createdAt })
   }
@@ -81,7 +107,7 @@ function synthesizeTimeline(
   return events
 }
 
-function mapTimelineEvent(rawEvt: unknown, index: number) {
+function mapTimelineEvent(rawEvt: unknown, index: number): ReportTimelineEvent {
   if (!rawEvt || typeof rawEvt !== 'object' || Array.isArray(rawEvt)) {
     throw new Error(`Invalid timeline event at index ${index}`)
   }
@@ -98,68 +124,96 @@ function mapTimelineEvent(rawEvt: unknown, index: number) {
   }
 }
 
+function buildTimeline(
+  data: Record<string, unknown>,
+  status: ReportStatus,
+  createdAt: number | undefined,
+  updatedAt: number | undefined,
+): ReportTimelineEvent[] {
+  assertValidTimeline(data)
+  return Array.isArray(data.timeline)
+    ? data.timeline.map(mapTimelineEvent)
+    : synthesizeTimeline(data, status, createdAt, updatedAt)
+}
+
+/* ── field extractors ───────────────────────────────────── */
+
+function extractId(data: Record<string, unknown>, docId?: string): string {
+  return typeof data.id === 'string' ? data.id : docId ?? 'unknown'
+}
+
+function extractOptionalString(data: Record<string, unknown>, key: string): string | undefined {
+  const value = data[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+function extractLocation(data: Record<string, unknown>): ReportLocation | undefined {
+  const rawLocation =
+    data.location !== undefined && data.location !== null
+      ? data.location
+      : data.publicLocation
+
+  if (
+    rawLocation == null ||
+    typeof rawLocation !== 'object' ||
+    Array.isArray(rawLocation)
+  ) {
+    return undefined
+  }
+
+  const loc = rawLocation as Record<string, unknown>
+  const location: ReportLocation = {}
+  if (typeof loc.address === 'string') location.address = loc.address
+  if (typeof loc.lat === 'number') location.lat = loc.lat
+  if (typeof loc.lng === 'number') location.lng = loc.lng
+  return Object.keys(location).length > 0 ? location : undefined
+}
+
+/* ── public API ──────────────────────────────────────────── */
+
 export function mapReportFromFirestore(
   data: Record<string, unknown>,
   docId?: string,
 ): ReportData {
-  if (typeof data.status !== 'string' || !VALID_STATUSES.has(data.status)) {
-    throw new Error('Invalid report data: missing required fields')
-  }
-
+  assertValidStatus(data.status)
   const status = data.status as ReportStatus
 
-  const createdAt = toMillis(data.createdAt) ?? toMillis(data.submittedAt)
-  const updatedAt = toMillis(data.updatedAt) ?? toMillis(data.lastStatusAt)
-  if (data.timeline !== undefined && !Array.isArray(data.timeline)) {
-    throw new Error('Invalid report data: missing required fields')
-  }
-  const timeline = Array.isArray(data.timeline)
-    ? data.timeline.map(mapTimelineEvent)
-    : synthesizeTimeline(data, status, createdAt, updatedAt)
+  const createdAt = resolveCreatedAt(data)
+  const updatedAt = resolveUpdatedAt(data)
+  const timeline = buildTimeline(data, status, createdAt, updatedAt)
 
   const result: ReportData = {
-    id: typeof data.id === 'string' ? data.id : docId ?? 'unknown',
+    id: extractId(data, docId),
     status,
     timeline,
   }
 
-  if (data.type !== undefined) {
-    result.type = data.type as string
-  }
-  if (data.reportType !== undefined) {
-    result.reportType = data.reportType as string
-  }
-  if (data.severity !== undefined) {
-    result.severity = data.severity as string
-  }
-  if (createdAt !== undefined) {
-    result.createdAt = createdAt
-  }
-  if (updatedAt !== undefined) {
-    result.updatedAt = updatedAt
-  }
-  const rawLocation =
-    data.location !== undefined && data.location !== null ? data.location : data.publicLocation
-  if (rawLocation !== undefined && rawLocation !== null && typeof rawLocation === 'object' && !Array.isArray(rawLocation)) {
-    const loc = rawLocation as Record<string, unknown>
-    result.location = {
-      ...(typeof loc.address === 'string' && { address: loc.address }),
-      ...(typeof loc.lat === 'number' && { lat: loc.lat }),
-      ...(typeof loc.lng === 'number' && { lng: loc.lng }),
-    }
-  }
-  if (data.reporterName !== undefined) {
-    result.reporterName = data.reporterName as string
-  }
-  if (data.reporterPhone !== undefined) {
-    result.reporterPhone = data.reporterPhone as string
-  }
-  if (data.resolutionNote !== undefined) {
-    result.resolutionNote = data.resolutionNote as string
-  }
-  if (data.closedBy !== undefined) {
-    result.closedBy = data.closedBy as string
-  }
+  const type = extractOptionalString(data, 'type')
+  if (type !== undefined) result.type = type
+
+  const reportType = extractOptionalString(data, 'reportType')
+  if (reportType !== undefined) result.reportType = reportType
+
+  const severity = extractOptionalString(data, 'severity')
+  if (severity !== undefined) result.severity = severity
+
+  if (createdAt !== undefined) result.createdAt = createdAt
+  if (updatedAt !== undefined) result.updatedAt = updatedAt
+
+  const location = extractLocation(data)
+  if (location !== undefined) result.location = location
+
+  const reporterName = extractOptionalString(data, 'reporterName')
+  if (reporterName !== undefined) result.reporterName = reporterName
+
+  const reporterPhone = extractOptionalString(data, 'reporterPhone')
+  if (reporterPhone !== undefined) result.reporterPhone = reporterPhone
+
+  const resolutionNote = extractOptionalString(data, 'resolutionNote')
+  if (resolutionNote !== undefined) result.resolutionNote = resolutionNote
+
+  const closedBy = extractOptionalString(data, 'closedBy')
+  if (closedBy !== undefined) result.closedBy = closedBy
 
   return result
 }
