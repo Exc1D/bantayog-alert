@@ -3,6 +3,7 @@ import { MapPin, X, Zap, PhoneCall } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
 import { statusMeta } from '../../utils/incident-meta.js'
 import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
+import { Timeline } from '../ui/Timeline.js'
 import type { MyReport, PublicIncident } from './types.js'
 
 const RESPONDER_PHONE_NUMBER = '0547211216'
@@ -39,7 +40,13 @@ const LABELS: Record<string, string> = {
   other: 'Others',
 }
 
-const PROGRESS_STATUSES = ['new', 'awaiting_verify', 'verified', 'en_route', 'resolved'] as const
+type ProgressStatus = 'new' | 'awaiting_verify' | 'verified' | 'en_route' | 'resolved'
+
+interface TrackingEvent {
+  label: string
+  meta: string
+  state: 'complete' | 'pending' | 'queued' | 'failed'
+}
 
 function timeAgo(timestamp: number): string {
   const minutes = Math.floor((Date.now() - timestamp) / 60000)
@@ -51,12 +58,79 @@ function timeAgo(timestamp: number): string {
   return `${String(days)} day${days === 1 ? '' : 's'} ago`
 }
 
-function progressStatus(status: MyReport['status']): (typeof PROGRESS_STATUSES)[number] {
+function progressStatus(status: MyReport['status']): ProgressStatus {
   if (status === 'queued' || status === 'draft_inbox' || status === 'new') return 'new'
   if (status === 'awaiting_verify') return 'awaiting_verify'
   if (status === 'verified' || status === 'assigned' || status === 'acknowledged') return 'verified'
   if (status === 'en_route' || status === 'on_scene') return 'en_route'
   return 'resolved'
+}
+
+function updatedMeta(report: MyReport): string {
+  return `Updated ${timeAgo(report.lastStatusAt ?? report.submittedAt)}`
+}
+
+function trackingStage(status: MyReport['status']): number {
+  if (status === 'new' || status === 'awaiting_verify') return 1
+  if (status === 'verified' || status === 'reopened') return 2
+  if (
+    status === 'assigned' ||
+    status === 'acknowledged' ||
+    status === 'en_route' ||
+    status === 'on_scene'
+  ) {
+    return 3
+  }
+  if (status === 'resolved' || status === 'closed') return 4
+  return 0
+}
+
+function buildTrackingTimeline(report: MyReport): TrackingEvent[] {
+  if (report.status === 'queued' || report.status === 'draft_inbox') {
+    return [
+      { label: 'Saved on this phone', meta: timeAgo(report.submittedAt), state: 'queued' },
+      { label: 'Send when online', meta: 'Automatic retry is enabled', state: 'pending' },
+      { label: 'Report received', meta: 'Waiting for MDRRMO receipt', state: 'pending' },
+    ]
+  }
+
+  if (report.status === 'rejected') {
+    return [
+      { label: 'Report received', meta: timeAgo(report.submittedAt), state: 'complete' },
+      { label: 'First review', meta: updatedMeta(report), state: 'complete' },
+      { label: 'Not accepted', meta: 'MDRRMO did not accept this report', state: 'failed' },
+    ]
+  }
+
+  if (report.status === 'cancelled' || report.status === 'cancelled_false_report') {
+    return [
+      { label: 'Report received', meta: timeAgo(report.submittedAt), state: 'complete' },
+      { label: 'Cancelled', meta: updatedMeta(report), state: 'complete' },
+    ]
+  }
+
+  if (report.status === 'merged_as_duplicate') {
+    return [
+      { label: 'Report received', meta: timeAgo(report.submittedAt), state: 'complete' },
+      { label: 'Merged with another report', meta: updatedMeta(report), state: 'complete' },
+    ]
+  }
+
+  const stage = trackingStage(report.status)
+  const responseLabel = report.status === 'on_scene' ? 'Responder on scene' : 'Responder en route'
+  const steps = [
+    { label: 'Report received', meta: timeAgo(report.submittedAt) },
+    { label: 'First review', meta: stage === 1 ? updatedMeta(report) : 'MDRRMO reviewed' },
+    { label: 'Verified', meta: stage === 2 ? updatedMeta(report) : 'Incident confirmed' },
+    { label: responseLabel, meta: stage === 3 ? updatedMeta(report) : 'Waiting for dispatch' },
+    { label: 'Resolution', meta: stage === 4 ? updatedMeta(report) : 'Waiting for final update' },
+  ]
+
+  return steps.map((step, index) => {
+    if (stage >= 4 || index < stage) return { ...step, state: 'complete' as const }
+    if (index === stage) return { ...step, state: 'pending' as const }
+    return { ...step, state: 'queued' as const }
+  })
 }
 
 export function DetailSheet(props: Props) {
@@ -190,7 +264,7 @@ export function DetailSheet(props: Props) {
   const report = props.report
   const displayStatus = progressStatus(report.status)
   const actions = actionsFor(displayStatus)
-  const statusIndex = PROGRESS_STATUSES.indexOf(displayStatus)
+  const trackingEvents = buildTrackingTimeline(report)
 
   /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
   return (
@@ -248,27 +322,11 @@ export function DetailSheet(props: Props) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <div className="flex gap-1 mb-5">
-        {PROGRESS_STATUSES.map((step, index) => (
-          <div key={step} className="flex flex-col items-center gap-1 flex-1">
-            <div className="flex items-center w-full">
-              <div className="relative">
-                <div
-                  className={`w-2.5 h-2.5 rounded-full border-2 ${index <= statusIndex ? 'bg-brand-500 border-brand-500' : 'bg-surface-200 border-brand-500'}`}
-                />
-              </div>
-              {index < PROGRESS_STATUSES.length - 1 ? (
-                <div
-                  className={`flex-1 h-0.5 ${index < statusIndex ? 'bg-brand-500' : 'bg-surface-200'}`}
-                  style={{ marginTop: '-5px' }}
-                />
-              ) : null}
-            </div>
-            <span className="text-[10px] text-surface-600 text-center leading-tight w-full">
-              {step.replace(/_/g, ' ')}
-            </span>
-          </div>
-        ))}
+      <div className="mb-5">
+        <h2 className="mb-3 text-xs font-bold tracking-widest uppercase text-surface-500">
+          Tracking timeline
+        </h2>
+        <Timeline events={trackingEvents} />
       </div>
       {actions.includes('edit') && report.id ? (
         <button type="button" aria-label="Edit report" className="mb-2">

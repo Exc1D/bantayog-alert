@@ -111,6 +111,44 @@ describe('DetailSheet — myReport mode', () => {
     expect(screen.queryByRole('button', { name: /delete report/i })).toBeNull()
   })
 
+  it('shows a citizen tracking timeline with lifecycle milestones', () => {
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        mode="myReport"
+        report={{
+          ...myReportProps.report,
+          status: 'en_route',
+          lastStatusAt: Date.now() - 600000,
+        }}
+      />,
+    )
+    expect(screen.getByRole('heading', { name: /tracking timeline/i })).toBeInTheDocument()
+    expect(screen.getByText('Report received')).toBeInTheDocument()
+    expect(screen.getByText('First review')).toBeInTheDocument()
+    expect(screen.getByText('Verified')).toBeInTheDocument()
+    expect(screen.getByText('Responder en route')).toBeInTheDocument()
+    expect(screen.getByText('Resolution')).toBeInTheDocument()
+    expect(screen.getByText(/updated/i)).toBeInTheDocument()
+  })
+
+  it('shows a terminal tracking outcome for rejected reports', () => {
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        mode="myReport"
+        report={{ ...myReportProps.report, status: 'rejected' }}
+      />,
+    )
+    expect(screen.getByText('Not accepted')).toBeInTheDocument()
+    expect(screen.getByText('MDRRMO did not accept this report')).toBeInTheDocument()
+    expect(screen.queryByText('Responder en route')).toBeNull()
+  })
+
   it('shows request correction for verified', () => {
     render(
       <DetailSheet
