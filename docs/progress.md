@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-07 - Architecture Alignment for MVP Core Loop
+
+- Added `docs/architecture/architecture-alignment.md` to center Phase 0/1 work on the incident lifecycle: Citizen report → Admin triage → Verify/reject → Dispatch responder → Responder status update → Resolution → Citizen tracking.
+- Added architecture checklist and ADR index docs, plus eight Nygard-style ADRs covering the MVP loop, canonical submission path, command-function writes, report triptych, future notification outbox, offline boundaries, MVP role scope, and thin apps/shared domain rules.
+- Added lightweight feature boundary README scaffolds for Citizen reporting/tracking, Admin triage/dispatch, and Responder assignments/status updates without moving runtime code.
+- No runtime behavior, Firestore rules, Cloud Functions exports, deployment config, dependencies, or major folders were changed.
+
 ## 2026-06-07 - Fallow-Driven Cloud Functions Unit-Test Coverage
 
 - Ran Fallow analysis and identified high-complexity / high-duplication files.

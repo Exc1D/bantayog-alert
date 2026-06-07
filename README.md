@@ -1,6 +1,16 @@
 # Bantayog Alert
 
-Disaster reporting and coordination platform for the Province of Camarines Norte, Philippines.
+Local incident reporting and response coordination platform for LGUs and DRRM
+offices in Camarines Norte, Philippines.
+
+## MVP Architecture Direction
+
+Bantayog Alert is currently being aligned around the MVP incident lifecycle for
+local incident reporting and response coordination.
+
+- [Architecture alignment](docs/architecture/architecture-alignment.md)
+- [Architecture checklist](docs/architecture/architecture-checklist.md)
+- [Architecture decision records](docs/adr/)
 
 Driver documents live in `prd/`:
 
