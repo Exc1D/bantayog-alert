@@ -225,6 +225,44 @@ describe('submitReport', () => {
     expect(inboxDoc.payload.triage?.urgencyReason).toBeUndefined()
   })
 
+  it('omits whitespace-only urgencyReason after trimming', async () => {
+    const deps: SubmitReportDeps = {
+      ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
+      requestUploadUrl: vi.fn(),
+      putBlob: vi.fn(),
+      writeInbox: vi.fn().mockResolvedValue('ibx-8'),
+      randomUUID: vi.fn().mockReturnValue('uuid-h'),
+      randomPublicRef: vi.fn().mockReturnValue('ref9999'),
+      randomSecret: vi.fn().mockReturnValue('s8'),
+      sha256Hex: vi.fn().mockResolvedValue('o'.repeat(64)),
+      now: () => 1,
+    }
+
+    await submitReport(deps, {
+      reportType: 'flood',
+      severity: 'medium',
+      description: 'Water is entering houses near the creek.',
+      publicLocation: { lat: 14.1, lng: 122.9 },
+      triage: {
+        peopleInjured: false,
+        peopleTrapped: false,
+        locationConfidence: 'approximate',
+        urgencyReason: '   ',
+      },
+    })
+
+    const inboxDoc = (deps.writeInbox as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0]![0]! as {
+      payload: { triage?: { urgencyReason?: string } }
+    }
+    expect(inboxDoc.payload.triage).toEqual({
+      peopleInjured: false,
+      peopleTrapped: false,
+      locationConfidence: 'approximate',
+    })
+    expect(inboxDoc.payload.triage?.urgencyReason).toBeUndefined()
+  })
+
   it('omits contact when not provided', async () => {
     const deps: SubmitReportDeps = {
       ensureSignedIn: vi.fn().mockResolvedValue('citizen-1'),

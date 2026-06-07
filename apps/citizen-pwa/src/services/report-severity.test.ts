@@ -34,6 +34,16 @@ describe('deriveReportSeverity', () => {
     ).toBe('medium')
   })
 
+  it('normalizes public_disturbance alias to security and marks injury as medium', () => {
+    expect(
+      deriveReportSeverity({
+        reportType: 'public_disturbance',
+        peopleInjured: true,
+        peopleTrapped: false,
+      }),
+    ).toBe('medium')
+  })
+
   it('marks high-risk incident types as medium without injury or trapped signals', () => {
     for (const reportType of [
       'flood',

@@ -1,4 +1,5 @@
 import localforage from 'localforage'
+import type { LocationConfidence } from './draft-store'
 
 interface SerializableStep1 {
   reportType: string
@@ -13,7 +14,7 @@ interface SerializableStep2 {
   reporterName: string
   reporterMsisdn: string
   locationMethod: 'gps' | 'manual'
-  locationConfidence: 'exact' | 'approximate' | 'manual'
+  locationConfidence: LocationConfidence
   municipalityId?: string
   municipalityLabel?: string
   barangayId?: string

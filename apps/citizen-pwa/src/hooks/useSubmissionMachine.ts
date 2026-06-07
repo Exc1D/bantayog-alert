@@ -61,7 +61,21 @@ export interface SubmitDraftOnlineDeps {
   timeoutMs?: number
 }
 
+function normalizeTriage(triage: Draft['triage']): Draft['triage'] | undefined {
+  if (!triage) return undefined
+  const urgencyReason = triage.urgencyReason?.trim()
+  // Defensive normalization: trim whitespace, drop empty urgencyReason.
+  const urgencyReason = triage.urgencyReason?.trim()
+  return {
+    peopleInjured: triage.peopleInjured,
+    peopleTrapped: triage.peopleTrapped,
+    locationConfidence: triage.locationConfidence,
+    ...(urgencyReason ? { urgencyReason } : {}),
+  }
+}
+
 function buildSubmitCitizenReportInput(draft: Draft): SubmitCitizenReportInput {
+  const normalizedTriage = normalizeTriage(draft.triage)
   return {
     clientCreatedAt: draft.clientCreatedAt,
     idempotencyKey: draft.idempotencyKey,
@@ -74,7 +88,7 @@ function buildSubmitCitizenReportInput(draft: Draft): SubmitCitizenReportInput {
       severity: draft.severity,
       source: 'web',
       clientDraftRef: draft.clientDraftRef,
-      ...(draft.triage ? { triage: draft.triage } : {}),
+      ...(normalizedTriage ? { triage: normalizedTriage } : {}),
       ...(draft.location ? { publicLocation: draft.location } : {}),
       ...(draft.municipalityId ? { municipalityId: draft.municipalityId } : {}),
       ...(draft.barangayId ? { barangayId: draft.barangayId } : {}),

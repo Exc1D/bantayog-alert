@@ -134,7 +134,7 @@ export async function materializeCitizenReportCore(
       createdAt,
       agencyIds: [],
       activeResponderCount: 0,
-      requiresLocationFollowUp: triage ? triage.locationConfidence !== 'exact' : false,
+      ...(triage ? { requiresLocationFollowUp: triage.locationConfidence !== 'exact' } : {}),
       reportType: input.payload.reportType,
       ...(triage ? { triage } : {}),
       ...(input.payload.nearestLandmark ? { nearestLandmark: input.payload.nearestLandmark } : {}),

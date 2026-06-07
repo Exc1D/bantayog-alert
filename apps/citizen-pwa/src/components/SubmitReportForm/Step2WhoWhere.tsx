@@ -74,25 +74,37 @@ export function Step2WhoWhere({
   const [hasMemory, setHasMemory] = useState(false)
   const [municipalityError, setMunicipalityError] = useState<string | null>(null)
 
-  // Hydrate from snapshot when resuming or navigating back to Step 2.
+  /* eslint-disable react-hooks/set-state-in-effect -- restoring persisted wizard state is the canonical use for setState-in-effect */
   useEffect(() => {
     if (!initialValues) return
-
+    if (initialValues.reporterName) {
+      setReporterName(initialValues.reporterName)
+    }
+    if (initialValues.reporterMsisdn) {
+      setReporterMsisdn(initialValues.reporterMsisdn)
+    }
+    if (initialValues.locationConfidence) {
+      setLocationConfidence(initialValues.locationConfidence)
+    }
     if (initialValues.locationMethod) setLocationMethod(initialValues.locationMethod)
     // Municipality / barangay are handled via useMunicipalityBarangays; those
-    // hooks don't expose setters, so we rely on localStorage/sessionStorage
-    // pre-fill below for reporter fields, and the user re-selects location.
+    // hooks don't expose setters, so the user re-selects location.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect -- restoring session storage for name/phone */
   useEffect(() => {
     try {
       const savedName = sessionStorage.getItem('bantayog.reporter.name')
       const savedMsisdn = sessionStorage.getItem('bantayog.reporter.msisdn')
       if (savedName || savedMsisdn) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (savedName) setReporterName(savedName)
-        if (savedMsisdn) setReporterMsisdn(savedMsisdn)
+        if (savedName && !initialValues?.reporterName) {
+          setReporterName(savedName)
+        }
+        if (savedMsisdn && !initialValues?.reporterMsisdn) {
+          setReporterMsisdn(savedMsisdn)
+        }
         setHasMemory(true)
       }
     } catch (err: unknown) {
@@ -102,7 +114,38 @@ export function Step2WhoWhere({
         console.warn('[Step2WhoWhere] Unexpected storage read error, skipping pre-fill', err)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Normalize locationConfidence when switching to manual — exact doesn't
+  // make sense for municipality-only entries and would silently downgrade
+  // to the same-follow-up logic.
+  /* eslint-disable react-hooks/set-state-in-effect -- normalizing state derived from locationMethod is the canonical use for setState-in-effect */
+  useEffect(() => {
+    if (locationMethod === 'manual' && locationConfidence === 'exact') {
+      setLocationConfidence('manual')
+    }
+  }, [locationMethod, locationConfidence])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const locationConfidenceOptions = [
+    {
+      value: 'exact' as const,
+      label: 'Exact spot',
+      detail: 'GPS pin or address is where the incident happened.',
+    },
+    {
+      value: 'approximate' as const,
+      label: 'Approximate area',
+      detail: 'The incident is nearby, but the exact spot may need confirmation.',
+    },
+    {
+      value: 'manual' as const,
+      label: 'Manual place only',
+      detail: 'Municipality, barangay, or landmark needs operator follow-up.',
+    },
+  ]
 
   const handleNext = () => {
     setNameError(null)
@@ -341,43 +384,29 @@ export function Step2WhoWhere({
                 How confident are you about this location?
               </p>
               <div className="grid gap-2">
-                {[
-                  {
-                    value: 'exact' as const,
-                    label: 'Exact spot',
-                    detail: 'GPS pin or address is where the incident happened.',
-                  },
-                  {
-                    value: 'approximate' as const,
-                    label: 'Approximate area',
-                    detail: 'The incident is nearby, but the exact spot may need confirmation.',
-                  },
-                  {
-                    value: 'manual' as const,
-                    label: 'Manual place only',
-                    detail: 'Municipality, barangay, or landmark needs operator follow-up.',
-                  },
-                ].map((option) => {
-                  const isSelected = locationConfidence === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => {
-                        setLocationConfidence(option.value)
-                      }}
-                      className={`min-h-14 rounded-xl border-2 px-3 py-2 text-left transition-all active:scale-[0.99] ${
-                        isSelected
-                          ? 'border-brand-500 bg-brand-50 text-surface-900'
-                          : 'border-surface-200 bg-white text-surface-700'
-                      }`}
-                    >
-                      <span className="block text-sm font-semibold">{option.label}</span>
-                      <span className="block text-xs text-surface-500">{option.detail}</span>
-                    </button>
-                  )
-                })}
+                {locationConfidenceOptions
+                  .filter((o) => !(locationMethod === 'manual' && o.value === 'exact'))
+                  .map((option) => {
+                    const isSelected = locationConfidence === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                          setLocationConfidence(option.value)
+                        }}
+                        className={`min-h-14 rounded-xl border-2 px-3 py-2 text-left transition-all active:scale-[0.99] ${
+                          isSelected
+                            ? 'border-brand-500 bg-brand-50 text-surface-900'
+                            : 'border-surface-200 bg-white text-surface-700'
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold">{option.label}</span>
+                        <span className="block text-xs text-surface-500">{option.detail}</span>
+                      </button>
+                    )
+                  })}
               </div>
             </div>
           ) : null}

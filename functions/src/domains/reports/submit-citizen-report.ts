@@ -37,6 +37,8 @@ export const submitCitizenReportSchema = z
   })
   .strict()
 
+export type SubmitCitizenReportPayload = z.infer<typeof submitCitizenPayloadSchema>
+
 export interface SubmitCitizenReportCoreInput {
   reporterUid: string
   clientCreatedAt: number
@@ -44,7 +46,7 @@ export interface SubmitCitizenReportCoreInput {
   publicRef: string
   secretHash: string
   correlationId: string
-  payload: InboxPayload
+  payload: SubmitCitizenReportPayload
   now?: () => number
 }
 

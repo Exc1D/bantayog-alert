@@ -8,8 +8,8 @@ export declare const operationalStatusSchema: z.ZodEnum<{
     closed: "closed";
     cancelled: "cancelled";
     merged_as_duplicate: "merged_as_duplicate";
-    intake: "intake";
     triage: "triage";
+    intake: "intake";
     ready_for_dispatch: "ready_for_dispatch";
 }>;
 export declare const verificationStatusSchema: z.ZodEnum<{
@@ -55,8 +55,8 @@ export declare const incidentCoreSchema: z.ZodObject<{
         closed: "closed";
         cancelled: "cancelled";
         merged_as_duplicate: "merged_as_duplicate";
-        intake: "intake";
         triage: "triage";
+        intake: "intake";
         ready_for_dispatch: "ready_for_dispatch";
     }>;
     verificationStatus: z.ZodEnum<{
@@ -242,8 +242,8 @@ export declare const publicIncidentCardSchema: z.ZodObject<{
         closed: "closed";
         cancelled: "cancelled";
         merged_as_duplicate: "merged_as_duplicate";
-        intake: "intake";
         triage: "triage";
+        intake: "intake";
         ready_for_dispatch: "ready_for_dispatch";
     }>;
     municipalityId: z.ZodString;
@@ -292,8 +292,8 @@ export declare const publicIncidentProjectionEventSchema: z.ZodDiscriminatedUnio
             closed: "closed";
             cancelled: "cancelled";
             merged_as_duplicate: "merged_as_duplicate";
-            intake: "intake";
             triage: "triage";
+            intake: "intake";
             ready_for_dispatch: "ready_for_dispatch";
         }>;
         municipalityId: z.ZodString;
@@ -342,8 +342,8 @@ export declare const publicIncidentProjectionEventSchema: z.ZodDiscriminatedUnio
             closed: "closed";
             cancelled: "cancelled";
             merged_as_duplicate: "merged_as_duplicate";
-            intake: "intake";
             triage: "triage";
+            intake: "intake";
             ready_for_dispatch: "ready_for_dispatch";
         }>;
         municipalityId: z.ZodString;
