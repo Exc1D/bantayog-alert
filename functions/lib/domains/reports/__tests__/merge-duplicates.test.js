@@ -10,7 +10,7 @@ vi.mock('firebase-functions/v2/https', () => ({ onCall: onCallMock }));
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }));
 let adminApp;
 let adminDb;
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
     get adminDb() {
         return adminDb;
     },

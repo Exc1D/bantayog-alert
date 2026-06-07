@@ -15,7 +15,7 @@ vi.mock('firebase-admin/storage', () => ({
         }),
     }),
 }));
-vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }));
+vi.mock('../../ops/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }));
 const guarded = await guardInitTestEnvironment({
     projectId: 'demo-8c-retention',
     firestore: { host: 'localhost', port: 8081 },

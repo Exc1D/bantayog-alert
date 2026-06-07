@@ -21,7 +21,7 @@ vi.mock('firebase-admin/storage', () => ({
         }),
     }),
 }));
-vi.mock('../../services/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }));
+vi.mock('../../ops/audit-stream.js', () => ({ streamAuditEvent: vi.fn() }));
 let env;
 let available = false;
 async function seedApprovedRequest(db, id, citizenUid, status = 'approved_pending_anonymization', legalHold = false) {

@@ -8,14 +8,14 @@ const mockAdd = vi.hoisted(() => vi.fn());
 const mockUpdate = vi.hoisted(() => vi.fn());
 const mockSet = vi.hoisted(() => vi.fn());
 const mockGet = vi.hoisted(() => vi.fn());
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
     adminDb: {
         collection: mockDbCollection,
         doc: mockDbDoc,
         runTransaction: mockDbRunTransaction,
     },
 }));
-vi.mock('../../services/rate-limit.js', () => ({
+vi.mock('../../shared/rate-limit.js', () => ({
     checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
 }));
 vi.mock('../../../idempotency/guard.js', () => ({

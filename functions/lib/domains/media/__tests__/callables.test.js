@@ -19,7 +19,7 @@ vi.mock('firebase-admin/storage', () => ({
         }),
     }),
 }));
-vi.mock('../../admin-init.js', () => ({ adminDb: {} }));
+vi.mock('../../../admin-init.js', () => ({ adminDb: {} }));
 vi.mock('../../shared/rate-limit.js', () => ({
     checkRateLimit: mockCheckRateLimit,
 }));

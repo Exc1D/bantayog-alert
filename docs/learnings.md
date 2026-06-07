@@ -134,6 +134,10 @@
 
 ## Build / Monorepo / Infra
 
+- New Postgres/PostGIS migration work needs its own Stage 1 plan before SQL files exist; do not create `infra/postgres/migrations/*` until the full schema/RLS diff is shown and approved.
+- Postgres public reads need projection tables, not operational tables with polite column names. Keep `bantayog_public_read` on `public_*` tables only, and use explicit grants so privacy records are not exposed through broad `all tables` privileges.
+- In the PostGIS incident core, nullable `incident_id` is not a safe way to model general operational state. Keep incident-lifecycle rows incident-scoped, and put general responder availability on `responder_locations.status`.
+- Greenfield boundary contracts should precede risky migration work: define incident lifecycle links, grouped command route params, Ops app surfaces, PostGIS store references, and public projection events before touching live Functions exports, database migrations, RLS, or app merges.
 - Greenfield Incident/PostGIS work starts at shared contracts: keep operational status, verification status, and publication status as separate axes, and project citizen map/feed data through a strict public read model that rejects reporter identity fields.
 - Retiring a feature means removing the full surface together: Function export, frontend callable wrapper, validator/type contract, rules/indexes, direct tests, runbooks, and monitoring. Leaving one layer behind creates accidental-revival or incident-response risk.
 - Do not remove command-channel Firestore rules just because the manual message callable is retired. Report sharing and agency assistance still create command-channel records, so the storage read rules remain part of live coordination.

@@ -72,7 +72,7 @@ vi.mock('node:module', () => {
     return { createRequire: () => req };
 });
 let adminDb;
-vi.mock('../../admin-init.js', () => ({
+vi.mock('../../../admin-init.js', () => ({
     get adminDb() {
         return adminDb;
     },
