@@ -2,7 +2,7 @@ import { AlertTriangle, Bell, Keyboard, LogOut, Volume2, VolumeX } from 'lucide-
 import { Link } from 'react-router-dom'
 import { Tooltip } from './Tooltip'
 
-type WindowRole = 'dashboard' | 'map' | 'feed' | 'dispatches'
+type WindowRole = 'dashboard' | 'triage' | 'map' | 'feed' | 'dispatches'
 
 interface Props {
   title: string
@@ -18,6 +18,7 @@ interface Props {
 
 const NAV_ITEMS = [
   { role: 'dashboard', href: '/dashboard', label: 'Dashboard' },
+  { role: 'triage', href: '/triage', label: 'Triage' },
   { role: 'map', href: '/map', label: 'Map' },
   { role: 'feed', href: '/feed', label: 'Feed' },
   { role: 'dispatches', href: '/dispatches', label: 'Dispatches' },

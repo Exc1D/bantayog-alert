@@ -40,6 +40,17 @@ describe('CommandHeader', () => {
     expect(screen.getByRole('link', { name: 'Dispatches' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('renders the Phase 1 triage command tab', () => {
+    render(
+      <MemoryRouter>
+        <CommandHeader title="PDRRMO Camarines Norte" windowRole="triage" />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Triage' })).toHaveAttribute('href', '/triage')
+    expect(screen.getByRole('link', { name: 'Triage' })).toHaveAttribute('aria-current', 'page')
+  })
+
   it('icon buttons have focus-visible ring classes', () => {
     render(
       <MemoryRouter>

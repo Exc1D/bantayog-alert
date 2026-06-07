@@ -22,9 +22,8 @@ interface Props {
 function actionFlags(status: string) {
   const canVerify = status === 'new' || status === 'awaiting_verify'
   const canReject = status === 'awaiting_verify'
-  // Dispatch requires `verified` status, but DashboardPage only feeds this
-  // table reports with status `new` or `awaiting_verify`. Dispatch happens
-  // from the Map page after verification, not from triage.
+  // Dispatch is owned by the Map/Dispatch surfaces; verified triage rows route
+  // there instead of dispatching directly from this table.
   const canDispatch = false
   return { canVerify, canReject, canDispatch }
 }
@@ -90,6 +89,7 @@ export function TriageQueueTable({
               />
             </th>
             <th className="px-4 py-2">Time</th>
+            <th className="px-4 py-2">Summary</th>
             <th className="px-4 py-2">Type</th>
             <th className="px-4 py-2">Severity</th>
             <th className="px-4 py-2">Municipality</th>
@@ -126,6 +126,11 @@ export function TriageQueueTable({
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-secondary)]">
                   {formatRelativeTime(report.createdAt)}
+                </td>
+                <td className="max-w-[24rem] px-4 py-3 text-[var(--color-text-primary)]">
+                  <p className="truncate">
+                    {report.description.trim() || 'Report details pending'}
+                  </p>
                 </td>
                 <td className="px-4 py-3">
                   <ReportTypeIcon type={report.type} />
