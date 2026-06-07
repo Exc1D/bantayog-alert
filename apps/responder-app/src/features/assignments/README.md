@@ -5,18 +5,20 @@
 This boundary owns responder-visible dispatch assignments and the responder's
 decision to accept or decline work.
 
-## MVP responsibility
+## What belongs here
 
-Assignments owns the responder handoff after admin dispatch and prepares the
-responder for status updates.
+- Responder-visible assignment list and detail views.
+- Accept and decline flows.
+- Assignment freshness and offline/degraded state.
+- Handoff from assignment acceptance into status updates.
 
-## Should not contain
+## What should not belong here
 
 - Admin dispatch candidate selection.
 - Citizen report submission logic.
 - Broad analytics or roster administration.
 
-## Phase 1 or later work
+## Phase 1 intended work
 
 - Move dispatch list/detail assignment presentation into this boundary.
 - Read from a responder_assignments projection when it exists.

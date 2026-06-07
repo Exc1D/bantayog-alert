@@ -5,18 +5,20 @@
 This boundary owns citizen-safe report lookup, active report status, and
 post-submission tracking.
 
-## MVP responsibility
+## What belongs here
 
-Tracking owns the Citizen tracking step of the MVP core loop, showing citizens
-the status they are allowed to see after a report is submitted.
+- Citizen-safe report lookup.
+- Active report status display.
+- Submitted-report timeline and recovery states.
+- Fallback tracking state while a report is not materialized yet.
 
-## Should not contain
+## What should not belong here
 
 - Reporter private data beyond what the current citizen can access.
 - Admin-only operational notes.
 - Responder-only assignment details.
 
-## Phase 1 or later work
+## Phase 1 intended work
 
 - Move lookup and active-report presentation into this boundary.
 - Define a citizen_tracking projection contract when projections are added.

@@ -5,18 +5,20 @@
 This boundary owns citizen report draft, review, submission, recovery, and
 submission-state behavior.
 
-## MVP responsibility
+## What belongs here
 
-Reporting owns the Citizen report step of the MVP core loop, including local
-draft creation and handoff to the canonical submission command path.
+- Citizen report draft state.
+- Report form orchestration.
+- Submission recovery and queued submission behavior.
+- Handoff to the canonical citizen submission command path.
 
-## Should not contain
+## What should not belong here
 
 - Admin verification or rejection decisions.
 - Responder assignment or status logic.
 - Raw operational documents beyond citizen-scoped submission needs.
 
-## Phase 1 or later work
+## Phase 1 intended work
 
 - Move report form orchestration into this boundary.
 - Keep draft persistence and queued submission behavior testable in isolation.

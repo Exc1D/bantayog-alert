@@ -5,19 +5,21 @@
 This boundary owns admin dispatch selection, assignment, and incident response
 coordination for verified reports.
 
-## MVP responsibility
+## What belongs here
 
-Dispatch owns the Dispatch responder step of the MVP core loop and hands active
-assignments to responder workflows.
+- Verified-report dispatch preparation.
+- Responder candidate selection.
+- Assignment command orchestration.
+- Dispatch monitoring entry points for active incidents.
 
-## Should not contain
+## What should not belong here
 
 - Citizen report draft logic.
 - Responder-only field status entry.
 - Mutual aid or agency assistance workflows unless explicitly pulled into a
   later phase.
 
-## Phase 1 or later work
+## Phase 1 intended work
 
 - Move dispatch candidate selection and assignment orchestration into this
   boundary.
