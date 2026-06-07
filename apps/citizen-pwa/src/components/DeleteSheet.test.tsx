@@ -26,7 +26,7 @@ describe('DeleteSheet', () => {
         onCancel={vi.fn()}
       />,
     )
-    expect(screen.getByText(/Delete this report/i)).toBeInTheDocument()
+    expect(screen.getByText(/Withdraw this report/i)).toBeInTheDocument()
     expect(screen.getByText(/FL-001/)).toBeInTheDocument()
     expect(screen.getByText(/Flood/i)).toBeInTheDocument()
   })
@@ -57,7 +57,7 @@ describe('DeleteSheet', () => {
         onCancel={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /delete report/i }))
+    fireEvent.click(screen.getByRole('button', { name: /withdraw report/i }))
     expect(onConfirm).toHaveBeenCalledOnce()
   })
 })
