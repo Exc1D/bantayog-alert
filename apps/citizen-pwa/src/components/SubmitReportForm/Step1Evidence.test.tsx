@@ -67,9 +67,48 @@ describe('Step1Evidence — incident type validation', () => {
   it('Skip photo advances when type is explicitly selected', () => {
     const { onNext } = renderStep1()
     fireEvent.click(screen.getByRole('button', { name: /^flood$/i }))
+    fireEvent.change(screen.getByLabelText(/short description/i), {
+      target: { value: 'Flood water is entering homes.' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /skip photo/i }))
     expect(onNext).toHaveBeenCalledWith(
-      expect.objectContaining({ reportType: 'flood', photoFile: null }),
+      expect.objectContaining({
+        reportType: 'flood',
+        photoFile: null,
+        description: 'Flood water is entering homes.',
+        peopleInjured: false,
+        peopleTrapped: false,
+      }),
+    )
+  })
+
+  it('requires a short description before continuing', () => {
+    renderStep1()
+    fireEvent.click(screen.getByRole('button', { name: /^flood$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /skip photo/i }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/describe what happened/i)
+  })
+
+  it('captures injury and trapped indicators', () => {
+    const { onNext } = renderStep1()
+    fireEvent.click(screen.getByRole('button', { name: /^flood$/i }))
+    fireEvent.change(screen.getByLabelText(/short description/i), {
+      target: { value: 'Flood water is entering homes.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /people injured yes/i }))
+    fireEvent.click(screen.getByRole('button', { name: /people trapped yes/i }))
+    fireEvent.change(screen.getByLabelText(/why is this urgent/i), {
+      target: { value: 'A family is stuck on the second floor.' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /skip photo/i }))
+
+    expect(onNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        peopleInjured: true,
+        peopleTrapped: true,
+        urgencyReason: 'A family is stuck on the second floor.',
+      }),
     )
   })
 

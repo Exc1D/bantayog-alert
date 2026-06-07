@@ -12,10 +12,6 @@ function renderContactFields(overrides: Partial<Parameters<typeof ContactFields>
     onReporterMsisdnChange: vi.fn(),
     phoneError: null as string | null,
     onPhoneErrorClear: vi.fn(),
-    anyoneHurt: false,
-    onAnyoneHurtChange: vi.fn(),
-    patientCount: 0,
-    onPatientCountChange: vi.fn(),
   }
 
   return render(<ContactFields {...defaults} {...overrides} />)
@@ -27,7 +23,7 @@ describe('ContactFields', () => {
 
     expect(screen.getByPlaceholderText('Maria Dela Cruz')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('+63 912 345 6789')).toBeInTheDocument()
-    expect(screen.getByText('Is anyone hurt?')).toBeInTheDocument()
+    expect(screen.queryByText('Is anyone hurt?')).not.toBeInTheDocument()
   })
 
   it('calls onReporterNameChange and onNameErrorClear on name input change', () => {
@@ -54,63 +50,6 @@ describe('ContactFields', () => {
 
     expect(onReporterMsisdnChange).toHaveBeenCalledExactlyOnceWith('+639123456789')
     expect(onPhoneErrorClear).toHaveBeenCalledTimes(1)
-  })
-
-  it('toggles "Yes" for anyone hurt', () => {
-    const onAnyoneHurtChange = vi.fn()
-
-    renderContactFields({ onAnyoneHurtChange })
-
-    const yesButton = screen.getByRole('button', { name: 'Yes' })
-    fireEvent.click(yesButton)
-
-    expect(onAnyoneHurtChange).toHaveBeenCalledExactlyOnceWith(true)
-  })
-
-  it('toggles "No" for anyone hurt', () => {
-    const onAnyoneHurtChange = vi.fn()
-
-    renderContactFields({ anyoneHurt: true, onAnyoneHurtChange })
-
-    const noButton = screen.getByRole('button', { name: 'No' })
-    fireEvent.click(noButton)
-
-    expect(onAnyoneHurtChange).toHaveBeenCalledExactlyOnceWith(false)
-  })
-
-  it('does not show patient counter when anyoneHurt is false', () => {
-    renderContactFields({ anyoneHurt: false })
-
-    expect(screen.queryByText('How many patients?')).not.toBeInTheDocument()
-  })
-
-  it('increments patient count', () => {
-    const onPatientCountChange = vi.fn()
-
-    renderContactFields({ anyoneHurt: true, patientCount: 2, onPatientCountChange })
-
-    const incrementButton = screen.getByRole('button', { name: '+' })
-    fireEvent.click(incrementButton)
-
-    expect(onPatientCountChange).toHaveBeenCalledExactlyOnceWith(3)
-  })
-
-  it('decrements patient count', () => {
-    const onPatientCountChange = vi.fn()
-
-    renderContactFields({ anyoneHurt: true, patientCount: 2, onPatientCountChange })
-
-    const decrementButton = screen.getByRole('button', { name: '−' })
-    fireEvent.click(decrementButton)
-
-    expect(onPatientCountChange).toHaveBeenCalledExactlyOnceWith(1)
-  })
-
-  it('disables decrement button at patient count 0', () => {
-    renderContactFields({ anyoneHurt: true, patientCount: 0 })
-
-    const decrementButton = screen.getByRole('button', { name: '−' })
-    expect(decrementButton).toBeDisabled()
   })
 
   it('shows memory hint when hasMemory is true', () => {

@@ -49,6 +49,7 @@ export async function materializeCitizenReportCore(
   const now = input.now ?? (() => Date.now())
   const createdAt = now()
   const exactLocation = input.payload.exactLocation
+  const triage = input.payload.triage
   const pendingMediaIds = input.payload.pendingMediaIds ?? []
   const pendingMediaDocs = new Map<
     string,
@@ -133,8 +134,10 @@ export async function materializeCitizenReportCore(
       createdAt,
       agencyIds: [],
       activeResponderCount: 0,
-      requiresLocationFollowUp: false,
+      ...(triage ? { requiresLocationFollowUp: triage.locationConfidence !== 'exact' } : {}),
       reportType: input.payload.reportType,
+      ...(triage ? { triage } : {}),
+      ...(input.payload.nearestLandmark ? { nearestLandmark: input.payload.nearestLandmark } : {}),
       ...(exactLocation
         ? { locationGeohash: ngeohash.encode(exactLocation.lat, exactLocation.lng, 6) }
         : {}),

@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   MapPin,
   AlertCircle,
-  Users,
+  Image,
   User,
   Pencil,
 } from 'lucide-react'
@@ -24,11 +24,16 @@ interface Step3ReviewProps {
   onSubmit: () => void
   reportData: {
     reportType: string
+    description: string
+    peopleInjured: boolean
+    peopleTrapped: boolean
+    locationConfidence: 'exact' | 'approximate' | 'manual'
+    urgencyReason?: string
     location: { lat: number; lng: number }
     reporterName: string
     reporterMsisdn: string
-    patientCount: number
     locationMethod: 'gps' | 'manual'
+    photoAttached: boolean
     municipalityLabel?: string
     barangayId?: string
     nearestLandmark?: string
@@ -59,6 +64,11 @@ export function Step3Review({
 
   const incident = INCIDENT_TYPES.find((t) => t.value === reportData.reportType)
   const Icon = incident?.Icon ?? AlertTriangle
+  const locationConfidenceLabel = {
+    exact: 'Exact spot',
+    approximate: 'Approximate area',
+    manual: 'Manual place only',
+  }[reportData.locationConfidence]
 
   const handleSubmit = () => {
     if (!consent || !hasConfirmed || hasSubmittedRef.current) return
@@ -101,17 +111,16 @@ export function Step3Review({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-6">
-        {/* "We heard you" banner */}
+        {/* Submission context banner */}
         <div className="bg-brand-50 rounded-xl border border-brand-200 p-4 relative overflow-hidden">
-          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-brand-500/10" />
           <div className="flex gap-3 items-start relative">
             <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center shrink-0">
               <Heart size={16} className="text-white" />
             </div>
             <p className="text-sm text-surface-700 leading-relaxed">
-              <strong className="text-surface-900">We heard you. We are here.</strong> Narinig namin
-              kayo. Nandito kami. We&apos;ll notify you when help is on the way. Please keep your
-              phone line open.
+              <strong className="text-surface-900">Your report will be reviewed.</strong> Keep your
+              reference code after submitting. If there is immediate danger, call your local
+              emergency hotline too.
             </p>
           </div>
         </div>
@@ -145,20 +154,29 @@ export function Step3Review({
               </div>
             </div>
 
-            {/* Patient count row */}
-            {reportData.patientCount > 0 && (
-              <div className="px-4 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Users size={20} className="text-surface-400" />
-                  <div>
-                    <p className="text-xs text-surface-400">Patients</p>
-                    <p className="text-sm font-semibold text-surface-900">
-                      {reportData.patientCount}
-                    </p>
-                  </div>
+            <div className="px-4 py-4">
+              <p className="text-xs text-surface-400">What happened</p>
+              <p className="mt-1 text-sm font-semibold text-surface-900">
+                {reportData.description}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-surface-50 px-3 py-2">
+                  <p className="text-xs text-surface-400">People injured</p>
+                  <p className="text-sm font-semibold text-surface-900">
+                    {reportData.peopleInjured ? 'Yes' : 'No'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-surface-50 px-3 py-2">
+                  <p className="text-xs text-surface-400">People trapped</p>
+                  <p className="text-sm font-semibold text-surface-900">
+                    {reportData.peopleTrapped ? 'Yes' : 'No'}
+                  </p>
                 </div>
               </div>
-            )}
+              {reportData.urgencyReason && (
+                <p className="mt-2 text-xs text-surface-500">{reportData.urgencyReason}</p>
+              )}
+            </div>
 
             {/* Location row */}
             <div className="px-4 py-4 flex items-start justify-between">
@@ -176,6 +194,21 @@ export function Step3Review({
                   )}
                   <p className="text-xs text-surface-400 mt-0.5">
                     {reportData.locationMethod === 'gps' ? 'GPS coordinates' : 'Manual location'}
+                  </p>
+                  <p className="text-xs text-surface-500 mt-0.5">
+                    Confidence: {locationConfidenceLabel}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Image size={20} className="text-surface-400" />
+                <div>
+                  <p className="text-xs text-surface-400">Photo</p>
+                  <p className="text-sm font-semibold text-surface-900">
+                    {reportData.photoAttached ? 'Attached' : 'Not attached'}
                   </p>
                 </div>
               </div>

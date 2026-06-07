@@ -1,4 +1,19 @@
 import { z } from 'zod';
+export declare const locationConfidenceSchema: z.ZodEnum<{
+    exact: "exact";
+    approximate: "approximate";
+    manual: "manual";
+}>;
+export declare const reportTriageSchema: z.ZodObject<{
+    peopleInjured: z.ZodBoolean;
+    peopleTrapped: z.ZodBoolean;
+    locationConfidence: z.ZodEnum<{
+        exact: "exact";
+        approximate: "approximate";
+        manual: "manual";
+    }>;
+    urgencyReason: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
 export declare const hazardTagSchema: z.ZodObject<{
     hazardZoneId: z.ZodString;
     geohash: z.ZodString;
@@ -130,6 +145,17 @@ export declare const reportOpsDocSchema: z.ZodObject<{
         security: "security";
         other: "other";
     }>>;
+    triage: z.ZodOptional<z.ZodObject<{
+        peopleInjured: z.ZodBoolean;
+        peopleTrapped: z.ZodBoolean;
+        locationConfidence: z.ZodEnum<{
+            exact: "exact";
+            approximate: "approximate";
+            manual: "manual";
+        }>;
+        urgencyReason: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    nearestLandmark: z.ZodOptional<z.ZodString>;
     locationGeohash: z.ZodOptional<z.ZodString>;
     duplicateClusterId: z.ZodOptional<z.ZodString>;
     hazardZoneIdList: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -235,6 +261,16 @@ export declare const inboxPayloadSchema: z.ZodObject<{
     municipalityId: z.ZodOptional<z.ZodString>;
     barangayId: z.ZodOptional<z.ZodString>;
     nearestLandmark: z.ZodOptional<z.ZodString>;
+    triage: z.ZodOptional<z.ZodObject<{
+        peopleInjured: z.ZodBoolean;
+        peopleTrapped: z.ZodBoolean;
+        locationConfidence: z.ZodEnum<{
+            exact: "exact";
+            approximate: "approximate";
+            manual: "manual";
+        }>;
+        urgencyReason: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
     contact: z.ZodOptional<z.ZodObject<{
         phone: z.ZodString;
         smsConsent: z.ZodLiteral<true>;
@@ -242,4 +278,5 @@ export declare const inboxPayloadSchema: z.ZodObject<{
     followUpConsent: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strict>;
 export type InboxPayload = z.infer<typeof inboxPayloadSchema>;
+export type ReportTriage = z.infer<typeof reportTriageSchema>;
 //# sourceMappingURL=reports.d.ts.map

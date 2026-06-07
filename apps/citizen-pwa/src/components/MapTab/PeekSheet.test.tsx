@@ -82,7 +82,7 @@ describe('PeekSheet', () => {
         onDelete={onDelete}
       />,
     )
-    const deleteBtn = screen.getByRole('button', { name: /delete/i })
+    const deleteBtn = screen.getByRole('button', { name: /withdraw/i })
     expect(deleteBtn).toBeInTheDocument()
     fireEvent.click(deleteBtn)
     expect(onDelete).toHaveBeenCalledOnce()
@@ -90,6 +90,6 @@ describe('PeekSheet', () => {
 
   it('does not show Delete button for incident pins', () => {
     render(<PeekSheet sheetPhase="peek" pin={pin} onExpand={vi.fn()} onDismiss={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /withdraw/i })).toBeNull()
   })
 })

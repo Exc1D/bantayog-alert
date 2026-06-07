@@ -164,6 +164,12 @@ describe('useSubmissionMachine — state machine logic', () => {
         municipalityId: 'daet',
         barangayId: 'bagasbas',
         nearestLandmark: 'Bridge',
+        triage: {
+          peopleInjured: true,
+          peopleTrapped: false,
+          locationConfidence: 'approximate',
+          urgencyReason: 'Water is moving fast.',
+        },
         contact: { phone: '+639123456789', smsConsent: true },
       })
       const calls: unknown[] = []
@@ -199,6 +205,12 @@ describe('useSubmissionMachine — state machine logic', () => {
             municipalityId: 'daet',
             barangayId: 'bagasbas',
             nearestLandmark: 'Bridge',
+            triage: {
+              peopleInjured: true,
+              peopleTrapped: false,
+              locationConfidence: 'approximate',
+              urgencyReason: 'Water is moving fast.',
+            },
             contact: { phone: '+639123456789', smsConsent: true },
           },
         },

@@ -15,6 +15,17 @@ const reportOpsReportTypeSchema = z.enum([
   'other',
 ])
 
+export const locationConfidenceSchema = z.enum(['exact', 'approximate', 'manual'])
+
+export const reportTriageSchema = z
+  .object({
+    peopleInjured: z.boolean(),
+    peopleTrapped: z.boolean(),
+    locationConfidence: locationConfidenceSchema,
+    urgencyReason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict()
+
 export const hazardTagSchema = z
   .object({
     hazardZoneId: z.string().min(1),
@@ -124,6 +135,8 @@ export const reportOpsDocSchema = z
     // processInboxItemCore always writes reportType; .optional() preserves
     // backward-compat for report_ops docs written before Phase 5 PRE-B.
     reportType: reportOpsReportTypeSchema.optional(),
+    triage: reportTriageSchema.optional(),
+    nearestLandmark: z.string().max(200).optional(),
     locationGeohash: z.string().length(6).optional(),
     duplicateClusterId: z.string().optional(),
     hazardZoneIdList: z.array(z.string()).optional(),
@@ -248,6 +261,7 @@ export const inboxPayloadSchema = z
     municipalityId: z.string().min(1).optional(),
     barangayId: z.string().min(1).optional(),
     nearestLandmark: z.string().max(200).optional(),
+    triage: reportTriageSchema.optional(),
     contact: z
       .object({
         phone: msisdnPhSchema,
@@ -260,3 +274,4 @@ export const inboxPayloadSchema = z
   .strict()
 
 export type InboxPayload = z.infer<typeof inboxPayloadSchema>
+export type ReportTriage = z.infer<typeof reportTriageSchema>

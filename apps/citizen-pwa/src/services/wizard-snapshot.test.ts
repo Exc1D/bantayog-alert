@@ -48,7 +48,12 @@ describe('wizardSnapshot.load', () => {
   it('returns the snapshot when fresh', async () => {
     await wizardSnapshot.save({
       step: 2,
-      step1: { reportType: 'flood' },
+      step1: {
+        reportType: 'flood',
+        description: 'Flood water is entering homes.',
+        peopleInjured: false,
+        peopleTrapped: false,
+      },
       step2: null,
     })
     const loaded = await wizardSnapshot.load()
@@ -75,18 +80,25 @@ describe('wizardSnapshot.save', () => {
     const before = Date.now()
     await wizardSnapshot.save({
       step: 3,
-      step1: { reportType: 'fire' },
+      step1: {
+        reportType: 'fire',
+        description: 'Flood water is entering homes.',
+        peopleInjured: false,
+        peopleTrapped: false,
+      },
       step2: {
         location: { lat: 14.1, lng: 122.9 },
         reporterName: 'Juan',
         reporterMsisdn: '+639171234567',
-        patientCount: 0,
+        locationConfidence: 'exact',
         locationMethod: 'gps',
       },
     })
     const stored = mockInstance._store.get(STORAGE_KEY) as WizardSnapshot
     expect(stored.step).toBe(3)
+    expect(stored.step1?.description).toBe('Flood water is entering homes.')
     expect(stored.step2?.reporterName).toBe('Juan')
+    expect(stored.step2?.locationConfidence).toBe('exact')
     expect(stored.updatedAt).toBeGreaterThanOrEqual(before)
   })
 
@@ -100,7 +112,16 @@ describe('wizardSnapshot.save', () => {
 
 describe('wizardSnapshot.clear', () => {
   it('removes the snapshot', async () => {
-    await wizardSnapshot.save({ step: 1, step1: { reportType: 'flood' }, step2: null })
+    await wizardSnapshot.save({
+      step: 1,
+      step1: {
+        reportType: 'flood',
+        description: 'Flood water is entering homes.',
+        peopleInjured: false,
+        peopleTrapped: false,
+      },
+      step2: null,
+    })
     await wizardSnapshot.clear()
     expect(await wizardSnapshot.load()).toBeNull()
   })

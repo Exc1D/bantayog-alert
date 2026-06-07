@@ -2,6 +2,14 @@ import localforage from 'localforage'
 import type { ReportType, Severity } from '@bantayog/shared-types'
 
 export type SyncState = 'local_only' | 'syncing' | 'synced'
+export type LocationConfidence = 'exact' | 'approximate' | 'manual'
+
+export interface DraftTriage {
+  peopleInjured: boolean
+  peopleTrapped: boolean
+  locationConfidence: LocationConfidence
+  urgencyReason?: string
+}
 
 export interface Draft {
   id: string
@@ -10,6 +18,7 @@ export interface Draft {
   barangayId?: string
   description: string
   severity: Severity
+  triage?: DraftTriage
   location?: { lat: number; lng: number }
   nearestLandmark?: string
   contact?: { phone: string; smsConsent: true }
