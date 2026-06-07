@@ -52,8 +52,8 @@ export const incidentCoreSchema = z
     municipalityLabel: z.string().min(1).max(64),
     barangayId: z.string().min(1),
     source: incidentSourceSchema,
-    createdAt: z.number().int(),
-    updatedAt: z.number().int(),
+    createdAt: z.number().int().nonnegative(),
+    updatedAt: z.number().int().nonnegative(),
     schemaVersion: z.number().int().positive(),
 })
     .strict();
@@ -63,7 +63,7 @@ export const incidentLocationSchema = z
     point: postgisPointSchema,
     accuracyMeters: z.number().nonnegative().optional(),
     source: z.enum(['gps', 'manual', 'geocoder', 'responder_telemetry']),
-    recordedAt: z.number().int(),
+    recordedAt: z.number().int().nonnegative(),
     schemaVersion: z.number().int().positive(),
 })
     .strict();
@@ -96,7 +96,11 @@ export const responderNearbyQuerySchema = z
 export const commandEnvelopeSchema = z
     .object({
     group: z.enum(['reports', 'incidents', 'dispatches', 'alerts', 'users', 'privacy', 'ops']),
-    action: z.string().min(1).max(80).regex(/^[a-z][a-zA-Z0-9]*$/),
+    action: z
+        .string()
+        .min(1)
+        .max(80)
+        .regex(/^[a-z][a-zA-Z0-9]*$/),
     idempotencyKey: z.string().min(1).max(128),
     actorUid: z.string().min(1),
     payload: z.record(z.string(), z.unknown()),
@@ -113,8 +117,8 @@ export const publicIncidentCardSchema = z
     barangayId: z.string().min(1),
     publicSummary: z.string().min(1).max(2000),
     point: postgisPointSchema,
-    publishedAt: z.number().int(),
-    updatedAt: z.number().int(),
+    publishedAt: z.number().int().nonnegative(),
+    updatedAt: z.number().int().nonnegative(),
     schemaVersion: z.number().int().positive(),
 })
     .strict();
@@ -124,7 +128,7 @@ export const auditEventSchema = z
     incidentId: z.string().min(1),
     actorUid: z.string().min(1),
     action: z.string().min(1).max(120),
-    at: z.number().int(),
+    at: z.number().int().nonnegative(),
     metadata: z.record(z.string(), z.unknown()).default({}),
     schemaVersion: z.number().int().positive(),
 })
@@ -133,10 +137,13 @@ export const reporterPrivacyRecordSchema = z
     .object({
     incidentId: z.string().min(1),
     reporterUid: z.string().min(1),
-    reporterPhoneHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    reporterPhoneHash: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
     retentionState: z.enum(['active', 'erasure_requested', 'legal_hold', 'erased']),
-    createdAt: z.number().int(),
-    updatedAt: z.number().int(),
+    createdAt: z.number().int().nonnegative(),
+    updatedAt: z.number().int().nonnegative(),
     schemaVersion: z.number().int().positive(),
 })
     .strict();
