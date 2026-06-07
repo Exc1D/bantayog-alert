@@ -85,6 +85,26 @@ describe('incident geospatial schemas', () => {
             schemaVersion: 1,
         })).toMatchObject({ table: 'municipal_boundaries', srid: 4326 });
     });
+    it('accepts a point-backed table with geometryColumn point', () => {
+        expect(postgisStoreReferenceSchema.parse({
+            table: 'incident_locations',
+            primaryKey: 'incident-1',
+            geometryColumn: 'point',
+            srid: 4326,
+            index: 'gist',
+            schemaVersion: 1,
+        })).toMatchObject({ table: 'incident_locations', geometryColumn: 'point' });
+    });
+    it('rejects unsupported index methods', () => {
+        expect(() => postgisStoreReferenceSchema.parse({
+            table: 'municipal_boundaries',
+            primaryKey: 'daet',
+            geometryColumn: 'geom',
+            srid: 4326,
+            index: 'spgist',
+            schemaVersion: 1,
+        })).toThrow(/Invalid input/);
+    });
     it('accepts duplicate clustering query inputs in meters', () => {
         expect(duplicateClusterQuerySchema.parse({
             incidentId: 'incident-1',

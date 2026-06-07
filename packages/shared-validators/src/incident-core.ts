@@ -121,9 +121,9 @@ export const postgisStoreReferenceSchema = z
       'public_incident_cards',
     ]),
     primaryKey: z.string().min(1),
-    geometryColumn: z.enum(['geom', 'geog', 'centroid']).default('geom'),
+    geometryColumn: z.enum(['geom', 'point']).default('geom'),
     srid: z.literal(4326),
-    index: z.enum(['gist', 'spgist']),
+    index: z.literal('gist'),
     schemaVersion: z.number().int().positive(),
   })
   .strict()

@@ -125,15 +125,11 @@ export declare const postgisStoreReferenceSchema: z.ZodObject<{
     }>;
     primaryKey: z.ZodString;
     geometryColumn: z.ZodDefault<z.ZodEnum<{
+        point: "point";
         geom: "geom";
-        geog: "geog";
-        centroid: "centroid";
     }>>;
     srid: z.ZodLiteral<4326>;
-    index: z.ZodEnum<{
-        gist: "gist";
-        spgist: "spgist";
-    }>;
+    index: z.ZodLiteral<"gist">;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export declare const publicIncidentBBoxQuerySchema: z.ZodObject<{

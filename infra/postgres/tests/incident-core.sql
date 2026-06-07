@@ -222,21 +222,33 @@ reset role;
 
 set local role bantayog_public_read;
 
-select incident_id
-from incident_core.public_incident_cards
-where ST_Intersects(
-  point::geometry,
-  ST_MakeEnvelope(122.90, 14.05, 123.00, 14.20, 4326)
-);
-
-select alert_id
-from incident_core.public_alert_cards
-where starts_at <= now()
-  and (ends_at is null or ends_at > now())
-  and ST_Intersects(
-    geom,
+do $$
+declare cnt int;
+begin
+  select count(*) into cnt from incident_core.public_incident_cards
+  where ST_Intersects(
+    point::geometry,
     ST_MakeEnvelope(122.90, 14.05, 123.00, 14.20, 4326)
   );
+  if cnt = 0 then
+    raise exception 'Unexpected zero rows for public_incident_cards ST_Intersects';
+  end if;
+end $$;
+
+do $$
+declare cnt int;
+begin
+  select count(*) into cnt from incident_core.public_alert_cards
+  where starts_at <= now()
+    and (ends_at is null or ends_at > now())
+    and ST_Intersects(
+      geom,
+      ST_MakeEnvelope(122.90, 14.05, 123.00, 14.20, 4326)
+    );
+  if cnt = 0 then
+    raise exception 'Unexpected zero rows for public_alert_cards respecting starts_at/ends_at';
+  end if;
+end $$;
 
 do $$
 begin
@@ -263,7 +275,15 @@ reset role;
 set local role bantayog_ops_read;
 set local app.municipality_id = 'daet';
 
-select count(*) from incident_core.incidents;
+do $$
+declare cnt int;
+begin
+  select count(*) into cnt from incident_core.incidents;
+  if cnt = 0 then
+    raise exception 'Unexpected zero rows for ops-read incidents';
+  end if;
+end $$;
+
 select count(*) from incident_core.audit_events;
 select count(*) from incident_core.public_alert_cards;
 
@@ -277,38 +297,65 @@ exception
 end;
 $$;
 
-with target_incident as (
-  select point
-  from incident_core.incident_locations
-  where incident_id = '00000000-0000-0000-0000-000000000001'
-)
-select r.responder_uid
-from incident_core.responder_locations r
-cross join target_incident i
-where ST_DWithin(r.point, i.point, 5000)
-order by r.point <-> i.point;
+do $$
+declare cnt int;
+begin
+  with target_incident as (
+    select point
+    from incident_core.incident_locations
+    where incident_id = '00000000-0000-0000-0000-000000000001'
+  )
+  select count(*) into cnt
+  from incident_core.responder_locations r
+  cross join target_incident i
+  where ST_DWithin(r.point, i.point, 5000);
+  if cnt = 0 then
+    raise exception 'Unexpected zero rows for ops-read nearby responders';
+  end if;
+end $$;
 
-select b.municipality_id
-from incident_core.municipal_boundaries b
-join incident_core.incident_locations i
-  on i.incident_id = '00000000-0000-0000-0000-000000000001'
-where ST_Contains(b.geom, i.point::geometry);
+do $$
+declare cnt int;
+begin
+  select count(*) into cnt
+  from incident_core.municipal_boundaries b
+  join incident_core.incident_locations i
+    on i.incident_id = '00000000-0000-0000-0000-000000000001'
+  where ST_Contains(b.geom, i.point::geometry);
+  if cnt = 0 then
+    raise exception 'Unexpected zero rows for ops-read spatial containment';
+  end if;
+end $$;
 
-select count(*)
-from incident_core.duplicate_cluster_inputs d
-join incident_core.incident_locations i
-  on i.incident_id = '00000000-0000-0000-0000-000000000001'
-where ST_DWithin(d.point, i.point, 750);
-
-select count(*)
-from (
-  select ST_ClusterDBSCAN(d.point::geometry, 0.01, 1) over (order by d.incident_id) as cluster_id
+do $$
+declare cnt int;
+begin
+  select count(*) into cnt
   from incident_core.duplicate_cluster_inputs d
   join incident_core.incident_locations i
     on i.incident_id = '00000000-0000-0000-0000-000000000001'
-  where ST_DWithin(d.point, i.point, 750)
-) clusters
-where cluster_id is not null;
+  where ST_DWithin(d.point, i.point, 750);
+  if cnt = 0 then
+    raise exception 'Unexpected zero rows for ops-read duplicate cluster inputs';
+  end if;
+end $$;
+
+do $$
+declare cnt int;
+begin
+  select count(*) into cnt
+  from (
+    select ST_ClusterDBSCAN(d.point::geometry, 0.01, 1) over (order by d.incident_id) as cluster_id
+    from incident_core.duplicate_cluster_inputs d
+    join incident_core.incident_locations i
+      on i.incident_id = '00000000-0000-0000-0000-000000000001'
+    where ST_DWithin(d.point, i.point, 750)
+  ) clusters
+  where cluster_id is not null;
+  if cnt = 0 then
+    raise exception 'Unexpected zero rows for ST_ClusterDBSCAN output';
+  end if;
+end $$;
 
 set local app.municipality_id = 'basud';
 

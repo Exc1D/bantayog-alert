@@ -343,10 +343,12 @@ grant usage on type
   incident_core.responder_status,
   incident_core.retention_state
 to bantayog_public_read, bantayog_ops_read, bantayog_ops_write, bantayog_worker;
+
 grant select on
   incident_core.public_incident_cards,
   incident_core.public_alert_cards
 to bantayog_public_read;
+
 grant select on
   incident_core.incidents,
   incident_core.reports,
@@ -362,7 +364,8 @@ grant select on
   incident_core.audit_events,
   incident_core.public_incident_cards
 to bantayog_ops_read, bantayog_ops_write;
-grant select, insert, update, delete on
+
+grant insert, update, delete on
   incident_core.incidents,
   incident_core.reports,
   incident_core.incident_verifications,
@@ -374,9 +377,30 @@ grant select, insert, update, delete on
   incident_core.alert_areas,
   incident_core.public_alert_cards,
   incident_core.duplicate_cluster_inputs,
-  incident_core.reporter_privacy_records,
-  incident_core.audit_events,
   incident_core.public_incident_cards
+to bantayog_ops_write;
+
+grant select on
+  incident_core.incidents,
+  incident_core.reports,
+  incident_core.incident_verifications,
+  incident_core.dispatches,
+  incident_core.responder_status_events,
+  incident_core.incident_locations,
+  incident_core.responder_locations,
+  incident_core.municipal_boundaries,
+  incident_core.alert_areas,
+  incident_core.public_alert_cards,
+  incident_core.duplicate_cluster_inputs,
+  incident_core.public_incident_cards
+to bantayog_worker;
+
+-- worker needs read access to audit_events and reporter_privacy_records
+-- only for retention-sweep and audit-export callables; write access
+-- is gated by dedicated callable logic, not direct worker writes
+grant select on
+  incident_core.audit_events,
+  incident_core.reporter_privacy_records
 to bantayog_worker;
 
 create policy public_read_public_cards
@@ -511,102 +535,265 @@ create policy ops_read_public_cards_by_municipality
   to bantayog_ops_read, bantayog_ops_write
   using (municipality_id = (select incident_core.current_municipality_id()));
 
-create policy worker_all_incidents
+-- worker policies: scoped read-only (no DML grants)
+create policy worker_read_incidents
+  on incident_core.incidents
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_reports
+  on incident_core.reports
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_incident_verifications
+  on incident_core.incident_verifications
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_dispatches
+  on incident_core.dispatches
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_responder_status_events
+  on incident_core.responder_status_events
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_incident_locations
+  on incident_core.incident_locations
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_responder_locations
+  on incident_core.responder_locations
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_municipal_boundaries
+  on incident_core.municipal_boundaries
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_alert_areas
+  on incident_core.alert_areas
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_public_alert_cards
+  on incident_core.public_alert_cards
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_duplicate_cluster_inputs
+  on incident_core.duplicate_cluster_inputs
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_reporter_privacy_records
+  on incident_core.reporter_privacy_records
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_audit_events
+  on incident_core.audit_events
+  for select
+  to bantayog_worker
+  using (true);
+
+create policy worker_read_public_incident_cards
+  on incident_core.public_incident_cards
+  for select
+  to bantayog_worker
+  using (true);
+
+-- ops_write DML policies: same municipality scope as reads
+create policy ops_write_incidents
   on incident_core.incidents
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (municipality_id = (select incident_core.current_municipality_id()))
+  with check (municipality_id = (select incident_core.current_municipality_id()));
 
-create policy worker_all_reports
+create policy ops_write_reports
   on incident_core.reports
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  )
+  with check (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  );
 
-create policy worker_all_incident_verifications
+create policy ops_write_incident_verifications
   on incident_core.incident_verifications
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  )
+  with check (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  );
 
-create policy worker_all_dispatches
+create policy ops_write_dispatches
   on incident_core.dispatches
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  )
+  with check (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  );
 
-create policy worker_all_responder_status_events
+create policy ops_write_responder_status_events
   on incident_core.responder_status_events
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  )
+  with check (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  );
 
-create policy worker_all_incident_locations
+create policy ops_write_incident_locations
   on incident_core.incident_locations
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  )
+  with check (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  );
 
-create policy worker_all_responder_locations
+create policy ops_write_responder_locations
   on incident_core.responder_locations
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (municipality_id = (select incident_core.current_municipality_id()))
+  with check (municipality_id = (select incident_core.current_municipality_id()));
 
-create policy worker_all_municipal_boundaries
+create policy ops_write_municipal_boundaries
   on incident_core.municipal_boundaries
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (municipality_id = (select incident_core.current_municipality_id()))
+  with check (municipality_id = (select incident_core.current_municipality_id()));
 
-create policy worker_all_alert_areas
+create policy ops_write_alert_areas
   on incident_core.alert_areas
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (municipality_id = (select incident_core.current_municipality_id()))
+  with check (municipality_id = (select incident_core.current_municipality_id()));
 
-create policy worker_all_public_alert_cards
+create policy ops_write_public_alert_cards
   on incident_core.public_alert_cards
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (municipality_id = (select incident_core.current_municipality_id()))
+  with check (municipality_id = (select incident_core.current_municipality_id()));
 
-create policy worker_all_duplicate_cluster_inputs
+create policy ops_write_duplicate_cluster_inputs
   on incident_core.duplicate_cluster_inputs
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  )
+  with check (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  );
 
-create policy worker_all_reporter_privacy_records
-  on incident_core.reporter_privacy_records
-  for all
-  to bantayog_worker
-  using (true)
-  with check (true);
-
-create policy worker_all_audit_events
+create policy ops_write_audit_events
   on incident_core.audit_events
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  )
+  with check (
+    exists (
+      select 1 from incident_core.incidents i
+      where i.id = incident_id
+        and i.municipality_id = (select incident_core.current_municipality_id())
+    )
+  );
 
-create policy worker_all_public_incident_cards
+create policy ops_write_public_incident_cards
   on incident_core.public_incident_cards
   for all
-  to bantayog_worker
-  using (true)
-  with check (true);
+  to bantayog_ops_write
+  using (municipality_id = (select incident_core.current_municipality_id()))
+  with check (municipality_id = (select incident_core.current_municipality_id()));
 
 commit;

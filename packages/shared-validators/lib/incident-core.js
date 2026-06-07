@@ -14,7 +14,15 @@ const reportTypeSchema = z.enum([
 ]);
 const severitySchema = z.enum(['low', 'medium', 'high']);
 const incidentSourceSchema = z.enum(['web', 'responder_witness', 'official']);
-const commandGroupSchema = z.enum(['reports', 'incidents', 'dispatches', 'alerts', 'users', 'privacy', 'ops']);
+const commandGroupSchema = z.enum([
+    'reports',
+    'incidents',
+    'dispatches',
+    'alerts',
+    'users',
+    'privacy',
+    'ops',
+]);
 const commandActionSchema = z
     .string()
     .min(1)
@@ -103,9 +111,9 @@ export const postgisStoreReferenceSchema = z
         'public_incident_cards',
     ]),
     primaryKey: z.string().min(1),
-    geometryColumn: z.enum(['geom', 'geog', 'centroid']).default('geom'),
+    geometryColumn: z.enum(['geom', 'point']).default('geom'),
     srid: z.literal(4326),
-    index: z.enum(['gist', 'spgist']),
+    index: z.literal('gist'),
     schemaVersion: z.number().int().positive(),
 })
     .strict();
