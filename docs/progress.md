@@ -1,5 +1,39 @@
 # Progress
 
+## 2026-06-08 - Phase 1F Demo Seed/Reset Scripts
+
+- Added local demo seed/reset/reseed package scripts around the existing fixed-ID Camarines Norte incident seed data.
+- Extended the seed companion script with explicit reset paths for seeded `reports`, `report_ops`, `dispatches`, and `alerts`, guarded so resets only run against a Firestore emulator.
+- Kept this slice local-demo only: no production/staging reset command, no broad collection wipe, no Firestore rules/index edits, no backend callable changes, and no deploy.
+- Verification: `pnpm exec vitest run scripts/dev-all.ports.test.ts scripts/seed-staging-incidents.test.ts` passed 13 tests; `firebase emulators:exec --only firestore 'pnpm demo:reseed'` reset 26 fixed demo docs and seeded 10 reports, 10 `report_ops`, 1 dispatch, and 5 alerts; root TypeScript passed. The focused script ESLint command completed but reported both seed files are ignored by the repo ignore pattern, so there is no lint coverage for these script files yet.
+
+## 2026-06-08 - Phase 1E MVP Firestore Rule Tests
+
+- Added an MVP Firestore rules spine test covering citizen-owned report tracking reads, cross-citizen denial, anonymous read-only lookup recovery, verified-report municipal assignment queries, and callable-only dispatch creation.
+- Kept this slice test-only: no `firestore.rules`, rules template, index, backend callable, schema/migration, deploy config, or production data changes.
+- Verification: `firebase emulators:exec --only firestore 'npx vitest run src/__tests__/rules/mvp-loop.rules.test.ts'` passed 5 tests; `firebase emulators:exec --only firestore 'npx vitest run src/__tests__/rules'` passed 28 files / 220 tests; `pnpm --dir functions exec tsc --noEmit` and `pnpm --dir functions exec eslint src` passed.
+
+## 2026-06-08 - Phase 1D Responder Assignment Screen
+
+- Added a first-dispatch responder assignment queue to `/dispatches`, fed by existing scoped report reads and the available responder fleet.
+- Wired assignment to the existing `dispatchResponder` callable with idempotency keys and the same success/error banner pattern used by re-dispatch.
+- Kept this slice narrow: no new backend entry point, route, Firestore rules/index edits, schema/migration files, responder mobile changes, auto-ranking, or deploy config.
+- Verification so far: red-first `DispatchMonitorPage` test failed on the missing assignment queue, then `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx src/__tests__/map-firestore-wiring.test.tsx src/__tests__/TriagePanel.test.tsx`, `pnpm --dir apps/admin-desktop exec tsc --noEmit`, and `pnpm --dir apps/admin-desktop exec eslint src` passed.
+
+## 2026-06-08 - Phase 1C Citizen Tracking Timeline
+
+- Replaced the Citizen PWA own-report progress strip with a citizen-facing tracking timeline derived from existing `MyReport` status, submission time, and last-status time fields.
+- Added terminal copy for rejected reports so citizens see that the report was not accepted instead of a misleading pending responder path.
+- Kept this slice frontend-only: no Firestore rules/index edits, backend callable changes, projection contract, deploy config, schema/migration files, or new dependencies.
+- Verification so far: red-first `DetailSheet` tests failed on the missing timeline/terminal outcome, then `pnpm --dir apps/citizen-pwa exec vitest run src/components/MapTab/DetailSheet.test.tsx`, `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, and `pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
+## 2026-06-08 - Phase 1B Admin Triage Workbench
+
+- Added `/triage` as a dedicated Admin Desktop workbench for the Phase 1 report review loop, backed by scoped Firestore report reads and existing lifecycle command callables.
+- Added the Triage command tab and surfaced report summaries in the triage queue so operators can review, verify, reject, or route verified reports to Map dispatch without using the Dashboard queue as the primary triage surface.
+- Kept this slice narrow: no Firestore rules/index edits, backend callable changes, responder assignment screen, deploy config, or new dependencies.
+- Verification so far: red-first `TriagePage` test failed on the missing page, then focused triage/header/table tests, Admin Desktop typecheck, Admin Desktop lint, and the full `pnpm --dir apps/admin-desktop exec vitest run` suite passed.
+
 ## 2026-06-07 - Phase 1A Citizen Report Form Improvements
 
 - Added real Citizen intake fields for description, people injured, people trapped, location confidence, and optional urgency reason while keeping the existing three-step wizard and photo path.
