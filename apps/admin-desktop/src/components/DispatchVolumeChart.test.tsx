@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { DispatchVolumeChart } from './DispatchVolumeChart'
 import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
+import { makeRow } from '../test-utils'
 
 describe('DispatchVolumeChart', () => {
   afterEach(() => {
@@ -15,23 +16,6 @@ describe('DispatchVolumeChart', () => {
       }
     }
     vi.stubGlobal('Date', MockDate)
-  }
-
-  function makeRow(overrides: Partial<DispatchLifecycleRow> = {}): DispatchLifecycleRow {
-    return {
-      dispatchId: '1',
-      reportId: 'r1',
-      status: 'pending',
-      responderName: 'A',
-      responderAgency: 'BFP',
-      dispatchedAt: Date.now(),
-      deadlineAt: Date.now(),
-      escalationCount: 0,
-      fcmResult: null,
-      fcmWarnings: null,
-      timeline: [],
-      ...overrides,
-    }
   }
 
   it('renders skeleton when loading', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
 import { DispatchMonitorPage } from '../pages/DispatchMonitorPage'
+import { MemoryRouterWrapper, makeRow, defaultRows, defaultResponders } from '../test-utils'
 
 const mockEscalateDispatch = vi.hoisted(() =>
   vi
@@ -49,36 +49,6 @@ vi.mock('../hooks/useOpsMetrics', () => ({
   useOpsMetrics: mockUseOpsMetrics,
 }))
 
-function makeRow(overrides: Record<string, unknown> = {}) {
-  return {
-    dispatchId: overrides.dispatchId ?? 'd1',
-    reportId: overrides.reportId ?? 'rep-12345-abcde',
-    status: overrides.status ?? 'pending',
-    responderName: overrides.responderName ?? 'Juan Dela Cruz',
-    responderAgency: overrides.responderAgency ?? 'BFP',
-    dispatchedAt: overrides.dispatchedAt ?? Date.now(),
-    deadlineAt: overrides.deadlineAt ?? Date.now() + 3600000,
-    escalationCount: overrides.escalationCount ?? 0,
-    fcmResult: overrides.fcmResult ?? null,
-    fcmWarnings: overrides.fcmWarnings ?? null,
-    timeline: overrides.timeline ?? [],
-    assignedTo: overrides.assignedTo ?? { uid: 'r1' },
-    previouslyNotifiedResponderUids: overrides.previouslyNotifiedResponderUids ?? [],
-  }
-}
-
-const defaultRows = [makeRow()]
-
-const defaultResponders = [
-  {
-    uid: 'r1',
-    displayName: 'Alice',
-    availabilityStatus: 'available' as const,
-    lastActivityAt: Date.now(),
-    onlineStatus: 'online' as const,
-  },
-]
-
 describe('DispatchMonitorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -103,31 +73,27 @@ describe('DispatchMonitorPage', () => {
     })
   })
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter>{children}</MemoryRouter>
-  )
-
   it('shows loading spinner when dispatch lifecycle is loading', () => {
     mockUseDispatchLifecycle.mockReturnValue({ rows: [], loading: true, error: null })
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('shows ActionErrorBanner when dispatch lifecycle errors', () => {
     mockUseDispatchLifecycle.mockReturnValue({ rows: [], loading: false, error: 'network error' })
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     expect(screen.getByRole('alert')).toHaveTextContent(/network error/i)
   })
 
   it('renders all sections when data is loaded', () => {
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
     expect(screen.getByText('Report')).toBeInTheDocument()
     expect(screen.getByText(/responders/i)).toBeInTheDocument()
   })
 
   it('does not show escalation queue when no stalled dispatches', () => {
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     expect(screen.queryByLabelText('Escalation queue')).not.toBeInTheDocument()
   })
 
@@ -137,7 +103,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     expect(screen.getByLabelText('Escalation queue')).toBeInTheDocument()
     expect(screen.getByText(/needs admin attention/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /re-dispatch/i })).toBeInTheDocument()
@@ -156,7 +122,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -177,7 +143,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -218,7 +184,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -249,7 +215,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
-    render(<DispatchMonitorPage />, { wrapper })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()

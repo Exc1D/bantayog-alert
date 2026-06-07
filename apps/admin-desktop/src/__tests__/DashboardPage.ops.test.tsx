@@ -1,7 +1,13 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import DashboardPage from '../pages/DashboardPage'
+import {
+  renderWithMemoryRouter,
+  makeRow,
+  defaultRows,
+  defaultResponders,
+  defaultMetrics,
+} from '../test-utils'
 
 const mockNavigate = vi.fn()
 const mockVerifyReport = vi.hoisted(() =>
@@ -12,10 +18,6 @@ const mockVerifyReport = vi.hoisted(() =>
     }),
   ),
 )
-
-function renderWithRouter(ui: React.ReactElement) {
-  return render(<MemoryRouter>{ui}</MemoryRouter>)
-}
 
 vi.mock('../app/firebase', () => ({
   db: {} as never,
@@ -50,34 +52,15 @@ vi.mock('../services/callables', () => ({
 
 vi.mock('../hooks/useDispatchLifecycle', () => ({
   useDispatchLifecycle: () => ({
-    rows: [
-      {
-        dispatchId: 'd1',
-        reportId: 'r1',
-        status: 'pending',
-        responderName: 'A',
-        responderAgency: 'BFP',
-        dispatchedAt: Date.now(),
-        deadlineAt: Date.now() + 300000,
-        escalationCount: 0,
-        fcmResult: null,
-        fcmWarnings: null,
-        timeline: [],
-      },
-      {
+    rows: defaultRows.concat(
+      makeRow({
         dispatchId: 'd2',
         reportId: 'r2',
         status: 'needs_admin',
         responderName: 'B',
         responderAgency: 'MDRRMO',
-        dispatchedAt: Date.now(),
-        deadlineAt: Date.now() + 300000,
-        escalationCount: 2,
-        fcmResult: null,
-        fcmWarnings: null,
-        timeline: [],
-      },
-    ],
+      }),
+    ),
     loading: false,
     error: null,
   }),
@@ -85,34 +68,14 @@ vi.mock('../hooks/useDispatchLifecycle', () => ({
 
 vi.mock('../hooks/useResponderFleet', () => ({
   useResponderFleet: () => ({
-    responders: [
-      {
-        uid: 'u1',
-        displayName: 'Responder A',
-        availabilityStatus: 'available',
-        lastActivityAt: Date.now(),
-        onlineStatus: 'online' as const,
-      },
-    ],
+    responders: defaultResponders,
     loading: false,
     error: null,
   }),
 }))
 
 vi.mock('../hooks/useOpsMetrics', () => ({
-  useOpsMetrics: () => ({
-    metrics: {
-      avgAcceptSeconds: 120,
-      fcmSuccessRate: 0.95,
-      totalDispatches: 10,
-      acceptedCount: 8,
-      declinedCount: 1,
-      escalatedCount: 1,
-      needsAdminCount: 0,
-    },
-    loading: false,
-    error: null,
-  }),
+  useOpsMetrics: () => defaultMetrics,
 }))
 
 vi.mock('../hooks/useFirestoreListeners', () => ({
@@ -162,7 +125,7 @@ describe('DashboardPage ops redesign', () => {
   })
 
   it('renders StatusBar metrics', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     // StatusBar primary metrics in the situation strip
     expect(screen.getByText('active')).toBeInTheDocument()
     expect(screen.getByText('avg response')).toBeInTheDocument()
@@ -171,7 +134,7 @@ describe('DashboardPage ops redesign', () => {
   })
 
   it('renders an actionable report command queue', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     expect(screen.getByRole('heading', { name: /Report command queue/i })).toBeInTheDocument()
     expect(screen.getByText('Rising creek')).toBeInTheDocument()
     expect(screen.getByText('Flooded road')).toBeInTheDocument()
@@ -184,7 +147,7 @@ describe('DashboardPage ops redesign', () => {
   })
 
   it('sends new reports to review from the dashboard queue', async () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     fireEvent.click(screen.getByRole('button', { name: /Send report r-new to review/i }))
 
     await waitFor(() => {
@@ -199,7 +162,7 @@ describe('DashboardPage ops redesign', () => {
   })
 
   it('verifies awaiting reports from the dashboard queue', async () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     fireEvent.click(screen.getByRole('button', { name: /Verify report r-awaiting/i }))
 
     await waitFor(() => {
@@ -214,37 +177,37 @@ describe('DashboardPage ops redesign', () => {
   })
 
   it('opens verified reports on the map for dispatch', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     fireEvent.click(screen.getByRole('button', { name: /Dispatch report r-verified on map/i }))
     expect(mockNavigate).toHaveBeenCalledWith('/map?reportId=r-verified')
   })
 
   it('has sr-only h1', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     const h1 = screen.getByRole('heading', { level: 1 })
     expect(h1).toHaveClass('sr-only')
     expect(h1).toHaveTextContent('Operations Dashboard')
   })
 
   it('renders Declare Alert button', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     expect(screen.getByRole('button', { name: /Declare Alert/i })).toBeInTheDocument()
   })
 
   it('navigates to /dispatches on D key', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     fireEvent.keyDown(window, { key: 'd' })
     expect(mockNavigate).toHaveBeenCalledWith('/dispatches')
   })
 
   it('navigates to /feed on F key', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     fireEvent.keyDown(window, { key: 'f' })
     expect(mockNavigate).toHaveBeenCalledWith('/feed')
   })
 
   it('focuses first re-dispatch button on R key', () => {
-    renderWithRouter(<DashboardPage />)
+    renderWithMemoryRouter(<DashboardPage />)
     const button = screen.getByRole('button', { name: /^Re-dispatch/ })
     const focusSpy = vi.spyOn(button, 'focus')
     fireEvent.keyDown(window, { key: 'r' })

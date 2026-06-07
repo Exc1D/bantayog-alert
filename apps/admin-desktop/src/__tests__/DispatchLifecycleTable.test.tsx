@@ -3,23 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DispatchLifecycleTable } from '../components/DispatchLifecycleTable'
 import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
-
-function makeRow(overrides: Partial<DispatchLifecycleRow> = {}): DispatchLifecycleRow {
-  return {
-    dispatchId: overrides.dispatchId ?? generateIdempotencyKey(),
-    reportId: overrides.reportId ?? 'rep-12345-abcde',
-    status: overrides.status ?? 'pending',
-    responderName: overrides.responderName ?? 'Juan Dela Cruz',
-    responderAgency: overrides.responderAgency ?? 'BFP',
-    dispatchedAt: overrides.dispatchedAt ?? Date.now(),
-    deadlineAt: overrides.deadlineAt ?? Date.now() + 3600000,
-    escalationCount: overrides.escalationCount ?? 0,
-    fcmResult: overrides.fcmResult ?? null,
-    fcmWarnings: overrides.fcmWarnings ?? null,
-    timeline: overrides.timeline ?? [],
-  }
-}
+import { makeRow } from '../test-utils'
 
 describe('DispatchLifecycleTable', () => {
   it('renders "No active dispatches" when rows is empty', () => {

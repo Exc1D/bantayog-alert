@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
+import {
+  BrowserRouterWrapper,
+  calmRows,
+  activeRows,
+  surgeRows,
+  defaultResponders,
+  defaultMetrics,
+  defaultFirestoreListeners,
+} from '../test-utils'
 
 const mockUseDispatchLifecycle = vi.hoisted(() => vi.fn())
 const mockUseResponderFleet = vi.hoisted(() => vi.fn())
@@ -50,50 +58,6 @@ vi.mock('@bantayog/shared-ui', () => ({
   }),
 }))
 
-function makeRow(overrides: Record<string, unknown> = {}) {
-  return {
-    dispatchId: overrides.dispatchId ?? 'd1',
-    reportId: overrides.reportId ?? 'rep-12345-abcde',
-    status: overrides.status ?? 'pending',
-    responderName: overrides.responderName ?? 'Juan Dela Cruz',
-    responderAgency: overrides.responderAgency ?? 'BFP',
-    dispatchedAt: overrides.dispatchedAt ?? Date.now(),
-    deadlineAt: overrides.deadlineAt ?? Date.now() + 3600000,
-    escalationCount: overrides.escalationCount ?? 0,
-    fcmResult: overrides.fcmResult ?? null,
-    fcmWarnings: overrides.fcmWarnings ?? null,
-    timeline: overrides.timeline ?? [],
-    assignedTo: overrides.assignedTo ?? { uid: 'r1' },
-    previouslyNotifiedResponderUids: overrides.previouslyNotifiedResponderUids ?? [],
-  }
-}
-
-const calmRows: ReturnType<typeof makeRow>[] = []
-const activeRows = [makeRow({ status: 'pending' })]
-const surgeRows = Array.from({ length: 21 }, (_, i) =>
-  makeRow({ dispatchId: `d${String(i)}`, status: 'pending' }),
-)
-
-const defaultResponders = [
-  {
-    uid: 'r1',
-    displayName: 'Alice',
-    availabilityStatus: 'available' as const,
-    lastActivityAt: Date.now(),
-    onlineStatus: 'online' as const,
-  },
-]
-
-const defaultMetrics = {
-  avgAcceptSeconds: 42,
-  fcmSuccessRate: 0.95,
-  totalDispatches: 100,
-  acceptedCount: 80,
-  declinedCount: 10,
-  escalatedCount: 5,
-  needsAdminCount: 5,
-}
-
 describe('DashboardPage mode derivation and layout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -116,22 +80,14 @@ describe('DashboardPage mode derivation and layout', () => {
       loading: false,
       error: null,
     })
-    mockUseOpsMetrics.mockReturnValue({
-      metrics: defaultMetrics,
-      loading: false,
-      error: null,
-    })
-    mockUseFirestoreListeners.mockReturnValue({
-      reports: [],
-      loading: false,
-      error: null,
-    })
+    mockUseOpsMetrics.mockReturnValue(defaultMetrics)
+    mockUseFirestoreListeners.mockReturnValue(defaultFirestoreListeners)
   })
 
   it('transitions from calm to active when incidents appear', () => {
     // Start calm
     mockUseDispatchLifecycle.mockReturnValue({ rows: calmRows, loading: false, error: null })
-    const { rerender } = render(<DashboardPage />, { wrapper: BrowserRouter })
+    const { rerender } = render(<DashboardPage />, { wrapper: BrowserRouterWrapper })
 
     expect(screen.getByTestId('mode-badge')).toHaveTextContent('CALM')
 
@@ -144,14 +100,14 @@ describe('DashboardPage mode derivation and layout', () => {
 
   it('hides escalation queue in calm mode', () => {
     mockUseDispatchLifecycle.mockReturnValue({ rows: calmRows, loading: false, error: null })
-    render(<DashboardPage />, { wrapper: BrowserRouter })
+    render(<DashboardPage />, { wrapper: BrowserRouterWrapper })
 
     expect(screen.queryByLabelText('Escalation queue')).not.toBeInTheDocument()
   })
 
   it('hides charts and municipal table in surge mode', () => {
     mockUseDispatchLifecycle.mockReturnValue({ rows: surgeRows, loading: false, error: null })
-    render(<DashboardPage />, { wrapper: BrowserRouter })
+    render(<DashboardPage />, { wrapper: BrowserRouterWrapper })
 
     expect(screen.getByTestId('mode-badge')).toHaveTextContent('SURGE')
     expect(screen.queryByLabelText('Dispatch volume last 24 hours')).not.toBeInTheDocument()
