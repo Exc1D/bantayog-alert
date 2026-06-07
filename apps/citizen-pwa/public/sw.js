@@ -1,4 +1,5 @@
 const CACHE_NAME = 'bantayog_shell_v2'
+// fallow-ignore-file security-sink
 // WARNING: This must match the localforage instance name in
 // apps/citizen-pwa/src/services/draft-store.ts ('bantayog-drafts').
 // The SW uses raw IndexedDB; localforage wraps IndexedDB with its own

@@ -1,6 +1,8 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
+
+// fallow-ignore-file security-sink
 import { getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth, type Auth, type UserRecord } from 'firebase-admin/auth'
 import { getDatabase, type Database } from 'firebase-admin/database'

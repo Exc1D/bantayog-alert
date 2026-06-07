@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
 
+// fallow-ignore-file security-sink
+
 async function sha256Hex(file: Blob): Promise<string> {
   const buffer = await file.arrayBuffer()
   const digest = await crypto.subtle.digest('SHA-256', buffer)

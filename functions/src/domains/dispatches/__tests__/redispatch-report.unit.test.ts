@@ -14,7 +14,7 @@ const mockLogDimension = vi.hoisted(() => vi.fn(() => vi.fn()))
 vi.mock('../../../idempotency/guard.js', () => ({
   withIdempotency: mockWithIdempotency,
 }))
-vi.mock('../shared/rate-limit.js', () => ({
+vi.mock('../../shared/rate-limit.js', () => ({
   checkRateLimit: mockCheckRateLimit,
 }))
 vi.mock('@bantayog/shared-validators', async () => {

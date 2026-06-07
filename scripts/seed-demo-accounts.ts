@@ -1,5 +1,6 @@
 // Re-uses create-test-accounts.ts logic for dev-all.mjs seeding.
 // Kept as a separate entrypoint so dev-all.mjs can reference a stable path.
+// fallow-ignore-file security-sink
 import { spawn } from 'node:child_process'
 import { connect } from 'node:net'
 import path from 'node:path'

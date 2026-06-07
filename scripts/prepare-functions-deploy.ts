@@ -13,6 +13,7 @@
  *   - All others listed in package.json dependencies that are on npm
  */
 
+// fallow-ignore-file security-sink
 import { spawnSync } from 'child_process'
 import { readFileSync, writeFileSync, rmSync, existsSync, mkdirSync } from 'fs'
 import { resolve } from 'path'

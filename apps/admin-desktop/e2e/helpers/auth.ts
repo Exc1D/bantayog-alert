@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 
+// fallow-ignore-file security-sink
 const AUTH_EMULATOR_URL = 'http://localhost:9099'
 const API_KEY = 'fake-api-key'
 

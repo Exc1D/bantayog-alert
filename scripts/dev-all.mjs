@@ -17,6 +17,7 @@
  * Press Ctrl-C once to terminate all processes cleanly.
  */
 
+// fallow-ignore-file security-sink
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'

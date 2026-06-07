@@ -8,7 +8,7 @@ import { withIdempotency, IdempotencyInProgressError, IdempotencyMismatchError, 
 import { checkRateLimit } from '../shared/rate-limit.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
 const log = logDimension('mergeDuplicates');
-const inputSchema = z
+export const inputSchema = z
     .object({
     primaryReportId: z.string().min(1),
     duplicateReportIds: z.array(z.string().min(1)).min(1).max(50),

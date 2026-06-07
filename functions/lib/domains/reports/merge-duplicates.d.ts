@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { UserRole } from '@bantayog/shared-types';
-declare const inputSchema: z.ZodObject<{
+export declare const inputSchema: z.ZodObject<{
     primaryReportId: z.ZodString;
     duplicateReportIds: z.ZodArray<z.ZodString>;
     idempotencyKey: z.ZodUUID;
@@ -23,5 +23,4 @@ export type MergeDuplicatesResult = {
 };
 export declare function mergeDuplicatesCore(db: FirebaseFirestore.Firestore, input: z.infer<typeof inputSchema>, actor: MergeDuplicatesActor, correlationId?: `${string}-${string}-${string}-${string}-${string}`): Promise<MergeDuplicatesResult>;
 export declare const mergeDuplicates: import("firebase-functions/https").CallableFunction<unknown, Promise<MergeDuplicatesResult>, unknown>;
-export {};
 //# sourceMappingURL=merge-duplicates.d.ts.map

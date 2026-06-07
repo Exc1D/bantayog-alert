@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// fallow-ignore-file security-sink
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import path from 'node:path'

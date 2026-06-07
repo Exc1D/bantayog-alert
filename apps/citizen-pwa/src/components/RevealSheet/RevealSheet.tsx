@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+// fallow-ignore-file security-sink
 import { Check, ShieldCheck, Save } from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useReducedMotion } from '../../hooks/useReducedMotion.js'

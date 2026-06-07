@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src/**/*", "vite.config.ts", "vitest.config.ts"],
+  "exclude": ["**/dist", "**/.turbo", "**/coverage", "**/node_modules", "**/.firebase"]
+}

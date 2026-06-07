@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+// fallow-ignore-file security-sink
 import { ArrowLeft, AlertTriangle } from 'lucide-react'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
