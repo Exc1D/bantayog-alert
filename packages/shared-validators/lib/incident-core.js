@@ -14,6 +14,12 @@ const reportTypeSchema = z.enum([
 ]);
 const severitySchema = z.enum(['low', 'medium', 'high']);
 const incidentSourceSchema = z.enum(['web', 'responder_witness', 'official']);
+const commandGroupSchema = z.enum(['reports', 'incidents', 'dispatches', 'alerts', 'users', 'privacy', 'ops']);
+const commandActionSchema = z
+    .string()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z][a-zA-Z0-9]*$/);
 export const operationalStatusSchema = z.enum([
     'intake',
     'triage',
@@ -57,6 +63,25 @@ export const incidentCoreSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
+export const incidentLifecycleRecordSchema = z
+    .object({
+    incidentId: z.string().min(1),
+    reportId: z.string().min(1).optional(),
+    recordKind: z.enum([
+        'report',
+        'verification',
+        'public_visibility',
+        'dispatch',
+        'responder_status',
+        'alert',
+        'audit',
+        'privacy',
+    ]),
+    recordId: z.string().min(1),
+    createdAt: z.number().int().nonnegative(),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict();
 export const incidentLocationSchema = z
     .object({
     incidentId: z.string().min(1),
@@ -64,6 +89,23 @@ export const incidentLocationSchema = z
     accuracyMeters: z.number().nonnegative().optional(),
     source: z.enum(['gps', 'manual', 'geocoder', 'responder_telemetry']),
     recordedAt: z.number().int().nonnegative(),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict();
+export const postgisStoreReferenceSchema = z
+    .object({
+    table: z.enum([
+        'incident_locations',
+        'responder_locations',
+        'municipal_boundaries',
+        'alert_areas',
+        'duplicate_cluster_inputs',
+        'public_incident_cards',
+    ]),
+    primaryKey: z.string().min(1),
+    geometryColumn: z.enum(['geom', 'geog', 'centroid']).default('geom'),
+    srid: z.literal(4326),
+    index: z.enum(['gist', 'spgist']),
     schemaVersion: z.number().int().positive(),
 })
     .strict();
@@ -93,19 +135,72 @@ export const responderNearbyQuerySchema = z
     limit: z.number().int().min(1).max(50).default(10),
 })
     .strict();
+export const duplicateClusterQuerySchema = z
+    .object({
+    incidentId: z.string().min(1),
+    point: postgisPointSchema,
+    radiusMeters: z.number().int().min(1).max(50000),
+    minPoints: z.number().int().min(2).max(50),
+    since: z.number().int().nonnegative().optional(),
+})
+    .strict();
+export const commandRouteParamsSchema = z
+    .object({
+    group: commandGroupSchema,
+    action: commandActionSchema,
+})
+    .strict();
 export const commandEnvelopeSchema = z
     .object({
-    group: z.enum(['reports', 'incidents', 'dispatches', 'alerts', 'users', 'privacy', 'ops']),
-    action: z
-        .string()
-        .min(1)
-        .max(80)
-        .regex(/^[a-z][a-zA-Z0-9]*$/),
+    group: commandGroupSchema,
+    action: commandActionSchema,
     idempotencyKey: z.string().min(1).max(128),
     actorUid: z.string().min(1),
     payload: z.record(z.string(), z.unknown()),
 })
     .strict();
+export const opsAppSurfaceSchema = z
+    .object({
+    app: z.literal('ops'),
+    layout: z.enum(['desktop_command', 'field']),
+    audience: z.enum(['admin', 'responder']),
+    role: z.enum(['municipal_admin', 'agency_admin', 'dispatcher', 'responder']),
+    capabilities: z
+        .array(z.enum(['incidents', 'dispatches', 'alerts', 'feed', 'map', 'profile', 'responder_status']))
+        .min(1),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict()
+    .superRefine((surface, ctx) => {
+    if (surface.audience === 'admin' && surface.role === 'responder') {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['role'],
+            message: 'admin ops surfaces cannot use responder roles',
+        });
+    }
+    if (surface.audience === 'responder' && surface.role !== 'responder') {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['role'],
+            message: 'responder ops surfaces must use the responder role',
+        });
+    }
+    if (surface.audience === 'admin' && surface.layout !== 'desktop_command') {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['layout'],
+            message: 'admin ops surfaces must use the desktop command layout',
+        });
+    }
+    if (surface.audience === 'responder' && surface.layout !== 'field') {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['layout'],
+            message: 'responder ops surfaces must use the field layout',
+        });
+    }
+});
 export const publicIncidentCardSchema = z
     .object({
     incidentId: z.string().min(1),
@@ -122,6 +217,30 @@ export const publicIncidentCardSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
+const publicIncidentProjectionBaseSchema = z.object({
+    incidentId: z.string().min(1),
+    occurredAt: z.number().int().nonnegative(),
+    schemaVersion: z.number().int().positive(),
+});
+export const publicIncidentProjectionEventSchema = z.discriminatedUnion('action', [
+    publicIncidentProjectionBaseSchema
+        .extend({
+        action: z.literal('publish'),
+        card: publicIncidentCardSchema,
+    })
+        .strict(),
+    publicIncidentProjectionBaseSchema
+        .extend({
+        action: z.literal('refresh'),
+        card: publicIncidentCardSchema,
+    })
+        .strict(),
+    publicIncidentProjectionBaseSchema
+        .extend({
+        action: z.literal('unpublish'),
+    })
+        .strict(),
+]);
 export const auditEventSchema = z
     .object({
     id: z.string().min(1),

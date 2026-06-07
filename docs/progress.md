@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-06-07 - Greenfield PostGIS Stage 1 Migration Diff
+
+- Added the approved executable Stage 1 PostGIS migration artifacts under `infra/postgres/`: incident-core schema SQL, down migration, smoke/query/RLS SQL, and local runner documentation.
+- The migration creates the incident lifecycle root plus report, verification, dispatch, responder status, geospatial, alert, privacy, audit, public incident card, and public alert card tables with PostGIS GiST indexes and RLS enabled/forced on every table.
+- Kept the apply boundary intact: no Cloud SQL instance was modified, no Firebase deploy was run, and the SQL smoke test remains a disposable-database command until a Postgres/PostGIS test database is available.
+- Verification: `git diff --check`, targeted SQL privilege/read-model text guards, `pnpm typecheck`, `pnpm lint`, and `pnpm test` passed. Disposable PostGIS execution could not run here because host `psql` is unavailable and the Docker daemon is not running.
+
+## 2026-06-07 - Greenfield PostGIS Stage 1 Migration Plan
+
+- Added the Stage 1 migration plan for the greenfield PostGIS incident core under `docs/runbooks/migrations/`, covering the old Firestore/RTDB shape, target `incident_core` tables, PostGIS indexes, RLS/default-deny model, query proofs, compatibility matrix, rollback requirements, and monitoring signals.
+- Kept the plan proposal-only: no executable SQL migration, Cloud SQL Terraform, RLS policy file, runtime dependency, backend export change, or deploy was added.
+
+## 2026-06-07 - Greenfield Architecture Boundary Contracts
+
+- Extended the greenfield Incident/PostGIS contract slice in `@bantayog/shared-validators`: added incident lifecycle child-record links, PostGIS store references, duplicate-cluster query inputs, grouped command route params, one role-aware Ops app surface, and public incident projection events for publish/refresh/unpublish.
+- Kept this as a non-runtime contract layer: no Firebase rules/indexes, Postgres migrations, RLS SQL, Cloud Run server, live Functions export collapse, or Admin/Responder app merge were changed in this pass.
+- Verification: red-first `incident-core` tests failed on the missing contracts, then `pnpm --dir packages/shared-validators exec vitest run src/incident-core.test.ts`, `pnpm --dir packages/shared-validators exec tsc --noEmit`, `pnpm --dir packages/shared-validators exec eslint src`, and `pnpm --dir packages/shared-validators build` passed.
+
 ## 2026-06-07 - Greenfield Incident-Core Contract Seed
 
 - Started the greenfield Incident/PostGIS rebuild as a safe contract slice in `@bantayog/shared-validators`: added strict incident-core schemas for separate operational, verification, and publication axes; PostGIS-ready point/bbox/nearby-responder inputs; grouped command envelopes; audit events; private reporter privacy records; and sanitized public incident cards.

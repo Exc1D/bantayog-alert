@@ -2,10 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   auditEventSchema,
   commandEnvelopeSchema,
+  commandRouteParamsSchema,
+  duplicateClusterQuerySchema,
+  incidentLifecycleRecordSchema,
   incidentCoreSchema,
   incidentLocationSchema,
+  opsAppSurfaceSchema,
+  postgisStoreReferenceSchema,
   publicIncidentBBoxQuerySchema,
   publicIncidentCardSchema,
+  publicIncidentProjectionEventSchema,
   responderNearbyQuerySchema,
   reporterPrivacyRecordSchema,
 } from './incident-core.js'
@@ -35,6 +41,34 @@ describe('incidentCoreSchema', () => {
       verificationStatus: 'verified',
       publicationStatus: 'public',
     })
+  })
+})
+
+describe('incidentLifecycleRecordSchema', () => {
+  it('requires every lifecycle child record to hang off an incident', () => {
+    const childKinds = [
+      'report',
+      'verification',
+      'public_visibility',
+      'dispatch',
+      'responder_status',
+      'alert',
+      'audit',
+      'privacy',
+    ] as const
+
+    for (const recordKind of childKinds) {
+      expect(
+        incidentLifecycleRecordSchema.parse({
+          incidentId: 'incident-1',
+          reportId: 'report-1',
+          recordKind,
+          recordId: `${recordKind}-1`,
+          createdAt: ts,
+          schemaVersion: 1,
+        }),
+      ).toMatchObject({ incidentId: 'incident-1', recordKind })
+    }
   })
 })
 
@@ -73,6 +107,31 @@ describe('incident geospatial schemas', () => {
       }),
     ).toMatchObject({ radiusMeters: 5000 })
   })
+
+  it('names the PostGIS-backed tables for spatial records', () => {
+    expect(
+      postgisStoreReferenceSchema.parse({
+        table: 'municipal_boundaries',
+        primaryKey: 'daet',
+        geometryColumn: 'geom',
+        srid: 4326,
+        index: 'gist',
+        schemaVersion: 1,
+      }),
+    ).toMatchObject({ table: 'municipal_boundaries', srid: 4326 })
+  })
+
+  it('accepts duplicate clustering query inputs in meters', () => {
+    expect(
+      duplicateClusterQuerySchema.parse({
+        incidentId: 'incident-1',
+        point: { lng: 122.95, lat: 14.11 },
+        radiusMeters: 750,
+        minPoints: 2,
+        since: ts,
+      }),
+    ).toMatchObject({ radiusMeters: 750, minPoints: 2 })
+  })
 })
 
 describe('commandEnvelopeSchema', () => {
@@ -86,6 +145,51 @@ describe('commandEnvelopeSchema', () => {
         payload: { incidentId: 'incident-1', responderUid: 'responder-1' },
       }),
     ).toMatchObject({ group: 'dispatches', action: 'assignResponder' })
+  })
+
+  it('accepts grouped command route params for the Cloud Run API', () => {
+    expect(
+      commandRouteParamsSchema.parse({
+        group: 'incidents',
+        action: 'publish',
+      }),
+    ).toMatchObject({ group: 'incidents', action: 'publish' })
+  })
+})
+
+describe('opsAppSurfaceSchema', () => {
+  it('keeps admin and responder experiences in one role-aware ops app', () => {
+    const adminSurface = opsAppSurfaceSchema.parse({
+      app: 'ops',
+      layout: 'desktop_command',
+      audience: 'admin',
+      role: 'municipal_admin',
+      capabilities: ['incidents', 'dispatches', 'alerts', 'map'],
+      schemaVersion: 1,
+    })
+    const responderSurface = opsAppSurfaceSchema.parse({
+      app: 'ops',
+      layout: 'field',
+      audience: 'responder',
+      role: 'responder',
+      capabilities: ['incidents', 'dispatches', 'profile', 'responder_status'],
+      schemaVersion: 1,
+    })
+
+    expect(adminSurface.app).toBe(responderSurface.app)
+  })
+
+  it('rejects audience and role mismatches between ops layouts', () => {
+    expect(() =>
+      opsAppSurfaceSchema.parse({
+        app: 'ops',
+        layout: 'field',
+        audience: 'admin',
+        role: 'responder',
+        capabilities: ['incidents'],
+        schemaVersion: 1,
+      }),
+    ).toThrow(/admin ops surfaces cannot use responder roles/)
   })
 })
 
@@ -136,6 +240,40 @@ describe('publicIncidentCardSchema', () => {
         keys: expect.arrayContaining(['reporterName', 'reporterPhone']),
       }),
     )
+  })
+
+  it('models public map/feed changes as projection events', () => {
+    expect(
+      publicIncidentProjectionEventSchema.parse({
+        incidentId: 'incident-1',
+        action: 'publish',
+        card: {
+          incidentId: 'incident-1',
+          reportType: 'flood',
+          severity: 'high',
+          operationalStatus: 'resolved',
+          municipalityId: 'daet',
+          municipalityLabel: 'Daet',
+          barangayId: 'calasgasan',
+          publicSummary: 'Floodwater has receded near the market.',
+          point: { lng: 122.95, lat: 14.11 },
+          publishedAt: ts,
+          updatedAt: ts,
+          schemaVersion: 1,
+        },
+        occurredAt: ts,
+        schemaVersion: 1,
+      }),
+    ).toMatchObject({ action: 'publish' })
+
+    expect(
+      publicIncidentProjectionEventSchema.parse({
+        incidentId: 'incident-1',
+        action: 'unpublish',
+        occurredAt: ts,
+        schemaVersion: 1,
+      }),
+    ).toMatchObject({ action: 'unpublish' })
   })
 })
 
