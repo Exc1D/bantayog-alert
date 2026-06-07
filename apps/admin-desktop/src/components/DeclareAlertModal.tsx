@@ -1,29 +1,10 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { X, AlertTriangle } from 'lucide-react'
-import { useFocusTrap } from '../hooks/useFocusTrap'
-import { callables } from '../services/callables'
-import {
-  buildDeclareAlertPayload,
-  defaultSectorsForHazardType,
-  REQUIRES_EFFECTIVE_PERIOD,
-  SHOWS_ROAD_NAME,
-  validateDeclareAlertForm,
-} from './declare-alert-form'
+import { AlertTriangle, X } from 'lucide-react'
 import {
   DeclareAlertSubmitConfirmDialog,
   DeclareAlertUnsavedChangesDialog,
 } from './declare-alert-dialogs'
-import {
-  ALLOWED_MUNICIPALITY_IDS,
-  BARANGAYS_BY_MUNICIPALITY,
-  HAZARD_GROUPS,
-  HAZARD_TYPE_LABELS,
-  MUNICIPALITIES,
-  MUNICIPALITY_ID_TO_LABEL,
-  SECTOR_LABELS,
-  SECTOR_TYPES,
-  formatShortList,
-} from './declare-alert-options'
+import { AlertFormFields } from './AlertFormFields'
+import { useDeclareAlert } from './useDeclareAlert'
 
 interface Props {
   open: boolean
@@ -39,249 +20,46 @@ interface Props {
 }
 
 export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }: Props) {
-  const [hazardType, setHazardType] = useState('')
-  const [selectedMunicipalityIds, setSelectedMunicipalityIds] = useState<Set<string>>(new Set())
-  const [showBarangaySelector, setShowBarangaySelector] = useState(false)
-  const [selectedBarangayIds, setSelectedBarangayIds] = useState<Set<string>>(new Set())
-  const [selectedSectors, setSelectedSectors] = useState<Set<string>>(new Set())
-  const [effectiveFrom, setEffectiveFrom] = useState('')
-  const [effectiveUntil, setEffectiveUntil] = useState('')
-  const [expectedResolutionAt, setExpectedResolutionAt] = useState('')
-  const [roadName, setRoadName] = useState('')
-  const [message, setMessage] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const trapRef = useFocusTrap({
-    isActive: open,
-    onEscape: () => {
-      if (submitting || showUnsavedWarning) return
-      if (showSubmitConfirm) {
-        setShowSubmitConfirm(false)
-        return
-      }
-      onClose()
-    },
-  })
-
-  const hasUnsavedChanges =
-    hazardType !== '' ||
-    selectedMunicipalityIds.size > 0 ||
-    message.trim().length > 0 ||
-    effectiveFrom !== '' ||
-    effectiveUntil !== '' ||
-    expectedResolutionAt !== '' ||
-    roadName.trim().length > 0 ||
-    selectedSectors.size > 0 ||
-    selectedBarangayIds.size > 0
-
-  // Warn before closing browser tab with unsaved changes
-  useEffect(() => {
-    if (!hasUnsavedChanges) return
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      // Legacy browsers require returnValue assignment; modern browsers ignore it.
-      // This is the spec-compliant way to trigger the native confirmation dialog.
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
-      e.returnValue = ''
-    }
-    window.addEventListener('beforeunload', handler)
-    return () => {
-      window.removeEventListener('beforeunload', handler)
-    }
-  }, [hasUnsavedChanges])
-
-  // Reset and prefill when opened
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!open) return
-    setHazardType('')
-    setMessage('')
-    setSubmitting(false)
-    setShowUnsavedWarning(false)
-    setShowSubmitConfirm(false)
-    setSubmitError(null)
-    setShowBarangaySelector(false)
-    setSelectedBarangayIds(new Set())
-    setSelectedSectors(new Set())
-    setEffectiveFrom('')
-    setEffectiveUntil('')
-    setExpectedResolutionAt('')
-    setRoadName('')
-    const next = new Set<string>()
-    if (prefill?.municipalityId) {
-      if (ALLOWED_MUNICIPALITY_IDS.has(prefill.municipalityId)) {
-        next.add(prefill.municipalityId)
-      }
-    }
-    setSelectedMunicipalityIds(next)
-  }, [open, prefill?.municipalityId])
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  const handleHazardTypeChange = useCallback((type: string) => {
-    setHazardType(type)
-    setSelectedSectors(defaultSectorsForHazardType(type))
-    if (!SHOWS_ROAD_NAME.has(type)) {
-      setRoadName('')
-    }
-  }, [])
-
-  const toggleMunicipality = useCallback((id: string) => {
-    setSelectedMunicipalityIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-        setSelectedBarangayIds((barangays) => {
-          const nextBarangays = new Set(barangays)
-          const municipalityBarangays = BARANGAYS_BY_MUNICIPALITY[id] ?? []
-          for (const b of municipalityBarangays) {
-            nextBarangays.delete(b)
-          }
-          return nextBarangays
-        })
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }, [])
-
-  const toggleBarangay = useCallback((barangay: string) => {
-    setSelectedBarangayIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(barangay)) next.delete(barangay)
-      else next.add(barangay)
-      return next
-    })
-  }, [])
-
-  const toggleAllBarangaysForMunicipality = useCallback(
-    (municipalityId: string, checked: boolean) => {
-      const barangays = BARANGAYS_BY_MUNICIPALITY[municipalityId] ?? []
-      setSelectedBarangayIds((prev) => {
-        const next = new Set(prev)
-        for (const b of barangays) {
-          if (checked) next.add(b)
-          else next.delete(b)
-        }
-        return next
-      })
-    },
-    [],
-  )
-
-  const toggleSector = useCallback((sector: string) => {
-    setSelectedSectors((prev) => {
-      const next = new Set(prev)
-      if (sector === 'all') {
-        return prev.size > 0 ? new Set() : new Set(SECTOR_TYPES.filter((s) => s !== 'all'))
-      }
-      if (next.has(sector)) next.delete(sector)
-      else next.add(sector)
-      next.delete('all')
-      return next
-    })
-  }, [])
-
-  const handleRequestClose = useCallback(() => {
-    if (submitting) return
-    if (showSubmitConfirm) {
-      setShowSubmitConfirm(false)
-      return
-    }
-    if (hasUnsavedChanges) {
-      setShowUnsavedWarning(true)
-      return
-    }
-    onClose()
-  }, [submitting, showSubmitConfirm, hasUnsavedChanges, onClose])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (e.target === e.currentTarget) {
-        handleRequestClose()
-      }
-    },
-    [handleRequestClose],
-  )
-
-  const validationErrors = useMemo(() => {
-    return validateDeclareAlertForm({
-      hazardType,
-      selectedMunicipalityIds,
-      message,
-      effectiveFrom,
-      effectiveUntil,
-      roadName,
-    })
-  }, [hazardType, selectedMunicipalityIds, effectiveFrom, effectiveUntil, roadName, message])
-
-  const isValid = Object.keys(validationErrors).length === 0
-
-  const selectedMunicipalityLabels = useMemo(
-    () => MUNICIPALITIES.filter((m) => selectedMunicipalityIds.has(m.id)).map((m) => m.label),
-    [selectedMunicipalityIds],
-  )
-  const selectedMunicipalitySummary =
-    selectedMunicipalityLabels.length > 0
-      ? `Selected municipalities: ${formatShortList(selectedMunicipalityLabels)}`
-      : 'Selected municipalities: none'
-  const alertTypeLabel = hazardType
-    ? (HAZARD_TYPE_LABELS[hazardType] ?? hazardType)
-    : 'None selected'
-
-  const handleReviewSubmit = useCallback(() => {
-    if (!isValid) return
-    setSubmitError(null)
-    setShowSubmitConfirm(true)
-  }, [isValid])
-
-  const handleSubmit = useCallback(async () => {
-    if (!isValid) return
-    setSubmitError(null)
-    setSubmitting(true)
-    try {
-      const payload = buildDeclareAlertPayload({
-        hazardType,
-        selectedMunicipalityIds,
-        message,
-        effectiveFrom,
-        effectiveUntil,
-        expectedResolutionAt,
-        selectedSectors,
-        selectedBarangayIds,
-        roadName,
-        reportId: prefill?.reportId,
-      })
-      const result = await callables.declareAlert(payload)
-      onSuccess(result.alertId)
-      onClose()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to declare alert'
-      setSubmitError(`Alert was not declared. ${msg}`)
-      setShowSubmitConfirm(false)
-      onError(msg)
-    } finally {
-      setSubmitting(false)
-    }
-  }, [
+  const {
+    trapRef,
+    dialogRef,
     hazardType,
     selectedMunicipalityIds,
-    message,
-    prefill,
+    showBarangaySelector,
+    selectedBarangayIds,
+    selectedSectors,
     effectiveFrom,
     effectiveUntil,
     expectedResolutionAt,
-    selectedSectors,
-    selectedBarangayIds,
     roadName,
-    onSuccess,
-    onError,
-    onClose,
+    message,
+    submitting,
+    showUnsavedWarning,
+    showSubmitConfirm,
+    submitError,
+    validationErrors,
     isValid,
-  ])
+    handleRequestClose,
+    handleBackdropClick,
+    handleReviewSubmit,
+    handleSubmit,
+    handleHazardTypeChange,
+    toggleMunicipality,
+    toggleBarangay,
+    toggleAllBarangaysForMunicipality,
+    toggleSector,
+    setShowBarangaySelector,
+    setEffectiveFrom,
+    setEffectiveUntil,
+    setExpectedResolutionAt,
+    setRoadName,
+    setMessage,
+    setShowSubmitConfirm,
+    setShowUnsavedWarning,
+    alertTypeLabel,
+    selectedMunicipalityLabels,
+    selectedMunicipalitySummary,
+  } = useDeclareAlert({ open, prefill, onClose, onSuccess, onError })
 
   if (!open) return null
 
@@ -337,334 +115,32 @@ export function DeclareAlertModal({ open, prefill, onClose, onSuccess, onError }
           }}
         >
           <div className="flex-1 overflow-y-auto p-6">
-            <div className="space-y-5">
-              {submitError && (
-                <div
-                  role="alert"
-                  className="rounded-md border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-3 py-2"
-                >
-                  <p className="text-sm font-medium text-[var(--color-danger)]">{submitError}</p>
-                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                    Review the details, then try again.
-                  </p>
-                </div>
-              )}
-
-              {/* Hazard Type */}
-              <div>
-                <label
-                  htmlFor="hazard-type"
-                  className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                >
-                  Alert Type (required)
-                </label>
-                <select
-                  id="hazard-type"
-                  value={hazardType}
-                  onChange={(e) => {
-                    handleHazardTypeChange(e.target.value)
-                  }}
-                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
-                >
-                  <option value="">Select alert type...</option>
-                  {HAZARD_GROUPS.map((group) => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.types.map((type) => (
-                        <option key={type} value={type}>
-                          {HAZARD_TYPE_LABELS[type]}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                {validationErrors.hazardType && (
-                  <p className="mt-1 text-xs text-[var(--color-danger)]">
-                    {validationErrors.hazardType}
-                  </p>
-                )}
-              </div>
-
-              {/* Municipalities */}
-              <div>
-                <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-                  Affected Municipalities (required)
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  Select where citizens should see this alert. No barangay selection means the whole
-                  municipality.
-                </p>
-                <div
-                  className="mt-2 grid grid-cols-2 gap-2"
-                  role="group"
-                  aria-label="Affected Municipalities"
-                >
-                  {MUNICIPALITIES.map((m) => (
-                    <label
-                      key={m.id}
-                      className="flex cursor-pointer items-center gap-2 rounded border border-white/5 bg-[var(--color-surface)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-white/5"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMunicipalityIds.has(m.id)}
-                        onChange={() => {
-                          toggleMunicipality(m.id)
-                        }}
-                        className="h-4 w-4 accent-[var(--color-danger)]"
-                      />
-                      <span className="truncate">{m.label}</span>
-                    </label>
-                  ))}
-                </div>
-                {validationErrors.municipalities && (
-                  <p className="mt-1 text-xs text-[var(--color-danger)]">
-                    {validationErrors.municipalities}
-                  </p>
-                )}
-                <p
-                  className="mt-2 text-xs font-medium text-[var(--color-text-primary)]"
-                  aria-live="polite"
-                >
-                  {selectedMunicipalitySummary}
-                </p>
-                {selectedMunicipalityIds.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowBarangaySelector((s) => !s)
-                    }}
-                    className="mt-2 text-xs text-[var(--color-accent)] hover:underline"
-                    aria-expanded={showBarangaySelector}
-                  >
-                    {showBarangaySelector
-                      ? 'Hide barangay selector'
-                      : 'Specify barangays (advanced)'}
-                  </button>
-                )}
-              </div>
-
-              {/* Barangay Selector */}
-              {showBarangaySelector && selectedMunicipalityIds.size > 0 && (
-                <div className="rounded border border-dashed border-white/10 p-4">
-                  <p className="mb-2 text-xs text-[var(--color-text-muted)]">
-                    Barangays in selected municipalities
-                  </p>
-                  {Array.from(selectedMunicipalityIds).map((municipalityId) => {
-                    const barangays = BARANGAYS_BY_MUNICIPALITY[municipalityId] ?? []
-                    const allSelected =
-                      barangays.length > 0 && barangays.every((b) => selectedBarangayIds.has(b))
-                    return (
-                      <div key={municipalityId} className="mb-3">
-                        <label className="mb-1 flex items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)]">
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={(e) => {
-                              toggleAllBarangaysForMunicipality(municipalityId, e.target.checked)
-                            }}
-                            className="h-3.5 w-3.5 accent-[var(--color-danger)]"
-                          />
-                          Select all barangays in {MUNICIPALITY_ID_TO_LABEL[municipalityId]}
-                        </label>
-                        <div className="grid grid-cols-2 gap-1 pl-5 text-xs">
-                          {barangays.map((b) => (
-                            <label key={b} className="flex items-center gap-1.5">
-                              <input
-                                type="checkbox"
-                                checked={selectedBarangayIds.has(b)}
-                                onChange={() => {
-                                  toggleBarangay(b)
-                                }}
-                                className="h-3 w-3 accent-[var(--color-danger)]"
-                              />
-                              {b}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    Tip: If no barangays are selected, the alert applies to the entire municipality.
-                  </p>
-                </div>
-              )}
-
-              {/* Affected Sectors */}
-              <div>
-                <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-                  Affected Sectors
-                </p>
-                <div
-                  className="mt-2 grid grid-cols-2 gap-2"
-                  role="group"
-                  aria-label="Affected Sectors"
-                >
-                  {SECTOR_TYPES.filter((s) => s !== 'all').map((sector) => (
-                    <label
-                      key={sector}
-                      className="flex cursor-pointer items-center gap-2 rounded border border-white/5 bg-[var(--color-surface)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-white/5"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSectors.has(sector)}
-                        onChange={() => {
-                          toggleSector(sector)
-                        }}
-                        className="h-4 w-4 accent-[var(--color-danger)]"
-                      />
-                      <span className="truncate">{SECTOR_LABELS[sector]}</span>
-                    </label>
-                  ))}
-                  <label className="flex cursor-pointer items-center gap-2 rounded border border-white/5 bg-[var(--color-surface)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-white/5">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedSectors.size === SECTOR_TYPES.filter((s) => s !== 'all').length
-                      }
-                      onChange={() => {
-                        toggleSector('all')
-                      }}
-                      className="h-4 w-4 accent-[var(--color-danger)]"
-                    />
-                    <span className="truncate">{SECTOR_LABELS.all}</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Effective Period */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
-                  Effective Period
-                  {REQUIRES_EFFECTIVE_PERIOD.has(hazardType) && (
-                    <span className="text-[var(--color-danger)]"> *</span>
-                  )}
-                </label>
-                <div className="mt-1 grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-xs text-[var(--color-text-muted)]">From</span>
-                    <input
-                      type="datetime-local"
-                      value={effectiveFrom}
-                      onChange={(e) => {
-                        setEffectiveFrom(e.target.value)
-                      }}
-                      className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
-                    />
-                    {validationErrors.effectiveFrom && (
-                      <p className="mt-1 text-xs text-[var(--color-danger)]">
-                        {validationErrors.effectiveFrom}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-xs text-[var(--color-text-muted)]">Until</span>
-                    <input
-                      type="datetime-local"
-                      value={effectiveUntil}
-                      onChange={(e) => {
-                        setEffectiveUntil(e.target.value)
-                      }}
-                      className="w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
-                    />
-                    {validationErrors.effectiveUntil && (
-                      <p className="mt-1 text-xs text-[var(--color-danger)]">
-                        {validationErrors.effectiveUntil}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {REQUIRES_EFFECTIVE_PERIOD.has(hazardType) && (
-                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    Effective period is required for this alert type.
-                  </p>
-                )}
-              </div>
-
-              {/* Expected Resolution */}
-              <div>
-                <label
-                  htmlFor="expected-resolution"
-                  className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                >
-                  Expected Resolution (optional)
-                </label>
-                <input
-                  id="expected-resolution"
-                  type="datetime-local"
-                  value={expectedResolutionAt}
-                  onChange={(e) => {
-                    setExpectedResolutionAt(e.target.value)
-                  }}
-                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
-                />
-                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  Used for open-ended events (e.g., estimated power restoration or typhoon passage).
-                </p>
-              </div>
-
-              {/* Road Name */}
-              {SHOWS_ROAD_NAME.has(hazardType) && (
-                <div>
-                  <label
-                    htmlFor="road-name"
-                    className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                  >
-                    Road / Route Name {REQUIRES_EFFECTIVE_PERIOD.has(hazardType) ? '*' : ''}
-                  </label>
-                  <input
-                    id="road-name"
-                    type="text"
-                    value={roadName}
-                    onChange={(e) => {
-                      setRoadName(e.target.value)
-                    }}
-                    placeholder="e.g. Maharlika Highway, Daet-Basud Road"
-                    className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
-                  />
-                  {validationErrors.roadName && (
-                    <p className="mt-1 text-xs text-[var(--color-danger)]">
-                      {validationErrors.roadName}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Message */}
-              <div>
-                <label
-                  htmlFor="alert-message"
-                  className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                >
-                  Message (required)
-                </label>
-                <textarea
-                  id="alert-message"
-                  value={message}
-                  onChange={(e) => {
-                    setMessage(e.target.value.slice(0, 500))
-                  }}
-                  rows={4}
-                  placeholder="Describe the alert and any immediate advisories..."
-                  className="mt-1 w-full resize-none rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
-                />
-                <div className="mt-1 flex justify-end">
-                  <span
-                    className={`text-xs ${
-                      message.length >= 450
-                        ? 'text-[var(--color-warning)]'
-                        : 'text-[var(--color-text-muted)]'
-                    }`}
-                  >
-                    {message.length}/500
-                  </span>
-                </div>
-                {validationErrors.message && (
-                  <p className="mt-1 text-xs text-[var(--color-danger)]">
-                    {validationErrors.message}
-                  </p>
-                )}
-              </div>
-            </div>
+            <AlertFormFields
+              hazardType={hazardType}
+              selectedMunicipalityIds={selectedMunicipalityIds}
+              showBarangaySelector={showBarangaySelector}
+              selectedBarangayIds={selectedBarangayIds}
+              selectedSectors={selectedSectors}
+              effectiveFrom={effectiveFrom}
+              effectiveUntil={effectiveUntil}
+              expectedResolutionAt={expectedResolutionAt}
+              roadName={roadName}
+              message={message}
+              submitError={submitError}
+              validationErrors={validationErrors}
+              selectedMunicipalitySummary={selectedMunicipalitySummary}
+              onHazardTypeChange={handleHazardTypeChange}
+              onToggleMunicipality={toggleMunicipality}
+              onToggleBarangay={toggleBarangay}
+              onToggleAllBarangaysForMunicipality={toggleAllBarangaysForMunicipality}
+              onToggleSector={toggleSector}
+              onSetShowBarangaySelector={setShowBarangaySelector}
+              onSetEffectiveFrom={setEffectiveFrom}
+              onSetEffectiveUntil={setEffectiveUntil}
+              onSetExpectedResolutionAt={setExpectedResolutionAt}
+              onSetRoadName={setRoadName}
+              onSetMessage={setMessage}
+            />
           </div>
 
           {/* Footer */}

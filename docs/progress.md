@@ -1,5 +1,34 @@
 # Progress
 
+## 2026-06-07 - Fallow-Driven Cloud Functions Unit-Test Coverage
+
+- Ran Fallow analysis and identified high-complexity / high-duplication files.
+- Extracted shared test utilities into `apps/admin-desktop/src/test-utils.tsx`.
+- Decomposed `RevealSheet.tsx`, `mappers.ts`, `StatusBar.tsx`, and `MapTab` (with `useMapTab.ts` hook) — zero breaking changes, all existing tests pass.
+- Exported `inputSchema` from `merge-duplicates.ts` (previously private const) so unit tests can directly assert schema contracts.
+- Wrote pure-mock unit tests for `redispatch-report` core (12 tests passing) and `merge-duplicates` core (11 tests passing) using the same pattern: hoist mock `withIdempotency`, construct `createMockDb` that exposes `_txGet`, `_txUpdate`, `_txSet`, and asserts Firestore ref paths.
+- Verification: both unit files pass together (`npx vitest run src/domains/dispatches/__tests__/redispatch-report.unit.test.ts src/domains/reports/__tests__/merge-duplicates.unit.test.ts`), `tsc --noEmit` clean for functions package.
+
+## 2026-06-07 - Fallow-Driven DeclareAlertModal Decomposition
+
+- Decomposed `DeclareAlertModal.tsx` (719 LOC, cognitive 24, cyclomatic 35) into three modules:
+  - `useDeclareAlert.ts` — new hook with all state, effects, callbacks, validation, and submission logic (~360 LOC).
+  - `AlertFormFields.tsx` — pure presentational component for all form inputs (~260 LOC).
+  - `DeclareAlertModal.tsx` — orchestrator shell (~195 LOC): backdrop, dialog, focus trap, footer, confirmation dialogs.
+- Preserved every existing prop contract, behavior, accessibility attribute, and event handler. No consumer changes required.
+- Verification: `pnpm --dir apps/admin-desktop exec vitest run` (523 tests passed), `tsc --noEmit` clean, ESLint clean.
+
+## 2026-06-07 - Fallow-Driven ProfileTab Decomposition
+
+- Decomposed `ProfileTab.tsx` (778 LOC, cognitive 23, cyclomatic 25) into five modules:
+  - `useProfileTab.ts` — new hook with all state, auth effects, badges, and action handlers (~210 LOC). Exported `useBadges` and `BadgeDef` for reuse.
+  - `ProfileTab/components/MilestoneTracker.tsx` — pure presentational component for the impact path tracker (~80 LOC).
+  - `ProfileTab/components/BadgeList.tsx` — pure presentational component for the guardian skills badge list (~50 LOC).
+  - `ProfileTab/components/ReportCard.tsx` — pure presentational component for individual report cards (~90 LOC).
+  - `ProfileTab.tsx` — orchestrator shell (~230 LOC): hero headers, stats grid, settings/track buttons, report list, sign-out, and conditional anonymous/registered flows.
+- Preserved `WITHDRAWABLE_STATUSES` export (consumed by `MapTab/index.tsx`). No consumer changes required.
+- Verification: `pnpm --dir apps/citizen-pwa exec vitest run src/components/ProfileTab.test.tsx` (6/6 pass), `tsc --noEmit` clean, ESLint clean. Full citizen-pwa suite: 452/455 pass (3 pre-existing `PeekSheet.test.tsx` failures unrelated to this change).
+
 ## 2026-06-07 - Greenfield PostGIS Stage 1 Migration Diff
 
 - Added the approved executable Stage 1 PostGIS migration artifacts under `infra/postgres/`: incident-core schema SQL, down migration, smoke/query/RLS SQL, and local runner documentation.
