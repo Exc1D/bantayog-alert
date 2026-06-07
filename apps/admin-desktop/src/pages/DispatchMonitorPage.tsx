@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getFirestoreInstance } from '../app/firebase'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
+import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
@@ -21,6 +22,13 @@ import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { callables } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
+import { mapReportDocToReportLoose } from '../utils/map-report-doc'
+import type { Report } from '../types'
+
+interface AssignmentReport {
+  report: Report
+  municipalityId?: string
+}
 
 export function DispatchMonitorPage() {
   const db = getFirestoreInstance()
@@ -30,6 +38,10 @@ export function DispatchMonitorPage() {
 
   const { rows, loading, error } = useDispatchLifecycle(db)
   const { responders } = useResponderFleet(db)
+  const { reports: assignmentReportDocs, error: assignmentError } = useFirestoreListeners({
+    windowType: 'dashboard',
+    db,
+  })
   const { metrics: opsMetrics } = useOpsMetrics('24h')
 
   const [selectedDispatchId, setSelectedDispatchId] = useState<string | null>(null)
@@ -37,6 +49,8 @@ export function DispatchMonitorPage() {
   const [isDispatching, setIsDispatching] = useState(false)
   const [dispatchError, setDispatchError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [assignmentSelections, setAssignmentSelections] = useState<Record<string, string>>({})
+  const [assigningReportId, setAssigningReportId] = useState<string | null>(null)
   const [creatingResponder, setCreatingResponder] = useState(false)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
@@ -49,6 +63,17 @@ export function DispatchMonitorPage() {
   const activeCount = rows.filter((r) => r.status !== 'needs_admin').length
   const avgAcceptSeconds = opsMetrics?.avgAcceptSeconds ?? null
   const fcmSuccessRate = opsMetrics?.fcmSuccessRate ?? 0
+  const pageError = error ?? assignmentError
+  const assignmentReports: AssignmentReport[] = assignmentReportDocs
+    .map((doc) => {
+      const report = mapReportDocToReportLoose(doc)
+      const municipalityId = typeof doc.municipalityId === 'string' ? doc.municipalityId : undefined
+      return {
+        report,
+        ...(municipalityId ? { municipalityId } : {}),
+      }
+    })
+    .filter((item) => item.report.status === 'verified')
 
   const selectedRow = rows.find((r) => r.dispatchId === selectedDispatchId)
   const previouslyNotified = selectedRow?.previouslyNotifiedResponderUids ?? []
@@ -136,6 +161,40 @@ export function DispatchMonitorPage() {
     }
   }
 
+  const candidateRespondersFor = (assignment: AssignmentReport) => {
+    if (!assignment.municipalityId) return responders
+    const scoped = responders.filter((r) => r.municipalityId === assignment.municipalityId)
+    return scoped.length > 0 ? scoped : responders
+  }
+
+  const handleAssignResponder = async (reportId: string) => {
+    const responderUid = assignmentSelections[reportId]
+    if (!responderUid) {
+      setDispatchError('Choose a responder before assigning')
+      return
+    }
+
+    setAssigningReportId(reportId)
+    setDispatchError(null)
+    try {
+      await withRetry(() =>
+        callables.dispatchResponder({
+          reportId,
+          responderUid,
+          idempotencyKey: generateIdempotencyKey(),
+        }),
+      )
+      setSuccessMessage('Responder assigned')
+      setAssignmentSelections((current) =>
+        Object.fromEntries(Object.entries(current).filter(([id]) => id !== reportId)),
+      )
+    } catch (err) {
+      setDispatchError(err instanceof Error ? err.message : 'Responder assignment failed')
+    } finally {
+      setAssigningReportId(null)
+    }
+  }
+
   useKeyboardShortcuts([
     {
       key: 'r',
@@ -173,9 +232,9 @@ export function DispatchMonitorPage() {
   if (loading && rows.length === 0) {
     return (
       <>
-        {error && (
+        {pageError && (
           <OfflineBanner
-            error={error}
+            error={pageError}
             onRetry={() => {
               window.location.reload()
             }}
@@ -195,9 +254,9 @@ export function DispatchMonitorPage() {
         Skip to main content
       </a>
 
-      {error && (
+      {pageError && (
         <OfflineBanner
-          error={error}
+          error={pageError}
           onRetry={() => {
             window.location.reload()
           }}
@@ -232,7 +291,7 @@ export function DispatchMonitorPage() {
           }}
         />
       )}
-      {isStale && !error && (
+      {isStale && !pageError && (
         <div
           className="flex items-center justify-center gap-2 bg-[var(--color-warning)]/20 px-4 py-1.5 text-xs text-[var(--color-warning)]"
           role="status"
@@ -251,6 +310,93 @@ export function DispatchMonitorPage() {
             fcmSuccessRate={fcmSuccessRate}
             mode={stalledDispatches.length > 0 ? 'active' : 'calm'}
           />
+
+          <section
+            aria-label="Responder assignment queue"
+            className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                  Responder Assignment
+                </h2>
+                <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                  Verified reports waiting for first dispatch.
+                </p>
+              </div>
+              <span className="rounded border border-white/10 px-2 py-1 text-xs text-[var(--color-text-secondary)]">
+                {assignmentReports.length} waiting
+              </span>
+            </div>
+            {assignmentReports.length === 0 ? (
+              <p className="rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+                No verified reports waiting for responder assignment.
+              </p>
+            ) : (
+              <div className="grid gap-3 xl:grid-cols-2">
+                {assignmentReports.map((assignment) => {
+                  const { report } = assignment
+                  const candidates = candidateRespondersFor(assignment)
+                  const selectedUid = assignmentSelections[report.id] ?? ''
+                  const isAssigning = assigningReportId === report.id
+                  return (
+                    <article
+                      key={report.id}
+                      className="rounded border border-white/10 bg-white/[0.03] p-3"
+                    >
+                      <div className="mb-3">
+                        <p className="text-xs uppercase text-[var(--color-text-muted)]">
+                          {report.municipality}
+                          {report.barangay ? ` / ${report.barangay}` : ''}
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                          {report.description || `Report ${report.id}`}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                          {report.type} · {report.severity}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <label className="sr-only" htmlFor={`assignment-responder-${report.id}`}>
+                          Responder for {report.id}
+                        </label>
+                        <select
+                          id={`assignment-responder-${report.id}`}
+                          value={selectedUid}
+                          onChange={(event) => {
+                            const uid = event.target.value
+                            setAssignmentSelections((current) => ({ ...current, [report.id]: uid }))
+                          }}
+                          className="min-w-0 flex-1 rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                        >
+                          <option value="">
+                            {candidates.length === 0
+                              ? 'No responders available'
+                              : 'Choose responder'}
+                          </option>
+                          {candidates.map((responder) => (
+                            <option key={responder.uid} value={responder.uid}>
+                              {responder.displayName || responder.uid}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={!selectedUid || isAssigning}
+                          onClick={() => {
+                            void handleAssignResponder(report.id)
+                          }}
+                          className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isAssigning ? 'Assigning...' : 'Assign responder'}
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </section>
 
           <EscalationQueueSection
             stalledDispatches={stalledDispatches.map((d) => ({
