@@ -79,7 +79,7 @@ function csvCell(value: string | number): string {
   if (/^[=+\-@\t\r]/.test(text)) {
     text = `'${text}`
   }
-  if (!/["",\n\r]/.test(text)) return text
+  if (!/[",\n\r]/.test(text)) return text
   return `"${text.replaceAll('"', '""')}"`
 }
 
