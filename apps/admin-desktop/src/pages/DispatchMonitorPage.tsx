@@ -30,6 +30,16 @@ interface AssignmentReport {
   municipalityId?: string
 }
 
+const FIELD_PROGRESS_STATUSES = new Set(['accepted', 'acknowledged', 'en_route', 'on_scene'])
+
+function responderStatusLabel(status: string): string {
+  if (status === 'accepted') return 'Accepted'
+  if (status === 'acknowledged') return 'Acknowledged'
+  if (status === 'en_route') return 'En route'
+  if (status === 'on_scene') return 'On scene'
+  return status.replace(/_/g, ' ')
+}
+
 export function DispatchMonitorPage() {
   const db = getFirestoreInstance()
   const { signOut } = useAuth()
@@ -60,6 +70,7 @@ export function DispatchMonitorPage() {
   const highlightDispatchId = searchParams.get('highlight')
 
   const stalledDispatches = rows.filter((r) => r.status === 'needs_admin')
+  const responderStatusRows = rows.filter((r) => FIELD_PROGRESS_STATUSES.has(r.status))
   const activeCount = rows.filter((r) => r.status !== 'needs_admin').length
   const avgAcceptSeconds = opsMetrics?.avgAcceptSeconds ?? null
   const fcmSuccessRate = opsMetrics?.fcmSuccessRate ?? 0
@@ -310,6 +321,53 @@ export function DispatchMonitorPage() {
             fcmSuccessRate={fcmSuccessRate}
             mode={stalledDispatches.length > 0 ? 'active' : 'calm'}
           />
+
+          <section
+            aria-label="Responder status queue"
+            className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                  Responder Status
+                </h2>
+                <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                  Active responder progress from acknowledgement through scene arrival.
+                </p>
+              </div>
+              <span className="rounded border border-white/10 px-2 py-1 text-xs text-[var(--color-text-secondary)]">
+                {responderStatusRows.length} active
+              </span>
+            </div>
+            {responderStatusRows.length === 0 ? (
+              <p className="rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+                No responder status updates waiting for review.
+              </p>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {responderStatusRows.map((row) => (
+                  <article
+                    key={row.dispatchId}
+                    className="rounded border border-white/10 bg-white/[0.03] p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                          {row.responderName || 'Responder'}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                          {row.responderAgency || 'Agency pending'} · {row.reportId}
+                        </p>
+                      </div>
+                      <span className="rounded bg-white/10 px-2 py-1 text-xs text-[var(--color-text-secondary)]">
+                        {responderStatusLabel(row.status)}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
 
           <section
             aria-label="Responder assignment queue"
