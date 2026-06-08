@@ -110,6 +110,37 @@ describe('DispatchMonitorPage', () => {
     expect(screen.getByText(/responders/i)).toBeInTheDocument()
   })
 
+  it('shows a responder status queue for active field progress', () => {
+    mockUseDispatchLifecycle.mockReturnValue({
+      rows: [
+        makeRow({
+          dispatchId: 'd-en-route',
+          reportId: 'rep-en-route',
+          status: 'en_route',
+          responderName: 'Alice Responder',
+          responderAgency: 'BFP',
+        }),
+        makeRow({
+          dispatchId: 'd-on-scene',
+          reportId: 'rep-on-scene',
+          status: 'on_scene',
+          responderName: 'Ben Responder',
+          responderAgency: 'MDRRMO',
+        }),
+      ],
+      loading: false,
+      error: null,
+    })
+
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const queue = screen.getByLabelText('Responder status queue')
+    expect(within(queue).getByText('Alice Responder')).toBeInTheDocument()
+    expect(within(queue).getByText('En route')).toBeInTheDocument()
+    expect(within(queue).getByText('Ben Responder')).toBeInTheDocument()
+    expect(within(queue).getByText('On scene')).toBeInTheDocument()
+  })
+
   it('assigns a verified report to a responder from the dispatch screen', async () => {
     mockUseFirestoreListeners.mockReturnValue({
       reports: [
