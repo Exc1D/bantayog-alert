@@ -38,6 +38,9 @@ export function useFcmToken() {
     }
 
     const messaging = getMessaging()
+    // Firebase 12.14.0 deprecated getToken in favor of register/onRegistered (FID-based messaging).
+    // Migration will be done in a dedicated FCM refactor PR. See https://github.com/Exc1D/bantayog-alert/issues/185
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     })
@@ -84,6 +87,7 @@ export function useFcmToken() {
       }
 
       const messaging = getMessaging()
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       const token = await getToken(messaging, {
         vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
       })
@@ -133,6 +137,7 @@ export function useFcmToken() {
       if (issuedToken) {
         try {
           const messaging = getMessaging()
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           await deleteToken(messaging)
         } catch (rollbackError) {
           console.error('Failed to roll back FCM token:', rollbackError)
@@ -182,6 +187,7 @@ export function useFcmToken() {
     try {
       // Revoke the browser FCM token
       const messaging = getMessaging()
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       await deleteToken(messaging)
 
       // Unsubscribe from foreground message listener and update state immediately

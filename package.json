@@ -52,5 +52,18 @@
     "@types/geojson": "^7946.0.16",
     "geojson": "^0.5.0",
     "ngeohash": "^0.6.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@firebase/rules-unit-testing>firebase": "12.13.0"
+    },
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "firebase"
+      ],
+      "allowedVersions": {
+        "@firebase/rules-unit-testing>firebase": "^12.13.0 || ^12.14.0"
+      }
+    }
   }
 }

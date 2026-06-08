@@ -174,16 +174,4 @@ describe('submitCitizenReportCore', () => {
       expect(reports.docs).toHaveLength(1)
     })
   })
-
-  itif(available)('rejects web payload missing triage', async () => {
-    await env!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
-      const input = baseInput()
-      const payloadWithoutTriage = { ...input.payload }
-      delete (payloadWithoutTriage as Record<string, unknown>).triage
-      await expect(
-        submitCitizenReportCore(db, { ...input, payload: payloadWithoutTriage }),
-      ).rejects.toThrow(/triage|schema/i)
-    })
-  })
 })

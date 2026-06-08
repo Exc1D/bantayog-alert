@@ -35,6 +35,9 @@ export async function acquireFcmToken(
       return { token: null, error: 'vapid_key_missing' }
     }
     const messaging = getMessaging(app)
+    // Firebase 12.14.0 deprecated getToken in favor of register/onRegistered (FID-based messaging).
+    // Migration will be done in a dedicated FCM refactor PR.  See https://github.com/Exc1D/bantayog-alert/issues/185
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const token = await getToken(messaging, {
       vapidKey,
       serviceWorkerRegistration,
