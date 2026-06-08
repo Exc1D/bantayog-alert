@@ -17,6 +17,10 @@
 - App Check emulator mismatch: when `VITE_USE_EMULATOR=true`, `createAppCheck` MUST use `CustomProvider` with a dummy token. `ReCaptchaV3Provider` against emulator project = 400 cascade (AppCheck/auth/Functions all fail). Other apps (responder-app, admin-desktop) already do this inline; citizen-pwa uses `@bantayog/shared-firebase` which was missing the emulator branch.
 - React Strict Mode double-invokes mount effects. Hooks that trigger side-effects on mount (e.g. `useGpsLocation(autoAttemptOnMount)`) need a `useRef` guard to prevent duplicate calls, otherwise users see multiple GPS prompts / repeated state transitions.
 - App Check error codes use `appCheck/` prefix, not `auth/`. Retry logic that only checks `code.startsWith('auth/')` will burn retries on unrecoverable App Check throttling.
+- Citizen own-report tracking must be a citizen-safe derived view of `MyReport` status fields until a projection exists; terminal states such as rejected/cancelled/merged need explicit outcomes so the UI does not imply a responder is still pending.
+- Phase 1 first dispatch belongs on `/dispatches` as an assignment queue, not only inside the map detail panel; reuse scoped report reads, responder fleet data, and `dispatchResponder` before adding a new assignment backend.
+- For Firestore rules subset verification, prefer `firebase emulators:exec --only firestore 'npx vitest run src/__tests__/rules'`; the quoted `src/__tests__/rules/**/*.rules.test.ts` glob can be treated as a Vitest filter and find no files.
+- Demo reset scripts must delete only fixed known seed document paths and must be guarded by `FIRESTORE_EMULATOR_HOST`; never implement a broad demo collection wipe or remote reset shortcut.
 
 ## Firestore / Rules / Data Access
 
@@ -79,6 +83,7 @@
 - Admin map triage controls must mirror backend report transitions; visible no-op command-center actions are P0 UX defects.
 - Admin dashboard widgets must end in an operator action. Report lifecycle counts should expose the next valid backend transition or deep-link to the Map/Feed surface that owns it.
 - Dashboard report commands should stay narrow: advance `new` to review, verify `awaiting_verify`, deep-link verified reports to Map dispatch, and leave rejection or scrubbed publication to Feed.
+- Phase 1 Admin triage belongs on its own `/triage` workbench. Dashboard can summarize, but row-level review needs report summaries, command callables, and Map routing for verified dispatch instead of hiding the flow inside metrics cards.
 - Do not subscribe Admin Map to RTDB `responder_locations` parent reads. Rules deny that path; use scoped Firestore responder roster data unless a scoped child GPS listener is explicitly implemented.
 - Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
 - Mode/state precedence: actionable states such as surge win over data-quality states such as degraded.

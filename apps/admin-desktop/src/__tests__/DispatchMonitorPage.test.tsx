@@ -8,10 +8,14 @@ const mockEscalateDispatch = vi.hoisted(() =>
     .fn()
     .mockResolvedValue({ dispatchId: 'd1', status: 'pending', reportId: 'r1', fcmResult: 'sent' }),
 )
+const mockDispatchResponder = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ dispatchId: 'd-new', status: 'pending', reportId: 'rep-assign-1' }),
+)
 
 vi.mock('../services/callables', () => ({
   callables: {
     escalateDispatch: mockEscalateDispatch,
+    dispatchResponder: mockDispatchResponder,
     createResponder: vi.fn().mockResolvedValue({ uid: 'new-responder' }),
     getOpsMetrics: vi.fn().mockResolvedValue({
       metrics: {
@@ -36,6 +40,7 @@ vi.mock('../app/firebase', () => ({
 const mockUseDispatchLifecycle = vi.hoisted(() => vi.fn())
 const mockUseResponderFleet = vi.hoisted(() => vi.fn())
 const mockUseOpsMetrics = vi.hoisted(() => vi.fn())
+const mockUseFirestoreListeners = vi.hoisted(() => vi.fn())
 
 vi.mock('../hooks/useDispatchLifecycle', () => ({
   useDispatchLifecycle: mockUseDispatchLifecycle,
@@ -49,6 +54,10 @@ vi.mock('../hooks/useOpsMetrics', () => ({
   useOpsMetrics: mockUseOpsMetrics,
 }))
 
+vi.mock('../hooks/useFirestoreListeners', () => ({
+  useFirestoreListeners: mockUseFirestoreListeners,
+}))
+
 describe('DispatchMonitorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -57,6 +66,15 @@ describe('DispatchMonitorPage', () => {
       responders: defaultResponders,
       loading: false,
       error: null,
+    })
+    mockUseFirestoreListeners.mockReturnValue({
+      reports: [],
+      loading: false,
+      error: null,
+      reportOps: [],
+      alerts: [],
+      situationUpdates: [],
+      responders: [],
     })
     mockUseOpsMetrics.mockReturnValue({
       metrics: {
@@ -90,6 +108,58 @@ describe('DispatchMonitorPage', () => {
     expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
     expect(screen.getByText('Report')).toBeInTheDocument()
     expect(screen.getByText(/responders/i)).toBeInTheDocument()
+  })
+
+  it('assigns a verified report to a responder from the dispatch screen', async () => {
+    mockUseFirestoreListeners.mockReturnValue({
+      reports: [
+        {
+          id: 'rep-assign-1',
+          reportType: 'flood',
+          severity: 'high',
+          municipalityLabel: 'Daet',
+          municipalityId: 'daet',
+          barangayId: 'Camambugan',
+          submittedAt: Date.now(),
+          status: 'verified',
+          description: 'Water rising near the bridge',
+          publicLocation: { lat: 14.1, lng: 122.9 },
+        },
+      ],
+      loading: false,
+      error: null,
+      reportOps: [],
+      alerts: [],
+      situationUpdates: [],
+      responders: [],
+    })
+    mockUseResponderFleet.mockReturnValue({
+      responders: [{ ...defaultResponders[0]!, municipalityId: 'daet' }],
+      loading: false,
+      error: null,
+    })
+
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const queue = screen.getByLabelText('Responder assignment queue')
+    expect(within(queue).getByText('Water rising near the bridge')).toBeInTheDocument()
+
+    fireEvent.change(within(queue).getByLabelText(/responder for rep-assign-1/i), {
+      target: { value: 'r1' },
+    })
+    fireEvent.click(within(queue).getByRole('button', { name: /assign responder/i }))
+
+    await waitFor(() => {
+      expect(mockDispatchResponder).toHaveBeenCalledTimes(1)
+    })
+    expect(mockDispatchResponder).toHaveBeenCalledWith({
+      reportId: 'rep-assign-1',
+      responderUid: 'r1',
+      idempotencyKey: expect.any(String),
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Responder assigned')).toBeInTheDocument()
+    })
   })
 
   it('does not show escalation queue when no stalled dispatches', () => {

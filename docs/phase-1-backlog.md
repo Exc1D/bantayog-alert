@@ -6,11 +6,11 @@
 - [x] Add guided severity
 - [x] Add injured/trapped field
 - [x] Add location confidence field
-- [ ] Build `/triage` admin workbench
-- [ ] Add citizen tracking timeline
-- [ ] Add responder assignment screen
-- [ ] Add MVP Firestore rule tests
-- [ ] Add demo seed/reset scripts
+- [x] Build `/triage` admin workbench
+- [x] Add citizen tracking timeline
+- [x] Add responder assignment screen
+- [x] Add MVP Firestore rule tests
+- [x] Add demo seed/reset scripts
 
 ## P1
 

@@ -222,7 +222,7 @@ interface AlertSeed {
   visibility: 'public'
 }
 
-const ALERTS: AlertSeed[] = [
+export const ALERTS: AlertSeed[] = [
   {
     id: 'seed-alert-001',
     title: 'Typhoon Warning Signal #2 — Camarines Norte',
@@ -418,8 +418,56 @@ async function seedAlerts(db: Firestore) {
   console.log(`✓ ${String(ALERTS.length)} alerts seeded`)
 }
 
-export async function main(db = getDb()) {
+export function buildDemoResetPaths(
+  reports: readonly ReportSeed[] = REPORTS,
+  alerts: readonly AlertSeed[] = ALERTS,
+): string[] {
+  const paths = [
+    ...reports.flatMap((report) => [`reports/${report.id}`, `report_ops/${report.id}`]),
+    ...buildDispatchSeeds(reports).map((seed) => `dispatches/${seed.id}`),
+    ...alerts.map((alert) => `alerts/${alert.id}`),
+  ]
+  return Array.from(new Set(paths))
+}
+
+export function assertDemoResetAllowed(env: NodeJS.ProcessEnv = process.env): void {
+  if (!env.FIRESTORE_EMULATOR_HOST) {
+    throw new Error('Demo reset is emulator-only. Set FIRESTORE_EMULATOR_HOST before resetting.')
+  }
+}
+
+export async function resetDemoData(db = getDb()) {
+  assertDemoResetAllowed()
+  const paths = buildDemoResetPaths(REPORTS, ALERTS)
+  const batch = db.batch()
+  for (const path of paths) {
+    batch.delete(db.doc(path))
+  }
+  await batch.commit()
+  console.log(`✓ ${String(paths.length)} demo documents reset`)
+}
+
+interface MainOptions {
+  resetFirst?: boolean
+  resetOnly?: boolean
+}
+
+function parseArgs(argv: readonly string[]): MainOptions {
+  return {
+    resetFirst: argv.includes('--reset'),
+    resetOnly: argv.includes('--reset-only'),
+  }
+}
+
+export async function main(db = getDb(), options: MainOptions = {}) {
   console.log(`\n🌱 Seeding staging incidents — ${new Date().toISOString()}\n`)
+  if (options.resetFirst || options.resetOnly) {
+    await resetDemoData(db)
+  }
+  if (options.resetOnly) {
+    console.log('\n✅ Demo reset complete.')
+    return
+  }
   await seedReports(db)
   await seedAlerts(db)
   console.log('\n✅ Done.')
@@ -431,7 +479,7 @@ export async function main(db = getDb()) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main().catch((err: unknown) => {
+  main(getDb(), parseArgs(process.argv.slice(2))).catch((err: unknown) => {
     console.error('\n❌ Seed failed:', err)
     process.exit(1)
   })

@@ -86,6 +86,7 @@ export async function submitCitizenReportCore(
   db: Firestore,
   input: SubmitCitizenReportCoreInput,
 ): Promise<CitizenReportMaterializationResult> {
+  submitCitizenPayloadSchema.parse(input.payload)
   const now = input.now ?? (() => Date.now())
   const { result, fromCache } = await withIdempotency<
     Omit<SubmitCitizenReportCoreInput, 'now'>,

@@ -4,6 +4,7 @@ import { useAuth } from '@bantayog/shared-ui'
 import DashboardPage from './pages/DashboardPage'
 import MapPage from './pages/MapPage'
 import FeedPage from './pages/FeedPage'
+import TriagePage from './pages/TriagePage'
 import { DispatchMonitorPage } from './pages/DispatchMonitorPage'
 import MobileGate from './pages/MobileGate'
 import { LoginPage } from './pages/LoginPage'
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
         element: <IndexRedirect />,
       },
       { path: '/dashboard', element: <DashboardPage /> },
+      { path: '/triage', element: <TriagePage /> },
       { path: '/map', element: <MapPage /> },
       { path: '/feed', element: <FeedPage /> },
       { path: '/dispatches', element: <DispatchMonitorPage /> },

@@ -4,6 +4,9 @@ import { createElement, forwardRef } from 'react'
 import type { ReactNode } from 'react'
 import { vi } from 'vitest'
 
+const defaultFetch = vi.fn(() => Promise.resolve(new Response('ok')))
+vi.stubGlobal('fetch', defaultFetch)
+
 const ANIMATION_PROPS = new Set([
   'initial',
   'animate',
