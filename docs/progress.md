@@ -274,6 +274,13 @@
 
 Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAGASA hazard signals, Break Glass, mass alert broadcast.
 
+## 2026-06-08 - Dependency Fix: `@firebase/database-compat` missing from functions dev dependencies
+
+- Diagnosed and fixed 9 failing tests in `functions/src/domains/ops/__tests__/project-responder-locations.test.ts` and one suite error in `src/__tests__/rtdb.rules.test.ts`.
+- Root cause: `firebase@12.14.0` modularized the compat database API that `@firebase/rules-unit-testing@5.0.0` relies on under the hood. `@firebase/database-compat` was not in the lockfile, so `.database()` and `.clearDatabase()` calls returned `TypeError: this.getApp(...).database is not a function`.
+- Fix: Added `-D @firebase/database-compat` to `functions/package.json` with `pnpm --dir functions add -D @firebase/database-compat`.
+- Verification: Full emulator suite (`firebase emulators:exec --only firestore,database,storage 'npx vitest run'` inside functions/) now passes 79/104 suites, 610/775 tests, 0 failures (25 skipped are emulator-guarded). Root `pnpm test` (23 files, 199 tests) still green. Lint and typecheck clean.
+
 ## Open
 
 1. Firebase Console: Phone Auth disabled; App Check 400 errors on staging.
