@@ -9,14 +9,17 @@ interface Props {
   reports: Report[]
   selectedIds: Set<string>
   loadingIds?: Set<string>
+  bulkLoading?: boolean
+  bulkVerifyIds?: Set<string>
+  bulkRejectIds?: Set<string>
   onToggleSelect: (id: string) => void
   onSelectAll: () => void
   onVerify: (id: string) => void
   onReject: (id: string) => void
   onDispatch: (id: string) => void
   onRowClick: (report: Report) => void
-  onBulkVerify?: (ids: Set<string>) => void
-  onBulkReject?: (ids: Set<string>) => void
+  onBulkVerify?: (ids: Set<string>) => void | Promise<void>
+  onBulkReject?: (ids: Set<string>) => void | Promise<void>
 }
 
 function actionFlags(status: string) {
@@ -32,6 +35,9 @@ export function TriageQueueTable({
   reports,
   selectedIds,
   loadingIds = new Set(),
+  bulkLoading = false,
+  bulkVerifyIds = new Set(),
+  bulkRejectIds = new Set(),
   onToggleSelect,
   onSelectAll,
   onVerify,
@@ -47,6 +53,9 @@ export function TriageQueueTable({
     return <EmptyTriageState />
   }
 
+  const hasVerifyTargets = bulkVerifyIds.size > 0
+  const hasRejectTargets = bulkRejectIds.size > 0
+
   return (
     <div>
       {selectedIds.size > 0 && (
@@ -59,21 +68,31 @@ export function TriageQueueTable({
           </span>
           <button
             type="button"
-            className="rounded bg-[var(--color-success)] px-3 py-1 text-xs text-white hover:opacity-90"
+            className="rounded bg-[var(--color-success)] px-3 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => {
-              onBulkVerify?.(selectedIds)
+              void onBulkVerify?.(selectedIds)
             }}
+            disabled={!hasVerifyTargets || bulkLoading}
           >
-            Verify Selected
+            {bulkLoading ? (
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              'Verify Selected'
+            )}
           </button>
           <button
             type="button"
-            className="rounded bg-[var(--color-danger)] px-3 py-1 text-xs text-white hover:opacity-90"
+            className="rounded bg-[var(--color-danger)] px-3 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => {
-              onBulkReject?.(selectedIds)
+              void onBulkReject?.(selectedIds)
             }}
+            disabled={!hasRejectTargets || bulkLoading}
           >
-            Reject Selected
+            {bulkLoading ? (
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              'Reject Selected'
+            )}
           </button>
         </div>
       )}
@@ -129,7 +148,9 @@ export function TriageQueueTable({
                 </td>
                 <td className="max-w-[24rem] px-4 py-3 text-[var(--color-text-primary)]">
                   <p className="truncate">
-                    {report.description.trim() || 'Report details pending'}
+                    {typeof report.description === 'string' && report.description.trim()
+                      ? report.description.trim()
+                      : 'Report details pending'}
                   </p>
                 </td>
                 <td className="px-4 py-3">

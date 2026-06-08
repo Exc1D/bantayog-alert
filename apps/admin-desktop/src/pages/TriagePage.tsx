@@ -43,6 +43,7 @@ export default function TriagePage() {
     db,
   })
 
+  const [bulkLoading, setBulkLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -63,6 +64,77 @@ export default function TriagePage() {
     })
   }, [])
 
+  const executeVerify = useCallback(
+    async (reportId: string) => {
+      setReportLoading(reportId, true)
+      try {
+        await withRetry(() =>
+          callables.verifyReport({ reportId, idempotencyKey: generateIdempotencyKey() }),
+        )
+        setSelectedIds((current) => {
+          const next = new Set(current)
+          next.delete(reportId)
+          return next
+        })
+      } finally {
+        setReportLoading(reportId, false)
+      }
+    },
+    [setReportLoading],
+  )
+
+  const executeReject = useCallback(
+    async (reportId: string) => {
+      setReportLoading(reportId, true)
+      try {
+        await withRetry(() =>
+          callables.rejectReport({
+            reportId,
+            reason: 'insufficient_detail',
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        )
+        setSelectedIds((current) => {
+          const next = new Set(current)
+          next.delete(reportId)
+          return next
+        })
+      } finally {
+        setReportLoading(reportId, false)
+      }
+    },
+    [setReportLoading],
+  )
+
+  const handleVerify = useCallback(
+    async (reportId: string) => {
+      const report = sortedReports.find((item) => item.id === reportId)
+      setActionError(null)
+      setSuccessMessage(null)
+      try {
+        await executeVerify(reportId)
+        setSuccessMessage(report?.status === 'new' ? 'Report sent to review' : 'Report verified')
+      } catch (err) {
+        setActionError(actionErrorMessage(err, 'Report verification failed'))
+      }
+    },
+    [executeVerify, sortedReports],
+  )
+
+  const handleReject = useCallback(
+    async (reportId: string) => {
+      setActionError(null)
+      setSuccessMessage(null)
+      try {
+        await executeReject(reportId)
+        setSuccessMessage('Report rejected')
+      } catch (err) {
+        setActionError(actionErrorMessage(err, 'Report rejection failed'))
+      }
+    },
+    [executeReject],
+  )
+
   const handleToggleSelect = useCallback((reportId: string) => {
     setSelectedIds((current) => {
       const next = new Set(current)
@@ -79,57 +151,82 @@ export default function TriagePage() {
     })
   }, [sortedReports])
 
-  const handleVerify = useCallback(
-    async (reportId: string) => {
-      const report = sortedReports.find((item) => item.id === reportId)
-      setActionError(null)
-      setSuccessMessage(null)
-      setReportLoading(reportId, true)
-      try {
-        await withRetry(() =>
-          callables.verifyReport({ reportId, idempotencyKey: generateIdempotencyKey() }),
-        )
-        setSuccessMessage(report?.status === 'new' ? 'Report sent to review' : 'Report verified')
-        setSelectedIds((current) => {
-          const next = new Set(current)
-          next.delete(reportId)
-          return next
-        })
-      } catch (err) {
-        setActionError(actionErrorMessage(err, 'Report verification failed'))
-      } finally {
-        setReportLoading(reportId, false)
-      }
-    },
-    [setReportLoading, sortedReports],
+  const selectedReports = useMemo(
+    () => sortedReports.filter((r) => selectedIds.has(r.id)),
+    [sortedReports, selectedIds],
   )
 
-  const handleReject = useCallback(
-    async (reportId: string) => {
+  const bulkVerifyIds = useMemo(
+    () =>
+      selectedReports
+        .filter((r) => r.status === 'new' || r.status === 'awaiting_verify')
+        .map((r) => r.id),
+    [selectedReports],
+  )
+
+  const bulkRejectIds = useMemo(
+    () => selectedReports.filter((r) => r.status === 'awaiting_verify').map((r) => r.id),
+    [selectedReports],
+  )
+
+  const handleBulkVerify = useCallback(
+    async (ids: Set<string>) => {
+      const eligibleIds = Array.from(ids).filter((id) => {
+        const report = sortedReports.find((r) => r.id === id)
+        return report && (report.status === 'new' || report.status === 'awaiting_verify')
+      })
+      if (eligibleIds.length === 0) return
+      setBulkLoading(true)
       setActionError(null)
       setSuccessMessage(null)
-      setReportLoading(reportId, true)
-      try {
-        await withRetry(() =>
-          callables.rejectReport({
-            reportId,
-            reason: 'insufficient_detail',
-            idempotencyKey: generateIdempotencyKey(),
-          }),
-        )
-        setSuccessMessage('Report rejected')
-        setSelectedIds((current) => {
-          const next = new Set(current)
-          next.delete(reportId)
-          return next
-        })
-      } catch (err) {
-        setActionError(actionErrorMessage(err, 'Report rejection failed'))
-      } finally {
-        setReportLoading(reportId, false)
+      const errors: string[] = []
+      for (const reportId of eligibleIds) {
+        try {
+          await executeVerify(reportId)
+        } catch (err) {
+          errors.push(actionErrorMessage(err, `Failed to verify ${reportId}`))
+        }
       }
+      if (errors.length > 0) {
+        setActionError(
+          `Bulk verify completed with ${String(errors.length)} error(s): ${errors.join('; ')}`,
+        )
+      } else {
+        setSuccessMessage(`${String(eligibleIds.length)} report(s) verified`)
+      }
+      setBulkLoading(false)
     },
-    [setReportLoading],
+    [sortedReports, executeVerify],
+  )
+
+  const handleBulkReject = useCallback(
+    async (ids: Set<string>) => {
+      const eligibleIds = Array.from(ids).filter((id) => {
+        const report = sortedReports.find((r) => r.id === id)
+        return report?.status === 'awaiting_verify'
+      })
+      if (eligibleIds.length === 0) return
+      setBulkLoading(true)
+      setActionError(null)
+      setSuccessMessage(null)
+      const errors: string[] = []
+      for (const reportId of eligibleIds) {
+        try {
+          await executeReject(reportId)
+        } catch (err) {
+          errors.push(actionErrorMessage(err, `Failed to reject ${reportId}`))
+        }
+      }
+      if (errors.length > 0) {
+        setActionError(
+          `Bulk reject completed with ${String(errors.length)} error(s): ${errors.join('; ')}`,
+        )
+      } else {
+        setSuccessMessage(`${String(eligibleIds.length)} report(s) rejected`)
+      }
+      setBulkLoading(false)
+    },
+    [sortedReports, executeReject],
   )
 
   const handleRowClick = useCallback(
@@ -210,15 +307,14 @@ export default function TriagePage() {
                 void navigate(`/map?reportId=${reportId}`)
               }}
               onRowClick={handleRowClick}
+              bulkLoading={bulkLoading}
+              bulkVerifyIds={new Set(bulkVerifyIds)}
+              bulkRejectIds={new Set(bulkRejectIds)}
               onBulkVerify={(ids) => {
-                ids.forEach((reportId) => {
-                  void handleVerify(reportId)
-                })
+                void handleBulkVerify(ids)
               }}
               onBulkReject={(ids) => {
-                ids.forEach((reportId) => {
-                  void handleReject(reportId)
-                })
+                void handleBulkReject(ids)
               }}
             />
           </section>

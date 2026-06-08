@@ -97,7 +97,11 @@ describe('TriageQueueTable', () => {
   it('calls onBulkVerify with selected ids when bulk verify clicked', async () => {
     const user = userEvent.setup()
     const onBulkVerify = vi.fn()
-    renderTable({ selectedIds: new Set(['r1', 'r2']), onBulkVerify })
+    renderTable({
+      selectedIds: new Set(['r1', 'r2']),
+      bulkVerifyIds: new Set(['r1', 'r2']),
+      onBulkVerify,
+    })
     await user.click(screen.getByRole('button', { name: 'Verify Selected' }))
     expect(onBulkVerify).toHaveBeenCalledWith(new Set(['r1', 'r2']))
   })
@@ -105,7 +109,11 @@ describe('TriageQueueTable', () => {
   it('calls onBulkReject with selected ids when bulk reject clicked', async () => {
     const user = userEvent.setup()
     const onBulkReject = vi.fn()
-    renderTable({ selectedIds: new Set(['r1']), onBulkReject })
+    renderTable({
+      selectedIds: new Set(['r1']),
+      bulkRejectIds: new Set(['r1']),
+      onBulkReject,
+    })
     await user.click(screen.getByRole('button', { name: 'Reject Selected' }))
     expect(onBulkReject).toHaveBeenCalledWith(new Set(['r1']))
   })

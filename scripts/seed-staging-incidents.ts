@@ -438,7 +438,7 @@ export function assertDemoResetAllowed(env: NodeJS.ProcessEnv = process.env): vo
 
 export async function resetDemoData(db = getDb()) {
   assertDemoResetAllowed()
-  const paths = buildDemoResetPaths()
+  const paths = buildDemoResetPaths(REPORTS, ALERTS)
   const batch = db.batch()
   for (const path of paths) {
     batch.delete(db.doc(path))

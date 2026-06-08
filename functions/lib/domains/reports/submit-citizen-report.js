@@ -46,6 +46,7 @@ async function resolveMunicipality(db, payload) {
     return geo;
 }
 export async function submitCitizenReportCore(db, input) {
+    submitCitizenPayloadSchema.parse(input.payload);
     const now = input.now ?? (() => Date.now());
     const { result, fromCache } = await withIdempotency(db, {
         key: `submitCitizenReport:${input.reporterUid}:${input.idempotencyKey}`,

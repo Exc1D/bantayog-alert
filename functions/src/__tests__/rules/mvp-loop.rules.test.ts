@@ -7,14 +7,6 @@ import { seedActiveAccount, seedReport, staffClaims, ts } from '../helpers/seed-
 
 let env: RulesTestEnvironment | undefined
 
-const itif = (condition: boolean) =>
-  condition ||
-  process.env.FIRESTORE_EMULATOR_HOST ||
-  process.env.FIREBASE_DATABASE_EMULATOR_HOST ||
-  process.env.FIREBASE_STORAGE_EMULATOR_HOST
-    ? it
-    : it.skip
-
 beforeAll(async () => {
   env = await createTestEnvSafe('mvp-loop-rules')
   if (!env) return
@@ -60,17 +52,20 @@ afterAll(async () => {
 })
 
 describe('MVP Firestore rules spine', () => {
-  itif(!!env)('reporter can read their own internal report for citizen tracking', async () => {
+  it('reporter can read their own internal report for citizen tracking', async ({ skip }) => {
+    if (!env) return skip('Emulator init failed')
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
     await assertSucceeds(getDoc(doc(db, 'reports/mvp-report')))
   })
 
-  itif(!!env)('another citizen cannot read someone else internal report', async () => {
+  it('another citizen cannot read someone else internal report', async ({ skip }) => {
+    if (!env) return skip('Emulator init failed')
     const db = authed(env, 'citizen-2', staffClaims({ role: 'citizen' }))
     await assertFails(getDoc(doc(db, 'reports/mvp-report')))
   })
 
-  itif(!!env)('public report lookup is read-only for anonymous tracking recovery', async () => {
+  it('public report lookup is read-only for anonymous tracking recovery', async ({ skip }) => {
+    if (!env) return skip('Emulator init failed')
     const db = unauthed(env)
     await assertSucceeds(getDoc(doc(db, 'report_lookup/mvp-ref-1')))
     await assertFails(
@@ -81,7 +76,8 @@ describe('MVP Firestore rules spine', () => {
     )
   })
 
-  itif(!!env)('municipal admin can query verified in-scope reports for assignment', async () => {
+  it('municipal admin can query verified in-scope reports for assignment', async ({ skip }) => {
+    if (!env) return skip('Emulator init failed')
     const db = authed(
       env,
       'daet-admin',
@@ -99,27 +95,25 @@ describe('MVP Firestore rules spine', () => {
     )
   })
 
-  itif(!!env)(
-    'direct dispatch creation is denied because assignment is callable-only',
-    async () => {
-      const db = authed(
-        env,
-        'daet-admin',
-        staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-      )
+  it('direct dispatch creation is denied because assignment is callable-only', async ({ skip }) => {
+    if (!env) return skip('Emulator init failed')
+    const db = authed(
+      env,
+      'daet-admin',
+      staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+    )
 
-      await assertFails(
-        setDoc(doc(db, 'dispatches/mvp-report_resp-1'), {
-          dispatchId: 'mvp-report_resp-1',
-          reportId: 'mvp-report',
-          municipalityId: 'daet',
-          status: 'pending',
-          assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
-          dispatchedAt: ts,
-          lastStatusAt: ts,
-          schemaVersion: 1,
-        }),
-      )
-    },
-  )
+    await assertFails(
+      setDoc(doc(db, 'dispatches/mvp-report_resp-1'), {
+        dispatchId: 'mvp-report_resp-1',
+        reportId: 'mvp-report',
+        municipalityId: 'daet',
+        status: 'pending',
+        assignedTo: { uid: 'resp-1', agencyId: 'bfp', municipalityId: 'daet' },
+        dispatchedAt: ts,
+        lastStatusAt: ts,
+        schemaVersion: 1,
+      }),
+    )
+  })
 })
