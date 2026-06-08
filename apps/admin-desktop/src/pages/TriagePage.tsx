@@ -75,8 +75,11 @@ function filterLabel(value: string): string {
 }
 
 function csvCell(value: string | number): string {
-  const text = String(value)
-  if (!/[",\n\r]/.test(text)) return text
+  let text = String(value)
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`
+  }
+  if (!/["",\n\r]/.test(text)) return text
   return `"${text.replaceAll('"', '""')}"`
 }
 
@@ -170,12 +173,27 @@ export default function TriagePage() {
     const date = new Date().toISOString().slice(0, 10)
     downloadCsv(`bantayog-triage-${date}.csv`, buildTriageExportCsv(sortedReports))
   }, [sortedReports])
+
+  const reportSnapshotKey = useMemo(
+    () =>
+      reportDocs
+        .map((report) => {
+          const submittedAt =
+            typeof report.submittedAt === 'string' || typeof report.submittedAt === 'number'
+              ? String(report.submittedAt)
+              : ''
+          return `${report.id}:${submittedAt}:${report.status}:${report.description}`
+        })
+        .join('|'),
+    [reportDocs],
+  )
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!loading) {
       setLastDataUpdateAt(Date.now())
     }
-  }, [loading, reportDocs.length])
+  }, [loading, reportSnapshotKey])
   /* eslint-enable react-hooks/set-state-in-effect */
   useEffect(() => {
     const id = window.setInterval(() => {

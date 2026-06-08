@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getFirestoreInstance } from '../app/firebase'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
@@ -89,13 +89,50 @@ export function DispatchMonitorPage() {
   const selectedRow = rows.find((r) => r.dispatchId === selectedDispatchId)
   const previouslyNotified = selectedRow?.previouslyNotifiedResponderUids ?? []
 
+  const dispatchSnapshotKey = useMemo(
+    () =>
+      rows
+        .map((row) =>
+          [
+            row.dispatchId,
+            row.reportId,
+            row.status,
+            row.responderName,
+            row.responderAgency,
+            row.dispatchedAt,
+            row.deadlineAt,
+            row.escalationCount,
+            row.fcmResult ?? '',
+            row.timeline[0]?.at ?? '',
+          ].join(':'),
+        )
+        .join('|'),
+    [rows],
+  )
+
+  const responderSnapshotKey = useMemo(
+    () =>
+      responders
+        .map((responder) =>
+          [
+            responder.uid,
+            responder.availabilityStatus,
+            responder.displayName,
+            responder.municipalityId ?? '',
+            responder.lastActivityAt,
+          ].join(':'),
+        )
+        .join('|'),
+    [responders],
+  )
+
   // Track data freshness
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!loading) {
       setLastDataUpdateAt(Date.now())
     }
-  }, [loading, rows.length, responders.length])
+  }, [dispatchSnapshotKey, loading, responderSnapshotKey])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Clock for stale indicator
@@ -332,7 +369,7 @@ export function DispatchMonitorPage() {
                   Responder Status
                 </h2>
                 <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                  Active responder progress from acknowledgement through scene arrival.
+                  Active responder progress accepted through scene arrival.
                 </p>
               </div>
               <span className="rounded border border-white/10 px-2 py-1 text-xs text-[var(--color-text-secondary)]">

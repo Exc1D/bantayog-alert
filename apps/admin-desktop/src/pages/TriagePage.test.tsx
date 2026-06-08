@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+
 import TriagePage, { buildTriageExportCsv } from './TriagePage'
 
 const mockNavigate = vi.fn()
@@ -36,6 +37,53 @@ const exportReport = {
   createdAt: '2026-06-08T08:00:00.000Z',
   updatedAt: '2026-06-08T08:00:00.000Z',
 }
+
+const mockReportDocs = vi.hoisted(() => [
+  {
+    id: 'r-new',
+    reportType: 'flood',
+    severity: 'medium',
+    municipalityLabel: 'Daet',
+    barangayId: 'Bagasbas',
+    submittedAt: 1,
+    updatedAt: 1,
+    description: 'Water is rising near the creek',
+    status: 'new',
+  },
+  {
+    id: 'r-awaiting',
+    reportType: 'fire',
+    severity: 'high',
+    municipalityLabel: 'Daet',
+    barangayId: 'Centro',
+    submittedAt: 1,
+    updatedAt: 1,
+    description: 'Smoke in a residential block',
+    status: 'awaiting_verify',
+  },
+  {
+    id: 'r-verified',
+    reportType: 'medical',
+    severity: 'low',
+    municipalityLabel: 'Daet',
+    barangayId: 'Poblacion',
+    submittedAt: 1,
+    updatedAt: 1,
+    description: 'Responder needed for an elderly resident',
+    status: 'verified',
+  },
+  {
+    id: 'r-closed',
+    reportType: 'flood',
+    severity: 'low',
+    municipalityLabel: 'Daet',
+    barangayId: 'Magang',
+    submittedAt: 1,
+    updatedAt: 1,
+    description: 'Already resolved',
+    status: 'closed',
+  },
+])
 
 vi.mock('../app/firebase', () => ({
   db: {} as never,
@@ -73,48 +121,10 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: () => ({
     loading: false,
     error: null,
-    reports: [
-      {
-        id: 'r-new',
-        reportType: 'flood',
-        severity: 'medium',
-        municipalityLabel: 'Daet',
-        barangayId: 'Bagasbas',
-        submittedAt: Date.now(),
-        description: 'Water is rising near the creek',
-        status: 'new',
-      },
-      {
-        id: 'r-awaiting',
-        reportType: 'fire',
-        severity: 'high',
-        municipalityLabel: 'Daet',
-        barangayId: 'Centro',
-        submittedAt: Date.now(),
-        description: 'Smoke in a residential block',
-        status: 'awaiting_verify',
-      },
-      {
-        id: 'r-verified',
-        reportType: 'medical',
-        severity: 'low',
-        municipalityLabel: 'Daet',
-        barangayId: 'Poblacion',
-        submittedAt: Date.now(),
-        description: 'Responder needed for an elderly resident',
-        status: 'verified',
-      },
-      {
-        id: 'r-closed',
-        reportType: 'flood',
-        severity: 'low',
-        municipalityLabel: 'Daet',
-        barangayId: 'Magang',
-        submittedAt: Date.now(),
-        description: 'Already resolved',
-        status: 'closed',
-      },
-    ],
+    get reports() {
+      // Return a fresh copy so content mutations are visible to useMemo deps
+      return [...mockReportDocs]
+    },
     reportOps: [],
     alerts: [],
     responders: [],
@@ -131,6 +141,20 @@ describe('TriagePage', () => {
     mockNavigate.mockClear()
     mockVerifyReport.mockClear()
     mockRejectReport.mockClear()
+
+    // Reset mutable mock report docs between tests
+    mockReportDocs[0]!.description = 'Water is rising near the creek'
+    mockReportDocs[0]!.submittedAt = 1
+    mockReportDocs[0]!.status = 'new'
+    mockReportDocs[1]!.description = 'Smoke in a residential block'
+    mockReportDocs[1]!.submittedAt = 1
+    mockReportDocs[1]!.status = 'awaiting_verify'
+    mockReportDocs[2]!.description = 'Responder needed for an elderly resident'
+    mockReportDocs[2]!.submittedAt = 1
+    mockReportDocs[2]!.status = 'verified'
+    mockReportDocs[3]!.description = 'Already resolved'
+    mockReportDocs[3]!.submittedAt = 1
+    mockReportDocs[3]!.status = 'closed'
   })
 
   afterEach(() => {
@@ -268,6 +292,17 @@ describe('TriagePage', () => {
     expect(csv).not.toContain('reporterName')
   })
 
+  it('neutralizes spreadsheet formulas in CSV export cells', () => {
+    const csv = buildTriageExportCsv([
+      {
+        ...exportReport,
+        description: '=HYPERLINK("https://evil.example","click")',
+      },
+    ])
+
+    expect(csv).toContain(`"'=HYPERLINK(""https://evil.example"",""click"")"`)
+  })
+
   it('warns when triage data has not refreshed recently', () => {
     vi.useFakeTimers()
     renderPage()
@@ -278,5 +313,25 @@ describe('TriagePage', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(/triage data may be stale/i)
     expect(screen.getByRole('status')).toHaveTextContent(/6m ago/i)
+  })
+
+  it('does not mark triage data stale after same-length report content refresh', () => {
+    vi.useFakeTimers()
+    const { rerender } = renderPage()
+
+    act(() => {
+      vi.advanceTimersByTime(4 * 60 * 1000)
+    })
+
+    mockReportDocs[0]!.description = 'Water is rising near the updated creek'
+    mockReportDocs[0]!.updatedAt = 2
+
+    rerender(<TriagePage />)
+
+    act(() => {
+      vi.advanceTimersByTime(2 * 60 * 1000)
+    })
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
