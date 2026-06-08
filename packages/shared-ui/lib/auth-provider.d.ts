@@ -11,7 +11,7 @@ interface AuthProviderProps {
     children: ReactNode;
     auth: Auth;
 }
-export declare function AuthProvider({ children, auth }: AuthProviderProps): import("react").JSX.Element;
+export declare function AuthProvider({ children, auth }: AuthProviderProps): import("react/jsx-runtime").JSX.Element;
 export declare function useAuth(): AuthContextValue;
 export {};
 //# sourceMappingURL=auth-provider.d.ts.map
