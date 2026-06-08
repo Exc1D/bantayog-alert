@@ -941,9 +941,11 @@ export function DispatchDetailPage() {
           onAdvanceEnRoute={() => void advance('en_route').catch(() => undefined)}
           onAdvanceOnScene={() => void advance('on_scene').catch(() => undefined)}
           onResolve={() => {
-            void advance('resolved', { resolutionSummary }).catch((err: unknown) => {
-              console.error('[DispatchDetailPage] resolve failed:', err)
-            })
+            void advance('resolved', { resolutionSummary: resolutionSummary.trim() }).catch(
+              (err: unknown) => {
+                console.error('[DispatchDetailPage] resolve failed:', err)
+              },
+            )
           }}
         />
 
