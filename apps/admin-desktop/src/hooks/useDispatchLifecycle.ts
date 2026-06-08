@@ -49,7 +49,16 @@ interface DispatchDoc {
   previouslyNotifiedResponderUids?: string[]
 }
 
-const ALLOWED_STATUSES = ['pending', 'accepted', 'declined', 'needs_admin', 'escalated']
+const ALLOWED_STATUSES = [
+  'pending',
+  'accepted',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+  'declined',
+  'needs_admin',
+  'escalated',
+]
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 const DEBOUNCE_MS = 100
 const ALLOWED_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
