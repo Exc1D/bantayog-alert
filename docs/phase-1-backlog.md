@@ -14,12 +14,12 @@
 
 ## P1
 
-- [ ] Admin notes
-- [ ] Rejection reason
-- [ ] Basic incident export
-- [ ] Better stale/offline messaging
-- [ ] Responder status queue
-- [ ] Triage filters
+- [x] Admin notes
+- [x] Rejection reason
+- [x] Basic incident export
+- [x] Better stale/offline messaging
+- [x] Responder status queue
+- [x] Triage filters
 
 ## P2
 
