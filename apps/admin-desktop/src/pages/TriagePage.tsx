@@ -85,7 +85,16 @@ function csvCell(value: string | number): string {
 
 export function buildTriageExportCsv(reports: readonly Report[]): string {
   const rows = [
-    ['reportId', 'type', 'severity', 'status', 'municipality', 'barangay', 'description', 'createdAt'],
+    [
+      'reportId',
+      'type',
+      'severity',
+      'status',
+      'municipality',
+      'barangay',
+      'description',
+      'createdAt',
+    ],
     ...reports.map((report) => [
       report.id,
       report.type,

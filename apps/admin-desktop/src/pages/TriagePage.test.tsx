@@ -286,7 +286,9 @@ describe('TriagePage', () => {
   it('builds a CSV export for visible triage rows without private reporter fields', () => {
     const csv = buildTriageExportCsv([exportReport])
 
-    expect(csv).toContain('reportId,type,severity,status,municipality,barangay,description,createdAt')
+    expect(csv).toContain(
+      'reportId,type,severity,status,municipality,barangay,description,createdAt',
+    )
     expect(csv).toContain('"Water, rising near ""creek"""')
     expect(csv).not.toContain('reporterPhone')
     expect(csv).not.toContain('reporterName')
