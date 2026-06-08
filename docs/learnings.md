@@ -178,3 +178,4 @@
 - Prewarm success means any HTTP response, even 405, because the Cloud Function instance started.
 - Use `bq.query()` directly. Add `@google-cloud/logging` as an explicit dependency when triggers use Cloud Logging, and lazy-load it in scheduled handlers to avoid emulator protobuf crashes.
 - Smoke checks need explicit bucket config and per-check timeouts.
+- `@firebase/rules-unit-testing` 5.x peer-depends on `firebase` 12.x, but the compat RTDB `.database()` / `.clearDatabase()` APIs silently require `@firebase/database-compat` to be installed. If it is missing, RTDB tests in both `rules-unit-testing` harnesses and unit-test helpers throw `TypeError: this.getApp(...).database is not a function` at test setup time. Add `-D @firebase/database-compat` in `functions/` whenever `@firebase/rules-unit-testing` is used with the RTDB emulator.
