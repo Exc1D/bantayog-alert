@@ -21,6 +21,10 @@
 - Phase 1 first dispatch belongs on `/dispatches` as an assignment queue, not only inside the map detail panel; reuse scoped report reads, responder fleet data, and `dispatchResponder` before adding a new assignment backend.
 - For Firestore rules subset verification, prefer `firebase emulators:exec --only firestore 'npx vitest run src/__tests__/rules'`; the quoted `src/__tests__/rules/**/*.rules.test.ts` glob can be treated as a Vitest filter and find no files.
 - Demo reset scripts must delete only fixed known seed document paths and must be guarded by `FIRESTORE_EMULATOR_HOST`; never implement a broad demo collection wipe or remote reset shortcut.
+- Triage filters should apply before table selection and must clear hidden selections on change, so bulk verify/reject actions cannot affect rows the operator no longer sees.
+- Phase 1 triage rejection can reuse the existing backend reason enum; keep `insufficient_detail` as the default, and let operators choose the enum before single or bulk rejection rather than adding free text prematurely.
+- Basic incident export should be visible-row CSV from the operator workbench and must omit reporter/contact/private fields; compliance-grade audit export remains a separate backend/BigQuery concern.
+- Stale/offline messaging should distinguish listener errors from stale-but-visible data; keep errors in `OfflineBanner`, and show stale queue age separately so operators know they may be looking at cached data.
 
 ## Firestore / Rules / Data Access
 
@@ -108,6 +112,8 @@
 
 ## React / TypeScript
 
+- Admin triage rejection notes already belong on `rejectReport.notes`; do not create a separate notes write path for the basic Phase 1 review note. Trim notes, omit blank optional keys, and respect the 500-character backend limit.
+- Admin dispatch monitors must include responder field progress statuses (`acknowledged`, `en_route`, `on_scene`) in lifecycle reads; otherwise operators see pending/escalation state but miss live responder movement.
 - Narrow role claims with `typeof` before subscribing. On unauthorized state, set an error and return early.
 - Async auth/state gates need active flags and uid checks in both success and failure paths.
 - Avoid object/array references in effect dependencies. Derive stable primitive keys.

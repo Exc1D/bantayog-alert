@@ -337,6 +337,9 @@ describe('useDispatchLifecycle', () => {
     expect(statusCall?.value).toEqual([
       'pending',
       'accepted',
+      'acknowledged',
+      'en_route',
+      'on_scene',
       'declined',
       'needs_admin',
       'escalated',

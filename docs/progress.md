@@ -1,5 +1,41 @@
 # Progress
 
+## 2026-06-08 - Phase 1L Admin Rejection Notes
+
+- Added an optional Admin note control to the `/triage` workbench and threaded trimmed notes into existing `rejectReport` calls.
+- Kept the slice on the existing callable contract: blank notes are omitted, notes remain capped at the backend's 500-character limit, and verify actions were not changed because the Admin wrapper does not expose verification notes.
+- Verification: red-first `TriagePage` test failed on the missing Admin note control, then `pnpm --dir apps/admin-desktop exec vitest run src/pages/TriagePage.test.tsx` passed.
+
+## 2026-06-08 - Phase 1K Responder Status Queue
+
+- Expanded Admin dispatch lifecycle reads to include active field statuses: `acknowledged`, `en_route`, and `on_scene`.
+- Added a read-only `/dispatches` responder status queue so Admin operators can see accepted/acknowledged/en-route/on-scene progress without mutating responder state.
+- Verification: red-first hook test failed on the missing lifecycle query statuses, red-first page test failed on the missing status queue, then `pnpm --dir apps/admin-desktop exec vitest run src/hooks/useDispatchLifecycle.test.ts` and `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx` passed.
+
+## 2026-06-08 - Phase 1J Triage Stale Data Messaging
+
+- Added a triage-specific stale-data banner when the `/triage` queue has not refreshed for more than five minutes.
+- Kept listener error/offline handling on the existing `OfflineBanner`; the new stale banner is a degraded-data warning rather than a blocking error.
+- Verification: red-first fake-timer test failed on the missing stale status, then `pnpm --dir apps/admin-desktop exec vitest run src/pages/TriagePage.test.tsx`, focused triage/header/table tests, Admin Desktop typecheck, and Admin Desktop lint passed.
+
+## 2026-06-08 - Phase 1I Basic Incident Export
+
+- Added a basic CSV export button to Admin `/triage` that downloads the currently visible filtered triage rows.
+- Kept export intentionally limited to non-private operational fields already visible to operators: report ID, type, severity, status, municipality, barangay, description, and created time.
+- Verification: red-first CSV export test failed on the missing builder, then `pnpm --dir apps/admin-desktop exec vitest run src/pages/TriagePage.test.tsx`, focused triage/header/table tests, Admin Desktop typecheck, and Admin Desktop lint passed.
+
+## 2026-06-08 - Phase 1H Rejection Reason Selection
+
+- Added a rejection-reason selector to the Admin `/triage` workbench and threaded the selected reason into single and bulk `rejectReport` calls.
+- Preserved the existing default `insufficient_detail` reason, so current behavior remains the default until an operator chooses `duplicate`, `obviously_false`, or `test_submission`.
+- Verification: red-first `TriagePage` test failed on the missing rejection selector, then `pnpm --dir apps/admin-desktop exec vitest run src/pages/TriagePage.test.tsx`, focused triage/header/table tests, Admin Desktop typecheck, and Admin Desktop lint passed.
+
+## 2026-06-08 - Phase 1G Triage Filters
+
+- Added local filters to the Admin `/triage` workbench for status, severity, report type, and free-text search across summary/place/type/report ID.
+- Kept the slice frontend-only and command-safe: scoped Firestore reads, verify/reject callables, bulk actions, and Map routing are unchanged; changing filters clears selected rows so hidden rows cannot be bulk-commanded accidentally.
+- Verification: red-first `TriagePage` test failed on missing filter controls, then `pnpm --dir apps/admin-desktop exec vitest run src/pages/TriagePage.test.tsx`, focused triage/header/table tests, Admin Desktop typecheck, and Admin Desktop lint passed.
+
 ## 2026-06-08 - Phase 1F Demo Seed/Reset Scripts
 
 - Added local demo seed/reset/reseed package scripts around the existing fixed-ID Camarines Norte incident seed data.
