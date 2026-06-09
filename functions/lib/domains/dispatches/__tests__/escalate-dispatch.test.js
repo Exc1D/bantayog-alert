@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion */
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
 const itif = (condition) => (condition ? it : it.skip);
@@ -14,18 +14,12 @@ import { escalateDispatchCore } from '../escalate-dispatch.js';
 import { sendFcmToResponder } from '../../ops/fcm-send.js';
 import { seedActiveAccount, staffClaims } from '../../../__tests__/helpers/seed-factories.js';
 import { Timestamp } from 'firebase-admin/firestore';
-let testEnv;
-let available = false;
-beforeAll(async () => {
-    const guarded = await guardInitTestEnvironment({
-        projectId: 'escalate-dispatch-test',
-        firestore: { host: 'localhost', port: 8081 },
-    }, 'escalate-dispatch');
-    testEnv = guarded.env;
-    available = guarded.available;
-    if (!available)
-        return;
-});
+const guarded = await guardInitTestEnvironment({
+    projectId: 'escalate-dispatch-test',
+    firestore: { host: 'localhost', port: 8081 },
+}, 'escalate-dispatch');
+const testEnv = guarded.env;
+const available = guarded.available;
 beforeEach(async () => {
     if (!available || !testEnv)
         return;
@@ -60,6 +54,24 @@ async function seedDispatchNeedsAdmin(db, dispatchId, opts) {
         municipalityId: opts.municipalityId,
         escalationCount: 1,
         previouslyNotifiedResponderUids: [opts.responderUid],
+        acknowledgementDeadlineAt: ts + 900000,
+        monitorLeaseAt: ts,
+        dispatchedAt: ts,
+        lastStatusAt: ts,
+        correlationId: crypto.randomUUID(),
+        schemaVersion: 1,
+    });
+}
+async function seedDispatchNeedsAdminNoAssignedTo(db, dispatchId, opts) {
+    await db
+        .collection('dispatches')
+        .doc(dispatchId)
+        .set({
+        reportId: 'r1',
+        status: 'needs_admin',
+        municipalityId: opts.municipalityId,
+        escalationCount: 0,
+        previouslyNotifiedResponderUids: [],
         acknowledgementDeadlineAt: ts + 900000,
         monitorLeaseAt: ts,
         dispatchedAt: ts,
@@ -193,6 +205,33 @@ describe('escalateDispatchCore', () => {
                 },
                 now: Timestamp.now(),
             })).rejects.toThrow('already notified');
+        });
+    });
+    itif(available)('does not add newResponderUid to previouslyNotified when assignedTo is missing', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await seedResponder(db, 'responder-2', 'daet', 'active');
+            await seedDispatchNeedsAdminNoAssignedTo(db, 'd1', { municipalityId: 'daet' });
+            await seedActiveAccount(testEnv, {
+                uid: 'admin-1',
+                role: 'municipal_admin',
+                municipalityId: 'daet',
+            });
+            const result = await escalateDispatchCore(db, {
+                dispatchId: 'd1',
+                newResponderUid: 'responder-2',
+                idempotencyKey: crypto.randomUUID(),
+                actor: {
+                    uid: 'admin-1',
+                    claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+                },
+                now: Timestamp.now(),
+            });
+            expect(result.status).toBe('pending');
+            const dispatch = (await db.collection('dispatches').doc('d1').get()).data();
+            expect(dispatch.assignedTo.uid).toBe('responder-2');
+            expect(dispatch.previouslyNotifiedResponderUids).not.toContain('responder-2');
+            expect(dispatch.escalationCount).toBe(1);
         });
     });
 });

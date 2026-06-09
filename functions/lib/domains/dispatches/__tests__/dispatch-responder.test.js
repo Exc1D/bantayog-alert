@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
 const itif = (condition) => (condition ? it : it.skip);
@@ -10,19 +10,13 @@ vi.mock('firebase-admin/database', () => ({
 import { dispatchResponderCore } from '../dispatch-responder.js';
 import { seedReportAtStatus, seedActiveAccount, seedResponderDoc, seedResponderShift, staffClaims, } from '../../../__tests__/helpers/seed-factories.js';
 import { Timestamp } from 'firebase-admin/firestore';
-let testEnv;
-let available = false;
-beforeAll(async () => {
-    const guarded = await guardInitTestEnvironment({
-        projectId: 'dispatch-responder-test',
-        firestore: { host: 'localhost', port: 8081 },
-        database: { host: 'localhost', port: 9000 },
-    }, 'dispatch-responder');
-    testEnv = guarded.env;
-    available = guarded.available;
-    if (!available)
-        return;
-});
+const guarded = await guardInitTestEnvironment({
+    projectId: 'dispatch-responder-test',
+    firestore: { host: 'localhost', port: 8081 },
+    database: { host: 'localhost', port: 9000 },
+}, 'dispatch-responder');
+const testEnv = guarded.env;
+const available = guarded.available;
 beforeEach(async () => {
     if (!available || !testEnv)
         return;
@@ -88,7 +82,7 @@ describe('dispatchResponderCore', () => {
             expect(dispatch.dispatchedAt).toBeDefined();
             expect(dispatch.statusUpdatedAt).toBe(dispatch.dispatchedAt);
             expect(dispatch.lastStatusAt).toBe(dispatch.dispatchedAt);
-            expect(dispatch.acknowledgementDeadlineAt - dispatch.dispatchedAt).toBe(5 * 60 * 1000);
+            expect(dispatch.acknowledgementDeadlineAt - dispatch.dispatchedAt).toBe(15 * 60 * 1000);
             expect(dispatch.idempotencyKey).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
             expect(dispatch.idempotencyPayloadHash).toMatch(/^[0-9a-f]{64}$/);
             const report = (await db.collection('reports').doc(reportId).get()).data();
@@ -102,7 +96,10 @@ describe('dispatchResponderCore', () => {
                 .collection('dispatch_events')
                 .where('dispatchId', '==', result.dispatchId)
                 .get();
-            expect(dispatchEvents.docs).toHaveLength(1);
+            const dispatchEventData = dispatchEvents.docs.map((doc) => doc.data());
+            expect(dispatchEventData).toHaveLength(2);
+            expect(dispatchEventData.filter((event) => event.from === null && event.to === 'pending')).toHaveLength(1);
+            expect(dispatchEventData.filter((event) => event.type === 'notification_attempted')).toHaveLength(1);
         });
     });
     itif(available)('sets acknowledgementDeadlineAt according to severity', async () => {

@@ -28,10 +28,12 @@ beforeEach(async () => {
 afterAll(async () => {
     await testEnv?.cleanup();
 });
-const itif = (condition) => (condition ? it : it.skip);
 describe('advanceDispatchCore', () => {
-    itif(available)('advances dispatch from accepted to acknowledged and creates event', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('advances dispatch from accepted to acknowledged and creates event', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'on_scene', { municipalityId: 'daet' });
             const { dispatchId } = await seedDispatch(db, {
@@ -40,7 +42,7 @@ describe('advanceDispatchCore', () => {
                 municipalityId: 'daet',
                 status: 'accepted',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'r1',
                 role: 'responder',
                 municipalityId: 'daet',
@@ -76,8 +78,11 @@ describe('advanceDispatchCore', () => {
             expect(reportEvents.docs).toHaveLength(1);
         });
     });
-    itif(available)('rejects INVALID_STATUS_TRANSITION for backward steps (en_route -> acknowledged)', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('rejects INVALID_STATUS_TRANSITION for backward steps (en_route -> acknowledged)', async ({ skip, }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' });
             const { dispatchId } = await seedDispatch(db, {
@@ -86,7 +91,7 @@ describe('advanceDispatchCore', () => {
                 municipalityId: 'daet',
                 status: 'en_route',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'r1',
                 role: 'responder',
                 municipalityId: 'daet',
@@ -100,10 +105,13 @@ describe('advanceDispatchCore', () => {
             })).rejects.toMatchObject({ code: 'INVALID_STATUS_TRANSITION' });
         });
     });
-    itif(available)('rejects when dispatch is NOT_FOUND', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('rejects when dispatch is NOT_FOUND', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'r1',
                 role: 'responder',
                 municipalityId: 'daet',
@@ -117,8 +125,11 @@ describe('advanceDispatchCore', () => {
             })).rejects.toMatchObject({ code: 'NOT_FOUND' });
         });
     });
-    itif(available)('rejects when resolutionSummary is missing for resolved transition', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('rejects when resolutionSummary is missing for resolved transition', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'on_scene', { municipalityId: 'daet' });
             const { dispatchId } = await seedDispatch(db, {
@@ -127,7 +138,7 @@ describe('advanceDispatchCore', () => {
                 municipalityId: 'daet',
                 status: 'on_scene',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'r1',
                 role: 'responder',
                 municipalityId: 'daet',
@@ -141,8 +152,11 @@ describe('advanceDispatchCore', () => {
             })).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
         });
     });
-    itif(available)('advances to resolved with resolutionSummary and lastStatusAt', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('advances to resolved with resolutionSummary and lastStatusAt', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'assigned', { municipalityId: 'daet' });
             const { dispatchId } = await seedDispatch(db, {
@@ -151,7 +165,7 @@ describe('advanceDispatchCore', () => {
                 municipalityId: 'daet',
                 status: 'on_scene',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'r1',
                 role: 'responder',
                 municipalityId: 'daet',
@@ -180,8 +194,11 @@ describe('advanceDispatchCore', () => {
             expect(reportEvents.docs).toHaveLength(1);
         });
     });
-    itif(available)('rejects when report is already closed', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('rejects when report is already closed', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'closed', { municipalityId: 'daet' });
             const { dispatchId } = await seedDispatch(db, {
@@ -190,7 +207,7 @@ describe('advanceDispatchCore', () => {
                 municipalityId: 'daet',
                 status: 'accepted',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'r1',
                 role: 'responder',
                 municipalityId: 'daet',

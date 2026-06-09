@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
 import { setDoc, doc } from 'firebase/firestore';
@@ -11,18 +11,12 @@ import { acceptDispatchCore } from '../accept-dispatch.js';
 import { seedActiveAccount } from '../../../__tests__/helpers/seed-factories.js';
 import { Timestamp } from 'firebase-admin/firestore';
 const ts = 1713350400000;
-let testEnv;
-let available = false;
-beforeAll(async () => {
-    const guarded = await guardInitTestEnvironment({
-        projectId: 'accept-dispatch-test',
-        firestore: { host: '127.0.0.1', port: 8081 },
-    }, 'accept-dispatch');
-    testEnv = guarded.env;
-    available = guarded.available;
-    if (!available)
-        return;
-});
+const guarded = await guardInitTestEnvironment({
+    projectId: 'accept-dispatch-test',
+    firestore: { host: '127.0.0.1', port: 8081 },
+}, 'accept-dispatch');
+const testEnv = guarded.env;
+const available = guarded.available;
 beforeEach(async () => {
     if (!available || !testEnv)
         return;

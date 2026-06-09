@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
 const itif = (condition) => (condition ? it : it.skip);
@@ -26,23 +26,19 @@ vi.mock('../../../admin-init.js', () => ({
 import { declineDispatch, declineDispatchCore } from '../decline-dispatch.js';
 import { seedActiveAccount } from '../../../__tests__/helpers/seed-factories.js';
 const ts = 1713350400000;
-let testEnv;
-let available = false;
-beforeAll(async () => {
-    const guarded = await guardInitTestEnvironment({
-        projectId: 'decline-dispatch-test',
-        firestore: {
-            host: 'localhost',
-            port: 8081,
-            rules: 'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
-        },
-    }, 'decline-dispatch');
-    testEnv = guarded.env;
-    available = guarded.available;
-    if (!available)
-        return;
+const guarded = await guardInitTestEnvironment({
+    projectId: 'decline-dispatch-test',
+    firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules: 'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+    },
+}, 'decline-dispatch');
+const testEnv = guarded.env;
+const available = guarded.available;
+if (available && testEnv) {
     adminDb = testEnv.unauthenticatedContext().firestore();
-});
+}
 beforeEach(async () => {
     if (!available || !testEnv)
         return;
@@ -124,19 +120,30 @@ describe('declineDispatchCore', () => {
                 .collection('dispatch_events')
                 .where('dispatchId', '==', 'dispatch-1')
                 .get();
-            expect(evts.docs).toHaveLength(1);
-            const [firstEvt] = evts.docs;
-            expect(firstEvt).toBeDefined();
-            expect(firstEvt.data()).toMatchObject({
+            const eventData = evts.docs.map((doc) => doc.data());
+            const statusEvent = eventData.find((event) => event.type === 'status_changed');
+            const notificationEvent = eventData.find((event) => event.type === 'notification_delivered');
+            expect(eventData).toHaveLength(2);
+            expect(statusEvent).toMatchObject({
+                type: 'status_changed',
                 agencyId: 'bfp-daet',
                 municipalityId: 'daet',
                 dispatchId: 'dispatch-1',
                 reportId: 'report-1',
-                actor: 'r1',
+                actorUid: 'r1',
                 actorRole: 'responder',
-                fromStatus: 'pending',
-                toStatus: 'declined',
+                from: 'pending',
+                to: 'declined',
                 reason: 'Already handling another incident',
+                schemaVersion: 1,
+            });
+            expect(notificationEvent).toMatchObject({
+                type: 'notification_delivered',
+                dispatchId: 'dispatch-1',
+                responderUid: 'r1',
+                agencyId: 'bfp-daet',
+                municipalityId: 'daet',
+                action: 'declined',
                 schemaVersion: 1,
             });
         });
@@ -322,7 +329,10 @@ describe('declineDispatchCore', () => {
                 .collection('dispatch_events')
                 .where('dispatchId', '==', 'dispatch-5b')
                 .get();
-            expect(evts.docs).toHaveLength(1);
+            const eventData = evts.docs.map((doc) => doc.data());
+            expect(eventData).toHaveLength(2);
+            expect(eventData.filter((event) => event.type === 'status_changed')).toHaveLength(1);
+            expect(eventData.filter((event) => event.type === 'notification_delivered')).toHaveLength(1);
         });
     });
     itif(available)('returns RATE_LIMITED when responder exceeds 30 declines/minute', async () => {

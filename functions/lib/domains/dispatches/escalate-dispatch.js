@@ -1,4 +1,4 @@
-import { Firestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators';
@@ -73,15 +73,19 @@ export async function escalateDispatchCore(db, deps) {
         if (previouslyNotified.has(parsed.newResponderUid)) {
             throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'responder already notified');
         }
-        // Update dispatch doc
+        const currentEscalationCount = typeof dispatch.escalationCount === 'number' ? dispatch.escalationCount : 0;
+        const previousResponderUid = dispatch.assignedTo?.uid ?? '';
+        const previouslyNotifiedResponderUids = Array.from(new Set(previousResponderUid
+            ? [...(dispatch.previouslyNotifiedResponderUids ?? []), previousResponderUid]
+            : (dispatch.previouslyNotifiedResponderUids ?? [])));
         tx.update(dispatchRef, {
             assignedTo: {
                 uid: parsed.newResponderUid,
                 agencyId: responder.agencyId,
                 municipalityId: responder.municipalityId,
             },
-            escalationCount: FieldValue.increment(1),
-            previouslyNotifiedResponderUids: FieldValue.arrayUnion(dispatch.assignedTo?.uid ?? parsed.newResponderUid),
+            escalationCount: currentEscalationCount + 1,
+            previouslyNotifiedResponderUids,
             escalationReason: 'admin_override',
             monitorLeaseAt: deps.now.toMillis(),
             status: 'pending',

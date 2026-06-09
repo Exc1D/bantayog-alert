@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
 import { Timestamp } from 'firebase-admin/firestore';
@@ -24,23 +24,19 @@ vi.mock('../../../admin-init.js', () => ({
 }));
 import { markDispatchUnableToComplete, markDispatchUnableToCompleteCore, } from '../mark-dispatch-unable-to-complete.js';
 import { seedActiveAccount } from '../../../__tests__/helpers/seed-factories.js';
-let testEnv;
-let available = false;
-beforeAll(async () => {
-    const guarded = await guardInitTestEnvironment({
-        projectId: 'mark-dispatch-unable-to-complete-test',
-        firestore: {
-            host: 'localhost',
-            port: 8081,
-            rules: 'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
-        },
-    }, 'mark-dispatch-unable-to-complete');
-    testEnv = guarded.env;
-    available = guarded.available;
-    if (!available)
-        return;
+const guarded = await guardInitTestEnvironment({
+    projectId: 'mark-dispatch-unable-to-complete-test',
+    firestore: {
+        host: 'localhost',
+        port: 8081,
+        rules: 'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
+    },
+}, 'mark-dispatch-unable-to-complete');
+const testEnv = guarded.env;
+const available = guarded.available;
+if (available && testEnv) {
     adminDb = testEnv.unauthenticatedContext().firestore();
-});
+}
 beforeEach(async () => {
     if (!available || !testEnv)
         return;
