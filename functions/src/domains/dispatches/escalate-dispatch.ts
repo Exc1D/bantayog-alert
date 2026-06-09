@@ -110,9 +110,13 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
 
         const currentEscalationCount =
           typeof dispatch.escalationCount === 'number' ? dispatch.escalationCount : 0
-        const previousResponderUid = dispatch.assignedTo?.uid ?? parsed.newResponderUid
+        const previousResponderUid = dispatch.assignedTo?.uid ?? ''
         const previouslyNotifiedResponderUids = Array.from(
-          new Set([...(dispatch.previouslyNotifiedResponderUids ?? []), previousResponderUid]),
+          new Set(
+            previousResponderUid
+              ? [...(dispatch.previouslyNotifiedResponderUids ?? []), previousResponderUid]
+              : (dispatch.previouslyNotifiedResponderUids ?? []),
+          ),
         )
 
         tx.update(dispatchRef, {

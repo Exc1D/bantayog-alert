@@ -77,6 +77,29 @@ async function seedDispatchNeedsAdmin(
     })
 }
 
+async function seedDispatchNeedsAdminNoAssignedTo(
+  db: any,
+  dispatchId: string,
+  opts: { municipalityId: string },
+) {
+  await db
+    .collection('dispatches')
+    .doc(dispatchId)
+    .set({
+      reportId: 'r1',
+      status: 'needs_admin',
+      municipalityId: opts.municipalityId,
+      escalationCount: 0,
+      previouslyNotifiedResponderUids: [],
+      acknowledgementDeadlineAt: ts + 900000,
+      monitorLeaseAt: ts,
+      dispatchedAt: ts,
+      lastStatusAt: ts,
+      correlationId: crypto.randomUUID(),
+      schemaVersion: 1,
+    })
+}
+
 describe('escalateDispatchCore', () => {
   itif(available)('allows municipal_admin to escalate dispatch in their municipality', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
@@ -226,4 +249,37 @@ describe('escalateDispatchCore', () => {
       ).rejects.toThrow('already notified')
     })
   })
+
+  itif(available)(
+    'does not add newResponderUid to previouslyNotified when assignedTo is missing',
+    async () => {
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as any
+        await seedResponder(db, 'responder-2', 'daet', 'active')
+        await seedDispatchNeedsAdminNoAssignedTo(db, 'd1', { municipalityId: 'daet' })
+        await seedActiveAccount(testEnv!, {
+          uid: 'admin-1',
+          role: 'municipal_admin',
+          municipalityId: 'daet',
+        })
+
+        const result = await escalateDispatchCore(db, {
+          dispatchId: 'd1',
+          newResponderUid: 'responder-2',
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        })
+
+        expect(result.status).toBe('pending')
+        const dispatch = (await db.collection('dispatches').doc('d1').get()).data()!
+        expect(dispatch.assignedTo.uid).toBe('responder-2')
+        expect(dispatch.previouslyNotifiedResponderUids).not.toContain('responder-2')
+        expect(dispatch.escalationCount).toBe(1)
+      })
+    },
+  )
 })
