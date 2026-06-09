@@ -273,6 +273,24 @@ describe('DispatchDetailPage', () => {
     expect(resolveBtn).toBeDisabled()
   })
 
+  it('submits the cleaned resolution summary when marking resolved', async () => {
+    detailState.dispatch.status = 'on_scene'
+    detailState.dispatch.uiStatus = 'on_scene'
+    detailState.mockAdvance.mockResolvedValueOnce(undefined)
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.type(
+      screen.getByRole('textbox', { name: /resolution summary/i }),
+      '  Water cleared  ',
+    )
+    await user.click(screen.getByRole('button', { name: /mark resolved/i }))
+
+    expect(detailState.mockAdvance).toHaveBeenCalledWith('resolved', {
+      resolutionSummary: 'Water cleared',
+    })
+  })
+
   it('submits decline reason after selecting from dropdown', async () => {
     detailState.dispatch.status = 'pending'
     detailState.dispatch.uiStatus = 'pending'

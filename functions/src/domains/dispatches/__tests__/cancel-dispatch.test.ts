@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion */
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
@@ -17,21 +17,15 @@ import {
 } from '../../../__tests__/helpers/seed-factories.js'
 import { Timestamp } from 'firebase-admin/firestore'
 
-let testEnv: RulesTestEnvironment | undefined
-let available = false
-
-beforeAll(async () => {
-  const guarded = await guardInitTestEnvironment(
-    {
-      projectId: 'cancel-dispatch-test',
-      firestore: { host: 'localhost', port: 8081 },
-    },
-    'cancel-dispatch',
-  )
-  testEnv = guarded.env
-  available = guarded.available
-  if (!available) return
-})
+const guarded = await guardInitTestEnvironment(
+  {
+    projectId: 'cancel-dispatch-test',
+    firestore: { host: 'localhost', port: 8081 },
+  },
+  'cancel-dispatch',
+)
+const testEnv: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
 
 beforeEach(async () => {
   if (!available || !testEnv) return

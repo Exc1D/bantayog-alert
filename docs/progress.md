@@ -323,3 +323,31 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 2. Staging redeploy to verify accumulated fixes.
 3. Phase 7.C: Staff TOTP enrollment audit.
 4. Deferred: four observability dashboards for Phase 11.
+
+## 2026-06-08 - Phase 1G Responder Status Update Loop Completion
+
+- Completed the smallest responder status-update loop gap by trimming the resolution summary before `DispatchDetailPage` sends the existing `advanceDispatch` command.
+- Added page-level regression coverage that drives the on-scene resolution action through the UI and proves the cleaned summary reaches the callable wrapper.
+- Kept the slice on existing lifecycle commands and read models: no new callable, no direct client lifecycle write, no Admin/Citizen surface change, and no rules/index/schema files touched.
+- Verification: red-first `pnpm --dir apps/responder-app exec vitest run src/pages/DispatchDetailPage.test.tsx` failed on the untrimmed summary payload, then passed 16 tests after the patch; `pnpm --dir apps/responder-app exec vitest run src/hooks/useAdvanceDispatch.test.ts` passed 6 tests; responder typecheck and ESLint passed. The focused `advanceDispatch` Firestore-emulator command exited 0 but skipped 6 tests because that test file registers `it.skip` before its `beforeAll` emulator guard updates availability.
+
+## 2026-06-08 - advanceDispatch Emulator Test Harness Fix
+
+- Fixed the focused `advanceDispatch` backend test harness so tests register normally and call Vitest `skip` inside the test body only when the Firestore emulator guard fails.
+- The same Firestore-emulator command that previously exited 0 with 6 skipped tests now executes the backend command coverage and passes 6 tests.
+- Verification: `firebase emulators:exec --only firestore 'npx vitest run src/domains/dispatches/__tests__/advance-dispatch.test.ts'`, Functions typecheck, Functions ESLint, and focused Responder app status-loop tests passed.
+
+## 2026-06-08 - Responder Status Emulator Harness Follow-up
+
+- Fixed the same emulator-availability collection gap in the focused `acceptDispatch`, `declineDispatch`, and `markDispatchUnableToComplete` backend tests by initializing the Firestore guard before Vitest collects `itif(available)` tests.
+- Baseline gap: the three-file responder-status emulator command previously exited 0 with 3 skipped files / 32 skipped tests even though the Firestore emulator was running.
+- Enabling `declineDispatch` coverage exposed stale event-count assertions; the command intentionally writes one `status_changed` event and one `notification_delivered` event, so the idempotency test now asserts one of each event type instead of one total event.
+- Verification: the repaired three-file responder-status command passed 32 tests, the combined `advanceDispatch`/accept/decline/unable-to-complete emulator command passed 38 tests, Functions typecheck/ESLint passed, and focused Responder app status-loop tests/typecheck/ESLint passed.
+
+## 2026-06-08 - Dispatch Assignment Emulator Harness Follow-up
+
+- Fixed the same collection-time emulator guard gap in `dispatchResponder`, `cancelDispatch`, and `escalateDispatch` backend tests by initializing guarded Firestore/RTDB test environments before Vitest collects `itif(available)` tests.
+- Baseline gap: the three-file assignment/cancel/escalate command previously exited 0 with 3 skipped files / 21 skipped tests while Firestore and RTDB were running.
+- Enabling coverage exposed stale assumptions: default seeded dispatch severity is `medium` with a 15-minute acknowledgement deadline, and dispatch creation now writes both a lifecycle event and an FCM `notification_attempted` event.
+- Replaced `escalateDispatchCore` Admin `FieldValue` transforms with concrete transaction values from the dispatch snapshot, preserving behavior while keeping the core runnable under the rules-test Firestore harness.
+- Verification: the repaired three-file command passed 21 tests, the combined dispatch command subset passed 59 tests, and Functions typecheck/ESLint passed.
