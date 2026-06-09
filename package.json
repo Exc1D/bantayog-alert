@@ -16,6 +16,7 @@
     "demo:seed": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 tsx scripts/seed-staging-incidents.ts",
     "demo:reset": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 tsx scripts/seed-staging-incidents.ts --reset-only",
     "demo:reseed": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 tsx scripts/seed-staging-incidents.ts --reset",
+    "proof:mvp-loop": "firebase emulators:exec --only firestore,database 'pnpm --dir functions exec vitest run src/__tests__/proof-mvp-loop.test.ts'",
     "proof:local": "node scripts/proof-local.mjs",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

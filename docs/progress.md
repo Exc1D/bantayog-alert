@@ -351,3 +351,12 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Enabling coverage exposed stale assumptions: default seeded dispatch severity is `medium` with a 15-minute acknowledgement deadline, and dispatch creation now writes both a lifecycle event and an FCM `notification_attempted` event.
 - Replaced `escalateDispatchCore` Admin `FieldValue` transforms with concrete transaction values from the dispatch snapshot, preserving behavior while keeping the core runnable under the rules-test Firestore harness.
 - Verification: the repaired three-file command passed 21 tests, the combined dispatch command subset passed 59 tests, and Functions typecheck/ESLint passed.
+
+## 2026-06-09 - Phase 2A MVP Pilot Readiness
+
+- Added `functions/src/__tests__/proof-mvp-loop.test.ts` — a focused backend-only deterministic proof that exercises the full incident lifecycle: verify (new → awaiting_verify → verified) → dispatch responder → accept dispatch → advance acknowledged → en_route → on_scene → resolve. Asserts final state of report, dispatch, report_ops, dispatch_events, report_events, citizen-safe `report_lookup` separation, and PII isolation (`report_private` vs `reports`). Also covers the reject path (new → awaiting_verify → cancelled_false_report with moderation incident).
+- Introduced a root package script `proof:mvp-loop`: `firebase emulators:exec --only firestore,database 'pnpm --dir functions exec vitest run src/__tests__/proof-mvp-loop.test.ts'`.
+- Published `docs/runbooks/pilot-demo.md` with prerequisites, commands, demo accounts, app URLs, step-by-step scenario, expected final state, reset procedure, troubleshooting, and known limitations.
+- Documented readiness in `docs/mvp-readiness.md`: current readiness level, what works, what is intentionally deferred, prerequisites for a real pilot, operational risks, and recommended next phase (2B staging hardening before P2 feature expansion).
+- Kept this phase focused on proof and documentation: no P2 feature expansion, no Firestore rules/index/schema edits, no PostGIS runtime migration, and no deploy.
+- Verification: `pnpm typecheck`, `pnpm lint`, and `pnpm proof:mvp-loop` passed (8 tests, 0 skipped).
