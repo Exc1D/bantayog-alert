@@ -10,7 +10,7 @@ This runbook walks a developer, demo operator, or LGU evaluator through the full
 - An admin can triage, verify, and dispatch a responder from the Admin Desktop.
 - A responder can accept the dispatch and advance through status stages.
 - The citizen sees a safe tracking timeline of the incident.
-- The backend enforces status transitions, rules, and PII separation.
+- The backend enforces status transitions, data shapes, and PII separation in core function behavior.
 
 ### What it does not prove
 
@@ -24,7 +24,7 @@ This runbook walks a developer, demo operator, or LGU evaluator through the full
 
 ## 2. Prerequisites
 
-- **Node:** `>=20.0.0 <21.0.0`
+- **Node:** `>=20.0.0 <21.0.0` for root/apps; Functions require Node 22 (matches `engines.node` in `functions/package.json` and `runtime: "nodejs22"` in `firebase.json`)
 - **pnpm:** `>=9.0.0`
 - **Firebase CLI:** `firebase --version` should report a recent version (13.x or later).
 - **OS:** macOS, Linux, or WSL2 recommended.
@@ -128,17 +128,17 @@ These accounts are created by `scripts/seed-demo-accounts.ts` during `pnpm dev:a
 | 5    | Responder | Open http://localhost:5174, sign in as `bfp-responder-test-01`. Tap **Dispatches**, open the new dispatch.              | Dispatch detail shows status `pending` with Accept button.                                                                      |
 | 6    | Responder | Tap **Accept**.                                                                                                         | Dispatch status → `accepted`. Report status mirrors → `acknowledged`.                                                           |
 | 7    | Responder | Tap **Acknowledged** → **En Route** → **On Scene**.                                                                     | Each advance writes `dispatch_events` and mirrors to `report_events`. Report follows: `acknowledged` → `en_route` → `on_scene`. |
-| 8    | Responder | Tap **Resolve**, enter summary: _"Flooding contained, no injuries. Area secured."_                                      | Dispatch status → `resolved`. Report status → `resolved`. `resolutionSummary` stored on dispatch.                               |
+| 8    | Responder | Tap **Resolve**, enter summary: _"Flooding contained, no injuries. Area secured."_                                      | Dispatch status → `resolved`. Report status → `resolved`. `resolutionSummary` and `resolvedAt` stored on dispatch.              |
 | 9    | Citizen   | Return to PWA, enter tracking ref, view report.                                                                         | Citizen sees tracking timeline ending in "Resolved". No responder names, admin notes, or dispatch IDs visible.                  |
 
 ### Expected final state
 
-- **Admin view:** `/triage` shows report as `resolved`. `/dispatches` shows dispatch as `resolved`.
+- **Admin view:** `/triage` no longer shows the report (resolved reports leave the triage queue). `/dispatches` shows dispatch as `resolved`.
 - **Responder view:** Dispatch detail shows final status `resolved` with resolution summary.
 - **Citizen view:** Tracking page shows timeline through New → Verified → Dispatched → Resolved. No privileged fields.
 - **Firestore:**
-  - `reports/{id}`: status `resolved`, `resolvedAt` set, `lastStatusBy` is responder UID.
-  - `dispatches/{id}`: status `resolved`, `resolutionSummary` present, 8 dispatch events.
+  - `reports/{id}`: status `resolved`, `lastStatusAt` set, `lastStatusBy` is responder UID.
+  - `dispatches/{id}`: status `resolved`, `resolvedAt` set, `resolutionSummary` present, 8 dispatch events.
   - `report_events`: 7 events total.
   - `report_lookup/{ref}`: only `reportId` and `publicTrackingRef` — no `assignedTo`, `responderUid`, `resolutionSummary`, `dispatchId`.
 
@@ -196,15 +196,25 @@ pnpm demo:reset
 
 ## 9. Known Limitations
 
-- **Local demo only.** No production deployment. No staging seed/reset safety guards.
-- **Not a national emergency alert replacement.** This is a municipal LGU coordination tool.
-- **No SMS outbound updates.** Citizens must check the PWA manually for tracking updates.
-- **No CAP-compatible alerting.** Alerts are Firestore documents, not CAP XML.
-- **No hazard overlays.** Map shows reports and responders; hazard zones are not implemented.
-- **No duplicate clustering.** Two reports of the same flood remain separate unless manually merged.
-- **No agency coordination.** Only single-agency (BFP) responder dispatch in this demo.
-- **No mutual aid.** Cross-municipality dispatch is not supported in the demo seed.
-- **No BigQuery/audit export.** CSV export is frontend-only from the triage table.
-- **No PostGIS runtime migration.** Geospatial queries use Firestore `locationGeohash`.
-- **No background responder GPS.** Responder location requires active app usage.
-- **No offline responder queue.** Status updates require active connection.
+### Deployment & Environment
+
+- **Local demo only.** No production deployment or staging environment with scoped seed/reset safety guards.
+- **Not a national emergency alert replacement.** This is a municipal LGU coordination tool, not a life-saving guaranteed-response system.
+
+### Alerts & Notifications
+
+- **Not implemented:** SMS outbound updates, CAP-compatible alerting, or automated public notification channels. Alerts are Firestore documents; citizens must check the PWA manually.
+
+### Mapping & Geospatial
+
+- **Clustering and hazard overlays not implemented.** Two reports of the same flood remain separate unless manually merged, and hazard zones are not rendered on the map.
+- **PostGIS runtime not migrated.** Geospatial queries use Firestore `locationGeohash`.
+
+### Agency Coordination & Responder Features
+
+- **Single-agency dispatch only.** BFP responders only; multi-agency coordination and cross-municipality mutual aid are not supported in the demo seed.
+- **Background GPS and offline queue not implemented.** Responder location updates and status changes require an active app connection.
+
+### Data & Export
+
+- **No BigQuery or audit-grade export.** CSV export is frontend-only from the triage table; no backend compliance pipeline exists.
