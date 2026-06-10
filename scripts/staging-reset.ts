@@ -40,6 +40,11 @@ function getDb() {
 }
 
 async function main() {
+  if (typeof assertStagingAllowed !== 'function') {
+    throw new TypeError(
+      'Invalid staging-seed export: expected assertStagingAllowed to be a function.',
+    )
+  }
   assertStagingAllowed()
   const db = getDb()
   console.log(`\nStaging reset — ${STAGING_PROJECT_ID} — ${new Date().toISOString()}\n`)
