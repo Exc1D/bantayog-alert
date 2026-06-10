@@ -21,6 +21,7 @@
     "staging:seed": "tsx scripts/staging-seed.ts",
     "staging:reset": "tsx scripts/staging-reset.ts",
     "staging:smoke-proof": "tsx scripts/staging-smoke-proof.ts",
+    "staging:e2e-proof": "tsx scripts/staging-e2e-proof.ts",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "vitest run",
