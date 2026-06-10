@@ -164,6 +164,7 @@
 - Shared packages need app runtime deps as `peerDependencies`.
 - Remove stale `lib/*.js`, `.d.ts`, and maps after renames.
 - `pnpm --filter` from a worktree can resolve against the main repo. Prefer direct commands inside the package/worktree.
+- Worktrees can carry a stale `node_modules` without `.bin/`, so `pnpm exec <tool>` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`. Run `pnpm install --frozen-lockfile` in the worktree before trusting verification commands.
 - Organize by business domain over technical layer. Use `git mv`, update `index.ts` incrementally, and do not mix package extraction with directory reorg.
 - CLI tools invoked by CI scripts, such as `esbuild`, must be root devDependencies, not transitive dependencies.
 - Firebase emulator lists in CI must include every emulator required by the rules tests, including Storage when configured.
