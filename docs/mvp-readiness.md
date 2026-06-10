@@ -55,9 +55,9 @@ Before the system can be offered as a real LGU pilot, **all** of the following m
 5. **Security rules tested** — Firestore, RTDB, and Storage rules have passing tests against the emulator.
 6. **Test accounts documented** — Demo accounts, credentials, and roles are documented and isolated from production.
 7. **Incident lifecycle can be replayed** — A developer can run `pnpm proof:mvp-loop` and see deterministic success.
-8. **Manual rollback plan exists** — Documented steps to revert a bad deploy or data mutation.
-9. **Known incident response procedure exists** — Who to call, what to check, and how to escalate if the system fails during a demo or pilot.
-10. **Data privacy limitations documented** — What data is collected, how long it is retained, and what PII exists where.
+8. **[Manual rollback plan exists](runbooks/rollback.md)** — Documented steps to revert a bad deploy or data mutation.
+9. **[Known incident response procedure exists](runbooks/incident-response.md)** — Who to call, what to check, and how to escalate if the system fails during a demo or pilot.
+10. **[Data privacy limitations documented](runbooks/data-privacy.md)** — What data is collected, how long it is retained, and what PII exists where.
 
 ## Operational Risks
 
@@ -71,16 +71,15 @@ Before the system can be offered as a real LGU pilot, **all** of the following m
 | No SMS fallback                                     | Medium   | Document clearly that citizens must check the PWA; no SMS confirmation exists.                                         |
 | No guaranteed emergency response semantics          | High     | This is a coordination tool, not a guaranteed life-saving system. Document this limitation in all citizen-facing copy. |
 
-## Recommended Next Phase After Phase 2A
+## Recommended Next Phase After Phase 2D
 
-**Phase 2B: Staging Pilot Hardening**
+**Phase 2E: Staging End-to-End Proof**
 
 Focus on:
 
-- Creating a real staging Firebase project.
-- Implementing safe staging seed/reset.
-- Running the full proof suite against staging (not just emulators).
-- Adding basic observability (Cloud Monitoring, error alerting).
-- Hardening the deployment pipeline.
+- Running `pnpm staging:seed` against the real staging project (`bantayog-alert-staging`).
+- Exercising the full incident lifecycle through deployed HTTPS callables (not emulator-local core functions).
+- Verifying all three apps load and authenticate against staging.
+- Proving that the deployed backend matches emulator behavior.
 
 **Do not start P2 feature expansion** (SMS, CAP, hazard overlays, duplicate clustering, agency coordination, mutual aid, BigQuery) until the MVP loop is proven end-to-end in a staging environment.
