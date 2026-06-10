@@ -8,12 +8,12 @@ It assumes you have access to the Firebase Console, `firebase-cli`, and the team
 
 ## Severity Levels
 
-| Level     | Description                                                          | Example                                                     | Response Time         |
-| --------- | -------------------------------------------------------------------- | ----------------------------------------------------------- | --------------------- |
-| **SEV-1** | Total outage. System unusable for all users.                         | All Cloud Functions down; Firestore unreachable.            | Immediate — all hands |
-| **SEV-2** | Partial degradation. Core feature broken for a subset of users.      | Report submission fails; responder dispatches not creating. | Within 30 minutes     |
-| **SEV-3** | Minor degradation or data quality issue. Does not block primary use. | Duplicate reports not clustering; stale dashboard cache.    | Within 4 hours        |
-| **SEV-4** | Documentation gap or cosmetic issue.                                 | Runbook typo; UI label inconsistency.                       | Next business day     |
+| Level     | Description                                                          | Example                                                        | Response Time         |
+| --------- | -------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------- |
+| **SEV-1** | Total outage. System unusable for all users.                         | All Cloud Functions down; Firestore unreachable.               | Immediate — all hands |
+| **SEV-2** | Partial degradation. Core feature broken for a subset of users.      | Report submission fails; responder dispatches are not created. | Within 30 minutes     |
+| **SEV-3** | Minor degradation or data quality issue. Does not block primary use. | Duplicate reports not clustering; stale dashboard cache.       | Within 4 hours        |
+| **SEV-4** | Documentation gap or cosmetic issue.                                 | Runbook typo; UI label inconsistency.                          | Next business day     |
 
 ## Initial Assessment (First 5 Minutes)
 

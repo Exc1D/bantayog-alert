@@ -37,7 +37,7 @@ It covers the Bantayog Alert system as of the MVP pilot. Any schema change requi
 #### `reports/{id}`
 
 - **Public fields:** `type`, `severity`, `status`, `locationGeohash`, `createdAt`, `publicTrackingRef`.
-- **PII/Operational:** `description` (may contain identifying landmarks/names), `mediaUrls` (photo metadata may include GPS)., `createdBy` (Firebase UID — not reversible without Firebase Auth access).
+- **PII/Operational:** `description` (may contain identifying landmarks/names), `mediaUrls` (EXIF/GPS metadata is stripped at upload — stored files do not retain geolocation data), `createdBy` (Firebase UID — not reversible without Firebase Auth access).
 - **Access:** Authenticated citizens (own reports only), admins (municipality-scoped), responders (assigned dispatches only).
 
 #### `report_private/{id}`
@@ -71,7 +71,7 @@ It covers the Bantayog Alert system as of the MVP pilot. Any schema change requi
 
 - **Path:** `reports/{reportId}/{mediaId}.{ext}`
 - **Contents:** Photos and videos uploaded by citizens.
-- **Metadata:** May contain EXIF GPS data.
+- **Metadata:** EXIF/GPS metadata is stripped on upload by the media finalize handler. Stored files do not retain geolocation data (verified by `functions/src/domains/media/__tests__/core.test.ts`).
 - **Rules:** Only the submitting citizen, municipality admins, and assigned responders can read. Public unauthenticated read is denied.
 
 ### Firebase Authentication
@@ -147,11 +147,10 @@ If a report is identified as obviously false, abusive, or containing illegal con
 ### Scenario: Media Metadata Leaks GPS Coordinates
 
 **Symptom:** Photo downloaded from Storage reveals precise home location via EXIF.
-**Mitigation:** The system does not strip EXIF at upload (current gap). During a pilot:
+**Mitigation:** EXIF/GPS metadata is stripped automatically at upload by the media finalize handler (verified by `functions/src/domains/media/__tests__/core.test.ts`). Stored files do not retain geolocation data. During a pilot:
 
-1. Educate citizens that photos may contain location metadata.
-2. For high-risk submissions (domestic violence, stalking), the admin should mark the report for manual review and potentially strip metadata server-side before storage (manual process).
-3. Add automated EXIF stripping at upload time as a P2 hardening item.
+1. For high-risk submissions (domestic violence, stalking), the admin should still mark the report for manual review regardless of automated stripping.
+2. Re-run the media finalize test suite (`pnpm --filter @bantayog/functions test:unit media`) after any Storage handler changes.
 
 ## Data Transfer and Third Parties
 
@@ -166,7 +165,7 @@ Before offering the system to an LGU pilot, confirm:
 - [ ] This runbook has been shared with the LGU data privacy officer.
 - [ ] Retention periods align with LGU records management policy.
 - [ ] The LGU has a designated contact for citizen erasure requests.
-- [ ] The LGU understands that EXIF metadata is not stripped at upload (current gap).
+- [ ] The LGU understands that EXIF metadata is stripped automatically at upload and stored files do not retain GPS data (verified by `functions/src/domains/media/__tests__/core.test.ts`).
 - [ ] The LGU agrees that rejected reports are retained for 30 days before automated deletion.
 - [ ] The LGU agrees that event logs are retained for 1 year for audit purposes.
 - [ ] A test erasure request has been performed in staging to validate the procedure.
