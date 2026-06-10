@@ -373,3 +373,13 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Updated `docs/runbooks/pilot-demo.md` with a new "Staging" section documenting the seed/reset commands and their safety guards.
 - Kept the slice narrow: no deploy, no Firestore rules/index edits, no production mutation, no P2 feature expansion.
 - Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each). `pnpm proof:mvp-loop` passed (2 tests, 0 skipped).
+
+## 2026-06-10 - Phase 2D Operational Hardening
+
+- Added `docs/runbooks/rollback.md` — deployment rollback plan covering bad Functions deploy, bad Hosting deploy, bad Firestore/RTDB rules, accidental broad data mutation, and malicious report flood. Includes step-by-step commands, Firebase Console links, rollback prevention checklist, and emergency contacts.
+- Added `docs/runbooks/incident-response.md` — incident response procedures with SEV-1/2/3/4 severity levels, initial assessment vital signs, response chain per severity, communication templates (initial/update/resolution), post-incident review guidance, and LGU pilot-specific escalation rules.
+- Added `docs/runbooks/data-privacy.md` — complete PII map across Firestore collections (`reports`, `report_private`, `report_lookup`, `dispatches`, `users`, `report_events`, `dispatch_events`), Firebase Storage, and Firebase Auth. Includes retention policy (active 30d, resolved 90d, events 1yr), citizen-initiated erasure procedure, admin moderation deletion procedure, PII exposure scenarios and responses, data transfer/third-party map, and LGU compliance checklist.
+- Linked all three new runbooks in `docs/mvp-readiness.md` items 8, 9, 10 (cross-reference hyperlinks).
+- Added "Related Runbooks" section to `docs/runbooks/pilot-demo.md` pointing to rollback, incident response, and data privacy runbooks.
+- Kept the slice narrow: only new markdown documentation, no code changes, no rules edits, no deploy.
+- Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each).

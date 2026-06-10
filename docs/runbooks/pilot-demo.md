@@ -241,3 +241,9 @@ pnpm demo:reset
 ### Data & Export
 
 - **No BigQuery or audit-grade export.** CSV export is frontend-only from the triage table; no backend compliance pipeline exists.
+
+## 10. Related Runbooks
+
+- [Rollback Runbook](./rollback.md) — Reverting bad deploys and data mutations.
+- [Incident Response Runbook](./incident-response.md) — Who to call, what to check, and how to escalate during a system failure.
+- [Data Privacy Runbook](./data-privacy.md) — PII locations, retention policy, erasure procedures, and compliance checklist.
