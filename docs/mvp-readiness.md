@@ -37,7 +37,7 @@ The following are **not** part of the Phase 1 / Phase 2A MVP and are **not** cla
 - **Mutual aid** — No cross-municipality responder assignment or aid request flow.
 - **BigQuery/audit export** — No backend audit pipeline or compliance-grade export.
 - **Production observability** — No Cloud Monitoring dashboards, alerting, or SLO tracking.
-- **Real staging/prod deployment proof** — Script exists (`pnpm staging:smoke-proof`), but requires ADC setup before it can run against the real staging project.
+- **Real staging/prod deployment proof** — `pnpm staging:seed`, `pnpm staging:smoke-proof`, and `pnpm staging:e2e-proof` all verified against the real staging project (`bantayog-alert-staging`). Service account key used for auth; seed data roundtrips correctly; Cloud Run functions deployed and reachable; test auth users exist.
 - **PostGIS runtime migration** — Geospatial queries use `locationGeohash`, not PostGIS.
 - **Background responder GPS** — Location updates require active app usage.
 - **Offline responder queue** — Status updates require active connection.
