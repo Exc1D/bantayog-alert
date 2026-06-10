@@ -386,7 +386,7 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 ## 2026-06-10 - Phase 2E Staging Smoke Proof
 
-- Added `scripts/staging-smoke-proof.ts` — read-only validation script that connects to staging Firestore and asserts:
+- Added `scripts/staging-smoke-proof.ts` — read-only smoke sample validation script that connects to staging Firestore and checks a sample (limit 50) of seeded documents for:
   - Reports exist and have valid status values, publicRef, and reportType.
   - `report_lookup` entries contain only `reportId` and `publicTrackingRef` (citizen-safe projection).
   - Dispatches (if seeded) have valid status and reportId linkage.
