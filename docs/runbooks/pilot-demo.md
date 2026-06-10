@@ -70,6 +70,29 @@ pnpm demo:reset
 
 Requires `FIRESTORE_EMULATOR_HOST=127.0.0.1:8081`. This deletes only the known seed documents.
 
+### Run staging seed (real staging project)
+
+```bash
+# Requires GOOGLE_APPLICATION_CREDENTIALS
+pnpm staging:seed
+```
+
+**Safety guards:**
+
+- Refuses to run if `FIRESTORE_EMULATOR_HOST` is set.
+- Refuses to run against production project `bantayog-alert`.
+- Requires `GOOGLE_APPLICATION_CREDENTIALS` or active gcloud auth.
+
+Seeds the same 10 reports, 5 alerts, and demo accounts into the **staging** Firebase project (`bantayog-alert-staging`).
+
+### Reset staging data
+
+```bash
+pnpm staging:reset
+```
+
+Same safety guards. Deletes only the known seed documents from staging.
+
 ### Seed demo data
 
 ```bash
@@ -198,7 +221,7 @@ pnpm demo:reset
 
 ### Deployment & Environment
 
-- **Local demo only.** No production deployment or staging environment with scoped seed/reset safety guards.
+- **Staging environment exists with scoped safety guards.** `pnpm staging:seed` and `pnpm staging:reset` target the real staging project `bantayog-alert-staging`, but they refuse to run when `FIRESTORE_EMULATOR_HOST` is set, refuse production project `bantayog-alert`, and require `GOOGLE_APPLICATION_CREDENTIALS` or active gcloud auth. Seed and reset only affect the known seed documents; other data in the staging project is untouched.
 - **Not a national emergency alert replacement.** This is a municipal LGU coordination tool, not a life-saving guaranteed-response system.
 
 ### Alerts & Notifications

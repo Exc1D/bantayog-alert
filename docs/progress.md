@@ -360,3 +360,16 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Documented readiness in `docs/mvp-readiness.md`: current readiness level, what works, what is intentionally deferred, prerequisites for a real pilot, operational risks, and recommended next phase (2B staging hardening before P2 feature expansion).
 - Kept this phase focused on proof and documentation: no P2 feature expansion, no Firestore rules/index/schema edits, no PostGIS runtime migration, and no deploy.
 - Verification: `pnpm typecheck`, `pnpm lint`, and `pnpm proof:mvp-loop` passed (8 tests, 0 skipped).
+
+## 2026-06-10 - Phase 2B Staging Pilot Hardening
+
+- Added `.env.staging.example` files for all three apps (`citizen-pwa`, `admin-desktop`, `responder-app`) with the provided staging Firebase config. These are gitignored templates — operators copy them to `.env.staging` and fill in App Check / VAPID keys.
+- Created `scripts/staging-seed.ts` — a staging-safe seed script with three hard safety guards:
+  1. Refuses to run if `FIRESTORE_EMULATOR_HOST` is set (prevents accidental emulator targeting).
+  2. Refuses to run against production project `bantayog-alert` (blocks prod mutation).
+  3. Requires `GOOGLE_APPLICATION_CREDENTIALS` or active gcloud auth (no anonymous access).
+- Created `scripts/staging-reset.ts` — uses the same seed document path list as `staging-seed.ts` so reset only deletes known seed docs, never broad collections.
+- Added root package scripts `staging:seed` and `staging:reset`.
+- Updated `docs/runbooks/pilot-demo.md` with a new "Staging" section documenting the seed/reset commands and their safety guards.
+- Kept the slice narrow: no deploy, no Firestore rules/index edits, no production mutation, no P2 feature expansion.
+- Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each). `pnpm proof:mvp-loop` passed (2 tests, 0 skipped).
