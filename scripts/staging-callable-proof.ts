@@ -217,20 +217,47 @@ async function cleanup(
   ids: ProofDocIds | null,
   citizenUid: string,
 ): Promise<void> {
+  const errors: Array<{ step: string; error: unknown }> = []
+
   if (ids) {
     for (const path of buildProofCleanupPaths(ids)) {
-      await db.recursiveDelete(db.doc(path)).catch(() => undefined)
+      try {
+        await db.recursiveDelete(db.doc(path))
+      } catch (err) {
+        errors.push({ step: `recursiveDelete(${path})`, error: err })
+      }
     }
-    await deleteByQuery(db, 'report_events', 'reportId', ids.reportId).catch(() => 0)
-    await deleteByQuery(db, 'dispatch_events', 'dispatchId', ids.dispatchId).catch(() => 0)
+    try {
+      await deleteByQuery(db, 'report_events', 'reportId', ids.reportId)
+    } catch (err) {
+      errors.push({ step: `deleteByQuery(report_events, reportId=${ids.reportId})`, error: err })
+    }
+    try {
+      await deleteByQuery(db, 'dispatch_events', 'dispatchId', ids.dispatchId)
+    } catch (err) {
+      errors.push({
+        step: `deleteByQuery(dispatch_events, dispatchId=${ids.dispatchId})`,
+        error: err,
+      })
+    }
   }
-  await rtdb
-    .ref(`/responder_index/${MUNICIPALITY_ID}/${RESPONDER_UID}`)
-    .remove()
-    .catch(() => undefined)
-  await getAuth()
-    .deleteUser(citizenUid)
-    .catch(() => undefined)
+  try {
+    await rtdb.ref(`/responder_index/${MUNICIPALITY_ID}/${RESPONDER_UID}`).remove()
+  } catch (err) {
+    errors.push({ step: 'rtdb.responder_index.remove', error: err })
+  }
+  try {
+    await getAuth().deleteUser(citizenUid)
+  } catch (err) {
+    errors.push({ step: `auth.deleteUser(${citizenUid})`, error: err })
+  }
+
+  if (errors.length > 0) {
+    const summary = errors
+      .map((e) => `${e.step}: ${e.error instanceof Error ? e.error.message : String(e.error)}`)
+      .join('; ')
+    throw new Error(`Cleanup completed with ${errors.length} failure(s): ${summary}`)
+  }
 }
 
 async function main(): Promise<void> {

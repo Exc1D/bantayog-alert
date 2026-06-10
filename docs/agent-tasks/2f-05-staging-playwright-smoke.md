@@ -9,8 +9,13 @@ responder loop against the deployed staging URLs.
 
 - `e2e-tests/specs/staging-smoke.spec.ts` (new) — keep under
   `e2e-tests/specs/` per `docs/learnings.md` testing rules.
-- `package.json` — add a `staging:browser-smoke` script gated on a
-  `STAGING_BASE_URL`-style env so CI never runs it accidentally.
+- `e2e-tests/package.json` — add a `staging:browser-smoke` script gated on the
+  `BANTAYOG_CITIZEN_URL` env variable so CI never runs it accidentally.
+  The script should exit early (or skip loudly) when `BANTAYOG_CITIZEN_URL` is
+  undefined. The spec itself should read `process.env.BANTAYOG_CITIZEN_URL` (or
+  `process.env.BASE_URL` as a fallback), matching the variables already used by
+  `e2e-tests/playwright.staging.config.ts` and `e2e-tests/fixtures/reliability-spine.ts`.
+  Other per-app URLs are `BANTAYOG_ADMIN_URL` and `BANTAYOG_RESPONDER_URL`.
 
 ## Design constraints
 

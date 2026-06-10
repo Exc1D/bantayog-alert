@@ -15,8 +15,17 @@ fresh approval required).
 
 ## Steps
 
-1. Agent: verify three production builds succeed with staging env
-   (`pnpm build` with `.env.staging` per app).
+1. Agent: verify three production builds succeed with staging env.
+   Each app is a Vite project that loads env files via `loadEnv(mode, process.cwd(),
+'VITE_')`. Vite's production build loads `.env.production` by default, not
+   `.env.staging`. For each app, copy the staging env file into place so the
+   build picks it up, then run the app's build command:
+   - citizen-pwa: `cp apps/citizen-pwa/.env.staging apps/citizen-pwa/.env.production.local && pnpm --dir apps/citizen-pwa build`
+   - admin-desktop: `cp apps/admin-desktop/.env.staging apps/admin-desktop/.env.production.local && pnpm --dir apps/admin-desktop build`
+   - responder-app: `cp apps/responder-app/.env.staging apps/responder-app/.env.production.local && pnpm --dir apps/responder-app build`
+     (Alternative: run `vite build --mode staging` directly, which loads
+     `.env.staging`, but this bypasses the `tsc --noEmit` step in the package
+     `build` script.)
 2. Agent: prepare the hosting deploy command and rollback command, present
    both.
 3. Human: run the deploy against `bantayog-alert-staging`.
