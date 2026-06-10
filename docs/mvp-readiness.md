@@ -71,15 +71,16 @@ Before the system can be offered as a real LGU pilot, **all** of the following m
 | No SMS fallback                                     | Medium   | Document clearly that citizens must check the PWA; no SMS confirmation exists.                                         |
 | No guaranteed emergency response semantics          | High     | This is a coordination tool, not a guaranteed life-saving system. Document this limitation in all citizen-facing copy. |
 
-## Recommended Next Phase After Phase 2D
+## Recommended Next Phase After Phase 2E
 
-**Phase 2E: Staging End-to-End Proof**
+**Phase 2F: Deployed Callable Lifecycle Proof**
 
 Focus on:
 
-- Running `pnpm staging:seed` against the real staging project (`bantayog-alert-staging`).
-- Exercising the full incident lifecycle through deployed HTTPS callables (not emulator-local core functions).
-- Verifying all three apps load and authenticate against staging.
-- Proving that the deployed backend matches emulator behavior.
+- Exchanging custom tokens for client ID tokens against staging Auth.
+- Calling deployed HTTPS callables through the Firebase client SDK.
+- Exercising submit → verify → dispatch → accept → advance → resolve against staging.
+- Verifying citizen, admin, and responder apps load and authenticate against staging.
+- Comparing deployed callable behavior against emulator proof behavior.
 
 **Do not start P2 feature expansion** (SMS, CAP, hazard overlays, duplicate clustering, agency coordination, mutual aid, BigQuery) until the MVP loop is proven end-to-end in a staging environment.
