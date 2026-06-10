@@ -404,3 +404,19 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - **Real staging execution achieved:** Service account key used to seed 10 reports, 10 lookups, 5 alerts, 1 dispatch into `bantayog-alert-staging`. `pnpm staging:smoke-proof` and `pnpm staging:e2e-proof` passed against real staging.
 - Kept the slice narrow: script rewrites + new e2e-proof script + package.json + docs updates, no deploy, no rules edits.
 - Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each). `pnpm test` passed (199/199). Real staging execution passed.
+
+## 2026-06-10 - 2026 Direction Roadmap
+
+- Added `docs/roadmap-2026.md` — the year plan. End goal: one real LGU pilot live in production (Daet, Camarines Norte) by 31 December 2026, with pilot evidence for a 2027 go/no-go decision.
+- Phase sequence: 2F staging callable loop proof → Phase 3 UX completeness audits/fixes per app → Phase 4 production hardening/observability → Phase 5 pilot package → Phase 6 staged live pilot (staff → controlled citizens → public).
+- Established `docs/agent-tasks/<phase>-<seq>-<slug>.md` as the slice convention for agent execution, and evidence-based decision gates for deferred P2 features (SMS, localization, second municipality). PostGIS runtime migration explicitly off the table for 2026.
+- Documentation-only slice: no code, rules, schema, dependency, or deploy changes.
+
+## 2026-06-10 - Phase 2F Kickoff + 2F-02 Callable Client Harness
+
+- Wrote the five Phase 2F execution slices under `docs/agent-tasks/`: 2F-01 staging console fixes (human-only), 2F-02 callable client harness, 2F-03 staging callable lifecycle proof, 2F-04 staging hosting deploy (deploy execution human-only), 2F-05 staging Playwright smoke.
+- Implemented 2F-02: `scripts/staging-callable-client.ts` — pure REST helpers with injected `fetch` so unit tests need no network or firebase-admin: custom token → ID token exchange (Identity Toolkit), App Check debug token exchange, and v2 callable invocation with `Authorization` + `X-Firebase-AppCheck` headers and `{data}` envelope unwrapping.
+- Errors carry stable codes: `StagingCallableError.status` exposes the callable error `status` (for example `NOT_FOUND`), and non-JSON responses surface the HTTP status instead of being swallowed.
+- Safety guards mirror the staging script discipline: refuses when `FIRESTORE_EMULATOR_HOST` is set, refuses production project `bantayog-alert`.
+- 2F-03 will compose these helpers with firebase-admin token minting; live runs stay blocked on the 2F-01 console work (App Check debug token + staging web app config).
+- Verification: red-first run failed with `Cannot find module './staging-callable-client'`, then `pnpm exec vitest run scripts/staging-callable-client.test.ts` passed 11 tests; root `pnpm test` passed 210/210; `pnpm typecheck` passed (16 tasks); Prettier applied to both new files.
