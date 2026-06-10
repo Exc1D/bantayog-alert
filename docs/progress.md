@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-06-10 - Phase 2F-03 Staging Callable Lifecycle Proof
+
+- Implemented `scripts/staging-callable-proof.ts` — composes the 2F-02 REST helpers with firebase-admin to drive the full MVP loop through the **deployed** staging callables: `submitCitizenReport` → `verifyReport` ×2 → `dispatchResponder` → `acceptDispatch` → `advanceDispatch` (acknowledged → en_route → on_scene → resolved). It mints citizen/admin/responder custom tokens → ID tokens, exchanges the App Check debug token once, sets the responder RTDB shift, asserts final report/dispatch state + PII isolation (`reports` has no `reporterUid`; `report_private.reporterUid` matches; `report_lookup` rejects citizen-unsafe fields) via the Admin SDK, and cleans up every created doc in a `finally` block.
+- Pure helpers `buildCitizenReportPayload` and `buildProofCleanupPaths` are unit-tested red-first; orchestration reuses `assertStagingAllowed` from `staging-seed.ts` for the emulator/production/ADC guards (no `execSync` duplication) and requires `STAGING_FIREBASE_API_KEY`, `STAGING_FIREBASE_APP_ID`, `STAGING_APP_CHECK_DEBUG_TOKEN`, failing loudly when missing.
+- Drift recorded in `learnings.md`: the deployed `dispatchResponder` requires the responder on shift in RTDB (`/responder_index/daet/bfp-responder-test-01.isOnShift === true`), which `staging:seed` does not seed — the proof sets and clears it.
+- Added root script `staging:callable-proof` and documented the command + required env + RTDB-shift drift in `docs/runbooks/pilot-demo.md`. Secrets stay local-only (debug token + API key are env vars, never committed).
+- Kept the slice narrow: no deploy, no rules/index/schema edits, no prod. The **live run is pending** — it needs the operator's local staging service-account key + the three env vars (held by the user), so it cannot run from this sandbox.
+- Verification: red-first `pnpm exec vitest run scripts/staging-callable-proof.test.ts` failed on the missing module, then passed 5 tests; root `pnpm test` passed 215/215; `pnpm typecheck` passed (16 tasks); a targeted `tsc --moduleResolution bundler` pass on the orchestration code was clean; Prettier applied.
+
 ## 2026-06-08 - Phase 1L Admin Rejection Notes
 
 - Added an optional Admin note control to the `/triage` workbench and threaded trimmed notes into existing `rejectReport` calls.

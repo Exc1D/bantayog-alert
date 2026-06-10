@@ -93,6 +93,36 @@ pnpm staging:reset
 
 Same safety guards. Deletes only the known seed documents from staging.
 
+### Run the staging callable lifecycle proof (deployed callables)
+
+```bash
+# Requires GOOGLE_APPLICATION_CREDENTIALS plus the three env vars below.
+GOOGLE_APPLICATION_CREDENTIALS=path/to/staging-sa.json \
+STAGING_FIREBASE_API_KEY=<web api key> \
+STAGING_FIREBASE_APP_ID=<web appId, e.g. 1:...:web:...> \
+STAGING_APP_CHECK_DEBUG_TOKEN=<registered App Check debug token> \
+  pnpm staging:callable-proof
+```
+
+Drives the full MVP loop through the **deployed** HTTPS callables on
+`bantayog-alert-staging` (not emulators): `submitCitizenReport` →
+`verifyReport` ×2 → `dispatchResponder` → `acceptDispatch` →
+`advanceDispatch` (acknowledged → en_route → on_scene → resolved). It mints
+custom tokens for the citizen/admin/responder actors, exchanges the App Check
+debug token, sets the responder shift in RTDB, asserts the final report and
+dispatch state plus PII isolation via the Admin SDK, then deletes everything it
+created.
+
+**Safety guards** match `staging:seed` (refuses emulators, refuses production,
+requires ADC). **Required env** fails loudly when missing. Keep the App Check
+debug token and API key in local env vars only — never commit them.
+
+> Drift from the emulator `proof:mvp-loop`: the deployed `dispatchResponder`
+> requires the responder to be **on shift** in RTDB
+> (`/responder_index/daet/bfp-responder-test-01.isOnShift === true`).
+> `staging:seed` does not seed shift state, so this proof sets it explicitly
+> before dispatching.
+
 ### Seed demo data
 
 ```bash

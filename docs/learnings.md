@@ -92,6 +92,7 @@
 - Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
 - Mode/state precedence: actionable states such as surge win over data-quality states such as degraded.
 - Lease monitors with `monitorLeaseAt` plus expiry, and add circuit breakers for oversized query results.
+- The deployed `dispatchResponder` requires the responder to be on shift in RTDB (`/responder_index/{municipalityId}/{uid}.isOnShift === true`); the seeded `responders/{uid}.isActive` alone is not enough. `staging:seed` does not seed shift state, so any staging callable proof must set the shift in RTDB before dispatching, then clear it on cleanup. This is the main drift between the deployed loop and the emulator `proof:mvp-loop`.
 
 ## Testing
 
