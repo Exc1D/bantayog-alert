@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import { initializeApp, getApps } from 'firebase-admin/app'
@@ -6,9 +7,10 @@ import { getFirestore } from 'firebase-admin/firestore'
 /**
  * Staging Smoke Proof — Read-Only Validation
  *
- * Connects to the staging Firestore project and validates that
- * seeded data is present and well-formed. Does NOT write anything.
+ * Connects to the staging Firestore project and validates a sample
+ * of seeded data. Does NOT write anything.
  *
+ * This is a smoke sample, not a full staging data audit.
  * Requires GOOGLE_APPLICATION_CREDENTIALS or gcloud ADC.
  */
 
@@ -20,6 +22,24 @@ function getDb() {
     initializeApp({ projectId: STAGING_PROJECT_ID })
   }
   return getFirestore()
+}
+
+function hasGcloudAuth(): boolean {
+  try {
+    const out = execSync("gcloud auth list --filter=status:ACTIVE --format='value(account)'", {
+      encoding: 'utf-8',
+      timeout: 5000,
+    })
+    if (!out.trim()) return false
+    execSync('gcloud auth application-default print-access-token', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      timeout: 5000,
+    })
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function assertStagingReadAllowed(): void {
@@ -41,25 +61,63 @@ export function assertStagingReadAllowed(): void {
     )
   }
 
-  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() && !process.env.FIREBASE_TOKEN?.trim()) {
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() && !hasGcloudAuth()) {
     throw new Error(
-      'staging-smoke-proof: No credentials found. ' +
+      'staging-smoke-proof: No ADC credentials found. ' +
         'Set GOOGLE_APPLICATION_CREDENTIALS or run `gcloud auth application-default login`.',
     )
   }
 }
 
+const VALID_REPORT_STATUSES = new Set([
+  'draft_inbox',
+  'new',
+  'awaiting_verify',
+  'verified',
+  'assigned',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+  'resolved',
+  'closed',
+  'reopened',
+  'rejected',
+  'cancelled',
+  'cancelled_false_report',
+  'merged_as_duplicate',
+])
+
+const VALID_DISPATCH_STATUSES = new Set([
+  'pending',
+  'accepted',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+  'resolved',
+  'declined',
+  'timed_out',
+  'cancelled',
+  'superseded',
+  'unable_to_complete',
+  'needs_admin',
+  'escalated',
+])
+
 interface ReportDoc {
   status?: string
-  publicRef?: string
   reportType?: string
   severity?: string
   municipalityId?: string
+  submittedAt?: unknown
 }
 
 interface LookupDoc {
   reportId?: string
   publicTrackingRef?: string
+  tokenHash?: string
+  expiresAt?: number
+  createdAt?: number
+  schemaVersion?: number
   [key: string]: unknown
 }
 
@@ -73,6 +131,19 @@ interface AlertDoc {
   title?: string
 }
 
+const LOOKUP_FORBIDDEN_FIELDS = new Set([
+  'assignedTo',
+  'responderUid',
+  'responderName',
+  'resolutionSummary',
+  'dispatchId',
+  'adminNote',
+  'contactPhone',
+  'exactLocation',
+  'reporterUid',
+  'rawDescription',
+])
+
 async function validateReports(db: ReturnType<typeof getDb>): Promise<void> {
   console.log('Validating reports...')
   const snapshot = await db.collection('reports').limit(50).get()
@@ -81,31 +152,27 @@ async function validateReports(db: ReturnType<typeof getDb>): Promise<void> {
     throw new Error('No reports found in staging. Run `pnpm staging:seed` first.')
   }
 
-  const validStatuses = new Set([
-    'new',
-    'awaiting_verify',
-    'verified',
-    'assigned',
-    'acknowledged',
-    'en_route',
-    'on_scene',
-    'resolved',
-    'cancelled',
-  ])
-
   let invalidCount = 0
   for (const doc of snapshot.docs) {
     const data = doc.data() as ReportDoc
-    if (!data.status || !validStatuses.has(data.status)) {
+    if (!data.status || !VALID_REPORT_STATUSES.has(data.status)) {
       console.warn(`  WARN: report ${doc.id} has invalid status: ${data.status}`)
-      invalidCount++
-    }
-    if (!data.publicRef) {
-      console.warn(`  WARN: report ${doc.id} missing publicRef`)
       invalidCount++
     }
     if (!data.reportType) {
       console.warn(`  WARN: report ${doc.id} missing reportType`)
+      invalidCount++
+    }
+    if (!data.severity) {
+      console.warn(`  WARN: report ${doc.id} missing severity`)
+      invalidCount++
+    }
+    if (!data.municipalityId) {
+      console.warn(`  WARN: report ${doc.id} missing municipalityId`)
+      invalidCount++
+    }
+    if (!data.submittedAt) {
+      console.warn(`  WARN: report ${doc.id} missing submittedAt`)
       invalidCount++
     }
   }
@@ -121,15 +188,27 @@ async function validateLookups(db: ReturnType<typeof getDb>): Promise<void> {
   const snapshot = await db.collection('report_lookup').limit(50).get()
 
   if (snapshot.empty) {
-    throw new Error('No report_lookup entries found.')
+    console.log('  No report_lookup entries found (seed does not create them).')
+    return
   }
 
   let invalidCount = 0
   for (const doc of snapshot.docs) {
     const data = doc.data() as LookupDoc
-    const keys = Object.keys(data)
-    if (keys.length !== 2 || !keys.includes('reportId') || !keys.includes('publicTrackingRef')) {
-      console.warn(`  WARN: lookup ${doc.id} has unexpected fields: ${keys.join(', ')}`)
+
+    for (const field of LOOKUP_FORBIDDEN_FIELDS) {
+      if (field in data) {
+        console.warn(`  WARN: lookup ${doc.id} leaks forbidden field: ${field}`)
+        invalidCount++
+      }
+    }
+
+    if (typeof data.reportId !== 'string' || data.reportId.length === 0) {
+      console.warn(`  WARN: lookup ${doc.id} missing reportId`)
+      invalidCount++
+    }
+    if (typeof data.publicTrackingRef !== 'string' || data.publicTrackingRef.length === 0) {
+      console.warn(`  WARN: lookup ${doc.id} missing publicTrackingRef`)
       invalidCount++
     }
   }
@@ -149,23 +228,10 @@ async function validateDispatches(db: ReturnType<typeof getDb>): Promise<void> {
     return
   }
 
-  const validStatuses = new Set([
-    'pending',
-    'accepted',
-    'acknowledged',
-    'en_route',
-    'on_scene',
-    'resolved',
-    'unable_to_complete',
-    'declined',
-    'cancelled',
-    'escalated',
-  ])
-
   let invalidCount = 0
   for (const doc of snapshot.docs) {
     const data = doc.data() as DispatchDoc
-    if (!data.status || !validStatuses.has(data.status)) {
+    if (!data.status || !VALID_DISPATCH_STATUSES.has(data.status)) {
       console.warn(`  WARN: dispatch ${doc.id} has invalid status: ${data.status}`)
       invalidCount++
     }
@@ -212,7 +278,7 @@ async function validateAlerts(db: ReturnType<typeof getDb>): Promise<void> {
 }
 
 async function validateEventAuditTrail(db: ReturnType<typeof getDb>): Promise<void> {
-  console.log('Checking event audit trails exist...')
+  console.log('Checking event audit trails contain documents...')
   const [reportEventsSnap, dispatchEventsSnap] = await Promise.all([
     db.collection('report_events').limit(1).count().get(),
     db.collection('dispatch_events').limit(1).count().get(),
@@ -221,10 +287,9 @@ async function validateEventAuditTrail(db: ReturnType<typeof getDb>): Promise<vo
   const reportEventsCount = reportEventsSnap.data().count
   const dispatchEventsCount = dispatchEventsSnap.data().count
 
-  console.log(`  report_events collections: ${reportEventsCount} document(s)`)
-  console.log(`  dispatch_events collections: ${dispatchEventsCount} document(s)`)
+  console.log(`  report_events: ${reportEventsCount} document(s)`)
+  console.log(`  dispatch_events: ${dispatchEventsCount} document(s)`)
 
-  // Events may be absent if the lifecycle proof hasn't run yet; warn only
   if (reportEventsCount === 0) {
     console.log('  NOTE: No report_events found (run pnpm proof:mvp-loop to generate).')
   }
