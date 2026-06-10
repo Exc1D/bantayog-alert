@@ -22,7 +22,6 @@ import { getFirestore } from 'firebase-admin/firestore'
 
 const STAGING_PROJECT_ID = 'bantayog-alert-staging'
 const PRODUCTION_PROJECT_ID = 'bantayog-alert'
-const REGION = 'asia-southeast1'
 
 function getDb() {
   if (getApps().length === 0) {
