@@ -20,6 +20,7 @@
     "proof:local": "node scripts/proof-local.mjs",
     "staging:seed": "tsx scripts/staging-seed.ts",
     "staging:reset": "tsx scripts/staging-reset.ts",
+    "staging:smoke-proof": "tsx scripts/staging-smoke-proof.ts",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "vitest run",
