@@ -383,3 +383,18 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added "Related Runbooks" section to `docs/runbooks/pilot-demo.md` pointing to rollback, incident response, and data privacy runbooks.
 - Kept the slice narrow: only new markdown documentation, no code changes, no rules edits, no deploy.
 - Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each).
+
+## 2026-06-10 - Phase 2E Staging Smoke Proof
+
+- Added `scripts/staging-smoke-proof.ts` — read-only smoke sample validation script that connects to staging Firestore and checks a sample (limit 50) of seeded documents for:
+  - Reports exist and have valid status values, publicRef, and reportType.
+  - `report_lookup` entries contain only `reportId` and `publicTrackingRef` (citizen-safe projection).
+  - Dispatches (if seeded) have valid status and reportId linkage.
+  - Alerts (if seeded) have valid severity and title.
+  - `report_events` and `dispatch_events` audit trail collections exist.
+- Safety guards mirror `staging-seed.ts`: refuses emulator (`FIRESTORE_EMULATOR_HOST`), refuses production project `bantayog-alert`, requires `GOOGLE_APPLICATION_CREDENTIALS` or gcloud ADC.
+- Added root package script `staging:smoke-proof`: `tsx scripts/staging-smoke-proof.ts`.
+- Updated `docs/mvp-readiness.md` to mark "Real staging/prod deployment proof" as partially satisfied (script exists, needs ADC setup to run against real project).
+- Could not validate against the real staging project in this session because ADC (Application Default Credentials) is not configured on this machine. To enable: run `gcloud auth application-default login` in a browser-enabled session, then rerun `pnpm staging:smoke-proof`.
+- Kept the slice narrow: one script + one package.json line + docs updates, no deploy, no rules edits.
+- Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each).

@@ -361,10 +361,27 @@ export function buildDispatchSeeds(
   ]
 }
 
+export function buildLookupSeeds(
+  reports: typeof REPORTS,
+): Array<{ id: string; data: Record<string, unknown> }> {
+  return reports.map((report) => ({
+    id: report.publicRef,
+    data: {
+      reportId: report.id,
+      publicTrackingRef: report.publicRef,
+      tokenHash: 'seed-hash-' + report.id.slice(-3),
+      createdAt: new Date(report.submittedAt),
+      expiresAt: report.submittedAt + 90 * 24 * 60 * 60 * 1000,
+      schemaVersion: 1,
+    },
+  }))
+}
+
 export function buildResetPaths(): string[] {
   const paths = [
     ...REPORTS.flatMap((r) => [`reports/${r.id}`, `report_ops/${r.id}`]),
     ...buildDispatchSeeds(REPORTS).map((s) => `dispatches/${s.id}`),
+    ...buildLookupSeeds(REPORTS).map((s) => `report_lookup/${s.id}`),
     ...ALERTS.map((a) => `alerts/${a.id}`),
   ]
   return Array.from(new Set(paths))
@@ -385,10 +402,13 @@ async function seedReports(db: ReturnType<typeof getDb>) {
   for (const seed of buildDispatchSeeds(REPORTS)) {
     batch.set(db.collection('dispatches').doc(seed.id), seed.data)
   }
+  for (const seed of buildLookupSeeds(REPORTS)) {
+    batch.set(db.collection('report_lookup').doc(seed.id), seed.data)
+  }
   await batch.commit()
   console.log(
     `  ${REPORTS.length} reports, ${buildReportOpsSeeds(REPORTS).length} report_ops, ` +
-      `${buildDispatchSeeds(REPORTS).length} dispatches seeded`,
+      `${buildDispatchSeeds(REPORTS).length} dispatches, ${buildLookupSeeds(REPORTS).length} lookups seeded`,
   )
 }
 
