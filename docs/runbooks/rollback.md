@@ -70,22 +70,40 @@ firebase hosting:clone <site-name>:live <site-name>:live --project <project-id>
 - Run `pnpm test:rules` against emulators to confirm the old rules are still valid.
 - Verify no test suites are broken.
 
-## Scenario 4: Bad Realtime Database Rules or Index
+## Scenario 4: Bad Realtime Database Rules
 
-**Symptoms:** RTDB reads fail, writes blocked, query errors.
+**Symptoms:** RTDB reads fail, writes blocked, data not syncing.
+
+**Note:** Realtime Database rules are separate from Firestore rules and indexes. Do not confuse RTDB with Firestore.
 
 ```bash
-# RTDB rules: Console → Realtime Database → Rules → Version history → Roll back
-# Firestore indexes: Console → Firestore Database → Indexes → delete incorrect composite index
-#   Note: index deletion is async; wait 5-10 minutes before retesting queries.
+# Console → Realtime Database → Rules → Version history → Roll back to previous version
+# No CLI option for RTDB rules rollback; must use the Firebase Console.
 ```
 
 **After rollback:**
 
-- Re-run `pnpm test:rules` to verify.
-- Check for any `FirebaseError: FAILED_PRECONDITION` indicating a missing required index.
+- Re-run `pnpm test:rules` to verify RTDB rule tests still pass.
+- Check that RTDB client listeners reconnect without permission errors.
 
-## Scenario 5: Accidental Broad Data Mutation
+## Scenario 5: Bad Firestore Index
+
+**Symptoms:** Queries return `FAILED_PRECONDITION`, performance degrades, or new compound queries fail despite correct rules.
+
+**Note:** Firestore composite indexes are separate from RTDB rules. This is an index issue, not a rules issue.
+
+```bash
+# Console → Firestore Database → Indexes → Composite indexes → delete the incorrect index
+#   Note: index deletion is async; wait 5-10 minutes before retesting queries.
+#   There is no version history for Firestore indexes; you must re-create them manually.
+```
+
+**After rollback:**
+
+- Re-run the query that was failing to confirm it now executes without `FAILED_PRECONDITION`.
+- Run `pnpm test:rules` to ensure no rule regressions.
+
+## Scenario 6: Accidental Broad Data Mutation
 
 **Symptoms:** Too many documents deleted, incorrect bulk update, corrupted demo data.
 
@@ -112,7 +130,7 @@ firebase firestore:documents:get path/to/document --project bantayog-alert
 - If backups exist, restore from the most recent backup via the GCP Console.
 - If no backups exist, reconstruct from `report_events`/`dispatch_events` audit trails.
 
-## Scenario 6: Malicious Report Flood (Abuse)
+## Scenario 7: Malicious Report Flood (Abuse)
 
 **Symptoms:** Sudden spike in report submissions, irrelevant or spam data.
 
