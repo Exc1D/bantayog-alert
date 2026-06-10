@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-06-10 - Phase 2F-03 Staging Callable Lifecycle Proof
+
+- Implemented `scripts/staging-callable-proof.ts` — composes the 2F-02 REST helpers with firebase-admin to drive the full MVP loop through the **deployed** staging callables: `submitCitizenReport` → `verifyReport` ×2 → `dispatchResponder` → `acceptDispatch` → `advanceDispatch` (acknowledged → en_route → on_scene → resolved). It mints citizen/admin/responder custom tokens → ID tokens, exchanges the App Check debug token once, sets the responder RTDB shift, asserts final report/dispatch state + PII isolation (`reports` has no `reporterUid`; `report_private.reporterUid` matches; `report_lookup` rejects citizen-unsafe fields) via the Admin SDK, and cleans up every created doc in a `finally` block.
+- Pure helpers `buildCitizenReportPayload` and `buildProofCleanupPaths` are unit-tested red-first; orchestration reuses `assertStagingAllowed` from `staging-seed.ts` for the emulator/production/ADC guards (no `execSync` duplication) and requires `STAGING_FIREBASE_API_KEY`, `STAGING_FIREBASE_APP_ID`, `STAGING_APP_CHECK_DEBUG_TOKEN`, failing loudly when missing.
+- Drift recorded in `learnings.md`: the deployed `dispatchResponder` requires the responder on shift in RTDB (`/responder_index/daet/bfp-responder-test-01.isOnShift === true`), which `staging:seed` does not seed — the proof sets and clears it.
+- Added root script `staging:callable-proof` and documented the command + required env + RTDB-shift drift in `docs/runbooks/pilot-demo.md`. Secrets stay local-only (debug token + API key are env vars, never committed).
+- Kept the slice narrow: no deploy, no rules/index/schema edits, no prod. The **live run is pending** — it needs the operator's local staging service-account key + the three env vars (held by the user), so it cannot run from this sandbox.
+- Verification: red-first `pnpm exec vitest run scripts/staging-callable-proof.test.ts` failed on the missing module, then passed 5 tests; root `pnpm test` passed 215/215; `pnpm typecheck` passed (16 tasks); a targeted `tsc --moduleResolution bundler` pass on the orchestration code was clean; Prettier applied.
+
 ## 2026-06-08 - Phase 1L Admin Rejection Notes
 
 - Added an optional Admin note control to the `/triage` workbench and threaded trimmed notes into existing `rejectReport` calls.
@@ -404,3 +413,19 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - **Real staging execution achieved:** Service account key used to seed 10 reports, 10 lookups, 5 alerts, 1 dispatch into `bantayog-alert-staging`. `pnpm staging:smoke-proof` and `pnpm staging:e2e-proof` passed against real staging.
 - Kept the slice narrow: script rewrites + new e2e-proof script + package.json + docs updates, no deploy, no rules edits.
 - Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each). `pnpm test` passed (199/199). Real staging execution passed.
+
+## 2026-06-10 - 2026 Direction Roadmap
+
+- Added `docs/roadmap-2026.md` — the year plan. End goal: one real LGU pilot live in production (Daet, Camarines Norte) by 31 December 2026, with pilot evidence for a 2027 go/no-go decision.
+- Phase sequence: 2F staging callable loop proof → Phase 3 UX completeness audits/fixes per app → Phase 4 production hardening/observability → Phase 5 pilot package → Phase 6 staged live pilot (staff → controlled citizens → public).
+- Established `docs/agent-tasks/<phase>-<seq>-<slug>.md` as the slice convention for agent execution, and evidence-based decision gates for deferred P2 features (SMS, localization, second municipality). PostGIS runtime migration explicitly off the table for 2026.
+- Documentation-only slice: no code, rules, schema, dependency, or deploy changes.
+
+## 2026-06-10 - Phase 2F Kickoff + 2F-02 Callable Client Harness
+
+- Wrote the five Phase 2F execution slices under `docs/agent-tasks/`: 2F-01 staging console fixes (human-only), 2F-02 callable client harness, 2F-03 staging callable lifecycle proof, 2F-04 staging hosting deploy (deploy execution human-only), 2F-05 staging Playwright smoke.
+- Implemented 2F-02: `scripts/staging-callable-client.ts` — pure REST helpers with injected `fetch` so unit tests need no network or firebase-admin: custom token → ID token exchange (Identity Toolkit), App Check debug token exchange, and v2 callable invocation with `Authorization` + `X-Firebase-AppCheck` headers and `{data}` envelope unwrapping.
+- Errors carry stable codes: `StagingCallableError.status` exposes the callable error `status` (for example `NOT_FOUND`), and non-JSON responses surface the HTTP status instead of being swallowed.
+- Safety guards mirror the staging script discipline: refuses when `FIRESTORE_EMULATOR_HOST` is set, refuses production project `bantayog-alert`.
+- 2F-03 will compose these helpers with firebase-admin token minting; live runs stay blocked on the 2F-01 console work (App Check debug token + staging web app config).
+- Verification: red-first run failed with `Cannot find module './staging-callable-client'`, then `pnpm exec vitest run scripts/staging-callable-client.test.ts` passed 11 tests; root `pnpm test` passed 210/210 (215/215 after 2F-03 added `staging-callable-proof.test.ts`); `pnpm typecheck` passed (16 tasks); Prettier applied to both new files.

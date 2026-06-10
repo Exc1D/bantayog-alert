@@ -92,6 +92,7 @@
 - Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
 - Mode/state precedence: actionable states such as surge win over data-quality states such as degraded.
 - Lease monitors with `monitorLeaseAt` plus expiry, and add circuit breakers for oversized query results.
+- The deployed `dispatchResponder` requires the responder to be on shift in RTDB (`/responder_index/{municipalityId}/{uid}.isOnShift === true`); the seeded `responders/{uid}.isActive` alone is not enough. `staging:seed` does not seed shift state, so any staging callable proof must set the shift in RTDB before dispatching, then clear it on cleanup. This is the main drift between the deployed loop and the emulator `proof:mvp-loop`.
 
 ## Testing
 
@@ -164,6 +165,7 @@
 - Shared packages need app runtime deps as `peerDependencies`.
 - Remove stale `lib/*.js`, `.d.ts`, and maps after renames.
 - `pnpm --filter` from a worktree can resolve against the main repo. Prefer direct commands inside the package/worktree.
+- Worktrees can carry a stale `node_modules` without `.bin/`, so `pnpm exec <tool>` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`. Run `pnpm install --frozen-lockfile` in the worktree before trusting verification commands.
 - Organize by business domain over technical layer. Use `git mv`, update `index.ts` incrementally, and do not mix package extraction with directory reorg.
 - CLI tools invoked by CI scripts, such as `esbuild`, must be root devDependencies, not transitive dependencies.
 - Firebase emulator lists in CI must include every emulator required by the rules tests, including Storage when configured.
