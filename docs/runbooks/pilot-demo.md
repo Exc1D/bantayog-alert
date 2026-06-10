@@ -221,7 +221,7 @@ pnpm demo:reset
 
 ### Deployment & Environment
 
-- **Local demo only.** No production deployment or staging environment with scoped seed/reset safety guards.
+- **Staging environment exists with scoped safety guards.** `pnpm staging:seed` and `pnpm staging:reset` target the real staging project `bantayog-alert-staging`, but they refuse to run when `FIRESTORE_EMULATOR_HOST` is set, refuse production project `bantayog-alert`, and require `GOOGLE_APPLICATION_CREDENTIALS` or active gcloud auth. Seed and reset only affect the known seed documents; other data in the staging project is untouched.
 - **Not a national emergency alert replacement.** This is a municipal LGU coordination tool, not a life-saving guaranteed-response system.
 
 ### Alerts & Notifications

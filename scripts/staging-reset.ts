@@ -21,7 +21,7 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
-import { assertStagingAllowed, buildResetPaths } from './staging-seed.js'
+import { assertStagingAllowed, resetStagingData } from './staging-seed'
 
 const STAGING_PROJECT_ID = 'bantayog-alert-staging'
 
@@ -40,21 +40,10 @@ function getDb() {
 }
 
 async function main() {
-  if (typeof assertStagingAllowed !== 'function') {
-    throw new TypeError(
-      'Invalid staging-seed export: expected assertStagingAllowed to be a function.',
-    )
-  }
   assertStagingAllowed()
   const db = getDb()
   console.log(`\nStaging reset — ${STAGING_PROJECT_ID} — ${new Date().toISOString()}\n`)
-  const paths = buildResetPaths()
-  const batch = db.batch()
-  for (const path of paths) {
-    batch.delete(db.doc(path))
-  }
-  await batch.commit()
-  console.log(`  ${paths.length} seed documents reset`)
+  await resetStagingData(db)
   console.log('\nStaging reset complete.')
 }
 

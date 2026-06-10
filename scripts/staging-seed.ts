@@ -18,15 +18,36 @@
  *   pnpm staging:seed
  */
 
+import { execSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 
 const PRODUCTION_PROJECT_ID = 'bantayog-alert'
 const STAGING_PROJECT_ID = 'bantayog-alert-staging'
+const BASE_TIME = 1_756_000_000_000 // Deterministic anchor for all seed timestamps
 
-function assertStagingAllowed(): void {
+function hasGcloudAuth(): boolean {
+  try {
+    const out = execSync("gcloud auth list --filter=status:ACTIVE --format='value(account)'", {
+      encoding: 'utf-8',
+      timeout: 5000,
+    })
+    if (!out.trim()) return false
+    // Verify Application Default Credentials are actually configured
+    execSync('gcloud auth application-default print-access-token', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      timeout: 5000,
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function assertStagingAllowed(): void {
   if (process.env.FIRESTORE_EMULATOR_HOST?.trim()) {
     throw new Error(
       'staging-seed: FIRESTORE_EMULATOR_HOST is set. ' +
@@ -47,7 +68,7 @@ function assertStagingAllowed(): void {
     )
   }
 
-  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() && !process.env.FIREBASE_TOKEN?.trim()) {
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() && !hasGcloudAuth()) {
     throw new Error(
       'staging-seed: No credentials found. ' +
         'Set GOOGLE_APPLICATION_CREDENTIALS to a service account key ' +
@@ -81,7 +102,7 @@ const REPORTS = [
     barangayId: 'Bagasbas',
     municipalityLabel: 'Daet',
     publicLocation: { lat: 14.1162, lng: 122.9652 },
-    submittedAt: Date.now() - 2 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 2 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -95,7 +116,7 @@ const REPORTS = [
     barangayId: 'Camambugan',
     municipalityLabel: 'Daet',
     publicLocation: { lat: 14.1162, lng: 122.9652 },
-    submittedAt: Date.now() - 5 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 5 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -109,7 +130,7 @@ const REPORTS = [
     barangayId: 'Paracale Poblacion',
     municipalityLabel: 'Paracale',
     publicLocation: { lat: 14.2789, lng: 122.7853 },
-    submittedAt: Date.now() - 1 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 1 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'sms',
   },
@@ -123,7 +144,7 @@ const REPORTS = [
     barangayId: 'Sta. Cruz',
     municipalityLabel: 'Labo',
     publicLocation: { lat: 14.0717, lng: 122.7619 },
-    submittedAt: Date.now() - 8 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 8 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -137,7 +158,7 @@ const REPORTS = [
     barangayId: 'Mercedes Poblacion',
     municipalityLabel: 'Mercedes',
     publicLocation: { lat: 14.1125, lng: 122.8825 },
-    submittedAt: Date.now() - 3 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 3 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -151,7 +172,7 @@ const REPORTS = [
     barangayId: 'Talisay Poblacion',
     municipalityLabel: 'Talisay',
     publicLocation: { lat: 14.1603, lng: 122.9275 },
-    submittedAt: Date.now() - 6 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 6 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -165,7 +186,7 @@ const REPORTS = [
     barangayId: 'Capalonga Poblacion',
     municipalityLabel: 'Capalonga',
     publicLocation: { lat: 14.2025, lng: 122.4153 },
-    submittedAt: Date.now() - 12 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 12 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -179,7 +200,7 @@ const REPORTS = [
     barangayId: 'Vinzons Poblacion',
     municipalityLabel: 'Vinzons',
     publicLocation: { lat: 14.175, lng: 122.9086 },
-    submittedAt: Date.now() - 1 * 24 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 1 * 24 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -193,7 +214,7 @@ const REPORTS = [
     barangayId: 'Jose Panganiban Poblacion',
     municipalityLabel: 'Jose Panganiban',
     publicLocation: { lat: 14.2956, lng: 122.6986 },
-    submittedAt: Date.now() - 0.5 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 0.5 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'sms',
   },
@@ -207,7 +228,7 @@ const REPORTS = [
     barangayId: 'Santa Elena Poblacion',
     municipalityLabel: 'Santa Elena',
     publicLocation: { lat: 14.2025, lng: 122.4153 },
-    submittedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+    submittedAt: BASE_TIME - 2 * 24 * 60 * 60 * 1000,
     visibilityClass: 'public_alertable',
     source: 'web',
   },
@@ -219,7 +240,7 @@ const ALERTS = [
     title: 'Typhoon Warning Signal #2 — Camarines Norte',
     body: 'PAGASA has raised Typhoon Warning Signal #2 over Camarines Norte. Expect strong winds and heavy rainfall. Evacuate low-lying and coastal areas immediately.',
     severity: 'critical',
-    publishedAt: Date.now() - 1 * 60 * 60 * 1000,
+    publishedAt: BASE_TIME - 1 * 60 * 60 * 1000,
     publishedBy: 'Provincial DRRMO',
     affectedMunicipalityIds: ['daet', 'labo', 'paracale', 'vinzons'],
     visibility: 'public',
@@ -229,7 +250,7 @@ const ALERTS = [
     title: 'Flood Advisory — Daet River',
     body: 'Water levels at Daet River have reached warning level. Residents in barangays Bagasbas, Lag-on, and Camambugan are advised to prepare for possible evacuation.',
     severity: 'high',
-    publishedAt: Date.now() - 3 * 60 * 60 * 1000,
+    publishedAt: BASE_TIME - 3 * 60 * 60 * 1000,
     publishedBy: 'Daet MDRRMO',
     affectedMunicipalityIds: ['daet'],
     visibility: 'public',
@@ -239,7 +260,7 @@ const ALERTS = [
     title: 'Road Closure — Daet–Labo National Highway',
     body: 'The Daet–Labo National Highway is closed to all vehicles due to a landslide near km 24. DPWH crews are on-site. Use alternate routes.',
     severity: 'medium',
-    publishedAt: Date.now() - 8 * 60 * 60 * 1000,
+    publishedAt: BASE_TIME - 8 * 60 * 60 * 1000,
     publishedBy: 'DPWH Camarines Norte',
     affectedMunicipalityIds: ['daet', 'labo'],
     visibility: 'public',
@@ -249,7 +270,7 @@ const ALERTS = [
     title: 'Preemptive Evacuation Order — Coastal Barangays',
     body: 'The municipal government of Paracale orders preemptive evacuation of all residents in coastal barangays. Proceed to designated evacuation centers.',
     severity: 'high',
-    publishedAt: Date.now() - 2 * 60 * 60 * 1000,
+    publishedAt: BASE_TIME - 2 * 60 * 60 * 1000,
     publishedBy: 'Paracale MDRRMO',
     affectedMunicipalityIds: ['paracale'],
     visibility: 'public',
@@ -259,7 +280,7 @@ const ALERTS = [
     title: 'All-Clear — Vinzons Flash Flood',
     body: 'Floodwaters in Vinzons have receded. Roads are now passable. Residents may return home after inspection of their properties.',
     severity: 'info',
-    publishedAt: Date.now() - 1 * 24 * 60 * 60 * 1000,
+    publishedAt: BASE_TIME - 1 * 24 * 60 * 60 * 1000,
     publishedBy: 'Vinzons MDRRMO',
     affectedMunicipalityIds: ['vinzons'],
     visibility: 'public',
@@ -304,7 +325,12 @@ export function buildDispatchSeeds(
   const report = reports.find(
     (r) => r.id === TEST_RESPONDER_REPORT_ID && r.municipalityId === TEST_RESPONDER_MUNICIPALITY_ID,
   )
-  if (!report) return []
+  if (!report) {
+    throw new Error(
+      `buildDispatchSeeds: expected report "${TEST_RESPONDER_REPORT_ID}" for municipality "${TEST_RESPONDER_MUNICIPALITY_ID}" not found. ` +
+        'Verify that the test responder seed configuration and REPORTS data are in sync.',
+    )
+  }
 
   const dispatchId = `${report.id}_${TEST_RESPONDER_UID}`
   const dispatchedAt = report.submittedAt + 5 * 60 * 1000
@@ -381,7 +407,7 @@ async function seedAlerts(db: ReturnType<typeof getDb>) {
 
 async function seedDemoAccounts(db: ReturnType<typeof getDb>) {
   console.log('Seeding demo accounts...')
-  const now = Date.now()
+  const now = new Date(BASE_TIME)
   const batch = db.batch()
 
   batch.set(db.collection('active_accounts').doc('daet-admin-test-01'), {
@@ -440,13 +466,14 @@ export async function resetStagingData(db = getDb()) {
   console.log(`  ${paths.length} seed documents reset`)
 }
 
-export async function main(db = getDb()) {
+export async function main(db?: Firestore) {
   assertStagingAllowed()
+  const firestore = db ?? getDb()
   console.log(`\nStaging seed — ${STAGING_PROJECT_ID} — ${new Date().toISOString()}\n`)
-  await resetStagingData(db)
-  await seedReports(db)
-  await seedAlerts(db)
-  await seedDemoAccounts(db)
+  await resetStagingData(firestore)
+  await seedReports(firestore)
+  await seedAlerts(firestore)
+  await seedDemoAccounts(firestore)
   console.log('\nStaging seed complete.')
 }
 
