@@ -104,9 +104,14 @@ async function validateAuthUsers(): Promise<void> {
       } else {
         console.log(`   OK: ${uid} exists with role ${role}`)
       }
-    } catch {
-      console.warn(`   WARN: ${uid} not found in Auth`)
-      missing++
+    } catch (err) {
+      const code = err != null && typeof err === 'object' && 'code' in err ? String(err.code) : ''
+      if (code === 'auth/user-not-found') {
+        console.warn(`   WARN: ${uid} not found in Auth`)
+        missing++
+      } else {
+        throw err
+      }
     }
   }
 
@@ -129,7 +134,7 @@ async function validateFunctionDeployment(): Promise<void> {
 
   // Query Firebase Functions list via gcloud (functions v2 run on Cloud Run)
   // Functions deploy to asia-southeast1 and us-central1
-  let deployedList: string[] = []
+  const deployedSet = new Set<string>()
   try {
     const regions = ['asia-southeast1', 'us-central1']
     for (const region of regions) {
@@ -137,22 +142,24 @@ async function validateFunctionDeployment(): Promise<void> {
         `gcloud run services list --project=bantayog-alert-staging --region=${region} --format="value(metadata.name)"`,
         { encoding: 'utf-8', timeout: 15000 },
       )
-      const services = output
+      output
         .trim()
         .split('\n')
         .map((s) => s.trim().toLowerCase())
-      deployedList.push(...services)
+        .filter(Boolean)
+        .forEach((s) => deployedSet.add(s))
     }
-  } catch {
-    // Fallback: assume functions are deployed if we can't list them
-    console.log('   NOTE: Could not list Cloud Run services; skipping function URL checks')
-    return
+  } catch (err) {
+    console.error(
+      '   ERROR: Failed to list Cloud Run services. Check gcloud credentials and permissions.',
+    )
+    throw err
   }
 
   let missing = 0
   for (const name of requiredFunctions) {
     const normalized = name.toLowerCase()
-    const found = deployedList.some((d) => d.includes(normalized))
+    const found = deployedSet.has(normalized)
     if (found) {
       console.log(`   OK: ${name} is deployed on Cloud Run`)
     } else {
