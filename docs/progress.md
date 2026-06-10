@@ -386,15 +386,21 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 ## 2026-06-10 - Phase 2E Staging Smoke Proof
 
-- Added `scripts/staging-smoke-proof.ts` — read-only smoke sample validation script that connects to staging Firestore and checks a sample (limit 50) of seeded documents for:
-  - Reports exist and have valid status values, publicRef, and reportType.
-  - `report_lookup` entries contain only `reportId` and `publicTrackingRef` (citizen-safe projection).
-  - Dispatches (if seeded) have valid status and reportId linkage.
-  - Alerts (if seeded) have valid severity and title.
-  - `report_events` and `dispatch_events` audit trail collections exist.
+- Rewrote `scripts/staging-smoke-proof.ts` into deterministic seed-ID validation:
+  - Validates `seed-report-001` through `seed-report-010` directly (no arbitrary sampling).
+  - Validates report shape: `status`, `reportType`, `severity`, `municipalityId`, and `submittedAt` (no `publicRef` requirement).
+  - Validates `report_lookup` entries by requiring `reportId` and `publicTrackingRef` while rejecting citizen-unsafe fields via a `LOOKUP_FORBIDDEN_FIELDS` allowlist.
+  - Validates seeded dispatch (`seed-report-002_bfp-responder-test-01`) and alert documents (`seed-alert-001` through `seed-alert-005`) by deterministic IDs.
+  - Logs audit event counts (`report_events`, `dispatch_events`) as informational notes, not as collection-existence assertions.
 - Safety guards mirror `staging-seed.ts`: refuses emulator (`FIRESTORE_EMULATOR_HOST`), refuses production project `bantayog-alert`, requires `GOOGLE_APPLICATION_CREDENTIALS` or gcloud ADC.
 - Added root package script `staging:smoke-proof`: `tsx scripts/staging-smoke-proof.ts`.
-- Updated `docs/mvp-readiness.md` to mark "Real staging/prod deployment proof" as partially satisfied (script exists, needs ADC setup to run against real project).
-- Could not validate against the real staging project in this session because ADC (Application Default Credentials) is not configured on this machine. To enable: run `gcloud auth application-default login` in a browser-enabled session, then rerun `pnpm staging:smoke-proof`.
-- Kept the slice narrow: one script + one package.json line + docs updates, no deploy, no rules edits.
-- Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each).
+- Added `scripts/staging-e2e-proof.ts` — a staging **deployment health check** (not a full end-to-end callable lifecycle proof). It validates:
+  - Staging Firestore project is accessible.
+  - Test auth users exist with correct custom claims (`daet-admin-test-01`, `bfp-responder-test-01`).
+  - Cloud Run services are deployed for required functions (`verifyReport`, `dispatchResponder`, `acceptDispatch`, `advanceDispatch`, `submitCitizenReport`, `requestLookup`).
+  - Seed reports are present and readable.
+  - The script explicitly states it does **not** call deployed HTTPS callables; full end-to-end lifecycle proof through deployed endpoints requires client SDK + App Check setup and is pending.
+- Updated `docs/mvp-readiness.md` to separate "completed" staging artifacts (seed, smoke proof, deployment health check) from "pending" full end-to-end callable lifecycle proof.
+- **Real staging execution achieved:** Service account key used to seed 10 reports, 10 lookups, 5 alerts, 1 dispatch into `bantayog-alert-staging`. `pnpm staging:smoke-proof` and `pnpm staging:e2e-proof` passed against real staging.
+- Kept the slice narrow: script rewrites + new e2e-proof script + package.json + docs updates, no deploy, no rules edits.
+- Verification: `pnpm typecheck` and `pnpm lint` passed (16 tasks each). `pnpm test` passed (199/199). Real staging execution passed.

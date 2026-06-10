@@ -7,10 +7,14 @@ import { getFirestore } from 'firebase-admin/firestore'
 /**
  * Staging Smoke Proof — Read-Only Validation
  *
- * Connects to the staging Firestore project and validates a sample
- * of seeded data. Does NOT write anything.
+ * Connects to the staging Firestore project and validates the
+ * deterministic seed documents created by `pnpm staging:seed`.
+ * Does NOT write anything.
  *
- * This is a smoke sample, not a full staging data audit.
+ * This validates only the seed documents by ID. Pre-existing staging
+ * data (from prior tests, manual entries, or earlier seeds) is
+ * reported as a note but does not block the proof.
+ *
  * Requires GOOGLE_APPLICATION_CREDENTIALS or gcloud ADC.
  */
 
@@ -103,6 +107,54 @@ const VALID_DISPATCH_STATUSES = new Set([
   'escalated',
 ])
 
+// Seed IDs expected after running `pnpm staging:seed`
+const EXPECTED_REPORT_IDS = [
+  'seed-report-001',
+  'seed-report-002',
+  'seed-report-003',
+  'seed-report-004',
+  'seed-report-005',
+  'seed-report-006',
+  'seed-report-007',
+  'seed-report-008',
+  'seed-report-009',
+  'seed-report-010',
+]
+
+const EXPECTED_ALERT_IDS = [
+  'seed-alert-001',
+  'seed-alert-002',
+  'seed-alert-003',
+  'seed-alert-004',
+  'seed-alert-005',
+]
+
+const EXPECTED_LOOKUP_REFS = [
+  'SEED-001',
+  'SEED-002',
+  'SEED-003',
+  'SEED-004',
+  'SEED-005',
+  'SEED-006',
+  'SEED-007',
+  'SEED-008',
+  'SEED-009',
+  'SEED-010',
+]
+
+const LOOKUP_FORBIDDEN_FIELDS = new Set([
+  'assignedTo',
+  'responderUid',
+  'responderName',
+  'resolutionSummary',
+  'dispatchId',
+  'adminNote',
+  'contactPhone',
+  'exactLocation',
+  'reporterUid',
+  'rawDescription',
+])
+
 interface ReportDoc {
   status?: string
   reportType?: string
@@ -131,149 +183,163 @@ interface AlertDoc {
   title?: string
 }
 
-const LOOKUP_FORBIDDEN_FIELDS = new Set([
-  'assignedTo',
-  'responderUid',
-  'responderName',
-  'resolutionSummary',
-  'dispatchId',
-  'adminNote',
-  'contactPhone',
-  'exactLocation',
-  'reporterUid',
-  'rawDescription',
-])
-
 async function validateReports(db: ReturnType<typeof getDb>): Promise<void> {
-  console.log('Validating reports...')
-  const snapshot = await db.collection('reports').limit(50).get()
-
-  if (snapshot.empty) {
-    throw new Error('No reports found in staging. Run `pnpm staging:seed` first.')
-  }
+  console.log('Validating seeded reports...')
 
   let invalidCount = 0
-  for (const doc of snapshot.docs) {
-    const data = doc.data() as ReportDoc
+  let foundCount = 0
+  for (const reportId of EXPECTED_REPORT_IDS) {
+    const snap = await db.collection('reports').doc(reportId).get()
+    if (!snap.exists) {
+      console.warn(`  WARN: seeded report ${reportId} not found`)
+      invalidCount++
+      continue
+    }
+    foundCount++
+    const data = snap.data() as ReportDoc
     if (!data.status || !VALID_REPORT_STATUSES.has(data.status)) {
-      console.warn(`  WARN: report ${doc.id} has invalid status: ${data.status}`)
+      console.warn(`  WARN: report ${reportId} has invalid status: ${data.status}`)
       invalidCount++
     }
     if (!data.reportType) {
-      console.warn(`  WARN: report ${doc.id} missing reportType`)
+      console.warn(`  WARN: report ${reportId} missing reportType`)
       invalidCount++
     }
     if (!data.severity) {
-      console.warn(`  WARN: report ${doc.id} missing severity`)
+      console.warn(`  WARN: report ${reportId} missing severity`)
       invalidCount++
     }
     if (!data.municipalityId) {
-      console.warn(`  WARN: report ${doc.id} missing municipalityId`)
+      console.warn(`  WARN: report ${reportId} missing municipalityId`)
       invalidCount++
     }
     if (!data.submittedAt) {
-      console.warn(`  WARN: report ${doc.id} missing submittedAt`)
+      console.warn(`  WARN: report ${reportId} missing submittedAt`)
       invalidCount++
     }
   }
 
-  console.log(`  ${snapshot.size} reports checked, ${invalidCount} warnings`)
+  // Note pre-existing non-seed docs (informational only)
+  const allSnapshot = await db.collection('reports').limit(50).get()
+  const nonSeedCount = allSnapshot.docs.filter((d) => !EXPECTED_REPORT_IDS.includes(d.id)).length
+  if (nonSeedCount > 0) {
+    console.log(`  NOTE: ${nonSeedCount} non-seed report(s) also present in staging`)
+  }
+
+  console.log(
+    `  ${foundCount}/${EXPECTED_REPORT_IDS.length} seeded reports found, ${invalidCount} warnings`,
+  )
   if (invalidCount > 0) {
-    throw new Error(`Found ${invalidCount} invalid report(s).`)
+    throw new Error(`Found ${invalidCount} invalid seeded report(s).`)
   }
 }
 
 async function validateLookups(db: ReturnType<typeof getDb>): Promise<void> {
-  console.log('Validating report_lookup...')
-  const snapshot = await db.collection('report_lookup').limit(50).get()
-
-  if (snapshot.empty) {
-    console.log('  No report_lookup entries found (seed does not create them).')
-    return
-  }
+  console.log('Validating seeded report_lookup entries...')
 
   let invalidCount = 0
-  for (const doc of snapshot.docs) {
-    const data = doc.data() as LookupDoc
+  let foundCount = 0
+  for (const ref of EXPECTED_LOOKUP_REFS) {
+    const snap = await db.collection('report_lookup').doc(ref).get()
+    if (!snap.exists) {
+      console.warn(`  WARN: seeded lookup ${ref} not found`)
+      invalidCount++
+      continue
+    }
+    foundCount++
+    const data = snap.data() as LookupDoc
 
     for (const field of LOOKUP_FORBIDDEN_FIELDS) {
       if (field in data) {
-        console.warn(`  WARN: lookup ${doc.id} leaks forbidden field: ${field}`)
+        console.warn(`  WARN: lookup ${ref} leaks forbidden field: ${field}`)
         invalidCount++
       }
     }
 
     if (typeof data.reportId !== 'string' || data.reportId.length === 0) {
-      console.warn(`  WARN: lookup ${doc.id} missing reportId`)
+      console.warn(`  WARN: lookup ${ref} missing reportId`)
       invalidCount++
     }
     if (typeof data.publicTrackingRef !== 'string' || data.publicTrackingRef.length === 0) {
-      console.warn(`  WARN: lookup ${doc.id} missing publicTrackingRef`)
+      console.warn(`  WARN: lookup ${ref} missing publicTrackingRef`)
       invalidCount++
     }
   }
 
-  console.log(`  ${snapshot.size} lookups checked, ${invalidCount} warnings`)
+  console.log(
+    `  ${foundCount}/${EXPECTED_LOOKUP_REFS.length} seeded lookups found, ${invalidCount} warnings`,
+  )
   if (invalidCount > 0) {
-    throw new Error(`Found ${invalidCount} lookup(s) with unexpected fields.`)
+    throw new Error(`Found ${invalidCount} invalid seeded lookup(s).`)
   }
 }
 
 async function validateDispatches(db: ReturnType<typeof getDb>): Promise<void> {
-  console.log('Validating dispatches...')
-  const snapshot = await db.collection('dispatches').limit(50).get()
+  console.log('Validating seeded dispatches...')
 
-  if (snapshot.empty) {
-    console.log('  No dispatches found (expected if seed not yet run).')
-    return
-  }
-
+  // Only seed-report-002 has a dispatch in the seed script
+  const expectedDispatchIds = ['seed-report-002_bfp-responder-test-01']
   let invalidCount = 0
-  for (const doc of snapshot.docs) {
-    const data = doc.data() as DispatchDoc
+  let foundCount = 0
+
+  for (const dispatchId of expectedDispatchIds) {
+    const snap = await db.collection('dispatches').doc(dispatchId).get()
+    if (!snap.exists) {
+      console.warn(`  WARN: seeded dispatch ${dispatchId} not found`)
+      invalidCount++
+      continue
+    }
+    foundCount++
+    const data = snap.data() as DispatchDoc
     if (!data.status || !VALID_DISPATCH_STATUSES.has(data.status)) {
-      console.warn(`  WARN: dispatch ${doc.id} has invalid status: ${data.status}`)
+      console.warn(`  WARN: dispatch ${dispatchId} has invalid status: ${data.status}`)
       invalidCount++
     }
     if (!data.reportId) {
-      console.warn(`  WARN: dispatch ${doc.id} missing reportId`)
+      console.warn(`  WARN: dispatch ${dispatchId} missing reportId`)
       invalidCount++
     }
   }
 
-  console.log(`  ${snapshot.size} dispatches checked, ${invalidCount} warnings`)
+  console.log(
+    `  ${foundCount}/${expectedDispatchIds.length} seeded dispatches found, ${invalidCount} warnings`,
+  )
   if (invalidCount > 0) {
-    throw new Error(`Found ${invalidCount} invalid dispatch(es).`)
+    throw new Error(`Found ${invalidCount} invalid seeded dispatch(es).`)
   }
 }
 
 async function validateAlerts(db: ReturnType<typeof getDb>): Promise<void> {
-  console.log('Validating alerts...')
-  const snapshot = await db.collection('alerts').limit(50).get()
-
-  if (snapshot.empty) {
-    console.log('  No alerts found (expected if seed not yet run).')
-    return
-  }
+  console.log('Validating seeded alerts...')
 
   const validSeverities = new Set(['info', 'low', 'medium', 'high', 'critical'])
-
   let invalidCount = 0
-  for (const doc of snapshot.docs) {
-    const data = doc.data() as AlertDoc
+  let foundCount = 0
+
+  for (const alertId of EXPECTED_ALERT_IDS) {
+    const snap = await db.collection('alerts').doc(alertId).get()
+    if (!snap.exists) {
+      console.warn(`  WARN: seeded alert ${alertId} not found`)
+      invalidCount++
+      continue
+    }
+    foundCount++
+    const data = snap.data() as AlertDoc
     if (!data.severity || !validSeverities.has(data.severity)) {
-      console.warn(`  WARN: alert ${doc.id} has invalid severity: ${data.severity}`)
+      console.warn(`  WARN: alert ${alertId} has invalid severity: ${data.severity}`)
       invalidCount++
     }
     if (!data.title) {
-      console.warn(`  WARN: alert ${doc.id} missing title`)
+      console.warn(`  WARN: alert ${alertId} missing title`)
       invalidCount++
     }
   }
 
-  console.log(`  ${snapshot.size} alerts checked, ${invalidCount} warnings`)
+  console.log(
+    `  ${foundCount}/${EXPECTED_ALERT_IDS.length} seeded alerts found, ${invalidCount} warnings`,
+  )
   if (invalidCount > 0) {
-    throw new Error(`Found ${invalidCount} invalid alert(s).`)
+    throw new Error(`Found ${invalidCount} invalid seeded alert(s).`)
   }
 }
 

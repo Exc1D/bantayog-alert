@@ -24,6 +24,7 @@ It is **not** suitable for production deployment, real citizen-facing emergency 
 - **Firebase rules tests** — Firestore, RTDB, and Storage rules covered with emulator-backed tests.
 - **MVP loop proof** — Backend-only deterministic test (`pnpm proof:mvp-loop`) that exercises full lifecycle.
 - **Full browser proof** — Playwright E2E (`pnpm proof:local`) that runs citizen → admin → responder loop across all three apps.
+- **Staging seed/reset scripts exist** — `pnpm staging:seed`, `pnpm staging:reset`, `pnpm staging:smoke-proof`, and `pnpm staging:e2e-proof` target the real staging project (`bantayog-alert-staging`). These scripts verify project access, auth users, Cloud Run deployments, and seed data presence. Full end-to-end callable lifecycle proof through deployed HTTPS endpoints is pending client SDK + App Check setup.
 
 ## What Is Not Included (Intentionally Deferred)
 
@@ -37,7 +38,6 @@ The following are **not** part of the Phase 1 / Phase 2A MVP and are **not** cla
 - **Mutual aid** — No cross-municipality responder assignment or aid request flow.
 - **BigQuery/audit export** — No backend audit pipeline or compliance-grade export.
 - **Production observability** — No Cloud Monitoring dashboards, alerting, or SLO tracking.
-- **Real staging/prod deployment proof** — Script exists (`pnpm staging:smoke-proof`), but requires ADC setup before it can run against the real staging project.
 - **PostGIS runtime migration** — Geospatial queries use `locationGeohash`, not PostGIS.
 - **Background responder GPS** — Location updates require active app usage.
 - **Offline responder queue** — Status updates require active connection.
@@ -71,15 +71,16 @@ Before the system can be offered as a real LGU pilot, **all** of the following m
 | No SMS fallback                                     | Medium   | Document clearly that citizens must check the PWA; no SMS confirmation exists.                                         |
 | No guaranteed emergency response semantics          | High     | This is a coordination tool, not a guaranteed life-saving system. Document this limitation in all citizen-facing copy. |
 
-## Recommended Next Phase After Phase 2D
+## Recommended Next Phase After Phase 2E
 
-**Phase 2E: Staging End-to-End Proof**
+**Phase 2F: Deployed Callable Lifecycle Proof**
 
 Focus on:
 
-- Running `pnpm staging:seed` against the real staging project (`bantayog-alert-staging`).
-- Exercising the full incident lifecycle through deployed HTTPS callables (not emulator-local core functions).
-- Verifying all three apps load and authenticate against staging.
-- Proving that the deployed backend matches emulator behavior.
+- Exchanging custom tokens for client ID tokens against staging Auth.
+- Calling deployed HTTPS callables through the Firebase client SDK.
+- Exercising submit → verify → dispatch → accept → advance → resolve against staging.
+- Verifying citizen, admin, and responder apps load and authenticate against staging.
+- Comparing deployed callable behavior against emulator proof behavior.
 
 **Do not start P2 feature expansion** (SMS, CAP, hazard overlays, duplicate clustering, agency coordination, mutual aid, BigQuery) until the MVP loop is proven end-to-end in a staging environment.
