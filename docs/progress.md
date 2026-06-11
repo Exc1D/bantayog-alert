@@ -437,3 +437,9 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Remaining P0: responder permission-denied banner (3D-01), admin new-report signal (3C-01), citizen lookup dead-end (3B-01), SLA countdown from `acknowledgementDeadlineAt` (3C-02), resolved-dispatch closure (3C-03). P1 covers error/permission/confirmation/feedback states; P2 holds polish plus two explicit gate docs: anonymous-citizen push (needs users-rules approval, 3A-06) and Filipino/Bikol localization (blocked on pilot-LGU confirmation, 3X-LOC).
 - Exit criteria encoded in 3E-01/3E-02: `proof:mvp-loop` asserts citizen+responder notification events; `proof:local` covers the new UI states; audit re-run must show zero P0/P1.
 - Documentation-only slice: no code, rules, schema, dependency, or deploy changes.
+
+## 2026-06-11 - Phase 3A-01 sendFcmToCitizen Helper
+
+- Added `sendFcmToCitizen` to `functions/src/domains/ops/fcm-send.ts`: resolves the target via `report_private/{reportId}.reporterUid` → `users/{uid}.fcmToken` (single token field, registered citizens only), sends via `sendEachForMulticast` with one retry, clears an invalid stored token best-effort with `{ fcmToken: null }` (the client convention), and never throws — stable warning codes `fcm_no_token` / `fcm_network_error` / `fcm_one_token_invalid` match the responder helper. Anonymous reporters return `fcm_no_token` by design (gate doc 3A-06).
+- Deviation from the slice doc: `collapseKey` omitted from `FcmCitizenSendPayload` — the responder interface carries it but never wires it; not propagating a dead field (YAGNI).
+- Verification: red-first `npx vitest run src/domains/ops/__tests__/fcm-send-citizen.test.ts` failed 9/9 with `sendFcmToCitizen is not a function`, then passed; combined run with the existing `fcm-send.test.ts` passed 16/16; `tsc --noEmit` and focused ESLint clean; Prettier applied.
