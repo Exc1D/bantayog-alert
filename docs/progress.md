@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-06-11 - Phase 3C-01 Admin New-Report Signal
+
+- Added Admin Desktop ambient new-report awareness: existing scoped report listeners publish report snapshots, the authenticated shell keeps a session watermark, and `CommandHeader` now surfaces the unread count, audio mute control, and triage navigation for unseen new reports.
+- Title updates now use `(N) Bantayog Command` while unseen reports exist and restore to `Bantayog Command` when the operator visits `/triage`.
+- Kept the slice frontend-only: no backend, rules, indexes, schema/migration files, deploy, browser push, SLA countdown, or cross-window notification protocol.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/hooks/useNewReportSignal.test.tsx` failed on the missing hook module, then passed 1 test; `pnpm --dir apps/admin-desktop exec tsc --noEmit && pnpm --dir apps/admin-desktop exec eslint src` passed.
+
+## 2026-06-11 - Phase 3D-01 Responder Push Permission Banner
+
+- Added a persistent per-session responder warning for unresolved browser push permissions: denied permissions show browser-settings guidance, while default permissions after failed/skipped token registration expose an Enable notifications retry.
+- Wired the banner into `FcmSetup` without changing FCM token acquisition, service-worker setup, backend writes, Firestore/RTDB rules, indexes, schema files, or deploy config.
+- Verification: red-first `pnpm --dir apps/responder-app exec vitest run src/components/PushPermissionBanner.test.tsx` failed on the missing component, then passed 2 tests; `pnpm --dir apps/responder-app exec tsc --noEmit && pnpm --dir apps/responder-app exec eslint src` passed.
+
 ## 2026-06-10 - Phase 2F-03 Staging Callable Lifecycle Proof
 
 - Implemented `scripts/staging-callable-proof.ts` — composes the 2F-02 REST helpers with firebase-admin to drive the full MVP loop through the **deployed** staging callables: `submitCitizenReport` → `verifyReport` ×2 → `dispatchResponder` → `acceptDispatch` → `advanceDispatch` (acknowledged → en_route → on_scene → resolved). It mints citizen/admin/responder custom tokens → ID tokens, exchanges the App Check debug token once, sets the responder RTDB shift, asserts final report/dispatch state + PII isolation (`reports` has no `reporterUid`; `report_private.reporterUid` matches; `report_lookup` rejects citizen-unsafe fields) via the Admin SDK, and cleans up every created doc in a `finally` block.
@@ -443,3 +456,11 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added `sendFcmToCitizen` to `functions/src/domains/ops/fcm-send.ts`: resolves the target via `report_private/{reportId}.reporterUid` → `users/{uid}.fcmToken` (single token field, registered citizens only), sends via `sendEachForMulticast` with one retry, clears an invalid stored token best-effort with `{ fcmToken: null }` (the client convention), and never throws — stable warning codes `fcm_no_token` / `fcm_network_error` / `fcm_one_token_invalid` match the responder helper. Anonymous reporters return `fcm_no_token` by design (gate doc 3A-06).
 - Deviation from the slice doc: `collapseKey` omitted from `FcmCitizenSendPayload` — the responder interface carries it but never wires it; not propagating a dead field (YAGNI).
 - Verification: red-first `npx vitest run src/domains/ops/__tests__/fcm-send-citizen.test.ts` failed 9/9 with `sendFcmToCitizen is not a function`, then passed; combined run with the existing `fcm-send.test.ts` passed 16/16; `tsc --noEmit` and focused ESLint clean; Prettier applied.
+
+## 2026-06-11 - Phase 3A-02 Citizen Service Worker Push Handlers
+
+- Added raw `push` and `notificationclick` handlers to the existing citizen root service worker (`public/sw.js`) instead of adding Firebase SDK code or a second `firebase-messaging-sw.js`. Push payload parsing is defensive; notification data keeps `reportId`; clicks focus an existing same-origin client or open `/` with `reportId` in the query string when present.
+- Updated `useFcmToken` so both token rehydration and explicit permission request wait for `navigator.serviceWorker.ready` and pass the existing registration into Firebase `getToken`, avoiding Firebase's missing-default-worker path.
+- Extended the existing hook test under `src/hooks/__tests__/useFcmToken.test.tsx` to assert `getToken` receives `serviceWorkerRegistration`.
+- Slice-doc mismatch: `docs/agent-tasks/3a-02-citizen-sw-push-handlers.md` lists `src/hooks/useFcmToken.test.ts`; the real focused test path is `src/hooks/__tests__/useFcmToken.test.tsx`.
+- Verification: red-first focused test failed on the missing `serviceWorkerRegistration` option, then passed (4/4). `pnpm --dir apps/citizen-pwa exec tsc --noEmit` and `pnpm --dir apps/citizen-pwa exec eslint src` passed.
