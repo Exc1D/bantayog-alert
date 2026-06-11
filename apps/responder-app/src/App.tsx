@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { AppRouter } from './routes'
 import { AuthProvider, useAuth } from '@bantayog/shared-ui'
@@ -8,24 +8,70 @@ import { useOwnDispatches } from './hooks/useOwnDispatches'
 import { useResponderTelemetry } from './hooks/useResponderTelemetry'
 import { VersionGate } from './components/VersionGate'
 import { PrivacyNoticeModal } from './components/PrivacyNoticeModal'
+import {
+  PushPermissionBanner,
+  type PushPermissionBannerPermission,
+} from './components/PushPermissionBanner'
+
+function getPushPermissionWarning(): PushPermissionBannerPermission | null {
+  if (typeof globalThis.Notification === 'undefined') return null
+  const permission = globalThis.Notification.permission
+  if (permission === 'denied' || permission === 'default') return permission
+  return null
+}
+
+function getInitialPushPermissionWarning(): PushPermissionBannerPermission | null {
+  const warning = getPushPermissionWarning()
+  return warning === 'denied' ? warning : null
+}
 
 export function FcmSetup() {
   const { user } = useAuth()
   const { register } = useRegisterFcmToken({
     responderDocPath: user ? `responders/${user.uid}` : '',
   })
+  const [permissionWarning, setPermissionWarning] = useState<PushPermissionBannerPermission | null>(
+    getInitialPushPermissionWarning,
+  )
+  const [dismissedPermission, setDismissedPermission] =
+    useState<PushPermissionBannerPermission | null>(null)
+  const [isRetryingPermission, setIsRetryingPermission] = useState(false)
+
+  const registerAndTrackPermission = useCallback(async () => {
+    const result = await register()
+    if (result.token) {
+      setPermissionWarning(null)
+      setDismissedPermission(null)
+      return result
+    }
+
+    const warning = getPushPermissionWarning()
+    if (warning) setPermissionWarning(warning)
+    return result
+  }, [register])
 
   useEffect(() => {
     if (!user) return
 
+    const initialWarning = getPushPermissionWarning()
+
     if (Capacitor.isNativePlatform()) {
-      register().catch((err: unknown) => {
-        console.warn('Native push registration failed:', err)
-      })
+      void Promise.resolve()
+        .then(() => registerAndTrackPermission())
+        .catch((err: unknown) => {
+          console.warn('Native push registration failed:', err)
+        })
       return
     }
 
-    if (!('serviceWorker' in navigator)) return
+    if (!('serviceWorker' in navigator)) {
+      if (initialWarning === 'default') {
+        queueMicrotask(() => {
+          setPermissionWarning(initialWarning)
+        })
+      }
+      return
+    }
     navigator.serviceWorker
       .register('/firebase-messaging-sw.js')
       .then((registration) => {
@@ -49,6 +95,7 @@ export function FcmSetup() {
         for (const field of requiredFields) {
           if (!config[field]) {
             console.warn(`[FcmSetup] Missing Firebase config field: ${field}`)
+            if (getPushPermissionWarning() === 'default') setPermissionWarning('default')
             return
           }
         }
@@ -98,14 +145,36 @@ export function FcmSetup() {
           })
         }
 
-        return configSentPromise.then(() => register())
+        return configSentPromise.then(() => registerAndTrackPermission())
       })
       .catch((err: unknown) => {
         console.warn('SW registration failed:', err)
       })
-  }, [user, register])
+  }, [user, registerAndTrackPermission])
 
-  return null
+  const visiblePermissionWarning =
+    permissionWarning === dismissedPermission ? null : permissionWarning
+
+  if (!visiblePermissionWarning) return null
+
+  return (
+    <PushPermissionBanner
+      permission={visiblePermissionWarning}
+      isRetrying={isRetryingPermission}
+      onDismiss={() => {
+        setDismissedPermission(visiblePermissionWarning)
+      }}
+      onRetry={async () => {
+        setDismissedPermission(null)
+        setIsRetryingPermission(true)
+        try {
+          await registerAndTrackPermission()
+        } finally {
+          setIsRetryingPermission(false)
+        }
+      }}
+    />
+  )
 }
 
 function TelemetryProvider() {
