@@ -429,3 +429,17 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Safety guards mirror the staging script discipline: refuses when `FIRESTORE_EMULATOR_HOST` is set, refuses production project `bantayog-alert`.
 - 2F-03 will compose these helpers with firebase-admin token minting; live runs stay blocked on the 2F-01 console work (App Check debug token + staging web app config).
 - Verification: red-first run failed with `Cannot find module './staging-callable-client'`, then `pnpm exec vitest run scripts/staging-callable-client.test.ts` passed 11 tests; root `pnpm test` passed 210/210 (215/215 after 2F-03 added `staging-callable-proof.test.ts`); `pnpm typecheck` passed (16 tasks); Prettier applied to both new files.
+
+## 2026-06-11 - Phase 3 UX-Completeness Slice Inventory
+
+- Ran the structured UX-completeness audit of the core loop across all three apps (`evaluate-ux-completeness` checklist) and wrote the resulting gap inventory as 26 slice files under `docs/agent-tasks/` using the `3<track>-<seq>-<slug>.md` convention: 3A notifications backbone (7), 3B citizen-pwa (8), 3C admin-desktop (6), 3D responder-app (2), 3E proof/exit (2), 3X gates (1).
+- Headline P0 track 3A: citizen push does not exist — `sendFcmToCitizen` helper, citizen SW push/click handlers (today `getToken` runs without `serviceWorkerRegistration` and `public/sw.js` has no push handlers), then in-callable sends on dispatch ("Help is on the way"), resolution, and rejection, each with `notification_attempted` report_events evidence. Architecture decision recorded in the slices: in-callable sends mirroring `dispatchResponder`, no new Firestore trigger, registered-citizen tokens only.
+- Remaining P0: responder permission-denied banner (3D-01), admin new-report signal (3C-01), citizen lookup dead-end (3B-01), SLA countdown from `acknowledgementDeadlineAt` (3C-02), resolved-dispatch closure (3C-03). P1 covers error/permission/confirmation/feedback states; P2 holds polish plus two explicit gate docs: anonymous-citizen push (needs users-rules approval, 3A-06) and Filipino/Bikol localization (blocked on pilot-LGU confirmation, 3X-LOC).
+- Exit criteria encoded in 3E-01/3E-02: `proof:mvp-loop` asserts citizen+responder notification events; `proof:local` covers the new UI states; audit re-run must show zero P0/P1.
+- Documentation-only slice: no code, rules, schema, dependency, or deploy changes.
+
+## 2026-06-11 - Phase 3A-01 sendFcmToCitizen Helper
+
+- Added `sendFcmToCitizen` to `functions/src/domains/ops/fcm-send.ts`: resolves the target via `report_private/{reportId}.reporterUid` → `users/{uid}.fcmToken` (single token field, registered citizens only), sends via `sendEachForMulticast` with one retry, clears an invalid stored token best-effort with `{ fcmToken: null }` (the client convention), and never throws — stable warning codes `fcm_no_token` / `fcm_network_error` / `fcm_one_token_invalid` match the responder helper. Anonymous reporters return `fcm_no_token` by design (gate doc 3A-06).
+- Deviation from the slice doc: `collapseKey` omitted from `FcmCitizenSendPayload` — the responder interface carries it but never wires it; not propagating a dead field (YAGNI).
+- Verification: red-first `npx vitest run src/domains/ops/__tests__/fcm-send-citizen.test.ts` failed 9/9 with `sendFcmToCitizen is not a function`, then passed; combined run with the existing `fcm-send.test.ts` passed 16/16; `tsc --noEmit` and focused ESLint clean; Prettier applied.
