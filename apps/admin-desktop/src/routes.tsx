@@ -13,6 +13,7 @@ import { WindowSyncProvider } from './providers/WindowSyncProvider'
 import { ErrorBoundary } from './providers/ErrorBoundary'
 import { useOnboarding } from './hooks/useOnboarding'
 import { OnboardingTour } from './components/OnboardingTour'
+import { NewReportSignalProvider } from './hooks/useNewReportSignal'
 
 function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(
@@ -55,14 +56,16 @@ function AuthLayout() {
   return (
     <WindowSyncProvider>
       <ErrorBoundary>
-        <Outlet />
-        <OnboardingTour
-          state={onboarding}
-          onNext={onboarding.nextStep}
-          onPrev={onboarding.prevStep}
-          onSkip={onboarding.skipTour}
-          onGoToStep={onboarding.goToStep}
-        />
+        <NewReportSignalProvider>
+          <Outlet />
+          <OnboardingTour
+            state={onboarding}
+            onNext={onboarding.nextStep}
+            onPrev={onboarding.prevStep}
+            onSkip={onboarding.skipTour}
+            onGoToStep={onboarding.goToStep}
+          />
+        </NewReportSignalProvider>
       </ErrorBoundary>
     </WindowSyncProvider>
   )
