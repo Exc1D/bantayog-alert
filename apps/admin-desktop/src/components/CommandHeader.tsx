@@ -1,6 +1,7 @@
 import { AlertTriangle, Bell, Keyboard, LogOut, Volume2, VolumeX } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Tooltip } from './Tooltip'
+import { useNewReportSignal } from '../hooks/useNewReportSignal'
 
 type WindowRole = 'dashboard' | 'triage' | 'map' | 'feed' | 'dispatches'
 
@@ -26,7 +27,7 @@ const NAV_ITEMS = [
 
 export function CommandHeader({
   title,
-  notificationCount = 0,
+  notificationCount,
   audioEnabled,
   onToggleAudio,
   onDeclareAlert,
@@ -35,6 +36,20 @@ export function CommandHeader({
   onSignOut,
   windowRole,
 }: Props) {
+  const navigate = useNavigate()
+  const signal = useNewReportSignal()
+  const effectiveNotificationCount = notificationCount ?? signal.notificationCount
+  const usesContextAudio = audioEnabled == null && onToggleAudio == null
+  const effectiveAudioEnabled = usesContextAudio ? signal.audioEnabled : audioEnabled
+  const handleToggleAudio = usesContextAudio ? signal.toggleAudio : onToggleAudio
+  const handleShowNotifications =
+    onShowNotifications ??
+    (effectiveNotificationCount > 0
+      ? () => {
+          void navigate('/triage')
+        }
+      : undefined)
+
   return (
     <header className="flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
       <span className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</span>
@@ -74,29 +89,27 @@ export function CommandHeader({
             </button>
           </Tooltip>
         )}
-        {onToggleAudio && (
+        <button
+          onClick={handleToggleAudio}
+          aria-label={effectiveAudioEnabled ? 'Mute audio alerts' : 'Enable audio alerts'}
+          className="rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+        >
+          {effectiveAudioEnabled ? (
+            <Volume2 className="h-4 w-4 text-[var(--color-success)]" />
+          ) : (
+            <VolumeX className="h-4 w-4 text-[var(--color-text-muted)]" />
+          )}
+        </button>
+        {handleShowNotifications && (
           <button
-            onClick={onToggleAudio}
-            aria-label={audioEnabled ? 'Mute audio alerts' : 'Enable audio alerts'}
-            className="rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-          >
-            {audioEnabled ? (
-              <Volume2 className="h-4 w-4 text-[var(--color-success)]" />
-            ) : (
-              <VolumeX className="h-4 w-4 text-[var(--color-text-muted)]" />
-            )}
-          </button>
-        )}
-        {onShowNotifications && (
-          <button
-            onClick={onShowNotifications}
+            onClick={handleShowNotifications}
             className="relative rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-            aria-label={`${String(notificationCount)} notifications`}
+            aria-label={`${String(effectiveNotificationCount)} notifications`}
           >
             <Bell className="h-5 w-5 text-[var(--color-text-secondary)]" />
-            {notificationCount > 0 && (
+            {effectiveNotificationCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-warning)] text-[10px] text-white">
-                {notificationCount}
+                {effectiveNotificationCount}
               </span>
             )}
           </button>

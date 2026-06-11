@@ -37,8 +37,11 @@ import { setDoc } from 'firebase/firestore'
 import { httpsCallable } from '../../services/firebase.js'
 
 describe('useFcmToken', () => {
+  let serviceWorkerRegistration: ServiceWorkerRegistration
+
   beforeEach(() => {
     vi.clearAllMocks()
+    serviceWorkerRegistration = {} as ServiceWorkerRegistration
 
     // Mock Notification API
     Object.defineProperty(globalThis, 'Notification', {
@@ -47,6 +50,14 @@ describe('useFcmToken', () => {
         requestPermission: vi.fn(),
       },
       writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(globalThis.navigator, 'serviceWorker', {
+      value: {
+        ready: Promise.resolve(serviceWorkerRegistration),
+        controller: serviceWorkerRegistration,
+        getRegistrations: vi.fn(() => Promise.resolve([])),
+      },
       configurable: true,
     })
   })
@@ -83,7 +94,10 @@ describe('useFcmToken', () => {
 
     expect(success).toBe(true)
     expect(Notification.requestPermission).toHaveBeenCalled()
-    expect(getToken).toHaveBeenCalled()
+    expect(getToken).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ serviceWorkerRegistration }),
+    )
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), 'subscribeToAlerts')
     const subscribeCallable = vi.mocked(httpsCallable).mock.results[0]?.value
     expect(subscribeCallable).toHaveBeenCalledWith({ token: 'test-fcm-token' })

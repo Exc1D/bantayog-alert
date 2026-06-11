@@ -8,6 +8,7 @@ import {
   type Query,
 } from 'firebase/firestore'
 import { useAuth } from '@bantayog/shared-ui'
+import { publishReportSnapshot } from './useNewReportSignal'
 
 interface Props {
   windowType: 'dashboard' | 'map'
@@ -189,9 +190,12 @@ export function useFirestoreListeners({ windowType, db }: Props) {
       onSnapshot(
         reportsRef,
         (snapshot) => {
-          setReports(
-            snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ReportDoc, 'id'>) })),
-          )
+          const nextReports = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<ReportDoc, 'id'>),
+          }))
+          setReports(nextReports)
+          publishReportSnapshot(nextReports)
           setLoading(false)
           setError(null)
           resetRetryBudget()

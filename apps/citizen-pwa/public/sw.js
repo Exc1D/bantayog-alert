@@ -284,3 +284,88 @@ async function updateDraftSyncState(db, draftId, syncState) {
     putReq.onerror = () => reject(putReq.error)
   })
 }
+
+function asObject(value) {
+  return value && typeof value === 'object' ? value : {}
+}
+
+function nonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined
+}
+
+function parsePushPayload(event) {
+  if (!event.data) return {}
+  try {
+    const parsed = event.data.json()
+    return asObject(parsed)
+  } catch (err) {
+    console.warn('[SW] push payload parse failed:', err)
+    return {}
+  }
+}
+
+function notificationTargetUrl(data) {
+  const rawTarget = nonEmptyString(data.url) ?? nonEmptyString(data.link)
+  if (rawTarget) {
+    try {
+      const target = new URL(rawTarget, self.location.origin)
+      if (target.origin === self.location.origin) return target.href
+    } catch (err) {
+      console.warn('[SW] notification target ignored:', err)
+    }
+  }
+
+  const reportId = nonEmptyString(data.reportId)
+  const target = new URL('/', self.location.origin)
+  if (reportId) target.searchParams.set('reportId', reportId)
+  return target.href
+}
+
+function buildNotification(payload) {
+  const notification = asObject(payload.notification)
+  const data = asObject(payload.data)
+  const title = nonEmptyString(notification.title) ?? nonEmptyString(data.title) ?? 'Bantayog Alert'
+  const body =
+    nonEmptyString(notification.body) ?? nonEmptyString(data.body) ?? 'Open Bantayog Alert.'
+  const reportId = nonEmptyString(data.reportId)
+
+  return {
+    title,
+    options: {
+      body,
+      data: { ...data, url: notificationTargetUrl(data) },
+      icon: nonEmptyString(notification.icon) ?? '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: reportId ? `report-${reportId}` : 'bantayog-alert',
+    },
+  }
+}
+
+self.addEventListener('push', (event) => {
+  const payload = parsePushPayload(event)
+  const { title, options } = buildNotification(payload)
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const data = asObject(event.notification.data)
+  const targetUrl = notificationTargetUrl(data)
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const existingClient = clients.find(
+        (client) => new URL(client.url).origin === self.location.origin,
+      )
+      if (!existingClient) {
+        return self.clients.openWindow(targetUrl)
+      }
+
+      if (typeof existingClient.navigate === 'function' && existingClient.url !== targetUrl) {
+        const navigatedClient = await existingClient.navigate(targetUrl)
+        if (navigatedClient) return navigatedClient.focus()
+      }
+      return existingClient.focus()
+    }),
+  )
+})

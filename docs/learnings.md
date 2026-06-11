@@ -88,11 +88,13 @@
 - Admin dashboard widgets must end in an operator action. Report lifecycle counts should expose the next valid backend transition or deep-link to the Map/Feed surface that owns it.
 - Dashboard report commands should stay narrow: advance `new` to review, verify `awaiting_verify`, deep-link verified reports to Map dispatch, and leave rejection or scrubbed publication to Feed.
 - Phase 1 Admin triage belongs on its own `/triage` workbench. Dashboard can summarize, but row-level review needs report summaries, command callables, and Map routing for verified dispatch instead of hiding the flow inside metrics cards.
+- Admin new-report awareness should ride the existing scoped report listener snapshots. Do not add a shell-level Firestore subscription just to drive badges, title updates, or audio.
 - Do not subscribe Admin Map to RTDB `responder_locations` parent reads. Rules deny that path; use scoped Firestore responder roster data unless a scoped child GPS listener is explicitly implemented.
 - Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
 - Mode/state precedence: actionable states such as surge win over data-quality states such as degraded.
 - Lease monitors with `monitorLeaseAt` plus expiry, and add circuit breakers for oversized query results.
 - The deployed `dispatchResponder` requires the responder to be on shift in RTDB (`/responder_index/{municipalityId}/{uid}.isOnShift === true`); the seeded `responders/{uid}.isActive` alone is not enough. `staging:seed` does not seed shift state, so any staging callable proof must set the shift in RTDB before dispatching, then clear it on cleanup. This is the main drift between the deployed loop and the emulator `proof:mvp-loop`.
+- Responder push permission failures must be visible in-app. For web, treat `Notification.permission === 'denied'` as browser-settings-only recovery, and show a retry action only for `default` after token registration failed or was skipped.
 
 ## Testing
 
@@ -129,6 +131,9 @@
 - Schema union changes, such as `dispatchStatusSchema`, require downstream rebuilds.
 - For oversized modal refactors, extract pure policy first (defaults, validation, payload builders) and prove it with focused tests before moving JSX or caller workflows.
 - When extracting nested alertdialogs, preserve role/name, disabled/loading states, and backdrop behavior; shared modal reuse is only safe when those contracts already match.
+- React effect lint treats direct registration helpers that can set state as effect-body state writes. Schedule app-shell registration work through async callbacks, and derive initial permission warnings outside the effect body.
+- Citizen FCM token tests live at `apps/citizen-pwa/src/hooks/__tests__/useFcmToken.test.tsx`; older slice text may mention `src/hooks/useFcmToken.test.ts`.
+- Citizen MapTab has no URL-driven report selection contract yet. For notification tap-through, preserve `reportId` in the URL/query or payload, but do not assume MapTab will focus it until a later UI slice consumes that state.
 
 ## UX / A11y
 
