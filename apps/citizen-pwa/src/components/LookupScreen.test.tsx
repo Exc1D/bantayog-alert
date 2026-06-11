@@ -5,8 +5,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockNavigate = vi.fn()
-const { mockLoadReports } = vi.hoisted(() => ({
+const { mockLoadReports, mockHttpsCallable } = vi.hoisted(() => ({
   mockLoadReports: vi.fn(),
+  mockHttpsCallable: vi.fn(),
 }))
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -26,18 +27,12 @@ vi.mock('../services/firebase.js', () => ({
 
 let callableSecret = ''
 vi.mock('firebase/functions', () => ({
-  httpsCallable: vi.fn().mockImplementation(() => async (_data: unknown) => {
-    callableSecret = (_data as { secret?: string }).secret ?? ''
-    if (!callableSecret.trim()) {
-      return Promise.resolve({
-        data: {
-          publicRef: 'a1b2c3d4',
-          status: 'new',
-          lastStatusAt: Date.now(),
-          municipalityLabel: 'Daet',
-        },
-      })
-    }
+  httpsCallable: mockHttpsCallable,
+}))
+
+mockHttpsCallable.mockImplementation(() => async (_data: unknown) => {
+  callableSecret = (_data as { secret?: string }).secret ?? ''
+  if (!callableSecret.trim()) {
     return Promise.resolve({
       data: {
         publicRef: 'a1b2c3d4',
@@ -46,11 +41,18 @@ vi.mock('firebase/functions', () => ({
         municipalityLabel: 'Daet',
       },
     })
-  }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
-}))
+  }
+  return Promise.resolve({
+    data: {
+      publicRef: 'a1b2c3d4',
+      status: 'new',
+      lastStatusAt: Date.now(),
+      municipalityLabel: 'Daet',
+    },
+  })
+})
 
 import { LookupScreen } from './LookupScreen'
-import { httpsCallable } from 'firebase/functions'
 
 function renderScreen() {
   return render(
@@ -63,7 +65,7 @@ function renderScreen() {
 beforeEach(() => {
   mockNavigate.mockReset()
   mockLoadReports.mockReset().mockResolvedValue([])
-  vi.mocked(httpsCallable).mockClear()
+  mockHttpsCallable.mockClear()
 })
 
 describe('LookupScreen', () => {
@@ -112,14 +114,11 @@ describe('LookupScreen', () => {
 
   it('shows friendly error when lookup returns not-found', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    vi.mocked(httpsCallable).mockImplementationOnce(
-      () =>
-        (() => {
-          const err = new Error('not-found')
-          ;(err as unknown as { code: string }).code = 'functions/not-found'
-          return Promise.reject(err)
-        }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
-    )
+    mockHttpsCallable.mockImplementationOnce(() => () => {
+      const err = new Error('not-found')
+      ;(err as unknown as { code: string }).code = 'functions/not-found'
+      return Promise.reject(err)
+    })
     try {
       const user = userEvent.setup()
       renderScreen()
@@ -159,6 +158,6 @@ describe('LookupScreen', () => {
         },
       })
     })
-    expect(vi.mocked(httpsCallable)).not.toHaveBeenCalled()
+    expect(mockHttpsCallable).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Crosshair } from 'lucide-react'
 import { PeekSheet } from './PeekSheet.js'
 import { DetailSheet } from './DetailSheet.js'
@@ -10,6 +10,7 @@ import { MyReportLayer } from './MyReportLayer.js'
 import { WITHDRAWABLE_STATUSES } from '../ProfileTab.js'
 import { useMapTab } from './useMapTab.js'
 import type { PublicIncident, MyReport } from './types.js'
+import { LOOKUP_SUCCESS_MESSAGE } from '../LookupScreen.js'
 
 const INCIDENT_LABELS: Record<string, string> = {
   flood: 'Flood',
@@ -24,7 +25,6 @@ const INCIDENT_LABELS: Record<string, string> = {
   security: 'Security',
   other: 'Others',
 }
-const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
 
 interface LookupNavigationState {
   selectedReportPublicRef?: unknown
@@ -64,20 +64,26 @@ function buildMyReportPin(report: MyReport): { id: string; type: 'myReport'; lab
 
 export function MapTab() {
   const mapElRef = useRef<HTMLDivElement | null>(null)
+  const [searchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
+
   const lookupState =
     location.state && typeof location.state === 'object'
       ? (location.state as LookupNavigationState)
       : null
-  const lookupReportRef =
+  const lookupReportRefFromState =
     typeof lookupState?.selectedReportPublicRef === 'string'
       ? lookupState.selectedReportPublicRef
       : null
+  const lookupReportRefFromUrl = searchParams.get('reportId')
+  const lookupReportRef = lookupReportRefFromState ?? lookupReportRefFromUrl ?? null
+
   const lookupMessage =
     typeof lookupState?.lookupSuccessMessage === 'string'
       ? lookupState.lookupSuccessMessage
       : LOOKUP_SUCCESS_MESSAGE
+
   const {
     mapInstance,
     isOffline,
@@ -103,11 +109,16 @@ export function MapTab() {
     setSelectedPin,
     setSheetPhase,
   } = useMapTab(mapElRef)
+
   const lookupMatchedReport = lookupReportRef
     ? (myReports.find((entry) => entry.publicRef === lookupReportRef) ?? null)
     : null
-  const lookupSuccessMessage = lookupMatchedReport ? lookupMessage : null
 
+  // Show banner as soon as we know a report was looked up or opened from a
+  // notification tap, even if it is not yet in the local cache.
+  const lookupSuccessMessage = lookupReportRef ? lookupMessage : null
+
+  // Auto-select and expand the looked-up report when it appears in myReports.
   useEffect(() => {
     if (!lookupMatchedReport) return undefined
     const selectTimeout = window.setTimeout(() => {
@@ -115,13 +126,29 @@ export function MapTab() {
       setSheetPhase('expanded')
     }, 0)
     const clearStateTimeout = window.setTimeout(() => {
-      void navigate('/', { replace: true, state: null })
+      // Clear router state when we arrived via LookupScreen navigation.
+      if (lookupReportRefFromState) {
+        void navigate('/', { replace: true, state: null })
+      }
+      // Clear URL param when we arrived via SW notificationclick.
+      if (lookupReportRefFromUrl) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('reportId')
+        window.history.replaceState(null, '', url.toString())
+      }
     }, 3000)
     return () => {
       window.clearTimeout(selectTimeout)
       window.clearTimeout(clearStateTimeout)
     }
-  }, [lookupMatchedReport, navigate, setSelectedPin, setSheetPhase])
+  }, [
+    lookupMatchedReport,
+    lookupReportRefFromState,
+    lookupReportRefFromUrl,
+    navigate,
+    setSelectedPin,
+    setSheetPhase,
+  ])
 
   const handleIncidentTap = (incident: PublicIncident) => {
     setSelectedPin(buildIncidentPin(incident))

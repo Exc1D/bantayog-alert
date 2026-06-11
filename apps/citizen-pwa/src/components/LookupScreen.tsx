@@ -17,7 +17,7 @@ interface LookupResult {
   municipalityLabel: string
 }
 
-const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
+export const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
 const FRIENDLY_ERROR =
   "We couldn't find a report with that secret code. It may have expired (reports are tracked for 90 days)."
 
