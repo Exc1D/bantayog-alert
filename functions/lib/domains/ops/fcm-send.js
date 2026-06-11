@@ -23,11 +23,18 @@ export async function sendFcmToResponder(payload) {
     const { uid, title, body, data } = payload;
     const warnings = [];
     // Step 1: Read the responder's FCM tokens.
-    const responderSnap = await adminDb.collection('responders').doc(uid).get();
-    if (!responderSnap.exists) {
-        return { warnings: ['fcm_no_token'] };
+    let tokens;
+    try {
+        const responderSnap = await adminDb.collection('responders').doc(uid).get();
+        if (!responderSnap.exists) {
+            return { warnings: ['fcm_no_token'] };
+        }
+        tokens = responderSnap.data()?.fcmTokens;
     }
-    const tokens = responderSnap.data()?.fcmTokens;
+    catch (err) {
+        console.error('FCM responder token lookup failed:', err);
+        return { warnings: ['fcm_network_error'] };
+    }
     if (!tokens || tokens.length === 0) {
         return { warnings: ['fcm_no_token'] };
     }
@@ -124,14 +131,28 @@ export async function sendFcmToResponder(payload) {
 export async function sendFcmToCitizen(payload) {
     const { reportId, title, body, data } = payload;
     const warnings = [];
-    const privateSnap = await adminDb.collection('report_private').doc(reportId).get();
-    const reporterUid = privateSnap.exists ? privateSnap.data()?.reporterUid : undefined;
+    let reporterUid;
+    try {
+        const privateSnap = await adminDb.collection('report_private').doc(reportId).get();
+        reporterUid = privateSnap.exists ? privateSnap.data()?.reporterUid : undefined;
+    }
+    catch (err) {
+        console.error('FCM citizen reporterUid lookup failed:', err);
+        return { warnings: ['fcm_network_error'] };
+    }
     if (typeof reporterUid !== 'string' || reporterUid.length === 0) {
         return { warnings: ['fcm_no_token'] };
     }
+    let token;
     const userRef = adminDb.collection('users').doc(reporterUid);
-    const userSnap = await userRef.get();
-    const token = userSnap.exists ? userSnap.data()?.fcmToken : undefined;
+    try {
+        const userSnap = await userRef.get();
+        token = userSnap.exists ? userSnap.data()?.fcmToken : undefined;
+    }
+    catch (err) {
+        console.error('FCM citizen token lookup failed:', err);
+        return { warnings: ['fcm_network_error'] };
+    }
     if (typeof token !== 'string' || token.length === 0) {
         return { warnings: ['fcm_no_token'] };
     }
@@ -171,6 +192,10 @@ export async function sendFcmToCitizen(payload) {
                 });
             }
             warnings.push('fcm_one_token_invalid');
+        }
+        else {
+            // Any other per-message failure (e.g. server unavailable) is a warning.
+            warnings.push('fcm_send_failed');
         }
     }
     return { warnings };

@@ -331,6 +331,9 @@ describe('proof-mvp-loop', () => {
         expect(citizenNotificationEvents).toContainEqual(
           expect.objectContaining({ dispatchId, fcmResult: 'no_token' }),
         )
+        expect(citizenNotificationEvents).toContainEqual(
+          expect.objectContaining({ reportId, fcmResult: 'no_token' }),
+        )
 
         // ── Citizen-safe tracking assertion ─────────────────────────────
         // report_lookup must only map publicRef → reportId without

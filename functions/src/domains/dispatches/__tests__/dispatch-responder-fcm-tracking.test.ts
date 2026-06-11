@@ -124,7 +124,7 @@ describe('dispatchResponder FCM tracking', () => {
       reportId: 'report-1',
       title: 'Help is on the way',
       body: 'A response team from bfp has been assigned to your report.',
-      data: expect.objectContaining({ reportId: 'report-1', dispatchId: result.dispatchId }),
+      data: expect.objectContaining({ reportId: 'report-1' }),
     })
 
     // Verify notification_attempted event was written to dispatch_events
@@ -153,6 +153,8 @@ describe('dispatchResponder FCM tracking', () => {
       fcmWarnings: [],
       schemaVersion: 1,
     })
+    // Citizen event must be written to report_events, not dispatch_events
+    expect(mockDbCollection).toHaveBeenCalledWith('report_events')
 
     // Verify dispatch doc updated with fcmResult
     expect(mockUpdate).toHaveBeenCalledWith(

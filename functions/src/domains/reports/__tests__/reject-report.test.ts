@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
@@ -13,7 +12,7 @@ import {
   seedActiveAccount,
   staffClaims,
 } from '../../../__tests__/helpers/seed-factories.js'
-import { Timestamp } from 'firebase-admin/firestore'
+import { type Firestore, Timestamp } from 'firebase-admin/firestore'
 
 let testEnv: RulesTestEnvironment | undefined
 let available = false
@@ -48,7 +47,7 @@ describe('rejectReportCore', () => {
     if (!available || !env) return skip('Firestore emulator unavailable')
 
     await env.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as unknown as Firestore
       const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
         municipalityId: 'daet',
       })
@@ -71,7 +70,8 @@ describe('rejectReportCore', () => {
       })
 
       expect(result.status).toBe('cancelled_false_report')
-      const report = (await db.collection('reports').doc(reportId).get()).data()
+      const reportSnap = await db.collection('reports').doc(reportId).get()
+      const report = reportSnap.data()!
       expect(report.status).toBe('cancelled_false_report')
 
       const incidents = await db
@@ -79,7 +79,7 @@ describe('rejectReportCore', () => {
         .where('reportId', '==', reportId)
         .get()
       expect(incidents.docs).toHaveLength(1)
-      expect(incidents.docs[0].data()).toMatchObject({
+      expect(incidents.docs[0]!.data()).toMatchObject({
         reportId,
         reason: 'obviously_false',
         notes: 'duplicate from known troll',
@@ -119,7 +119,7 @@ describe('rejectReportCore', () => {
     if (!available || !env) return skip('Firestore emulator unavailable')
 
     await env.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as unknown as Firestore
       const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' })
       await seedActiveAccount(env, {
         uid: 'admin-1',
@@ -146,7 +146,7 @@ describe('rejectReportCore', () => {
     if (!available || !env) return skip('Firestore emulator unavailable')
 
     await env.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as unknown as Firestore
       const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' })
       await seedActiveAccount(env, {
         uid: 'admin-1',
@@ -173,7 +173,7 @@ describe('rejectReportCore', () => {
     if (!available || !env) return skip('Firestore emulator unavailable')
 
     await env.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as unknown as Firestore
       const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
         municipalityId: 'mercedes',
       })
@@ -202,7 +202,7 @@ describe('rejectReportCore', () => {
     if (!available || !env) return skip('Firestore emulator unavailable')
 
     await env.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
+      const db = ctx.firestore() as unknown as Firestore
       const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
         municipalityId: 'mercedes',
       })
@@ -223,7 +223,8 @@ describe('rejectReportCore', () => {
       })
 
       expect(result.status).toBe('cancelled_false_report')
-      const report = (await db.collection('reports').doc(reportId).get()).data()
+      const reportSnap = await db.collection('reports').doc(reportId).get()
+      const report = reportSnap.data()!
       expect(report.status).toBe('cancelled_false_report')
     })
   })

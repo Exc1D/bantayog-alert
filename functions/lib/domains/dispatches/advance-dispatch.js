@@ -151,11 +151,15 @@ export const advanceDispatchCore = async (db, req) => {
             body: buildResolvedCitizenBody(resolutionSummary),
             data: {
                 reportId: transition.reportId,
-                dispatchId: transition.dispatchId,
-                correlationId: transition.correlationId,
             },
         });
-        await writeCitizenFcmTracking(db, transition.dispatchId, transition.reportId, mapFcmResult(fcm), fcm.warnings, now.toMillis(), transition.correlationId);
+        // Tracking writes are best-effort; must not fail the already-committed transaction.
+        try {
+            await writeCitizenFcmTracking(db, transition.dispatchId, transition.reportId, mapFcmResult(fcm), fcm.warnings, now.toMillis(), transition.correlationId);
+        }
+        catch (err) {
+            console.error('advanceDispatch notification tracking failed:', err);
+        }
         return { status: transition.status };
     });
     return result;

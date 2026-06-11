@@ -29,7 +29,7 @@ afterAll(async () => {
     await testEnv?.cleanup();
 });
 describe('rejectReportCore', () => {
-    it('transitions awaiting_verify → cancelled_false_report and writes moderation incident', async ({ skip }) => {
+    it('transitions awaiting_verify → cancelled_false_report and writes moderation incident', async ({ skip, }) => {
         const env = testEnv;
         if (!available || !env)
             return skip('Firestore emulator unavailable');
@@ -55,7 +55,8 @@ describe('rejectReportCore', () => {
                 now: Timestamp.now(),
             });
             expect(result.status).toBe('cancelled_false_report');
-            const report = (await db.collection('reports').doc(reportId).get()).data();
+            const reportSnap = await db.collection('reports').doc(reportId).get();
+            const report = reportSnap.data();
             expect(report.status).toBe('cancelled_false_report');
             const incidents = await db
                 .collection('moderation_incidents')
@@ -185,7 +186,8 @@ describe('rejectReportCore', () => {
                 now: Timestamp.now(),
             });
             expect(result.status).toBe('cancelled_false_report');
-            const report = (await db.collection('reports').doc(reportId).get()).data();
+            const reportSnap = await db.collection('reports').doc(reportId).get();
+            const report = reportSnap.data();
             expect(report.status).toBe('cancelled_false_report');
         });
     });

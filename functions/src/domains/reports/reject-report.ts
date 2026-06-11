@@ -162,14 +162,19 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
         },
       })
 
-      await writeCitizenFcmTracking(
-        db,
-        transition.reportId,
-        mapFcmResult(fcm),
-        fcm.warnings,
-        deps.now.toMillis(),
-        correlationId,
-      )
+      // Tracking writes are best-effort; must not fail the already-committed transaction.
+      try {
+        await writeCitizenFcmTracking(
+          db,
+          transition.reportId,
+          mapFcmResult(fcm),
+          fcm.warnings,
+          deps.now.toMillis(),
+          correlationId,
+        )
+      } catch (err) {
+        console.error('rejectReport notification tracking failed:', err)
+      }
 
       return transition
     },

@@ -226,43 +226,47 @@ export async function dispatchResponderCore(
       const fcmResult = mapFcmResult(fcm)
       const nowMillis = deps.now.toMillis()
 
-      await writeFcmTracking(
-        db,
-        dispatchResult.dispatchId,
-        deps.responderUid,
-        dispatchResult.responder.agencyId,
-        dispatchResult.responder.municipalityId,
-        fcmResult,
-        fcm.warnings,
-        nowMillis,
-        dispatchResult.correlationId,
-      )
-
-      await updateDispatchFcmResult(db, dispatchResult.dispatchId, fcmResult, fcm.warnings)
-
-      if (fcmResult === 'network_error') {
-        await queueFcmRetry(db, dispatchResult.dispatchId, deps.responderUid, nowMillis)
-      }
-
       const citizenFcm = await sendFcmToCitizen({
         reportId: deps.reportId,
         title: 'Help is on the way',
         body: `A response team from ${dispatchResult.responder.agencyId} has been assigned to your report.`,
         data: {
           reportId: deps.reportId,
-          dispatchId: dispatchResult.dispatchId,
-          correlationId: dispatchResult.correlationId,
         },
       })
-      await writeCitizenFcmTracking(
-        db,
-        dispatchResult.dispatchId,
-        deps.reportId,
-        mapFcmResult(citizenFcm),
-        citizenFcm.warnings,
-        nowMillis,
-        dispatchResult.correlationId,
-      )
+
+      // Tracking writes are best-effort; must not fail the already-committed transaction.
+      try {
+        await writeFcmTracking(
+          db,
+          dispatchResult.dispatchId,
+          deps.responderUid,
+          dispatchResult.responder.agencyId,
+          dispatchResult.responder.municipalityId,
+          fcmResult,
+          fcm.warnings,
+          nowMillis,
+          dispatchResult.correlationId,
+        )
+
+        await updateDispatchFcmResult(db, dispatchResult.dispatchId, fcmResult, fcm.warnings)
+
+        if (fcmResult === 'network_error') {
+          await queueFcmRetry(db, dispatchResult.dispatchId, deps.responderUid, nowMillis)
+        }
+
+        await writeCitizenFcmTracking(
+          db,
+          dispatchResult.dispatchId,
+          deps.reportId,
+          mapFcmResult(citizenFcm),
+          citizenFcm.warnings,
+          nowMillis,
+          dispatchResult.correlationId,
+        )
+      } catch (err) {
+        console.error('dispatchResponder notification tracking failed:', err)
+      }
 
       return {
         dispatchId: dispatchResult.dispatchId,
