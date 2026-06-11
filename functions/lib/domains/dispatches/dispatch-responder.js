@@ -9,7 +9,7 @@ import { bantayogErrorToHttps } from '../shared/https-error.js';
 import { isAccountActive } from '../ops/admin-auth.js';
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
-import { sendFcmToResponder } from '../ops/fcm-send.js';
+import { sendFcmToCitizen, sendFcmToResponder } from '../ops/fcm-send.js';
 import { validateDispatchTransaction, } from './dispatch-responder-validation.js';
 import { writeDispatchDocs } from './dispatch-responder-writes.js';
 const InputSchema = z
@@ -51,6 +51,20 @@ async function writeFcmTracking(db, dispatchId, responderUid, agencyId, municipa
         schemaVersion: 1,
     });
 }
+async function writeCitizenFcmTracking(db, dispatchId, reportId, fcmResult, fcmWarnings, nowMillis, correlationId) {
+    await db.collection('report_events').add({
+        type: 'notification_attempted',
+        reportId,
+        dispatchId,
+        channel: 'push',
+        audience: 'citizen',
+        fcmResult,
+        fcmWarnings,
+        at: nowMillis,
+        correlationId,
+        schemaVersion: 1,
+    });
+}
 async function updateDispatchFcmResult(db, dispatchId, fcmResult, fcmWarnings) {
     await db.collection('dispatches').doc(dispatchId).update({
         fcmResult,
@@ -81,7 +95,7 @@ export async function dispatchResponderCore(db, rtdb, deps) {
         if (!deps.actor.claims.municipalityId) {
             throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'municipalityId is required');
         }
-        return db.runTransaction(async (tx) => {
+        const dispatchResult = await db.runTransaction(async (tx) => {
             const reportRef = db.collection('reports').doc(deps.reportId);
             const responderRef = db.collection('responders').doc(deps.responderUid);
             const { report, responder, from } = await validateDispatchTransaction({
@@ -132,32 +146,44 @@ export async function dispatchResponderCore(db, rtdb, deps) {
                 responder,
             };
         });
-    });
-    const fcm = await sendFcmToResponder({
-        uid: deps.responderUid,
-        title: 'New dispatch',
-        body: `Report ${deps.reportId.slice(0, 8)} — see app for details`,
-        data: {
-            dispatchId: result.dispatchId,
+        const fcm = await sendFcmToResponder({
+            uid: deps.responderUid,
+            title: 'New dispatch',
+            body: `Report ${deps.reportId.slice(0, 8)} — see app for details`,
+            data: {
+                dispatchId: dispatchResult.dispatchId,
+                reportId: deps.reportId,
+                correlationId: dispatchResult.correlationId,
+            },
+        });
+        const fcmResult = mapFcmResult(fcm);
+        const nowMillis = deps.now.toMillis();
+        await writeFcmTracking(db, dispatchResult.dispatchId, deps.responderUid, dispatchResult.responder.agencyId, dispatchResult.responder.municipalityId, fcmResult, fcm.warnings, nowMillis, dispatchResult.correlationId);
+        await updateDispatchFcmResult(db, dispatchResult.dispatchId, fcmResult, fcm.warnings);
+        if (fcmResult === 'network_error') {
+            await queueFcmRetry(db, dispatchResult.dispatchId, deps.responderUid, nowMillis);
+        }
+        const citizenFcm = await sendFcmToCitizen({
             reportId: deps.reportId,
-            correlationId: result.correlationId,
-        },
+            title: 'Help is on the way',
+            body: `A response team from ${dispatchResult.responder.agencyId} has been assigned to your report.`,
+            data: {
+                reportId: deps.reportId,
+                dispatchId: dispatchResult.dispatchId,
+                correlationId: dispatchResult.correlationId,
+            },
+        });
+        await writeCitizenFcmTracking(db, dispatchResult.dispatchId, deps.reportId, mapFcmResult(citizenFcm), citizenFcm.warnings, nowMillis, dispatchResult.correlationId);
+        return {
+            dispatchId: dispatchResult.dispatchId,
+            status: dispatchResult.status,
+            reportId: dispatchResult.reportId,
+            correlationId: dispatchResult.correlationId,
+            fcmResult,
+            fcmWarnings: fcm.warnings,
+        };
     });
-    const fcmResult = mapFcmResult(fcm);
-    const nowMillis = deps.now.toMillis();
-    await writeFcmTracking(db, result.dispatchId, deps.responderUid, result.responder.agencyId, result.responder.municipalityId, fcmResult, fcm.warnings, nowMillis, result.correlationId);
-    await updateDispatchFcmResult(db, result.dispatchId, fcmResult, fcm.warnings);
-    if (fcmResult === 'network_error') {
-        await queueFcmRetry(db, result.dispatchId, deps.responderUid, nowMillis);
-    }
-    return {
-        dispatchId: result.dispatchId,
-        status: result.status,
-        reportId: result.reportId,
-        correlationId: result.correlationId,
-        fcmResult,
-        fcmWarnings: fcm.warnings,
-    };
+    return result;
 }
 export const dispatchResponder = onCall({
     region: 'asia-southeast1',

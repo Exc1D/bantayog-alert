@@ -9,6 +9,37 @@ import { checkRateLimit } from '../shared/rate-limit.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
 import { getResponderCallableCorsOrigins } from '../shared/callable-config.js';
 import { mirrorDispatchStatusToReportInTransaction } from '../reports/dispatch-report-mirror.js';
+import { sendFcmToCitizen } from '../ops/fcm-send.js';
+function mapFcmResult(fcm) {
+    if (fcm.warnings.includes('fcm_no_token'))
+        return 'no_token';
+    if (fcm.warnings.includes('fcm_network_error'))
+        return 'network_error';
+    if (fcm.warnings.length > 0)
+        return 'sent_with_invalid_tokens';
+    return 'sent';
+}
+function buildResolvedCitizenBody(resolutionSummary) {
+    const trimmed = resolutionSummary?.trim();
+    if (!trimmed)
+        return 'Your report has been marked resolved.';
+    const excerpt = trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
+    return `Resolution: ${excerpt}`;
+}
+async function writeCitizenFcmTracking(db, dispatchId, reportId, fcmResult, fcmWarnings, nowMillis, correlationId) {
+    await db.collection('report_events').add({
+        type: 'notification_attempted',
+        reportId,
+        dispatchId,
+        channel: 'push',
+        audience: 'citizen',
+        fcmResult,
+        fcmWarnings,
+        at: nowMillis,
+        correlationId,
+        schemaVersion: 1,
+    });
+}
 export const advanceDispatchCore = async (db, req) => {
     const { dispatchId, to, resolutionSummary, idempotencyKey, actor, now } = req;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -17,93 +48,116 @@ export const advanceDispatchCore = async (db, req) => {
         key: `advanceDispatch:${actor.uid}:${idempotencyKey}`,
         payload: idempotentPayload,
         now: () => now.toMillis(),
-    }, async () => db.runTransaction(async (transaction) => {
-        // Rate limit: 30 advances per 60s per responder (same as accept/decline)
-        const rl = await checkRateLimit(db, {
-            key: `advanceDispatch::${actor.uid}`,
-            limit: 30,
-            windowSeconds: 60,
-            now,
-        });
-        if (!rl.allowed) {
-            throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-                retryAfterSeconds: rl.retryAfterSeconds,
+    }, async () => {
+        const correlationId = crypto.randomUUID();
+        const transition = await db.runTransaction(async (transaction) => {
+            // Rate limit: 30 advances per 60s per responder (same as accept/decline)
+            const rl = await checkRateLimit(db, {
+                key: `advanceDispatch::${actor.uid}`,
+                limit: 30,
+                windowSeconds: 60,
+                now,
             });
-        }
-        const dispatchRef = db.collection('dispatches').doc(dispatchId);
-        const dispatchSnap = await transaction.get(dispatchRef);
-        if (!dispatchSnap.exists) {
-            throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found');
-        }
-        const dispatch = dispatchSnap.data();
-        // Access control
-        if (actor.claims.role !== 'responder' || dispatch.assignedTo.uid !== actor.uid) {
-            throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only assigned responder can advance');
-        }
-        // Guard: do not advance if the report is already terminal
-        const reportRef = db.collection('reports').doc(dispatch.reportId);
-        const reportSnap = await transaction.get(reportRef);
-        if (reportSnap.exists) {
-            const report = reportSnap.data();
-            if (report.status && isTerminalReportStatus(report.status)) {
-                throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'Report is already in a terminal state');
+            if (!rl.allowed) {
+                throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
+                    retryAfterSeconds: rl.retryAfterSeconds,
+                });
             }
-        }
-        const from = dispatch.status;
-        // Valid transitions
-        const validTransitions = {
-            accepted: ['acknowledged'],
-            acknowledged: ['en_route'],
-            en_route: ['on_scene'],
-            on_scene: ['resolved'],
-        };
-        if (!validTransitions[from]?.includes(to)) {
-            throw invalidTransitionError(from, to, {
-                code: BantayogErrorCode.INVALID_STATUS_TRANSITION,
+            const dispatchRef = db.collection('dispatches').doc(dispatchId);
+            const dispatchSnap = await transaction.get(dispatchRef);
+            if (!dispatchSnap.exists) {
+                throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found');
+            }
+            const dispatch = dispatchSnap.data();
+            // Access control
+            if (actor.claims.role !== 'responder' || dispatch.assignedTo.uid !== actor.uid) {
+                throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Only assigned responder can advance');
+            }
+            // Guard: do not advance if the report is already terminal
+            const reportRef = db.collection('reports').doc(dispatch.reportId);
+            const reportSnap = await transaction.get(reportRef);
+            if (reportSnap.exists) {
+                const report = reportSnap.data();
+                if (report.status && isTerminalReportStatus(report.status)) {
+                    throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'Report is already in a terminal state');
+                }
+            }
+            const from = dispatch.status;
+            // Valid transitions
+            const validTransitions = {
+                accepted: ['acknowledged'],
+                acknowledged: ['en_route'],
+                en_route: ['on_scene'],
+                on_scene: ['resolved'],
+            };
+            if (!validTransitions[from]?.includes(to)) {
+                throw invalidTransitionError(from, to, {
+                    code: BantayogErrorCode.INVALID_STATUS_TRANSITION,
+                });
+            }
+            if (to === 'resolved' && !resolutionSummary) {
+                throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'resolutionSummary required');
+            }
+            const nowMillis = now.toMillis();
+            const patch = {
+                status: to,
+                statusUpdatedAt: nowMillis,
+                lastStatusAt: nowMillis,
+            };
+            if (to === 'acknowledged')
+                patch.acknowledgedAt = nowMillis;
+            if (to === 'en_route')
+                patch.enRouteAt = nowMillis;
+            if (to === 'on_scene')
+                patch.onSceneAt = nowMillis;
+            if (to === 'resolved') {
+                patch.resolvedAt = nowMillis;
+                patch.resolutionSummary = resolutionSummary;
+            }
+            await mirrorDispatchStatusToReportInTransaction({
+                db,
+                tx: transaction,
+                dispatchId,
+                reportId: dispatch.reportId,
+                afterStatus: to,
+                actorUid: actor.uid,
+                actorRole: 'responder',
+                nowMillis,
+                correlationId,
             });
-        }
-        if (to === 'resolved' && !resolutionSummary) {
-            throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'resolutionSummary required');
-        }
-        const nowMillis = now.toMillis();
-        const patch = {
-            status: to,
-            statusUpdatedAt: nowMillis,
-            lastStatusAt: nowMillis,
-        };
-        if (to === 'acknowledged')
-            patch.acknowledgedAt = nowMillis;
-        if (to === 'en_route')
-            patch.enRouteAt = nowMillis;
-        if (to === 'on_scene')
-            patch.onSceneAt = nowMillis;
-        if (to === 'resolved') {
-            patch.resolvedAt = nowMillis;
-            patch.resolutionSummary = resolutionSummary;
-        }
-        await mirrorDispatchStatusToReportInTransaction({
-            db,
-            tx: transaction,
-            dispatchId,
-            reportId: dispatch.reportId,
-            afterStatus: to,
-            actorUid: actor.uid,
-            actorRole: 'responder',
-            nowMillis,
-            correlationId: crypto.randomUUID(),
+            transaction.update(dispatchRef, patch);
+            const evRef = db.collection('dispatch_events').doc();
+            transaction.set(evRef, {
+                dispatchId,
+                from,
+                to,
+                actorUid: actor.uid,
+                actorRole: actor.claims.role,
+                createdAt: nowMillis,
+            });
+            return {
+                status: to,
+                dispatchId,
+                reportId: dispatch.reportId,
+                correlationId,
+            };
         });
-        transaction.update(dispatchRef, patch);
-        const evRef = db.collection('dispatch_events').doc();
-        transaction.set(evRef, {
-            dispatchId,
-            from,
-            to,
-            actorUid: actor.uid,
-            actorRole: actor.claims.role,
-            createdAt: nowMillis,
+        if (transition.status !== 'resolved') {
+            return { status: transition.status };
+        }
+        const fcm = await sendFcmToCitizen({
+            reportId: transition.reportId,
+            title: 'Your report was resolved',
+            body: buildResolvedCitizenBody(resolutionSummary),
+            data: {
+                reportId: transition.reportId,
+                dispatchId: transition.dispatchId,
+                correlationId: transition.correlationId,
+            },
         });
-        return { status: to };
-    }));
+        await writeCitizenFcmTracking(db, transition.dispatchId, transition.reportId, mapFcmResult(fcm), fcm.warnings, now.toMillis(), transition.correlationId);
+        return { status: transition.status };
+    });
     return result;
 };
 export const advanceDispatch = onCall({
