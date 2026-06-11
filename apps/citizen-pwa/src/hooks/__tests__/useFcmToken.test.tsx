@@ -53,7 +53,11 @@ describe('useFcmToken', () => {
       configurable: true,
     })
     Object.defineProperty(globalThis.navigator, 'serviceWorker', {
-      value: { ready: Promise.resolve(serviceWorkerRegistration) },
+      value: {
+        ready: Promise.resolve(serviceWorkerRegistration),
+        controller: serviceWorkerRegistration,
+        getRegistrations: vi.fn(() => Promise.resolve([])),
+      },
       configurable: true,
     })
   })

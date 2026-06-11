@@ -16,9 +16,41 @@ function playAlertSound(): void {
   }
 }
 
+let swRegistrationFailed = false
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'sw-registration-failed',
+    () => {
+      swRegistrationFailed = true
+    },
+    { once: true },
+  )
+}
+
 async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | undefined> {
   if (!('serviceWorker' in navigator)) return undefined
-  return navigator.serviceWorker.ready
+  if (swRegistrationFailed) return undefined
+
+  const controller = navigator.serviceWorker.controller
+  if (controller) {
+    return navigator.serviceWorker.ready
+  }
+
+  const registrations = await navigator.serviceWorker.getRegistrations()
+  if (registrations.length === 0) return undefined
+
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<undefined>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('SW ready timeout'))
+      }, 3000)
+    }),
+  ]).catch(() => {
+    console.warn('[useFcmToken] Service worker ready timed out; falling back to no SW registration')
+    return undefined
+  })
 }
 
 function getTokenOptions(serviceWorkerRegistration?: ServiceWorkerRegistration) {

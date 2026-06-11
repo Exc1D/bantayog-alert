@@ -45,9 +45,14 @@ function toMillis(value: ReportTimestamp | undefined): number | null {
     const parsed = Date.parse(value)
     return Number.isFinite(parsed) ? parsed : null
   }
-  const date = value.toDate()
-  const millis = date.getTime()
-  return Number.isFinite(millis) ? millis : null
+  try {
+    const date = value.toDate()
+    const millis = date.getTime()
+    return Number.isFinite(millis) ? millis : null
+  } catch (err: unknown) {
+    console.warn('[toMillis] toDate() threw:', err)
+    return null
+  }
 }
 
 function reportCreatedAtMillis(report: NewReportSignalReport): number | null {
@@ -153,10 +158,11 @@ export function NewReportSignalProvider({ children }: { children: ReactNode }) {
   }, [processReports])
 
   useEffect(() => {
+    const previousTitle = document.title
     document.title =
       notificationCount > 0 ? `(${String(notificationCount)}) ${BASE_TITLE}` : BASE_TITLE
     return () => {
-      document.title = BASE_TITLE
+      document.title = previousTitle
     }
   }, [notificationCount])
 
