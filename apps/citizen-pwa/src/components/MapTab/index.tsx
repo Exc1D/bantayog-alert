@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Crosshair } from 'lucide-react'
 import { PeekSheet } from './PeekSheet.js'
 import { DetailSheet } from './DetailSheet.js'
@@ -22,6 +23,12 @@ const INCIDENT_LABELS: Record<string, string> = {
   structural: 'Damages',
   security: 'Security',
   other: 'Others',
+}
+const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
+
+interface LookupNavigationState {
+  selectedReportPublicRef?: unknown
+  lookupSuccessMessage?: unknown
 }
 
 function statusLabel(status: string): string {
@@ -57,6 +64,20 @@ function buildMyReportPin(report: MyReport): { id: string; type: 'myReport'; lab
 
 export function MapTab() {
   const mapElRef = useRef<HTMLDivElement | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const lookupState =
+    location.state && typeof location.state === 'object'
+      ? (location.state as LookupNavigationState)
+      : null
+  const lookupReportRef =
+    typeof lookupState?.selectedReportPublicRef === 'string'
+      ? lookupState.selectedReportPublicRef
+      : null
+  const lookupMessage =
+    typeof lookupState?.lookupSuccessMessage === 'string'
+      ? lookupState.lookupSuccessMessage
+      : LOOKUP_SUCCESS_MESSAGE
   const {
     mapInstance,
     isOffline,
@@ -82,6 +103,25 @@ export function MapTab() {
     setSelectedPin,
     setSheetPhase,
   } = useMapTab(mapElRef)
+  const lookupMatchedReport = lookupReportRef
+    ? (myReports.find((entry) => entry.publicRef === lookupReportRef) ?? null)
+    : null
+  const lookupSuccessMessage = lookupMatchedReport ? lookupMessage : null
+
+  useEffect(() => {
+    if (!lookupMatchedReport) return undefined
+    const selectTimeout = window.setTimeout(() => {
+      setSelectedPin(buildMyReportPin(lookupMatchedReport))
+      setSheetPhase('expanded')
+    }, 0)
+    const clearStateTimeout = window.setTimeout(() => {
+      void navigate('/', { replace: true, state: null })
+    }, 3000)
+    return () => {
+      window.clearTimeout(selectTimeout)
+      window.clearTimeout(clearStateTimeout)
+    }
+  }, [lookupMatchedReport, navigate, setSelectedPin, setSheetPhase])
 
   const handleIncidentTap = (incident: PublicIncident) => {
     setSelectedPin(buildIncidentPin(incident))
@@ -96,6 +136,16 @@ export function MapTab() {
   return (
     <div className="absolute inset-0 isolate">
       <div ref={mapElRef} className="w-full h-full" />
+
+      {lookupSuccessMessage ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute left-3 right-3 top-[4.5rem] z-[850] rounded-xl border border-success-500/20 bg-white px-4 py-3 text-sm font-semibold text-success-600 shadow-lg"
+        >
+          {lookupSuccessMessage}
+        </div>
+      ) : null}
 
       <div className="absolute top-0 left-0 right-0 z-[800] px-3 pt-3 pointer-events-none">
         <div className="pointer-events-auto">

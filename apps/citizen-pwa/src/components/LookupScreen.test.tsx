@@ -87,8 +87,6 @@ describe('LookupScreen', () => {
     const user = userEvent.setup()
     renderScreen()
     const input = screen.getByPlaceholderText('Your secret code')
-    // The callable mock returns empty publicRef for empty/whitespace secret,
-    // triggering our "no publicRef" error path; navigate is NOT called.
     await user.type(input, '   ')
     await user.click(screen.getByRole('button', { name: /find my report/i }))
     await waitFor(() => {
@@ -96,18 +94,24 @@ describe('LookupScreen', () => {
     })
   })
 
-  it('navigates to /reports/:publicRef on successful lookup', async () => {
+  it('navigates to the selected report on successful lookup', async () => {
     const user = userEvent.setup()
     renderScreen()
     await user.type(screen.getByPlaceholderText('Your secret code'), 'mysecretcode')
     await user.click(screen.getByRole('button', { name: /find my report/i }))
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/')
+      expect(mockNavigate).toHaveBeenCalledWith('/', {
+        state: {
+          selectedReportPublicRef: 'a1b2c3d4',
+          lookupSuccessMessage: 'Report found — tracking enabled',
+        },
+      })
     })
     expect(callableSecret).toBe('MYSECRETCODE')
   })
 
   it('shows friendly error when lookup returns not-found', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.mocked(httpsCallable).mockImplementationOnce(
       () =>
         (() => {
@@ -116,13 +120,17 @@ describe('LookupScreen', () => {
           return Promise.reject(err)
         }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
     )
-    const user = userEvent.setup()
-    renderScreen()
-    await user.type(screen.getByPlaceholderText('Your secret code'), 'badsecret')
-    await user.click(screen.getByRole('button', { name: /find my report/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find/)
-    })
+    try {
+      const user = userEvent.setup()
+      renderScreen()
+      await user.type(screen.getByPlaceholderText('Your secret code'), 'badsecret')
+      await user.click(screen.getByRole('button', { name: /find my report/i }))
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find/)
+      })
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('navigates to locally saved report when a local match exists', async () => {
@@ -144,7 +152,12 @@ describe('LookupScreen', () => {
     await user.click(screen.getByRole('button', { name: /find my report/i }))
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/')
+      expect(mockNavigate).toHaveBeenCalledWith('/', {
+        state: {
+          selectedReportPublicRef: 'loc12345',
+          lookupSuccessMessage: 'Report found — tracking enabled',
+        },
+      })
     })
     expect(vi.mocked(httpsCallable)).not.toHaveBeenCalled()
   })

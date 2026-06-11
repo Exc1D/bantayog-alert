@@ -17,6 +17,7 @@ interface LookupResult {
   municipalityLabel: string
 }
 
+const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
 const FRIENDLY_ERROR =
   "We couldn't find a report with that secret code. It may have expired (reports are tracked for 90 days)."
 
@@ -36,6 +37,18 @@ function friendlyLookupError(err: unknown): string {
     return 'Too many attempts. Please wait a minute and try again.'
   }
   return 'Something went wrong. Please try again or call the hotline.'
+}
+
+function navigateToTrackedReport(
+  navigate: ReturnType<typeof useNavigate>,
+  publicRef: string,
+): void {
+  void navigate('/', {
+    state: {
+      selectedReportPublicRef: publicRef,
+      lookupSuccessMessage: LOOKUP_SUCCESS_MESSAGE,
+    },
+  })
 }
 
 export function LookupScreen() {
@@ -66,7 +79,7 @@ export function LookupScreen() {
       const localMatch = localReports.find((report) => report.secret === trimmedSecret)
       if (localMatch) {
         if (!isMountedRef.current) return
-        void navigate('/')
+        navigateToTrackedReport(navigate, localMatch.publicRef)
         return
       }
       if (!hasFirebaseConfig()) {
@@ -80,7 +93,7 @@ export function LookupScreen() {
         throw new Error('Invalid server response.')
       }
       if (!isMountedRef.current) return
-      void navigate('/')
+      navigateToTrackedReport(navigate, result.publicRef)
     } catch (e: unknown) {
       console.error('[LookupScreen] requestLookup failed:', e)
       if (isMountedRef.current) {
