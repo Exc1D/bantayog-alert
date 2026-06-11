@@ -16,6 +16,18 @@ function playAlertSound(): void {
   }
 }
 
+async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | undefined> {
+  if (!('serviceWorker' in navigator)) return undefined
+  return navigator.serviceWorker.ready
+}
+
+function getTokenOptions(serviceWorkerRegistration?: ServiceWorkerRegistration) {
+  return {
+    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+    ...(serviceWorkerRegistration ? { serviceWorkerRegistration } : {}),
+  }
+}
+
 interface FcmState {
   permission: NotificationPermission
   token: string | null
@@ -38,12 +50,13 @@ export function useFcmToken() {
     }
 
     const messaging = getMessaging()
-    // Firebase 12.14.0 deprecated getToken in favor of register/onRegistered (FID-based messaging).
-    // Migration will be done in a dedicated FCM refactor PR. See https://github.com/Exc1D/bantayog-alert/issues/185
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    })
+    getServiceWorkerRegistration()
+      .then((serviceWorkerRegistration) => {
+        // Firebase 12.14.0 deprecated getToken in favor of register/onRegistered (FID-based messaging).
+        // Migration will be done in a dedicated FCM refactor PR. See https://github.com/Exc1D/bantayog-alert/issues/185
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        return getToken(messaging, getTokenOptions(serviceWorkerRegistration))
+      })
       .then((token) => {
         setState({ permission: 'granted', token: token || null, enabled: Boolean(token) })
       })
@@ -87,10 +100,9 @@ export function useFcmToken() {
       }
 
       const messaging = getMessaging()
+      const serviceWorkerRegistration = await getServiceWorkerRegistration()
       // eslint-disable-next-line @typescript-eslint/no-deprecated
-      const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-      })
+      const token = await getToken(messaging, getTokenOptions(serviceWorkerRegistration))
 
       if (!token) {
         console.error('Failed to get FCM token')
