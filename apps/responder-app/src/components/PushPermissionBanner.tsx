@@ -62,6 +62,10 @@ const styles = {
     background: 'var(--amber-accent)',
     borderColor: 'var(--amber-accent)',
   },
+  disabledButton: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
 } satisfies Record<string, CSSProperties>
 
 export function PushPermissionBanner({
@@ -93,7 +97,12 @@ export function PushPermissionBanner({
                 void onRetry()
               }}
               disabled={isRetrying}
-              style={{ ...styles.button, ...styles.primaryButton }}
+              aria-busy={isRetrying || undefined}
+              style={{
+                ...styles.button,
+                ...styles.primaryButton,
+                ...(isRetrying ? styles.disabledButton : {}),
+              }}
             >
               {isRetrying ? 'Enabling...' : 'Enable notifications'}
             </button>

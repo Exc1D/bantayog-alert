@@ -1,8 +1,10 @@
 import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, afterEach } from 'vitest'
 import { PushPermissionBanner } from './PushPermissionBanner.js'
+
+const originalNotification = globalThis.Notification
 
 type TestPermission = Extract<NotificationPermission, 'default' | 'denied'>
 
@@ -15,6 +17,13 @@ function setNotificationPermission(permission: TestPermission): TestPermission {
   })
   return permission
 }
+
+afterEach(() => {
+  Object.defineProperty(globalThis, 'Notification', {
+    configurable: true,
+    value: originalNotification,
+  })
+})
 
 describe('PushPermissionBanner', () => {
   it('renders browser settings guidance when notifications are denied', () => {

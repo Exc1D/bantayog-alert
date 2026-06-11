@@ -155,7 +155,7 @@ export function FcmSetup() {
   const visiblePermissionWarning =
     permissionWarning === dismissedPermission ? null : permissionWarning
 
-  if (!visiblePermissionWarning) return null
+  if (!user || !visiblePermissionWarning) return null
 
   return (
     <PushPermissionBanner

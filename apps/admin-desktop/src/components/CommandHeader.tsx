@@ -39,8 +39,9 @@ export function CommandHeader({
   const navigate = useNavigate()
   const signal = useNewReportSignal()
   const effectiveNotificationCount = notificationCount ?? signal.notificationCount
-  const effectiveAudioEnabled = audioEnabled ?? signal.audioEnabled
-  const handleToggleAudio = onToggleAudio ?? signal.toggleAudio
+  const usesContextAudio = audioEnabled == null && onToggleAudio == null
+  const effectiveAudioEnabled = usesContextAudio ? signal.audioEnabled : audioEnabled
+  const handleToggleAudio = usesContextAudio ? signal.toggleAudio : onToggleAudio
   const handleShowNotifications =
     onShowNotifications ??
     (effectiveNotificationCount > 0
