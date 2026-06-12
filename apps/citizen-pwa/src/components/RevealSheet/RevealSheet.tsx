@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // fallow-ignore-file security-sink
-import { Check, ShieldCheck, Save } from 'lucide-react'
+import { BellRing, Check, ShieldCheck, Save } from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useReducedMotion } from '../../hooks/useReducedMotion.js'
 import { useSlotMachine } from '../../hooks/useSlotMachine.js'
 import { useMunicipalityContact } from '../../hooks/useMunicipalityContact.js'
+import { useFcmToken } from '../../hooks/useFcmToken.js'
 import { auth, hasFirebaseConfig } from '../../services/firebase.js'
 import { StatusBanner } from '../ui/StatusBanner'
 import { Button } from '../ui/Button'
@@ -117,6 +118,47 @@ function useSecretVisibility(
   return secretVisible
 }
 
+function getNotificationPermission(): NotificationPermission {
+  if (typeof Notification === 'undefined') return 'denied'
+  return Notification.permission
+}
+
+function NotificationOffer({
+  isRequesting,
+  onAccept,
+  onDismiss,
+}: {
+  isRequesting: boolean
+  onAccept: () => void
+  onDismiss: () => void
+}) {
+  return (
+    <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4">
+      <div className="flex gap-3">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+          <BellRing size={18} />
+        </div>
+        <div>
+          <p className="m-0 text-sm font-bold text-surface-900">
+            Get notified when help is on the way
+          </p>
+          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-600">
+            We will only use this for report status updates from Bantayog Alert.
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button variant="primary" fullWidth onClick={onAccept} disabled={isRequesting}>
+          {isRequesting ? 'Asking...' : 'Get notified'}
+        </Button>
+        <Button variant="secondary" fullWidth onClick={onDismiss}>
+          Not now
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export interface RevealSheetProps {
   state: 'success' | 'queued' | 'failed_retryable' | 'failed_terminal'
   referenceCode: string
@@ -138,6 +180,7 @@ export function RevealSheet({
   const reducedMotion = useReducedMotion()
   const contact = useMunicipalityContact(municipalityId)
   const variants = useMemo(() => buildVariants(contact.label), [contact.label])
+  const { requestPermission } = useFcmToken()
   const { display: slotDisplay, done: slotDone } = useSlotMachine(
     referenceCode,
     reducedMotion ? 0 : 600,
@@ -146,6 +189,8 @@ export function RevealSheet({
   const displayedCode = reducedMotion ? referenceCode : slotDisplay
   const typewriterComplete = reducedMotion ? true : slotDone
   const isGuest = useAuthGuest()
+  const [notificationPromptDismissed, setNotificationPromptDismissed] = useState(false)
+  const [notificationRequesting, setNotificationRequesting] = useState(false)
   const secretVisible = useSecretVisibility(typewriterComplete, secretCode, reducedMotion)
 
   useVibrate(state)
@@ -164,10 +209,27 @@ export function RevealSheet({
   })
 
   const timelineEvents = buildTimelineEvents(state, afterglowTime)
+  const shouldShowNotificationOffer =
+    state === 'success' &&
+    isGuest !== null &&
+    !notificationPromptDismissed &&
+    getNotificationPermission() === 'default'
 
   const handleTrackReport = useCallback(() => {
     void navigate('/')
   }, [navigate])
+
+  const handleDismissNotificationOffer = useCallback(() => {
+    setNotificationPromptDismissed(true)
+  }, [])
+
+  const handleRequestNotifications = useCallback(() => {
+    setNotificationRequesting(true)
+    void requestPermission().finally(() => {
+      setNotificationRequesting(false)
+      setNotificationPromptDismissed(true)
+    })
+  }, [requestPermission])
 
   const handleCallHotline = useCallback(() => {
     const telDigits = contact.hotline.replace(/[^\d+]/g, '')
@@ -290,6 +352,17 @@ export function RevealSheet({
           />
         )}
 
+        {shouldShowNotificationOffer &&
+          (isGuest ? (
+            <GuardianCTA />
+          ) : (
+            <NotificationOffer
+              isRequesting={notificationRequesting}
+              onAccept={handleRequestNotifications}
+              onDismiss={handleDismissNotificationOffer}
+            />
+          ))}
+
         <FallbackCards
           hotlineNumber={contact.hotline}
           emphasized={state !== 'success' ? state === 'failed_retryable' : false}
@@ -313,8 +386,6 @@ export function RevealSheet({
             </Button>
           </div>
         ) : null}
-
-        {state === 'success' && isGuest && <GuardianCTA />}
 
         <p className="reveal-footer">{variant.permissionText}</p>
       </div>
