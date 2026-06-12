@@ -172,6 +172,33 @@ export const reportNoteDocSchema = z
   })
   .strict()
 
+const feedbackCommentSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .optional()
+  .transform((comment) => (comment === '' ? undefined : comment))
+
+export const submitReportFeedbackInputSchema = z
+  .object({
+    reportId: z.string().min(1).max(128),
+    addressed: z.boolean(),
+    comment: feedbackCommentSchema,
+  })
+  .strict()
+
+export const reportFeedbackDocSchema = z
+  .object({
+    reportId: z.string().min(1).max(128),
+    reporterUid: z.string().min(1),
+    addressed: z.boolean(),
+    comment: z.string().max(500).optional(),
+    submittedAt: z.number().int(),
+    updatedAt: z.number().int(),
+    schemaVersion: z.number().int().positive(),
+  })
+  .strict()
+
 export const reportSharingEventDocSchema = z
   .object({
     targetMunicipalityId: z.string().min(1),
@@ -231,6 +258,8 @@ export type ReportPrivateDoc = z.infer<typeof reportPrivateDocSchema>
 export type ReportOpsDoc = z.infer<typeof reportOpsDocSchema>
 export type ReportSharingDoc = z.infer<typeof reportSharingDocSchema>
 export type ReportNoteDoc = z.infer<typeof reportNoteDocSchema>
+export type SubmitReportFeedbackInput = z.infer<typeof submitReportFeedbackInputSchema>
+export type ReportFeedbackDoc = z.infer<typeof reportFeedbackDocSchema>
 export type ReportSharingEventDoc = z.infer<typeof reportSharingEventDocSchema>
 export type ReportContactsDoc = z.infer<typeof reportContactsDocSchema>
 export type ReportLookupDoc = z.infer<typeof reportLookupDocSchema>

@@ -3,7 +3,7 @@ export { normalizeMsisdn, msisdnPhSchema, hashMsisdn, MsisdnInvalidError } from 
 export { activeAccountSchema, claimRevocationSchema, setStaffClaimsInputSchema, suspendStaffAccountInputSchema, } from './auth.js';
 export { minAppVersionSchema, semverLt } from './config.js';
 export { alertSchema } from './alerts.js';
-export { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportSharingDocSchema, reportNoteDocSchema, reportSharingEventDocSchema, reportContactsDocSchema, reportLookupDocSchema, reportInboxDocSchema, inboxPayloadSchema, hazardTagSchema, } from './reports.js';
+export { reportDocSchema, reportPrivateDocSchema, reportOpsDocSchema, reportSharingDocSchema, reportNoteDocSchema, reportSharingEventDocSchema, submitReportFeedbackInputSchema, reportFeedbackDocSchema, reportContactsDocSchema, reportLookupDocSchema, reportInboxDocSchema, inboxPayloadSchema, hazardTagSchema, } from './reports.js';
 export { auditEventSchema, commandEnvelopeSchema, commandRouteParamsSchema, duplicateClusterQuerySchema, incidentCoreSchema, incidentLifecycleRecordSchema, incidentLocationSchema, operationalStatusSchema, opsAppSurfaceSchema, postgisStoreReferenceSchema, postgisPointSchema, publicationStatusSchema, publicIncidentBBoxQuerySchema, publicIncidentCardSchema, publicIncidentProjectionEventSchema, reporterPrivacyRecordSchema, responderNearbyQuerySchema, verificationStatusSchema, } from './incident-core.js';
 export { dispatchDocSchema, dispatchStatusSchema, advanceDispatchRequestSchema, } from './dispatches.js';
 export { reportEventSchema, dispatchEventSchema } from './events.js';
