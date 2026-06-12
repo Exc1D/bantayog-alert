@@ -51,13 +51,18 @@ jobs:
     name: Fallow Audit (changed code)
     if: github.event_name == 'pull_request'
     needs: setup
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # audit diffs against the PR base ref
-      - uses: fallow-rs/fallow@v2
+      # fallow-rs/fallow v2 branch snapshot from 2026-06-12.
+      - uses: fallow-rs/fallow@ad49086701b67af493502eb6f860ff0218d91bef
         with:
+          version: '2.91.0'
           command: audit
           gate: new-only
           fail-on-issues: true
