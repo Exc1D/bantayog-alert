@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-06-12 - Phase 3B-03 RevealSheet Notification Ask
+
+- Added a success-state notification offer to Citizen PWA `RevealSheet`: registered users with `Notification.permission === 'default'` can request push updates through the existing `useFcmToken().requestPermission` flow.
+- Reframed the anonymous success CTA into a notification-specific registration nudge, linking to the existing `/register` route without asking anonymous sessions for browser notification permission.
+- Extracted `NotificationPrompt` subcomponent to isolate notification visibility state from the main `RevealSheet` render path.
+- Fixed consent copy to accurately describe scope: "Get report status updates and public emergency alerts from Bantayog Alert." instead of the narrower report-status-only claim.
+- Added robust `requestPermission` failure handling: `try/catch` around the full flow, `hasError` state, error message, and a "Try again" button when setup returns `false` or throws; prompt is only dismissed on explicit user skip or successful setup.
+- Guarded `useFcmToken` mount-time rehydration with `hasFirebaseConfig()` so no-config/dev environments avoid unnecessary `getMessaging()` initialization.
+- Verification: red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/RevealSheet.test.tsx` failed on the missing registered/anonymous notification UI, then passed 11 tests; `pnpm --dir apps/citizen-pwa exec tsc --noEmit && pnpm --dir apps/citizen-pwa exec eslint src` passed; `pnpm format:check` passed.
+
 ## 2026-06-12 - Phase 3B-02 Citizen My Reports Error State
 
 - Added a retryable Citizen PWA "My Reports" failure state for the double-failure path where Firestore report reads are denied and the `requestLookup` callable fallback also fails.
