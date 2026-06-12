@@ -76,6 +76,7 @@
 - Cold offline boot needs a precached app shell and cached `index.html` for failed navigations.
 - Canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser compression path.
 - `React.lazy()` components fail offline. Eager-import offline states.
+- Citizen report history has four visible states: loading, genuinely empty, stale-but-visible, and failed. If Firestore and callable lookup both fail, surface the failure with retry and keep cached rows visible instead of falling through to "No reports yet."
 
 ## Dispatch / Responder / Monitor
 

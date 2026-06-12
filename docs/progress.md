@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-06-12 - Phase 3B-02 Citizen My Reports Error State
+
+- Added a retryable Citizen PWA "My Reports" failure state for the double-failure path where Firestore report reads are denied and the `requestLookup` callable fallback also fails.
+- Extended `useMyActiveReports` with backward-compatible `status`, `error`, and `retry` fields while keeping cached/queued reports visible with a stale-data note instead of blanking the list.
+- Wired ProfileTab's report list to show the designed error state when no reports can be displayed and a compact staleness warning when saved reports are still available.
+- Kept the slice frontend-only: no backend, rules, indexes, schema/migration files, deploy config, lookup screen UX, or offline queue behavior changed.
+- Verification: red-first `pnpm --dir apps/citizen-pwa exec vitest run src/hooks/useMyActiveReports.test.ts src/components/ProfileTab.test.tsx` failed on the missing hook status/UI, then passed 14 tests; `pnpm --dir apps/citizen-pwa exec tsc --noEmit && pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
 ## 2026-06-11 - Phase 3C-01 Admin New-Report Signal
 
 - Added Admin Desktop ambient new-report awareness: existing scoped report listeners publish report snapshots, the authenticated shell keeps a session watermark, and `CommandHeader` now surfaces the unread count, audio mute control, and triage navigation for unseen new reports.
