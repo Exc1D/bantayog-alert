@@ -544,3 +544,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Wired the prompt to the existing `submitReportFeedback` callable with yes/no answers, optional trimmed comments, inline retryable failure copy, and a local submitted flag to avoid prompting again after success.
 - Kept anonymous sessions and reports without ids out of the feedback path; no backend, rules, index, or schema files changed.
 - Verification: red-first focused `DetailSheet` test failed on the missing prompt, then passed 14/14 after implementation, including anonymous-hide and retryable-error coverage. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed.
+
+## 2026-06-12 - Phase 3B-06 Lookup Offline State
+
+- Added an offline-aware anonymous tracking lookup state: when the Citizen PWA is offline at submit time, it keeps the entered secret code, skips the remote `requestLookup` callable, and shows `You're offline — your code is saved, try again when connected.`
+- Mapped `functions/unavailable`/network-shaped lookup failures to the same offline retry copy while preserving the existing invalid-code message for `not-found` and `permission-denied`.
+- Reused `useOnlineStatus()` through a test mock so the lookup test does not run the `/__/firebase.json` connectivity probe.
+- Verification: red-first `LookupScreen` test failed on the missing offline alert, then passed 9/9 after implementation, including callable-unavailable coverage. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.

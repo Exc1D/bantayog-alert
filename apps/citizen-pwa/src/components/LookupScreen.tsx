@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft, KeyRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
 import { loadReports } from '../services/localForageReports.js'
 import {
   fns,
@@ -10,16 +11,42 @@ import {
   FIREBASE_ENV_ERROR_MESSAGE,
 } from '../services/firebase.js'
 
-interface LookupResult {
-  publicRef: string
-  status: string
-  lastStatusAt: number
-  municipalityLabel: string
-}
-
 export const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
 const FRIENDLY_ERROR =
   "We couldn't find a report with that secret code. It may have expired (reports are tracked for 90 days)."
+const OFFLINE_LOOKUP_ERROR = "You're offline — your code is saved, try again when connected."
+
+const LOOKUP_ERROR_MAP: Record<string, string> = {
+  'functions/not-found': FRIENDLY_ERROR,
+  'not-found': FRIENDLY_ERROR,
+  'functions/permission-denied': FRIENDLY_ERROR,
+  'permission-denied': FRIENDLY_ERROR,
+  'functions/unavailable': OFFLINE_LOOKUP_ERROR,
+  unavailable: OFFLINE_LOOKUP_ERROR,
+  offline: OFFLINE_LOOKUP_ERROR,
+  'functions/unauthenticated': 'Please refresh and try again.',
+  unauthenticated: 'Please refresh and try again.',
+  'functions/resource-exhausted': 'Too many attempts. Please wait a minute and try again.',
+  'resource-exhausted': 'Too many attempts. Please wait a minute and try again.',
+}
+
+class LookupError extends Error {
+  readonly code: string
+  constructor(message: string, code: string) {
+    super(message)
+    this.name = 'LookupError'
+    this.code = code
+  }
+}
+
+function isNetworkTypeError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    /\b(failed to fetch|failed to fetch resource|network error|network request failed)\b/i.test(
+      err.message,
+    )
+  )
+}
 
 function normalizeSecretCode(secret: string): string {
   return secret.replace(/[^a-z0-9]/gi, '').toUpperCase()
@@ -27,16 +54,42 @@ function normalizeSecretCode(secret: string): string {
 
 function friendlyLookupError(err: unknown): string {
   if (!hasFirebaseConfig()) return FIREBASE_ENV_ERROR_MESSAGE
+  if (isNetworkTypeError(err)) return OFFLINE_LOOKUP_ERROR
   const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
-  if (code === 'functions/not-found' || code === 'not-found') return FRIENDLY_ERROR
-  if (code === 'functions/permission-denied' || code === 'permission-denied') return FRIENDLY_ERROR
-  if (code === 'functions/unauthenticated' || code === 'unauthenticated') {
-    return 'Please refresh and try again.'
-  }
-  if (code === 'functions/resource-exhausted' || code === 'resource-exhausted') {
-    return 'Too many attempts. Please wait a minute and try again.'
-  }
+  const mapped = LOOKUP_ERROR_MAP[code]
+  if (mapped !== undefined) return mapped
   return 'Something went wrong. Please try again or call the hotline.'
+}
+
+async function performLookup(
+  trimmedSecret: string,
+  isOnline: boolean,
+  navigatorOnline: boolean,
+): Promise<string> {
+  const localReports = await loadReports()
+  const localMatch = localReports.find((report) => report.secret === trimmedSecret)
+  if (localMatch) {
+    return localMatch.publicRef
+  }
+  if (!isOnline || !navigatorOnline) {
+    throw new LookupError(OFFLINE_LOOKUP_ERROR, 'offline')
+  }
+  if (!hasFirebaseConfig()) {
+    throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
+  }
+  await ensureSignedIn()
+  const res = await httpsCallable(fns(), 'requestLookup')({ secret: trimmedSecret })
+  const data = res.data
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !('publicRef' in data) ||
+    typeof data.publicRef !== 'string'
+  ) {
+    console.error('[LookupScreen] Invalid lookup response:', data)
+    throw new Error('Invalid server response.')
+  }
+  return data.publicRef
 }
 
 function navigateToTrackedReport(
@@ -53,6 +106,7 @@ function navigateToTrackedReport(
 
 export function LookupScreen() {
   const navigate = useNavigate()
+  const { isOnline, navigatorOnline } = useOnlineStatus()
   const [secret, setSecret] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -75,25 +129,9 @@ export function LookupScreen() {
     }
     setLoading(true)
     try {
-      const localReports = await loadReports()
-      const localMatch = localReports.find((report) => report.secret === trimmedSecret)
-      if (localMatch) {
-        if (!isMountedRef.current) return
-        navigateToTrackedReport(navigate, localMatch.publicRef)
-        return
-      }
-      if (!hasFirebaseConfig()) {
-        throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
-      }
-      await ensureSignedIn()
-      const res = await httpsCallable(fns(), 'requestLookup')({ secret: trimmedSecret })
-      const result = res.data as LookupResult
-      if (!result.publicRef || typeof result.publicRef !== 'string') {
-        console.error('[LookupScreen] Invalid lookup response:', result)
-        throw new Error('Invalid server response.')
-      }
+      const publicRef = await performLookup(trimmedSecret, isOnline, navigatorOnline)
       if (!isMountedRef.current) return
-      navigateToTrackedReport(navigate, result.publicRef)
+      navigateToTrackedReport(navigate, publicRef)
     } catch (e: unknown) {
       console.error('[LookupScreen] requestLookup failed:', e)
       if (isMountedRef.current) {
