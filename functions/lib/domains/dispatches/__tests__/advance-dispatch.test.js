@@ -192,6 +192,23 @@ describe('advanceDispatchCore', () => {
                 .where('to', '==', 'resolved')
                 .get();
             expect(reportEvents.docs).toHaveLength(1);
+            const allReportEvents = await db
+                .collection('report_events')
+                .where('reportId', '==', reportId)
+                .get();
+            const notificationEvents = allReportEvents.docs
+                .map((doc) => doc.data())
+                .filter((event) => event.type === 'notification_attempted');
+            expect(notificationEvents).toHaveLength(1);
+            expect(notificationEvents[0]).toMatchObject({
+                reportId,
+                dispatchId,
+                channel: 'push',
+                audience: 'citizen',
+                fcmResult: 'no_token',
+                fcmWarnings: ['fcm_no_token'],
+                schemaVersion: 1,
+            });
         });
     });
     it('rejects when report is already closed', async ({ skip }) => {

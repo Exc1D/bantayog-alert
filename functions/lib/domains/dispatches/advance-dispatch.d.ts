@@ -10,9 +10,13 @@ export declare const advanceDispatchCore: (db: FirebaseFirestore.Firestore, req:
     };
     now: Timestamp;
 }) => Promise<{
-    status: "acknowledged" | "en_route" | "on_scene" | "resolved";
+    status: "acknowledged" | "en_route" | "on_scene";
+} | {
+    status: "resolved";
 }>;
 export declare const advanceDispatch: import("firebase-functions/https").CallableFunction<any, Promise<{
-    status: "acknowledged" | "en_route" | "on_scene" | "resolved";
+    status: "acknowledged" | "en_route" | "on_scene";
+} | {
+    status: "resolved";
 }>, unknown>;
 //# sourceMappingURL=advance-dispatch.d.ts.map

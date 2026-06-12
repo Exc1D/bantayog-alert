@@ -464,3 +464,27 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Extended the existing hook test under `src/hooks/__tests__/useFcmToken.test.tsx` to assert `getToken` receives `serviceWorkerRegistration`.
 - Slice-doc mismatch: `docs/agent-tasks/3a-02-citizen-sw-push-handlers.md` lists `src/hooks/useFcmToken.test.ts`; the real focused test path is `src/hooks/__tests__/useFcmToken.test.tsx`.
 - Verification: red-first focused test failed on the missing `serviceWorkerRegistration` option, then passed (4/4). `pnpm --dir apps/citizen-pwa exec tsc --noEmit` and `pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
+## 2026-06-11 - Phase 3A-03 Dispatch Push to Citizen
+
+- Wired `dispatchResponderCore` to send the reporting citizen a best-effort push after a responder is assigned: title `Help is on the way`, data includes `reportId`/`dispatchId`/`correlationId`, and body names the agency id without responder personal details.
+- Added a citizen-facing `report_events` record with `type: 'notification_attempted'`, `channel: 'push'`, `audience: 'citizen'`, `fcmResult`, and `fcmWarnings`, parallel to the existing responder `dispatch_events` notification evidence.
+- Moved the existing responder notification side effects into the `withIdempotency` operation together with the new citizen send, so cached idempotency replays return the stored result without double-sending or writing duplicate notification events.
+- Updated `proof:mvp-loop` event counts and assertion coverage for the new report notification event after dispatch.
+- Verification: red-first dispatch emulator test failed on missing `report_events.notification_attempted`, then passed. Focused FCM-tracking unit passed 4/4 including cached replay; focused dispatch emulator passed 5/5; `pnpm proof:mvp-loop` passed 2/2; Functions typecheck and ESLint passed; `pnpm --dir functions run build` passed with the repo's known Node 20 vs Functions Node 22 engine warning in this shell.
+
+## 2026-06-11 - Phase 3A-04 Resolution Push to Citizen
+
+- Wired `advanceDispatchCore` to send the reporting citizen a best-effort push only when a dispatch transitions to `resolved`: title `Your report was resolved`, body uses a bounded resolution-summary excerpt, and payload carries `reportId`/`dispatchId`/`correlationId`.
+- Added the matching citizen `report_events` notification evidence with `type: 'notification_attempted'`, `channel: 'push'`, `audience: 'citizen'`, `fcmResult`, and `fcmWarnings`.
+- Kept the send and evidence write inside the `withIdempotency` operation after the transaction commits, so idempotency replays return the cached result without another push attempt.
+- Updated `proof:mvp-loop` final report-event count and asserted two citizen notification attempts across the dispatch/resolution loop.
+- Verification: red-first focused `advance-dispatch` emulator test failed on missing `notification_attempted`, then passed 6/6. `pnpm --dir functions run build` passed with the known Node 20 vs Functions Node 22 warning; Functions typecheck and ESLint passed; `pnpm proof:mvp-loop` passed 2/2.
+
+## 2026-06-11 - Phase 3A-05 Rejection Push to Citizen
+
+- Wired `rejectReportCore` to send the reporting citizen a best-effort push after a report is rejected: title `Update on your report`, neutral body `Your report was not accepted. Open the app for details.`, and payload carries only `reportId`.
+- Added the matching citizen `report_events` notification evidence with `type: 'notification_attempted'`, `channel: 'push'`, `audience: 'citizen'`, `fcmResult`, and `fcmWarnings`.
+- Kept the send and evidence write inside the `withIdempotency` operation after the transaction commits, so idempotency replays return the cached result without another push attempt.
+- Repaired `reject-report.test.ts` from collection-time `itif(available)` to runtime `skip(...)`; the first focused run had falsely succeeded with 5 skipped tests.
+- Verification: red-first focused `reject-report` emulator test failed on missing `notification_attempted`, then passed 5/5. `pnpm --dir functions run build` passed with the known Node 20 vs Functions Node 22 warning; Functions typecheck and ESLint passed; `pnpm proof:mvp-loop` passed 2/2.

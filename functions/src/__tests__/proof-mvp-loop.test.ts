@@ -167,12 +167,19 @@ describe('proof-mvp-loop', () => {
         expect(report.currentDispatchId).toBe(dispatchId)
 
         reportEvents = await db.collection('report_events').where('reportId', '==', reportId).get()
-        expect(reportEvents.docs).toHaveLength(3)
+        expect(reportEvents.docs).toHaveLength(4)
         const reportEventData = reportEvents.docs.map(
           (d: { data: () => Record<string, unknown> }) => d.data(),
         )
         expect(reportEventData).toContainEqual(
           expect.objectContaining({ from: 'verified', to: 'assigned' }),
+        )
+        expect(reportEventData).toContainEqual(
+          expect.objectContaining({
+            type: 'notification_attempted',
+            audience: 'citizen',
+            dispatchId,
+          }),
         )
 
         let dispatchEvents = await db
@@ -217,7 +224,7 @@ describe('proof-mvp-loop', () => {
         expect(report.status).toBe('acknowledged') // mirrored from accepted
 
         reportEvents = await db.collection('report_events').where('reportId', '==', reportId).get()
-        expect(reportEvents.docs).toHaveLength(4)
+        expect(reportEvents.docs).toHaveLength(5)
 
         // ── Step 5: advance accepted → acknowledged ───────────────────────
         const ack = await advanceDispatchCore(db, {
@@ -254,7 +261,7 @@ describe('proof-mvp-loop', () => {
         expect(report.status).toBe('en_route')
 
         reportEvents = await db.collection('report_events').where('reportId', '==', reportId).get()
-        expect(reportEvents.docs).toHaveLength(5)
+        expect(reportEvents.docs).toHaveLength(6)
 
         // ── Step 7: advance en_route → on_scene ──────────────────────────
         const onScene = await advanceDispatchCore(db, {
@@ -274,7 +281,7 @@ describe('proof-mvp-loop', () => {
         expect(report.status).toBe('on_scene')
 
         reportEvents = await db.collection('report_events').where('reportId', '==', reportId).get()
-        expect(reportEvents.docs).toHaveLength(6)
+        expect(reportEvents.docs).toHaveLength(7)
 
         // ── Step 8: advance on_scene → resolved ─────────────────────────
         const resolved = await advanceDispatchCore(db, {
@@ -312,7 +319,21 @@ describe('proof-mvp-loop', () => {
 
         // Report event stream
         reportEvents = await db.collection('report_events').where('reportId', '==', reportId).get()
-        expect(reportEvents.docs).toHaveLength(7)
+        expect(reportEvents.docs).toHaveLength(9)
+        const finalReportEventData = reportEvents.docs.map(
+          (d: { data: () => Record<string, unknown> }) => d.data(),
+        )
+        const citizenNotificationEvents = finalReportEventData.filter(
+          (event: Record<string, unknown>) =>
+            event.type === 'notification_attempted' && event.audience === 'citizen',
+        )
+        expect(citizenNotificationEvents).toHaveLength(2)
+        expect(citizenNotificationEvents).toContainEqual(
+          expect.objectContaining({ dispatchId, fcmResult: 'no_token' }),
+        )
+        expect(citizenNotificationEvents).toContainEqual(
+          expect.objectContaining({ reportId, fcmResult: 'no_token' }),
+        )
 
         // ── Citizen-safe tracking assertion ─────────────────────────────
         // report_lookup must only map publicRef → reportId without

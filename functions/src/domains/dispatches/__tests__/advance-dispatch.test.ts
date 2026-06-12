@@ -230,6 +230,24 @@ describe('advanceDispatchCore', () => {
         .where('to', '==', 'resolved')
         .get()
       expect(reportEvents.docs).toHaveLength(1)
+
+      const allReportEvents = await db
+        .collection('report_events')
+        .where('reportId', '==', reportId)
+        .get()
+      const notificationEvents = allReportEvents.docs
+        .map((doc: { data: () => Record<string, unknown> }) => doc.data())
+        .filter((event: Record<string, unknown>) => event.type === 'notification_attempted')
+      expect(notificationEvents).toHaveLength(1)
+      expect(notificationEvents[0]).toMatchObject({
+        reportId,
+        dispatchId,
+        channel: 'push',
+        audience: 'citizen',
+        fcmResult: 'no_token',
+        fcmWarnings: ['fcm_no_token'],
+        schemaVersion: 1,
+      })
     })
   })
 

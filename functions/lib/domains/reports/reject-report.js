@@ -9,12 +9,35 @@ import { bantayogErrorToHttps } from '../shared/https-error.js';
 import { isAccountActive } from '../ops/admin-auth.js';
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
+import { sendFcmToCitizen } from '../ops/fcm-send.js';
 const REJECT_REASONS = [
     'obviously_false',
     'duplicate',
     'test_submission',
     'insufficient_detail',
 ];
+function mapFcmResult(fcm) {
+    if (fcm.warnings.includes('fcm_no_token'))
+        return 'no_token';
+    if (fcm.warnings.includes('fcm_network_error'))
+        return 'network_error';
+    if (fcm.warnings.length > 0)
+        return 'sent_with_invalid_tokens';
+    return 'sent';
+}
+async function writeCitizenFcmTracking(db, reportId, fcmResult, fcmWarnings, nowMillis, correlationId) {
+    await db.collection('report_events').add({
+        type: 'notification_attempted',
+        reportId,
+        channel: 'push',
+        audience: 'citizen',
+        fcmResult,
+        fcmWarnings,
+        at: nowMillis,
+        correlationId,
+        schemaVersion: 1,
+    });
+}
 const InputSchema = z
     .object({
     reportId: z.string().min(1).max(128),
@@ -32,66 +55,84 @@ export async function rejectReportCore(db, deps) {
         key: `rejectReport:${deps.actor.uid}:${deps.idempotencyKey}`,
         payload: idempotentPayload,
         now: () => deps.now.toMillis(),
-    }, async () => db.runTransaction(async (tx) => {
-        const reportRef = db.collection('reports').doc(deps.reportId);
-        const snap = await tx.get(reportRef);
-        if (!snap.exists) {
-            throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found');
-        }
-        const report = snap.data();
-        if (deps.actor.claims.role !== 'provincial_superadmin' &&
-            report.municipalityId !== deps.actor.claims.municipalityId) {
-            throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality');
-        }
-        const from = report.status;
-        const to = 'cancelled_false_report';
-        if (from !== 'awaiting_verify') {
-            console.error(`rejectReport status blocked: report=${deps.reportId} from=${from}`);
-            throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, `rejectReport is only valid from awaiting_verify, got ${from}`, { reportId: deps.reportId, from });
-        }
-        tx.update(reportRef, {
-            status: to,
-            lastStatusAt: deps.now.toMillis(),
-            lastStatusBy: deps.actor.uid,
-            rejectionReason: deps.reason,
-        });
-        const incRef = db.collection('moderation_incidents').doc();
-        tx.set(incRef, {
-            incidentId: incRef.id,
-            reportId: deps.reportId,
-            reason: deps.reason,
-            notes: deps.notes ?? null,
-            actor: deps.actor.uid,
-            actorRole: deps.actor.claims.role ?? 'municipal_admin',
-            at: deps.now.toMillis(),
-            correlationId,
-            schemaVersion: 1,
-        });
-        const evRef = db.collection('report_events').doc();
-        tx.set(evRef, {
-            eventId: evRef.id,
-            reportId: deps.reportId,
-            from,
-            to,
-            actor: deps.actor.uid,
-            actorRole: deps.actor.claims.role ?? 'municipal_admin',
-            at: deps.now.toMillis(),
-            correlationId,
-            schemaVersion: 1,
-        });
-        log({
-            severity: 'INFO',
-            code: 'report.rejected',
-            message: `Report ${deps.reportId} rejected as ${deps.reason}`,
-            data: {
-                correlationId,
+    }, async () => {
+        const transition = await db.runTransaction(async (tx) => {
+            const reportRef = db.collection('reports').doc(deps.reportId);
+            const snap = await tx.get(reportRef);
+            if (!snap.exists) {
+                throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Report not found');
+            }
+            const report = snap.data();
+            if (deps.actor.claims.role !== 'provincial_superadmin' &&
+                report.municipalityId !== deps.actor.claims.municipalityId) {
+                throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality');
+            }
+            const from = report.status;
+            const to = 'cancelled_false_report';
+            if (from !== 'awaiting_verify') {
+                console.error(`rejectReport status blocked: report=${deps.reportId} from=${from}`);
+                throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, `rejectReport is only valid from awaiting_verify, got ${from}`, { reportId: deps.reportId, from });
+            }
+            tx.update(reportRef, {
+                status: to,
+                lastStatusAt: deps.now.toMillis(),
+                lastStatusBy: deps.actor.uid,
+                rejectionReason: deps.reason,
+            });
+            const incRef = db.collection('moderation_incidents').doc();
+            tx.set(incRef, {
+                incidentId: incRef.id,
                 reportId: deps.reportId,
                 reason: deps.reason,
-                actorUid: deps.actor.uid,
+                notes: deps.notes ?? null,
+                actor: deps.actor.uid,
+                actorRole: deps.actor.claims.role ?? 'municipal_admin',
+                at: deps.now.toMillis(),
+                correlationId,
+                schemaVersion: 1,
+            });
+            const evRef = db.collection('report_events').doc();
+            tx.set(evRef, {
+                eventId: evRef.id,
+                reportId: deps.reportId,
+                from,
+                to,
+                actor: deps.actor.uid,
+                actorRole: deps.actor.claims.role ?? 'municipal_admin',
+                at: deps.now.toMillis(),
+                correlationId,
+                schemaVersion: 1,
+            });
+            log({
+                severity: 'INFO',
+                code: 'report.rejected',
+                message: `Report ${deps.reportId} rejected as ${deps.reason}`,
+                data: {
+                    correlationId,
+                    reportId: deps.reportId,
+                    reason: deps.reason,
+                    actorUid: deps.actor.uid,
+                },
+            });
+            return { status: to, reportId: deps.reportId };
+        });
+        const fcm = await sendFcmToCitizen({
+            reportId: transition.reportId,
+            title: 'Update on your report',
+            body: 'Your report was not accepted. Open the app for details.',
+            data: {
+                reportId: transition.reportId,
             },
         });
-        return { status: to, reportId: deps.reportId };
-    }));
+        // Tracking writes are best-effort; must not fail the already-committed transaction.
+        try {
+            await writeCitizenFcmTracking(db, transition.reportId, mapFcmResult(fcm), fcm.warnings, deps.now.toMillis(), correlationId);
+        }
+        catch (err) {
+            console.error('rejectReport notification tracking failed:', err);
+        }
+        return transition;
+    });
     return result;
 }
 export const rejectReport = onCall({
