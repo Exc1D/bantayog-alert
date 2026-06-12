@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft, KeyRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
 import { loadReports } from '../services/localForageReports.js'
 import {
   fns,
@@ -20,6 +21,7 @@ interface LookupResult {
 export const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
 const FRIENDLY_ERROR =
   "We couldn't find a report with that secret code. It may have expired (reports are tracked for 90 days)."
+const OFFLINE_LOOKUP_ERROR = "You're offline — your code is saved, try again when connected."
 
 function normalizeSecretCode(secret: string): string {
   return secret.replace(/[^a-z0-9]/gi, '').toUpperCase()
@@ -30,6 +32,8 @@ function friendlyLookupError(err: unknown): string {
   const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
   if (code === 'functions/not-found' || code === 'not-found') return FRIENDLY_ERROR
   if (code === 'functions/permission-denied' || code === 'permission-denied') return FRIENDLY_ERROR
+  if (code === 'functions/unavailable' || code === 'unavailable') return OFFLINE_LOOKUP_ERROR
+  if (err instanceof TypeError) return OFFLINE_LOOKUP_ERROR
   if (code === 'functions/unauthenticated' || code === 'unauthenticated') {
     return 'Please refresh and try again.'
   }
@@ -53,6 +57,7 @@ function navigateToTrackedReport(
 
 export function LookupScreen() {
   const navigate = useNavigate()
+  const { isOnline, navigatorOnline } = useOnlineStatus()
   const [secret, setSecret] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -80,6 +85,10 @@ export function LookupScreen() {
       if (localMatch) {
         if (!isMountedRef.current) return
         navigateToTrackedReport(navigate, localMatch.publicRef)
+        return
+      }
+      if (!isOnline || !navigatorOnline) {
+        if (isMountedRef.current) setError(OFFLINE_LOOKUP_ERROR)
         return
       }
       if (!hasFirebaseConfig()) {

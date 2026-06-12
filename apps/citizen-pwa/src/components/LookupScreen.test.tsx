@@ -5,9 +5,10 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockNavigate = vi.fn()
-const { mockLoadReports, mockHttpsCallable } = vi.hoisted(() => ({
+const { mockLoadReports, mockHttpsCallable, mockUseOnlineStatus } = vi.hoisted(() => ({
   mockLoadReports: vi.fn(),
   mockHttpsCallable: vi.fn(),
+  mockUseOnlineStatus: vi.fn(),
 }))
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -23,6 +24,10 @@ vi.mock('../services/firebase.js', () => ({
   hasFirebaseConfig: () => true,
   ensureSignedIn: () => Promise.resolve(),
   FIREBASE_ENV_ERROR_MESSAGE: 'Firebase not configured',
+}))
+
+vi.mock('../hooks/useOnlineStatus.js', () => ({
+  useOnlineStatus: () => mockUseOnlineStatus(),
 }))
 
 let callableSecret = ''
@@ -66,6 +71,7 @@ beforeEach(() => {
   mockNavigate.mockReset()
   mockLoadReports.mockReset().mockResolvedValue([])
   mockHttpsCallable.mockClear()
+  mockUseOnlineStatus.mockReturnValue({ isOnline: true, navigatorOnline: true })
 })
 
 describe('LookupScreen', () => {
@@ -127,6 +133,47 @@ describe('LookupScreen', () => {
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find/)
       })
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('shows offline copy and preserves the entered code without remote lookup while offline', async () => {
+    mockUseOnlineStatus.mockReturnValue({ isOnline: false, navigatorOnline: false })
+
+    const user = userEvent.setup()
+    renderScreen()
+    const input = screen.getByPlaceholderText('Your secret code')
+    await user.type(input, 'stillvalid')
+    await user.click(screen.getByRole('button', { name: /find my report/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/you're offline/i)
+    })
+    expect(input).toHaveValue('stillvalid')
+    expect(mockHttpsCallable).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('shows offline retry copy when the lookup callable is unavailable', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockHttpsCallable.mockImplementationOnce(() => () => {
+      const err = new Error('unavailable')
+      ;(err as unknown as { code: string }).code = 'functions/unavailable'
+      return Promise.reject(err)
+    })
+    try {
+      const user = userEvent.setup()
+      renderScreen()
+      const input = screen.getByPlaceholderText('Your secret code')
+      await user.type(input, 'networksecret')
+      await user.click(screen.getByRole('button', { name: /find my report/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/you're offline/i)
+      })
+      expect(input).toHaveValue('networksecret')
+      expect(mockNavigate).not.toHaveBeenCalled()
     } finally {
       consoleError.mockRestore()
     }
