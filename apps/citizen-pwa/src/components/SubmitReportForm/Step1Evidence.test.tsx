@@ -48,7 +48,7 @@ describe('Step1Evidence — photo validation', () => {
     fireEvent.change(input, { target: { files: [goodFile] } })
 
     expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByText('photo.jpg')).toBeInTheDocument()
+    expect(screen.getByLabelText('Remove photo')).toBeInTheDocument()
   })
 })
 
