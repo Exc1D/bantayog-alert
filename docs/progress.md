@@ -357,6 +357,13 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Fix: Added `-D @firebase/database-compat` to `functions/package.json` with `pnpm --dir functions add -D @firebase/database-compat`.
 - Verification: Full emulator suite (`firebase emulators:exec --only firestore,database,storage 'npx vitest run'` inside functions/) now passes 79/104 suites, 610/775 tests, 0 failures (25 skipped are emulator-guarded). Root `pnpm test` (23 files, 199 tests) still green. Lint and typecheck clean.
 
+## 2026-06-12 - Ranked Refactor Backlog (rf-00 to rf-11)
+
+- Authored the ranked refactor backlog as twelve `docs/agent-tasks/rf-*.md` slice files for execution by other agents: rf-00 index (fallow evidence, ranked table, binding execution rules, user decision gates), rf-01 orphaned-callable disposition matrix (20 wrappers, three buckets, user-gated), rf-02/03 citizen incident-guard dedup + `buildIncidents` decomposition, rf-04/05 functions core decompositions (redispatch-report; merge-duplicates conditional on rf-01), rf-06/07 SubmitReportForm wizard/Step2 policy extractions, rf-08 batched functions test-scaffolding dedup, rf-09 leftover `shared-sms-parser` removal, rf-10 incident-core keep-or-remove decision, rf-11 two-phase package-consolidation assessment.
+- Recon corrections recorded in the slices: `packages/shared-sms-parser/` still exists with zero consumers despite the 2026-06-06 removal claim, and `bulkAvailabilityOverride` lost its 2026-06-04 Dispatch wiring (only `createResponder` remains wired).
+- Explicitly rejected a whole-codebase rewrite: fallow health 68/C with avg cyclomatic 1.6 shows localized debt, not uniform rot; the new CI fallow gate makes the backlog a one-way ratchet.
+- Documentation-only slice: no code, rules, schema, dependency, or deploy changes.
+
 ## Open
 
 1. Firebase Console: Phone Auth disabled; App Check 400 errors on staging.
