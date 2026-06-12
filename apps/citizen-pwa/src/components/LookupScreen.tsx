@@ -30,6 +30,7 @@ const LOOKUP_ERROR_MAP: Record<string, string> = {
   'permission-denied': FRIENDLY_ERROR,
   'functions/unavailable': OFFLINE_LOOKUP_ERROR,
   unavailable: OFFLINE_LOOKUP_ERROR,
+  offline: OFFLINE_LOOKUP_ERROR,
   'functions/unauthenticated': 'Please refresh and try again.',
   unauthenticated: 'Please refresh and try again.',
   'functions/resource-exhausted': 'Too many attempts. Please wait a minute and try again.',
@@ -51,6 +52,34 @@ function friendlyLookupError(err: unknown): string {
   const mapped = LOOKUP_ERROR_MAP[code]
   if (mapped !== undefined) return mapped
   return 'Something went wrong. Please try again or call the hotline.'
+}
+
+async function performLookup(
+  trimmedSecret: string,
+  isOnline: boolean,
+  navigatorOnline: boolean,
+): Promise<string> {
+  const localReports = await loadReports()
+  const localMatch = localReports.find((report) => report.secret === trimmedSecret)
+  if (localMatch) {
+    return localMatch.publicRef
+  }
+  if (!isOnline || !navigatorOnline) {
+    const err = new Error(OFFLINE_LOOKUP_ERROR)
+    ;(err as unknown as { code: string }).code = 'offline'
+    throw err
+  }
+  if (!hasFirebaseConfig()) {
+    throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
+  }
+  await ensureSignedIn()
+  const res = await httpsCallable(fns(), 'requestLookup')({ secret: trimmedSecret })
+  const result = res.data as LookupResult
+  if (!result.publicRef || typeof result.publicRef !== 'string') {
+    console.error('[LookupScreen] Invalid lookup response:', result)
+    throw new Error('Invalid server response.')
+  }
+  return result.publicRef
 }
 
 function navigateToTrackedReport(
@@ -90,29 +119,9 @@ export function LookupScreen() {
     }
     setLoading(true)
     try {
-      const localReports = await loadReports()
-      const localMatch = localReports.find((report) => report.secret === trimmedSecret)
-      if (localMatch) {
-        if (!isMountedRef.current) return
-        navigateToTrackedReport(navigate, localMatch.publicRef)
-        return
-      }
-      if (!isOnline || !navigatorOnline) {
-        if (isMountedRef.current) setError(OFFLINE_LOOKUP_ERROR)
-        return
-      }
-      if (!hasFirebaseConfig()) {
-        throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
-      }
-      await ensureSignedIn()
-      const res = await httpsCallable(fns(), 'requestLookup')({ secret: trimmedSecret })
-      const result = res.data as LookupResult
-      if (!result.publicRef || typeof result.publicRef !== 'string') {
-        console.error('[LookupScreen] Invalid lookup response:', result)
-        throw new Error('Invalid server response.')
-      }
+      const publicRef = await performLookup(trimmedSecret, isOnline, navigatorOnline)
       if (!isMountedRef.current) return
-      navigateToTrackedReport(navigate, result.publicRef)
+      navigateToTrackedReport(navigate, publicRef)
     } catch (e: unknown) {
       console.error('[LookupScreen] requestLookup failed:', e)
       if (isMountedRef.current) {
