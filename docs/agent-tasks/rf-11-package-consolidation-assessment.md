@@ -27,7 +27,7 @@ decided) — both change the inventory this assessment ranks.
 ## Phase 1 deliverable (one markdown file)
 
 `docs/architecture/package-consolidation-proposal.md` containing, per
-package: export inventory (`fallow list --entry-points` + manual grep),
+package: export inventory (`fallow list --entry-points --format json` + manual grep),
 which workspaces import it, LOC, and a merge/keep/delete recommendation
 with a one-line reason. Likely candidates to evaluate — verify, don't
 assume: tiny single-consumer packages folding into their consumer;
@@ -38,9 +38,11 @@ hand-written ones redundant); shared-data vs shared-firebase boundary.
 
 - Evidence over taste: every recommendation cites the import graph, not
   "feels like too many packages".
-- Respect frozen decisions: rf-10's outcome binds incident-core; canonical
-  geography stays in shared-validators; `@bantayog/*` import specifiers
-  that survive must not change for consumers in phase 2.
+- Respect frozen decisions: rf-10's outcome binds incident-core; incident-core
+  schema types defined in `@bantayog/shared-validators/src/incident-core.ts`
+  must not be moved or re-exported, and must remain intact even if
+  `packages/incident-core/` is removed per rf-10; `@bantayog/*` import
+  specifiers that survive must not change for consumers in phase 2.
 - Phase 2 (post-approval, separate branches): one package merge per branch,
   `git mv` to preserve history, update `exports`/deps/lockfile/CI filters
   together, full root verification per merge. No directory reorg mixed with

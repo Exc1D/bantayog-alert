@@ -26,8 +26,7 @@ incidents from one surface)
 
 - `apps/citizen-pwa/src/hooks/public-incident-guard.ts` (new — the guard +
   its focused field checks; app-local, NOT shared-validators: only
-  citizen-pwa consumes it, and the speculative `PublicIncidentCard` in
-  shared-validators is a different, unrelated contract)
+  citizen-pwa consumes it)
 - `apps/citizen-pwa/src/hooks/usePublicIncidents.ts` + `useIncident.ts`
   (delete local copies, import the shared one)
 - `apps/citizen-pwa/src/hooks/public-incident-guard.test.ts` (new)
