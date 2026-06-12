@@ -88,6 +88,7 @@ describe('RevealSheet', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    mockOnAuthStateChanged.mockReset()
     mockHasFirebaseConfig.mockReturnValue(false)
     mockRequestPermission.mockResolvedValue(true)
     setNotificationPermission('default')
@@ -147,6 +148,9 @@ describe('RevealSheet', () => {
     setupRegisteredUser(true)
 
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200)
+    })
     await flushEffects()
 
     expect(screen.getByText('Get notified when help is on the way')).toBeInTheDocument()
@@ -162,12 +166,16 @@ describe('RevealSheet', () => {
     })
 
     expect(mockRequestPermission).toHaveBeenCalledOnce()
+    expect(screen.queryByText('Get notified when help is on the way')).not.toBeInTheDocument()
   })
 
   it('dismisses the registered notification offer without requesting permission', async () => {
     setupRegisteredUser(true)
 
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200)
+    })
     await flushEffects()
 
     fireEvent.click(screen.getByRole('button', { name: /not now/i }))
@@ -178,6 +186,9 @@ describe('RevealSheet', () => {
 
   async function clickNotifyAndAssertError(): Promise<void> {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200)
+    })
     await flushEffects()
 
     await act(async () => {
@@ -207,6 +218,9 @@ describe('RevealSheet', () => {
     })
 
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200)
+    })
     await flushEffects()
 
     expect(
