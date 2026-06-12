@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-06-12 - Phase 3B Experience-Layer Slices (3B-09/10/11)
+
+- Reviewed the "experiences, not screens" Citizen PWA proposal against the shipped code: receipt UX (`RevealSheet`), citizen-safe timeline (`buildTrackingTimeline`), offline reassurance, advisory surface, and hotline disclaimers already exist, so they got no new slices.
+- The one real defect found: the own-report DetailSheet headline renders the raw status enum (`status.replace(/_/g, ' ')`), so a citizen literally sees "fire · awaiting verify". Captured as slice 3B-09 (P1): a plain-language status hero with explanation, next-step guidance, designed resolved-closure copy, and rejected terminal copy — en_route copy must stay identical to the 3A-03 push ("Help is on the way").
+- Added two P2 slices: 3B-10 report readiness card (factual completeness hint on the review step from a pure helper; informs, never blocks; no scores/streaks per the learnings.md ethics line) and 3B-11 map situational headline (one calm interpretive line from existing listeners, truth-gated to render nothing on loading/error/stale).
+- Consciously rejected: action-first home IA restructure, a second reference-number format (publicRef exists), and any gamified stake mechanics.
+- Documentation-only slice: no code, rules, schema, dependency, or deploy changes.
+
 ## 2026-06-12 - Phase 3B-03 RevealSheet Notification Ask (review fixes applied)
 
 - Added a success-state notification offer to Citizen PWA `RevealSheet`: registered users with `Notification.permission === 'default'` can request push updates through the existing `useFcmToken().requestPermission` flow.
