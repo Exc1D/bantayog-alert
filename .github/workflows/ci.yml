@@ -47,6 +47,22 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
 
+  fallow-audit:
+    name: Fallow Audit (changed code)
+    if: github.event_name == 'pull_request'
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # audit diffs against the PR base ref
+      - uses: fallow-rs/fallow@v2
+        with:
+          command: audit
+          gate: new-only
+          fail-on-issues: true
+          annotations: true
+
   typecheck:
     name: Typecheck
     needs: setup
