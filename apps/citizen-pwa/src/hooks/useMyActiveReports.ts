@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { onSnapshot, doc } from 'firebase/firestore'
 import type { FirestoreError } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
@@ -21,6 +21,10 @@ interface ReportSnapshotData {
   lastStatusAt?: number
 }
 
+type MyActiveReportsStatus = 'loading' | 'ready' | 'error'
+
+const REPORT_LOAD_ERROR = "We can't load your reports right now"
+
 function baseFromStored(entry: StoredReport): MyReport {
   return {
     publicRef: entry.publicRef,
@@ -38,11 +42,23 @@ function baseFromStored(entry: StoredReport): MyReport {
 export function useMyActiveReports(): {
   reports: MyReport[]
   loading: boolean
+  status: MyActiveReportsStatus
+  error: string | null
+  retry: () => void
 } {
   const [stored, setStored] = useState<StoredReport[]>([])
   const [storedLoaded, setStoredLoaded] = useState(false)
   const [reports, setReports] = useState<MyReport[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [retryNonce, setRetryNonce] = useState(0)
+
+  const retry = useCallback(() => {
+    setError(null)
+    setLoading(true)
+    setStoredLoaded(false)
+    setRetryNonce((nonce) => nonce + 1)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -68,7 +84,7 @@ export function useMyActiveReports(): {
       cancelled = true
       window.removeEventListener('bantayog:report-saved', refreshStored)
     }
-  }, [])
+  }, [retryNonce])
 
   // Subscribe per stored entry; keyed by sorted publicRefs so we don't tear
   // down listeners on identity-only changes to the stored array.
@@ -88,15 +104,18 @@ export function useMyActiveReports(): {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setReports([])
 
+      setError(null)
       setLoading(false)
       return
     }
 
     const liveMap = new Map<string, MyReport>(stored.map((s) => [s.publicRef, baseFromStored(s)]))
+    const failedRefs = new Set<string>()
 
     setReports([...liveMap.values()])
 
     if (!hasFirebaseConfig()) {
+      setError(null)
       setLoading(false)
       return
     }
@@ -119,6 +138,18 @@ export function useMyActiveReports(): {
       }
     }
 
+    function markEntryHealthy(publicRef: string): void {
+      if (cancelled) return
+      failedRefs.delete(publicRef)
+      setError(failedRefs.size > 0 ? REPORT_LOAD_ERROR : null)
+    }
+
+    function markEntryFailed(publicRef: string): void {
+      if (cancelled) return
+      failedRefs.add(publicRef)
+      setError(REPORT_LOAD_ERROR)
+    }
+
     const callable = httpsCallable<{ publicRef: string; secret: string }, LookupResult>(
       fns(),
       'requestLookup',
@@ -127,6 +158,7 @@ export function useMyActiveReports(): {
     async function fallbackToCallable(entry: StoredReport, reportId?: string): Promise<void> {
       try {
         const res = await callable({ publicRef: entry.publicRef, secret: entry.secret })
+        if (cancelled) return
         const info = res.data
         const merged = baseFromStored(entry)
         merged.status = info.status as MyReport['status']
@@ -135,13 +167,16 @@ export function useMyActiveReports(): {
         if (reportId) merged.id = reportId
         liveMap.set(entry.publicRef, merged)
         flushReports()
+        markEntryHealthy(entry.publicRef)
       } catch (err: unknown) {
+        if (cancelled) return
         const code = (err as { code?: unknown }).code
         const normalizedCode =
           typeof code === 'string' ? code.replace(/_/g, '-').toLowerCase() : null
         if (normalizedCode !== 'not-found') {
           console.error('[useMyActiveReports] callable fallback failed', err)
         }
+        markEntryFailed(entry.publicRef)
       }
     }
 
@@ -196,6 +231,7 @@ export function useMyActiveReports(): {
               }
               liveMap.set(entry.publicRef, merged)
               flushReports()
+              markEntryHealthy(entry.publicRef)
               if (!firstEmitted) {
                 firstEmitted = true
                 markEntryResolved()
@@ -234,7 +270,9 @@ export function useMyActiveReports(): {
       for (const u of unsubs) u()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storedLoaded, subscriptionKey])
+  }, [storedLoaded, subscriptionKey, retryNonce])
 
-  return { reports, loading }
+  const status: MyActiveReportsStatus = error ? 'error' : loading ? 'loading' : 'ready'
+
+  return { reports, loading, status, error, retry }
 }

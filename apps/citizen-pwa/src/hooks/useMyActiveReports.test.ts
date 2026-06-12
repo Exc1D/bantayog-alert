@@ -283,6 +283,59 @@ describe('useMyActiveReports', () => {
     expect(result.current.loading).toBe(false)
   })
 
+  it('surfaces an error when Firestore and requestLookup both fail', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockLoadReports.mockResolvedValue([
+      {
+        publicRef: 'denied02',
+        secret: 'mySecret',
+        reportType: 'flood',
+        severity: 'medium',
+        lat: 14.0,
+        lng: 122.0,
+        submittedAt: 500,
+      },
+    ])
+    mockRequestLookup.mockRejectedValue({ code: 'unavailable', message: 'offline' })
+
+    try {
+      const { result } = renderHook(() => useMyActiveReports())
+
+      await waitFor(() => {
+        expect(snapshotsByPath.has('report_lookup/denied02')).toBe(true)
+      })
+
+      act(() => {
+        emit('report_lookup/denied02', {
+          exists: () => true,
+          data: () => ({ reportId: 'rid-denied-2' }),
+        })
+      })
+      await waitFor(() => {
+        expect(snapshotsByPath.has('reports/rid-denied-2')).toBe(true)
+      })
+
+      act(() => {
+        emitError('reports/rid-denied-2', { code: 'permission-denied' })
+      })
+
+      await waitFor(() => {
+        expect(result.current.status).toBe('error')
+      })
+      expect(result.current.error).toBe("We can't load your reports right now")
+      expect(result.current.loading).toBe(false)
+      expect(result.current.reports).toEqual([
+        expect.objectContaining({ publicRef: 'denied02', status: 'queued' }),
+      ])
+      expect(consoleError).toHaveBeenCalledWith('[useMyActiveReports] callable fallback failed', {
+        code: 'unavailable',
+        message: 'offline',
+      })
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('cleans up snapshot listeners on unmount', async () => {
     mockLoadReports.mockResolvedValue([
       {
