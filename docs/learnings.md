@@ -134,6 +134,7 @@
 - For oversized modal refactors, extract pure policy first (defaults, validation, payload builders) and prove it with focused tests before moving JSX or caller workflows.
 - When extracting nested alertdialogs, preserve role/name, disabled/loading states, and backdrop behavior; shared modal reuse is only safe when those contracts already match.
 - React effect lint treats direct registration helpers that can set state as effect-body state writes. Schedule app-shell registration work through async callbacks, and derive initial permission warnings outside the effect body.
+- For report-keyed prompt state, prefer a keyed child component over resetting several `useState` values from a parent `useEffect`; `react-hooks/set-state-in-effect` treats synchronous effect resets as cascading renders.
 - Citizen FCM token tests live at `apps/citizen-pwa/src/hooks/__tests__/useFcmToken.test.tsx`; older slice text may mention `src/hooks/useFcmToken.test.ts`.
 - Citizen MapTab has no URL-driven report selection contract yet. For notification tap-through, preserve `reportId` in the URL/query or payload, but do not assume MapTab will focus it until a later UI slice consumes that state.
 
