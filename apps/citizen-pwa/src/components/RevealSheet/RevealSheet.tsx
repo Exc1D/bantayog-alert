@@ -123,15 +123,80 @@ function getNotificationPermission(): NotificationPermission {
   return Notification.permission
 }
 
+function NotificationPrompt({
+  isGuest,
+  state,
+}: {
+  isGuest: boolean | null
+  state: RevealSheetProps['state']
+}) {
+  if (state !== 'success' || isGuest === null) return null
+  return <NotificationPromptInner isGuest={isGuest} />
+}
+
+function NotificationPromptInner({ isGuest }: { isGuest: boolean }) {
+  const [dismissed, setDismissed] = useState(false)
+  const [requesting, setRequesting] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const { requestPermission } = useFcmToken()
+
+  const handleAccept = useCallback(async () => {
+    setRequesting(true)
+    setHasError(false)
+    try {
+      const ok = await requestPermission()
+      if (ok) {
+        setDismissed(true)
+      } else {
+        // Permission denied, no token, or setup failure
+        setHasError(true)
+      }
+    } catch {
+      setHasError(true)
+    } finally {
+      setRequesting(false)
+    }
+  }, [requestPermission])
+
+  const handleDismiss = useCallback(() => {
+    setDismissed(true)
+  }, [])
+
+  const wrappedAccept = useCallback((): void => {
+    void handleAccept()
+  }, [handleAccept])
+
+  // If permission was already decided before this sheet rendered, don't show
+  if (getNotificationPermission() !== 'default') return null
+  if (dismissed) return null
+
+  return isGuest ? (
+    <GuardianCTA />
+  ) : (
+    <NotificationOffer
+      isRequesting={requesting}
+      hasError={hasError}
+      onAccept={wrappedAccept}
+      onDismiss={handleDismiss}
+    />
+  )
+}
+
 function NotificationOffer({
   isRequesting,
+  hasError,
   onAccept,
   onDismiss,
 }: {
   isRequesting: boolean
+  hasError: boolean
   onAccept: () => void
   onDismiss: () => void
 }) {
+  const handleClick = useCallback((): void => {
+    onAccept()
+  }, [onAccept])
+
   return (
     <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4">
       <div className="flex gap-3">
@@ -143,13 +208,18 @@ function NotificationOffer({
             Get notified when help is on the way
           </p>
           <p className="m-0 mt-1 text-xs leading-relaxed text-surface-600">
-            We will only use this for report status updates from Bantayog Alert.
+            Get report status updates and public emergency alerts from Bantayog Alert.
           </p>
+          {hasError && (
+            <p className="m-0 mt-1 text-xs leading-relaxed text-rose-600">
+              Could not enable notifications. You can try again or skip for now.
+            </p>
+          )}
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button variant="primary" fullWidth onClick={onAccept} disabled={isRequesting}>
-          {isRequesting ? 'Asking...' : 'Get notified'}
+        <Button variant="primary" fullWidth onClick={handleClick} disabled={isRequesting}>
+          {isRequesting ? 'Asking...' : hasError ? 'Try again' : 'Get notified'}
         </Button>
         <Button variant="secondary" fullWidth onClick={onDismiss}>
           Not now
@@ -180,7 +250,6 @@ export function RevealSheet({
   const reducedMotion = useReducedMotion()
   const contact = useMunicipalityContact(municipalityId)
   const variants = useMemo(() => buildVariants(contact.label), [contact.label])
-  const { requestPermission } = useFcmToken()
   const { display: slotDisplay, done: slotDone } = useSlotMachine(
     referenceCode,
     reducedMotion ? 0 : 600,
@@ -189,8 +258,6 @@ export function RevealSheet({
   const displayedCode = reducedMotion ? referenceCode : slotDisplay
   const typewriterComplete = reducedMotion ? true : slotDone
   const isGuest = useAuthGuest()
-  const [notificationPromptDismissed, setNotificationPromptDismissed] = useState(false)
-  const [notificationRequesting, setNotificationRequesting] = useState(false)
   const secretVisible = useSecretVisibility(typewriterComplete, secretCode, reducedMotion)
 
   useVibrate(state)
@@ -209,27 +276,10 @@ export function RevealSheet({
   })
 
   const timelineEvents = buildTimelineEvents(state, afterglowTime)
-  const shouldShowNotificationOffer =
-    state === 'success' &&
-    isGuest !== null &&
-    !notificationPromptDismissed &&
-    getNotificationPermission() === 'default'
 
   const handleTrackReport = useCallback(() => {
     void navigate('/')
   }, [navigate])
-
-  const handleDismissNotificationOffer = useCallback(() => {
-    setNotificationPromptDismissed(true)
-  }, [])
-
-  const handleRequestNotifications = useCallback(() => {
-    setNotificationRequesting(true)
-    void requestPermission().finally(() => {
-      setNotificationRequesting(false)
-      setNotificationPromptDismissed(true)
-    })
-  }, [requestPermission])
 
   const handleCallHotline = useCallback(() => {
     const telDigits = contact.hotline.replace(/[^\d+]/g, '')
@@ -352,16 +402,7 @@ export function RevealSheet({
           />
         )}
 
-        {shouldShowNotificationOffer &&
-          (isGuest ? (
-            <GuardianCTA />
-          ) : (
-            <NotificationOffer
-              isRequesting={notificationRequesting}
-              onAccept={handleRequestNotifications}
-              onDismiss={handleDismissNotificationOffer}
-            />
-          ))}
+        <NotificationPrompt isGuest={isGuest} state={state} />
 
         <FallbackCards
           hotlineNumber={contact.hotline}
