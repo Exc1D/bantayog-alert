@@ -126,11 +126,13 @@ function getNotificationPermission(): NotificationPermission {
 function NotificationPrompt({
   isGuest,
   state,
+  successComplete,
 }: {
   isGuest: boolean | null
   state: RevealSheetProps['state']
+  successComplete: boolean
 }) {
-  if (state !== 'success' || isGuest === null) return null
+  if (state !== 'success' || isGuest === null || !successComplete) return null
   return <NotificationPromptInner isGuest={isGuest} />
 }
 
@@ -166,13 +168,23 @@ function NotificationPromptInner({ isGuest }: { isGuest: boolean }) {
     void handleAccept()
   }, [handleAccept])
 
-  // If permission was already decided before this sheet rendered, don't show
-  if (getNotificationPermission() !== 'default') return null
+  // If dismissed, don't show
   if (dismissed) return null
 
-  return isGuest ? (
-    <GuardianCTA />
-  ) : (
+  // For guests, always show GuardianCTA regardless of permission state
+  if (isGuest) {
+    return <GuardianCTA />
+  }
+
+  // For registered users, check permission but allow error UI after failures
+  // Only hide if permission was explicitly granted and setup succeeded (dismissed)
+  // or if user explicitly denied (permission === 'denied' and not hasError)
+  // If permission is 'granted' but hasError, show error/retry UI
+  // If permission is 'default', show the prompt
+  const permission = getNotificationPermission()
+  if (permission === 'denied' && !hasError) return null
+
+  return (
     <NotificationOffer
       isRequesting={requesting}
       hasError={hasError}
@@ -238,6 +250,7 @@ export interface RevealSheetProps {
   onPrimaryAction?: () => void
 }
 
+// fallow-ignore-next-line complexity
 export function RevealSheet({
   state,
   referenceCode,
@@ -402,7 +415,7 @@ export function RevealSheet({
           />
         )}
 
-        <NotificationPrompt isGuest={isGuest} state={state} />
+        <NotificationPrompt isGuest={isGuest} state={state} successComplete={typewriterComplete} />
 
         <FallbackCards
           hotlineNumber={contact.hotline}
