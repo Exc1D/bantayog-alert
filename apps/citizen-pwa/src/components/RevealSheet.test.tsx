@@ -139,6 +139,11 @@ describe('RevealSheet', () => {
     await flushEffects()
 
     expect(screen.getByText('Get notified when help is on the way')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Get report status updates and public emergency alerts from Bantayog Alert.',
+      ),
+    ).toBeInTheDocument()
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /get notified/i }))
@@ -162,6 +167,46 @@ describe('RevealSheet', () => {
 
     expect(screen.queryByText('Get notified when help is on the way')).not.toBeInTheDocument()
     expect(mockRequestPermission).not.toHaveBeenCalled()
+  })
+
+  it('shows error state when permission request returns false', async () => {
+    mockHasFirebaseConfig.mockReturnValue(true)
+    mockRequestPermission.mockResolvedValue(false)
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
+      cb({ uid: 'registered-user', isAnonymous: false })
+      return () => undefined
+    })
+
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await flushEffects()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /get notified/i }))
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText(/Could not enable notifications/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+  })
+
+  it('shows error state when permission request throws', async () => {
+    mockHasFirebaseConfig.mockReturnValue(true)
+    mockRequestPermission.mockRejectedValue(new Error('FCM setup failed'))
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
+      cb({ uid: 'registered-user', isAnonymous: false })
+      return () => undefined
+    })
+
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await flushEffects()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /get notified/i }))
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText(/Could not enable notifications/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
 
   it('nudges anonymous users to register for help-on-the-way notifications', async () => {
