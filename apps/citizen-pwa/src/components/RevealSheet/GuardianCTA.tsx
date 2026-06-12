@@ -2,9 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import { CheckCircle, LogIn } from 'lucide-react'
 
 const GUARDIAN_BENEFITS = [
+  'Save notification preferences',
   'Track reports across devices',
-  'Earn Guardian badges',
-  'Get status updates via app',
+  'Get responder status updates',
 ]
 
 export function GuardianCTA() {
@@ -13,10 +13,10 @@ export function GuardianCTA() {
   return (
     <div className="mt-4 mb-2 rounded-xl overflow-hidden bg-gradient-to-br from-brand-500 to-brand-600 p-4">
       <p className="text-white font-bold text-base mb-1">
-        Maging Guardian. Samahan mo kaming magbantay.
+        Create an account to get notified when help is on the way
       </p>
       <p className="text-brand-100 text-xs mb-3">
-        Create a free account to track your reports, earn badges, and help protect your community.
+        Push updates are saved to registered accounts only. Sign up when you are ready.
       </p>
       <ul className="space-y-1 mb-3">
         {GUARDIAN_BENEFITS.map((benefit) => (

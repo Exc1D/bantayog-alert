@@ -81,6 +81,10 @@ export function useFcmToken() {
       return
     }
 
+    if (!hasFirebaseConfig()) {
+      return
+    }
+
     const messaging = getMessaging()
     getServiceWorkerRegistration()
       .then((serviceWorkerRegistration) => {
