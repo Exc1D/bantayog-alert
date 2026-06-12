@@ -69,6 +69,21 @@ async function flushEffects(): Promise<void> {
   })
 }
 
+function setupRegisteredUser(permissionValue: boolean | Error = true): void {
+  mockHasFirebaseConfig.mockReturnValue(true)
+  mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
+    cb({ uid: 'registered-user', isAnonymous: false })
+    return () => undefined
+  })
+  if (permissionValue === true) {
+    mockRequestPermission.mockResolvedValue(true)
+  } else if (permissionValue === false) {
+    mockRequestPermission.mockResolvedValue(false)
+  } else {
+    mockRequestPermission.mockRejectedValue(permissionValue)
+  }
+}
+
 describe('RevealSheet', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -129,11 +144,7 @@ describe('RevealSheet', () => {
   })
 
   it('offers registered users help-on-the-way notifications on success', async () => {
-    mockHasFirebaseConfig.mockReturnValue(true)
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
-      cb({ uid: 'registered-user', isAnonymous: false })
-      return () => undefined
-    })
+    setupRegisteredUser(true)
 
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await flushEffects()
@@ -154,11 +165,7 @@ describe('RevealSheet', () => {
   })
 
   it('dismisses the registered notification offer without requesting permission', async () => {
-    mockHasFirebaseConfig.mockReturnValue(true)
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
-      cb({ uid: 'registered-user', isAnonymous: false })
-      return () => undefined
-    })
+    setupRegisteredUser(true)
 
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await flushEffects()
@@ -169,14 +176,7 @@ describe('RevealSheet', () => {
     expect(mockRequestPermission).not.toHaveBeenCalled()
   })
 
-  it('shows error state when permission request returns false', async () => {
-    mockHasFirebaseConfig.mockReturnValue(true)
-    mockRequestPermission.mockResolvedValue(false)
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
-      cb({ uid: 'registered-user', isAnonymous: false })
-      return () => undefined
-    })
-
+  async function clickNotifyAndAssertError(): Promise<void> {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await flushEffects()
 
@@ -187,26 +187,16 @@ describe('RevealSheet', () => {
 
     expect(screen.getByText(/Could not enable notifications/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+  }
+
+  it('shows error state when permission request returns false', async () => {
+    setupRegisteredUser(false)
+    await clickNotifyAndAssertError()
   })
 
   it('shows error state when permission request throws', async () => {
-    mockHasFirebaseConfig.mockReturnValue(true)
-    mockRequestPermission.mockRejectedValue(new Error('FCM setup failed'))
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
-      cb({ uid: 'registered-user', isAnonymous: false })
-      return () => undefined
-    })
-
-    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
-    await flushEffects()
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /get notified/i }))
-      await Promise.resolve()
-    })
-
-    expect(screen.getByText(/Could not enable notifications/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+    setupRegisteredUser(new Error('FCM setup failed'))
+    await clickNotifyAndAssertError()
   })
 
   it('nudges anonymous users to register for help-on-the-way notifications', async () => {
@@ -232,12 +222,8 @@ describe('RevealSheet', () => {
   })
 
   it('does not ask for notifications after browser permission is decided', async () => {
-    mockHasFirebaseConfig.mockReturnValue(true)
+    setupRegisteredUser(true)
     setNotificationPermission('denied')
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
-      cb({ uid: 'registered-user', isAnonymous: false })
-      return () => undefined
-    })
 
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await flushEffects()

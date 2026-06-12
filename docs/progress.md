@@ -1,6 +1,6 @@
 # Progress
 
-## 2026-06-12 - Phase 3B-03 RevealSheet Notification Ask
+## 2026-06-12 - Phase 3B-03 RevealSheet Notification Ask (review fixes applied)
 
 - Added a success-state notification offer to Citizen PWA `RevealSheet`: registered users with `Notification.permission === 'default'` can request push updates through the existing `useFcmToken().requestPermission` flow.
 - Reframed the anonymous success CTA into a notification-specific registration nudge, linking to the existing `/register` route without asking anonymous sessions for browser notification permission.
