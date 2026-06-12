@@ -1,5 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+
+const { mockAuth, mockHttpsCallable } = vi.hoisted(() => ({
+  mockAuth: vi.fn(),
+  mockHttpsCallable: vi.fn(),
+}))
+
+vi.mock('../../services/firebase.js', () => ({
+  auth: mockAuth,
+  fns: () => 'mocked-functions',
+  httpsCallable: mockHttpsCallable,
+}))
+
 import { DetailSheet } from './DetailSheet.js'
 
 const publicProps = {
@@ -33,6 +45,9 @@ const myReportProps = {
 
 beforeEach(() => {
   vi.useRealTimers()
+  window.localStorage.clear()
+  mockAuth.mockReturnValue({ currentUser: { uid: 'citizen-1', isAnonymous: false } })
+  mockHttpsCallable.mockReset()
 })
 
 afterEach(() => {
@@ -132,6 +147,89 @@ describe('DetailSheet — myReport mode', () => {
     expect(screen.getByText('Responder en route')).toBeInTheDocument()
     expect(screen.getByText('Resolution')).toBeInTheDocument()
     expect(screen.getByText(/updated/i)).toBeInTheDocument()
+  })
+
+  it('asks for resolved-report feedback and thanks the citizen after submit', async () => {
+    const submitFeedback = vi.fn().mockResolvedValue({ data: { reportId: 'report-id-5678' } })
+    mockHttpsCallable.mockReturnValue(submitFeedback)
+
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        mode="myReport"
+        report={{
+          ...myReportProps.report,
+          status: 'resolved',
+          lastStatusAt: Date.now() - 600000,
+        }}
+      />,
+    )
+
+    expect(screen.getByText(/was this addressed/i)).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^yes$/i }))
+      await Promise.resolve()
+    })
+
+    expect(mockHttpsCallable).toHaveBeenCalledWith('mocked-functions', 'submitReportFeedback')
+    expect(submitFeedback).toHaveBeenCalledWith({ reportId: 'report-id-5678', addressed: true })
+    expect(screen.getByText(/thanks for the feedback/i)).toBeInTheDocument()
+    expect(screen.queryByText(/was this addressed/i)).toBeNull()
+  })
+
+  it('does not ask anonymous sessions for resolved-report feedback', () => {
+    mockAuth.mockReturnValue({ currentUser: { uid: 'anon-1', isAnonymous: true } })
+
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        mode="myReport"
+        report={{
+          ...myReportProps.report,
+          status: 'resolved',
+          lastStatusAt: Date.now() - 600000,
+        }}
+      />,
+    )
+
+    expect(screen.queryByText(/was this addressed/i)).toBeNull()
+    expect(mockHttpsCallable).not.toHaveBeenCalled()
+  })
+
+  it('keeps the feedback prompt retryable when submit fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const submitFeedback = vi.fn().mockRejectedValue(new Error('offline'))
+    mockHttpsCallable.mockReturnValue(submitFeedback)
+
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        mode="myReport"
+        report={{
+          ...myReportProps.report,
+          status: 'resolved',
+          lastStatusAt: Date.now() - 600000,
+        }}
+      />,
+    )
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^no$/i }))
+      await Promise.resolve()
+    })
+
+    expect(submitFeedback).toHaveBeenCalledWith({ reportId: 'report-id-5678', addressed: false })
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not send your feedback/i)
+    expect(screen.getByText(/was this addressed/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^no$/i })).toBeEnabled()
+    consoleError.mockRestore()
   })
 
   it('shows a terminal tracking outcome for rejected reports', () => {

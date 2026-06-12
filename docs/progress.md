@@ -522,3 +522,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Chose overwrite semantics for one-feedback-per-report: corrections replace the same `report_feedback/{reportId}` doc while preserving the original `submittedAt`; identical payload retries are idempotent through `withIdempotency`.
 - Added focused emulator coverage for resolved reporter success, non-reporter rejection, non-resolved rejection, and overwrite behavior. Rebuilt tracked `packages/shared-validators/lib` and `functions/lib` outputs for the new exports/callable.
 - Verification: red-first focused emulator test failed on missing `submit-report-feedback.js`, then passed 4/4. `pnpm --filter @bantayog/shared-validators run build`, `pnpm --filter @bantayog/shared-validators run typecheck`, and shared-validator tests passed 14/14 files, 171/171 tests. `pnpm --dir functions run build`, `pnpm --dir functions exec tsc --noEmit`, and `pnpm --dir functions exec eslint src` passed with only the repo's known Node 20 vs Functions Node 22 engine warning. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-12 - Phase 3B-05 Resolved Report Feedback Prompt
+
+- Added a registered-citizen-only `Was this addressed?` prompt to the Citizen PWA own-report detail sheet when a report reaches `resolved`.
+- Wired the prompt to the existing `submitReportFeedback` callable with yes/no answers, optional trimmed comments, inline retryable failure copy, and a local submitted flag to avoid prompting again after success.
+- Kept anonymous sessions and reports without ids out of the feedback path; no backend, rules, index, or schema files changed.
+- Verification: red-first focused `DetailSheet` test failed on the missing prompt, then passed 14/14 after implementation, including anonymous-hide and retryable-error coverage. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed.

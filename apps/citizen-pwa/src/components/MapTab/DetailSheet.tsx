@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type TouchEvent } from 'react'
 import { MapPin, X, Zap, PhoneCall } from 'lucide-react'
 import { actionsFor } from '../../lib/reportActions.js'
+import { auth, fns, httpsCallable } from '../../services/firebase.js'
 import { statusMeta } from '../../utils/incident-meta.js'
 import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
 import { Timeline } from '../ui/Timeline.js'
 import type { MyReport, PublicIncident } from './types.js'
 
 const RESPONDER_PHONE_NUMBER = '0547211216'
+const FEEDBACK_STORAGE_PREFIX = 'bantayog.reportFeedbackSubmitted.'
 
 type Props =
   | {
@@ -46,6 +48,161 @@ interface TrackingEvent {
   label: string
   meta: string
   state: 'complete' | 'pending' | 'queued' | 'failed'
+}
+
+interface ReportFeedbackPayload {
+  reportId: string
+  addressed: boolean
+  comment?: string
+}
+
+type FeedbackStatus = 'idle' | 'submitting' | 'submitted' | 'error'
+
+function feedbackStorageKey(reportId: string): string {
+  return `${FEEDBACK_STORAGE_PREFIX}${reportId}`
+}
+
+function readFeedbackSubmitted(reportId: string | null): boolean {
+  if (!reportId) return false
+  try {
+    return window.localStorage.getItem(feedbackStorageKey(reportId)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markFeedbackSubmitted(reportId: string): void {
+  try {
+    window.localStorage.setItem(feedbackStorageKey(reportId), '1')
+  } catch {
+    // Local storage can be unavailable in private browsing; the callable remains authoritative.
+  }
+}
+
+function isRegisteredCitizenSession(): boolean {
+  try {
+    const user = auth().currentUser
+    return user !== null && !user.isAnonymous
+  } catch {
+    return false
+  }
+}
+
+function buildFeedbackPayload(
+  reportId: string,
+  addressed: boolean,
+  comment: string,
+): ReportFeedbackPayload {
+  const trimmedComment = comment.trim()
+  return {
+    reportId,
+    addressed,
+    ...(trimmedComment === '' ? {} : { comment: trimmedComment }),
+  }
+}
+
+async function submitReportFeedback(payload: ReportFeedbackPayload): Promise<void> {
+  const callable = httpsCallable<ReportFeedbackPayload>(fns(), 'submitReportFeedback')
+  await callable(payload)
+}
+
+function ResolvedReportFeedbackPrompt({ reportId }: { reportId: string }) {
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(() => readFeedbackSubmitted(reportId))
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false)
+  const [feedbackComment, setFeedbackComment] = useState('')
+  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus>('idle')
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
+
+  if (!isRegisteredCitizenSession()) return null
+  if (feedbackSubmitted || feedbackStatus === 'submitted') {
+    return (
+      <div className="mb-4 rounded-xl border border-success-400/30 bg-success-400/10 px-4 py-3">
+        <p className="text-sm font-semibold text-surface-900">Thanks for the feedback.</p>
+        <p className="mt-1 text-xs text-surface-600">
+          Your response helps MDRRMO close the loop on resolved reports.
+        </p>
+      </div>
+    )
+  }
+  if (feedbackDismissed) return null
+
+  async function handleSubmitFeedback(addressed: boolean): Promise<void> {
+    setFeedbackStatus('submitting')
+    setFeedbackError(null)
+    try {
+      await submitReportFeedback(buildFeedbackPayload(reportId, addressed, feedbackComment))
+      markFeedbackSubmitted(reportId)
+      setFeedbackSubmitted(true)
+      setFeedbackStatus('submitted')
+    } catch (err: unknown) {
+      console.error('Failed to submit report feedback', err)
+      setFeedbackStatus('error')
+      setFeedbackError('We could not send your feedback. Please try again.')
+    }
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border border-surface-200 bg-white px-4 py-3 shadow-sm">
+      <h2 className="text-sm font-bold text-surface-900">Was this addressed?</h2>
+      <p className="mt-1 text-xs text-surface-600">
+        A quick answer helps responders learn whether the situation was actually resolved.
+      </p>
+      <label
+        htmlFor="report-feedback-comment"
+        className="mt-3 block text-[0.625rem] font-bold uppercase tracking-widest text-surface-500"
+      >
+        Optional comment
+      </label>
+      <textarea
+        id="report-feedback-comment"
+        value={feedbackComment}
+        onChange={(event) => {
+          setFeedbackComment(event.target.value)
+        }}
+        maxLength={500}
+        disabled={feedbackStatus === 'submitting'}
+        rows={2}
+        className="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm text-surface-900 disabled:opacity-60"
+      />
+      {feedbackError ? (
+        <p role="alert" className="mt-2 text-xs font-medium text-danger-500">
+          {feedbackError}
+        </p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            void handleSubmitFeedback(true)
+          }}
+          disabled={feedbackStatus === 'submitting'}
+          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {feedbackStatus === 'submitting' ? 'Sending' : 'Yes'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void handleSubmitFeedback(false)
+          }}
+          disabled={feedbackStatus === 'submitting'}
+          className="rounded-lg border border-surface-200 px-4 py-2 text-sm font-semibold text-surface-900 disabled:opacity-60"
+        >
+          No
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setFeedbackDismissed(true)
+          }}
+          disabled={feedbackStatus === 'submitting'}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-surface-500 disabled:opacity-60"
+        >
+          Not now
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function timeAgo(timestamp: number): string {
@@ -265,6 +422,7 @@ export function DetailSheet(props: Props) {
   const displayStatus = progressStatus(report.status)
   const actions = actionsFor(displayStatus)
   const trackingEvents = buildTrackingTimeline(report)
+  const feedbackReportId = report.status === 'resolved' ? (report.id ?? null) : null
 
   /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
   return (
@@ -328,6 +486,9 @@ export function DetailSheet(props: Props) {
         </h2>
         <Timeline events={trackingEvents} />
       </div>
+      {feedbackReportId ? (
+        <ResolvedReportFeedbackPrompt key={feedbackReportId} reportId={feedbackReportId} />
+      ) : null}
       {actions.includes('edit') && report.id ? (
         <button type="button" aria-label="Edit report" className="mb-2">
           Edit
