@@ -87,6 +87,8 @@ export function ProfileTab() {
     authLoading,
     reports,
     loading,
+    reportsError,
+    retryReports,
     withdrawReport,
     signOutError,
     daysAsGuardian,
@@ -356,6 +358,22 @@ export function ProfileTab() {
             <SkeletonCard />
             <SkeletonCard />
           </>
+        ) : reportsError && reports.length === 0 ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-danger-200 bg-white px-4 py-6 text-center shadow-sm"
+          >
+            <div className="mb-2 flex justify-center">
+              <ClipboardList size={40} className="text-danger-500" />
+            </div>
+            <p className="m-0 mb-1.5 font-bold text-surface-900 text-[0.9375rem]">{reportsError}</p>
+            <p className="m-0 mb-4 text-[0.8125rem] text-surface-500">
+              Your saved reports are still on this device. Try again when the connection settles.
+            </p>
+            <button type="button" className="btn btn--primary" onClick={retryReports}>
+              Retry
+            </button>
+          </div>
         ) : reports.length === 0 ? (
           <div role="status" className="py-9 text-center">
             <div className="mb-2 flex justify-center">
@@ -379,22 +397,42 @@ export function ProfileTab() {
             </button>
           </div>
         ) : (
-          reports.map((report) => (
-            <ReportCard
-              key={report.publicRef}
-              report={report}
-              onTap={() => {
-                void navigate('/')
-              }}
-              {...(WITHDRAWABLE_STATUSES.has(report.status)
-                ? {
-                    onWithdraw: () => {
-                      setWithdrawReport(report)
-                    },
-                  }
-                : {})}
-            />
-          ))
+          <>
+            {reportsError && (
+              <div
+                role="status"
+                className="mb-3 rounded-xl border border-warning-200 bg-warning-50 px-3.5 py-3"
+              >
+                <p className="m-0 text-sm font-semibold text-surface-900">Showing saved reports</p>
+                <p className="m-0 mt-1 text-xs text-surface-600">
+                  We can&apos;t refresh your report status right now.
+                </p>
+                <button
+                  type="button"
+                  className="mt-3 text-xs font-semibold text-brand-600 border border-brand-300 bg-white rounded-lg px-3 py-2 active:bg-brand-50 transition-colors cursor-pointer"
+                  onClick={retryReports}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            {reports.map((report) => (
+              <ReportCard
+                key={report.publicRef}
+                report={report}
+                onTap={() => {
+                  void navigate('/')
+                }}
+                {...(WITHDRAWABLE_STATUSES.has(report.status)
+                  ? {
+                      onWithdraw: () => {
+                        setWithdrawReport(report)
+                      },
+                    }
+                  : {})}
+              />
+            ))}
+          </>
         )}
       </div>
 

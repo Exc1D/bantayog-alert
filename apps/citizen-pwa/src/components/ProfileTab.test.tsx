@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import '@testing-library/jest-dom/vitest'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const { mockOnAuthStateChanged, mockUseMyActiveReports } = vi.hoisted(() => ({
@@ -85,6 +85,30 @@ describe('ProfileTab', () => {
     })
     renderProfileTab()
     expect(screen.getByText('No reports yet')).toBeInTheDocument()
+  })
+
+  it('shows a retryable error instead of the empty report list when report loading fails', () => {
+    const retryReports = vi.fn()
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
+      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
+      return () => {}
+    })
+    mockUseMyActiveReports.mockReturnValue({
+      loading: false,
+      reports: [],
+      status: 'error',
+      error: "We can't load your reports right now",
+      retry: retryReports,
+    })
+
+    renderProfileTab()
+
+    expect(screen.getByRole('alert')).toHaveTextContent("We can't load your reports right now")
+    expect(screen.queryByText('No reports yet')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(retryReports).toHaveBeenCalledOnce()
   })
 
   it('shows a withdraw action for unverified reports in the profile report list', () => {

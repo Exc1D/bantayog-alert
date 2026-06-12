@@ -24,6 +24,8 @@ export interface ProfileTabState {
   authLoading: boolean
   reports: MyReport[]
   loading: boolean
+  reportsError: string | null
+  retryReports: () => void
   withdrawReport: MyReport | null
   signOutError: boolean
   daysAsGuardian: number
@@ -43,7 +45,7 @@ export interface ProfileTabState {
 
 export function useProfileTab(): ProfileTabState {
   const navigate = useNavigate()
-  const { reports, loading } = useMyActiveReports()
+  const { reports, loading, error: reportsError, retry: retryReports } = useMyActiveReports()
   const { toast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(() => hasFirebaseConfig())
@@ -131,6 +133,8 @@ export function useProfileTab(): ProfileTabState {
     authLoading,
     reports,
     loading,
+    reportsError,
+    retryReports,
     withdrawReport,
     signOutError,
     daysAsGuardian,
