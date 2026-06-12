@@ -175,8 +175,8 @@ export function useMyActiveReports(): {
           typeof code === 'string' ? code.replace(/_/g, '-').toLowerCase() : null
         if (normalizedCode !== 'not-found') {
           console.error('[useMyActiveReports] callable fallback failed', err)
+          markEntryFailed(entry.publicRef)
         }
-        markEntryFailed(entry.publicRef)
       }
     }
 

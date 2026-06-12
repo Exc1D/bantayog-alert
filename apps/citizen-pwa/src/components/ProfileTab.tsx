@@ -353,7 +353,7 @@ export function ProfileTab() {
       {/* My Reports list */}
       <div className="px-4 pt-4">
         <h2 className="text-sm font-semibold text-surface-700 mb-3">My Reports</h2>
-        {loading ? (
+        {loading && reports.length === 0 ? (
           <>
             <SkeletonCard />
             <SkeletonCard />
