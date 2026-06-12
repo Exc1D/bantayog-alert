@@ -74,6 +74,19 @@ beforeEach(() => {
   mockUseOnlineStatus.mockReturnValue({ isOnline: true, navigatorOnline: true })
 })
 
+async function submitSecretCode(
+  secret: string,
+  onlineStatus = { isOnline: true, navigatorOnline: true },
+) {
+  mockUseOnlineStatus.mockReturnValue(onlineStatus)
+  const user = userEvent.setup()
+  renderScreen()
+  const input = screen.getByPlaceholderText('Your secret code')
+  await user.type(input, secret)
+  await user.click(screen.getByRole('button', { name: /find my report/i }))
+  return input
+}
+
 describe('LookupScreen', () => {
   it('renders a single secret code input', () => {
     renderScreen()
@@ -103,10 +116,7 @@ describe('LookupScreen', () => {
   })
 
   it('navigates to the selected report on successful lookup', async () => {
-    const user = userEvent.setup()
-    renderScreen()
-    await user.type(screen.getByPlaceholderText('Your secret code'), 'mysecretcode')
-    await user.click(screen.getByRole('button', { name: /find my report/i }))
+    const input = await submitSecretCode('mysecretcode')
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/', {
         state: {
@@ -116,6 +126,7 @@ describe('LookupScreen', () => {
       })
     })
     expect(callableSecret).toBe('MYSECRETCODE')
+    expect(input).toHaveValue('mysecretcode')
   })
 
   it('shows friendly error when lookup returns not-found', async () => {
@@ -139,13 +150,7 @@ describe('LookupScreen', () => {
   })
 
   it('shows offline copy and preserves the entered code without remote lookup while offline', async () => {
-    mockUseOnlineStatus.mockReturnValue({ isOnline: false, navigatorOnline: false })
-
-    const user = userEvent.setup()
-    renderScreen()
-    const input = screen.getByPlaceholderText('Your secret code')
-    await user.type(input, 'stillvalid')
-    await user.click(screen.getByRole('button', { name: /find my report/i }))
+    const input = await submitSecretCode('stillvalid', { isOnline: false, navigatorOnline: false })
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/you're offline/i)
@@ -156,13 +161,7 @@ describe('LookupScreen', () => {
   })
 
   it('shows offline copy when isOnline is false even if navigatorOnline is true', async () => {
-    mockUseOnlineStatus.mockReturnValue({ isOnline: false, navigatorOnline: true })
-
-    const user = userEvent.setup()
-    renderScreen()
-    const input = screen.getByPlaceholderText('Your secret code')
-    await user.type(input, 'partial')
-    await user.click(screen.getByRole('button', { name: /find my report/i }))
+    const input = await submitSecretCode('partial', { isOnline: false, navigatorOnline: true })
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/you're offline/i)
@@ -180,11 +179,7 @@ describe('LookupScreen', () => {
       return Promise.reject(err)
     })
     try {
-      const user = userEvent.setup()
-      renderScreen()
-      const input = screen.getByPlaceholderText('Your secret code')
-      await user.type(input, 'networksecret')
-      await user.click(screen.getByRole('button', { name: /find my report/i }))
+      const input = await submitSecretCode('networksecret')
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent(/you're offline/i)
@@ -203,10 +198,7 @@ describe('LookupScreen', () => {
       return Promise.reject(err)
     })
     try {
-      const user = userEvent.setup()
-      renderScreen()
-      await user.type(screen.getByPlaceholderText('Your secret code'), 'typo')
-      await user.click(screen.getByRole('button', { name: /find my report/i }))
+      await submitSecretCode('typo')
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent(/something went wrong/i)
@@ -229,10 +221,7 @@ describe('LookupScreen', () => {
       },
     ])
 
-    const user = userEvent.setup()
-    renderScreen()
-    await user.type(screen.getByPlaceholderText('Your secret code'), 'localsecret')
-    await user.click(screen.getByRole('button', { name: /find my report/i }))
+    const input = await submitSecretCode('localsecret')
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/', {
@@ -243,5 +232,6 @@ describe('LookupScreen', () => {
       })
     })
     expect(mockHttpsCallable).not.toHaveBeenCalled()
+    expect(input).toHaveValue('localsecret')
   })
 })

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';

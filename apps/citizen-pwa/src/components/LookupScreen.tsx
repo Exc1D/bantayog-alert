@@ -11,13 +11,6 @@ import {
   FIREBASE_ENV_ERROR_MESSAGE,
 } from '../services/firebase.js'
 
-interface LookupResult {
-  publicRef: string
-  status: string
-  lastStatusAt: number
-  municipalityLabel: string
-}
-
 export const LOOKUP_SUCCESS_MESSAGE = 'Report found — tracking enabled'
 const FRIENDLY_ERROR =
   "We couldn't find a report with that secret code. It may have expired (reports are tracked for 90 days)."
@@ -37,12 +30,26 @@ const LOOKUP_ERROR_MAP: Record<string, string> = {
   'resource-exhausted': 'Too many attempts. Please wait a minute and try again.',
 }
 
-function normalizeSecretCode(secret: string): string {
-  return secret.replace(/[^a-z0-9]/gi, '').toUpperCase()
+class LookupError extends Error {
+  readonly code: string
+  constructor(message: string, code: string) {
+    super(message)
+    this.name = 'LookupError'
+    this.code = code
+  }
 }
 
 function isNetworkTypeError(err: unknown): boolean {
-  return err instanceof TypeError && /fetch|network|failed/i.test(err.message)
+  return (
+    err instanceof Error &&
+    /\b(failed to fetch|failed to fetch resource|network error|network request failed)\b/i.test(
+      err.message,
+    )
+  )
+}
+
+function normalizeSecretCode(secret: string): string {
+  return secret.replace(/[^a-z0-9]/gi, '').toUpperCase()
 }
 
 function friendlyLookupError(err: unknown): string {
@@ -65,21 +72,24 @@ async function performLookup(
     return localMatch.publicRef
   }
   if (!isOnline || !navigatorOnline) {
-    const err = new Error(OFFLINE_LOOKUP_ERROR)
-    ;(err as unknown as { code: string }).code = 'offline'
-    throw err
+    throw new LookupError(OFFLINE_LOOKUP_ERROR, 'offline')
   }
   if (!hasFirebaseConfig()) {
     throw new Error(FIREBASE_ENV_ERROR_MESSAGE)
   }
   await ensureSignedIn()
   const res = await httpsCallable(fns(), 'requestLookup')({ secret: trimmedSecret })
-  const result = res.data as LookupResult
-  if (!result.publicRef || typeof result.publicRef !== 'string') {
-    console.error('[LookupScreen] Invalid lookup response:', result)
+  const data = res.data
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !('publicRef' in data) ||
+    typeof data.publicRef !== 'string'
+  ) {
+    console.error('[LookupScreen] Invalid lookup response:', data)
     throw new Error('Invalid server response.')
   }
-  return result.publicRef
+  return data.publicRef
 }
 
 function navigateToTrackedReport(
