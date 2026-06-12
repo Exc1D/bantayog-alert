@@ -1,19 +1,37 @@
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import { RevealSheet } from './RevealSheet'
+
+const { mockHasFirebaseConfig, mockNavigate, mockOnAuthStateChanged, mockRequestPermission } =
+  vi.hoisted(() => ({
+    mockHasFirebaseConfig: vi.fn(),
+    mockNavigate: vi.fn(),
+    mockOnAuthStateChanged: vi.fn(),
+    mockRequestPermission: vi.fn(),
+  }))
 
 vi.mock('../services/firebase.js', () => ({
   auth: vi.fn(),
-  hasFirebaseConfig: () => false,
+  hasFirebaseConfig: mockHasFirebaseConfig,
 }))
 
 vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: vi.fn(),
+  onAuthStateChanged: mockOnAuthStateChanged,
 }))
 
 vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
+}))
+
+vi.mock('../hooks/useFcmToken.js', () => ({
+  useFcmToken: () => ({
+    permission: 'default',
+    token: null,
+    enabled: false,
+    requestPermission: mockRequestPermission,
+    disable: vi.fn(),
+  }),
 }))
 
 vi.mock('../hooks/useReducedMotion', () => ({
@@ -38,9 +56,26 @@ vi.mock('./ui/Timeline', () => ({
   Timeline: () => <div>Timeline</div>,
 }))
 
+function setNotificationPermission(permission: NotificationPermission): void {
+  Object.defineProperty(globalThis, 'Notification', {
+    value: { permission },
+    configurable: true,
+  })
+}
+
+async function flushEffects(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve()
+  })
+}
+
 describe('RevealSheet', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    vi.clearAllMocks()
+    mockHasFirebaseConfig.mockReturnValue(false)
+    mockRequestPermission.mockResolvedValue(true)
+    setNotificationPermission('default')
     Object.defineProperty(navigator, 'vibrate', {
       writable: true,
       value: vi.fn(() => true),
@@ -82,12 +117,86 @@ describe('RevealSheet', () => {
     expect(screen.getByText(/Daet MDRRMO is on it/)).toBeInTheDocument()
   })
 
-  it('shows Guardian invitation for unregistered users on success', async () => {
+  it('shows notification registration nudge for unregistered users on success', async () => {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1200)
     })
-    expect(screen.getByText(/Maging Guardian/)).toBeInTheDocument()
+    expect(
+      screen.getByText('Create an account to get notified when help is on the way'),
+    ).toBeInTheDocument()
     expect(screen.getByText(/Create Account/)).toBeInTheDocument()
+  })
+
+  it('offers registered users help-on-the-way notifications on success', async () => {
+    mockHasFirebaseConfig.mockReturnValue(true)
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
+      cb({ uid: 'registered-user', isAnonymous: false })
+      return () => undefined
+    })
+
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await flushEffects()
+
+    expect(screen.getByText('Get notified when help is on the way')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /get notified/i }))
+      await Promise.resolve()
+    })
+
+    expect(mockRequestPermission).toHaveBeenCalledOnce()
+  })
+
+  it('dismisses the registered notification offer without requesting permission', async () => {
+    mockHasFirebaseConfig.mockReturnValue(true)
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
+      cb({ uid: 'registered-user', isAnonymous: false })
+      return () => undefined
+    })
+
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await flushEffects()
+
+    fireEvent.click(screen.getByRole('button', { name: /not now/i }))
+
+    expect(screen.queryByText('Get notified when help is on the way')).not.toBeInTheDocument()
+    expect(mockRequestPermission).not.toHaveBeenCalled()
+  })
+
+  it('nudges anonymous users to register for help-on-the-way notifications', async () => {
+    mockHasFirebaseConfig.mockReturnValue(true)
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
+      cb({ uid: 'anon-user', isAnonymous: true })
+      return () => undefined
+    })
+
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await flushEffects()
+
+    expect(
+      screen.getByText('Create an account to get notified when help is on the way'),
+    ).toBeInTheDocument()
+
+    expect(screen.queryByRole('button', { name: /get notified/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(mockRequestPermission).not.toHaveBeenCalled()
+    expect(mockNavigate).toHaveBeenCalledWith('/register')
+  })
+
+  it('does not ask for notifications after browser permission is decided', async () => {
+    mockHasFirebaseConfig.mockReturnValue(true)
+    setNotificationPermission('denied')
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (user: unknown) => void) => {
+      cb({ uid: 'registered-user', isAnonymous: false })
+      return () => undefined
+    })
+
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+    await flushEffects()
+
+    expect(screen.queryByText('Get notified when help is on the way')).not.toBeInTheDocument()
   })
 })
