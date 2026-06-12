@@ -7,6 +7,7 @@ export { verifyReport } from './domains/reports/verify-report.js';
 export { unpublishReport } from './domains/reports/unpublish-report.js';
 export { requestLookup } from './domains/reports/request-lookup.js';
 export { submitCitizenReport } from './domains/reports/submit-citizen-report.js';
+export { submitReportFeedback } from './domains/reports/submit-report-feedback.js';
 export { cancelReportByCitizen } from './domains/reports/cancel-report-by-citizen.js';
 export { dispatchResponder } from './domains/dispatches/dispatch-responder.js';
 export { cancelDispatch } from './domains/dispatches/cancel-dispatch.js';

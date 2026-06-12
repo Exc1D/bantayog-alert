@@ -162,6 +162,30 @@ export const reportNoteDocSchema = z
     schemaVersion: z.number().int().positive(),
 })
     .strict();
+const feedbackCommentSchema = z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .transform((comment) => (comment === '' ? undefined : comment));
+export const submitReportFeedbackInputSchema = z
+    .object({
+    reportId: z.string().min(1).max(128),
+    addressed: z.boolean(),
+    comment: feedbackCommentSchema,
+})
+    .strict();
+export const reportFeedbackDocSchema = z
+    .object({
+    reportId: z.string().min(1).max(128),
+    reporterUid: z.string().min(1),
+    addressed: z.boolean(),
+    comment: z.string().max(500).optional(),
+    submittedAt: z.number().int(),
+    updatedAt: z.number().int(),
+    schemaVersion: z.number().int().positive(),
+})
+    .strict();
 export const reportSharingEventDocSchema = z
     .object({
     targetMunicipalityId: z.string().min(1),

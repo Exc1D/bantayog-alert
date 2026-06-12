@@ -5,8 +5,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockNavigate = vi.fn()
-const { mockLoadReports } = vi.hoisted(() => ({
+const { mockLoadReports, mockHttpsCallable } = vi.hoisted(() => ({
   mockLoadReports: vi.fn(),
+  mockHttpsCallable: vi.fn(),
 }))
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -26,18 +27,12 @@ vi.mock('../services/firebase.js', () => ({
 
 let callableSecret = ''
 vi.mock('firebase/functions', () => ({
-  httpsCallable: vi.fn().mockImplementation(() => async (_data: unknown) => {
-    callableSecret = (_data as { secret?: string }).secret ?? ''
-    if (!callableSecret.trim()) {
-      return Promise.resolve({
-        data: {
-          publicRef: 'a1b2c3d4',
-          status: 'new',
-          lastStatusAt: Date.now(),
-          municipalityLabel: 'Daet',
-        },
-      })
-    }
+  httpsCallable: mockHttpsCallable,
+}))
+
+mockHttpsCallable.mockImplementation(() => async (_data: unknown) => {
+  callableSecret = (_data as { secret?: string }).secret ?? ''
+  if (!callableSecret.trim()) {
     return Promise.resolve({
       data: {
         publicRef: 'a1b2c3d4',
@@ -46,11 +41,18 @@ vi.mock('firebase/functions', () => ({
         municipalityLabel: 'Daet',
       },
     })
-  }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
-}))
+  }
+  return Promise.resolve({
+    data: {
+      publicRef: 'a1b2c3d4',
+      status: 'new',
+      lastStatusAt: Date.now(),
+      municipalityLabel: 'Daet',
+    },
+  })
+})
 
 import { LookupScreen } from './LookupScreen'
-import { httpsCallable } from 'firebase/functions'
 
 function renderScreen() {
   return render(
@@ -63,7 +65,7 @@ function renderScreen() {
 beforeEach(() => {
   mockNavigate.mockReset()
   mockLoadReports.mockReset().mockResolvedValue([])
-  vi.mocked(httpsCallable).mockClear()
+  mockHttpsCallable.mockClear()
 })
 
 describe('LookupScreen', () => {
@@ -87,8 +89,6 @@ describe('LookupScreen', () => {
     const user = userEvent.setup()
     renderScreen()
     const input = screen.getByPlaceholderText('Your secret code')
-    // The callable mock returns empty publicRef for empty/whitespace secret,
-    // triggering our "no publicRef" error path; navigate is NOT called.
     await user.type(input, '   ')
     await user.click(screen.getByRole('button', { name: /find my report/i }))
     await waitFor(() => {
@@ -96,33 +96,40 @@ describe('LookupScreen', () => {
     })
   })
 
-  it('navigates to /reports/:publicRef on successful lookup', async () => {
+  it('navigates to the selected report on successful lookup', async () => {
     const user = userEvent.setup()
     renderScreen()
     await user.type(screen.getByPlaceholderText('Your secret code'), 'mysecretcode')
     await user.click(screen.getByRole('button', { name: /find my report/i }))
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/')
+      expect(mockNavigate).toHaveBeenCalledWith('/', {
+        state: {
+          selectedReportPublicRef: 'a1b2c3d4',
+          lookupSuccessMessage: 'Report found — tracking enabled',
+        },
+      })
     })
     expect(callableSecret).toBe('MYSECRETCODE')
   })
 
   it('shows friendly error when lookup returns not-found', async () => {
-    vi.mocked(httpsCallable).mockImplementationOnce(
-      () =>
-        (() => {
-          const err = new Error('not-found')
-          ;(err as unknown as { code: string }).code = 'functions/not-found'
-          return Promise.reject(err)
-        }) as unknown as import('firebase/functions').HttpsCallable<unknown, unknown>,
-    )
-    const user = userEvent.setup()
-    renderScreen()
-    await user.type(screen.getByPlaceholderText('Your secret code'), 'badsecret')
-    await user.click(screen.getByRole('button', { name: /find my report/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find/)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockHttpsCallable.mockImplementationOnce(() => () => {
+      const err = new Error('not-found')
+      ;(err as unknown as { code: string }).code = 'functions/not-found'
+      return Promise.reject(err)
     })
+    try {
+      const user = userEvent.setup()
+      renderScreen()
+      await user.type(screen.getByPlaceholderText('Your secret code'), 'badsecret')
+      await user.click(screen.getByRole('button', { name: /find my report/i }))
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find/)
+      })
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('navigates to locally saved report when a local match exists', async () => {
@@ -144,8 +151,13 @@ describe('LookupScreen', () => {
     await user.click(screen.getByRole('button', { name: /find my report/i }))
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/')
+      expect(mockNavigate).toHaveBeenCalledWith('/', {
+        state: {
+          selectedReportPublicRef: 'loc12345',
+          lookupSuccessMessage: 'Report found — tracking enabled',
+        },
+      })
     })
-    expect(vi.mocked(httpsCallable)).not.toHaveBeenCalled()
+    expect(mockHttpsCallable).not.toHaveBeenCalled()
   })
 })

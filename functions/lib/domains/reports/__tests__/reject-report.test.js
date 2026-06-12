@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
-const itif = (condition) => (condition ? it : it.skip);
 vi.mock('firebase-admin/database', () => ({
     getDatabase: vi.fn(() => ({})),
 }));
@@ -30,13 +29,16 @@ afterAll(async () => {
     await testEnv?.cleanup();
 });
 describe('rejectReportCore', () => {
-    itif(available)('transitions awaiting_verify → cancelled_false_report and writes moderation incident', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('transitions awaiting_verify → cancelled_false_report and writes moderation incident', async ({ skip, }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
                 municipalityId: 'daet',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'admin-1',
                 role: 'municipal_admin',
                 municipalityId: 'daet',
@@ -53,7 +55,8 @@ describe('rejectReportCore', () => {
                 now: Timestamp.now(),
             });
             expect(result.status).toBe('cancelled_false_report');
-            const report = (await db.collection('reports').doc(reportId).get()).data();
+            const reportSnap = await db.collection('reports').doc(reportId).get();
+            const report = reportSnap.data();
             expect(report.status).toBe('cancelled_false_report');
             const incidents = await db
                 .collection('moderation_incidents')
@@ -67,18 +70,32 @@ describe('rejectReportCore', () => {
                 actor: 'admin-1',
             });
             const events = await db.collection('report_events').where('reportId', '==', reportId).get();
-            expect(events.docs).toHaveLength(1);
-            expect(events.docs[0].data()).toMatchObject({
+            const eventData = events.docs.map((doc) => doc.data());
+            expect(eventData.filter((event) => event.to === 'cancelled_false_report')).toHaveLength(1);
+            expect(eventData).toContainEqual(expect.objectContaining({
                 from: 'awaiting_verify',
                 to: 'cancelled_false_report',
+            }));
+            const notificationEvents = eventData.filter((event) => event.type === 'notification_attempted');
+            expect(notificationEvents).toHaveLength(1);
+            expect(notificationEvents[0]).toMatchObject({
+                reportId,
+                channel: 'push',
+                audience: 'citizen',
+                fcmResult: 'no_token',
+                fcmWarnings: ['fcm_no_token'],
+                schemaVersion: 1,
             });
         });
     });
-    itif(available)('rejects non-awaiting_verify states with FAILED_PRECONDITION', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('rejects non-awaiting_verify states with FAILED_PRECONDITION', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'new', { municipalityId: 'daet' });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'admin-1',
                 role: 'municipal_admin',
                 municipalityId: 'daet',
@@ -95,11 +112,14 @@ describe('rejectReportCore', () => {
             })).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' });
         });
     });
-    itif(available)('FAILED_PRECONDITION when report is already verified', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('FAILED_PRECONDITION when report is already verified', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'verified', { municipalityId: 'daet' });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'admin-1',
                 role: 'municipal_admin',
                 municipalityId: 'daet',
@@ -116,13 +136,16 @@ describe('rejectReportCore', () => {
             })).rejects.toMatchObject({ code: 'FAILED_PRECONDITION' });
         });
     });
-    itif(available)('rejects cross-muni with FORBIDDEN', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('rejects cross-muni with FORBIDDEN', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
                 municipalityId: 'mercedes',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'admin-1',
                 role: 'municipal_admin',
                 municipalityId: 'daet',
@@ -139,13 +162,16 @@ describe('rejectReportCore', () => {
             })).rejects.toMatchObject({ code: 'FORBIDDEN' });
         });
     });
-    itif(available)('allows provincial_superadmin to reject report in any municipality', async () => {
-        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    it('allows provincial_superadmin to reject report in any municipality', async ({ skip }) => {
+        const env = testEnv;
+        if (!available || !env)
+            return skip('Firestore emulator unavailable');
+        await env.withSecurityRulesDisabled(async (ctx) => {
             const db = ctx.firestore();
             const { reportId } = await seedReportAtStatus(db, 'awaiting_verify', {
                 municipalityId: 'mercedes',
             });
-            await seedActiveAccount(testEnv, {
+            await seedActiveAccount(env, {
                 uid: 'super-1',
                 role: 'provincial_superadmin',
             });
@@ -160,7 +186,8 @@ describe('rejectReportCore', () => {
                 now: Timestamp.now(),
             });
             expect(result.status).toBe('cancelled_false_report');
-            const report = (await db.collection('reports').doc(reportId).get()).data();
+            const reportSnap = await db.collection('reports').doc(reportId).get();
+            const report = reportSnap.data();
             expect(report.status).toBe('cancelled_false_report');
         });
     });

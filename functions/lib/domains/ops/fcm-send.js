@@ -1,8 +1,8 @@
 /**
  * fcm-send.ts
  *
- * FCM send helper for sending push notifications to responder devices.
- * Uses Firebase Admin Messaging SDK with multicast send and retry.
+ * FCM send helpers for sending push notifications to responder and citizen
+ * devices. Uses Firebase Admin Messaging SDK with multicast send and retry.
  */
 import { defineSecret } from 'firebase-functions/params';
 import { getMessaging } from 'firebase-admin/messaging';
@@ -23,11 +23,18 @@ export async function sendFcmToResponder(payload) {
     const { uid, title, body, data } = payload;
     const warnings = [];
     // Step 1: Read the responder's FCM tokens.
-    const responderSnap = await adminDb.collection('responders').doc(uid).get();
-    if (!responderSnap.exists) {
-        return { warnings: ['fcm_no_token'] };
+    let tokens;
+    try {
+        const responderSnap = await adminDb.collection('responders').doc(uid).get();
+        if (!responderSnap.exists) {
+            return { warnings: ['fcm_no_token'] };
+        }
+        tokens = responderSnap.data()?.fcmTokens;
     }
-    const tokens = responderSnap.data()?.fcmTokens;
+    catch (err) {
+        console.error('FCM responder token lookup failed:', err);
+        return { warnings: ['fcm_network_error'] };
+    }
     if (!tokens || tokens.length === 0) {
         return { warnings: ['fcm_no_token'] };
     }
@@ -106,6 +113,90 @@ export async function sendFcmToResponder(payload) {
             });
         }
         warnings.push('fcm_one_token_invalid');
+    }
+    return { warnings };
+}
+/**
+ * Send a push notification to the citizen who reported `reportId`.
+ *
+ * Resolves the target via `report_private/{reportId}.reporterUid` →
+ * `users/{uid}.fcmToken` (single token — only registered citizens persist
+ * one; anonymous reporters yield `fcm_no_token` by design, see agent-task
+ * 3A-06).
+ *
+ * - Retries once on transport-level failures (`fcm_network_error`).
+ * - Clears an invalid stored token best-effort (`fcm_one_token_invalid`).
+ * - Never throws; a push failure must never fail the calling command.
+ */
+export async function sendFcmToCitizen(payload) {
+    const { reportId, title, body, data } = payload;
+    const warnings = [];
+    let reporterUid;
+    try {
+        const privateSnap = await adminDb.collection('report_private').doc(reportId).get();
+        reporterUid = privateSnap.exists ? privateSnap.data()?.reporterUid : undefined;
+    }
+    catch (err) {
+        console.error('FCM citizen reporterUid lookup failed:', err);
+        return { warnings: ['fcm_network_error'] };
+    }
+    if (typeof reporterUid !== 'string' || reporterUid.length === 0) {
+        return { warnings: ['fcm_no_token'] };
+    }
+    let token;
+    const userRef = adminDb.collection('users').doc(reporterUid);
+    try {
+        const userSnap = await userRef.get();
+        token = userSnap.exists ? userSnap.data()?.fcmToken : undefined;
+    }
+    catch (err) {
+        console.error('FCM citizen token lookup failed:', err);
+        return { warnings: ['fcm_network_error'] };
+    }
+    if (typeof token !== 'string' || token.length === 0) {
+        return { warnings: ['fcm_no_token'] };
+    }
+    const msg = {
+        tokens: [token],
+        notification: { title, body },
+    };
+    if (data)
+        msg.data = data;
+    let result;
+    try {
+        result = await getMessaging().sendEachForMulticast(msg);
+    }
+    catch {
+        try {
+            result = await getMessaging().sendEachForMulticast(msg);
+        }
+        catch (err) {
+            console.error('FCM citizen send failed after retry:', err);
+            return { warnings: ['fcm_network_error'] };
+        }
+    }
+    const response = result.responses[0];
+    if (response && !response.success) {
+        const code = response.error?.code;
+        if (code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/registration-token-not-registered') {
+            try {
+                // Mirror the client convention (useFcmToken clears with null).
+                await userRef.update({ fcmToken: null });
+            }
+            catch (err) {
+                log({
+                    severity: 'WARNING',
+                    code: 'fcm.citizen_cleanup.failed',
+                    message: err instanceof Error ? err.message : 'Citizen FCM token cleanup failed',
+                });
+            }
+            warnings.push('fcm_one_token_invalid');
+        }
+        else {
+            // Any other per-message failure (e.g. server unavailable) is a warning.
+            warnings.push('fcm_send_failed');
+        }
     }
     return { warnings };
 }

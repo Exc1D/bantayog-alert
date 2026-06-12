@@ -1,5 +1,36 @@
 # Progress
 
+## 2026-06-12 - Phase 3B-03 RevealSheet Notification Ask (review fixes applied)
+
+- Added a success-state notification offer to Citizen PWA `RevealSheet`: registered users with `Notification.permission === 'default'` can request push updates through the existing `useFcmToken().requestPermission` flow.
+- Reframed the anonymous success CTA into a notification-specific registration nudge, linking to the existing `/register` route without asking anonymous sessions for browser notification permission.
+- Extracted `NotificationPrompt` subcomponent to isolate notification visibility state from the main `RevealSheet` render path.
+- Fixed consent copy to accurately describe scope: "Get report status updates and public emergency alerts from Bantayog Alert." instead of the narrower report-status-only claim.
+- Added robust `requestPermission` failure handling: `try/catch` around the full flow, `hasError` state, error message, and a "Try again" button when setup returns `false` or throws; prompt is only dismissed on explicit user skip or successful setup.
+- Guarded `useFcmToken` mount-time rehydration with `hasFirebaseConfig()` so no-config/dev environments avoid unnecessary `getMessaging()` initialization.
+- Verification: red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/RevealSheet.test.tsx` failed on the missing registered/anonymous notification UI, then passed 11 tests; `pnpm --dir apps/citizen-pwa exec tsc --noEmit && pnpm --dir apps/citizen-pwa exec eslint src` passed; `pnpm format:check` passed.
+
+## 2026-06-12 - Phase 3B-02 Citizen My Reports Error State
+
+- Added a retryable Citizen PWA "My Reports" failure state for the double-failure path where Firestore report reads are denied and the `requestLookup` callable fallback also fails.
+- Extended `useMyActiveReports` with backward-compatible `status`, `error`, and `retry` fields while keeping cached/queued reports visible with a stale-data note instead of blanking the list.
+- Wired ProfileTab's report list to show the designed error state when no reports can be displayed and a compact staleness warning when saved reports are still available.
+- Kept the slice frontend-only: no backend, rules, indexes, schema/migration files, deploy config, lookup screen UX, or offline queue behavior changed.
+- Verification: red-first `pnpm --dir apps/citizen-pwa exec vitest run src/hooks/useMyActiveReports.test.ts src/components/ProfileTab.test.tsx` failed on the missing hook status/UI, then passed 14 tests; `pnpm --dir apps/citizen-pwa exec tsc --noEmit && pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
+## 2026-06-11 - Phase 3C-01 Admin New-Report Signal
+
+- Added Admin Desktop ambient new-report awareness: existing scoped report listeners publish report snapshots, the authenticated shell keeps a session watermark, and `CommandHeader` now surfaces the unread count, audio mute control, and triage navigation for unseen new reports.
+- Title updates now use `(N) Bantayog Command` while unseen reports exist and restore to `Bantayog Command` when the operator visits `/triage`.
+- Kept the slice frontend-only: no backend, rules, indexes, schema/migration files, deploy, browser push, SLA countdown, or cross-window notification protocol.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/hooks/useNewReportSignal.test.tsx` failed on the missing hook module, then passed 1 test; `pnpm --dir apps/admin-desktop exec tsc --noEmit && pnpm --dir apps/admin-desktop exec eslint src` passed.
+
+## 2026-06-11 - Phase 3D-01 Responder Push Permission Banner
+
+- Added a persistent per-session responder warning for unresolved browser push permissions: denied permissions show browser-settings guidance, while default permissions after failed/skipped token registration expose an Enable notifications retry.
+- Wired the banner into `FcmSetup` without changing FCM token acquisition, service-worker setup, backend writes, Firestore/RTDB rules, indexes, schema files, or deploy config.
+- Verification: red-first `pnpm --dir apps/responder-app exec vitest run src/components/PushPermissionBanner.test.tsx` failed on the missing component, then passed 2 tests; `pnpm --dir apps/responder-app exec tsc --noEmit && pnpm --dir apps/responder-app exec eslint src` passed.
+
 ## 2026-06-10 - Phase 2F-03 Staging Callable Lifecycle Proof
 
 - Implemented `scripts/staging-callable-proof.ts` — composes the 2F-02 REST helpers with firebase-admin to drive the full MVP loop through the **deployed** staging callables: `submitCitizenReport` → `verifyReport` ×2 → `dispatchResponder` → `acceptDispatch` → `advanceDispatch` (acknowledged → en_route → on_scene → resolved). It mints citizen/admin/responder custom tokens → ID tokens, exchanges the App Check debug token once, sets the responder RTDB shift, asserts final report/dispatch state + PII isolation (`reports` has no `reporterUid`; `report_private.reporterUid` matches; `report_lookup` rejects citizen-unsafe fields) via the Admin SDK, and cleans up every created doc in a `finally` block.
@@ -326,6 +357,13 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Fix: Added `-D @firebase/database-compat` to `functions/package.json` with `pnpm --dir functions add -D @firebase/database-compat`.
 - Verification: Full emulator suite (`firebase emulators:exec --only firestore,database,storage 'npx vitest run'` inside functions/) now passes 79/104 suites, 610/775 tests, 0 failures (25 skipped are emulator-guarded). Root `pnpm test` (23 files, 199 tests) still green. Lint and typecheck clean.
 
+## 2026-06-12 - Ranked Refactor Backlog (rf-00 to rf-11)
+
+- Authored the ranked refactor backlog as twelve `docs/agent-tasks/rf-*.md` slice files for execution by other agents: rf-00 index (fallow evidence, ranked table, binding execution rules, user decision gates), rf-01 orphaned-callable disposition matrix (20 wrappers, three buckets, user-gated), rf-02/03 citizen incident-guard dedup + `buildIncidents` decomposition, rf-04/05 functions core decompositions (redispatch-report; merge-duplicates conditional on rf-01), rf-06/07 SubmitReportForm wizard/Step2 policy extractions, rf-08 batched functions test-scaffolding dedup, rf-09 leftover `shared-sms-parser` removal, rf-10 incident-core keep-or-remove decision, rf-11 two-phase package-consolidation assessment.
+- Recon corrections recorded in the slices: `packages/shared-sms-parser/` still exists with zero consumers despite the 2026-06-06 removal claim, and `bulkAvailabilityOverride` lost its 2026-06-04 Dispatch wiring (only `createResponder` remains wired).
+- Explicitly rejected a whole-codebase rewrite: fallow health 68/C with avg cyclomatic 1.6 shows localized debt, not uniform rot; the new CI fallow gate makes the backlog a one-way ratchet.
+- Documentation-only slice: no code, rules, schema, dependency, or deploy changes.
+
 ## Open
 
 1. Firebase Console: Phone Auth disabled; App Check 400 errors on staging.
@@ -443,3 +481,58 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added `sendFcmToCitizen` to `functions/src/domains/ops/fcm-send.ts`: resolves the target via `report_private/{reportId}.reporterUid` → `users/{uid}.fcmToken` (single token field, registered citizens only), sends via `sendEachForMulticast` with one retry, clears an invalid stored token best-effort with `{ fcmToken: null }` (the client convention), and never throws — stable warning codes `fcm_no_token` / `fcm_network_error` / `fcm_one_token_invalid` match the responder helper. Anonymous reporters return `fcm_no_token` by design (gate doc 3A-06).
 - Deviation from the slice doc: `collapseKey` omitted from `FcmCitizenSendPayload` — the responder interface carries it but never wires it; not propagating a dead field (YAGNI).
 - Verification: red-first `npx vitest run src/domains/ops/__tests__/fcm-send-citizen.test.ts` failed 9/9 with `sendFcmToCitizen is not a function`, then passed; combined run with the existing `fcm-send.test.ts` passed 16/16; `tsc --noEmit` and focused ESLint clean; Prettier applied.
+
+## 2026-06-11 - Phase 3A-02 Citizen Service Worker Push Handlers
+
+- Added raw `push` and `notificationclick` handlers to the existing citizen root service worker (`public/sw.js`) instead of adding Firebase SDK code or a second `firebase-messaging-sw.js`. Push payload parsing is defensive; notification data keeps `reportId`; clicks focus an existing same-origin client or open `/` with `reportId` in the query string when present.
+- Updated `useFcmToken` so both token rehydration and explicit permission request wait for `navigator.serviceWorker.ready` and pass the existing registration into Firebase `getToken`, avoiding Firebase's missing-default-worker path.
+- Extended the existing hook test under `src/hooks/__tests__/useFcmToken.test.tsx` to assert `getToken` receives `serviceWorkerRegistration`.
+- Slice-doc mismatch: `docs/agent-tasks/3a-02-citizen-sw-push-handlers.md` lists `src/hooks/useFcmToken.test.ts`; the real focused test path is `src/hooks/__tests__/useFcmToken.test.tsx`.
+- Verification: red-first focused test failed on the missing `serviceWorkerRegistration` option, then passed (4/4). `pnpm --dir apps/citizen-pwa exec tsc --noEmit` and `pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
+## 2026-06-11 - Phase 3A-03 Dispatch Push to Citizen
+
+- Wired `dispatchResponderCore` to send the reporting citizen a best-effort push after a responder is assigned: title `Help is on the way`, data includes `reportId`/`dispatchId`/`correlationId`, and body names the agency id without responder personal details.
+- Added a citizen-facing `report_events` record with `type: 'notification_attempted'`, `channel: 'push'`, `audience: 'citizen'`, `fcmResult`, and `fcmWarnings`, parallel to the existing responder `dispatch_events` notification evidence.
+- Moved the existing responder notification side effects into the `withIdempotency` operation together with the new citizen send, so cached idempotency replays return the stored result without double-sending or writing duplicate notification events.
+- Updated `proof:mvp-loop` event counts and assertion coverage for the new report notification event after dispatch.
+- Verification: red-first dispatch emulator test failed on missing `report_events.notification_attempted`, then passed. Focused FCM-tracking unit passed 4/4 including cached replay; focused dispatch emulator passed 5/5; `pnpm proof:mvp-loop` passed 2/2; Functions typecheck and ESLint passed; `pnpm --dir functions run build` passed with the repo's known Node 20 vs Functions Node 22 engine warning in this shell.
+
+## 2026-06-11 - Phase 3A-04 Resolution Push to Citizen
+
+- Wired `advanceDispatchCore` to send the reporting citizen a best-effort push only when a dispatch transitions to `resolved`: title `Your report was resolved`, body uses a bounded resolution-summary excerpt, and payload carries `reportId`/`dispatchId`/`correlationId`.
+- Added the matching citizen `report_events` notification evidence with `type: 'notification_attempted'`, `channel: 'push'`, `audience: 'citizen'`, `fcmResult`, and `fcmWarnings`.
+- Kept the send and evidence write inside the `withIdempotency` operation after the transaction commits, so idempotency replays return the cached result without another push attempt.
+- Updated `proof:mvp-loop` final report-event count and asserted two citizen notification attempts across the dispatch/resolution loop.
+- Verification: red-first focused `advance-dispatch` emulator test failed on missing `notification_attempted`, then passed 6/6. `pnpm --dir functions run build` passed with the known Node 20 vs Functions Node 22 warning; Functions typecheck and ESLint passed; `pnpm proof:mvp-loop` passed 2/2.
+
+## 2026-06-11 - Phase 3A-05 Rejection Push to Citizen
+
+- Wired `rejectReportCore` to send the reporting citizen a best-effort push after a report is rejected: title `Update on your report`, neutral body `Your report was not accepted. Open the app for details.`, and payload carries only `reportId`.
+- Added the matching citizen `report_events` notification evidence with `type: 'notification_attempted'`, `channel: 'push'`, `audience: 'citizen'`, `fcmResult`, and `fcmWarnings`.
+- Kept the send and evidence write inside the `withIdempotency` operation after the transaction commits, so idempotency replays return the cached result without another push attempt.
+- Repaired `reject-report.test.ts` from collection-time `itif(available)` to runtime `skip(...)`; the first focused run had falsely succeeded with 5 skipped tests.
+- Verification: red-first focused `reject-report` emulator test failed on missing `notification_attempted`, then passed 5/5. `pnpm --dir functions run build` passed with the known Node 20 vs Functions Node 22 warning; Functions typecheck and ESLint passed; `pnpm proof:mvp-loop` passed 2/2.
+
+## 2026-06-12 - Fallow CI Quality Gate
+
+- Added a `fallow-audit` job to `.github/workflows/ci.yml` using the official `fallow-rs/fallow@v2` action: PR-only (`if: github.event_name == 'pull_request'`), `command: audit`, `gate: new-only`, `fail-on-issues: true`, `annotations: true`, with `fetch-depth: 0` so the audit can diff against the PR base ref. Full-repo fail gates were explicitly rejected — inherited debt (~21k duplicated lines, known complexity hotspots) would fail every PR immediately; `new-only` fails only on findings the PR introduces.
+- Red-first proof of the gate semantics ran locally against `fallow audit --base main --gate new-only --format json`: a throwaway 15-branch complexity probe produced `verdict: fail`, `complexity_introduced: 1`, exit 1; reverting restored `verdict: pass`, exit 0. All probe files were reverted before the ci.yml edit (tree confirmed clean).
+- Caveat discovered during the proof: fallow treats ~930 files in this repo as plugin-derived entry points, so unused-export probes in app `src/` pass as `is_entry_point: true` — the gate reliably catches introduced complexity/duplication/dependency/circular findings but not unused exports inside apps. Recorded in `learnings.md`.
+- This was the only code change from the enterprise-standards gap assessment; the remaining backlog (Sentry wiring, CD pipeline, release versioning, coverage reporting, Node 20/22 parity, CI caching, commitlint) stays as separate future branches per one-concern-per-branch.
+- Verification: `pnpm exec prettier --check .github/workflows/ci.yml` passed; ruby YAML parse confirmed valid workflow structure with the new job present; `git diff` matched the approved plan block exactly. No deploy, no rules/schema changes, nothing committed.
+
+## 2026-06-12 - Phase 3B-04 submitReportFeedback Callable
+
+- Added the `submitReportFeedback` citizen callable and core: active citizen auth required, `report_private/{reportId}.reporterUid` must match the caller, and only `resolved` reports can accept feedback.
+- Added shared validator schemas for the callable payload and `report_feedback/{reportId}` doc; comments trim at the boundary, empty comments are omitted, and persisted feedback contains only `reportId`, `reporterUid`, `addressed`, optional `comment`, timestamps, and `schemaVersion`.
+- Chose overwrite semantics for one-feedback-per-report: corrections replace the same `report_feedback/{reportId}` doc while preserving the original `submittedAt`; identical payload retries are idempotent through `withIdempotency`.
+- Added focused emulator coverage for resolved reporter success, non-reporter rejection, non-resolved rejection, and overwrite behavior. Rebuilt tracked `packages/shared-validators/lib` and `functions/lib` outputs for the new exports/callable.
+- Verification: red-first focused emulator test failed on missing `submit-report-feedback.js`, then passed 4/4. `pnpm --filter @bantayog/shared-validators run build`, `pnpm --filter @bantayog/shared-validators run typecheck`, and shared-validator tests passed 14/14 files, 171/171 tests. `pnpm --dir functions run build`, `pnpm --dir functions exec tsc --noEmit`, and `pnpm --dir functions exec eslint src` passed with only the repo's known Node 20 vs Functions Node 22 engine warning. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-12 - Phase 3B-05 Resolved Report Feedback Prompt
+
+- Added a registered-citizen-only `Was this addressed?` prompt to the Citizen PWA own-report detail sheet when a report reaches `resolved`.
+- Wired the prompt to the existing `submitReportFeedback` callable with yes/no answers, optional trimmed comments, inline retryable failure copy, and a local submitted flag to avoid prompting again after success.
+- Kept anonymous sessions and reports without ids out of the feedback path; no backend, rules, index, or schema files changed.
+- Verification: red-first focused `DetailSheet` test failed on the missing prompt, then passed 14/14 after implementation, including anonymous-hide and retryable-error coverage. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed.

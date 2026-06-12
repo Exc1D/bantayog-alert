@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Timestamp } from 'firebase-admin/firestore';
-const mockSendFcm = vi.hoisted(() => vi.fn());
+const mockSendFcmToResponder = vi.hoisted(() => vi.fn());
+const mockSendFcmToCitizen = vi.hoisted(() => vi.fn());
+const mockWithIdempotency = vi.hoisted(() => vi.fn());
 const mockDbCollection = vi.hoisted(() => vi.fn());
 const mockDbDoc = vi.hoisted(() => vi.fn());
 const mockDbRunTransaction = vi.hoisted(() => vi.fn());
@@ -10,7 +12,8 @@ const mockUpdate = vi.hoisted(() => vi.fn());
 const mockSet = vi.hoisted(() => vi.fn());
 const mockGet = vi.hoisted(() => vi.fn());
 vi.mock('../../ops/fcm-send.js', () => ({
-    sendFcmToResponder: mockSendFcm,
+    sendFcmToCitizen: mockSendFcmToCitizen,
+    sendFcmToResponder: mockSendFcmToResponder,
 }));
 vi.mock('../../../admin-init.js', () => ({
     adminDb: {
@@ -24,10 +27,7 @@ vi.mock('../../shared/rate-limit.js', () => ({
     checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
 }));
 vi.mock('../../../idempotency/guard.js', () => ({
-    withIdempotency: vi.fn().mockImplementation(async (_db, _key, fn) => {
-        const result = await fn();
-        return { result, fromCache: false };
-    }),
+    withIdempotency: mockWithIdempotency,
     IdempotencyMismatchError: class extends Error {
     },
 }));
@@ -54,6 +54,11 @@ import { dispatchResponderCore } from '../dispatch-responder.js';
 describe('dispatchResponder FCM tracking', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockWithIdempotency.mockImplementation(async (_db, _key, fn) => {
+            const result = await fn();
+            return { result, fromCache: false };
+        });
+        mockSendFcmToCitizen.mockResolvedValue({ warnings: [] });
         mockDbCollection.mockReturnValue({ doc: mockDbDoc, add: mockAdd });
         mockDbDoc.mockReturnValue({
             get: mockGet,
@@ -80,7 +85,7 @@ describe('dispatchResponder FCM tracking', () => {
         mockSet.mockResolvedValue(undefined);
     });
     it('writes notification_attempted event after FCM succeeds', async () => {
-        mockSendFcm.mockResolvedValue({ warnings: [], sentCount: 1, failedCount: 0 });
+        mockSendFcmToResponder.mockResolvedValue({ warnings: [], sentCount: 1, failedCount: 0 });
         const result = await dispatchResponderCore({
             collection: mockDbCollection,
             doc: mockDbDoc,
@@ -93,10 +98,16 @@ describe('dispatchResponder FCM tracking', () => {
             now: Timestamp.now(),
         });
         // Verify FCM was called
-        expect(mockSendFcm).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockSendFcmToResponder).toHaveBeenCalledWith(expect.objectContaining({
             uid: 'responder-1',
             title: 'New dispatch',
         }));
+        expect(mockSendFcmToCitizen).toHaveBeenCalledWith({
+            reportId: 'report-1',
+            title: 'Help is on the way',
+            body: 'A response team from bfp has been assigned to your report.',
+            data: expect.objectContaining({ reportId: 'report-1' }),
+        });
         // Verify notification_attempted event was written to dispatch_events
         expect(mockDbCollection).toHaveBeenCalledWith('dispatch_events');
         const addCalls = mockAdd.mock.calls;
@@ -111,6 +122,22 @@ describe('dispatchResponder FCM tracking', () => {
             fcmResult: 'sent',
             schemaVersion: 1,
         });
+        const citizenAttemptedEvent = addCalls.find((call) => call[0]?.audience === 'citizen');
+        expect(citizenAttemptedEvent).toBeDefined();
+        if (!citizenAttemptedEvent)
+            throw new Error('citizen notification_attempted event not found');
+        expect(citizenAttemptedEvent[0]).toMatchObject({
+            type: 'notification_attempted',
+            reportId: 'report-1',
+            dispatchId: result.dispatchId,
+            channel: 'push',
+            audience: 'citizen',
+            fcmResult: 'sent',
+            fcmWarnings: [],
+            schemaVersion: 1,
+        });
+        // Citizen event must be written to report_events, not dispatch_events
+        expect(mockDbCollection).toHaveBeenCalledWith('report_events');
         // Verify dispatch doc updated with fcmResult
         expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
             fcmResult: 'sent',
@@ -118,7 +145,7 @@ describe('dispatchResponder FCM tracking', () => {
         }));
     });
     it('writes fcm_retry_queue on network_error', async () => {
-        mockSendFcm.mockResolvedValue({
+        mockSendFcmToResponder.mockResolvedValue({
             warnings: ['fcm_network_error'],
             sentCount: 0,
             failedCount: 1,
@@ -158,7 +185,7 @@ describe('dispatchResponder FCM tracking', () => {
         });
     });
     it('returns fcmResult and fcmWarnings in callable response', async () => {
-        mockSendFcm.mockResolvedValue({
+        mockSendFcmToResponder.mockResolvedValue({
             warnings: ['fcm_one_token_invalid'],
             sentCount: 1,
             failedCount: 0,
@@ -181,6 +208,34 @@ describe('dispatchResponder FCM tracking', () => {
             fcmResult: 'sent_with_invalid_tokens',
             fcmWarnings: ['fcm_one_token_invalid'],
         });
+    });
+    it('does not send or write notification attempts on idempotent replay', async () => {
+        mockWithIdempotency.mockResolvedValue({
+            result: {
+                dispatchId: 'dispatch-1',
+                status: 'pending',
+                reportId: 'report-1',
+                correlationId: 'correlation-1',
+                fcmResult: 'sent',
+                fcmWarnings: [],
+            },
+            fromCache: true,
+        });
+        const result = await dispatchResponderCore({
+            collection: mockDbCollection,
+            doc: mockDbDoc,
+            runTransaction: mockDbRunTransaction,
+        }, {}, {
+            reportId: 'report-1',
+            responderUid: 'responder-1',
+            idempotencyKey: crypto.randomUUID(),
+            actor: { uid: 'admin-1', claims: { role: 'municipal_admin', municipalityId: 'daet' } },
+            now: Timestamp.now(),
+        });
+        expect(result.dispatchId).toBe('dispatch-1');
+        expect(mockSendFcmToResponder).not.toHaveBeenCalled();
+        expect(mockSendFcmToCitizen).not.toHaveBeenCalled();
+        expect(mockAdd).not.toHaveBeenCalled();
     });
 });
 //# sourceMappingURL=dispatch-responder-fcm-tracking.test.js.map

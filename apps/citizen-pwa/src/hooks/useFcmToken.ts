@@ -16,6 +16,50 @@ function playAlertSound(): void {
   }
 }
 
+let swRegistrationFailed = false
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'sw-registration-failed',
+    () => {
+      swRegistrationFailed = true
+    },
+    { once: true },
+  )
+}
+
+async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | undefined> {
+  if (!('serviceWorker' in navigator)) return undefined
+  if (swRegistrationFailed) return undefined
+
+  const controller = navigator.serviceWorker.controller
+  if (controller) {
+    return navigator.serviceWorker.ready
+  }
+
+  const registrations = await navigator.serviceWorker.getRegistrations()
+  if (registrations.length === 0) return undefined
+
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<undefined>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('SW ready timeout'))
+      }, 3000)
+    }),
+  ]).catch(() => {
+    console.warn('[useFcmToken] Service worker ready timed out; falling back to no SW registration')
+    return undefined
+  })
+}
+
+function getTokenOptions(serviceWorkerRegistration?: ServiceWorkerRegistration) {
+  return {
+    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+    ...(serviceWorkerRegistration ? { serviceWorkerRegistration } : {}),
+  }
+}
+
 interface FcmState {
   permission: NotificationPermission
   token: string | null
@@ -37,13 +81,18 @@ export function useFcmToken() {
       return
     }
 
+    if (!hasFirebaseConfig()) {
+      return
+    }
+
     const messaging = getMessaging()
-    // Firebase 12.14.0 deprecated getToken in favor of register/onRegistered (FID-based messaging).
-    // Migration will be done in a dedicated FCM refactor PR. See https://github.com/Exc1D/bantayog-alert/issues/185
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    })
+    getServiceWorkerRegistration()
+      .then((serviceWorkerRegistration) => {
+        // Firebase 12.14.0 deprecated getToken in favor of register/onRegistered (FID-based messaging).
+        // Migration will be done in a dedicated FCM refactor PR. See https://github.com/Exc1D/bantayog-alert/issues/185
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        return getToken(messaging, getTokenOptions(serviceWorkerRegistration))
+      })
       .then((token) => {
         setState({ permission: 'granted', token: token || null, enabled: Boolean(token) })
       })
@@ -87,10 +136,9 @@ export function useFcmToken() {
       }
 
       const messaging = getMessaging()
+      const serviceWorkerRegistration = await getServiceWorkerRegistration()
       // eslint-disable-next-line @typescript-eslint/no-deprecated
-      const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-      })
+      const token = await getToken(messaging, getTokenOptions(serviceWorkerRegistration))
 
       if (!token) {
         console.error('Failed to get FCM token')

@@ -76,6 +76,7 @@
 - Cold offline boot needs a precached app shell and cached `index.html` for failed navigations.
 - Canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser compression path.
 - `React.lazy()` components fail offline. Eager-import offline states.
+- Citizen report history has four visible states: loading, genuinely empty, stale-but-visible, and failed. If Firestore and callable lookup both fail, surface the failure with retry and keep cached rows visible instead of falling through to "No reports yet."
 
 ## Dispatch / Responder / Monitor
 
@@ -88,11 +89,13 @@
 - Admin dashboard widgets must end in an operator action. Report lifecycle counts should expose the next valid backend transition or deep-link to the Map/Feed surface that owns it.
 - Dashboard report commands should stay narrow: advance `new` to review, verify `awaiting_verify`, deep-link verified reports to Map dispatch, and leave rejection or scrubbed publication to Feed.
 - Phase 1 Admin triage belongs on its own `/triage` workbench. Dashboard can summarize, but row-level review needs report summaries, command callables, and Map routing for verified dispatch instead of hiding the flow inside metrics cards.
+- Admin new-report awareness should ride the existing scoped report listener snapshots. Do not add a shell-level Firestore subscription just to drive badges, title updates, or audio.
 - Do not subscribe Admin Map to RTDB `responder_locations` parent reads. Rules deny that path; use scoped Firestore responder roster data unless a scoped child GPS listener is explicitly implemented.
 - Dispatch candidates and roster management are different datasets. A roster workbench must include unavailable, off-duty, suspended, and revoked responders; filter to active/available only at the dispatch-selection boundary.
 - Mode/state precedence: actionable states such as surge win over data-quality states such as degraded.
 - Lease monitors with `monitorLeaseAt` plus expiry, and add circuit breakers for oversized query results.
 - The deployed `dispatchResponder` requires the responder to be on shift in RTDB (`/responder_index/{municipalityId}/{uid}.isOnShift === true`); the seeded `responders/{uid}.isActive` alone is not enough. `staging:seed` does not seed shift state, so any staging callable proof must set the shift in RTDB before dispatching, then clear it on cleanup. This is the main drift between the deployed loop and the emulator `proof:mvp-loop`.
+- Responder push permission failures must be visible in-app. For web, treat `Notification.permission === 'denied'` as browser-settings-only recovery, and show a retry action only for `default` after token registration failed or was skipped.
 
 ## Testing
 
@@ -109,7 +112,8 @@
 - Callable tests should assert runtime client codes such as `not-found`, not internal enum names.
 - Passing tests with noisy stderr are not clean. Wrap async hook tails, fake timer advancement, and synthetic event/message delivery in `act(...)`; wiring tests should mock unrelated polling hooks so they do not probe offline emulators.
 - App-level Citizen smoke tests must stub `fetch` because `useOnlineStatus()` probes `/__/firebase.json`; otherwise a passing render test can still print localhost `ECONNREFUSED` noise.
-- Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
+- Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; avoid `waitFor` under fake timers unless the test advances timers; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
+- React hooks must be called in the exact same order on every render. An early return before a `useState`/`useEffect` causes "Rendered fewer hooks than expected" in React 19. Move guards after all hooks; use derived `if` after the hook block.
 
 ## React / TypeScript
 
@@ -129,6 +133,10 @@
 - Schema union changes, such as `dispatchStatusSchema`, require downstream rebuilds.
 - For oversized modal refactors, extract pure policy first (defaults, validation, payload builders) and prove it with focused tests before moving JSX or caller workflows.
 - When extracting nested alertdialogs, preserve role/name, disabled/loading states, and backdrop behavior; shared modal reuse is only safe when those contracts already match.
+- React effect lint treats direct registration helpers that can set state as effect-body state writes. Schedule app-shell registration work through async callbacks, and derive initial permission warnings outside the effect body.
+- For report-keyed prompt state, prefer a keyed child component over resetting several `useState` values from a parent `useEffect`; `react-hooks/set-state-in-effect` treats synchronous effect resets as cascading renders.
+- Citizen FCM token tests live at `apps/citizen-pwa/src/hooks/__tests__/useFcmToken.test.tsx`; older slice text may mention `src/hooks/useFcmToken.test.ts`.
+- Citizen MapTab has no URL-driven report selection contract yet. For notification tap-through, preserve `reportId` in the URL/query or payload, but do not assume MapTab will focus it until a later UI slice consumes that state.
 
 ## UX / A11y
 
@@ -175,6 +183,8 @@
 - Keep Fallow focused on source-of-truth files: ignore generated `functions/lib` and declaration-only `lib` outputs when package entry points use `src`, but fix live source/test imports and delete retired scripts instead of suppressing them.
 - When Fallow flags near-identical Playwright audit specs, keep the variant with authentication/setup hardening and delete the weaker duplicate instead of extracting a shared helper around stale coverage.
 - For Fallow health cleanup, prefer extracting named render sections and hooks over adding suppressions; then use `fallow audit --base HEAD` to make sure touched files did not retain new complexity findings.
+- Fallow in CI must be a changed-code regression gate (`audit --gate new-only` on PRs), never a full-repo `--fail-on-issues` gate: inherited duplication/complexity debt would fail every PR for debt it did not add. The official `fallow-rs/fallow@v2` action needs `fetch-depth: 0` to diff against the PR base ref.
+- Fallow treats ~930 files in this repo as plugin-derived entry points (962 total in audit vs 77 from `fallow list --entry-points`), so unused-export detection inside app `src/` is effectively disabled — probed exports trace as `is_entry_point: true`. Do not read `dead-code: 0` as proof of no unused exports; the audit gate still catches introduced complexity, duplication, dependency, and circular-dependency findings.
 - Canonical province geography belongs with `@bantayog/shared-validators` municipality constants. Do not recreate app-local barangay arrays or revive `shared-sms-parser` for non-SMS data sharing.
 - When removing a workspace package, remove live imports, manifest entries, lockfile references, lint-baseline rows, source, tests, and generated `lib` output together; then rebuild any package whose `exports` still point at `lib`.
 
@@ -189,5 +199,9 @@
 - `@firebase/rules-unit-testing` 5.x peer-depends on `firebase` 12.x, but the compat RTDB `.database()` / `.clearDatabase()` APIs silently require `@firebase/database-compat` to be installed. If it is missing, RTDB tests in both `rules-unit-testing` harnesses and unit-test helpers throw `TypeError: this.getApp(...).database is not a function` at test setup time. Add `-D @firebase/database-compat` in `functions/` whenever `@firebase/rules-unit-testing` is used with the RTDB emulator.
 - Avoid collection-time `itif(available)` for emulator-guarded Vitest files when `available` is set in `beforeAll`; it registers real tests as skipped before the guard runs. Register `it(...)` normally and call the test-context `skip(...)` inside the body after checking the initialized env.
 - Dispatch command idempotency tests should count `dispatch_events` by `type` when a command intentionally writes multiple event records. A total collection count can hide stale assumptions once emulator-guarded tests start executing for real.
+- Dispatch notification side effects belong inside the `withIdempotency` operation result. If they run after a cached result returns, replayed commands can double-send push notifications and duplicate `notification_attempted` events.
 - Dispatch assignment tests that seed reports without explicit severity get `severityDerived: medium`, which maps to a 15-minute acknowledgement deadline. Use explicit `high` or `critical` severity when asserting the 5-minute SLA.
 - Domain cores exercised through `@firebase/rules-unit-testing` use a client Firestore object even when cast to Admin types. Prefer concrete transaction updates over Admin `FieldValue` transforms in these cores when the value is already available from the transaction snapshot.
+- Fresh worktrees can install dependencies but still lack package `lib/*.map` outputs. Build the workspace package that Vitest imports, such as `packages/shared-validators`, before treating source-map warnings as unrelated noise.
+- Function tests import `@bantayog/shared-validators` through package exports (`lib/index.js`), not live `src`; after adding validator exports, rebuild the package before running emulator tests or the new schema can be `undefined` at runtime.
+- A focused emulator run can still report success while executing zero tests if a legacy file uses collection-time `itif(available)`. Convert those files to runtime `skip(...)` before trusting red/green results.

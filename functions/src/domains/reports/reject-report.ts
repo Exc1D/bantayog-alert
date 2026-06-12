@@ -9,6 +9,7 @@ import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { isAccountActive } from '../ops/admin-auth.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { sendFcmToCitizen, type FcmSendResult } from '../ops/fcm-send.js'
 
 const REJECT_REASONS = [
   'obviously_false',
@@ -17,6 +18,35 @@ const REJECT_REASONS = [
   'insufficient_detail',
 ] as const
 type RejectReason = (typeof REJECT_REASONS)[number]
+type FcmResult = 'sent' | 'no_token' | 'network_error' | 'sent_with_invalid_tokens'
+
+function mapFcmResult(fcm: FcmSendResult): FcmResult {
+  if (fcm.warnings.includes('fcm_no_token')) return 'no_token'
+  if (fcm.warnings.includes('fcm_network_error')) return 'network_error'
+  if (fcm.warnings.length > 0) return 'sent_with_invalid_tokens'
+  return 'sent'
+}
+
+async function writeCitizenFcmTracking(
+  db: Firestore,
+  reportId: string,
+  fcmResult: FcmResult,
+  fcmWarnings: string[],
+  nowMillis: number,
+  correlationId: string,
+): Promise<void> {
+  await db.collection('report_events').add({
+    type: 'notification_attempted',
+    reportId,
+    channel: 'push',
+    audience: 'citizen',
+    fcmResult,
+    fcmWarnings,
+    at: nowMillis,
+    correlationId,
+    schemaVersion: 1,
+  })
+}
 
 const InputSchema = z
   .object({
@@ -50,8 +80,8 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
       payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
-    async () =>
-      db.runTransaction(async (tx) => {
+    async () => {
+      const transition = await db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)
         const snap = await tx.get(reportRef)
         if (!snap.exists) {
@@ -121,7 +151,33 @@ export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps
         })
 
         return { status: to, reportId: deps.reportId }
-      }),
+      })
+
+      const fcm = await sendFcmToCitizen({
+        reportId: transition.reportId,
+        title: 'Update on your report',
+        body: 'Your report was not accepted. Open the app for details.',
+        data: {
+          reportId: transition.reportId,
+        },
+      })
+
+      // Tracking writes are best-effort; must not fail the already-committed transaction.
+      try {
+        await writeCitizenFcmTracking(
+          db,
+          transition.reportId,
+          mapFcmResult(fcm),
+          fcm.warnings,
+          deps.now.toMillis(),
+          correlationId,
+        )
+      } catch (err) {
+        console.error('rejectReport notification tracking failed:', err)
+      }
+
+      return transition
+    },
   )
   return result
 }

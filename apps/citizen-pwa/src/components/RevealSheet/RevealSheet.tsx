@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // fallow-ignore-file security-sink
-import { Check, ShieldCheck, Save } from 'lucide-react'
+import { BellRing, Check, ShieldCheck, Save } from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useReducedMotion } from '../../hooks/useReducedMotion.js'
 import { useSlotMachine } from '../../hooks/useSlotMachine.js'
 import { useMunicipalityContact } from '../../hooks/useMunicipalityContact.js'
+import { useFcmToken } from '../../hooks/useFcmToken.js'
 import { auth, hasFirebaseConfig } from '../../services/firebase.js'
 import { StatusBanner } from '../ui/StatusBanner'
 import { Button } from '../ui/Button'
@@ -117,6 +118,129 @@ function useSecretVisibility(
   return secretVisible
 }
 
+function getNotificationPermission(): NotificationPermission {
+  if (typeof Notification === 'undefined') return 'denied'
+  return Notification.permission
+}
+
+function NotificationPrompt({
+  isGuest,
+  state,
+  successComplete,
+}: {
+  isGuest: boolean | null
+  state: RevealSheetProps['state']
+  successComplete: boolean
+}) {
+  if (state !== 'success' || isGuest === null || !successComplete) return null
+  return <NotificationPromptInner isGuest={isGuest} />
+}
+
+function NotificationPromptInner({ isGuest }: { isGuest: boolean }) {
+  const [dismissed, setDismissed] = useState(false)
+  const [requesting, setRequesting] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const { requestPermission } = useFcmToken()
+
+  const handleAccept = useCallback(async () => {
+    setRequesting(true)
+    setHasError(false)
+    try {
+      const ok = await requestPermission()
+      if (ok) {
+        setDismissed(true)
+      } else {
+        // Permission denied, no token, or setup failure
+        setHasError(true)
+      }
+    } catch {
+      setHasError(true)
+    } finally {
+      setRequesting(false)
+    }
+  }, [requestPermission])
+
+  const handleDismiss = useCallback(() => {
+    setDismissed(true)
+  }, [])
+
+  const wrappedAccept = useCallback((): void => {
+    void handleAccept()
+  }, [handleAccept])
+
+  // If dismissed, don't show
+  if (dismissed) return null
+
+  // For guests, always show GuardianCTA regardless of permission state
+  if (isGuest) {
+    return <GuardianCTA />
+  }
+
+  // For registered users, check permission but allow error UI after failures
+  // Only hide if permission was explicitly granted and setup succeeded (dismissed)
+  // or if user explicitly denied (permission === 'denied' and not hasError)
+  // If permission is 'granted' but hasError, show error/retry UI
+  // If permission is 'default', show the prompt
+  const permission = getNotificationPermission()
+  if (permission === 'denied' && !hasError) return null
+
+  return (
+    <NotificationOffer
+      isRequesting={requesting}
+      hasError={hasError}
+      onAccept={wrappedAccept}
+      onDismiss={handleDismiss}
+    />
+  )
+}
+
+function NotificationOffer({
+  isRequesting,
+  hasError,
+  onAccept,
+  onDismiss,
+}: {
+  isRequesting: boolean
+  hasError: boolean
+  onAccept: () => void
+  onDismiss: () => void
+}) {
+  const handleClick = useCallback((): void => {
+    onAccept()
+  }, [onAccept])
+
+  return (
+    <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4">
+      <div className="flex gap-3">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+          <BellRing size={18} />
+        </div>
+        <div>
+          <p className="m-0 text-sm font-bold text-surface-900">
+            Get notified when help is on the way
+          </p>
+          <p className="m-0 mt-1 text-xs leading-relaxed text-surface-600">
+            Get report status updates and public emergency alerts from Bantayog Alert.
+          </p>
+          {hasError && (
+            <p className="m-0 mt-1 text-xs leading-relaxed text-rose-600">
+              Could not enable notifications. You can try again or skip for now.
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button variant="primary" fullWidth onClick={handleClick} disabled={isRequesting}>
+          {isRequesting ? 'Asking...' : hasError ? 'Try again' : 'Get notified'}
+        </Button>
+        <Button variant="secondary" fullWidth onClick={onDismiss}>
+          Not now
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export interface RevealSheetProps {
   state: 'success' | 'queued' | 'failed_retryable' | 'failed_terminal'
   referenceCode: string
@@ -126,6 +250,7 @@ export interface RevealSheetProps {
   onPrimaryAction?: () => void
 }
 
+// fallow-ignore-next-line complexity
 export function RevealSheet({
   state,
   referenceCode,
@@ -290,6 +415,8 @@ export function RevealSheet({
           />
         )}
 
+        <NotificationPrompt isGuest={isGuest} state={state} successComplete={typewriterComplete} />
+
         <FallbackCards
           hotlineNumber={contact.hotline}
           emphasized={state !== 'success' ? state === 'failed_retryable' : false}
@@ -313,8 +440,6 @@ export function RevealSheet({
             </Button>
           </div>
         ) : null}
-
-        {state === 'success' && isGuest && <GuardianCTA />}
 
         <p className="reveal-footer">{variant.permissionText}</p>
       </div>

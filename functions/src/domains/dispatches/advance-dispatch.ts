@@ -18,6 +18,47 @@ import { checkRateLimit } from '../shared/rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getResponderCallableCorsOrigins } from '../shared/callable-config.js'
 import { mirrorDispatchStatusToReportInTransaction } from '../reports/dispatch-report-mirror.js'
+import { sendFcmToCitizen, type FcmSendResult } from '../ops/fcm-send.js'
+
+type FcmResult = 'sent' | 'no_token' | 'network_error' | 'sent_with_invalid_tokens'
+
+function mapFcmResult(fcm: FcmSendResult): FcmResult {
+  if (fcm.warnings.includes('fcm_no_token')) return 'no_token'
+  if (fcm.warnings.includes('fcm_network_error')) return 'network_error'
+  if (fcm.warnings.length > 0) return 'sent_with_invalid_tokens'
+  return 'sent'
+}
+
+function buildResolvedCitizenBody(resolutionSummary: string | undefined): string {
+  const trimmed = resolutionSummary?.trim()
+  if (!trimmed) return 'Your report has been marked resolved.'
+
+  const excerpt = trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed
+  return `Resolution: ${excerpt}`
+}
+
+async function writeCitizenFcmTracking(
+  db: FirebaseFirestore.Firestore,
+  dispatchId: string,
+  reportId: string,
+  fcmResult: FcmResult,
+  fcmWarnings: string[],
+  nowMillis: number,
+  correlationId: string,
+): Promise<void> {
+  await db.collection('report_events').add({
+    type: 'notification_attempted',
+    reportId,
+    dispatchId,
+    channel: 'push',
+    audience: 'citizen',
+    fcmResult,
+    fcmWarnings,
+    at: nowMillis,
+    correlationId,
+    schemaVersion: 1,
+  })
+}
 
 export const advanceDispatchCore = async (
   db: FirebaseFirestore.Firestore,
@@ -37,8 +78,9 @@ export const advanceDispatchCore = async (
       payload: idempotentPayload,
       now: () => now.toMillis(),
     },
-    async () =>
-      db.runTransaction(async (transaction) => {
+    async () => {
+      const correlationId = crypto.randomUUID()
+      const transition = await db.runTransaction(async (transaction) => {
         // Rate limit: 30 advances per 60s per responder (same as accept/decline)
         const rl = await checkRateLimit(db, {
           key: `advanceDispatch::${actor.uid}`,
@@ -126,7 +168,7 @@ export const advanceDispatchCore = async (
           actorUid: actor.uid,
           actorRole: 'responder',
           nowMillis,
-          correlationId: crypto.randomUUID(),
+          correlationId,
         })
 
         transaction.update(dispatchRef, patch)
@@ -141,8 +183,44 @@ export const advanceDispatchCore = async (
           createdAt: nowMillis,
         })
 
-        return { status: to }
-      }),
+        return {
+          status: to,
+          dispatchId,
+          reportId: dispatch.reportId,
+          correlationId,
+        }
+      })
+
+      if (transition.status !== 'resolved') {
+        return { status: transition.status }
+      }
+
+      const fcm = await sendFcmToCitizen({
+        reportId: transition.reportId,
+        title: 'Your report was resolved',
+        body: buildResolvedCitizenBody(resolutionSummary),
+        data: {
+          reportId: transition.reportId,
+        },
+      })
+
+      // Tracking writes are best-effort; must not fail the already-committed transaction.
+      try {
+        await writeCitizenFcmTracking(
+          db,
+          transition.dispatchId,
+          transition.reportId,
+          mapFcmResult(fcm),
+          fcm.warnings,
+          now.toMillis(),
+          transition.correlationId,
+        )
+      } catch (err) {
+        console.error('advanceDispatch notification tracking failed:', err)
+      }
+
+      return { status: transition.status }
+    },
   )
 
   return result

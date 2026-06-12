@@ -91,7 +91,17 @@ describe('dispatchResponderCore', () => {
                 .collection('report_events')
                 .where('reportId', '==', reportId)
                 .get();
-            expect(reportEvents.docs).toHaveLength(1);
+            const reportEventData = reportEvents.docs.map((doc) => doc.data());
+            expect(reportEventData.filter((event) => event.from === 'verified')).toHaveLength(1);
+            const reportNotificationEvents = reportEventData.filter((event) => event.type === 'notification_attempted');
+            expect(reportNotificationEvents).toHaveLength(1);
+            expect(reportNotificationEvents[0]).toMatchObject({
+                reportId,
+                dispatchId: result.dispatchId,
+                fcmResult: 'no_token',
+                fcmWarnings: ['fcm_no_token'],
+                schemaVersion: 1,
+            });
             const dispatchEvents = await db
                 .collection('dispatch_events')
                 .where('dispatchId', '==', result.dispatchId)
