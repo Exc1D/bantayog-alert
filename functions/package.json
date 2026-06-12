@@ -43,7 +43,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@firebase/database-compat": "^2.1.4",
     "@firebase/rules-unit-testing": "^5.0.0",
     "@types/ngeohash": "^0.6.8",
     "@types/node": "^20.12.0",

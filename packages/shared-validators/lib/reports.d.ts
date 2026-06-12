@@ -185,6 +185,20 @@ export declare const reportNoteDocSchema: z.ZodObject<{
     createdAt: z.ZodNumber;
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
+export declare const submitReportFeedbackInputSchema: z.ZodObject<{
+    reportId: z.ZodString;
+    addressed: z.ZodBoolean;
+    comment: z.ZodPipe<z.ZodOptional<z.ZodString>, z.ZodTransform<string | undefined, string | undefined>>;
+}, z.core.$strict>;
+export declare const reportFeedbackDocSchema: z.ZodObject<{
+    reportId: z.ZodString;
+    reporterUid: z.ZodString;
+    addressed: z.ZodBoolean;
+    comment: z.ZodOptional<z.ZodString>;
+    submittedAt: z.ZodNumber;
+    updatedAt: z.ZodNumber;
+    schemaVersion: z.ZodNumber;
+}, z.core.$strict>;
 export declare const reportSharingEventDocSchema: z.ZodObject<{
     targetMunicipalityId: z.ZodString;
     sharedBy: z.ZodString;
@@ -231,6 +245,8 @@ export type ReportPrivateDoc = z.infer<typeof reportPrivateDocSchema>;
 export type ReportOpsDoc = z.infer<typeof reportOpsDocSchema>;
 export type ReportSharingDoc = z.infer<typeof reportSharingDocSchema>;
 export type ReportNoteDoc = z.infer<typeof reportNoteDocSchema>;
+export type SubmitReportFeedbackInput = z.infer<typeof submitReportFeedbackInputSchema>;
+export type ReportFeedbackDoc = z.infer<typeof reportFeedbackDocSchema>;
 export type ReportSharingEventDoc = z.infer<typeof reportSharingEventDocSchema>;
 export type ReportContactsDoc = z.infer<typeof reportContactsDocSchema>;
 export type ReportLookupDoc = z.infer<typeof reportLookupDocSchema>;

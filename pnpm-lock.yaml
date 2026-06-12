@@ -415,9 +415,6 @@ importers:
         specifier: ^4.3.6
         version: 4.4.3
     devDependencies:
-      '@firebase/database-compat':
-        specifier: ^2.1.4
-        version: 2.1.4
       '@firebase/rules-unit-testing':
         specifier: ^5.0.0
         version: 5.0.1(firebase@12.14.0)
