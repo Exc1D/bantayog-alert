@@ -23,23 +23,33 @@ const FRIENDLY_ERROR =
   "We couldn't find a report with that secret code. It may have expired (reports are tracked for 90 days)."
 const OFFLINE_LOOKUP_ERROR = "You're offline — your code is saved, try again when connected."
 
+const LOOKUP_ERROR_MAP: Record<string, string> = {
+  'functions/not-found': FRIENDLY_ERROR,
+  'not-found': FRIENDLY_ERROR,
+  'functions/permission-denied': FRIENDLY_ERROR,
+  'permission-denied': FRIENDLY_ERROR,
+  'functions/unavailable': OFFLINE_LOOKUP_ERROR,
+  unavailable: OFFLINE_LOOKUP_ERROR,
+  'functions/unauthenticated': 'Please refresh and try again.',
+  unauthenticated: 'Please refresh and try again.',
+  'functions/resource-exhausted': 'Too many attempts. Please wait a minute and try again.',
+  'resource-exhausted': 'Too many attempts. Please wait a minute and try again.',
+}
+
 function normalizeSecretCode(secret: string): string {
   return secret.replace(/[^a-z0-9]/gi, '').toUpperCase()
 }
 
+function isNetworkTypeError(err: unknown): boolean {
+  return err instanceof TypeError && /fetch|network|failed/i.test(err.message)
+}
+
 function friendlyLookupError(err: unknown): string {
   if (!hasFirebaseConfig()) return FIREBASE_ENV_ERROR_MESSAGE
+  if (isNetworkTypeError(err)) return OFFLINE_LOOKUP_ERROR
   const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
-  if (code === 'functions/not-found' || code === 'not-found') return FRIENDLY_ERROR
-  if (code === 'functions/permission-denied' || code === 'permission-denied') return FRIENDLY_ERROR
-  if (code === 'functions/unavailable' || code === 'unavailable') return OFFLINE_LOOKUP_ERROR
-  if (err instanceof TypeError) return OFFLINE_LOOKUP_ERROR
-  if (code === 'functions/unauthenticated' || code === 'unauthenticated') {
-    return 'Please refresh and try again.'
-  }
-  if (code === 'functions/resource-exhausted' || code === 'resource-exhausted') {
-    return 'Too many attempts. Please wait a minute and try again.'
-  }
+  const mapped = LOOKUP_ERROR_MAP[code]
+  if (mapped !== undefined) return mapped
   return 'Something went wrong. Please try again or call the hotline.'
 }
 

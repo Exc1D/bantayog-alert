@@ -155,6 +155,23 @@ describe('LookupScreen', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
+  it('shows offline copy when isOnline is false even if navigatorOnline is true', async () => {
+    mockUseOnlineStatus.mockReturnValue({ isOnline: false, navigatorOnline: true })
+
+    const user = userEvent.setup()
+    renderScreen()
+    const input = screen.getByPlaceholderText('Your secret code')
+    await user.type(input, 'partial')
+    await user.click(screen.getByRole('button', { name: /find my report/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/you're offline/i)
+    })
+    expect(input).toHaveValue('partial')
+    expect(mockHttpsCallable).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
   it('shows offline retry copy when the lookup callable is unavailable', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     mockHttpsCallable.mockImplementationOnce(() => () => {
@@ -174,6 +191,26 @@ describe('LookupScreen', () => {
       })
       expect(input).toHaveValue('networksecret')
       expect(mockNavigate).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('shows generic error for a non-network TypeError', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockHttpsCallable.mockImplementationOnce(() => () => {
+      const err = new TypeError('undefined is not a function')
+      return Promise.reject(err)
+    })
+    try {
+      const user = userEvent.setup()
+      renderScreen()
+      await user.type(screen.getByPlaceholderText('Your secret code'), 'typo')
+      await user.click(screen.getByRole('button', { name: /find my report/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/something went wrong/i)
+      })
     } finally {
       consoleError.mockRestore()
     }
