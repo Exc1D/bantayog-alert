@@ -128,6 +128,10 @@ export const callables = {
     },
     { alertId: string }
   >('declareAlert'),
+  updateMunicipalityContact: callable<
+    { municipalityId: string; mdrrmoLabel: string; mdrrmoHotline: string },
+    { municipalityId: string; mdrrmoLabel: string; mdrrmoHotline: string; updatedAt: number }
+  >('updateMunicipalityContact'),
   setRetentionExempt: callable<
     { collection: string; documentId: string; exempt: boolean; reason: string },
     unknown

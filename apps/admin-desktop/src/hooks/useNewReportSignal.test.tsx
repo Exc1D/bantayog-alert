@@ -24,6 +24,14 @@ vi.mock('./useAudioAlerts', () => ({
   }),
 }))
 
+vi.mock('@bantayog/shared-ui', () => ({
+  useAuth: () => ({ claims: null }),
+}))
+
+// CommandHeader statically imports EditHotlineModal, which imports ../app/firebase.
+// Stub it so module evaluation does not initialize a real Firebase Auth client.
+vi.mock('../app/firebase', () => ({ db: {} }))
+
 function SignalProbe() {
   const signal = useNewReportSignal()
   return <output aria-label="new report count">{signal.notificationCount}</output>

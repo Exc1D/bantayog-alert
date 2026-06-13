@@ -1,7 +1,11 @@
-import { AlertTriangle, Bell, Keyboard, LogOut, Volume2, VolumeX } from 'lucide-react'
+import { AlertTriangle, Bell, Keyboard, LogOut, Phone, Volume2, VolumeX } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '@bantayog/shared-ui'
 import { Tooltip } from './Tooltip'
 import { useNewReportSignal } from '../hooks/useNewReportSignal'
+import { EditHotlineModal } from './EditHotlineModal'
+import { canEditHotlines } from './hotline-form'
 
 type WindowRole = 'dashboard' | 'triage' | 'map' | 'feed' | 'dispatches'
 
@@ -37,6 +41,9 @@ export function CommandHeader({
   windowRole,
 }: Props) {
   const navigate = useNavigate()
+  const { claims } = useAuth()
+  const showHotlines = canEditHotlines(claims)
+  const [hotlineOpen, setHotlineOpen] = useState(false)
   const signal = useNewReportSignal()
   const effectiveNotificationCount = notificationCount ?? signal.notificationCount
   const usesContextAudio = audioEnabled == null && onToggleAudio == null
@@ -51,91 +58,115 @@ export function CommandHeader({
       : undefined)
 
   return (
-    <header className="flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
-      <span className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</span>
-      <div className="flex items-center gap-4">
-        {windowRole && (
-          <nav
-            aria-label="Command center tabs"
-            className="flex overflow-hidden rounded border border-white/10"
-          >
-            {NAV_ITEMS.map((item) => {
-              const active = windowRole === item.role
-              return (
-                <Link
-                  key={item.role}
-                  to={item.href}
-                  data-tour={item.role}
-                  {...(active ? { 'aria-current': 'page' as const } : {})}
-                  className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{
-                    backgroundColor: active ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  }}
-                >
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-        )}
-        {onDeclareAlert && (
-          <Tooltip content="Create and broadcast a new public emergency alert.">
-            <button
-              onClick={onDeclareAlert}
-              className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
+    <>
+      <header className="flex items-center justify-between border-b border-[var(--color-surface)] bg-[var(--color-surface)] px-4 py-3">
+        <span className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</span>
+        <div className="flex items-center gap-4">
+          {windowRole && (
+            <nav
+              aria-label="Command center tabs"
+              className="flex overflow-hidden rounded border border-white/10"
             >
-              <AlertTriangle className="h-4 w-4" />
-              Declare Alert
-            </button>
-          </Tooltip>
-        )}
-        <button
-          onClick={handleToggleAudio}
-          aria-label={effectiveAudioEnabled ? 'Mute audio alerts' : 'Enable audio alerts'}
-          className="rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-        >
-          {effectiveAudioEnabled ? (
-            <Volume2 className="h-4 w-4 text-[var(--color-success)]" />
-          ) : (
-            <VolumeX className="h-4 w-4 text-[var(--color-text-muted)]" />
+              {NAV_ITEMS.map((item) => {
+                const active = windowRole === item.role
+                return (
+                  <Link
+                    key={item.role}
+                    to={item.href}
+                    data-tour={item.role}
+                    {...(active ? { 'aria-current': 'page' as const } : {})}
+                    className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    style={{
+                      backgroundColor: active ? 'rgba(255,255,255,0.06)' : 'transparent',
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </nav>
           )}
-        </button>
-        {handleShowNotifications && (
+          {onDeclareAlert && (
+            <Tooltip content="Create and broadcast a new public emergency alert.">
+              <button
+                onClick={onDeclareAlert}
+                className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Declare Alert
+              </button>
+            </Tooltip>
+          )}
           <button
-            onClick={handleShowNotifications}
-            className="relative rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-            aria-label={`${String(effectiveNotificationCount)} notifications`}
+            onClick={handleToggleAudio}
+            aria-label={effectiveAudioEnabled ? 'Mute audio alerts' : 'Enable audio alerts'}
+            className="rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
-            <Bell className="h-5 w-5 text-[var(--color-text-secondary)]" />
-            {effectiveNotificationCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-warning)] text-[10px] text-white">
-                {effectiveNotificationCount}
-              </span>
+            {effectiveAudioEnabled ? (
+              <Volume2 className="h-4 w-4 text-[var(--color-success)]" />
+            ) : (
+              <VolumeX className="h-4 w-4 text-[var(--color-text-muted)]" />
             )}
           </button>
-        )}
-        {onShowKeyboardShortcuts && (
-          <button
-            onClick={onShowKeyboardShortcuts}
-            className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-            aria-label="Keyboard shortcuts"
-            title="Press ? for shortcuts"
-          >
-            <Keyboard className="h-3.5 w-3.5" />
-            Shortcuts
-          </button>
-        )}
-        {onSignOut && (
-          <button
-            onClick={onSignOut}
-            className="rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-            aria-label="Sign out"
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4 text-[var(--color-text-muted)]" />
-          </button>
-        )}
-      </div>
-    </header>
+          {handleShowNotifications && (
+            <button
+              onClick={handleShowNotifications}
+              className="relative rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              aria-label={`${String(effectiveNotificationCount)} notifications`}
+            >
+              <Bell className="h-5 w-5 text-[var(--color-text-secondary)]" />
+              {effectiveNotificationCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-warning)] text-[10px] text-white">
+                  {effectiveNotificationCount}
+                </span>
+              )}
+            </button>
+          )}
+          {showHotlines && (
+            <Tooltip content="Set the hotline citizens see when a report cannot be submitted.">
+              <button
+                onClick={() => {
+                  setHotlineOpen(true)
+                }}
+                className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                aria-label="Edit municipality hotline"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                Hotlines
+              </button>
+            </Tooltip>
+          )}
+          {onShowKeyboardShortcuts && (
+            <button
+              onClick={onShowKeyboardShortcuts}
+              className="flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              aria-label="Keyboard shortcuts"
+              title="Press ? for shortcuts"
+            >
+              <Keyboard className="h-3.5 w-3.5" />
+              Shortcuts
+            </button>
+          )}
+          {onSignOut && (
+            <button
+              onClick={onSignOut}
+              className="rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4 text-[var(--color-text-muted)]" />
+            </button>
+          )}
+        </div>
+      </header>
+      {showHotlines && (
+        <EditHotlineModal
+          open={hotlineOpen}
+          onClose={() => {
+            setHotlineOpen(false)
+          }}
+        />
+      )}
+    </>
   )
 }

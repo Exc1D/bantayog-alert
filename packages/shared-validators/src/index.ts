@@ -114,8 +114,15 @@ export { deadLetterDocSchema } from './dead-letters.js'
 export type { DeadLetterDoc } from './dead-letters.js'
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js'
 export type { AlertDoc, EmergencyDoc } from './alerts-emergencies.js'
-export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js'
-export type { MunicipalityDoc } from './municipalities.js'
+export {
+  municipalityDocSchema,
+  CAMARINES_NORTE_MUNICIPALITIES,
+  mdrrmoLabelSchema,
+  mdrrmoHotlineSchema,
+  MDRRMO_HOTLINE_REGEX,
+  updateMunicipalityContactInputSchema,
+} from './municipalities.js'
+export type { MunicipalityDoc, UpdateMunicipalityContactInput } from './municipalities.js'
 export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js'
 export type { BarangayEntry } from './barangays.js'
 export {

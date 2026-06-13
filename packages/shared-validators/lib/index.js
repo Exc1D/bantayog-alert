@@ -17,7 +17,7 @@ export { rateLimitDocSchema } from './rate-limits.js';
 export { idempotencyKeyDocSchema } from './idempotency-keys.js';
 export { deadLetterDocSchema } from './dead-letters.js';
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js';
-export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES } from './municipalities.js';
+export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES, mdrrmoLabelSchema, mdrrmoHotlineSchema, MDRRMO_HOTLINE_REGEX, updateMunicipalityContactInputSchema, } from './municipalities.js';
 export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js';
 export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, isValidDispatchTransition, } from '@bantayog/shared-state-machines';
 export { BantayogErrorCode, isBantayogErrorCode, isTerminalReportStatus, isTerminalDispatchStatus, BantayogError, notFoundError, invalidTransitionError, } from './errors.js';
