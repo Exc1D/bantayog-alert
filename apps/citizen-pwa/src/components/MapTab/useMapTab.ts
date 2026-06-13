@@ -35,7 +35,11 @@ export function useMapTab(mapElRef: React.RefObject<HTMLDivElement | null>) {
     loading: incidentsLoading,
     error: incidentsError,
   } = usePublicIncidents(filters)
-  const { reports: myReports, loading: myReportsLoading } = useMyActiveReports()
+  const {
+    reports: myReports,
+    loading: myReportsLoading,
+    error: myReportsError,
+  } = useMyActiveReports()
   const { toast } = useToast()
 
   /* ── Map lifecycle ──────────────────────────────────────── */
@@ -234,6 +238,7 @@ export function useMapTab(mapElRef: React.RefObject<HTMLDivElement | null>) {
     incidentsLoading,
     incidentsError,
     myReportsLoading,
+    myReportsError,
     showEmpty,
     showFilterHint,
     handleRecenter,
