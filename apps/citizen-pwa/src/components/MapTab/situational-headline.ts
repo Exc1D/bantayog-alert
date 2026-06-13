@@ -20,7 +20,7 @@ export function buildSituationalHeadline({
       : 'This area'
 
   if (alertCount > 0) {
-    return `${String(alertCount)} active ${pluralize(alertCount, 'alert', 'alerts')} for ${place}. Tap Alerts to view.`
+    return `${String(alertCount)} active ${pluralize(alertCount, 'alert', 'alerts')}. Tap Alerts to view.`
   }
 
   if (incidentCount > 0) {

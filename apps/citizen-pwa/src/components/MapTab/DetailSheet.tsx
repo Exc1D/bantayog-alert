@@ -246,7 +246,7 @@ function resolvedSpan(report: MyReport): string {
   return `Reported ${timeLabel(report.submittedAt)}, resolved ${timeLabel(resolvedAt)}.`
 }
 
-function buildCitizenStatusHero(report: MyReport): CitizenStatusHero {
+export function buildCitizenStatusHero(report: MyReport): CitizenStatusHero {
   const updated = updatedMeta(report)
   switch (report.status) {
     case 'queued':

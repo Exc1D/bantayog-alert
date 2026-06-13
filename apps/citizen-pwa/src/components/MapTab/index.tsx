@@ -101,6 +101,7 @@ export function MapTab() {
     incidentsLoading,
     incidentsError,
     myReportsLoading,
+    myReportsError,
     showEmpty,
     showFilterHint,
     handleRecenter,
@@ -134,7 +135,8 @@ export function MapTab() {
     alertsError ||
     incidentsLoading ||
     incidentsError ||
-    myReportsLoading
+    myReportsLoading ||
+    myReportsError
       ? null
       : buildSituationalHeadline({
           alertCount: alerts.length,
