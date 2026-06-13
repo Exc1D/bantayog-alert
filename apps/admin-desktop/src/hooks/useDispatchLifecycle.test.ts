@@ -171,6 +171,8 @@ describe('useDispatchLifecycle', () => {
               responderAgency: 'BFP',
               dispatchedAt: now - 3600_000,
               deadlineAt: now + 7200_000,
+              resolvedAt: now - 120_000,
+              resolutionSummary: 'Route cleared and responder released.',
               escalationCount: 0,
               fcmResult: null,
               fcmWarnings: null,
@@ -209,6 +211,8 @@ describe('useDispatchLifecycle', () => {
     })
 
     expect(result.current.rows[0]?.timeline).toHaveLength(2)
+    expect(result.current.rows[0]?.resolvedAt).toBe(now - 120_000)
+    expect(result.current.rows[0]?.resolutionSummary).toBe('Route cleared and responder released.')
     expect(result.current.rows[0]?.timeline[0]).toMatchObject({ id: 'ev2', type: 'accepted' })
     expect(result.current.rows[0]?.timeline[1]).toMatchObject({ id: 'ev1', type: 'dispatched' })
 
@@ -340,6 +344,7 @@ describe('useDispatchLifecycle', () => {
       'acknowledged',
       'en_route',
       'on_scene',
+      'resolved',
       'declined',
       'needs_admin',
       'escalated',

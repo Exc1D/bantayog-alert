@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { DispatchMonitorPage } from '../pages/DispatchMonitorPage'
 import { MemoryRouterWrapper, makeRow, defaultRows, defaultResponders } from '../test-utils'
 
@@ -57,6 +58,21 @@ vi.mock('../hooks/useOpsMetrics', () => ({
 vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: mockUseFirestoreListeners,
 }))
+
+async function tabUntil(
+  user: ReturnType<typeof userEvent.setup>,
+  getExpectedElement: () => HTMLElement,
+  maxTabs = 20,
+) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    await user.tab()
+    if (document.activeElement === getExpectedElement()) {
+      return
+    }
+  }
+
+  throw new Error('Could not focus expected element by tabbing')
+}
 
 describe('DispatchMonitorPage', () => {
   beforeEach(() => {
@@ -141,6 +157,111 @@ describe('DispatchMonitorPage', () => {
     expect(within(queue).getByText('On scene')).toBeInTheDocument()
   })
 
+  it('maps backend acknowledgement deadlines into dispatch rows', async () => {
+    const { resolveDispatchDeadlineAt } = await vi.importActual<
+      typeof import('../hooks/useDispatchLifecycle')
+    >('../hooks/useDispatchLifecycle')
+
+    expect(resolveDispatchDeadlineAt({ acknowledgementDeadlineAt: 1234 })).toBe(1234)
+    expect(resolveDispatchDeadlineAt({ deadlineAt: 5678 })).toBe(5678)
+  })
+
+  it('shows a live SLA countdown and overdue state for pending acknowledgements', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T04:00:00.000Z'))
+
+    try {
+      const now = Date.now()
+      mockUseDispatchLifecycle.mockReturnValue({
+        rows: [
+          makeRow({
+            dispatchId: 'd-pending',
+            reportId: 'rep-pending',
+            status: 'pending',
+            responderName: 'Alice Responder',
+            deadlineAt: now + 125_000,
+          }),
+          makeRow({
+            dispatchId: 'd-accepted',
+            reportId: 'rep-accepted',
+            status: 'accepted',
+            responderName: 'Ben Responder',
+            deadlineAt: now - 65_000,
+          }),
+          makeRow({
+            dispatchId: 'd-acknowledged',
+            reportId: 'rep-acknowledged',
+            status: 'acknowledged',
+            responderName: 'Cora Responder',
+            deadlineAt: now - 65_000,
+          }),
+        ],
+        loading: false,
+        error: null,
+      })
+
+      render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+      const queue = screen.getByLabelText('Responder status queue')
+      expect(within(queue).getByText('Alice Responder')).toBeInTheDocument()
+      expect(within(queue).getByLabelText('SLA due in 3m')).toHaveTextContent('SLA 3m left')
+      expect(within(queue).getByLabelText('SLA overdue by 2m')).toHaveTextContent(
+        'SLA Overdue by 2m',
+      )
+      expect(
+        within(queue).queryByLabelText('SLA overdue by 2m', {
+          selector: '[data-dispatch-id="d-acknowledged"] *',
+        }),
+      ).not.toBeInTheDocument()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(61_000)
+      })
+
+      expect(within(queue).getByLabelText('SLA due in 2m')).toHaveTextContent('SLA 2m left')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('shows recently resolved dispatches outside active responder queues', () => {
+    const resolvedAt = new Date(2026, 5, 13, 4, 15).getTime()
+    mockUseDispatchLifecycle.mockReturnValue({
+      rows: [
+        makeRow({
+          dispatchId: 'd-active',
+          reportId: 'rep-active',
+          status: 'on_scene',
+          responderName: 'Alice Responder',
+        }),
+        makeRow({
+          dispatchId: 'd-resolved',
+          reportId: 'rep-resolved',
+          status: 'resolved',
+          responderName: 'Ben Responder',
+          responderAgency: 'MDRRMO',
+          resolvedAt,
+          resolutionSummary: 'Water cleared from the evacuation route.',
+        }),
+      ],
+      loading: false,
+      error: null,
+    })
+
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const statusQueue = screen.getByLabelText('Responder status queue')
+    expect(within(statusQueue).getByText('1 active')).toBeInTheDocument()
+    expect(within(statusQueue).queryByText('Ben Responder')).not.toBeInTheDocument()
+
+    const resolvedSection = screen.getByLabelText('Recently resolved dispatches')
+    expect(within(resolvedSection).getByText('Ben Responder')).toBeInTheDocument()
+    expect(
+      within(resolvedSection).getByText('Water cleared from the evacuation route.'),
+    ).toBeInTheDocument()
+    expect(within(resolvedSection).getByText(/Resolved .*4:15 AM/)).toBeInTheDocument()
+  })
+
   it('assigns a verified report to a responder from the dispatch screen', async () => {
     mockUseFirestoreListeners.mockReturnValue({
       reports: [
@@ -188,6 +309,61 @@ describe('DispatchMonitorPage', () => {
       responderUid: 'r1',
       idempotencyKey: expect.any(String),
     })
+    await waitFor(() => {
+      expect(screen.getByText('Responder assigned')).toBeInTheDocument()
+    })
+  })
+
+  it('retries a failed responder assignment with the original payload', async () => {
+    mockDispatchResponder.mockRejectedValueOnce(new Error('Network split'))
+    mockUseFirestoreListeners.mockReturnValue({
+      reports: [
+        {
+          id: 'rep-assign-1',
+          reportType: 'flood',
+          severity: 'high',
+          municipalityLabel: 'Daet',
+          municipalityId: 'daet',
+          barangayId: 'Camambugan',
+          submittedAt: Date.now(),
+          status: 'verified',
+          description: 'Water rising near the bridge',
+          publicLocation: { lat: 14.1, lng: 122.9 },
+        },
+      ],
+      loading: false,
+      error: null,
+      reportOps: [],
+      alerts: [],
+      situationUpdates: [],
+      responders: [],
+    })
+    mockUseResponderFleet.mockReturnValue({
+      responders: [{ ...defaultResponders[0]!, municipalityId: 'daet' }],
+      loading: false,
+      error: null,
+    })
+
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const queue = screen.getByLabelText('Responder assignment queue')
+    fireEvent.change(within(queue).getByLabelText(/responder for rep-assign-1/i), {
+      target: { value: 'r1' },
+    })
+    fireEvent.click(within(queue).getByRole('button', { name: /assign responder/i }))
+
+    await waitFor(() => {
+      expect(mockDispatchResponder).toHaveBeenCalledTimes(1)
+    })
+    const firstPayload = mockDispatchResponder.mock.calls[0]?.[0]
+    expect(screen.getByRole('button', { name: 'Retry command' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry command' }))
+
+    await waitFor(() => {
+      expect(mockDispatchResponder).toHaveBeenCalledTimes(2)
+    })
+    expect(mockDispatchResponder.mock.calls[1]?.[0]).toEqual(firstPayload)
     await waitFor(() => {
       expect(screen.getByText('Responder assigned')).toBeInTheDocument()
     })
@@ -302,7 +478,82 @@ describe('DispatchMonitorPage', () => {
     })
   })
 
-  it('dismisses dispatch error banner when dismiss clicked', async () => {
+  it('retries a failed re-dispatch with the original payload', async () => {
+    mockEscalateDispatch.mockRejectedValueOnce(new Error('Responder offline'))
+    mockUseDispatchLifecycle.mockReturnValue({
+      rows: [
+        makeRow({
+          dispatchId: 'd-stalled',
+          status: 'needs_admin',
+          reportId: 'rep-stalled-xyz',
+          previouslyNotifiedResponderUids: [],
+        }),
+      ],
+      loading: false,
+      error: null,
+    })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+    fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByText('Alice'))
+    fireEvent.click(within(dialog).getByRole('button', { name: /dispatch selected/i }))
+
+    await waitFor(() => {
+      expect(mockEscalateDispatch).toHaveBeenCalledTimes(1)
+    })
+    const firstPayload = mockEscalateDispatch.mock.calls[0]?.[0]
+    expect(screen.getByRole('button', { name: 'Retry command' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry command' }))
+
+    await waitFor(() => {
+      expect(mockEscalateDispatch).toHaveBeenCalledTimes(2)
+    })
+    expect(mockEscalateDispatch.mock.calls[1]?.[0]).toEqual(firstPayload)
+    await waitFor(() => {
+      expect(screen.getByText('Re-dispatched successfully')).toBeInTheDocument()
+    })
+  })
+
+  it('keeps failed re-dispatch retry reachable inside the modal focus trap', async () => {
+    const user = userEvent.setup()
+    mockEscalateDispatch.mockRejectedValueOnce(new Error('Responder offline'))
+    mockUseDispatchLifecycle.mockReturnValue({
+      rows: [
+        makeRow({
+          dispatchId: 'd-stalled',
+          status: 'needs_admin',
+          reportId: 'rep-stalled-xyz',
+          previouslyNotifiedResponderUids: [],
+        }),
+      ],
+      loading: false,
+      error: null,
+    })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+    fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByText('Alice'))
+    fireEvent.click(within(dialog).getByRole('button', { name: /dispatch selected/i }))
+
+    const retryButton = await within(dialog).findByRole('button', { name: 'Retry command' })
+    expect(within(dialog).getByText('Responder offline')).toBeInTheDocument()
+    expect(retryButton).toBeEnabled()
+
+    await tabUntil(user, () => screen.getByRole('button', { name: 'Retry command' }))
+
+    expect(retryButton).toBeEnabled()
+  })
+
+  it('clears re-dispatch error when modal is closed', async () => {
     mockEscalateDispatch.mockRejectedValueOnce(new Error('Responder offline'))
     mockUseDispatchLifecycle.mockReturnValue({
       rows: [
@@ -332,10 +583,7 @@ describe('DispatchMonitorPage', () => {
       ).toBe(true)
     })
 
-    const errorBanner = screen
-      .getAllByRole('alert')
-      .find((el) => el.textContent.includes('Responder offline'))!
-    fireEvent.click(within(errorBanner).getByRole('button', { name: /dismiss/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /close/i }))
 
     await waitFor(() => {
       expect(

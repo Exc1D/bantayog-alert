@@ -1,5 +1,44 @@
 # Progress
 
+## 2026-06-13 - PR #209 Review Follow-up
+
+- Fixed the re-dispatch retry accessibility gap by moving failed re-dispatch error and retry controls inside `ReDispatchModal`, keeping the retry affordance inside the modal focus trap.
+- Cleared stale single-command retry state before failed bulk verify/reject flows so bulk error banners cannot replay an unrelated prior command.
+- Extracted shared `actionErrorMessage`, `errorCode`, and `isRetryableActionError` helpers into `apps/admin-desktop/src/utils/errorClassification.ts` to address duplicate helper logic.
+- Added red-first regression coverage for keyboard reachability after failed re-dispatch, stale retry-command isolation before failed bulk verify/reject, non-retryable `unauthenticated` action errors, and normalized permission-denied listener variants.
+- Fallow still reports inherited duplication and complexity in touched legacy pages; applied narrow `// fallow-ignore-next-line complexity` directives only where the PR's changed-code gate would otherwise fail on existing page-scale complexity.
+- Verification: red-first focused tests failed before implementation, then `pnpm --dir apps/admin-desktop exec vitest run` passed 74 files / 562 tests; `pnpm exec fallow audit --base main --gate new-only` passed; `pnpm --dir apps/admin-desktop exec tsc --noEmit`, `pnpm --dir apps/admin-desktop exec eslint src`, changed-file Prettier checks, and `git diff --check` passed.
+
+## 2026-06-13 - Pre-3D Audit + Phase 3C Dispatch Retry Closure
+
+- Re-audited the phases before 3D against the shipped code and task docs. Phase 3B remains implemented through 3B-11. Phase 3A remains implemented through the P0 backbone slices 3A-01 through 3A-05; 3A-06 is an explicit user-approval gate for anonymous push, and 3A-07 is an optional courtesy verify push that must wait for staging proof plus pilot noise feedback before execution.
+- Closed the remaining strict 3C-06 dispatch-surface gap on `/dispatches`: failed first responder assignment and re-dispatch commands now expose the existing `ActionErrorBanner` Retry affordance, and retries replay the original callable payload/idempotency key instead of rebuilding from current UI state.
+- Kept non-retryable dispatch errors on the safe path by suppressing Retry for permission, validation, invalid-argument, and failed-precondition style failures.
+- Kept the slice frontend/Admin-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes. Phase 3D work was not resumed.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx` failed on the missing retry button for both dispatch command paths, then passed 16 tests. Final focused gate `pnpm --dir apps/admin-desktop exec vitest run src/components/ActionErrorBanner.test.tsx src/components/PermissionDeniedState.test.tsx src/pages/TriagePage.test.tsx src/hooks/useNewReportSignal.test.tsx src/__tests__/DispatchMonitorPage.test.tsx src/hooks/useDispatchLifecycle.test.ts` passed 6 files / 52 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit` and `pnpm --dir apps/admin-desktop exec eslint src` passed.
+
+## 2026-06-13 - Phase 3C Admin Operator Completion
+
+- Completed the remaining Phase 3C Admin operator slices on top of the already-shipped 3C-01 signal, 3C-02 SLA countdown, and 3C-03 resolved-dispatch closure.
+- Added rejection confirmation for single and bulk triage reject actions, including the selected reason, trimmed admin note, and report count before the callable is executed.
+- Added a dedicated Admin permission-denied state for unauthorized triage listener failures, with re-authentication guidance instead of raw error text.
+- Added retry support for failed single-report triage actions; retries replay the original callable payload and idempotency key instead of recomputing from current UI state.
+- Kept the slice frontend/Admin-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/pages/TriagePage.test.tsx` failed on missing confirmation, permission-denied, retry behavior, and non-retryable retry suppression; red-first `pnpm --dir apps/admin-desktop exec vitest run src/components/ActionErrorBanner.test.tsx` failed on missing retry UI; red-first `pnpm --dir apps/admin-desktop exec vitest run src/components/PermissionDeniedState.test.tsx` failed on the missing component. Final focused gate `pnpm --dir apps/admin-desktop exec vitest run src/components/ActionErrorBanner.test.tsx src/components/PermissionDeniedState.test.tsx src/pages/TriagePage.test.tsx src/hooks/useNewReportSignal.test.tsx src/__tests__/DispatchMonitorPage.test.tsx src/hooks/useDispatchLifecycle.test.ts` passed 6 files / 50 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit`, `pnpm --dir apps/admin-desktop exec eslint src`, and `git diff --check` passed.
+
+## 2026-06-13 - Phase 3C-03 Resolved Dispatch Closure
+
+- Implemented 3C-03 Admin resolved-dispatch closure: `/dispatches` now includes resolved lifecycle rows in the scoped client query, keeps them out of active responder status queues and active counts, and renders a bounded "Recently resolved" section with resolved time plus the responder resolution summary.
+- Kept the slice client-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx` failed on the missing closure section, then passed 14 tests. `pnpm --dir apps/admin-desktop exec vitest run src/hooks/useDispatchLifecycle.test.ts` passed 16 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit` passed, `pnpm --dir apps/admin-desktop exec eslint src` passed after replacing an ambiguous summary fallback, and `git diff --check` passed.
+
+## 2026-06-13 - Phase 3A/3B Audit + Phase 3C-02 SLA Countdown
+
+- Audited Phase 3A and 3B against `docs/agent-tasks/` and the shipped code. Phase 3B implementation is present through 3B-11, with 3B-01 implemented in code even though it did not have a dedicated progress entry. Phase 3A P0 backbone is present through 3A-05; 3A-06 remains an explicit gated P2 decision, and 3A-07 remains an optional P2 courtesy push not wired into `verifyReportCore`.
+- Implemented 3C-02 Admin dispatch SLA visibility: `/dispatches` now includes pending dispatches in the responder status queue, maps backend `acknowledgementDeadlineAt` into the existing row deadline field, and shows a live SLA chip for pending/accepted rows with an overdue state.
+- Kept the slice frontend/Admin-read-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx` failed on the missing deadline resolver and missing countdown/pending row, then passed 13 tests. `pnpm --dir apps/admin-desktop exec vitest run src/hooks/useDispatchLifecycle.test.ts` passed 16 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit` passed, and `pnpm --dir apps/admin-desktop exec eslint src` passed.
+
 ## 2026-06-13 - Phase 3B Citizen Experience Completion (3B-09/10/11)
 
 - Implemented 3B-09 own-report status hero in the Map detail sheet: citizens now see plain-language lifecycle copy, next-step guidance, and update timing instead of raw status enums.

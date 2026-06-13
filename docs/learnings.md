@@ -115,11 +115,16 @@
 - App-level Citizen smoke tests must stub `fetch` because `useOnlineStatus()` probes `/__/firebase.json`; otherwise a passing render test can still print localhost `ECONNREFUSED` noise.
 - Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; avoid `waitFor` under fake timers unless the test advances timers; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
 - React hooks must be called in the exact same order on every render. An early return before a `useState`/`useEffect` causes "Rendered fewer hooks than expected" in React 19. Move guards after all hooks; use derived `if` after the hook block.
+- Retry affordances for commands launched inside focus-trapped dialogs must remain inside that dialog's focus trap; do not put retry controls in an external banner while the dialog stays open.
+- Bulk command error banners must clear prior single-command retry state before rendering, otherwise a stale retry button can replay an unrelated command.
+- Treat permission-denied listener errors as the same user-facing state across spelling variants (`unauthorized`, `permission-denied`, `permission_denied`, `denied`) so operators do not see raw error text or retry controls.
+- Use narrow `// fallow-ignore-next-line complexity` directives only as a last resort for inherited page-scale complexity after targeted extraction; keep the gate focused on new duplication/complexity.
 
 ## React / TypeScript
 
 - Admin triage rejection notes already belong on `rejectReport.notes`; do not create a separate notes write path for the basic Phase 1 review note. Trim notes, omit blank optional keys, and respect the 500-character backend limit.
 - Admin dispatch monitors must include responder field progress statuses (`acknowledged`, `en_route`, `on_scene`) in lifecycle reads; otherwise operators see pending/escalation state but miss live responder movement.
+- Admin dispatch SLA displays must use the backend's canonical `acknowledgementDeadlineAt`; mapping only `deadlineAt` drops live deadline visibility because dispatch Functions do not write that alias.
 - Narrow role claims with `typeof` before subscribing. On unauthorized state, set an error and return early.
 - Async auth/state gates need active flags and uid checks in both success and failure paths.
 - Avoid object/array references in effect dependencies. Derive stable primitive keys.
@@ -207,3 +212,4 @@
 - Fresh worktrees can install dependencies but still lack package `lib/*.map` outputs. Build the workspace package that Vitest imports, such as `packages/shared-validators`, before treating source-map warnings as unrelated noise.
 - Function tests import `@bantayog/shared-validators` through package exports (`lib/index.js`), not live `src`; after adding validator exports, rebuild the package before running emulator tests or the new schema can be `undefined` at runtime.
 - A focused emulator run can still report success while executing zero tests if a legacy file uses collection-time `itif(available)`. Convert those files to runtime `skip(...)` before trusting red/green results.
+- Callable retry wrappers must generate idempotency keys before entering `withRetry`; generating inside the retry closure gives each attempt a fresh key and can defeat idempotency.
