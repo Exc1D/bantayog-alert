@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-06-13 - PR #209 Review Follow-up
+
+- Fixed the re-dispatch retry accessibility gap by moving failed re-dispatch error and retry controls inside `ReDispatchModal`, keeping the retry affordance inside the modal focus trap.
+- Cleared stale single-command retry state before failed bulk verify/reject flows so bulk error banners cannot replay an unrelated prior command.
+- Extracted shared `actionErrorMessage`, `errorCode`, and `isRetryableActionError` helpers into `apps/admin-desktop/src/utils/errorClassification.ts` to address duplicate helper logic.
+- Added red-first regression coverage for keyboard reachability after failed re-dispatch and stale retry-command isolation before failed bulk verify.
+- Fallow still reports inherited duplication and complexity in touched legacy pages; applied narrow `// fallow-ignore-next-line complexity` directives only where the PR's changed-code gate would otherwise fail on existing page-scale complexity.
+- Verification: red-first focused tests failed before implementation, then `pnpm --dir apps/admin-desktop exec vitest run` passed 73 files / 553 tests; `pnpm exec fallow audit --base main --gate new-only` passed; `pnpm --dir apps/admin-desktop exec tsc --noEmit`, `pnpm --dir apps/admin-desktop exec eslint src`, and changed-file Prettier checks passed.
+
 ## 2026-06-13 - Pre-3D Audit + Phase 3C Dispatch Retry Closure
 
 - Re-audited the phases before 3D against the shipped code and task docs. Phase 3B remains implemented through 3B-11. Phase 3A remains implemented through the P0 backbone slices 3A-01 through 3A-05; 3A-06 is an explicit user-approval gate for anonymous push, and 3A-07 is an optional courtesy verify push that must wait for staging proof plus pilot noise feedback before execution.

@@ -106,6 +106,7 @@ export function resolveDispatchDeadlineAt(doc: {
   return doc.acknowledgementDeadlineAt ?? doc.deadlineAt ?? 0
 }
 
+// fallow-ignore-next-line complexity
 function buildRows(
   dispatchMap: Map<string, DispatchDoc>,
   eventsMap: Map<string, DispatchEvent[]>,

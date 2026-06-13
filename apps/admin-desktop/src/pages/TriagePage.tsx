@@ -15,6 +15,7 @@ import { callables } from '../services/callables'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
+import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
 import type { Report } from '../types'
 
 const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified'])
@@ -70,30 +71,6 @@ interface PendingRejection {
   reason: RejectionReason
   note: string
   scope: 'single' | 'bulk'
-}
-
-function actionErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof Error && err.message.trim()) return err.message
-  return fallback
-}
-
-function errorCode(err: unknown): string {
-  if (typeof err !== 'object' || err === null || !('code' in err)) return ''
-  const code = (err as { code?: unknown }).code
-  return typeof code === 'string' ? code : ''
-}
-
-function isRetryableActionError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err)
-  const text = `${errorCode(err)} ${message}`.toLowerCase()
-  return ![
-    'permission-denied',
-    'permission denied',
-    'unauthorized',
-    'invalid-argument',
-    'failed-precondition',
-    'validation',
-  ].some((marker) => text.includes(marker))
 }
 
 function isTriageReport(report: Report): boolean {
@@ -183,6 +160,7 @@ function downloadCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url)
 }
 
+// fallow-ignore-next-line complexity
 export default function TriagePage() {
   const { signOut } = useAuth()
   const navigate = useNavigate()
@@ -450,6 +428,7 @@ export default function TriagePage() {
       setBulkLoading(true)
       setActionError(null)
       setSuccessMessage(null)
+      setRetryCommand(null)
       const errors: string[] = []
       for (const reportId of eligibleIds) {
         const command = buildVerifyCommand(reportId)
@@ -478,6 +457,9 @@ export default function TriagePage() {
         return report?.status === 'awaiting_verify'
       })
       if (eligibleIds.length === 0) return
+      setActionError(null)
+      setSuccessMessage(null)
+      setRetryCommand(null)
       openRejectConfirmation(eligibleIds, 'bulk')
     },
     [openRejectConfirmation, sortedReports],

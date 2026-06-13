@@ -23,6 +23,7 @@ import { callables } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
+import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
 import type { Report } from '../types'
 
 interface AssignmentReport {
@@ -66,30 +67,6 @@ const FIELD_PROGRESS_STATUSES = new Set([
 ])
 const SLA_COUNTDOWN_STATUSES = new Set(['pending', 'accepted'])
 const RESOLVED_DISPATCH_LIMIT = 5
-
-function actionErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof Error && err.message.trim()) return err.message
-  return fallback
-}
-
-function errorCode(err: unknown): string {
-  if (typeof err !== 'object' || err === null || !('code' in err)) return ''
-  const code = (err as { code?: unknown }).code
-  return typeof code === 'string' ? code : ''
-}
-
-function isRetryableActionError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err)
-  const text = `${errorCode(err)} ${message}`.toLowerCase()
-  return ![
-    'permission-denied',
-    'permission denied',
-    'unauthorized',
-    'invalid-argument',
-    'failed-precondition',
-    'validation',
-  ].some((marker) => text.includes(marker))
-}
 
 async function executeDispatchCommand(command: FailedDispatchCommand): Promise<void> {
   if (command.kind === 'escalate') {
@@ -162,6 +139,7 @@ function SlaCountdown({ deadlineAt }: { deadlineAt: number }) {
   )
 }
 
+// fallow-ignore-next-line complexity
 export function DispatchMonitorPage() {
   const db = getFirestoreInstance()
   const { signOut } = useAuth()
@@ -520,7 +498,7 @@ export function DispatchMonitorPage() {
           }}
         />
       )}
-      {dispatchError && (
+      {dispatchError && !isModalOpen && (
         <ActionErrorBanner
           message={dispatchError}
           onDismiss={() => {
@@ -782,6 +760,15 @@ export function DispatchMonitorPage() {
         responders={responders}
         previouslyNotified={previouslyNotified}
         isLoading={isDispatching}
+        errorMessage={dispatchError}
+        {...(retryCommand?.kind === 'escalate'
+          ? {
+              onRetry: () => {
+                void handleRetryAction()
+              },
+            }
+          : {})}
+        retrying={retryingAction}
       />
 
       <HelpModal

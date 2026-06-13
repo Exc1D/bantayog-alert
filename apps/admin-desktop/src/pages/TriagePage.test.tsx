@@ -267,6 +267,28 @@ describe('TriagePage', () => {
     expect(await screen.findByText('Report sent to review')).toBeInTheDocument()
   })
 
+  it('clears stale retry commands before failed bulk verify', async () => {
+    mockVerifyReport
+      .mockRejectedValueOnce(new Error('Single network split'))
+      .mockRejectedValueOnce(new Error('Bulk verify failed'))
+    renderPage()
+
+    fireEvent.click(
+      within(screen.getByTestId('report-row-r-new')).getByRole('button', { name: 'Verify' }),
+    )
+    await screen.findByText('Single network split')
+    expect(screen.getByRole('button', { name: 'Retry command' })).toBeEnabled()
+
+    fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
+    fireEvent.click(screen.getByRole('button', { name: 'Verify Selected' }))
+
+    await screen.findByText('Bulk verify completed with 1 error(s): Bulk verify failed')
+    expect(screen.queryByRole('button', { name: 'Retry command' })).not.toBeInTheDocument()
+    expect(mockVerifyReport.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ reportId: 'r-awaiting' }),
+    )
+  })
+
   it('does not offer retry for non-retryable command errors', async () => {
     mockVerifyReport.mockRejectedValueOnce(new Error('permission-denied'))
     renderPage()

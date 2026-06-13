@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { DispatchMonitorPage } from '../pages/DispatchMonitorPage'
 import { MemoryRouterWrapper, makeRow, defaultRows, defaultResponders } from '../test-utils'
 
@@ -503,7 +504,43 @@ describe('DispatchMonitorPage', () => {
     })
   })
 
-  it('dismisses dispatch error banner when dismiss clicked', async () => {
+  it('keeps failed re-dispatch retry reachable inside the modal focus trap', async () => {
+    const user = userEvent.setup()
+    mockEscalateDispatch.mockRejectedValueOnce(new Error('Responder offline'))
+    mockUseDispatchLifecycle.mockReturnValue({
+      rows: [
+        makeRow({
+          dispatchId: 'd-stalled',
+          status: 'needs_admin',
+          reportId: 'rep-stalled-xyz',
+          previouslyNotifiedResponderUids: [],
+        }),
+      ],
+      loading: false,
+      error: null,
+    })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+    fireEvent.click(screen.getByRole('button', { name: /re-dispatch/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByText('Alice'))
+    fireEvent.click(within(dialog).getByRole('button', { name: /dispatch selected/i }))
+
+    const retryButton = await within(dialog).findByRole('button', { name: 'Retry command' })
+    expect(within(dialog).getByText('Responder offline')).toBeInTheDocument()
+    expect(retryButton).toBeEnabled()
+
+    await user.tab()
+    await user.tab()
+    await user.tab()
+
+    expect(document.activeElement).toBe(retryButton)
+  })
+
+  it('clears re-dispatch error when modal is closed', async () => {
     mockEscalateDispatch.mockRejectedValueOnce(new Error('Responder offline'))
     mockUseDispatchLifecycle.mockReturnValue({
       rows: [
@@ -533,10 +570,7 @@ describe('DispatchMonitorPage', () => {
       ).toBe(true)
     })
 
-    const errorBanner = screen
-      .getAllByRole('alert')
-      .find((el) => el.textContent.includes('Responder offline'))!
-    fireEvent.click(within(errorBanner).getByRole('button', { name: /dismiss/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /close/i }))
 
     await waitFor(() => {
       expect(

@@ -115,6 +115,9 @@
 - App-level Citizen smoke tests must stub `fetch` because `useOnlineStatus()` probes `/__/firebase.json`; otherwise a passing render test can still print localhost `ECONNREFUSED` noise.
 - Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; avoid `waitFor` under fake timers unless the test advances timers; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
 - React hooks must be called in the exact same order on every render. An early return before a `useState`/`useEffect` causes "Rendered fewer hooks than expected" in React 19. Move guards after all hooks; use derived `if` after the hook block.
+- Retry affordances for commands launched inside focus-trapped dialogs must remain inside that dialog's focus trap; do not put retry controls in an external banner while the dialog stays open.
+- Bulk command error banners must clear prior single-command retry state before rendering, otherwise a stale retry button can replay an unrelated command.
+- Use narrow `// fallow-ignore-next-line complexity` directives only as a last resort for inherited page-scale complexity after targeted extraction; keep the gate focused on new duplication/complexity.
 
 ## React / TypeScript
 
