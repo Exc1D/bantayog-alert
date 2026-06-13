@@ -6,6 +6,8 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { SuccessBanner } from '../components/SuccessBanner'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
+import { ConfirmationModal } from '../components/ConfirmationModal'
+import { PermissionDeniedState } from '../components/PermissionDeniedState'
 import { TriageQueueTable } from '../components/TriageQueueTable'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { db } from '../app/firebase'
@@ -37,9 +39,61 @@ const REJECTION_REASONS = [
 
 type RejectionReason = (typeof REJECTION_REASONS)[number]['value']
 
+interface VerifyReportPayload {
+  reportId: string
+  idempotencyKey: string
+}
+
+interface RejectReportPayload {
+  reportId: string
+  reason: RejectionReason
+  notes?: string
+  idempotencyKey: string
+}
+
+type FailedTriageCommand =
+  | {
+      kind: 'verify'
+      payload: VerifyReportPayload
+      successMessage: string
+      errorFallback: string
+    }
+  | {
+      kind: 'reject'
+      payload: RejectReportPayload
+      successMessage: string
+      errorFallback: string
+    }
+
+interface PendingRejection {
+  reportIds: string[]
+  reason: RejectionReason
+  note: string
+  scope: 'single' | 'bulk'
+}
+
 function actionErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message.trim()) return err.message
   return fallback
+}
+
+function errorCode(err: unknown): string {
+  if (typeof err !== 'object' || err === null || !('code' in err)) return ''
+  const code = (err as { code?: unknown }).code
+  return typeof code === 'string' ? code : ''
+}
+
+function isRetryableActionError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err)
+  const text = `${errorCode(err)} ${message}`.toLowerCase()
+  return ![
+    'permission-denied',
+    'permission denied',
+    'unauthorized',
+    'invalid-argument',
+    'failed-precondition',
+    'validation',
+  ].some((marker) => text.includes(marker))
 }
 
 function isTriageReport(report: Report): boolean {
@@ -72,6 +126,14 @@ function filterLabel(value: string): string {
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+function rejectionReasonLabel(reason: RejectionReason): string {
+  return REJECTION_REASONS.find((item) => item.value === reason)?.label ?? filterLabel(reason)
+}
+
+function reportCountLabel(count: number): string {
+  return `${String(count)} report${count === 1 ? '' : 's'}`
 }
 
 function csvCell(value: string | number): string {
@@ -146,6 +208,9 @@ export default function TriagePage() {
   const [adminNote, setAdminNote] = useState('')
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
+  const [pendingRejection, setPendingRejection] = useState<PendingRejection | null>(null)
+  const [retryCommand, setRetryCommand] = useState<FailedTriageCommand | null>(null)
+  const [retryingAction, setRetryingAction] = useState(false)
 
   const reports = useMemo<Report[]>(
     () => reportDocs.map((report) => mapReportDocToReportLoose(report)).filter(isTriageReport),
@@ -215,6 +280,7 @@ export default function TriagePage() {
   const staleAgeMs = now - lastDataUpdateAt
   const isStale = staleAgeMs > 5 * 60 * 1000
   const staleMinutes = Math.round(staleAgeMs / 60000)
+  const isPermissionDenied = error === 'unauthorized'
 
   const setReportLoading = useCallback((reportId: string, isLoading: boolean) => {
     setLoadingIds((current) => {
@@ -226,76 +292,118 @@ export default function TriagePage() {
   }, [])
 
   const executeVerify = useCallback(
-    async (reportId: string) => {
-      setReportLoading(reportId, true)
+    async (payload: VerifyReportPayload) => {
+      setReportLoading(payload.reportId, true)
       try {
-        await withRetry(() =>
-          callables.verifyReport({ reportId, idempotencyKey: generateIdempotencyKey() }),
-        )
+        await withRetry(() => callables.verifyReport(payload))
         setSelectedIds((current) => {
           const next = new Set(current)
-          next.delete(reportId)
+          next.delete(payload.reportId)
           return next
         })
       } finally {
-        setReportLoading(reportId, false)
+        setReportLoading(payload.reportId, false)
       }
     },
     [setReportLoading],
   )
 
   const executeReject = useCallback(
-    async (reportId: string) => {
-      setReportLoading(reportId, true)
-      const notes = adminNote.trim()
+    async (payload: RejectReportPayload) => {
+      setReportLoading(payload.reportId, true)
       try {
-        await withRetry(() =>
-          callables.rejectReport({
-            reportId,
-            reason: rejectionReason,
-            ...(notes ? { notes } : {}),
-            idempotencyKey: generateIdempotencyKey(),
-          }),
-        )
+        await withRetry(() => callables.rejectReport(payload))
         setSelectedIds((current) => {
           const next = new Set(current)
-          next.delete(reportId)
+          next.delete(payload.reportId)
           return next
         })
       } finally {
-        setReportLoading(reportId, false)
+        setReportLoading(payload.reportId, false)
       }
     },
-    [adminNote, rejectionReason, setReportLoading],
+    [setReportLoading],
+  )
+
+  const buildVerifyCommand = useCallback(
+    (reportId: string): FailedTriageCommand => {
+      const report = sortedReports.find((item) => item.id === reportId)
+      return {
+        kind: 'verify',
+        payload: { reportId, idempotencyKey: generateIdempotencyKey() },
+        successMessage: report?.status === 'new' ? 'Report sent to review' : 'Report verified',
+        errorFallback: 'Report verification failed',
+      }
+    },
+    [sortedReports],
+  )
+
+  const buildRejectCommand = useCallback(
+    (reportId: string, reason: RejectionReason, note: string): FailedTriageCommand => ({
+      kind: 'reject',
+      payload: {
+        reportId,
+        reason,
+        ...(note ? { notes: note } : {}),
+        idempotencyKey: generateIdempotencyKey(),
+      },
+      successMessage: 'Report rejected',
+      errorFallback: 'Report rejection failed',
+    }),
+    [],
+  )
+
+  const executeCommand = useCallback(
+    async (command: FailedTriageCommand) => {
+      if (command.kind === 'verify') {
+        await executeVerify(command.payload)
+        return
+      }
+      await executeReject(command.payload)
+    },
+    [executeReject, executeVerify],
   )
 
   const handleVerify = useCallback(
     async (reportId: string) => {
-      const report = sortedReports.find((item) => item.id === reportId)
+      const command = buildVerifyCommand(reportId)
       setActionError(null)
       setSuccessMessage(null)
+      setRetryCommand(null)
       try {
-        await executeVerify(reportId)
-        setSuccessMessage(report?.status === 'new' ? 'Report sent to review' : 'Report verified')
+        await executeCommand(command)
+        setSuccessMessage(command.successMessage)
       } catch (err) {
-        setActionError(actionErrorMessage(err, 'Report verification failed'))
+        setActionError(actionErrorMessage(err, command.errorFallback))
+        if (isRetryableActionError(err)) {
+          setRetryCommand(command)
+        }
       }
     },
-    [executeVerify, sortedReports],
+    [buildVerifyCommand, executeCommand],
+  )
+
+  const openRejectConfirmation = useCallback(
+    (reportIds: string[], scope: PendingRejection['scope']) => {
+      if (reportIds.length === 0) return
+      setActionError(null)
+      setSuccessMessage(null)
+      setRetryCommand(null)
+      setPendingRejection({
+        reportIds,
+        reason: rejectionReason,
+        note: adminNote.trim(),
+        scope,
+      })
+    },
+    [adminNote, rejectionReason],
   )
 
   const handleReject = useCallback(
-    async (reportId: string) => {
-      setActionError(null)
-      setSuccessMessage(null)
-      try {
-        await executeReject(reportId)
-        setSuccessMessage('Report rejected')
-      } catch (err) {
-        setActionError(actionErrorMessage(err, 'Report rejection failed'))
-      }
+    (reportId: string) => {
+      openRejectConfirmation([reportId], 'single')
     },
-    [executeReject],
+    [openRejectConfirmation],
   )
 
   const handleToggleSelect = useCallback((reportId: string) => {
@@ -344,8 +452,9 @@ export default function TriagePage() {
       setSuccessMessage(null)
       const errors: string[] = []
       for (const reportId of eligibleIds) {
+        const command = buildVerifyCommand(reportId)
         try {
-          await executeVerify(reportId)
+          await executeCommand(command)
         } catch (err) {
           errors.push(actionErrorMessage(err, `Failed to verify ${reportId}`))
         }
@@ -359,38 +468,104 @@ export default function TriagePage() {
       }
       setBulkLoading(false)
     },
-    [sortedReports, executeVerify],
+    [buildVerifyCommand, executeCommand, sortedReports],
   )
 
   const handleBulkReject = useCallback(
-    async (ids: Set<string>) => {
+    (ids: Set<string>) => {
       const eligibleIds = Array.from(ids).filter((id) => {
         const report = sortedReports.find((r) => r.id === id)
         return report?.status === 'awaiting_verify'
       })
       if (eligibleIds.length === 0) return
-      setBulkLoading(true)
-      setActionError(null)
-      setSuccessMessage(null)
-      const errors: string[] = []
-      for (const reportId of eligibleIds) {
-        try {
-          await executeReject(reportId)
-        } catch (err) {
-          errors.push(actionErrorMessage(err, `Failed to reject ${reportId}`))
+      openRejectConfirmation(eligibleIds, 'bulk')
+    },
+    [openRejectConfirmation, sortedReports],
+  )
+
+  const handleConfirmReject = useCallback(async () => {
+    const pending = pendingRejection
+    if (!pending) return
+
+    setPendingRejection(null)
+    setActionError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+
+    if (pending.reportIds.length === 1) {
+      const reportId = pending.reportIds[0]
+      if (!reportId) return
+
+      const command = buildRejectCommand(reportId, pending.reason, pending.note)
+      try {
+        await executeCommand(command)
+        setSuccessMessage(command.successMessage)
+      } catch (err) {
+        setActionError(actionErrorMessage(err, command.errorFallback))
+        if (isRetryableActionError(err)) {
+          setRetryCommand(command)
         }
       }
-      if (errors.length > 0) {
-        setActionError(
-          `Bulk reject completed with ${String(errors.length)} error(s): ${errors.join('; ')}`,
-        )
-      } else {
-        setSuccessMessage(`${String(eligibleIds.length)} report(s) rejected`)
+      return
+    }
+
+    const commands = pending.reportIds.map((reportId) =>
+      buildRejectCommand(reportId, pending.reason, pending.note),
+    )
+    setBulkLoading(true)
+    const errors: string[] = []
+    for (const command of commands) {
+      try {
+        await executeCommand(command)
+      } catch (err) {
+        errors.push(actionErrorMessage(err, `Failed to reject ${command.payload.reportId}`))
       }
-      setBulkLoading(false)
-    },
-    [sortedReports, executeReject],
-  )
+    }
+    if (errors.length > 0) {
+      setActionError(
+        `Bulk reject completed with ${String(errors.length)} error(s): ${errors.join('; ')}`,
+      )
+    } else {
+      setSuccessMessage(`${String(commands.length)} report(s) rejected`)
+    }
+    setBulkLoading(false)
+  }, [buildRejectCommand, executeCommand, pendingRejection])
+
+  const handleRetryAction = useCallback(async () => {
+    const command = retryCommand
+    if (!command) return
+
+    setRetryingAction(true)
+    setActionError(null)
+    setSuccessMessage(null)
+    try {
+      await executeCommand(command)
+      setSuccessMessage(command.successMessage)
+      setRetryCommand(null)
+    } catch (err) {
+      setActionError(actionErrorMessage(err, command.errorFallback))
+      if (isRetryableActionError(err)) {
+        setRetryCommand(command)
+      } else {
+        setRetryCommand(null)
+      }
+    } finally {
+      setRetryingAction(false)
+    }
+  }, [executeCommand, retryCommand])
+
+  const pendingRejectionCount = pendingRejection?.reportIds.length ?? 0
+  const pendingRejectionCountLabel = reportCountLabel(pendingRejectionCount)
+  const pendingRejectionReasonLabel = pendingRejection
+    ? rejectionReasonLabel(pendingRejection.reason)
+    : ''
+  const pendingRejectionNote =
+    pendingRejection && pendingRejection.note.length > 0 ? pendingRejection.note : 'No note'
+  const isBulkRejection = pendingRejection?.scope === 'bulk'
+  const pendingRejectionTitle = isBulkRejection ? 'Reject selected reports?' : 'Reject report?'
+  const pendingRejectionConfirmLabel = isBulkRejection
+    ? `Reject ${pendingRejectionCountLabel}`
+    : 'Reject report'
 
   const handleRowClick = useCallback(
     (report: Report) => {
@@ -406,7 +581,7 @@ export default function TriagePage() {
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]">
       <OfflineBanner
-        error={error}
+        error={isPermissionDenied ? null : error}
         onRetry={() => {
           window.location.reload()
         }}
@@ -427,189 +602,240 @@ export default function TriagePage() {
         </div>
       )}
       <main className="flex-1 overflow-auto p-4">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4">
-          <section className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
-                Triage workbench
-              </h1>
-              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                Review incoming reports, verify dispatch-ready incidents, and route verified reports
-                to the map.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                disabled={sortedReports.length === 0}
-                className="rounded border border-white/10 px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Export CSV
-              </button>
-              <div className="rounded border border-white/10 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-                {sortedReports.length} report{sortedReports.length === 1 ? '' : 's'} in queue
+        {isPermissionDenied ? (
+          <PermissionDeniedState
+            onSignOut={() => {
+              void signOut()
+            }}
+          />
+        ) : (
+          <div className="mx-auto flex max-w-6xl flex-col gap-4">
+            <section className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
+                  Triage workbench
+                </h1>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  Review incoming reports, verify dispatch-ready incidents, and route verified
+                  reports to the map.
+                </p>
               </div>
-            </div>
-          </section>
-          <section
-            aria-label="Triage filters"
-            className="grid gap-3 rounded border border-white/10 bg-[var(--color-surface-elevated)] p-4 md:grid-cols-6"
-          >
-            <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-              Status filter
-              <select
-                value={statusFilter}
-                onChange={(event) => {
-                  setStatusFilter(event.target.value)
-                  clearSelection()
-                }}
-                className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-              >
-                {STATUS_FILTERS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-              Severity filter
-              <select
-                value={severityFilter}
-                onChange={(event) => {
-                  setSeverityFilter(event.target.value)
-                  clearSelection()
-                }}
-                className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-              >
-                {SEVERITY_FILTERS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-              Type filter
-              <select
-                value={typeFilter}
-                onChange={(event) => {
-                  setTypeFilter(event.target.value)
-                  clearSelection()
-                }}
-                className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-              >
-                <option value="all">All types</option>
-                {typeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {filterLabel(type)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-              Rejection reason
-              <select
-                value={rejectionReason}
-                onChange={(event) => {
-                  setRejectionReason(event.target.value as RejectionReason)
-                }}
-                className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-              >
-                {REJECTION_REASONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="text-xs font-semibold uppercase text-[var(--color-text-muted)] md:col-span-2">
-              <label htmlFor="triage-search">Search triage reports</label>
-              <div className="mt-1 flex gap-2">
-                <input
-                  id="triage-search"
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => {
-                    setSearchQuery(event.target.value)
-                    clearSelection()
-                  }}
-                  className="min-w-0 flex-1 rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                  placeholder="Search summary, place, type, or report ID"
-                />
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={clearFilters}
-                  className="rounded border border-white/10 px-3 py-2 text-sm font-medium normal-case text-[var(--color-text-secondary)] hover:bg-white/10"
+                  onClick={handleExportCsv}
+                  disabled={sortedReports.length === 0}
+                  className="rounded border border-white/10 px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Clear filters
+                  Export CSV
                 </button>
+                <div className="rounded border border-white/10 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+                  {sortedReports.length} report{sortedReports.length === 1 ? '' : 's'} in queue
+                </div>
               </div>
-            </div>
-            <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)] md:col-span-6">
-              Admin note
-              <textarea
-                value={adminNote}
-                onChange={(event) => {
-                  setAdminNote(event.target.value)
+            </section>
+            <section
+              aria-label="Triage filters"
+              className="grid gap-3 rounded border border-white/10 bg-[var(--color-surface-elevated)] p-4 md:grid-cols-6"
+            >
+              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                Status filter
+                <select
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value)
+                    clearSelection()
+                  }}
+                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+                >
+                  {STATUS_FILTERS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                Severity filter
+                <select
+                  value={severityFilter}
+                  onChange={(event) => {
+                    setSeverityFilter(event.target.value)
+                    clearSelection()
+                  }}
+                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+                >
+                  {SEVERITY_FILTERS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                Type filter
+                <select
+                  value={typeFilter}
+                  onChange={(event) => {
+                    setTypeFilter(event.target.value)
+                    clearSelection()
+                  }}
+                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+                >
+                  <option value="all">All types</option>
+                  {typeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {filterLabel(type)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                Rejection reason
+                <select
+                  value={rejectionReason}
+                  onChange={(event) => {
+                    setRejectionReason(event.target.value as RejectionReason)
+                  }}
+                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+                >
+                  {REJECTION_REASONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="text-xs font-semibold uppercase text-[var(--color-text-muted)] md:col-span-2">
+                <label htmlFor="triage-search">Search triage reports</label>
+                <div className="mt-1 flex gap-2">
+                  <input
+                    id="triage-search"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value)
+                      clearSelection()
+                    }}
+                    className="min-w-0 flex-1 rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+                    placeholder="Search summary, place, type, or report ID"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded border border-white/10 px-3 py-2 text-sm font-medium normal-case text-[var(--color-text-secondary)] hover:bg-white/10"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              </div>
+              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)] md:col-span-6">
+                Admin note
+                <textarea
+                  value={adminNote}
+                  onChange={(event) => {
+                    setAdminNote(event.target.value)
+                  }}
+                  maxLength={500}
+                  rows={2}
+                  className="mt-1 w-full resize-y rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+                  placeholder="Optional context saved with rejected reports"
+                />
+              </label>
+            </section>
+            {successMessage && (
+              <SuccessBanner
+                message={successMessage}
+                onDismiss={() => {
+                  setSuccessMessage(null)
                 }}
-                maxLength={500}
-                rows={2}
-                className="mt-1 w-full resize-y rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                placeholder="Optional context saved with rejected reports"
               />
-            </label>
-          </section>
-          {successMessage && (
-            <SuccessBanner
-              message={successMessage}
-              onDismiss={() => {
-                setSuccessMessage(null)
-              }}
-            />
-          )}
-          {actionError && (
-            <ActionErrorBanner
-              message={actionError}
-              onDismiss={() => {
-                setActionError(null)
-              }}
-            />
-          )}
-          <section
-            aria-label="Incoming report triage queue"
-            className="overflow-hidden rounded border border-white/10 bg-[var(--color-surface-elevated)]"
-          >
-            <TriageQueueTable
-              reports={sortedReports}
-              selectedIds={selectedIds}
-              loadingIds={loadingIds}
-              onToggleSelect={handleToggleSelect}
-              onSelectAll={handleSelectAll}
-              onVerify={(reportId) => {
-                void handleVerify(reportId)
-              }}
-              onReject={(reportId) => {
-                void handleReject(reportId)
-              }}
-              onDispatch={(reportId) => {
-                void navigate(`/map?reportId=${reportId}`)
-              }}
-              onRowClick={handleRowClick}
-              bulkLoading={bulkLoading}
-              bulkVerifyIds={new Set(bulkVerifyIds)}
-              bulkRejectIds={new Set(bulkRejectIds)}
-              onBulkVerify={(ids) => {
-                void handleBulkVerify(ids)
-              }}
-              onBulkReject={(ids) => {
-                void handleBulkReject(ids)
-              }}
-            />
-          </section>
-        </div>
+            )}
+            {actionError && (
+              <ActionErrorBanner
+                message={actionError}
+                onDismiss={() => {
+                  setActionError(null)
+                  setRetryCommand(null)
+                }}
+                {...(retryCommand
+                  ? {
+                      onRetry: () => {
+                        void handleRetryAction()
+                      },
+                      retrying: retryingAction,
+                    }
+                  : {})}
+              />
+            )}
+            <section
+              aria-label="Incoming report triage queue"
+              className="overflow-hidden rounded border border-white/10 bg-[var(--color-surface-elevated)]"
+            >
+              <TriageQueueTable
+                reports={sortedReports}
+                selectedIds={selectedIds}
+                loadingIds={loadingIds}
+                onToggleSelect={handleToggleSelect}
+                onSelectAll={handleSelectAll}
+                onVerify={(reportId) => {
+                  void handleVerify(reportId)
+                }}
+                onReject={(reportId) => {
+                  handleReject(reportId)
+                }}
+                onDispatch={(reportId) => {
+                  void navigate(`/map?reportId=${reportId}`)
+                }}
+                onRowClick={handleRowClick}
+                bulkLoading={bulkLoading}
+                bulkVerifyIds={new Set(bulkVerifyIds)}
+                bulkRejectIds={new Set(bulkRejectIds)}
+                onBulkVerify={(ids) => {
+                  void handleBulkVerify(ids)
+                }}
+                onBulkReject={(ids) => {
+                  handleBulkReject(ids)
+                }}
+              />
+            </section>
+          </div>
+        )}
       </main>
+      <ConfirmationModal
+        open={pendingRejection !== null}
+        title={pendingRejectionTitle}
+        message="Rejecting keeps the report out of active triage while preserving the audit trail."
+        confirmLabel={pendingRejectionConfirmLabel}
+        confirmVariant="danger"
+        onConfirm={() => {
+          void handleConfirmReject()
+        }}
+        onCancel={() => {
+          setPendingRejection(null)
+        }}
+      >
+        <dl className="mt-4 grid gap-3 rounded border border-white/10 bg-white/[0.03] p-3 text-sm">
+          <div className="flex items-start justify-between gap-3">
+            <dt className="text-[var(--color-text-secondary)]">Reports</dt>
+            <dd className="font-medium text-[var(--color-text-primary)]">
+              {pendingRejectionCountLabel}
+            </dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="text-[var(--color-text-secondary)]">Reason</dt>
+            <dd className="font-medium text-[var(--color-text-primary)]">
+              {pendingRejectionReasonLabel}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[var(--color-text-secondary)]">Admin note</dt>
+            <dd className="mt-1 rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-[var(--color-text-primary)]">
+              {pendingRejectionNote}
+            </dd>
+          </div>
+        </dl>
+      </ConfirmationModal>
     </div>
   )
 }

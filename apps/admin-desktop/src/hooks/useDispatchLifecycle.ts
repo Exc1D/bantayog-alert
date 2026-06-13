@@ -27,6 +27,8 @@ export interface DispatchLifecycleRow {
   responderAgency: string
   dispatchedAt: number
   deadlineAt: number
+  resolvedAt?: number
+  resolutionSummary?: string
   escalationCount: number
   fcmResult: string | null
   fcmWarnings: string[] | null
@@ -42,6 +44,9 @@ interface DispatchDoc {
   responderAgency?: string
   dispatchedAt?: number
   deadlineAt?: number
+  acknowledgementDeadlineAt?: number
+  resolvedAt?: number
+  resolutionSummary?: string
   escalationCount?: number
   fcmResult?: string | null
   fcmWarnings?: string[] | null
@@ -55,6 +60,7 @@ const ALLOWED_STATUSES = [
   'acknowledged',
   'en_route',
   'on_scene',
+  'resolved',
   'declined',
   'needs_admin',
   'escalated',
@@ -93,6 +99,13 @@ function snapshotError(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
+export function resolveDispatchDeadlineAt(doc: {
+  acknowledgementDeadlineAt?: number
+  deadlineAt?: number
+}): number {
+  return doc.acknowledgementDeadlineAt ?? doc.deadlineAt ?? 0
+}
+
 function buildRows(
   dispatchMap: Map<string, DispatchDoc>,
   eventsMap: Map<string, DispatchEvent[]>,
@@ -106,7 +119,9 @@ function buildRows(
       responderName: doc.responderName ?? '',
       responderAgency: doc.responderAgency ?? '',
       dispatchedAt: doc.dispatchedAt ?? 0,
-      deadlineAt: doc.deadlineAt ?? 0,
+      deadlineAt: resolveDispatchDeadlineAt(doc),
+      ...(doc.resolvedAt !== undefined && { resolvedAt: doc.resolvedAt }),
+      ...(doc.resolutionSummary !== undefined && { resolutionSummary: doc.resolutionSummary }),
       escalationCount: doc.escalationCount ?? 0,
       fcmResult: doc.fcmResult ?? null,
       fcmWarnings: doc.fcmWarnings ?? null,

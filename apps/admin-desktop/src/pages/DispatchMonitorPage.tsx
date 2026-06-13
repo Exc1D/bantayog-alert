@@ -30,14 +30,136 @@ interface AssignmentReport {
   municipalityId?: string
 }
 
-const FIELD_PROGRESS_STATUSES = new Set(['accepted', 'acknowledged', 'en_route', 'on_scene'])
+interface EscalateDispatchPayload {
+  dispatchId: string
+  newResponderUid: string
+  idempotencyKey: string
+  forceOverride?: boolean
+}
+
+interface DispatchResponderPayload {
+  reportId: string
+  responderUid: string
+  idempotencyKey: string
+}
+
+type FailedDispatchCommand =
+  | {
+      kind: 'escalate'
+      payload: EscalateDispatchPayload
+      successMessage: string
+      errorFallback: string
+    }
+  | {
+      kind: 'assign'
+      payload: DispatchResponderPayload
+      successMessage: string
+      errorFallback: string
+    }
+
+const FIELD_PROGRESS_STATUSES = new Set([
+  'pending',
+  'accepted',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+])
+const SLA_COUNTDOWN_STATUSES = new Set(['pending', 'accepted'])
+const RESOLVED_DISPATCH_LIMIT = 5
+
+function actionErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.trim()) return err.message
+  return fallback
+}
+
+function errorCode(err: unknown): string {
+  if (typeof err !== 'object' || err === null || !('code' in err)) return ''
+  const code = (err as { code?: unknown }).code
+  return typeof code === 'string' ? code : ''
+}
+
+function isRetryableActionError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err)
+  const text = `${errorCode(err)} ${message}`.toLowerCase()
+  return ![
+    'permission-denied',
+    'permission denied',
+    'unauthorized',
+    'invalid-argument',
+    'failed-precondition',
+    'validation',
+  ].some((marker) => text.includes(marker))
+}
+
+async function executeDispatchCommand(command: FailedDispatchCommand): Promise<void> {
+  if (command.kind === 'escalate') {
+    await withRetry(() => callables.escalateDispatch(command.payload))
+    return
+  }
+  await withRetry(() => callables.dispatchResponder(command.payload))
+}
 
 function responderStatusLabel(status: string): string {
+  if (status === 'pending') return 'Pending'
   if (status === 'accepted') return 'Accepted'
   if (status === 'acknowledged') return 'Acknowledged'
   if (status === 'en_route') return 'En route'
   if (status === 'on_scene') return 'On scene'
   return status.replace(/_/g, ' ')
+}
+
+function formatSlaDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  if (totalSeconds < 60) return `${String(totalSeconds)}s`
+
+  const totalMinutes = Math.ceil(totalSeconds / 60)
+  if (totalMinutes < 60) return `${String(totalMinutes)}m`
+
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return minutes > 0 ? `${String(hours)}h ${String(minutes)}m` : `${String(hours)}h`
+}
+
+function formatResolvedAt(resolvedAt: number | undefined): string {
+  if (resolvedAt === undefined) return 'Resolved time not recorded'
+
+  return `Resolved ${new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(resolvedAt))}`
+}
+
+function SlaCountdown({ deadlineAt }: { deadlineAt: number }) {
+  const [now, setNow] = useState(() => Date.now())
+  const isOverdue = now > deadlineAt
+  const duration = formatSlaDuration(isOverdue ? now - deadlineAt : deadlineAt - now)
+  const label = isOverdue ? `SLA overdue by ${duration}` : `SLA due in ${duration}`
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+    return () => {
+      window.clearInterval(id)
+    }
+  }, [])
+
+  return (
+    <span
+      role="status"
+      aria-label={label}
+      className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-semibold ${
+        isOverdue
+          ? 'border-[var(--color-danger)]/50 bg-[var(--color-danger)]/15 text-[var(--color-danger)]'
+          : 'border-[var(--color-warning)]/50 bg-[var(--color-warning)]/15 text-[var(--color-warning)]'
+      }`}
+    >
+      <span className="font-mono">SLA</span>{' '}
+      {isOverdue ? `Overdue by ${duration}` : `${duration} left`}
+    </span>
+  )
 }
 
 export function DispatchMonitorPage() {
@@ -62,6 +184,8 @@ export function DispatchMonitorPage() {
   const [assignmentSelections, setAssignmentSelections] = useState<Record<string, string>>({})
   const [assigningReportId, setAssigningReportId] = useState<string | null>(null)
   const [creatingResponder, setCreatingResponder] = useState(false)
+  const [retryCommand, setRetryCommand] = useState<FailedDispatchCommand | null>(null)
+  const [retryingAction, setRetryingAction] = useState(false)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
@@ -71,7 +195,13 @@ export function DispatchMonitorPage() {
 
   const stalledDispatches = rows.filter((r) => r.status === 'needs_admin')
   const responderStatusRows = rows.filter((r) => FIELD_PROGRESS_STATUSES.has(r.status))
-  const activeCount = rows.filter((r) => r.status !== 'needs_admin').length
+  const activeCount = rows.filter(
+    (r) => r.status !== 'needs_admin' && r.status !== 'resolved',
+  ).length
+  const resolvedDispatchRows = rows
+    .filter((r) => r.status === 'resolved')
+    .sort((a, b) => (b.resolvedAt ?? b.dispatchedAt) - (a.resolvedAt ?? a.dispatchedAt))
+    .slice(0, RESOLVED_DISPATCH_LIMIT)
   const avgAcceptSeconds = opsMetrics?.avgAcceptSeconds ?? null
   const fcmSuccessRate = opsMetrics?.fcmSuccessRate ?? 0
   const pageError = error ?? assignmentError
@@ -101,6 +231,8 @@ export function DispatchMonitorPage() {
             row.responderAgency,
             row.dispatchedAt,
             row.deadlineAt,
+            row.resolvedAt ?? '',
+            row.resolutionSummary ?? '',
             row.escalationCount,
             row.fcmResult ?? '',
             row.timeline[0]?.at ?? '',
@@ -152,33 +284,44 @@ export function DispatchMonitorPage() {
     setSelectedDispatchId(dispatchId)
     setIsModalOpen(true)
     setDispatchError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
   }
 
   const handleCloseModal = () => {
     setSelectedDispatchId(null)
     setIsModalOpen(false)
     setDispatchError(null)
+    setRetryCommand(null)
   }
 
   const handleDispatch = async (responderUid: string, forceOverride?: true) => {
     if (!selectedDispatchId) return
+    const command: FailedDispatchCommand = {
+      kind: 'escalate',
+      payload: {
+        dispatchId: selectedDispatchId,
+        newResponderUid: responderUid,
+        idempotencyKey: generateIdempotencyKey(),
+        ...(forceOverride ? { forceOverride } : {}),
+      },
+      successMessage: 'Re-dispatched successfully',
+      errorFallback: 'Re-dispatch failed',
+    }
     setIsDispatching(true)
     setDispatchError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
     try {
-      await withRetry(() =>
-        callables.escalateDispatch({
-          dispatchId: selectedDispatchId,
-          newResponderUid: responderUid,
-          idempotencyKey: generateIdempotencyKey(),
-          ...(forceOverride ? { forceOverride } : {}),
-        }),
-      )
-      setSuccessMessage('Re-dispatched successfully')
+      await executeDispatchCommand(command)
+      setSuccessMessage(command.successMessage)
       setIsModalOpen(false)
       setSelectedDispatchId(null)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setDispatchError(message)
+      setDispatchError(actionErrorMessage(err, command.errorFallback))
+      if (isRetryableActionError(err)) {
+        setRetryCommand(command)
+      }
     } finally {
       setIsDispatching(false)
     }
@@ -193,6 +336,7 @@ export function DispatchMonitorPage() {
   }) => {
     setCreatingResponder(true)
     setDispatchError(null)
+    setRetryCommand(null)
     const idempotencyKey = generateIdempotencyKey()
     try {
       await withRetry(() =>
@@ -219,27 +363,72 @@ export function DispatchMonitorPage() {
     const responderUid = assignmentSelections[reportId]
     if (!responderUid) {
       setDispatchError('Choose a responder before assigning')
+      setRetryCommand(null)
       return
     }
 
+    const command: FailedDispatchCommand = {
+      kind: 'assign',
+      payload: {
+        reportId,
+        responderUid,
+        idempotencyKey: generateIdempotencyKey(),
+      },
+      successMessage: 'Responder assigned',
+      errorFallback: 'Responder assignment failed',
+    }
     setAssigningReportId(reportId)
     setDispatchError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
     try {
-      await withRetry(() =>
-        callables.dispatchResponder({
-          reportId,
-          responderUid,
-          idempotencyKey: generateIdempotencyKey(),
-        }),
-      )
-      setSuccessMessage('Responder assigned')
+      await executeDispatchCommand(command)
+      setSuccessMessage(command.successMessage)
       setAssignmentSelections((current) =>
         Object.fromEntries(Object.entries(current).filter(([id]) => id !== reportId)),
       )
     } catch (err) {
-      setDispatchError(err instanceof Error ? err.message : 'Responder assignment failed')
+      setDispatchError(actionErrorMessage(err, command.errorFallback))
+      if (isRetryableActionError(err)) {
+        setRetryCommand(command)
+      }
     } finally {
       setAssigningReportId(null)
+    }
+  }
+
+  const completeDispatchCommand = (command: FailedDispatchCommand) => {
+    if (command.kind === 'escalate') {
+      setIsModalOpen(false)
+      setSelectedDispatchId(null)
+      return
+    }
+    setAssignmentSelections((current) =>
+      Object.fromEntries(Object.entries(current).filter(([id]) => id !== command.payload.reportId)),
+    )
+  }
+
+  const handleRetryAction = async () => {
+    const command = retryCommand
+    if (!command) return
+
+    setRetryingAction(true)
+    setDispatchError(null)
+    setSuccessMessage(null)
+    try {
+      await executeDispatchCommand(command)
+      completeDispatchCommand(command)
+      setSuccessMessage(command.successMessage)
+      setRetryCommand(null)
+    } catch (err) {
+      setDispatchError(actionErrorMessage(err, command.errorFallback))
+      if (isRetryableActionError(err)) {
+        setRetryCommand(command)
+      } else {
+        setRetryCommand(null)
+      }
+    } finally {
+      setRetryingAction(false)
     }
   }
 
@@ -336,7 +525,16 @@ export function DispatchMonitorPage() {
           message={dispatchError}
           onDismiss={() => {
             setDispatchError(null)
+            setRetryCommand(null)
           }}
+          {...(retryCommand
+            ? {
+                onRetry: () => {
+                  void handleRetryAction()
+                },
+                retrying: retryingAction,
+              }
+            : {})}
         />
       )}
       {isStale && !pageError && (
@@ -369,7 +567,7 @@ export function DispatchMonitorPage() {
                   Responder Status
                 </h2>
                 <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                  Active responder progress accepted through scene arrival.
+                  Active responder progress pending through scene arrival.
                 </p>
               </div>
               <span className="rounded border border-white/10 px-2 py-1 text-xs text-[var(--color-text-secondary)]">
@@ -385,6 +583,7 @@ export function DispatchMonitorPage() {
                 {responderStatusRows.map((row) => (
                   <article
                     key={row.dispatchId}
+                    data-dispatch-id={row.dispatchId}
                     className="rounded border border-white/10 bg-white/[0.03] p-3"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -400,6 +599,11 @@ export function DispatchMonitorPage() {
                         {responderStatusLabel(row.status)}
                       </span>
                     </div>
+                    {SLA_COUNTDOWN_STATUSES.has(row.status) && row.deadlineAt > 0 ? (
+                      <div className="mt-3">
+                        <SlaCountdown deadlineAt={row.deadlineAt} />
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>
@@ -503,6 +707,61 @@ export function DispatchMonitorPage() {
             onReDispatch={handleReDispatch}
             mode={stalledDispatches.length > 0 ? 'active' : 'calm'}
           />
+
+          {resolvedDispatchRows.length > 0 ? (
+            <section
+              aria-label="Recently resolved dispatches"
+              className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] p-4"
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                    Recently Resolved
+                  </h2>
+                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                    Closed responder work from the current dispatch window.
+                  </p>
+                </div>
+                <span className="rounded border border-[var(--color-success)]/30 px-2 py-1 text-xs text-[var(--color-success)]">
+                  {resolvedDispatchRows.length} closed
+                </span>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {resolvedDispatchRows.map((row) => {
+                  const summary = row.resolutionSummary?.trim()
+                  const resolutionText =
+                    summary && summary.length > 0 ? summary : 'No resolution summary recorded.'
+
+                  return (
+                    <article
+                      key={row.dispatchId}
+                      className="rounded border border-white/10 bg-white/[0.03] p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                            {row.responderName || 'Responder'}
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                            {row.responderAgency || 'Agency pending'} · {row.reportId}
+                          </p>
+                        </div>
+                        <span className="rounded bg-[var(--color-success)]/15 px-2 py-1 text-xs font-semibold text-[var(--color-success)]">
+                          Resolved
+                        </span>
+                      </div>
+                      <p className="mt-3 text-xs text-[var(--color-text-secondary)]">
+                        {formatResolvedAt(row.resolvedAt)}
+                      </p>
+                      <p className="mt-2 rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-[var(--color-text-primary)]">
+                        {resolutionText}
+                      </p>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          ) : null}
 
           <DispatchLifecycleTable rows={rows} highlightDispatchId={highlightDispatchId} />
 
