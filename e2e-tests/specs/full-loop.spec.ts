@@ -128,7 +128,13 @@ async function dismissResponderPrivacyNoticeIfPresent(page: Page): Promise<void>
   await expect(agreeButton).toBeHidden({ timeout: 10_000 })
 }
 
-async function createCitizenReport(page: Page, testRunId: string): Promise<string> {
+async function createCitizenReport(
+  page: Page,
+  testRunId: string,
+): Promise<{
+  publicRef: string
+  secret: string
+}> {
   await page.evaluate(() => {
     localStorage.setItem('bantayog_location_auto', 'false')
   })
@@ -149,9 +155,17 @@ async function createCitizenReport(page: Page, testRunId: string): Promise<strin
   await page.getByRole('button', { name: /submit report/i }).click()
 
   await expect(page.getByText(/we heard you\. we are here\./i)).toBeVisible({ timeout: 20_000 })
+  await expect(
+    page.getByText('Create an account to get notified when help is on the way'),
+  ).toBeVisible({ timeout: 20_000 })
   const publicRef = (await page.locator('.reveal-ref-code').textContent())?.trim() ?? ''
   expect(publicRef).toMatch(/^[a-z0-9]{8}$/)
-  return publicRef
+  await expect(page.getByRole('button', { name: /copy secret code/i })).toBeVisible({
+    timeout: 20_000,
+  })
+  const secret = (await page.locator('code').first().textContent())?.trim() ?? ''
+  expect(secret).toBeTruthy()
+  return { publicRef, secret }
 }
 
 async function openExactReportOnMap(page: Page, reportId: string): Promise<void> {
@@ -194,8 +208,7 @@ async function confirmReportVerification(page: Page): Promise<void> {
 }
 
 async function declareAlert(page: Page, testRunId: string): Promise<void> {
-  await page.getByRole('button', { name: /declare alert/i }).focus()
-  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: /declare alert/i }).click({ force: true })
   const modal = page.getByRole('dialog', { name: /declare alert/i })
   await expect(modal).toBeVisible({ timeout: 10_000 })
   await modal.getByLabel(/alert type/i).selectOption('flood_advisory')
@@ -233,6 +246,12 @@ test.describe('reliability spine', () => {
       reducedMotion: 'reduce',
       viewport: { width: 390, height: 844 },
     })
+    await responderContext.addInitScript(() => {
+      Object.defineProperty(globalThis, 'Notification', {
+        configurable: true,
+        value: { permission: 'default' },
+      })
+    })
     await useResponderDemoViewport(responderContext)
     const citizenPage = await citizenContext.newPage()
     const adminPage = await adminContext.newPage()
@@ -241,6 +260,10 @@ test.describe('reliability spine', () => {
     const adminGuard = monitorPage(adminPage, 'admin')
     const responderGuard = monitorPage(responderPage, 'responder')
     let currentCheckpoint = 'C00'
+    let citizenReport: {
+      publicRef: string
+      secret: string
+    } | null = null
 
     try {
       if (env.target === 'local') {
@@ -275,6 +298,7 @@ test.describe('reliability spine', () => {
       citizenGuard.assertHealthy('C00')
       adminGuard.assertHealthy('C00')
       responderGuard.assertHealthy('C00')
+      await signInAdmin(adminPage, env.adminBaseUrl)
       logCheckpoint({
         testRunId: ledger.testRunId,
         checkpoint: 'C00',
@@ -290,13 +314,24 @@ test.describe('reliability spine', () => {
       })
 
       currentCheckpoint = 'C01'
-      ledger.publicRef = await createCitizenReport(citizenPage, ledger.testRunId)
+      citizenReport = await createCitizenReport(citizenPage, ledger.testRunId)
+      ledger.publicRef = citizenReport.publicRef
       const lookup = await waitForDoc(db.collection('report_lookup').doc(ledger.publicRef), 30_000)
       ledger.reportId = String(lookup.data()?.reportId ?? '')
       expect(ledger.reportId).not.toBe('')
       await waitForDoc(db.collection('reports').doc(ledger.reportId), 30_000)
       await waitForDoc(db.collection('report_ops').doc(ledger.reportId), 30_000)
       await waitForDoc(db.collection('report_private').doc(ledger.reportId), 30_000)
+      await expect(adminPage).toHaveTitle(/\(1\) Bantayog Command/)
+      await expect(adminPage.getByRole('button', { name: '1 notifications' })).toBeVisible({
+        timeout: 15_000,
+      })
+      await citizenPage.goto(`${env.citizenBaseUrl}/lookup`, { waitUntil: 'domcontentloaded' })
+      await citizenPage.getByPlaceholder('Your secret code').fill(citizenReport.secret)
+      await citizenPage.getByRole('button', { name: /find my report/i }).click()
+      await expect(citizenPage.getByText('Report found — tracking enabled')).toBeVisible({
+        timeout: 15_000,
+      })
       logCheckpoint({
         testRunId: ledger.testRunId,
         checkpoint: 'C01',
@@ -332,7 +367,6 @@ test.describe('reliability spine', () => {
       })
 
       currentCheckpoint = 'C03'
-      await signInAdmin(adminPage, env.adminBaseUrl)
       await adminPage.goto(`${env.adminBaseUrl}/map`, { waitUntil: 'domcontentloaded' })
       await openExactReportOnMap(adminPage, ledger.reportId)
       const reportPanel = adminPage.getByRole('dialog', { name: /report detail/i })
@@ -428,7 +462,15 @@ test.describe('reliability spine', () => {
       })
 
       currentCheckpoint = 'C07'
+      await adminPage.goto(`${env.adminBaseUrl}/dispatches`, { waitUntil: 'domcontentloaded' })
+      await expect(adminPage.getByText(/SLA \d+m left/i)).toBeVisible({ timeout: 15_000 })
       await signInResponder(responderPage, env.responderBaseUrl)
+      await expect(responderPage.getByRole('alert')).toContainText(
+        /dispatch push notifications are not enabled/i,
+      )
+      await expect(
+        responderPage.getByRole('button', { name: /enable notifications/i }),
+      ).toBeVisible({ timeout: 15_000 })
       await responderPage.goto(`${env.responderBaseUrl}/alerts`, { waitUntil: 'domcontentloaded' })
       await expect(
         responderPage.getByText(`[TEST:${ledger.testRunId}] Flood proof alert`),

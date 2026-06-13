@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-13 - Phase 3E Exit Proof
+
+- Hardened `functions/src/__tests__/proof-mvp-loop.test.ts` so notification evidence is asserted by `type`, and the citizen notification attempts now explicitly carry the stable `fcm_no_token` warning in both the dispatch and resolution paths.
+- Extended `e2e-tests/specs/full-loop.spec.ts` to prove the live browser loop with the Phase 3 UI states we can actually reach in `proof:local`: citizen lookup success landing, admin new-report badge/title, responder push-warning banner, and the admin dispatch SLA chip.
+- Recorded the exit note in `docs/mvp-readiness.md` and the proof/conclusion rule in `docs/learnings.md`.
+- Verification: `pnpm proof:mvp-loop`, `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, and `pnpm proof:local` all passed. `proof:local` still emits the repo's expected Firestore/emulator noise, but the full loop completed end to end.
+
 ## 2026-06-13 - PR #209 Review Follow-up
 
 - Fixed the re-dispatch retry accessibility gap by moving failed re-dispatch error and retry controls inside `ReDispatchModal`, keeping the retry affordance inside the modal focus trap.

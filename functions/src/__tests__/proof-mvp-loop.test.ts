@@ -171,14 +171,19 @@ describe('proof-mvp-loop', () => {
         const reportEventData = reportEvents.docs.map(
           (d: { data: () => Record<string, unknown> }) => d.data(),
         )
+        const dispatchNotificationEvents = reportEventData.filter(
+          (event: Record<string, unknown>) => event.type === 'notification_attempted',
+        )
+        expect(dispatchNotificationEvents).toHaveLength(1)
         expect(reportEventData).toContainEqual(
           expect.objectContaining({ from: 'verified', to: 'assigned' }),
         )
-        expect(reportEventData).toContainEqual(
+        expect(dispatchNotificationEvents).toContainEqual(
           expect.objectContaining({
-            type: 'notification_attempted',
             audience: 'citizen',
             dispatchId,
+            fcmResult: 'no_token',
+            fcmWarnings: ['fcm_no_token'],
           }),
         )
 
@@ -329,10 +334,18 @@ describe('proof-mvp-loop', () => {
         )
         expect(citizenNotificationEvents).toHaveLength(2)
         expect(citizenNotificationEvents).toContainEqual(
-          expect.objectContaining({ dispatchId, fcmResult: 'no_token' }),
+          expect.objectContaining({
+            dispatchId,
+            fcmResult: 'no_token',
+            fcmWarnings: ['fcm_no_token'],
+          }),
         )
         expect(citizenNotificationEvents).toContainEqual(
-          expect.objectContaining({ reportId, fcmResult: 'no_token' }),
+          expect.objectContaining({
+            reportId,
+            fcmResult: 'no_token',
+            fcmWarnings: ['fcm_no_token'],
+          }),
         )
 
         // ── Citizen-safe tracking assertion ─────────────────────────────
@@ -410,6 +423,20 @@ describe('proof-mvp-loop', () => {
       expect(moderation.docs[0].data()).toMatchObject({
         reason: 'insufficient_detail',
         actor: 'mvp-admin-2',
+      })
+
+      const rejectionEvents = await db
+        .collection('report_events')
+        .where('reportId', '==', reportId)
+        .get()
+      const rejectionNotificationEvents = rejectionEvents.docs
+        .map((d: { data: () => Record<string, unknown> }) => d.data())
+        .filter((event: Record<string, unknown>) => event.type === 'notification_attempted')
+      expect(rejectionNotificationEvents).toHaveLength(1)
+      expect(rejectionNotificationEvents[0]).toMatchObject({
+        audience: 'citizen',
+        fcmResult: 'no_token',
+        fcmWarnings: ['fcm_no_token'],
       })
     })
   })
