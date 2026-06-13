@@ -18,6 +18,7 @@ import {
   Pencil,
 } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { buildReportReadiness } from './report-readiness.js'
 
 interface Step3ReviewProps {
   onBack: () => void
@@ -69,6 +70,7 @@ export function Step3Review({
     approximate: 'Approximate area',
     manual: 'Manual place only',
   }[reportData.locationConfidence]
+  const readiness = buildReportReadiness(reportData)
 
   const handleSubmit = () => {
     if (!consent || !hasConfirmed || hasSubmittedRef.current) return
@@ -124,6 +126,24 @@ export function Step3Review({
             </p>
           </div>
         </div>
+
+        <section
+          aria-label="Report readiness"
+          className={`rounded-xl border px-4 py-3 ${
+            readiness.level === 'needs-attention'
+              ? 'border-warning-200 bg-warning-50'
+              : 'border-brand-200 bg-white'
+          }`}
+        >
+          <h2 className="text-sm font-semibold text-surface-900">Report readiness</h2>
+          <div className="mt-2 space-y-2">
+            {readiness.lines.map((line) => (
+              <p key={line} className="text-sm leading-relaxed text-surface-700">
+                {line}
+              </p>
+            ))}
+          </div>
+        </section>
 
         {/* Summary card */}
         <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
