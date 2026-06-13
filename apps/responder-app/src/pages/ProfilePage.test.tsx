@@ -171,6 +171,20 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/will not receive dispatches/i)
   })
 
+  it('shows the dispatch warning from UI availability when on break', () => {
+    availabilityState.status = 'on_break'
+    profileState.profile = { responderType: 'fire' }
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent(/while on break/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/will not receive dispatches/i)
+  })
+
   it('shows the dispatch warning from UI availability when unavailable', async () => {
     profileState.profile = { responderType: 'fire' }
 

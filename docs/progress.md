@@ -614,6 +614,6 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 ## 2026-06-13 - Phase 3D Responder Safety Warnings
 
 - Verified the existing 3D-01 responder push permission banner implementation: denied permission shows browser-settings guidance, default permission exposes the enable-notifications retry path, and the focused banner test passed 2/2.
-- Added the 3D-02 Profile-page off-duty/unavailable advisory derived from the same UI availability state as the segmented control. The notice uses `role="status"` and disappears when the responder is available.
+- Added the 3D-02 Profile page off-duty/unavailable/on-break advisory derived from the same UI availability state as the segmented control. The notice uses `role="status"` and disappears when the responder is available.
 - Kept the slice UI-only: no backend semantics changes, no new listeners, no deploy, and no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
-- Verification: red-first `ProfilePage.test.tsx` failed on the missing `role="status"` warning, then passed 14/14 after implementation. `pnpm --dir apps/responder-app exec tsc --noEmit`, `pnpm --dir apps/responder-app exec eslint src`, and `git diff --check` passed.
+- Verification: red-first `ProfilePage.test.tsx` failed on the missing `role="status"` warning, then passed 15/15 after implementation. `pnpm --dir apps/responder-app exec tsc --noEmit`, `pnpm --dir apps/responder-app exec eslint src`, and `git diff --check` passed.

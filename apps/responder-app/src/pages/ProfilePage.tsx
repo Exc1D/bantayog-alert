@@ -13,7 +13,10 @@ import styles from './ProfilePage.module.css'
 const UNAVAILABLE_REASONS = ['On break', 'In meeting', 'On another call', 'Other']
 const OFF_DUTY_REASONS = ['Shift ended', 'Sick leave', 'Training', 'Day off', 'Other']
 
-type SettableStatus = Extract<ResponderAvailabilityStatus, 'available' | 'unavailable' | 'off_duty'>
+type SettableStatus = Extract<
+  ResponderAvailabilityStatus,
+  'available' | 'unavailable' | 'off_duty' | 'on_break'
+>
 type ResponderProfile = ReturnType<typeof useResponderProfile>['profile']
 type DispatchHistoryRow = ReturnType<typeof useDispatchHistory>['history'][number]
 interface ProfileStat {
@@ -22,16 +25,32 @@ interface ProfileStat {
   valueClassName?: string | undefined
 }
 
-const SETTABLE_STATUSES: ReadonlySet<string> = new Set(['available', 'unavailable', 'off_duty'])
+const SETTABLE_STATUSES: ReadonlySet<SettableStatus> = new Set([
+  'available',
+  'unavailable',
+  'off_duty',
+  'on_break',
+])
 
 const STATUS_SEGMENTS: { value: SettableStatus; label: string }[] = [
   { value: 'available', label: 'Available' },
   { value: 'unavailable', label: 'Unavailable' },
   { value: 'off_duty', label: 'Off Duty' },
+  { value: 'on_break', label: 'On Break' },
 ]
 
+const DISPATCH_AVAILABILITY_WARNINGS: Record<ResponderAvailabilityStatus, string | null> = {
+  available: null,
+  unavailable:
+    'While unavailable, you will not receive dispatches. Set yourself available when you can take assignments.',
+  off_duty:
+    'While off duty, you will not receive dispatches. Set yourself available when your shift resumes.',
+  on_break:
+    'While on break, you will not receive dispatches. Set yourself available when you can take assignments.',
+}
+
 function isSettableStatus(value: string): value is SettableStatus {
-  return SETTABLE_STATUSES.has(value)
+  return SETTABLE_STATUSES.has(value as SettableStatus)
 }
 
 function statusBlurb(status: ResponderAvailabilityStatus | null): string {
@@ -65,17 +84,12 @@ function getSelectedStatus(
 }
 
 function getReasonOptions(status: SettableStatus): string[] {
-  return status === 'unavailable' ? UNAVAILABLE_REASONS : OFF_DUTY_REASONS
+  if (status === 'available') return []
+  return status === 'off_duty' ? OFF_DUTY_REASONS : UNAVAILABLE_REASONS
 }
 
 function getDispatchAvailabilityWarning(status: SettableStatus): string | null {
-  if (status === 'off_duty') {
-    return 'While off duty, you will not receive dispatches. Set yourself available when your shift resumes.'
-  }
-  if (status === 'unavailable') {
-    return 'While unavailable, you will not receive dispatches. Set yourself available when you can take assignments.'
-  }
-  return null
+  return DISPATCH_AVAILABILITY_WARNINGS[status]
 }
 
 function getStatusDotClass(status: ResponderAvailabilityStatus | null): string | undefined {
