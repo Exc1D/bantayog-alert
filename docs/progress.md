@@ -551,3 +551,9 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Mapped `functions/unavailable`/network-shaped lookup failures to the same offline retry copy while preserving the existing invalid-code message for `not-found` and `permission-denied`.
 - Reused `useOnlineStatus()` through a test mock so the lookup test does not run the `/__/firebase.json` connectivity probe.
 - Verification: red-first `LookupScreen` test failed on the missing offline alert, then passed 9/9 after implementation, including callable-unavailable coverage. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-13 - Phase 3B-07 PWA Install Prompt Surfacing
+
+- Added a Citizen PWA `useInstallPrompt` hook that captures `beforeinstallprompt`, exposes Chromium/iOS install state, hides while standalone, and persists one dismissal per surface.
+- Surfaced a non-blocking onboarding install panel with a real Chromium prompt action and a short iOS Home Screen instruction; post-submit `RevealSheet` wiring remains the explicit follow-up because the slice file caps this work at three files.
+- Verification: red-first `useInstallPrompt` test failed on the missing hook, then passed 3/3 after implementation. Focused `useInstallPrompt` + `Onboarding` tests passed 5/5. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
