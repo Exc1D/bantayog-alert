@@ -50,6 +50,13 @@ interface TrackingEvent {
   state: 'complete' | 'pending' | 'queued' | 'failed'
 }
 
+interface CitizenStatusHero {
+  title: string
+  explanation: string
+  nextStep: string
+  updated: string
+}
+
 interface ReportFeedbackPayload {
   reportId: string
   addressed: boolean
@@ -225,6 +232,114 @@ function progressStatus(status: MyReport['status']): ProgressStatus {
 
 function updatedMeta(report: MyReport): string {
   return `Updated ${timeAgo(report.lastStatusAt ?? report.submittedAt)}`
+}
+
+function timeLabel(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(timestamp))
+}
+
+function resolvedSpan(report: MyReport): string {
+  const resolvedAt = report.lastStatusAt ?? report.submittedAt
+  return `Reported ${timeLabel(report.submittedAt)}, resolved ${timeLabel(resolvedAt)}.`
+}
+
+export function buildCitizenStatusHero(report: MyReport): CitizenStatusHero {
+  const updated = updatedMeta(report)
+  switch (report.status) {
+    case 'queued':
+    case 'draft_inbox':
+      return {
+        title: 'Saved on this phone',
+        explanation: 'It will send automatically when you are back online.',
+        nextStep: 'Keep this device available so the report can retry.',
+        updated,
+      }
+    case 'new':
+    case 'awaiting_verify':
+      return {
+        title: 'Your report was received',
+        explanation:
+          'An operator is checking the details. You do not need to submit again unless the situation changes.',
+        nextStep: 'Watch this page for verification and responder updates.',
+        updated,
+      }
+    case 'verified':
+      return {
+        title: 'Your report was verified',
+        explanation: 'It is now being handled.',
+        nextStep: 'Watch this page for responder updates.',
+        updated,
+      }
+    case 'assigned':
+    case 'acknowledged':
+      return {
+        title: 'A responder has been assigned',
+        explanation: 'Please stay safe and avoid the affected area.',
+        nextStep: 'Call responders only if the danger changes or people need urgent help.',
+        updated,
+      }
+    case 'en_route':
+      return {
+        title: 'Help is on the way',
+        explanation: 'Please stay safe and avoid the affected area.',
+        nextStep: 'Keep this tracking code available for follow-up.',
+        updated,
+      }
+    case 'on_scene':
+      return {
+        title: 'Responders are at or near the area',
+        explanation: 'Emergency staff are checking the situation on scene.',
+        nextStep: 'Stay clear of the affected area unless responders ask for information.',
+        updated,
+      }
+    case 'resolved':
+    case 'closed':
+      return {
+        title: 'This report was resolved',
+        explanation: resolvedSpan(report),
+        nextStep: 'Your report helped complete the response loop.',
+        updated,
+      }
+    case 'rejected':
+      return {
+        title: 'This report could not be verified',
+        explanation: 'The review did not confirm enough details to keep it active.',
+        nextStep: 'Submit a new report only if the situation changes or you have clearer details.',
+        updated,
+      }
+    case 'cancelled':
+    case 'cancelled_false_report':
+      return {
+        title: 'Your report was withdrawn',
+        explanation: 'It is no longer active, and the audit record is kept.',
+        nextStep: 'Submit a new report only if there is a new or changing emergency.',
+        updated,
+      }
+    case 'merged_as_duplicate':
+      return {
+        title: 'This report was merged with another report',
+        explanation: 'Operators found another report for the same incident.',
+        nextStep: 'The response continues through the main incident record.',
+        updated,
+      }
+    case 'reopened':
+      return {
+        title: 'Your report is under review again',
+        explanation: 'Operators reopened the report to check new information.',
+        nextStep: 'Watch this page for the next status update.',
+        updated,
+      }
+    default:
+      return {
+        title: 'Your report is being reviewed',
+        explanation: 'Operators are checking the latest status.',
+        nextStep: 'Watch this page for updates.',
+        updated,
+      }
+  }
 }
 
 function trackingStage(status: MyReport['status']): number {
@@ -423,6 +538,7 @@ export function DetailSheet(props: Props) {
   const actions = actionsFor(displayStatus)
   const trackingEvents = buildTrackingTimeline(report)
   const feedbackReportId = report.status === 'resolved' ? (report.id ?? null) : null
+  const statusHero = buildCitizenStatusHero(report)
 
   /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
   return (
@@ -439,12 +555,15 @@ export function DetailSheet(props: Props) {
     >
       {dragHandle}
       <p className="font-extrabold text-surface-900">Your Report</p>
-      <p className="mt-1 mb-2 font-bold text-lg text-surface-900">
-        {LABELS[report.reportType] ?? report.reportType}
-        {report.status !== 'queued' && report.status !== 'new'
-          ? ` · ${report.status.replace(/_/g, ' ')}`
-          : ' · Awaiting Review'}
-      </p>
+      <div className="mt-2 mb-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+        <p className="text-[0.625rem] font-bold uppercase tracking-widest text-brand-600">
+          {LABELS[report.reportType] ?? report.reportType}
+        </p>
+        <h2 className="mt-1 text-xl font-extrabold text-surface-900">{statusHero.title}</h2>
+        <p className="mt-1 text-sm leading-relaxed text-surface-700">{statusHero.explanation}</p>
+        <p className="mt-2 text-xs font-semibold text-surface-700">{statusHero.nextStep}</p>
+        <p className="mt-2 text-xs text-surface-500">{statusHero.updated}</p>
+      </div>
       {(() => {
         const s = getSeverityStyle(report.severity)
         return (

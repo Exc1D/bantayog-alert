@@ -21,6 +21,59 @@
 - **Authored 6 slice docs** for the rest of the Admin-UX backlog (docs only, not implemented this session): `3c-00` index (full scorecard + ranked table + binding execution rules), `3c-08` publication-queue hardening (confirm before send-to-moderation/publish, scrub char count vs real backend limit, pure `feed-queue-filters.ts`, real Retry button), `3c-09` citizen-post moderation queue (uncapped + reason picker bound to the real 5-reason enum + optimistic rollback), `3c-10` official-alerts manager (uncapped active+retired, retire/restore behind confirm + reason), `3c-11` feed IA split (thin shell, 3 tabs, optional `/feed/:tab`), and `3b-12` citizen hotline-fallback cleanup (`RateLimitError` drops its divergent `VITE_BARANGAY_HOTLINE` number for `useMunicipalityContact`).
 - Verification (red-first at each step, all green): shared-validators 181 tests + build + typecheck; functions wrapper 4/4 + emulator core 5/5 + `tsc` + eslint + build; admin-desktop hotline tests 22/22 + `tsc` + eslint. The 6 admin-desktop full-suite failures (`auth/invalid-api-key` at `firebase.ts:51`) were proven pre-existing via a stash-based baseline run and are out of scope (see learnings).
 - The broader Dashboard + Responder-roster / account-management UX rebuild the user also raised remains a **separate concern/branch** that still needs its own evaluation and plan approval before any build.
+## 2026-06-13 - Phase 3E Exit Proof
+
+- Hardened `functions/src/__tests__/proof-mvp-loop.test.ts` so notification evidence is asserted by `type`, and the citizen notification attempts now explicitly carry the stable `fcm_no_token` warning in both the dispatch and resolution paths.
+- Extended `e2e-tests/specs/full-loop.spec.ts` to prove the live browser loop with the Phase 3 UI states we can actually reach in `proof:local`: citizen lookup success landing, admin new-report badge/title, responder push-warning banner, and the admin dispatch SLA chip.
+- Recorded the exit note in `docs/mvp-readiness.md` and the proof/conclusion rule in `docs/learnings.md`.
+- Verification: `pnpm proof:mvp-loop`, `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, and `pnpm proof:local` all passed. `proof:local` still emits the repo's expected Firestore/emulator noise, but the full loop completed end to end.
+
+## 2026-06-13 - PR #209 Review Follow-up
+
+- Fixed the re-dispatch retry accessibility gap by moving failed re-dispatch error and retry controls inside `ReDispatchModal`, keeping the retry affordance inside the modal focus trap.
+- Cleared stale single-command retry state before failed bulk verify/reject flows so bulk error banners cannot replay an unrelated prior command.
+- Extracted shared `actionErrorMessage`, `errorCode`, and `isRetryableActionError` helpers into `apps/admin-desktop/src/utils/errorClassification.ts` to address duplicate helper logic.
+- Added red-first regression coverage for keyboard reachability after failed re-dispatch, stale retry-command isolation before failed bulk verify/reject, non-retryable `unauthenticated` action errors, and normalized permission-denied listener variants.
+- Fallow still reports inherited duplication and complexity in touched legacy pages; applied narrow `// fallow-ignore-next-line complexity` directives only where the PR's changed-code gate would otherwise fail on existing page-scale complexity.
+- Verification: red-first focused tests failed before implementation, then `pnpm --dir apps/admin-desktop exec vitest run` passed 74 files / 562 tests; `pnpm exec fallow audit --base main --gate new-only` passed; `pnpm --dir apps/admin-desktop exec tsc --noEmit`, `pnpm --dir apps/admin-desktop exec eslint src`, changed-file Prettier checks, and `git diff --check` passed.
+
+## 2026-06-13 - Pre-3D Audit + Phase 3C Dispatch Retry Closure
+
+- Re-audited the phases before 3D against the shipped code and task docs. Phase 3B remains implemented through 3B-11. Phase 3A remains implemented through the P0 backbone slices 3A-01 through 3A-05; 3A-06 is an explicit user-approval gate for anonymous push, and 3A-07 is an optional courtesy verify push that must wait for staging proof plus pilot noise feedback before execution.
+- Closed the remaining strict 3C-06 dispatch-surface gap on `/dispatches`: failed first responder assignment and re-dispatch commands now expose the existing `ActionErrorBanner` Retry affordance, and retries replay the original callable payload/idempotency key instead of rebuilding from current UI state.
+- Kept non-retryable dispatch errors on the safe path by suppressing Retry for permission, validation, invalid-argument, and failed-precondition style failures.
+- Kept the slice frontend/Admin-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes. Phase 3D work was not resumed.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx` failed on the missing retry button for both dispatch command paths, then passed 16 tests. Final focused gate `pnpm --dir apps/admin-desktop exec vitest run src/components/ActionErrorBanner.test.tsx src/components/PermissionDeniedState.test.tsx src/pages/TriagePage.test.tsx src/hooks/useNewReportSignal.test.tsx src/__tests__/DispatchMonitorPage.test.tsx src/hooks/useDispatchLifecycle.test.ts` passed 6 files / 52 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit` and `pnpm --dir apps/admin-desktop exec eslint src` passed.
+
+## 2026-06-13 - Phase 3C Admin Operator Completion
+
+- Completed the remaining Phase 3C Admin operator slices on top of the already-shipped 3C-01 signal, 3C-02 SLA countdown, and 3C-03 resolved-dispatch closure.
+- Added rejection confirmation for single and bulk triage reject actions, including the selected reason, trimmed admin note, and report count before the callable is executed.
+- Added a dedicated Admin permission-denied state for unauthorized triage listener failures, with re-authentication guidance instead of raw error text.
+- Added retry support for failed single-report triage actions; retries replay the original callable payload and idempotency key instead of recomputing from current UI state.
+- Kept the slice frontend/Admin-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/pages/TriagePage.test.tsx` failed on missing confirmation, permission-denied, retry behavior, and non-retryable retry suppression; red-first `pnpm --dir apps/admin-desktop exec vitest run src/components/ActionErrorBanner.test.tsx` failed on missing retry UI; red-first `pnpm --dir apps/admin-desktop exec vitest run src/components/PermissionDeniedState.test.tsx` failed on the missing component. Final focused gate `pnpm --dir apps/admin-desktop exec vitest run src/components/ActionErrorBanner.test.tsx src/components/PermissionDeniedState.test.tsx src/pages/TriagePage.test.tsx src/hooks/useNewReportSignal.test.tsx src/__tests__/DispatchMonitorPage.test.tsx src/hooks/useDispatchLifecycle.test.ts` passed 6 files / 50 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit`, `pnpm --dir apps/admin-desktop exec eslint src`, and `git diff --check` passed.
+
+## 2026-06-13 - Phase 3C-03 Resolved Dispatch Closure
+
+- Implemented 3C-03 Admin resolved-dispatch closure: `/dispatches` now includes resolved lifecycle rows in the scoped client query, keeps them out of active responder status queues and active counts, and renders a bounded "Recently resolved" section with resolved time plus the responder resolution summary.
+- Kept the slice client-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx` failed on the missing closure section, then passed 14 tests. `pnpm --dir apps/admin-desktop exec vitest run src/hooks/useDispatchLifecycle.test.ts` passed 16 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit` passed, `pnpm --dir apps/admin-desktop exec eslint src` passed after replacing an ambiguous summary fallback, and `git diff --check` passed.
+
+## 2026-06-13 - Phase 3A/3B Audit + Phase 3C-02 SLA Countdown
+
+- Audited Phase 3A and 3B against `docs/agent-tasks/` and the shipped code. Phase 3B implementation is present through 3B-11, with 3B-01 implemented in code even though it did not have a dedicated progress entry. Phase 3A P0 backbone is present through 3A-05; 3A-06 remains an explicit gated P2 decision, and 3A-07 remains an optional P2 courtesy push not wired into `verifyReportCore`.
+- Implemented 3C-02 Admin dispatch SLA visibility: `/dispatches` now includes pending dispatches in the responder status queue, maps backend `acknowledgementDeadlineAt` into the existing row deadline field, and shows a live SLA chip for pending/accepted rows with an overdue state.
+- Kept the slice frontend/Admin-read-only: no backend writes, rules, indexes, schema/migration files, dependency, or deploy config changes.
+- Verification: red-first `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DispatchMonitorPage.test.tsx` failed on the missing deadline resolver and missing countdown/pending row, then passed 13 tests. `pnpm --dir apps/admin-desktop exec vitest run src/hooks/useDispatchLifecycle.test.ts` passed 16 tests. `pnpm --dir apps/admin-desktop exec tsc --noEmit` passed, and `pnpm --dir apps/admin-desktop exec eslint src` passed.
+
+## 2026-06-13 - Phase 3B Citizen Experience Completion (3B-09/10/11)
+
+- Implemented 3B-09 own-report status hero in the Map detail sheet: citizens now see plain-language lifecycle copy, next-step guidance, and update timing instead of raw status enums.
+- Implemented 3B-10 report readiness guidance on the review step from a pure helper. The card stays factual, non-blocking, and safety-aware: it calls out missing location, optional description, photo-only-if-safe, and urgent-help context without adding scores or pressure mechanics.
+- Implemented 3B-11 map situational headline from existing alert, incident, and own-report listeners. It suppresses itself while data is loading, errored, or offline, shows calm/incident/alert copy only from settled data, and routes active-alert headlines to `/alerts`.
+- Kept the slice frontend-only: no backend, rules, indexes, schema/migration files, dependencies, or deploy config changed.
+- Verification: red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/MapTab/DetailSheet.test.tsx` failed on the missing status hero, then passed; red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/SubmitReportForm` failed on the missing readiness module/card, then passed 33 tests; red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/MapTab/situational-headline.test.ts src/components/MapTab/delete-flow.test.tsx` failed on the missing headline helper/rendering, then passed 7 tests. PR #208 review follow-up: added own-report error headline gating, removed municipality-scoped active-alert wording, added headline/status-hero coverage, extracted Step 3 render sections to satisfy changed-code Fallow, and re-ran `pnpm exec fallow audit --base main --gate new-only` with zero introduced complexity/duplication. Final gates: `pnpm --dir apps/citizen-pwa exec vitest run` passed 75 files / 515 tests, `pnpm --dir apps/citizen-pwa exec tsc --noEmit` passed, `pnpm --dir apps/citizen-pwa exec eslint src` passed, and `git diff --check` passed.
 
 ## 2026-06-12 - Phase 3B Experience-Layer Slices (3B-09/10/11)
 
@@ -573,3 +626,22 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Mapped `functions/unavailable`/network-shaped lookup failures to the same offline retry copy while preserving the existing invalid-code message for `not-found` and `permission-denied`.
 - Reused `useOnlineStatus()` through a test mock so the lookup test does not run the `/__/firebase.json` connectivity probe.
 - Verification: red-first `LookupScreen` test failed on the missing offline alert, then passed 9/9 after implementation, including callable-unavailable coverage. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-13 - Phase 3B-07 PWA Install Prompt Surfacing
+
+- Added a Citizen PWA `useInstallPrompt` hook that captures `beforeinstallprompt`, exposes Chromium/iOS install state, hides while standalone, and persists one dismissal per surface.
+- Surfaced a non-blocking onboarding install panel with a real Chromium prompt action and a short iOS Home Screen instruction; post-submit `RevealSheet` wiring remains the explicit follow-up because the slice file caps this work at three files.
+- Verification: red-first `useInstallPrompt` test failed on the missing hook, then passed 3/3 after implementation. Focused `useInstallPrompt` + `Onboarding` tests passed 5/5. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-13 - Phase 3B-08 Withdrawal Success Confirmation
+
+- Updated successful Citizen PWA withdrawal feedback to say `Your report was withdrawn and is no longer active.` from both the Map report-detail flow and Profile report-list flow.
+- Kept withdrawal semantics unchanged: no backend/callable changes, no undo flow, no DeleteSheet redesign, and failure handling still uses the existing retryable error toast.
+- Verification: red-first `delete-flow.test.tsx` failed on the old `Report withdrawn` toast, then passed 2/2 after implementation. `ProfileTab.test.tsx` passed 7/7. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-13 - Phase 3D Responder Safety Warnings
+
+- Verified the existing 3D-01 responder push permission banner implementation: denied permission shows browser-settings guidance, default permission exposes the enable-notifications retry path, and the focused banner test passed 2/2.
+- Added the 3D-02 Profile page off-duty/unavailable/on-break advisory derived from the same UI availability state as the segmented control. The notice uses `role="status"` and disappears when the responder is available.
+- Kept the slice UI-only: no backend semantics changes, no new listeners, no deploy, and no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+- Verification: red-first `ProfilePage.test.tsx` failed on the missing `role="status"` warning, then passed 15/15 after implementation. `pnpm --dir apps/responder-app exec tsc --noEmit`, `pnpm --dir apps/responder-app exec eslint src`, and `git diff --check` passed.

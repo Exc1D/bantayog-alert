@@ -35,7 +35,11 @@ export function useMapTab(mapElRef: React.RefObject<HTMLDivElement | null>) {
     loading: incidentsLoading,
     error: incidentsError,
   } = usePublicIncidents(filters)
-  const { reports: myReports, loading: myReportsLoading } = useMyActiveReports()
+  const {
+    reports: myReports,
+    loading: myReportsLoading,
+    error: myReportsError,
+  } = useMyActiveReports()
   const { toast } = useToast()
 
   /* ── Map lifecycle ──────────────────────────────────────── */
@@ -147,7 +151,7 @@ export function useMapTab(mapElRef: React.RefObject<HTMLDivElement | null>) {
         if (reportId) {
           try {
             await cancelReport(reportId)
-            toast('Report withdrawn', 'success')
+            toast('Your report was withdrawn and is no longer active.', 'success')
           } catch {
             toast('Failed to withdraw report', 'error')
             return
@@ -234,6 +238,7 @@ export function useMapTab(mapElRef: React.RefObject<HTMLDivElement | null>) {
     incidentsLoading,
     incidentsError,
     myReportsLoading,
+    myReportsError,
     showEmpty,
     showFilterHint,
     handleRecenter,

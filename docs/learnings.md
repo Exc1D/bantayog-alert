@@ -77,6 +77,7 @@
 - Canvas `toBlob('image/jpeg', quality)` is the reliable cross-browser compression path.
 - `React.lazy()` components fail offline. Eager-import offline states.
 - Citizen report history has four visible states: loading, genuinely empty, stale-but-visible, and failed. If Firestore and callable lookup both fail, surface the failure with retry and keep cached rows visible instead of falling through to "No reports yet."
+- Citizen map interpretive copy must be truth-gated. Hide situational headlines while alert, incident, own-report, offline, or error states are unresolved so "calm" never means "still loading" or "failed to refresh."
 
 ## Dispatch / Responder / Monitor
 
@@ -115,6 +116,10 @@
 - Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; avoid `waitFor` under fake timers unless the test advances timers; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
 - React hooks must be called in the exact same order on every render. An early return before a `useState`/`useEffect` causes "Rendered fewer hooks than expected" in React 19. Move guards after all hooks; use derived `if` after the hook block.
 - `apps/admin-desktop/src/app/firebase.ts` runs `export const auth = getAuth(firebaseApp)` eagerly at module load, so it throws `auth/invalid-api-key` in the test env (no `VITE_FIREBASE_API_KEY`). Any admin-desktop test that imports `../app/firebase` — directly or transitively, e.g. through `CommandHeader` → `EditHotlineModal` → `db` — crashes at import unless it `vi.mock('../app/firebase', () => ({ db: {} }))`. The six full-suite files that fail this way (`MapPage`, `MapPage.ux-completeness`, `dashboard-firestore-wiring`, `dashboard-redispatch`, `map-firestore-wiring`, `services/callables`) are pre-existing failures, not regressions; prove it with a stash-based baseline run before chasing it.
+- Retry affordances for commands launched inside focus-trapped dialogs must remain inside that dialog's focus trap; do not put retry controls in an external banner while the dialog stays open.
+- Bulk command error banners must clear prior single-command retry state before rendering, otherwise a stale retry button can replay an unrelated command.
+- Treat permission-denied listener errors as the same user-facing state across spelling variants (`unauthorized`, `permission-denied`, `permission_denied`, `denied`) so operators do not see raw error text or retry controls.
+- Use narrow `// fallow-ignore-next-line complexity` directives only as a last resort for inherited page-scale complexity after targeted extraction; keep the gate focused on new duplication/complexity.
 
 ## React / TypeScript
 
@@ -122,6 +127,7 @@
 - Admin dispatch monitors must include responder field progress statuses (`acknowledged`, `en_route`, `on_scene`) in lifecycle reads; otherwise operators see pending/escalation state but miss live responder movement.
 - Per-municipality hotline edits go through an Admin SDK callable (`updateMunicipalityContact`), not Firestore rules: the SDK bypasses rules, so the `municipal_admin` (own-municipality) / `provincial_superadmin` (any) gate lives in the callable and **zero `firestore.rules` changes** are needed. Config sets are last-write-wins, so no `idempotencyKey`. Audit via `streamAuditEvent({ eventType: 'municipality_contact_updated' })`, not `moderation_incidents` (that is content-moderation semantics).
 - For a modal that prefills from a one-shot `getDoc` keyed on a selection, put the fetch in a **keyed child** (`<Editor key={selectedId} />`) whose single effect writes state only inside `.then`/`.catch`. This satisfies `react-hooks/set-state-in-effect` (which flags synchronous effect-body `setState`, not async-callback writes) and resets cleanly on selection change without a parent `useEffect` clearing several `useState`s.
+- Admin dispatch SLA displays must use the backend's canonical `acknowledgementDeadlineAt`; mapping only `deadlineAt` drops live deadline visibility because dispatch Functions do not write that alias.
 - Narrow role claims with `typeof` before subscribing. On unauthorized state, set an error and return early.
 - Async auth/state gates need active flags and uid checks in both success and failure paths.
 - Avoid object/array references in effect dependencies. Derive stable primitive keys.
@@ -186,6 +192,7 @@
 - Keep Fallow focused on source-of-truth files: ignore generated `functions/lib` and declaration-only `lib` outputs when package entry points use `src`, but fix live source/test imports and delete retired scripts instead of suppressing them.
 - When Fallow flags near-identical Playwright audit specs, keep the variant with authentication/setup hardening and delete the weaker duplicate instead of extracting a shared helper around stale coverage.
 - For Fallow health cleanup, prefer extracting named render sections and hooks over adding suppressions; then use `fallow audit --base HEAD` to make sure touched files did not retain new complexity findings.
+- PR #208 follow-up: when changed-code Fallow flags newly introduced render complexity, split the render tree into small same-file components and re-run `fallow audit --base main --gate new-only` until `introducedComplexity` and `introducedDuplication` are both zero.
 - Fallow in CI must be a changed-code regression gate (`audit --gate new-only` on PRs), never a full-repo `--fail-on-issues` gate: inherited duplication/complexity debt would fail every PR for debt it did not add. The official `fallow-rs/fallow@v2` action needs `fetch-depth: 0` to diff against the PR base ref.
 - Fallow treats ~930 files in this repo as plugin-derived entry points (962 total in audit vs 77 from `fallow list --entry-points`), so unused-export detection inside app `src/` is effectively disabled — probed exports trace as `is_entry_point: true`. Do not read `dead-code: 0` as proof of no unused exports; the audit gate still catches introduced complexity, duplication, dependency, and circular-dependency findings.
 - Canonical province geography belongs with `@bantayog/shared-validators` municipality constants. Do not recreate app-local barangay arrays or revive `shared-sms-parser` for non-SMS data sharing.
@@ -203,8 +210,10 @@
 - Avoid collection-time `itif(available)` for emulator-guarded Vitest files when `available` is set in `beforeAll`; it registers real tests as skipped before the guard runs. Register `it(...)` normally and call the test-context `skip(...)` inside the body after checking the initialized env.
 - Dispatch command idempotency tests should count `dispatch_events` by `type` when a command intentionally writes multiple event records. A total collection count can hide stale assumptions once emulator-guarded tests start executing for real.
 - Dispatch notification side effects belong inside the `withIdempotency` operation result. If they run after a cached result returns, replayed commands can double-send push notifications and duplicate `notification_attempted` events.
+- Phase 3 exit proof should assert notification evidence by event `type` and prove the browser-visible loop through live routes, not by total collection size or unit-only copy checks. That keeps the proof honest when new notification states land.
 - Dispatch assignment tests that seed reports without explicit severity get `severityDerived: medium`, which maps to a 15-minute acknowledgement deadline. Use explicit `high` or `critical` severity when asserting the 5-minute SLA.
 - Domain cores exercised through `@firebase/rules-unit-testing` use a client Firestore object even when cast to Admin types. Prefer concrete transaction updates over Admin `FieldValue` transforms in these cores when the value is already available from the transaction snapshot.
 - Fresh worktrees can install dependencies but still lack package `lib/*.map` outputs. Build the workspace package that Vitest imports, such as `packages/shared-validators`, before treating source-map warnings as unrelated noise.
 - Function tests import `@bantayog/shared-validators` through package exports (`lib/index.js`), not live `src`; after adding validator exports, rebuild the package before running emulator tests or the new schema can be `undefined` at runtime.
 - A focused emulator run can still report success while executing zero tests if a legacy file uses collection-time `itif(available)`. Convert those files to runtime `skip(...)` before trusting red/green results.
+- Callable retry wrappers must generate idempotency keys before entering `withRetry`; generating inside the retry closure gives each attempt a fresh key and can defeat idempotency.

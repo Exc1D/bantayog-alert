@@ -18,6 +18,10 @@ const profileState = vi.hoisted(() => ({
 const mockSignOut = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const mockSetAvailability = vi.hoisted(() => vi.fn())
 const mockGetDoc = vi.hoisted(() => vi.fn())
+type AvailabilityMockStatus = 'available' | 'unavailable' | 'off_duty' | 'on_break' | null
+const availabilityState: { status: AvailabilityMockStatus } = vi.hoisted(() => ({
+  status: 'available',
+}))
 
 const historyState = vi.hoisted(() => ({
   history: [] as {
@@ -54,7 +58,7 @@ vi.mock('../hooks/useResponderProfile', () => ({
 
 vi.mock('../hooks/useResponderAvailability', () => ({
   useResponderAvailability: () => ({
-    status: 'available',
+    status: availabilityState.status,
     setAvailability: mockSetAvailability,
     writeError: null,
   }),
@@ -84,6 +88,7 @@ describe('ProfilePage', () => {
       data: () => ({}),
     })
     historyState.history = []
+    availabilityState.status = 'available'
   })
 
   it('falls back to auth.currentUser.displayName when responders/{uid}.displayName is missing', () => {
@@ -150,6 +155,62 @@ describe('ProfilePage', () => {
 
     expect(mockSetAvailability).toHaveBeenCalledWith('available')
     expect(screen.getByText(/status updated/i)).toBeInTheDocument()
+  })
+
+  it('shows the dispatch warning from UI availability when off duty', () => {
+    availabilityState.status = 'off_duty'
+    profileState.profile = { responderType: 'fire' }
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent(/while off duty/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/will not receive dispatches/i)
+  })
+
+  it('shows the dispatch warning from UI availability when on break', () => {
+    availabilityState.status = 'on_break'
+    profileState.profile = { responderType: 'fire' }
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent(/while on break/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/will not receive dispatches/i)
+  })
+
+  it('shows the dispatch warning from UI availability when unavailable', async () => {
+    profileState.profile = { responderType: 'fire' }
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /unavailable/i }))
+
+    expect(screen.getByRole('status')).toHaveTextContent(/while unavailable/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/will not receive dispatches/i)
+  })
+
+  it('hides the dispatch warning when UI availability is available', () => {
+    profileState.profile = { responderType: 'fire' }
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText(/will not receive dispatches/i)).not.toBeInTheDocument()
   })
 
   it('calls signOut when the sign-out button is clicked after confirmation', async () => {

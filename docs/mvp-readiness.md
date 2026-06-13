@@ -24,6 +24,7 @@ It is **not** suitable for production deployment, real citizen-facing emergency 
 - **Firebase rules tests** — Firestore, RTDB, and Storage rules covered with emulator-backed tests.
 - **MVP loop proof** — Backend-only deterministic test (`pnpm proof:mvp-loop`) that exercises full lifecycle.
 - **Full browser proof** — Playwright E2E (`pnpm proof:local`) that runs citizen → admin → responder loop across all three apps.
+- **Phase 3 browser rerun** — The `proof:local` rerun now covers the lookup success landing, admin new-report signal, responder push-warning banner, and dispatch SLA chip. The exit audit rerun did not surface new P0/P1 gaps in the core loop.
 - **Staging seed/reset scripts exist** — `pnpm staging:seed`, `pnpm staging:reset`, `pnpm staging:smoke-proof`, and `pnpm staging:e2e-proof` target the real staging project (`bantayog-alert-staging`). These scripts verify project access, auth users, Cloud Run deployments, and seed data presence. Full end-to-end callable lifecycle proof through deployed HTTPS endpoints is pending client SDK + App Check setup.
 
 ## What Is Not Included (Intentionally Deferred)

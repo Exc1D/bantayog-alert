@@ -18,6 +18,18 @@ vi.mock('../lib/store.js', () => ({
   ) => sel({ hasCompletedOnboarding: false, setHasCompletedOnboarding: setDoneSpy }),
 }))
 
+const promptInstallSpy = vi.hoisted(() => vi.fn())
+const dismissInstallPromptSpy = vi.hoisted(() => vi.fn())
+vi.mock('../hooks/useInstallPrompt.js', () => ({
+  useInstallPrompt: () => ({
+    canInstall: true,
+    platform: 'chromium',
+    promptInstall: promptInstallSpy,
+    dismissInstallPrompt: dismissInstallPromptSpy,
+    isInstalled: false,
+  }),
+}))
+
 async function renderOnboarding() {
   const { Onboarding } = await import('./Onboarding.js')
   return render(
@@ -28,6 +40,11 @@ async function renderOnboarding() {
 }
 
 describe('Onboarding', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    promptInstallSpy.mockResolvedValue(undefined)
+  })
+
   it('renders step 0 — Welcome', async () => {
     await renderOnboarding()
     expect(screen.getByText(/welcome to bantayog/i)).toBeInTheDocument()
@@ -42,5 +59,23 @@ describe('Onboarding', () => {
     fireEvent.click(screen.getByRole('button', { name: /start reporting/i }))
     expect(setDoneSpy).toHaveBeenCalledWith(true)
     expect(navigateSpy).toHaveBeenCalledWith('/', { replace: true })
+  })
+
+  it('renders install prompt panel on step 1 and buttons call handlers', async () => {
+    await renderOnboarding()
+
+    // Advance to step 1
+    fireEvent.click(screen.getByRole('button', { name: /get started/i }))
+
+    // Install panel should be visible
+    expect(screen.getByText(/install bantayog for faster access/i)).toBeInTheDocument()
+
+    // Click Install button
+    fireEvent.click(screen.getByRole('button', { name: /install/i }))
+    expect(promptInstallSpy).toHaveBeenCalledOnce()
+
+    // Click Not now button
+    fireEvent.click(screen.getByRole('button', { name: /not now/i }))
+    expect(dismissInstallPromptSpy).toHaveBeenCalledOnce()
   })
 })

@@ -3,11 +3,14 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────
-const { mockCancelReport, mockDeleteReport, mockToast } = vi.hoisted(() => ({
-  mockCancelReport: vi.fn().mockResolvedValue(undefined),
-  mockDeleteReport: vi.fn().mockResolvedValue(undefined),
-  mockToast: vi.fn(),
-}))
+const { mockCancelReport, mockDeleteReport, mockToast, mockUseAlerts, mockMyReportsError } =
+  vi.hoisted(() => ({
+    mockCancelReport: vi.fn().mockResolvedValue(undefined),
+    mockDeleteReport: vi.fn().mockResolvedValue(undefined),
+    mockToast: vi.fn(),
+    mockUseAlerts: vi.fn(),
+    mockMyReportsError: vi.fn(),
+  }))
 
 // ── Mutable mock data ─────────────────────────────────────────────
 let mockReports: {
@@ -74,7 +77,15 @@ vi.mock('../../hooks/usePublicIncidents.js', () => ({
 }))
 
 vi.mock('../../hooks/useMyActiveReports.js', () => ({
-  useMyActiveReports: () => ({ reports: mockReports, loading: false }),
+  useMyActiveReports: () => ({
+    reports: mockReports,
+    loading: false,
+    error: mockMyReportsError(),
+  }),
+}))
+
+vi.mock('../../hooks/useAlerts.js', () => ({
+  useAlerts: () => mockUseAlerts(),
 }))
 
 vi.mock('../../services/callables.js', () => ({
@@ -111,6 +122,8 @@ describe('Citizen Delete Report Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     document.body.innerHTML = ''
+    mockUseAlerts.mockReturnValue({ alerts: [], loading: false, error: null })
+    mockMyReportsError.mockReturnValue(null)
     // Reset to default unverified report
     mockReports = [
       {
@@ -184,7 +197,10 @@ describe('Citizen Delete Report Flow', () => {
       expect(mockCancelReport).toHaveBeenCalledWith('report-id-123')
       expect(mockDeleteReport).toHaveBeenCalledWith('FL-2024-001')
     })
-    expect(mockToast).toHaveBeenCalledWith('Report withdrawn', 'success')
+    expect(mockToast).toHaveBeenCalledWith(
+      'Your report was withdrawn and is no longer active.',
+      'success',
+    )
 
     // ── Step 7: Sheet closes ──────────────────────────────────────
     await waitFor(() => {
@@ -234,5 +250,45 @@ describe('Citizen Delete Report Flow', () => {
       expect(screen.getByRole('button', { name: /Track/i })).toBeInTheDocument()
     })
     expect(screen.queryByRole('button', { name: /Withdraw/i })).not.toBeInTheDocument()
+  })
+
+  it('shows a calm situational headline when map data is settled', () => {
+    mockReports = []
+
+    render(
+      <MemoryRouter>
+        <MapTab />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Daet is calm. No active alerts.')).toBeInTheDocument()
+  })
+
+  it('hides the situational headline while alerts are loading', () => {
+    mockReports = []
+    mockUseAlerts.mockReturnValue({ alerts: [], loading: true, error: null })
+
+    render(
+      <MemoryRouter>
+        <MapTab />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText(/is calm/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/active alerts/i)).not.toBeInTheDocument()
+  })
+
+  it('hides the situational headline when own reports fail to load', () => {
+    mockReports = []
+    mockMyReportsError.mockReturnValue("We can't load your reports right now")
+
+    render(
+      <MemoryRouter>
+        <MapTab />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText(/is calm/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/active alerts/i)).not.toBeInTheDocument()
   })
 })

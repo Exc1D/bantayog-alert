@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue } from 'framer-motion'
-import { AlertTriangle, Send, ShieldCheck, ArrowRight } from 'lucide-react'
+import { AlertTriangle, Send, ShieldCheck, ArrowRight, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useInstallPrompt } from '../hooks/useInstallPrompt.js'
 import { useUIStore } from '../lib/store.js'
 
 const EASE_SMOOTH: [number, number, number, number] = [0.4, 0, 0.2, 1]
@@ -116,7 +117,64 @@ function StepHowItWorks() {
           </motion.div>
         ))}
       </div>
+
+      <InstallPromptPanel />
     </div>
+  )
+}
+
+function InstallPromptPanel() {
+  const { canInstall, dismissInstallPrompt, platform, promptInstall } = useInstallPrompt({
+    surface: 'onboarding',
+  })
+
+  if (!canInstall) return null
+
+  const isIos = platform === 'ios'
+
+  return (
+    <motion.div
+      className="rounded-2xl border border-brand-500/20 bg-white p-4 shadow-sm"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE_SMOOTH }}
+    >
+      <div className="flex items-start gap-3">
+        <div className="h-10 w-10 rounded-full bg-brand-500/10 text-brand-600 flex items-center justify-center flex-shrink-0">
+          <Download size={18} />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-surface-900">
+            {isIos ? 'Add Bantayog to your Home Screen' : 'Install Bantayog for faster access'}
+          </h3>
+          <p className="text-xs text-surface-600 mt-1 leading-relaxed">
+            {isIos
+              ? 'Tap Share in Safari, then choose Add to Home Screen.'
+              : 'Open from your home screen and keep emergency reporting close.'}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-2">
+        {!isIos && (
+          <button
+            type="button"
+            onClick={() => void promptInstall()}
+            className="h-10 px-4 rounded-lg bg-brand-500 text-white text-sm font-semibold flex items-center justify-center gap-2"
+            aria-label="Install Bantayog app"
+          >
+            <Download size={16} />
+            Install
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={dismissInstallPrompt}
+          className="h-10 px-3 rounded-lg text-sm font-semibold text-surface-600"
+        >
+          {isIos ? 'Got it' : 'Not now'}
+        </button>
+      </div>
+    </motion.div>
   )
 }
 
