@@ -610,3 +610,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Updated successful Citizen PWA withdrawal feedback to say `Your report was withdrawn and is no longer active.` from both the Map report-detail flow and Profile report-list flow.
 - Kept withdrawal semantics unchanged: no backend/callable changes, no undo flow, no DeleteSheet redesign, and failure handling still uses the existing retryable error toast.
 - Verification: red-first `delete-flow.test.tsx` failed on the old `Report withdrawn` toast, then passed 2/2 after implementation. `ProfileTab.test.tsx` passed 7/7. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-13 - Phase 3D Responder Safety Warnings
+
+- Verified the existing 3D-01 responder push permission banner implementation: denied permission shows browser-settings guidance, default permission exposes the enable-notifications retry path, and the focused banner test passed 2/2.
+- Added the 3D-02 Profile-page off-duty/unavailable advisory derived from the same UI availability state as the segmented control. The notice uses `role="status"` and disappears when the responder is available.
+- Kept the slice UI-only: no backend semantics changes, no new listeners, no deploy, and no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+- Verification: red-first `ProfilePage.test.tsx` failed on the missing `role="status"` warning, then passed 14/14 after implementation. `pnpm --dir apps/responder-app exec tsc --noEmit`, `pnpm --dir apps/responder-app exec eslint src`, and `git diff --check` passed.

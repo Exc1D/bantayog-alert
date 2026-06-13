@@ -68,6 +68,16 @@ function getReasonOptions(status: SettableStatus): string[] {
   return status === 'unavailable' ? UNAVAILABLE_REASONS : OFF_DUTY_REASONS
 }
 
+function getDispatchAvailabilityWarning(status: SettableStatus): string | null {
+  if (status === 'off_duty') {
+    return 'While off duty, you will not receive dispatches. Set yourself available when your shift resumes.'
+  }
+  if (status === 'unavailable') {
+    return 'While unavailable, you will not receive dispatches. Set yourself available when you can take assignments.'
+  }
+  return null
+}
+
 function getStatusDotClass(status: ResponderAvailabilityStatus | null): string | undefined {
   if (status === 'available') return styles.dotGreen
   if (status === 'unavailable') return styles.dotAmber
@@ -212,6 +222,7 @@ function AvailabilityPanel({
   onApplyStatus: () => void
 }) {
   const showReason = selectedStatus !== 'available'
+  const dispatchWarning = getDispatchAvailabilityWarning(selectedStatus)
 
   return (
     <div className={styles.availabilityPanel}>
@@ -244,6 +255,11 @@ function AvailabilityPanel({
           )
         })}
       </div>
+      {dispatchWarning !== null && (
+        <p role="status" className={styles.emptyState}>
+          <span className={styles.emptyStateHint}>{dispatchWarning}</span>
+        </p>
+      )}
       {showReason && (
         <select
           className={styles.reasonInput}
