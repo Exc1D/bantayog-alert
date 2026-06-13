@@ -12,7 +12,7 @@ interface Props {
   isLoading: boolean
   errorMessage?: string | null
   onRetry?: () => void
-  retrying?: boolean
+  isRetrying?: boolean
 }
 
 export function ReDispatchModal({
@@ -24,7 +24,7 @@ export function ReDispatchModal({
   isLoading,
   errorMessage,
   onRetry,
-  retrying = false,
+  isRetrying = false,
 }: Props) {
   const [selectedUid, setSelectedUid] = useState<string | null>(null)
   const [showForceDialog, setShowForceDialog] = useState(false)
@@ -183,12 +183,15 @@ export function ReDispatchModal({
           <button
             type="button"
             onClick={onRetry}
-            disabled={retrying}
-            aria-label={retrying ? 'Retrying command' : 'Retry command'}
+            disabled={isRetrying}
+            aria-label={isRetrying ? 'Retrying command' : 'Retry command'}
             className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded border border-[var(--color-danger)]/40 px-3 py-2 text-sm font-semibold text-[var(--color-danger)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
-            <RotateCw className={`h-4 w-4 ${retrying ? 'animate-spin' : ''}`} aria-hidden="true" />
-            {retrying ? 'Retrying re-dispatch' : 'Retry re-dispatch'}
+            <RotateCw
+              className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />
+            {isRetrying ? 'Retrying re-dispatch' : 'Retry re-dispatch'}
           </button>
         ) : null}
       </div>

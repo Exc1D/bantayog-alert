@@ -1,7 +1,9 @@
 const NON_RETRYABLE_MARKERS = [
   'permission-denied',
   'permission denied',
+  'permission_denied',
   'unauthorized',
+  'unauthenticated',
   'invalid-argument',
   'failed-precondition',
   'validation',

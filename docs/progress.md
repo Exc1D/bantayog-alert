@@ -5,9 +5,9 @@
 - Fixed the re-dispatch retry accessibility gap by moving failed re-dispatch error and retry controls inside `ReDispatchModal`, keeping the retry affordance inside the modal focus trap.
 - Cleared stale single-command retry state before failed bulk verify/reject flows so bulk error banners cannot replay an unrelated prior command.
 - Extracted shared `actionErrorMessage`, `errorCode`, and `isRetryableActionError` helpers into `apps/admin-desktop/src/utils/errorClassification.ts` to address duplicate helper logic.
-- Added red-first regression coverage for keyboard reachability after failed re-dispatch and stale retry-command isolation before failed bulk verify.
+- Added red-first regression coverage for keyboard reachability after failed re-dispatch, stale retry-command isolation before failed bulk verify/reject, non-retryable `unauthenticated` action errors, and normalized permission-denied listener variants.
 - Fallow still reports inherited duplication and complexity in touched legacy pages; applied narrow `// fallow-ignore-next-line complexity` directives only where the PR's changed-code gate would otherwise fail on existing page-scale complexity.
-- Verification: red-first focused tests failed before implementation, then `pnpm --dir apps/admin-desktop exec vitest run` passed 73 files / 553 tests; `pnpm exec fallow audit --base main --gate new-only` passed; `pnpm --dir apps/admin-desktop exec tsc --noEmit`, `pnpm --dir apps/admin-desktop exec eslint src`, and changed-file Prettier checks passed.
+- Verification: red-first focused tests failed before implementation, then `pnpm --dir apps/admin-desktop exec vitest run` passed 74 files / 562 tests; `pnpm exec fallow audit --base main --gate new-only` passed; `pnpm --dir apps/admin-desktop exec tsc --noEmit`, `pnpm --dir apps/admin-desktop exec eslint src`, changed-file Prettier checks, and `git diff --check` passed.
 
 ## 2026-06-13 - Pre-3D Audit + Phase 3C Dispatch Retry Closure
 

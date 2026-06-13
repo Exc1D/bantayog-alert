@@ -263,6 +263,7 @@ describe('TriagePage', () => {
     await waitFor(() => {
       expect(mockVerifyReport).toHaveBeenCalledTimes(2)
     })
+    expect(mockVerifyReport).toHaveBeenCalledTimes(2)
     expect(mockVerifyReport.mock.calls[1]?.[0]).toEqual(firstPayload)
     expect(await screen.findByText('Report sent to review')).toBeInTheDocument()
   })
@@ -286,6 +287,38 @@ describe('TriagePage', () => {
     expect(screen.queryByRole('button', { name: 'Retry command' })).not.toBeInTheDocument()
     expect(mockVerifyReport.mock.calls[1]?.[0]).toEqual(
       expect.objectContaining({ reportId: 'r-awaiting' }),
+    )
+  })
+
+  it('clears stale retry commands before failed bulk reject', async () => {
+    mockVerifyReport.mockRejectedValueOnce(new Error('Single network split'))
+    mockRejectReport.mockRejectedValueOnce(new Error('Bulk reject failed'))
+    mockReportDocs[2]!.status = 'awaiting_verify'
+    renderPage()
+
+    fireEvent.click(
+      within(screen.getByTestId('report-row-r-new')).getByRole('button', { name: 'Verify' }),
+    )
+    await screen.findByText('Single network split')
+    expect(screen.getByRole('button', { name: 'Retry command' })).toBeEnabled()
+
+    fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
+    fireEvent.click(screen.getByLabelText('Select report r-verified'))
+    fireEvent.click(screen.getByRole('button', { name: 'Reject Selected' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reject selected reports?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reject 2 reports' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Bulk reject completed with 1 error(s)')
+      expect(screen.getByRole('alert')).toHaveTextContent('Bulk reject failed')
+    })
+    expect(screen.queryByRole('button', { name: 'Retry command' })).not.toBeInTheDocument()
+    expect(mockRejectReport).toHaveBeenCalledWith(
+      expect.objectContaining({ reportId: 'r-awaiting' }),
+    )
+    expect(mockRejectReport).toHaveBeenCalledWith(
+      expect.objectContaining({ reportId: 'r-verified' }),
     )
   })
 
@@ -398,17 +431,20 @@ describe('TriagePage', () => {
     })
   })
 
-  it('shows a permission-denied state for unauthorized listener errors', () => {
-    mockListenerState.error = 'unauthorized'
+  it.each(['unauthorized', 'permission-denied', 'permission_denied', 'denied'])(
+    'shows a permission-denied state for %s listener errors',
+    (errorToken) => {
+      mockListenerState.error = errorToken
 
-    renderPage()
+      renderPage()
 
-    expect(
-      screen.getByRole('heading', { name: "You don't have access to this data" }),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/your role or area assignment may have changed/i)).toBeInTheDocument()
-    expect(screen.queryByText('unauthorized')).not.toBeInTheDocument()
-  })
+      expect(
+        screen.getByRole('heading', { name: "You don't have access to this data" }),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/your role or area assignment may have changed/i)).toBeInTheDocument()
+      expect(screen.queryByText(errorToken)).not.toBeInTheDocument()
+    },
+  )
 
   it('builds a CSV export for visible triage rows without private reporter fields', () => {
     const csv = buildTriageExportCsv([exportReport])

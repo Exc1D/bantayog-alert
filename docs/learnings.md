@@ -117,6 +117,7 @@
 - React hooks must be called in the exact same order on every render. An early return before a `useState`/`useEffect` causes "Rendered fewer hooks than expected" in React 19. Move guards after all hooks; use derived `if` after the hook block.
 - Retry affordances for commands launched inside focus-trapped dialogs must remain inside that dialog's focus trap; do not put retry controls in an external banner while the dialog stays open.
 - Bulk command error banners must clear prior single-command retry state before rendering, otherwise a stale retry button can replay an unrelated command.
+- Treat permission-denied listener errors as the same user-facing state across spelling variants (`unauthorized`, `permission-denied`, `permission_denied`, `denied`) so operators do not see raw error text or retry controls.
 - Use narrow `// fallow-ignore-next-line complexity` directives only as a last resort for inherited page-scale complexity after targeted extraction; keep the gate focused on new duplication/complexity.
 
 ## React / TypeScript

@@ -77,6 +77,10 @@ function isTriageReport(report: Report): boolean {
   return TRIAGE_STATUSES.has(report.status)
 }
 
+function isPermissionDeniedError(error: string | null): boolean {
+  return ['unauthorized', 'permission-denied', 'permission_denied', 'denied'].includes(error ?? '')
+}
+
 function sortTriageReports(a: Report, b: Report): number {
   const severityRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
   return (severityRank[a.severity] ?? 4) - (severityRank[b.severity] ?? 4)
@@ -258,7 +262,7 @@ export default function TriagePage() {
   const staleAgeMs = now - lastDataUpdateAt
   const isStale = staleAgeMs > 5 * 60 * 1000
   const staleMinutes = Math.round(staleAgeMs / 60000)
-  const isPermissionDenied = error === 'unauthorized'
+  const isPermissionDenied = isPermissionDeniedError(error)
 
   const setReportLoading = useCallback((reportId: string, isLoading: boolean) => {
     setLoadingIds((current) => {

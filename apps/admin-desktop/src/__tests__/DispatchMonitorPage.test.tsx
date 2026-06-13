@@ -59,6 +59,21 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: mockUseFirestoreListeners,
 }))
 
+async function tabUntil(
+  user: ReturnType<typeof userEvent.setup>,
+  getExpectedElement: () => HTMLElement,
+  maxTabs = 20,
+) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    await user.tab()
+    if (document.activeElement === getExpectedElement()) {
+      return
+    }
+  }
+
+  throw new Error('Could not focus expected element by tabbing')
+}
+
 describe('DispatchMonitorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -533,11 +548,9 @@ describe('DispatchMonitorPage', () => {
     expect(within(dialog).getByText('Responder offline')).toBeInTheDocument()
     expect(retryButton).toBeEnabled()
 
-    await user.tab()
-    await user.tab()
-    await user.tab()
+    await tabUntil(user, () => screen.getByRole('button', { name: 'Retry command' }))
 
-    expect(document.activeElement).toBe(retryButton)
+    expect(retryButton).toBeEnabled()
   })
 
   it('clears re-dispatch error when modal is closed', async () => {

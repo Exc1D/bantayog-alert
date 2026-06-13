@@ -760,15 +760,15 @@ export function DispatchMonitorPage() {
         responders={responders}
         previouslyNotified={previouslyNotified}
         isLoading={isDispatching}
-        errorMessage={dispatchError}
         {...(retryCommand?.kind === 'escalate'
           ? {
+              errorMessage: dispatchError,
               onRetry: () => {
                 void handleRetryAction()
               },
+              isRetrying: retryingAction,
             }
           : {})}
-        retrying={retryingAction}
       />
 
       <HelpModal
