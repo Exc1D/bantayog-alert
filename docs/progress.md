@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-06-13 - Phase 3B Citizen Experience Completion (3B-09/10/11)
+
+- Implemented 3B-09 own-report status hero in the Map detail sheet: citizens now see plain-language lifecycle copy, next-step guidance, and update timing instead of raw status enums.
+- Implemented 3B-10 report readiness guidance on the review step from a pure helper. The card stays factual, non-blocking, and safety-aware: it calls out missing location, optional description, photo-only-if-safe, and urgent-help context without adding scores or pressure mechanics.
+- Implemented 3B-11 map situational headline from existing alert, incident, and own-report listeners. It suppresses itself while data is loading, errored, or offline, shows calm/incident/alert copy only from settled data, and routes active-alert headlines to `/alerts`.
+- Kept the slice frontend-only: no backend, rules, indexes, schema/migration files, dependencies, or deploy config changed.
+- Verification: red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/MapTab/DetailSheet.test.tsx` failed on the missing status hero, then passed; red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/SubmitReportForm` failed on the missing readiness module/card, then passed 33 tests; red-first `pnpm --dir apps/citizen-pwa exec vitest run src/components/MapTab/situational-headline.test.ts src/components/MapTab/delete-flow.test.tsx` failed on the missing headline helper/rendering, then passed 7 tests. Final gates: `pnpm --dir apps/citizen-pwa exec vitest run` passed 75 files / 493 tests, `pnpm --dir apps/citizen-pwa exec tsc --noEmit` passed, and `pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
 ## 2026-06-12 - Phase 3B Experience-Layer Slices (3B-09/10/11)
 
 - Reviewed the "experiences, not screens" Citizen PWA proposal against the shipped code: receipt UX (`RevealSheet`), citizen-safe timeline (`buildTrackingTimeline`), offline reassurance, advisory surface, and hotline disclaimers already exist, so they got no new slices.
