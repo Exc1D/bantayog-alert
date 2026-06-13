@@ -147,7 +147,7 @@ export function useMapTab(mapElRef: React.RefObject<HTMLDivElement | null>) {
         if (reportId) {
           try {
             await cancelReport(reportId)
-            toast('Report withdrawn', 'success')
+            toast('Your report was withdrawn and is no longer active.', 'success')
           } catch {
             toast('Failed to withdraw report', 'error')
             return

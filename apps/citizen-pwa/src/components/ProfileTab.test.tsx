@@ -1,12 +1,21 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import '@testing-library/jest-dom/vitest'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
-const { mockOnAuthStateChanged, mockUseMyActiveReports } = vi.hoisted(() => ({
+const {
+  mockOnAuthStateChanged,
+  mockUseMyActiveReports,
+  mockCancelReport,
+  mockDeleteReport,
+  mockToast,
+} = vi.hoisted(() => ({
   mockOnAuthStateChanged: vi.fn(),
   mockUseMyActiveReports: vi.fn(),
+  mockCancelReport: vi.fn().mockResolvedValue(undefined),
+  mockDeleteReport: vi.fn().mockResolvedValue(undefined),
+  mockToast: vi.fn(),
 }))
 
 vi.mock('firebase/auth', () => ({
@@ -24,15 +33,15 @@ vi.mock('../hooks/useMyActiveReports.js', () => ({
 }))
 
 vi.mock('../services/callables.js', () => ({
-  cancelReport: vi.fn().mockResolvedValue(undefined),
+  cancelReport: (...args: unknown[]) => mockCancelReport(...args),
 }))
 
 vi.mock('../services/localForageReports.js', () => ({
-  deleteReport: vi.fn().mockResolvedValue(undefined),
+  deleteReport: (...args: unknown[]) => mockDeleteReport(...args),
 }))
 
 vi.mock('../hooks/useToast.js', () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: mockToast }),
 }))
 
 vi.mock('./DeleteAccountFlow.js', () => ({
@@ -135,6 +144,54 @@ describe('ProfileTab', () => {
     renderProfileTab()
 
     expect(screen.getByRole('button', { name: /withdraw report ref-1/i })).toBeInTheDocument()
+  })
+
+  it('shows success toast when withdrawing a report from the profile tab', async () => {
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
+      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
+      return () => {}
+    })
+    mockUseMyActiveReports.mockReturnValue({
+      loading: false,
+      reports: [
+        {
+          publicRef: 'ref-1',
+          reportType: 'flood',
+          severity: 'medium',
+          lat: 14.1,
+          lng: 122.9,
+          submittedAt: 1713350400000,
+          status: 'awaiting_verify',
+          id: 'report-1',
+        },
+      ],
+    })
+
+    renderProfileTab()
+
+    // Click the withdraw button
+    const withdrawBtn = screen.getByRole('button', { name: /withdraw report ref-1/i })
+    fireEvent.click(withdrawBtn)
+
+    // Wait for DeleteSheet to appear and click confirm
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    })
+    const confirmBtn = screen.getByRole('button', { name: 'Withdraw Report' })
+    await act(async () => {
+      fireEvent.click(confirmBtn)
+      await Promise.resolve()
+    })
+
+    // Verify backend called and toast shown
+    await waitFor(() => {
+      expect(mockCancelReport).toHaveBeenCalledWith('report-1')
+      expect(mockDeleteReport).toHaveBeenCalledWith('ref-1')
+    })
+    expect(mockToast).toHaveBeenCalledWith(
+      'Your report was withdrawn and is no longer active.',
+      'success',
+    )
   })
 
   it('shows impact path progress from real report statuses', () => {

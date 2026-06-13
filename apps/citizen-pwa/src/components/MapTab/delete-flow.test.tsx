@@ -184,7 +184,10 @@ describe('Citizen Delete Report Flow', () => {
       expect(mockCancelReport).toHaveBeenCalledWith('report-id-123')
       expect(mockDeleteReport).toHaveBeenCalledWith('FL-2024-001')
     })
-    expect(mockToast).toHaveBeenCalledWith('Report withdrawn', 'success')
+    expect(mockToast).toHaveBeenCalledWith(
+      'Your report was withdrawn and is no longer active.',
+      'success',
+    )
 
     // ── Step 7: Sheet closes ──────────────────────────────────────
     await waitFor(() => {
