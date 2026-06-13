@@ -557,3 +557,9 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added a Citizen PWA `useInstallPrompt` hook that captures `beforeinstallprompt`, exposes Chromium/iOS install state, hides while standalone, and persists one dismissal per surface.
 - Surfaced a non-blocking onboarding install panel with a real Chromium prompt action and a short iOS Home Screen instruction; post-submit `RevealSheet` wiring remains the explicit follow-up because the slice file caps this work at three files.
 - Verification: red-first `useInstallPrompt` test failed on the missing hook, then passed 3/3 after implementation. Focused `useInstallPrompt` + `Onboarding` tests passed 5/5. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-13 - Phase 3B-08 Withdrawal Success Confirmation
+
+- Updated successful Citizen PWA withdrawal feedback to say `Your report was withdrawn and is no longer active.` from both the Map report-detail flow and Profile report-list flow.
+- Kept withdrawal semantics unchanged: no backend/callable changes, no undo flow, no DeleteSheet redesign, and failure handling still uses the existing retryable error toast.
+- Verification: red-first `delete-flow.test.tsx` failed on the old `Report withdrawn` toast, then passed 2/2 after implementation. `ProfileTab.test.tsx` passed 7/7. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.

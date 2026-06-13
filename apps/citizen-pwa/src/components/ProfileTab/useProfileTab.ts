@@ -114,7 +114,7 @@ export function useProfileTab(): ProfileTabState {
     if (report.id) {
       try {
         await cancelReport(report.id)
-        toast('Report withdrawn', 'success')
+        toast('Your report was withdrawn and is no longer active.', 'success')
       } catch {
         toast('Failed to withdraw report', 'error')
         return
