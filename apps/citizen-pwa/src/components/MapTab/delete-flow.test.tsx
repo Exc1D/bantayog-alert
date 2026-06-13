@@ -3,10 +3,11 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────
-const { mockCancelReport, mockDeleteReport, mockToast } = vi.hoisted(() => ({
+const { mockCancelReport, mockDeleteReport, mockToast, mockUseAlerts } = vi.hoisted(() => ({
   mockCancelReport: vi.fn().mockResolvedValue(undefined),
   mockDeleteReport: vi.fn().mockResolvedValue(undefined),
   mockToast: vi.fn(),
+  mockUseAlerts: vi.fn(),
 }))
 
 // ── Mutable mock data ─────────────────────────────────────────────
@@ -77,6 +78,10 @@ vi.mock('../../hooks/useMyActiveReports.js', () => ({
   useMyActiveReports: () => ({ reports: mockReports, loading: false }),
 }))
 
+vi.mock('../../hooks/useAlerts.js', () => ({
+  useAlerts: () => mockUseAlerts(),
+}))
+
 vi.mock('../../services/callables.js', () => ({
   cancelReport: (...args: unknown[]) => mockCancelReport(...args),
 }))
@@ -111,6 +116,7 @@ describe('Citizen Delete Report Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     document.body.innerHTML = ''
+    mockUseAlerts.mockReturnValue({ alerts: [], loading: false, error: null })
     // Reset to default unverified report
     mockReports = [
       {
@@ -237,5 +243,31 @@ describe('Citizen Delete Report Flow', () => {
       expect(screen.getByRole('button', { name: /Track/i })).toBeInTheDocument()
     })
     expect(screen.queryByRole('button', { name: /Withdraw/i })).not.toBeInTheDocument()
+  })
+
+  it('shows a calm situational headline when map data is settled', () => {
+    mockReports = []
+
+    render(
+      <MemoryRouter>
+        <MapTab />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Daet is calm. No active alerts.')).toBeInTheDocument()
+  })
+
+  it('hides the situational headline while alerts are loading', () => {
+    mockReports = []
+    mockUseAlerts.mockReturnValue({ alerts: [], loading: true, error: null })
+
+    render(
+      <MemoryRouter>
+        <MapTab />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText(/is calm/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/active alerts/i)).not.toBeInTheDocument()
   })
 })

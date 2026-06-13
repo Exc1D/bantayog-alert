@@ -9,8 +9,10 @@ import { IncidentLayer } from './IncidentLayer.js'
 import { MyReportLayer } from './MyReportLayer.js'
 import { WITHDRAWABLE_STATUSES } from '../ProfileTab.js'
 import { useMapTab } from './useMapTab.js'
+import { useAlerts } from '../../hooks/useAlerts.js'
 import type { PublicIncident, MyReport } from './types.js'
 import { LOOKUP_SUCCESS_MESSAGE } from '../LookupScreen.js'
+import { buildSituationalHeadline } from './situational-headline.js'
 
 const INCIDENT_LABELS: Record<string, string> = {
   flood: 'Flood',
@@ -96,6 +98,9 @@ export function MapTab() {
     myReports,
     selectedIncident,
     selectedMyReport,
+    incidentsLoading,
+    incidentsError,
+    myReportsLoading,
     showEmpty,
     showFilterHint,
     handleRecenter,
@@ -109,6 +114,7 @@ export function MapTab() {
     setSelectedPin,
     setSheetPhase,
   } = useMapTab(mapElRef)
+  const { alerts, loading: alertsLoading, error: alertsError } = useAlerts()
 
   const lookupMatchedReport = lookupReportRef
     ? (myReports.find((entry) => entry.publicRef === lookupReportRef) ?? null)
@@ -117,6 +123,25 @@ export function MapTab() {
   // Show banner as soon as we know a report was looked up or opened from a
   // notification tap, even if it is not yet in the local cache.
   const lookupSuccessMessage = lookupReportRef ? lookupMessage : null
+  const trimmedFilterMunicipality = filters.municipality.trim()
+  const headlinePlace =
+    trimmedFilterMunicipality.length > 0
+      ? trimmedFilterMunicipality
+      : (selectedIncident?.municipalityLabel ?? selectedMyReport?.municipalityLabel ?? 'Daet')
+  const situationalHeadline =
+    isOffline ||
+    alertsLoading ||
+    alertsError ||
+    incidentsLoading ||
+    incidentsError ||
+    myReportsLoading
+      ? null
+      : buildSituationalHeadline({
+          alertCount: alerts.length,
+          incidentCount: visibleIncidents.length + myReports.length,
+          municipalityLabel: headlinePlace,
+        })
+  const headlineTopClass = lookupSuccessMessage ? 'top-[8.25rem]' : 'top-[4.75rem]'
 
   // Auto-select and expand the looked-up report when it appears in myReports.
   useEffect(() => {
@@ -171,6 +196,26 @@ export function MapTab() {
           className="absolute left-3 right-3 top-[4.5rem] z-[850] rounded-xl border border-success-500/20 bg-white px-4 py-3 text-sm font-semibold text-success-600 shadow-lg"
         >
           {lookupSuccessMessage}
+        </div>
+      ) : null}
+
+      {situationalHeadline ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`pointer-events-none absolute left-4 right-4 ${headlineTopClass} z-[830] text-sm font-bold text-surface-900 [text-shadow:0_1px_0_rgba(255,255,255,0.9)]`}
+        >
+          {alerts.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => void navigate('/alerts')}
+              className="pointer-events-auto text-left underline decoration-surface-900/40 decoration-2 underline-offset-4"
+            >
+              {situationalHeadline}
+            </button>
+          ) : (
+            <span>{situationalHeadline}</span>
+          )}
         </div>
       ) : null}
 
