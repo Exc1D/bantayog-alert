@@ -66,6 +66,12 @@ export function useInstallPrompt({ surface }: UseInstallPromptOptions): UseInsta
   const [dismissed, setDismissed] = useState(() => readDismissed(surface))
 
   useEffect(() => {
+    const next = readDismissed(surface)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDismissed((prev) => (next !== prev ? next : prev))
+  }, [surface])
+
+  useEffect(() => {
     function handleBeforeInstallPrompt(event: Event) {
       event.preventDefault()
       const promptEvent = event as BeforeInstallPromptEvent
@@ -85,14 +91,36 @@ export function useInstallPrompt({ surface }: UseInstallPromptOptions): UseInsta
       setIsInstalled(isStandaloneDisplayMode())
     }
 
+    const hasAddEventListener = 'addEventListener' in displayModeQuery
+    const addListener = (event: string, handler: EventListener) => {
+      if (hasAddEventListener) {
+        displayModeQuery.addEventListener(event, handler)
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        ;(
+          displayModeQuery as MediaQueryList & { addListener: (handler: EventListener) => void }
+        ).addListener(handler)
+      }
+    }
+    const removeListener = (event: string, handler: EventListener) => {
+      if (hasAddEventListener) {
+        displayModeQuery.removeEventListener(event, handler)
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        ;(
+          displayModeQuery as MediaQueryList & { removeListener: (handler: EventListener) => void }
+        ).removeListener(handler)
+      }
+    }
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('appinstalled', handleAppInstalled)
-    displayModeQuery.addEventListener('change', handleDisplayModeChange)
+    addListener('change', handleDisplayModeChange)
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
-      displayModeQuery.removeEventListener('change', handleDisplayModeChange)
+      removeListener('change', handleDisplayModeChange)
     }
   }, [])
 
@@ -116,8 +144,10 @@ export function useInstallPrompt({ surface }: UseInstallPromptOptions): UseInsta
     try {
       await promptEvent.prompt()
       const choice = await promptEvent.userChoice
-      writeDismissed(surface)
-      setDismissed(true)
+      if (choice.outcome === 'dismissed') {
+        writeDismissed(surface)
+        setDismissed(true)
+      }
       return choice
     } catch (error) {
       console.warn('Install prompt failed.', error)
