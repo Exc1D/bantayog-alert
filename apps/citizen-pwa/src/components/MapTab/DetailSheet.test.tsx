@@ -146,7 +146,27 @@ describe('DetailSheet — myReport mode', () => {
     expect(screen.getByText('Verified')).toBeInTheDocument()
     expect(screen.getByText('Responder en route')).toBeInTheDocument()
     expect(screen.getByText('Resolution')).toBeInTheDocument()
-    expect(screen.getByText(/updated/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/updated/i).length).toBeGreaterThan(0)
+  })
+
+  it('leads en route reports with a human status hero', () => {
+    render(
+      <DetailSheet
+        sheetPhase="expanded"
+        onClose={vi.fn()}
+        onCollapse={vi.fn()}
+        mode="myReport"
+        report={{
+          ...myReportProps.report,
+          status: 'en_route',
+          lastStatusAt: Date.now() - 600000,
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Help is on the way' })).toBeInTheDocument()
+    expect(screen.getByText(/please stay safe and avoid the affected area/i)).toBeInTheDocument()
+    expect(screen.queryByText(/^Flood · en route$/)).not.toBeInTheDocument()
   })
 
   it('asks for resolved-report feedback and thanks the citizen after submit', async () => {
