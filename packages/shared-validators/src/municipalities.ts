@@ -1,5 +1,19 @@
 import { z } from 'zod'
 
+export const mdrrmoLabelSchema = z.string().trim().min(1).max(80)
+export const MDRRMO_HOTLINE_REGEX = /^[+\d(][\d\s\-()]{6,20}$/
+export const MIN_MDRRMO_HOTLINE_DIGITS = 7
+
+export function countHotlineDigits(value: string): number {
+  return value.replace(/\D/g, '').length
+}
+
+export const mdrrmoHotlineSchema = z
+  .string()
+  .trim()
+  .regex(MDRRMO_HOTLINE_REGEX)
+  .refine((value) => countHotlineDigits(value) >= MIN_MDRRMO_HOTLINE_DIGITS)
+
 export const municipalityDocSchema = z
   .object({
     id: z.string().min(1).max(32),
@@ -14,16 +28,22 @@ export const municipalityDocSchema = z
     // Per-jurisdiction MDRRMO contact info shown to citizens after submission.
     // Optional so legacy seed docs validate; consumers must fall back to a
     // project-wide default when absent.
-    mdrrmoLabel: z.string().min(1).max(80).optional(),
-    mdrrmoHotline: z
-      .string()
-      .regex(/^[+\d(][\d\s\-()]{6,20}$/)
-      .optional(),
+    mdrrmoLabel: mdrrmoLabelSchema.optional(),
+    mdrrmoHotline: mdrrmoHotlineSchema.optional(),
+    // Audit trail written by the updateMunicipalityContact callable.
+    contactUpdatedAt: z.number().int().positive().optional(),
+    contactUpdatedBy: z.string().min(1).max(128).optional(),
     schemaVersion: z.number().int().positive(),
   })
   .strict()
 
 export type MunicipalityDoc = z.infer<typeof municipalityDocSchema>
+export interface UpdateMunicipalityContactOutput {
+  municipalityId: string
+  mdrrmoLabel: string
+  mdrrmoHotline: string
+  updatedAt: number
+}
 
 // Seed constant for the Phase 3 pilot province.
 export const CAMARINES_NORTE_MUNICIPALITIES: readonly Omit<MunicipalityDoc, 'schemaVersion'>[] = [
@@ -102,3 +122,22 @@ export const CAMARINES_NORTE_MUNICIPALITIES: readonly Omit<MunicipalityDoc, 'sch
     centroid: { lat: 14.172, lng: 122.908 },
   },
 ]
+
+const MUNICIPALITY_ID_SET = new Set(CAMARINES_NORTE_MUNICIPALITIES.map((m) => m.id))
+
+/**
+ * Payload for the updateMunicipalityContact callable. Both fields are required:
+ * the edit form prefills both, and a label without a hotline is meaningless to
+ * the citizen-facing contact card. municipalityId must be a known jurisdiction.
+ */
+export const updateMunicipalityContactInputSchema = z
+  .object({
+    municipalityId: z.string().refine((id) => MUNICIPALITY_ID_SET.has(id), {
+      message: 'unknown municipality',
+    }),
+    mdrrmoLabel: mdrrmoLabelSchema,
+    mdrrmoHotline: mdrrmoHotlineSchema,
+  })
+  .strict()
+
+export type UpdateMunicipalityContactInput = z.infer<typeof updateMunicipalityContactInputSchema>

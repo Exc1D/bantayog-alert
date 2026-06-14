@@ -48,6 +48,7 @@ export const db = getFirestore(firebaseApp)
 export function getFirestoreInstance() {
   return db
 }
+// Keep eager SDK initialization explicit: tests that import this module must mock it.
 export const auth = getAuth(firebaseApp)
 export const functions = getFunctions(firebaseApp, 'asia-southeast1')
 export const rtdb = getDatabase(firebaseApp)

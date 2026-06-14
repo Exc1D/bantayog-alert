@@ -1,11 +1,19 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
+// fallow-ignore-next-line code-duplication
 import { Firestore, Timestamp, FieldPath } from 'firebase-admin/firestore'
+// fallow-ignore-next-line code-duplication
 import { z } from 'zod'
+// fallow-ignore-next-line code-duplication
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
-import { adminDb } from '../../admin-init.js'
+// fallow-ignore-next-line code-duplication
+import { adminAuth, adminDb } from '../../admin-init.js'
+// fallow-ignore-next-line code-duplication
 import { withIdempotency } from '../../idempotency/guard.js'
+// fallow-ignore-next-line code-duplication
 import { checkRateLimit } from '../shared/rate-limit.js'
+// fallow-ignore-next-line code-duplication
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
+// fallow-ignore-next-line code-duplication
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 const log = logDimension('responderRoster')
@@ -42,6 +50,51 @@ interface SuspendRevokeDeps {
   targetStatus: 'suspended' | 'revoked'
 }
 
+interface ResponderStatusDoc {
+  agencyId?: string
+  municipalityId?: string | null
+  mfaEnrolled?: boolean
+}
+
+function buildResponderStatusClaims(
+  responder: ResponderStatusDoc,
+  targetStatus: 'suspended' | 'revoked',
+  nowMillis: number,
+) {
+  const municipalityId =
+    typeof responder.municipalityId === 'string' && responder.municipalityId.length > 0
+      ? responder.municipalityId
+      : null
+
+  return {
+    role: 'responder' as const,
+    accountStatus: targetStatus,
+    ...(typeof responder.agencyId === 'string' && { agencyId: responder.agencyId }),
+    ...(municipalityId && { municipalityId }),
+    ...(municipalityId && { permittedMunicipalityIds: [municipalityId] }),
+    mfaEnrolled: responder.mfaEnrolled ?? false,
+    lastClaimIssuedAt: nowMillis,
+  }
+}
+
+async function syncResponderAuthStatus(
+  db: Firestore,
+  uid: string,
+  targetStatus: 'suspended' | 'revoked',
+  nowMillis: number,
+) {
+  const responderSnap = await db.collection('responders').doc(uid).get()
+  if (!responderSnap.exists) {
+    throw new BantayogError(BantayogErrorCode.NOT_FOUND, `Responder '${uid}' not found`)
+  }
+
+  await adminAuth.setCustomUserClaims(
+    uid,
+    buildResponderStatusClaims(responderSnap.data() as ResponderStatusDoc, targetStatus, nowMillis),
+  )
+  await adminAuth.revokeRefreshTokens(uid)
+}
+
 async function suspendOrRevokeResponderCore(
   db: Firestore,
   deps: SuspendRevokeDeps,
@@ -51,12 +104,13 @@ async function suspendOrRevokeResponderCore(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, targetStatus: _targetStatus, ...idempotentPayload } = deps
 
+  const nowMillis = now.toMillis()
   const { result } = await withIdempotency(
     db,
     {
       key: `${targetStatus}Responder:${actor.uid}:${idempotencyKey}`,
       payload: idempotentPayload,
-      now: () => now.toMillis(),
+      now: () => nowMillis,
     },
     async () => {
       const rl = await checkRateLimit(db, {
@@ -118,82 +172,62 @@ async function suspendOrRevokeResponderCore(
     },
   )
 
+  await syncResponderAuthStatus(db, uid, targetStatus, nowMillis)
+
   return result
 }
 
-export const suspendResponder = onCall(
-  {
-    region: 'asia-southeast1',
-    enforceAppCheck: shouldEnforceAppCheck(),
-    maxInstances: 10,
-    timeoutSeconds: 10,
-    minInstances: 1,
-  },
-  async (request: CallableRequest<unknown>) => {
-    const actor = requireAuth(request, ['agency_admin'])
+type ResponderStatusSchema = z.ZodType<{ uid: string; idempotencyKey: string }>
 
-    const actorClaims = actor.claims as { role: string; agencyId?: string; accountStatus?: string }
-    if (actorClaims.accountStatus !== 'active') {
-      throw new HttpsError('permission-denied', 'admin account not active')
-    }
+function createResponderStatusCallable(
+  schema: ResponderStatusSchema,
+  targetStatus: 'suspended' | 'revoked',
+) {
+  return onCall(
+    {
+      region: 'asia-southeast1',
+      enforceAppCheck: shouldEnforceAppCheck(),
+      maxInstances: 10,
+      timeoutSeconds: 10,
+      minInstances: 1,
+    },
+    async (request: CallableRequest<unknown>) => {
+      const actor = requireAuth(request, ['agency_admin'])
 
-    const parsed = suspendResponderSchema.safeParse(request.data)
-    if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
+      const actorClaims = actor.claims as {
+        role: string
+        agencyId?: string
+        accountStatus?: string
+      }
+      if (actorClaims.accountStatus !== 'active') {
+        throw new HttpsError('permission-denied', 'admin account not active')
+      }
 
-    try {
-      return await suspendOrRevokeResponderCore(adminDb, {
-        uid: parsed.data.uid,
-        idempotencyKey: parsed.data.idempotencyKey,
-        actor: {
-          uid: actor.uid,
-          claims: actorClaims,
-        },
-        now: Timestamp.now(),
-        targetStatus: 'suspended',
-      })
-    } catch (err: unknown) {
-      if (err instanceof BantayogError) throw bantayogErrorToHttps(err)
-      throw err
-    }
-  },
-)
+      const parsed = schema.safeParse(request.data)
+      if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 
-export const revokeResponder = onCall(
-  {
-    region: 'asia-southeast1',
-    enforceAppCheck: shouldEnforceAppCheck(),
-    maxInstances: 10,
-    timeoutSeconds: 10,
-    minInstances: 1,
-  },
-  async (request: CallableRequest<unknown>) => {
-    const actor = requireAuth(request, ['agency_admin'])
+      try {
+        return await suspendOrRevokeResponderCore(adminDb, {
+          uid: parsed.data.uid,
+          idempotencyKey: parsed.data.idempotencyKey,
+          actor: {
+            uid: actor.uid,
+            claims: actorClaims,
+          },
+          now: Timestamp.now(),
+          targetStatus,
+        })
+      } catch (err: unknown) {
+        if (err instanceof BantayogError) throw bantayogErrorToHttps(err)
+        throw err
+      }
+    },
+  )
+}
 
-    const actorClaims = actor.claims as { role: string; agencyId?: string; accountStatus?: string }
-    if (actorClaims.accountStatus !== 'active') {
-      throw new HttpsError('permission-denied', 'admin account not active')
-    }
+export const suspendResponder = createResponderStatusCallable(suspendResponderSchema, 'suspended')
 
-    const parsed = revokeResponderSchema.safeParse(request.data)
-    if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
-
-    try {
-      return await suspendOrRevokeResponderCore(adminDb, {
-        uid: parsed.data.uid,
-        idempotencyKey: parsed.data.idempotencyKey,
-        actor: {
-          uid: actor.uid,
-          claims: actorClaims,
-        },
-        now: Timestamp.now(),
-        targetStatus: 'revoked',
-      })
-    } catch (err: unknown) {
-      if (err instanceof BantayogError) throw bantayogErrorToHttps(err)
-      throw err
-    }
-  },
-)
+export const revokeResponder = createResponderStatusCallable(revokeResponderSchema, 'revoked')
 
 interface BulkAvailabilityOverrideDeps {
   uids: string[]
@@ -220,6 +254,7 @@ export async function bulkAvailabilityOverrideCore(
       now: () => now.toMillis(),
     },
     async () => {
+      // fallow-ignore-next-line code-duplication
       const rl = await checkRateLimit(db, {
         key: `bulkAvailabilityOverride:${actor.uid}`,
         limit: 5,
@@ -298,6 +333,7 @@ export async function bulkAvailabilityOverrideCore(
   return result
 }
 
+// fallow-ignore-next-line code-duplication
 export const bulkAvailabilityOverride = onCall(
   {
     region: 'asia-southeast1',

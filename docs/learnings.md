@@ -45,6 +45,8 @@
 
 ## Security / Privacy / Abuse
 
+- PR #212 hotline hardening: shared callable schemas should normalize and validate at the boundary. Use `.trim()` on labels/hotlines, require a real digit count for hotlines after regex validation, and store the parsed/normalized value. Punctuation-only strings such as `(((((((` and `+------` pass broad phone regexes unless digit-count refinement is added. The Admin UI should reuse `mdrrmoLabelSchema.maxLength` and show the exact digit-count failure as `Enter a valid phone number, for example (054) 721-1216`, not a raw max-length message.
+
 - Auth guards must check active accounts, not just roles. `requireAuth` should enforce `accountStatus === 'active'`; handlers without it must do the same manually.
 - Fail explicitly on missing auth/scope. No permissive fallbacks and no raw `err.message` in public/anonymous callable responses.
 - Use `shouldEnforceAppCheck()`, not `NODE_ENV === 'production'`.
@@ -55,7 +57,7 @@
 - PII belongs in `sessionStorage` or server storage, not long-lived `localStorage`.
 - Signed upload URLs: short TTL, `pending/{uid}/{uploadId}` path, MIME and size validation before hashing.
 - CORS origins must be environment-aware; localhost only when `FUNCTIONS_EMULATOR=true`.
-- `suspendStaffAccount` must update Firebase Auth custom claims because existing ID tokens can live for an hour.
+- `suspendStaffAccount` must update Firebase Auth custom claims because existing ID tokens can live for an hour. Responder suspend/revoke has the same requirement: keep `role: 'responder'` and set `accountStatus` to `suspended` or `revoked` immediately after the Firestore status change, preserving agency/municipality scope and `lastClaimIssuedAt`.
 - `declareAlert` needs rate limiting and enum validation; `declareDataIncident.affectedCollections` needs an allowlist.
 - Accepted risks: `report_lookup` is world-readable only while it contains anonymous tracking refs and no PII; rate-limit contention and municipality-boundary iteration are bounded; no VPC Service Controls is mitigated by Rules, IAM, App Check, and webhook HMAC.
 
@@ -115,6 +117,7 @@
 - App-level Citizen smoke tests must stub `fetch` because `useOnlineStatus()` probes `/__/firebase.json`; otherwise a passing render test can still print localhost `ECONNREFUSED` noise.
 - Test harness gotchas: `vi.hoisted()` creates hoisted mocks; wrap `waitFor(() => expect(...))` bodies in braces; render auth-dependent setup inside `AuthProvider`; `startAfter(docSnapshot)` requires the order field; fake timers pair better with `fireEvent` than `userEvent`; avoid `waitFor` under fake timers unless the test advances timers; mock dashboard data must avoid empty-state short-circuiting; define and restore `window.confirm`; prefer `const noop = (): void => { return }`.
 - React hooks must be called in the exact same order on every render. An early return before a `useState`/`useEffect` causes "Rendered fewer hooks than expected" in React 19. Move guards after all hooks; use derived `if` after the hook block.
+- `apps/admin-desktop/src/app/firebase.ts` runs `export const auth = getAuth(firebaseApp)` eagerly at module load, so it throws `auth/invalid-api-key` in the test env (no `VITE_FIREBASE_API_KEY`). Any admin-desktop test that imports `../app/firebase` — directly or transitively, e.g. through `CommandHeader` → `EditHotlineModal` → `db` — crashes at import unless it `vi.mock('../app/firebase', () => ({ db: {} }))`. The six full-suite files that fail this way (`MapPage`, `MapPage.ux-completeness`, `dashboard-firestore-wiring`, `dashboard-redispatch`, `map-firestore-wiring`, `services/callables`) are pre-existing failures, not regressions; prove it with a stash-based baseline run before chasing it.
 - Retry affordances for commands launched inside focus-trapped dialogs must remain inside that dialog's focus trap; do not put retry controls in an external banner while the dialog stays open.
 - Bulk command error banners must clear prior single-command retry state before rendering, otherwise a stale retry button can replay an unrelated command.
 - Treat permission-denied listener errors as the same user-facing state across spelling variants (`unauthorized`, `permission-denied`, `permission_denied`, `denied`) so operators do not see raw error text or retry controls.
@@ -124,6 +127,8 @@
 
 - Admin triage rejection notes already belong on `rejectReport.notes`; do not create a separate notes write path for the basic Phase 1 review note. Trim notes, omit blank optional keys, and respect the 500-character backend limit.
 - Admin dispatch monitors must include responder field progress statuses (`acknowledged`, `en_route`, `on_scene`) in lifecycle reads; otherwise operators see pending/escalation state but miss live responder movement.
+- Per-municipality hotline edits go through an Admin SDK callable (`updateMunicipalityContact`), not Firestore rules: the SDK bypasses rules, so the `municipal_admin` (own-municipality) / `provincial_superadmin` (any) gate lives in the callable and **zero `firestore.rules` changes** are needed. Config sets are last-write-wins, so no `idempotencyKey`. Audit via `streamAuditEvent({ eventType: 'municipality_contact_updated' })`, not `moderation_incidents` (that is content-moderation semantics).
+- For a modal that prefills from a one-shot `getDoc` keyed on a selection, put the fetch in a **keyed child** (`<Editor key={selectedId} />`) whose single effect writes state only inside `.then`/`.catch`. This satisfies `react-hooks/set-state-in-effect` (which flags synchronous effect-body `setState`, not async-callback writes) and resets cleanly on selection change without a parent `useEffect` clearing several `useState`s.
 - Admin dispatch SLA displays must use the backend's canonical `acknowledgementDeadlineAt`; mapping only `deadlineAt` drops live deadline visibility because dispatch Functions do not write that alias.
 - Narrow role claims with `typeof` before subscribing. On unauthorized state, set an error and return early.
 - Async auth/state gates need active flags and uid checks in both success and failure paths.

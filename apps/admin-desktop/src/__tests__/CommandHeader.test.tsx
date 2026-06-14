@@ -1,6 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+
+const useAuthMock = vi.fn(() => ({ claims: null }))
+vi.mock('@bantayog/shared-ui', () => ({
+  useAuth: () => useAuthMock(),
+}))
+
+// CommandHeader statically imports EditHotlineModal, which imports ../app/firebase.
+// Stub it so module evaluation does not initialize a real Firebase Auth client.
+vi.mock('../app/firebase', () => ({ db: {} }))
+
 import { CommandHeader } from '../components/CommandHeader'
 
 describe('CommandHeader', () => {

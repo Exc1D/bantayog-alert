@@ -17,6 +17,7 @@ export { declineDispatch } from './domains/dispatches/decline-dispatch.js';
 export { escalateDispatch } from './domains/dispatches/escalate-dispatch.js';
 export { getOpsMetrics } from './domains/ops/callables.js';
 export { setCitizenContentVisibility } from './domains/ops/citizen-content-visibility.js';
+export { updateMunicipalityContact } from './domains/ops/update-municipality-contact.js';
 export { closeReport } from './domains/reports/close-report.js';
 export { submitResponderWitnessedReport } from './domains/reports/submit-responder-witnessed-report.js';
 export { triggerSOS } from './domains/agency/trigger-sos.js';
