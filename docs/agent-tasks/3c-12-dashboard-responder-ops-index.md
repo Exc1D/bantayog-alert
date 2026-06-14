@@ -123,10 +123,17 @@ if the surface outgrows the panel. 3C-13 decides and records this.
 
 **Gate 3 — Does revoke propagate to Firebase Auth?** The current PR #212
 follow-up fixed `responder-roster.ts` so suspend/revoke calls
-`adminAuth.setCustomUserClaims` with `accountStatus` `suspended`/`revoked` after
-the Firestore status change. Keep this as a blocking gate for any future
-responder deactivation work: if a backend path changes status without an
-equivalent immediate Auth propagation/token-revocation step, escalate it before
+`adminAuth.setCustomUserClaims` with `accountStatus` `suspended`/`revoked` **and**
+`adminAuth.revokeRefreshTokens(uid)` after the Firestore status change.
+
+**Important:** `setCustomUserClaims` alone does **not** immediately invalidate
+existing ID tokens — they remain valid until their natural expiry (~1 hour). The
+`revokeRefreshTokens` call invalidates the user's refresh tokens, forcing a
+re-authentication on next token refresh. For immediate deactivation, a
+client-side mechanism (e.g., `getIdToken(true)` on app focus) or a backend
+token-revocation listener is still required. Keep this as a blocking gate for
+any future responder deactivation work: if a backend path changes status without
+both `setCustomUserClaims` **and** `revokeRefreshTokens`, escalate it before
 shipping UI that implies immediate deactivation.
 
 **Gate 4 — Staff/admin account management (`createUser` family).** The user said

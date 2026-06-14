@@ -27,16 +27,26 @@ delete. Both callables exist with typed wrappers but have **zero call sites**.
 
 `learnings.md` (Security): _"`suspendStaffAccount` must update Firebase Auth
 custom claims because existing ID tokens can live for an hour."_ The
-`responder-roster.ts` core updates the Firestore doc and, after this review fix,
-must also call `adminAuth.setCustomUserClaims(uid, { role: 'responder',
-accountStatus: 'suspended' | 'revoked', ... })` so issued ID tokens lose
-privileged access immediately. Before UI wiring:
+`responder-roster.ts` core updates the Firestore doc and calls both:
+
+1. `adminAuth.setCustomUserClaims(uid, { role: 'responder', accountStatus: 'suspended' | 'revoked', ... })` — updates custom claims
+2. `adminAuth.revokeRefreshTokens(uid)` — invalidates refresh tokens, forcing re-auth on next token refresh
+
+**Note:** `setCustomUserClaims` alone does **not** immediately invalidate
+existing ID tokens (they remain valid for ~1 hour). The `revokeRefreshTokens`
+call ensures the user cannot obtain new tokens. For immediate deactivation in
+the UI, a client-side mechanism (e.g., `getIdToken(true)` on app focus) or a
+backend token-revocation listener is still required.
+
+Before UI wiring, verify the complete deactivation path:
 
 1. **Verify** the backend test proves `setCustomUserClaims` is called for
-   suspend/revoke with the responder's role, agency/municipality scope, and new
-   `accountStatus`.
-2. If the backend does not propagate, treat it as a **backend security gap** —
-   escalate it as its own backend slice (`functions/` + §8.4 risky-change
+   suspend/revoke with the responder's role, agency/municipality scope,
+   `mfaEnrolled` preserved from the responder document, and new `accountStatus`.
+2. **Verify** the backend test proves `revokeRefreshTokens(uid)` is called after
+   `setCustomUserClaims`.
+3. If the backend does not propagate **both**, treat it as a **backend security
+   gap** — escalate it as its own backend slice (`functions/` + §8.4 risky-change
    protocol + tests) and do **not** ship UI that implies immediate deactivation
    until it is fixed.
 

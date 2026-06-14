@@ -1,15 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 // fallow-ignore-next-line code-duplication
-const { adminDbMock, setCustomUserClaimsMock } = vi.hoisted(() => ({
+const { adminDbMock, setCustomUserClaimsMock, revokeRefreshTokensMock } = vi.hoisted(() => ({
   adminDbMock: { collection: vi.fn(), runTransaction: vi.fn() },
   setCustomUserClaimsMock: vi.fn(),
+  revokeRefreshTokensMock: vi.fn(),
 }))
 
 // fallow-ignore-next-line code-duplication
 vi.mock('../../../admin-init.js', () => ({
   // fallow-ignore-next-line code-duplication
-  adminAuth: { setCustomUserClaims: setCustomUserClaimsMock },
+  adminAuth: {
+    setCustomUserClaims: setCustomUserClaimsMock,
+    revokeRefreshTokens: revokeRefreshTokensMock,
+  },
   // fallow-ignore-next-line code-duplication
   adminDb: adminDbMock,
 }))
@@ -62,6 +66,7 @@ interface ResponderDoc {
   agencyId?: string
   accountStatus?: string
   municipalityId?: string | null
+  mfaEnrolled?: boolean
 }
 
 function mockDb(responder: ResponderDoc | undefined) {
@@ -100,6 +105,7 @@ describe('suspendResponder Auth propagation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setCustomUserClaimsMock.mockResolvedValue(undefined)
+    revokeRefreshTokensMock.mockResolvedValue(undefined)
   })
 
   it('updates responder Auth claims after Firestore status changes', async () => {
@@ -107,6 +113,7 @@ describe('suspendResponder Auth propagation', () => {
       agencyId: 'bfp-daet',
       municipalityId: 'daet',
       accountStatus: 'active',
+      mfaEnrolled: true,
     })
     adminDbMock.collection.mockImplementation(db.collection)
     adminDbMock.runTransaction.mockImplementation(db.runTransaction)
@@ -143,8 +150,9 @@ describe('suspendResponder Auth propagation', () => {
       agencyId: 'bfp-daet',
       municipalityId: 'daet',
       permittedMunicipalityIds: ['daet'],
-      mfaEnrolled: false,
+      mfaEnrolled: true,
       lastClaimIssuedAt: 1765000000000,
     })
+    expect(revokeRefreshTokensMock).toHaveBeenCalledWith('responder-1')
   })
 })

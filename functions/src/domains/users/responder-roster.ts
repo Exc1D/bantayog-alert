@@ -53,6 +53,7 @@ interface SuspendRevokeDeps {
 interface ResponderStatusDoc {
   agencyId?: string
   municipalityId?: string | null
+  mfaEnrolled?: boolean
 }
 
 function buildResponderStatusClaims(
@@ -71,7 +72,7 @@ function buildResponderStatusClaims(
     ...(typeof responder.agencyId === 'string' && { agencyId: responder.agencyId }),
     ...(municipalityId && { municipalityId }),
     ...(municipalityId && { permittedMunicipalityIds: [municipalityId] }),
-    mfaEnrolled: false,
+    mfaEnrolled: responder.mfaEnrolled ?? false,
     lastClaimIssuedAt: nowMillis,
   }
 }
@@ -91,6 +92,7 @@ async function syncResponderAuthStatus(
     uid,
     buildResponderStatusClaims(responderSnap.data() as ResponderStatusDoc, targetStatus, nowMillis),
   )
+  await adminAuth.revokeRefreshTokens(uid)
 }
 
 async function suspendOrRevokeResponderCore(
