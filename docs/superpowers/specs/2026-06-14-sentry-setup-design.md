@@ -90,36 +90,54 @@ if (!isEmulator && import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT ?? 'production',
-    integrations: [Sentry.browserTracingIntegration()],
+    release: import.meta.env.npm_package_version,
     tracesSampleRate: 0, // errors only, no performance tracing
     replaysSessionSampleRate: 0, // no session replay
     initialScope: { tags: { app: '<surface-name>' } },
     beforeSend(event) {
       return stripPii(event)
     },
+    beforeBreadcrumb(breadcrumb) {
+      if (breadcrumb.data) stripPiiFromObject(breadcrumb.data)
+      if (breadcrumb.message) breadcrumb.message = redactPiiFromString(breadcrumb.message)
+      return breadcrumb
+    },
   })
 }
 ```
 
-App root render wraps `<App />` in an error boundary:
+**No `browserTracingIntegration()`:** Adding it patches `fetch`/`XHR` for distributed tracing headers on every request. With `tracesSampleRate: 0` this is pure overhead (~8 KB bundle + runtime cost) with zero benefit.
+
+App root render uses React 19's `createRoot` error hooks alongside `ErrorBoundary`. `ErrorBoundary` alone misses `onUncaughtError` (errors thrown outside the component tree) and `onRecoverableError` (Suspense/hydration failures React auto-recovers from):
 
 ```tsx
-root.render(
-  <Sentry.ErrorBoundary fallback={<AppCrashFallback />}>
-    <App />
-  </Sentry.ErrorBoundary>,
+createRoot(rootEl, {
+  onUncaughtError: Sentry.reactErrorHandler(),
+  onRecoverableError: Sentry.reactErrorHandler(),
+}).render(
+  <StrictMode>
+    <Sentry.ErrorBoundary fallback={<AppCrashFallback />}>
+      <App />
+    </Sentry.ErrorBoundary>
+  </StrictMode>,
 )
 ```
 
-### `stripPii(event)` — one copy per app in `src/sentry-utils.ts`
+### `sentry-utils.ts` — one copy per app in `src/sentry-utils.ts`
 
-Walks `event.extra`, `event.contexts`, and `event.request?.data` and deletes the following keys before the event leaves the browser:
+Three exports used by the init hooks:
+
+- **`stripPii(event)`** — walks `event.extra`, `event.contexts`, and `event.request?.data`, deletes known PII keys
+- **`stripPiiFromObject(obj)`** — same key deletion on an arbitrary object (used by `beforeBreadcrumb`)
+- **`redactPiiFromString(msg)`** — regex-replaces known PII patterns in freeform strings (e.g., UIDs, email-like tokens)
+
+PII keys to delete across all three:
 
 ```
 reporterUid, fcmToken, email, phone, contactInfo, reporterName
 ```
 
-Required for RA 10173 compliance — these fields appear in callable payloads and Firestore documents that may surface in breadcrumbs or extras.
+**Why `beforeBreadcrumb` is required for RA 10173:** Sentry's JS SDK auto-captures `console.log` output and HTTP request breadcrumbs. Console logs in the callable path reference `reporterUid`; Firestore/FCM HTTP breadcrumbs include request URLs containing tracking refs. These breadcrumbs are attached to every error event and would bypass a `beforeSend`-only scrub.
 
 ### `AppCrashFallback` — inline per app
 
@@ -137,10 +155,13 @@ if (!isEmulator && process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     environment: process.env.SENTRY_ENVIRONMENT ?? 'production',
     tracesSampleRate: 0,
+    skipOpenTelemetrySetup: true,
     initialScope: { tags: { app: 'functions' } },
   })
 }
 ```
+
+**`skipOpenTelemetrySetup: true`** is required: `@sentry/node` v8+ bootstraps an OpenTelemetry SDK unconditionally at `Sentry.init()`, regardless of `tracesSampleRate`. Firebase Functions v2 (Cloud Run) has its own Cloud Trace OTel integration — two OTel SDKs initializing simultaneously cause span context conflicts and add ~50–100 ms to cold start time. Setting this flag keeps global `unhandledRejection`/`uncaughtException` capture working while skipping the OTel layer entirely.
 
 The Node SDK automatically captures unhandled promise rejections and uncaught exceptions — errors that escape `withIdempotency` and kill a function instance. Intentional `HttpsError` throws (expected control flow) are not captured.
 
@@ -159,8 +180,11 @@ export default defineConfig({
     ...(process.env.SENTRY_AUTH_TOKEN
       ? [
           sentryVitePlugin({
-            org: 'bantayog-alert', // Sentry org slug
-            project: 'bantayog-alert', // Sentry project slug
+            org: 'bantayog-alert', // verify from sentry.io/organizations/<slug>/
+            project: 'bantayog-alert', // verify from sentry.io/organizations/<org>/projects/<slug>/
+            release: {
+              name: process.env.npm_package_version,
+            },
             sourcemaps: {
               filesToDeleteAfterUpload: '**/*.map',
             },
@@ -168,11 +192,11 @@ export default defineConfig({
         ]
       : []),
   ],
-  build: {
-    sourcemap: true, // generate maps for plugin to upload
-  },
+  // build.sourcemap is already true in all 3 apps — no change needed
 })
 ```
+
+**`release.name` must match `Sentry.init({ release })`** — Sentry uses the release identifier to join uploaded sourcemaps to incoming error events. If they differ, sourcemaps are uploaded but never applied. Both use `npm_package_version` (already exposed via `define: { __APP_VERSION__ }` in each Vite config).
 
 **Behaviour by environment:**
 
@@ -180,45 +204,51 @@ export default defineConfig({
 - `pnpm build` locally without token: maps generated but not uploaded (acceptable)
 - CI build with `SENTRY_AUTH_TOKEN`: maps uploaded then deleted from `dist/` — production hosting never serves `.map` files
 
+**Vite 8 / Rolldown build slowdown risk:** There is an [open issue (#20100)](https://github.com/getsentry/sentry-javascript/issues/20100) where the Sentry Vite plugin causes ~5× build slowdown with Vite 8 (Rolldown). This project is on `vite: ^8.0.16`. The root cause: Rolldown compiles extremely fast, so the sourcemap network upload dominates total build time. This is a CI time concern only — output correctness is unaffected. If the slowdown is unacceptable, fall back to a separate `sentry-cli` post-build upload step outside the plugin, keeping `build.sourcemap: true` but removing the Vite plugin.
+
 ---
 
 ## What Is and Is Not Captured
 
-| Event type                      | Captured? | Why                             |
-| ------------------------------- | --------- | ------------------------------- |
-| Unhandled JS exceptions         | Yes       | Global handler                  |
-| Unhandled promise rejections    | Yes       | Global handler                  |
-| React render errors             | Yes       | ErrorBoundary                   |
-| Intentional `HttpsError` throws | No        | Expected control flow, not bugs |
-| Functions unhandled rejections  | Yes       | Node SDK global handler         |
-| Performance / Web Vitals        | No        | `tracesSampleRate: 0`           |
-| Session replays                 | No        | `replaysSessionSampleRate: 0`   |
-| PII fields                      | No        | Stripped by `beforeSend`        |
+| Event type                          | Captured? | Why                                   |
+| ----------------------------------- | --------- | ------------------------------------- |
+| Unhandled JS exceptions             | Yes       | Global handler                        |
+| Unhandled promise rejections        | Yes       | Global handler                        |
+| React render errors                 | Yes       | ErrorBoundary                         |
+| React `onUncaughtError`             | Yes       | `reactErrorHandler` in `createRoot`   |
+| React `onRecoverableError`          | Yes       | `reactErrorHandler` in `createRoot`   |
+| Intentional `HttpsError` throws     | No        | Expected control flow, not bugs       |
+| Functions unhandled rejections      | Yes       | Node SDK global handler               |
+| Performance / Web Vitals            | No        | `tracesSampleRate: 0`                 |
+| OTel spans (functions)              | No        | `skipOpenTelemetrySetup: true`        |
+| Session replays                     | No        | `replaysSessionSampleRate: 0`         |
+| PII in event payload                | No        | Stripped by `beforeSend` → `stripPii` |
+| PII in breadcrumbs (console / HTTP) | No        | Stripped by `beforeBreadcrumb`        |
 
 ---
 
 ## Files Changed
 
-| File                                      | Change                                          |
-| ----------------------------------------- | ----------------------------------------------- |
-| `apps/citizen-pwa/package.json`           | add `@sentry/react`, `@sentry/vite-plugin`      |
-| `apps/citizen-pwa/vite.config.ts`         | add plugin, `build.sourcemap: true`             |
-| `apps/citizen-pwa/src/main.tsx`           | Sentry.init + ErrorBoundary                     |
-| `apps/citizen-pwa/src/sentry-utils.ts`    | new — `stripPii` helper                         |
-| `apps/citizen-pwa/.env.staging.example`   | add Sentry keys                                 |
-| `apps/admin-desktop/package.json`         | add `@sentry/vite-plugin` (react already there) |
-| `apps/admin-desktop/vite.config.ts`       | add plugin, `build.sourcemap: true`             |
-| `apps/admin-desktop/src/main.tsx`         | Sentry.init + ErrorBoundary                     |
-| `apps/admin-desktop/src/sentry-utils.ts`  | new — `stripPii` helper                         |
-| `apps/admin-desktop/.env.staging.example` | add Sentry keys                                 |
-| `apps/responder-app/package.json`         | add `@sentry/react`, `@sentry/vite-plugin`      |
-| `apps/responder-app/vite.config.ts`       | add plugin, `build.sourcemap: true`             |
-| `apps/responder-app/src/main.tsx`         | Sentry.init + ErrorBoundary                     |
-| `apps/responder-app/src/sentry-utils.ts`  | new — `stripPii` helper                         |
-| `apps/responder-app/.env.staging.example` | add Sentry keys                                 |
-| `functions/package.json`                  | add `@sentry/node`                              |
-| `functions/src/index.ts`                  | Sentry.init at top                              |
-| `functions/.env.staging.example`          | add Sentry keys (new file)                      |
+| File                                      | Change                                                        |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| `apps/citizen-pwa/package.json`           | add `@sentry/react`, `@sentry/vite-plugin`                    |
+| `apps/citizen-pwa/vite.config.ts`         | add Sentry plugin (`sourcemap: true` already set)             |
+| `apps/citizen-pwa/src/main.tsx`           | Sentry.init + `createRoot` error hooks + ErrorBoundary        |
+| `apps/citizen-pwa/src/sentry-utils.ts`    | new — `stripPii`, `stripPiiFromObject`, `redactPiiFromString` |
+| `apps/citizen-pwa/.env.staging.example`   | add Sentry keys                                               |
+| `apps/admin-desktop/package.json`         | add `@sentry/vite-plugin` (`@sentry/react` already installed) |
+| `apps/admin-desktop/vite.config.ts`       | add Sentry plugin (`sourcemap: true` already set)             |
+| `apps/admin-desktop/src/main.tsx`         | Sentry.init + `createRoot` error hooks + ErrorBoundary        |
+| `apps/admin-desktop/src/sentry-utils.ts`  | new — `stripPii`, `stripPiiFromObject`, `redactPiiFromString` |
+| `apps/admin-desktop/.env.staging.example` | add Sentry keys                                               |
+| `apps/responder-app/package.json`         | add `@sentry/react`, `@sentry/vite-plugin`                    |
+| `apps/responder-app/vite.config.ts`       | add Sentry plugin (`sourcemap: true` already set)             |
+| `apps/responder-app/src/main.tsx`         | Sentry.init + `createRoot` error hooks + ErrorBoundary        |
+| `apps/responder-app/src/sentry-utils.ts`  | new — `stripPii`, `stripPiiFromObject`, `redactPiiFromString` |
+| `apps/responder-app/.env.staging.example` | add Sentry keys                                               |
+| `functions/package.json`                  | add `@sentry/node`                                            |
+| `functions/src/index.ts`                  | Sentry.init at top (`skipOpenTelemetrySetup: true`)           |
+| `functions/.env.staging.example`          | new — add Sentry keys                                         |
 
 ---
 
