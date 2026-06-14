@@ -1,5 +1,49 @@
 # Progress
 
+## 2026-06-14 - Admin Control-Contract Fix Slices (3c-17 → 3c-21, docs only)
+
+- Authored the five fix slices for the truth defects surfaced by the end-to-end
+  control audit (`docs/admin-control-contract.md`) that had no prior backlog entry.
+  All slices match the existing `3c-*` template, cite re-verified `file:line` recon
+  (re-read against current source on 2026-06-14, not from memory), stay ≤3 files +
+  tests, and follow the binding 3c-00 execution rules (one slice = one branch = one
+  PR, red-first, firebase-mock rule 6, zero rules/index/schema edits).
+- **3c-17** (N1, P1): the Map `MapOverlayControls` panel flips `activeOverlays`
+  (store + URL) but no map layer reads it — make All/Active-Only real (filter
+  `reports`), remove Heatmap/Responder-Locations/Municipal-Labels (each = net-new
+  Leaflet layer, YAGNI).
+- **3c-18** (N2, P1): Map `handleReject` fires `rejectReport` with hardcoded
+  `reason: 'obviously_false'`, no confirm — adopt the Triage reject contract
+  (reason `<select>` from the shared enum, default `insufficient_detail`, +
+  `ConfirmationModal`).
+- **3c-19** (N3, P1): FCM success rate renders fabricated `0%` pre-poll (`?? 0`) on
+  Dashboard + Dispatches and swallows `metricsError` — pass `?? null`, render
+  `—`/"measuring…", surface the poll error. Documented the asymmetry that
+  `getModeFcmSuccessRate ?? 1.0` must stay as-is (the mode should not trip on
+  missing data; only the displayed number lied).
+- **3c-20** (N4, P1): Dashboard declare-alert `onError` only `console.error`s on a
+  province-wide broadcast failure — set the existing `actionError` so the
+  `ActionErrorBanner` shows, mirroring Map/Dispatches.
+- **3c-21** (N6 + N7, P2): "drill into a municipality from the Dashboard" is one
+  capability broken on both paths. N6 = the dead cross-window `select:municipality`
+  branch (empty receiver + no sender; the "lookup helper" comment is stale,
+  `selectMunicipality` is already in scope and already drives the `MunicipalPerformance`
+  panel). **N7 was discovered while re-verifying N6's recon:** the Dashboard
+  municipality row-click navigates `/map?municipality=` (`DashboardPage.tsx:638`)
+  but `useUrlSync` reads `?municipalityId=` (`useUrlSync.ts:40`) and nothing reads
+  `?municipality=`, so a control rated **Real** is silently broken. Sliced together
+  because they are the same user goal; recommended fix is the one-line param
+  correction (N7) plus an explicit implement-or-remove decision for the dead branch
+  (N6).
+- Recorded N7 in `docs/admin-control-contract.md` (new findings table + downgraded
+  the Dashboard municipality-row row from **Real** to **Partial**), registered
+  3c-17→3c-21 in the `3c-00` index ranked table (ranks 12–16), and cross-linked
+  every finding. N5 (false "retry automatically" copy) remains folded into 3c-08.
+  **All audit findings are now sliced.**
+- Documentation-only: no code, rules, indexes, schema, dependency, or deploy
+  changes. The slices are specs for later red-first execution, each on its own
+  branch.
+
 ## 2026-06-14 - PR #212 Review Follow-up: Hotline Validation + Responder Auth Gate
 
 - Addressed remaining PR #212 review comments and CI-risk findings with minimal targeted fixes.

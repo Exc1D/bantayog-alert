@@ -32,24 +32,40 @@ tracked under the broader UX evaluation noted at the bottom.
 
 ## Ranked slices
 
-| Rank | Slice | Concern                                                     | Priority            | Status                |
-| ---- | ----- | ----------------------------------------------------------- | ------------------- | --------------------- |
-| —    | 3c-01 | Ambient new-report signal (audio + badge + title)           | P0                  | **Done** (2026-06-11) |
-| 1    | 3c-02 | SLA countdown on dispatch cards                             | P0                  | Open                  |
-| 2    | 3c-03 | Resolved-dispatch closure state                             | P0                  | Open                  |
-| 3    | 3c-07 | **Per-municipality hotline config (this session)**          | P1 (capability gap) | **Done** (2026-06-13) |
-| 4    | 3c-04 | Reject confirmation modal on /triage                        | P1                  | Open                  |
-| 5    | 3c-05 | Designed permission-denied state for admin hooks            | P1                  | Open                  |
-| 6    | 3c-06 | Retry affordance on ActionErrorBanner                       | P1                  | Open                  |
-| 7    | 3c-08 | Publication-queue hardening (confirm + char count + filter) | P1                  | Doc only              |
-| 8    | 3c-09 | Citizen-post moderation queue (uncapped + reasons)          | P1                  | Doc only              |
-| 9    | 3c-10 | Official-alerts manager (uncapped + retire/restore reasons) | P1                  | Doc only              |
-| 10   | 3c-11 | Feed IA split (thin shell + three tabs)                     | P2 (after 08–10)    | Doc only              |
-| 11   | 3b-12 | Citizen hotline-fallback cleanup (citizen track)            | P2                  | Doc only              |
+| Rank | Slice | Concern                                                        | Priority            | Status                |
+| ---- | ----- | -------------------------------------------------------------- | ------------------- | --------------------- |
+| —    | 3c-01 | Ambient new-report signal (audio + badge + title)              | P0                  | **Done** (2026-06-11) |
+| 1    | 3c-02 | SLA countdown on dispatch cards                                | P0                  | Open                  |
+| 2    | 3c-03 | Resolved-dispatch closure state                                | P0                  | Open                  |
+| 3    | 3c-07 | **Per-municipality hotline config (this session)**             | P1 (capability gap) | **Done** (2026-06-13) |
+| 4    | 3c-04 | Reject confirmation modal on /triage                           | P1                  | Open                  |
+| 5    | 3c-05 | Designed permission-denied state for admin hooks               | P1                  | Open                  |
+| 6    | 3c-06 | Retry affordance on ActionErrorBanner                          | P1                  | Open                  |
+| 7    | 3c-08 | Publication-queue hardening (confirm + char count + filter)    | P1                  | Doc only              |
+| 8    | 3c-09 | Citizen-post moderation queue (uncapped + reasons)             | P1                  | Doc only              |
+| 9    | 3c-10 | Official-alerts manager (uncapped + retire/restore reasons)    | P1                  | Doc only              |
+| 10   | 3c-11 | Feed IA split (thin shell + three tabs)                        | P2 (after 08–10)    | Doc only              |
+| 11   | 3b-12 | Citizen hotline-fallback cleanup (citizen track)               | P2                  | Doc only              |
+| 12   | 3c-17 | Map overlay controls — remove dead toggles (audit N1)          | P1                  | Doc only              |
+| 13   | 3c-18 | Map reject — confirmation + reason picker (audit N2)           | P1                  | Doc only              |
+| 14   | 3c-19 | Ops-metric truth-gate — FCM `0%`-on-load + poll error (N3)     | P1                  | Doc only              |
+| 15   | 3c-20 | Dashboard declare-alert error surfacing (audit N4)             | P1                  | Doc only              |
+| 16   | 3c-21 | Municipality drill-down — dead branch + param mismatch (N6+N7) | P2                  | Doc only              |
 
 3C-07 was promoted ahead of 3C-04..06 this session because it was the one
 **Missing-grade capability gap** (no surface existed at all), whereas 3C-04..06
 harden surfaces that already function.
+
+`3c-17`–`3c-21` were added 2026-06-14 from the end-to-end control audit
+(`docs/admin-control-contract.md`), covering the newly-discovered truth defects
+with no prior slice: the Map's entirely-dead 5-toggle overlay panel (N1 → 3c-17),
+the Map's hardcoded confirmation-less reject (N2 → 3c-18), the FCM `0%`-on-load +
+silent ops-poll error on Dashboard + Dispatches (N3 → 3c-19), the Dashboard
+declare-alert `onError` swallow (N4 → 3c-20), and the municipality drill-down that
+is broken on both paths — the dead cross-window `select:municipality` branch (N6)
+and the Dashboard→Map URL param mismatch (N7, found while verifying N6) — sliced
+together as 3c-21. N5 (false "retry automatically" copy) folds into `3c-08`. All
+audit findings are now sliced.
 
 ## Execution rules (binding for every slice)
 
