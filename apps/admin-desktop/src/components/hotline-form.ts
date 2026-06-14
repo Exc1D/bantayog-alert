@@ -2,9 +2,12 @@ import {
   MDRRMO_HOTLINE_REGEX,
   MIN_MDRRMO_HOTLINE_DIGITS,
   countHotlineDigits,
+  mdrrmoLabelSchema,
 } from '@bantayog/shared-validators'
 
 export type HotlineValidationErrors = Partial<Record<'mdrrmoLabel' | 'mdrrmoHotline', string>>
+
+const MDRRMO_LABEL_MAX_LENGTH = mdrrmoLabelSchema.maxLength ?? 80
 
 export interface HotlineFormValues {
   mdrrmoLabel: string
@@ -29,8 +32,8 @@ export function validateHotlineForm(values: HotlineFormValues): HotlineValidatio
   const normalized = normalizeHotlineForm(values)
   if (!normalized.mdrrmoLabel) {
     errors.mdrrmoLabel = 'Office name is required'
-  } else if (normalized.mdrrmoLabel.length > 80) {
-    errors.mdrrmoLabel = 'Office name must be 80 characters or fewer'
+  } else if (normalized.mdrrmoLabel.length > MDRRMO_LABEL_MAX_LENGTH) {
+    errors.mdrrmoLabel = `Office name must be ${String(MDRRMO_LABEL_MAX_LENGTH)} characters or fewer`
   }
   if (
     !MDRRMO_HOTLINE_REGEX.test(normalized.mdrrmoHotline) ||

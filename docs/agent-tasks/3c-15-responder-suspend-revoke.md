@@ -27,20 +27,20 @@ delete. Both callables exist with typed wrappers but have **zero call sites**.
 
 `learnings.md` (Security): _"`suspendStaffAccount` must update Firebase Auth
 custom claims because existing ID tokens can live for an hour."_ The
-`responder-roster.ts` core appears to update **only the Firestore doc** (no
-`adminAuth.setCustomUserClaims` seen in recon). Before wiring UI:
+`responder-roster.ts` core updates the Firestore doc and, after this review fix,
+must also call `adminAuth.setCustomUserClaims(uid, { role: 'responder',
+accountStatus: 'suspended' | 'revoked', ... })` so issued ID tokens lose
+privileged access immediately. Before UI wiring:
 
-1. **Verify** whether `suspendResponder`/`revokeResponder` propagate the change to
-   Auth custom claims (directly, via a claim-revocation doc + trigger, or via
-   token-revocation).
-2. **If they do not:** a suspended/revoked responder keeps a valid token for up to
-   ~1 hour and can still act. That is a **backend security gap** — escalate it as
-   its own backend slice (`functions/` + §8.4 risky-change protocol + tests) and do
-   **not** ship UI that implies immediate deactivation until it is fixed. This UI
-   slice depends on that fix.
+1. **Verify** the backend test proves `setCustomUserClaims` is called for
+   suspend/revoke with the responder's role, agency/municipality scope, and new
+   `accountStatus`.
+2. If the backend does not propagate, treat it as a **backend security gap** —
+   escalate it as its own backend slice (`functions/` + §8.4 risky-change
+   protocol + tests) and do **not** ship UI that implies immediate deactivation
+   until it is fixed.
 
-Resolve Gate 3 first. The rest of this doc assumes propagation is correct (or a
-prior slice fixed it).
+This UI slice depends on that fix.
 
 ## Gate 1 (from 3c-12) — who sees the actions
 

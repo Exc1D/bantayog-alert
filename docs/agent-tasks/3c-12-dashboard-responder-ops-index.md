@@ -6,7 +6,7 @@ Dispatch/responder-roster surfaces (`/dispatches`, `ResponderAvailabilityPanel`)
 Each `3c-NN` file below is one executable slice for one agent on one branch.
 Recon verified 2026-06-13; every slice re-verifies its own facts before editing.
 
-**Nothing here is built yet. This backlog needs sign-off before any slice runs.**
+**Nothing here is built yet. This backlog needs sign-off before any slice runs.** Sign-off means a product/ops owner explicitly approves the ranked slice order, the dedicated `/responders` vs `/dispatches` placement decision, and the Gate 3 Auth propagation requirement before UI work starts.
 
 ## Scope of this audit
 
@@ -121,13 +121,13 @@ Recommendation: a roster **section/tab on `/dispatches`** (roster lives with
 dispatch ops; avoids a new route + nav entry for an MVP). Promote to a route only
 if the surface outgrows the panel. 3C-13 decides and records this.
 
-**Gate 3 — Does revoke propagate to Firebase Auth?** `responder-roster.ts`
-appears to update only the Firestore doc, but `learnings.md` requires that
-suspend/revoke also `setCustomUserClaims`, because issued ID tokens live ~1 hour
-("`suspendStaffAccount` must update Firebase Auth custom claims"). 3C-15 must
-**verify** this. If the backend does not propagate, that is a **security gap to
-escalate** as its own backend slice — 3C-15 (a UI wiring slice) must not silently
-paper over it.
+**Gate 3 — Does revoke propagate to Firebase Auth?** The current PR #212
+follow-up fixed `responder-roster.ts` so suspend/revoke calls
+`adminAuth.setCustomUserClaims` with `accountStatus` `suspended`/`revoked` after
+the Firestore status change. Keep this as a blocking gate for any future
+responder deactivation work: if a backend path changes status without an
+equivalent immediate Auth propagation/token-revocation step, escalate it before
+shipping UI that implies immediate deactivation.
 
 **Gate 4 — Staff/admin account management (`createUser` family).** The user said
 "create, delete responder accounts" (covered by 3C-13/15). Creating/suspending/

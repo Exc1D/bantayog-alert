@@ -14,7 +14,9 @@ vi.mock('../services/callables', () => ({
   },
 }))
 
-const getDocMock = vi.fn()
+const { getDocMock } = vi.hoisted(() => ({
+  getDocMock: vi.fn(),
+}))
 vi.mock('firebase/firestore', () => ({
   doc: (...args: unknown[]) => ({ path: args.slice(1).join('/') }),
   getDoc: (ref: unknown) => getDocMock(ref),
@@ -182,6 +184,18 @@ describe('EditHotlineModal', () => {
     await renderOpenHotlineModal()
 
     await fillHotline(user, 'Daet DRRMO', '(054) 555-3000')
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/wait a minute/i)
+  })
+
+  it('maps prefixed callable error codes from Firebase Web SDK', async () => {
+    const user = userEvent.setup()
+    useAuthMock.mockReturnValue(MUNICIPAL_ADMIN)
+    updateMunicipalityContactMock.mockRejectedValue({ code: 'functions/resource-exhausted' })
+    await renderOpenHotlineModal()
+
+    await fillHotline(user, 'Daet DRRMO', '(054) 555-3001')
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/wait a minute/i)

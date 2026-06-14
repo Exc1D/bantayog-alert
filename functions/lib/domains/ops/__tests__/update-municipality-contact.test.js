@@ -1,12 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 // fallow-ignore-next-line code-duplication
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
-import {} from '@firebase/rules-unit-testing';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
-vi.mock('firebase-admin/database', () => ({
-    getDatabase: vi.fn(() => ({})),
-}));
 import { updateMunicipalityContactCore, } from '../update-municipality-contact.js';
+import {} from 'firebase-admin/firestore';
+import {} from '@firebase/rules-unit-testing';
 let testEnv;
 let available = false;
 const DAET_DOC = {
@@ -32,21 +29,30 @@ async function withRulesDisabled(callback) {
         return;
     await testEnv.withSecurityRulesDisabled(callback);
 }
+function asFirestore(ctx) {
+    return ctx.firestore();
+}
 async function seedDaet(ctx) {
-    const db = ctx.firestore();
+    const db = asFirestore(ctx);
     await db.collection('municipalities').doc('daet').set(DAET_DOC);
     return db;
 }
 async function seedLabo(ctx) {
-    const db = ctx.firestore();
+    const db = asFirestore(ctx);
     await db.collection('municipalities').doc('labo').set(LABO_DOC);
     return db;
 }
 async function expectCoreRejects(deps, code) {
     await withRulesDisabled(async (ctx) => {
-        const db = ctx.firestore();
+        const db = asFirestore(ctx);
         await expect(updateMunicipalityContactCore(db, deps)).rejects.toMatchObject({ code });
     });
+}
+async function readMunicipalityDoc(db, id) {
+    const doc = (await db.collection('municipalities').doc(id).get()).data();
+    if (!doc)
+        throw new Error(`Missing ${id} municipality doc`);
+    return doc;
 }
 // fallow-ignore-next-line code-duplication
 beforeAll(async () => {
@@ -82,7 +88,7 @@ describe('updateMunicipalityContactCore', () => {
                 now: 1765000000000,
             });
             expect(result.mdrrmoHotline).toBe('+63 917 555 1234');
-            const doc = (await db.collection('municipalities').doc('daet').get()).data();
+            const doc = await readMunicipalityDoc(db, 'daet');
             expect(doc.mdrrmoLabel).toBe('Daet DRRMO Hotline');
             expect(doc.mdrrmoHotline).toBe('+63 917 555 1234');
             expect(doc.contactUpdatedAt).toBe(1765000000000);
@@ -117,7 +123,7 @@ describe('updateMunicipalityContactCore', () => {
                 now: 1765000001000,
             });
             expect(result.municipalityId).toBe('labo');
-            const doc = (await db.collection('municipalities').doc('labo').get()).data();
+            const doc = await readMunicipalityDoc(db, 'labo');
             expect(doc.mdrrmoLabel).toBe('Labo MDRRMO');
             expect(doc.contactUpdatedBy).toBe('super-1');
         });
@@ -126,7 +132,7 @@ describe('updateMunicipalityContactCore', () => {
         if (!available || !testEnv)
             skip();
         await withRulesDisabled(async (ctx) => {
-            const db = ctx.firestore();
+            const db = asFirestore(ctx);
             const result = await updateMunicipalityContactCore(db, {
                 municipalityId: 'labo',
                 mdrrmoLabel: 'Labo MDRRMO',
@@ -135,7 +141,7 @@ describe('updateMunicipalityContactCore', () => {
                 now: 1765000002000,
             });
             expect(result.municipalityId).toBe('labo');
-            const doc = (await db.collection('municipalities').doc('labo').get()).data();
+            const doc = await readMunicipalityDoc(db, 'labo');
             expect(doc.label).toBe('Labo');
             expect(doc.centroid).toEqual({ lat: 14.157, lng: 122.83 });
             expect(doc.schemaVersion).toBe(1);
@@ -147,8 +153,8 @@ describe('updateMunicipalityContactCore', () => {
         if (!available || !testEnv)
             skip();
         await expectCoreRejects({
-            municipalityId: 'labo',
-            mdrrmoLabel: 'Labo MDRRMO',
+            municipalityId: 'unknown-municipality',
+            mdrrmoLabel: 'Unknown MDRRMO',
             mdrrmoHotline: '(054) 585-1234',
             actor: { uid: 'super-1', claims: SUPERADMIN_CLAIMS },
             now: 1765000000000,

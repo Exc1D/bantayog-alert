@@ -1,14 +1,17 @@
 # Progress
 
-## 2026-06-14 - PR #212 Review Follow-up: Per-Municipality Hotline Hardening
+## 2026-06-14 - PR #212 Review Follow-up: Hotline Validation + Responder Auth Gate
 
-- Addressed Sourcery/Codex review comments and local CI failures for the per-municipality hotline configuration PR.
-- Hardened shared hotline validation: label/hotline schemas now trim before validation; hotline validation requires a sane digit count so punctuation-only values like `(((((((` and `+------` are rejected.
-- Updated Admin Desktop validation and modal submit flow to normalize trimmed values before save, keep valid whitespace-padded inputs usable, and show field errors after blur.
-- Reused `UpdateMunicipalityContactInput` and `UpdateMunicipalityContactOutput` in the callable wrapper and mapped callable failures by stable `code` instead of regex-matching error messages.
-- Updated the callable to initialize known municipality docs when missing, avoid defaulting audit `actorRole` when the role claim is absent, and cover `resource-exhausted` with deterministic wrapper tests.
-- Refactored hotspot complexity/duplication in touched admin tests and callable tests; remaining Fallow complexity is an inherited `functions/src/index.ts` finding excluded by `--gate new-only`.
-- Verification: `pnpm format:check`; shared-validators `tsc`, `eslint`, and `municipalities.test.ts` (13/13); admin-desktop `tsc`, `eslint`, and focused hotline tests (19/19); functions `tsc`, `eslint`, and focused callable tests (6 passed, 6 skipped when emulator unavailable); `fallow audit --root . --changed-since e958473cc4c2eba04d80b1c475a008a7b187d98a --gate new-only --format human` reports no introduced issues; `git diff --check` passed.
+- Addressed remaining PR #212 review comments and CI-risk findings with minimal targeted fixes.
+- Fixed Admin hotline modal tests to hoist `getDocMock` through `vi.hoisted()` before the Firestore mock factory.
+- Normalized Firebase Web SDK callable error codes by stripping the `functions/` prefix before matching stable client codes.
+- Reused `mdrrmoLabelSchema.maxLength` in Admin hotline label validation and documented the exact hotline digit-count failure message.
+- Removed `any` casts/eslint disable from `update-municipality-contact` tests and fixed the "unknown municipality" rejection case to use a truly unknown ID.
+- Closed the responder suspend/revoke Auth propagation gap: backend now calls `adminAuth.setCustomUserClaims` after Firestore status changes, preserving `role: 'responder'`, agency/municipality scope, `mfaEnrolled`, and `lastClaimIssuedAt`.
+- Added a focused unit test proving `suspendResponder` calls `setCustomUserClaims` with `accountStatus: 'suspended'`.
+- Updated responder-ops backlog docs to make Gate 3 explicit: no deactivation UI until Auth propagation is verified/fixed.
+- Added an inline comment in `apps/admin-desktop/src/app/firebase.ts` documenting eager SDK initialization and the test mock requirement.
+- Verification: `pnpm format:check`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused admin tests (20/20); focused functions tests (7 passed, 6 skipped when emulator unavailable); shared-validators municipality tests (13/13); `fallow audit --root . --changed-since e958473cc4c2eba04d80b1c475a008a7b187d98a --gate new-only --format human` reports no introduced issues; `git diff --check` passed.
 
 ## 2026-06-13 - Phase 3C-12 Dashboard + Responder Operations UX Backlog (docs only)
 

@@ -45,7 +45,7 @@
 
 ## Security / Privacy / Abuse
 
-- PR #212 hotline hardening: shared callable schemas should normalize and validate at the boundary. Use `.trim()` on labels/hotlines, require a real digit count for hotlines after regex validation, and store the parsed/normalized value. Punctuation-only strings such as `(((((((` and `+------` pass broad phone regexes unless digit-count refinement is added.
+- PR #212 hotline hardening: shared callable schemas should normalize and validate at the boundary. Use `.trim()` on labels/hotlines, require a real digit count for hotlines after regex validation, and store the parsed/normalized value. Punctuation-only strings such as `(((((((` and `+------` pass broad phone regexes unless digit-count refinement is added. The Admin UI should reuse `mdrrmoLabelSchema.maxLength` and show the exact digit-count failure as `Enter a valid phone number, for example (054) 721-1216`, not a raw max-length message.
 
 - Auth guards must check active accounts, not just roles. `requireAuth` should enforce `accountStatus === 'active'`; handlers without it must do the same manually.
 - Fail explicitly on missing auth/scope. No permissive fallbacks and no raw `err.message` in public/anonymous callable responses.
@@ -57,7 +57,7 @@
 - PII belongs in `sessionStorage` or server storage, not long-lived `localStorage`.
 - Signed upload URLs: short TTL, `pending/{uid}/{uploadId}` path, MIME and size validation before hashing.
 - CORS origins must be environment-aware; localhost only when `FUNCTIONS_EMULATOR=true`.
-- `suspendStaffAccount` must update Firebase Auth custom claims because existing ID tokens can live for an hour.
+- `suspendStaffAccount` must update Firebase Auth custom claims because existing ID tokens can live for an hour. Responder suspend/revoke has the same requirement: keep `role: 'responder'` and set `accountStatus` to `suspended` or `revoked` immediately after the Firestore status change, preserving agency/municipality scope and `lastClaimIssuedAt`.
 - `declareAlert` needs rate limiting and enum validation; `declareDataIncident.affectedCollections` needs an allowlist.
 - Accepted risks: `report_lookup` is world-readable only while it contains anonymous tracking refs and no PII; rate-limit contention and municipality-boundary iteration are bounded; no VPC Service Controls is mitigated by Rules, IAM, App Check, and webhook HMAC.
 

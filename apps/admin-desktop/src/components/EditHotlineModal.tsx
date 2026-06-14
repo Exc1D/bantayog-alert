@@ -30,7 +30,8 @@ interface CallableErrorLike {
 function getCallableErrorCode(err: unknown): string | null {
   if (!err || typeof err !== 'object') return null
   const code = (err as CallableErrorLike).code
-  return typeof code === 'string' ? code : null
+  if (typeof code !== 'string') return null
+  return code.startsWith('functions/') ? code.slice('functions/'.length) : code
 }
 
 /** Map stable callable error codes to operator-safe copy. */
