@@ -1,6 +1,8 @@
 import { z } from 'zod';
 export declare const mdrrmoLabelSchema: z.ZodString;
 export declare const MDRRMO_HOTLINE_REGEX: RegExp;
+export declare const MIN_MDRRMO_HOTLINE_DIGITS = 7;
+export declare function countHotlineDigits(value: string): number;
 export declare const mdrrmoHotlineSchema: z.ZodString;
 export declare const municipalityDocSchema: z.ZodObject<{
     id: z.ZodString;
@@ -17,6 +19,12 @@ export declare const municipalityDocSchema: z.ZodObject<{
     schemaVersion: z.ZodNumber;
 }, z.core.$strict>;
 export type MunicipalityDoc = z.infer<typeof municipalityDocSchema>;
+export interface UpdateMunicipalityContactOutput {
+    municipalityId: string;
+    mdrrmoLabel: string;
+    mdrrmoHotline: string;
+    updatedAt: number;
+}
 export declare const CAMARINES_NORTE_MUNICIPALITIES: readonly Omit<MunicipalityDoc, 'schemaVersion'>[];
 /**
  * Payload for the updateMunicipalityContact callable. Both fields are required:

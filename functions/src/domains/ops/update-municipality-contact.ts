@@ -1,7 +1,10 @@
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { z } from 'zod'
-import { updateMunicipalityContactInputSchema } from '@bantayog/shared-validators'
+import {
+  CAMARINES_NORTE_MUNICIPALITIES,
+  updateMunicipalityContactInputSchema,
+} from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { PROVINCIAL_SUPERADMIN } from '../../constants/roles.js'
 import { requireAuth } from '../shared/https-error.js'
@@ -57,7 +60,14 @@ export async function updateMunicipalityContactCore(
   const ref = db.collection('municipalities').doc(deps.municipalityId)
   const snap = await ref.get()
   if (!snap.exists) {
-    throw new HttpsError('not-found', 'municipality not found')
+    const municipality = CAMARINES_NORTE_MUNICIPALITIES.find((m) => m.id === deps.municipalityId)
+    if (!municipality) {
+      throw new HttpsError('not-found', 'municipality not found')
+    }
+    await ref.set({
+      ...municipality,
+      schemaVersion: 1,
+    })
   }
 
   await ref.update({
@@ -75,7 +85,7 @@ export async function updateMunicipalityContactCore(
     metadata: {
       mdrrmoLabel: deps.mdrrmoLabel,
       mdrrmoHotline: deps.mdrrmoHotline,
-      actorRole: deps.actor.claims.role ?? 'municipal_admin',
+      ...(deps.actor.claims.role ? { actorRole: deps.actor.claims.role } : {}),
     },
     occurredAt: deps.now,
   })
@@ -116,10 +126,12 @@ export const updateMunicipalityContact = onCall(
       })
     }
 
-    const actorClaims: UpdateMunicipalityContactDeps['actor']['claims'] = {}
-    if (typeof claims.role === 'string') actorClaims.role = claims.role
-    if (typeof claims.municipalityId === 'string')
-      actorClaims.municipalityId = claims.municipalityId
+    const actorClaims: UpdateMunicipalityContactDeps['actor']['claims'] = {
+      ...(typeof claims.role === 'string' ? { role: claims.role } : {}),
+      ...(typeof claims.municipalityId === 'string'
+        ? { municipalityId: claims.municipalityId }
+        : {}),
+    }
 
     return updateMunicipalityContactCore(adminDb, {
       municipalityId: parsed.data.municipalityId,

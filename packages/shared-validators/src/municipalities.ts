@@ -1,8 +1,18 @@
 import { z } from 'zod'
 
-export const mdrrmoLabelSchema = z.string().min(1).max(80)
+export const mdrrmoLabelSchema = z.string().trim().min(1).max(80)
 export const MDRRMO_HOTLINE_REGEX = /^[+\d(][\d\s\-()]{6,20}$/
-export const mdrrmoHotlineSchema = z.string().regex(MDRRMO_HOTLINE_REGEX)
+export const MIN_MDRRMO_HOTLINE_DIGITS = 7
+
+export function countHotlineDigits(value: string): number {
+  return value.replace(/\D/g, '').length
+}
+
+export const mdrrmoHotlineSchema = z
+  .string()
+  .trim()
+  .regex(MDRRMO_HOTLINE_REGEX)
+  .refine((value) => countHotlineDigits(value) >= MIN_MDRRMO_HOTLINE_DIGITS)
 
 export const municipalityDocSchema = z
   .object({
@@ -28,6 +38,12 @@ export const municipalityDocSchema = z
   .strict()
 
 export type MunicipalityDoc = z.infer<typeof municipalityDocSchema>
+export interface UpdateMunicipalityContactOutput {
+  municipalityId: string
+  mdrrmoLabel: string
+  mdrrmoHotline: string
+  updatedAt: number
+}
 
 // Seed constant for the Phase 3 pilot province.
 export const CAMARINES_NORTE_MUNICIPALITIES: readonly Omit<MunicipalityDoc, 'schemaVersion'>[] = [

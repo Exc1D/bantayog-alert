@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
+// fallow-ignore-next-line code-duplication
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
@@ -7,7 +8,10 @@ vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
 }))
 
-import { updateMunicipalityContactCore } from '../update-municipality-contact.js'
+import {
+  updateMunicipalityContactCore,
+  type UpdateMunicipalityContactDeps,
+} from '../update-municipality-contact.js'
 
 let testEnv: RulesTestEnvironment | undefined
 let available = false
@@ -30,6 +34,38 @@ const LABO_DOC = {
   schemaVersion: 1,
 }
 
+interface RulesTestContext {
+  firestore: () => unknown
+}
+
+const MUNICIPAL_ADMIN_CLAIMS = { role: 'municipal_admin', municipalityId: 'daet' }
+const SUPERADMIN_CLAIMS = { role: 'provincial_superadmin' }
+
+async function withRulesDisabled(callback: (ctx: RulesTestContext) => Promise<void>) {
+  if (!available || !testEnv) return
+  await testEnv.withSecurityRulesDisabled(callback)
+}
+
+async function seedDaet(ctx: RulesTestContext) {
+  const db = ctx.firestore() as any
+  await db.collection('municipalities').doc('daet').set(DAET_DOC)
+  return db
+}
+
+async function seedLabo(ctx: RulesTestContext) {
+  const db = ctx.firestore() as any
+  await db.collection('municipalities').doc('labo').set(LABO_DOC)
+  return db
+}
+
+async function expectCoreRejects(deps: UpdateMunicipalityContactDeps, code: string) {
+  await withRulesDisabled(async (ctx) => {
+    const db = ctx.firestore() as any
+    await expect(updateMunicipalityContactCore(db, deps)).rejects.toMatchObject({ code })
+  })
+}
+
+// fallow-ignore-next-line code-duplication
 beforeAll(async () => {
   // streamAuditEvent self-skips BigQuery when FUNCTIONS_EMULATOR is set.
   process.env.FUNCTIONS_EMULATOR = 'true'
@@ -40,6 +76,7 @@ beforeAll(async () => {
     },
     'update-municipality-contact',
   )
+  // fallow-ignore-next-line code-duplication
   testEnv = guarded.env
   available = guarded.available
 })
@@ -56,15 +93,14 @@ afterAll(async () => {
 describe('updateMunicipalityContactCore', () => {
   it('lets a municipal admin edit their own municipality contact', async ({ skip }) => {
     if (!available || !testEnv) skip()
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      await db.collection('municipalities').doc('daet').set(DAET_DOC)
+    await withRulesDisabled(async (ctx) => {
+      const db = await seedDaet(ctx)
 
       const result = await updateMunicipalityContactCore(db, {
         municipalityId: 'daet',
         mdrrmoLabel: 'Daet DRRMO Hotline',
         mdrrmoHotline: '+63 917 555 1234',
-        actor: { uid: 'admin-1', claims: { role: 'municipal_admin', municipalityId: 'daet' } },
+        actor: { uid: 'admin-1', claims: MUNICIPAL_ADMIN_CLAIMS },
         now: 1765000000000,
       })
 
@@ -84,33 +120,28 @@ describe('updateMunicipalityContactCore', () => {
 
   it('rejects a municipal admin editing another municipality', async ({ skip }) => {
     if (!available || !testEnv) skip()
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      await db.collection('municipalities').doc('daet').set(DAET_DOC)
-
-      await expect(
-        updateMunicipalityContactCore(db, {
-          municipalityId: 'daet',
-          mdrrmoLabel: 'Hijacked',
-          mdrrmoHotline: '(054) 000-0000',
-          actor: { uid: 'admin-2', claims: { role: 'municipal_admin', municipalityId: 'labo' } },
-          now: 1765000000000,
-        }),
-      ).rejects.toMatchObject({ code: 'permission-denied' })
-    })
+    await expectCoreRejects(
+      {
+        municipalityId: 'daet',
+        mdrrmoLabel: 'Hijacked',
+        mdrrmoHotline: '(054) 000-0000',
+        actor: { uid: 'admin-2', claims: { role: 'municipal_admin', municipalityId: 'labo' } },
+        now: 1765000000000,
+      },
+      'permission-denied',
+    )
   })
 
   it('lets a provincial superadmin edit any municipality', async ({ skip }) => {
     if (!available || !testEnv) skip()
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      await db.collection('municipalities').doc('labo').set(LABO_DOC)
+    await withRulesDisabled(async (ctx) => {
+      const db = await seedLabo(ctx)
 
       const result = await updateMunicipalityContactCore(db, {
         municipalityId: 'labo',
         mdrrmoLabel: 'Labo MDRRMO',
         mdrrmoHotline: '(054) 585-1234',
-        actor: { uid: 'super-1', claims: { role: 'provincial_superadmin' } },
+        actor: { uid: 'super-1', claims: SUPERADMIN_CLAIMS },
         now: 1765000001000,
       })
 
@@ -121,37 +152,54 @@ describe('updateMunicipalityContactCore', () => {
     })
   })
 
+  it('initializes a known municipality doc before updating contact', async ({ skip }) => {
+    if (!available || !testEnv) skip()
+    await withRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+
+      const result = await updateMunicipalityContactCore(db, {
+        municipalityId: 'labo',
+        mdrrmoLabel: 'Labo MDRRMO',
+        mdrrmoHotline: '(054) 585-1234',
+        actor: { uid: 'super-2', claims: SUPERADMIN_CLAIMS },
+        now: 1765000002000,
+      })
+
+      expect(result.municipalityId).toBe('labo')
+      const doc = (await db.collection('municipalities').doc('labo').get()).data()
+      expect(doc.label).toBe('Labo')
+      expect(doc.centroid).toEqual({ lat: 14.157, lng: 122.83 })
+      expect(doc.schemaVersion).toBe(1)
+      expect(doc.mdrrmoLabel).toBe('Labo MDRRMO')
+      expect(doc.mdrrmoHotline).toBe('(054) 585-1234')
+    })
+  })
+
   it('rejects editing a municipality that does not exist', async ({ skip }) => {
     if (!available || !testEnv) skip()
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      await expect(
-        updateMunicipalityContactCore(db, {
-          municipalityId: 'labo',
-          mdrrmoLabel: 'Labo MDRRMO',
-          mdrrmoHotline: '(054) 585-1234',
-          actor: { uid: 'super-1', claims: { role: 'provincial_superadmin' } },
-          now: 1765000000000,
-        }),
-      ).rejects.toMatchObject({ code: 'not-found' })
-    })
+    await expectCoreRejects(
+      {
+        municipalityId: 'labo',
+        mdrrmoLabel: 'Labo MDRRMO',
+        mdrrmoHotline: '(054) 585-1234',
+        actor: { uid: 'super-1', claims: SUPERADMIN_CLAIMS },
+        now: 1765000000000,
+      },
+      'not-found',
+    )
   })
 
   it('rejects an agency admin', async ({ skip }) => {
     if (!available || !testEnv) skip()
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as any
-      await db.collection('municipalities').doc('daet').set(DAET_DOC)
-
-      await expect(
-        updateMunicipalityContactCore(db, {
-          municipalityId: 'daet',
-          mdrrmoLabel: 'Nope',
-          mdrrmoHotline: '(054) 000-0000',
-          actor: { uid: 'agency-1', claims: { role: 'agency_admin', municipalityId: 'daet' } },
-          now: 1765000000000,
-        }),
-      ).rejects.toMatchObject({ code: 'permission-denied' })
-    })
+    await expectCoreRejects(
+      {
+        municipalityId: 'daet',
+        mdrrmoLabel: 'Nope',
+        mdrrmoHotline: '(054) 000-0000',
+        actor: { uid: 'agency-1', claims: { role: 'agency_admin', municipalityId: 'daet' } },
+        now: 1765000000000,
+      },
+      'permission-denied',
+    )
   })
 })

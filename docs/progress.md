@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-06-14 - PR #212 Review Follow-up: Per-Municipality Hotline Hardening
+
+- Addressed Sourcery/Codex review comments and local CI failures for the per-municipality hotline configuration PR.
+- Hardened shared hotline validation: label/hotline schemas now trim before validation; hotline validation requires a sane digit count so punctuation-only values like `(((((((` and `+------` are rejected.
+- Updated Admin Desktop validation and modal submit flow to normalize trimmed values before save, keep valid whitespace-padded inputs usable, and show field errors after blur.
+- Reused `UpdateMunicipalityContactInput` and `UpdateMunicipalityContactOutput` in the callable wrapper and mapped callable failures by stable `code` instead of regex-matching error messages.
+- Updated the callable to initialize known municipality docs when missing, avoid defaulting audit `actorRole` when the role claim is absent, and cover `resource-exhausted` with deterministic wrapper tests.
+- Refactored hotspot complexity/duplication in touched admin tests and callable tests; remaining Fallow complexity is an inherited `functions/src/index.ts` finding excluded by `--gate new-only`.
+- Verification: `pnpm format:check`; shared-validators `tsc`, `eslint`, and `municipalities.test.ts` (13/13); admin-desktop `tsc`, `eslint`, and focused hotline tests (19/19); functions `tsc`, `eslint`, and focused callable tests (6 passed, 6 skipped when emulator unavailable); `fallow audit --root . --changed-since e958473cc4c2eba04d80b1c475a008a7b187d98a --gate new-only --format human` reports no introduced issues; `git diff --check` passed.
+
 ## 2026-06-13 - Phase 3C-12 Dashboard + Responder Operations UX Backlog (docs only)
 
 - Ran the deferred UX-completeness pass on the surfaces the user called "pretentious / lacking the functionality they should have": the Dashboard (`/dashboard`) and the Dispatch/responder-roster surfaces (`/dispatches`, `ResponderAvailabilityPanel`). **Docs only — nothing built; the backlog needs sign-off before any slice runs.**
@@ -21,6 +31,7 @@
 - **Authored 6 slice docs** for the rest of the Admin-UX backlog (docs only, not implemented this session): `3c-00` index (full scorecard + ranked table + binding execution rules), `3c-08` publication-queue hardening (confirm before send-to-moderation/publish, scrub char count vs real backend limit, pure `feed-queue-filters.ts`, real Retry button), `3c-09` citizen-post moderation queue (uncapped + reason picker bound to the real 5-reason enum + optimistic rollback), `3c-10` official-alerts manager (uncapped active+retired, retire/restore behind confirm + reason), `3c-11` feed IA split (thin shell, 3 tabs, optional `/feed/:tab`), and `3b-12` citizen hotline-fallback cleanup (`RateLimitError` drops its divergent `VITE_BARANGAY_HOTLINE` number for `useMunicipalityContact`).
 - Verification (red-first at each step, all green): shared-validators 181 tests + build + typecheck; functions wrapper 4/4 + emulator core 5/5 + `tsc` + eslint + build; admin-desktop hotline tests 22/22 + `tsc` + eslint. The 6 admin-desktop full-suite failures (`auth/invalid-api-key` at `firebase.ts:51`) were proven pre-existing via a stash-based baseline run and are out of scope (see learnings).
 - The broader Dashboard + Responder-roster / account-management UX rebuild the user also raised remains a **separate concern/branch** that still needs its own evaluation and plan approval before any build.
+
 ## 2026-06-13 - Phase 3E Exit Proof
 
 - Hardened `functions/src/__tests__/proof-mvp-loop.test.ts` so notification evidence is asserted by `type`, and the citizen notification attempts now explicitly carry the stable `fcm_no_token` warning in both the dispatch and resolution paths.

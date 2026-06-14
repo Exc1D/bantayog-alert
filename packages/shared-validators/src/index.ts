@@ -120,9 +120,15 @@ export {
   mdrrmoLabelSchema,
   mdrrmoHotlineSchema,
   MDRRMO_HOTLINE_REGEX,
+  MIN_MDRRMO_HOTLINE_DIGITS,
+  countHotlineDigits,
   updateMunicipalityContactInputSchema,
 } from './municipalities.js'
-export type { MunicipalityDoc, UpdateMunicipalityContactInput } from './municipalities.js'
+export type {
+  MunicipalityDoc,
+  UpdateMunicipalityContactInput,
+  UpdateMunicipalityContactOutput,
+} from './municipalities.js'
 export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js'
 export type { BarangayEntry } from './barangays.js'
 export {

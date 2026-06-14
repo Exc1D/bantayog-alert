@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canEditHotlines, validateHotlineForm } from './hotline-form'
+import { canEditHotlines, normalizeHotlineForm, validateHotlineForm } from './hotline-form'
 
 describe('canEditHotlines', () => {
   it('allows municipal_admin and provincial_superadmin', () => {
@@ -23,6 +23,12 @@ describe('validateHotlineForm', () => {
     ).toEqual({})
   })
 
+  it('accepts whitespace-padded valid values', () => {
+    expect(
+      validateHotlineForm({ mdrrmoLabel: '  Daet MDRRMO  ', mdrrmoHotline: ' (054) 721-1216 ' }),
+    ).toEqual({})
+  })
+
   it('accepts an international-format hotline', () => {
     expect(
       validateHotlineForm({ mdrrmoLabel: 'Daet MDRRMO', mdrrmoHotline: '+63 917 555 1234' }),
@@ -34,10 +40,19 @@ describe('validateHotlineForm', () => {
     expect(errors.mdrrmoLabel).toBeTruthy()
   })
 
-  it('flags a malformed hotline', () => {
-    for (const hotline of ['', 'call us', '12345', 'abc-def']) {
+  it('flags punctuation-only hotlines', () => {
+    for (const hotline of ['(((((((', '+------', '--- ---']) {
       const errors = validateHotlineForm({ mdrrmoLabel: 'Daet MDRRMO', mdrrmoHotline: hotline })
       expect(errors.mdrrmoHotline, `expected ${JSON.stringify(hotline)} to be flagged`).toBeTruthy()
     }
+  })
+
+  it('normalizes values before validation', () => {
+    expect(
+      normalizeHotlineForm({ mdrrmoLabel: '  Daet MDRRMO  ', mdrrmoHotline: ' 1234567 ' }),
+    ).toEqual({
+      mdrrmoLabel: 'Daet MDRRMO',
+      mdrrmoHotline: '1234567',
+    })
   })
 })

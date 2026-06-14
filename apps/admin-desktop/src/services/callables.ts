@@ -6,6 +6,10 @@ import type {
   ScopedOperationsMapIncidentPayload,
   UserRole,
 } from '@bantayog/shared-types'
+import type {
+  UpdateMunicipalityContactInput,
+  UpdateMunicipalityContactOutput,
+} from '@bantayog/shared-validators'
 
 type IdempotencyKey = string
 type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
@@ -129,8 +133,8 @@ export const callables = {
     { alertId: string }
   >('declareAlert'),
   updateMunicipalityContact: callable<
-    { municipalityId: string; mdrrmoLabel: string; mdrrmoHotline: string },
-    { municipalityId: string; mdrrmoLabel: string; mdrrmoHotline: string; updatedAt: number }
+    UpdateMunicipalityContactInput,
+    UpdateMunicipalityContactOutput
   >('updateMunicipalityContact'),
   setRetentionExempt: callable<
     { collection: string; documentId: string; exempt: boolean; reason: string },

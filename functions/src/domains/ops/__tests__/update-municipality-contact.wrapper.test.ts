@@ -1,15 +1,38 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { CallableRequest } from 'firebase-functions/v2/https'
 
+const mockCheckRateLimit = vi.hoisted(() => vi.fn())
+const mockAdminDb = vi.hoisted(() => {
+  const update = vi.fn().mockResolvedValue(undefined)
+  const set = vi.fn().mockResolvedValue(undefined)
+  const get = vi.fn().mockResolvedValue({ exists: true, data: () => ({}) })
+  const doc = vi.fn(() => ({ get, update, set }))
+  const collection = vi.fn(() => ({ doc }))
+  const runTransaction = vi.fn(() => Promise.resolve(undefined))
+  return { collection, runTransaction, _update: update, _set: set, _doc: doc }
+})
+
+vi.mock('../../../admin-init.js', () => ({ adminDb: mockAdminDb }))
+vi.mock('../../shared/rate-limit.js', () => ({ checkRateLimit: mockCheckRateLimit }))
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: vi.fn(() => mockAdminDb),
+  Timestamp: { now: vi.fn(() => ({ seconds: 1, nanoseconds: 0 })) },
+}))
 vi.mock('firebase-functions/v2/https', () => ({
   onCall: vi.fn((_opts: unknown, fn: unknown) => fn),
-  HttpsError: class HttpsError extends Error {
-    code: string
-    constructor(code: string, message: string) {
-      super(message)
-      this.code = code
+  HttpsError: vi.fn(function HttpsError(
+    code: string,
+    message: string,
+    details?: Record<string, unknown>,
+  ) {
+    const error = new Error(message) as Error & {
+      code: string
+      details?: Record<string, unknown>
     }
-  },
+    error.code = code
+    if (details) error.details = details
+    return error
+  }),
 }))
 
 import { updateMunicipalityContact } from '../update-municipality-contact.js'
@@ -26,12 +49,21 @@ function request(
 }
 
 const ADMIN_TOKEN = { role: 'municipal_admin', accountStatus: 'active', municipalityId: 'daet' }
+const SUPERADMIN_TOKEN = { role: 'provincial_superadmin', accountStatus: 'active' }
 
 const VALID_DATA = {
   municipalityId: 'daet',
   mdrrmoLabel: 'Daet MDRRMO',
   mdrrmoHotline: '(054) 721-1216',
 }
+
+beforeEach(() => {
+  process.env.FUNCTIONS_EMULATOR = 'true'
+  mockCheckRateLimit.mockReset()
+  mockCheckRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 0 })
+  mockAdminDb._update.mockClear()
+  mockAdminDb._set.mockClear()
+})
 
 describe('updateMunicipalityContact handler auth/validation', () => {
   it('rejects unauthenticated callers', async () => {
@@ -57,6 +89,7 @@ describe('updateMunicipalityContact handler auth/validation', () => {
         ),
       ),
     ).rejects.toMatchObject({ code: 'invalid-argument' })
+    expect(mockAdminDb._update).not.toHaveBeenCalled()
   })
 
   it('rejects an unknown municipality id', async () => {
@@ -68,5 +101,42 @@ describe('updateMunicipalityContact handler auth/validation', () => {
         ),
       ),
     ).rejects.toMatchObject({ code: 'invalid-argument' })
+    expect(mockAdminDb._update).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateMunicipalityContact handler rate limiting', () => {
+  it('throws resource-exhausted with retryAfterSeconds when rate limited', async () => {
+    mockCheckRateLimit.mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 60 })
+
+    await expect(
+      handler(request({ uid: 'admin-1', token: ADMIN_TOKEN }, VALID_DATA)),
+    ).rejects.toMatchObject({
+      code: 'resource-exhausted',
+      details: { retryAfterSeconds: 60 },
+    })
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(
+      mockAdminDb,
+      expect.objectContaining({ key: 'updateMunicipalityContact:admin-1', limit: 10 }),
+    )
+  })
+
+  it('updates contact when rate limit allows', async () => {
+    await expect(
+      handler(request({ uid: 'super-1', token: SUPERADMIN_TOKEN }, VALID_DATA)),
+    ).resolves.toEqual({
+      municipalityId: 'daet',
+      mdrrmoLabel: 'Daet MDRRMO',
+      mdrrmoHotline: '(054) 721-1216',
+      updatedAt: expect.any(Number),
+    })
+    expect(mockAdminDb._update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mdrrmoLabel: 'Daet MDRRMO',
+        mdrrmoHotline: '(054) 721-1216',
+        contactUpdatedAt: expect.any(Number),
+        contactUpdatedBy: 'super-1',
+      }),
+    )
   })
 })

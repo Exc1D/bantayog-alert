@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { municipalityDocSchema, updateMunicipalityContactInputSchema, mdrrmoHotlineSchema, CAMARINES_NORTE_MUNICIPALITIES, } from './municipalities.js';
+import { municipalityDocSchema, updateMunicipalityContactInputSchema, mdrrmoHotlineSchema, countHotlineDigits, CAMARINES_NORTE_MUNICIPALITIES, } from './municipalities.js';
 const VALID_INPUT = {
     municipalityId: 'daet',
     mdrrmoLabel: 'Daet MDRRMO',
@@ -23,6 +23,27 @@ describe('updateMunicipalityContactInputSchema', () => {
                 municipalityId: m.id,
             });
             expect(result.success, `expected ${m.id} to be accepted`).toBe(true);
+        }
+    });
+    it('trims and stores normalized label and hotline values', () => {
+        const result = updateMunicipalityContactInputSchema.safeParse({
+            ...VALID_INPUT,
+            mdrrmoLabel: '  Daet MDRRMO  ',
+            mdrrmoHotline: '  (054) 721-1216  ',
+        });
+        expect(result.success).toBe(true);
+        if (!result.success)
+            return;
+        expect(result.data.mdrrmoLabel).toBe('Daet MDRRMO');
+        expect(result.data.mdrrmoHotline).toBe('(054) 721-1216');
+    });
+    it('rejects punctuation-only hotlines', () => {
+        for (const hotline of ['(((((((', '+------', '--- ---']) {
+            const result = updateMunicipalityContactInputSchema.safeParse({
+                ...VALID_INPUT,
+                mdrrmoHotline: hotline,
+            });
+            expect(result.success, `expected hotline ${JSON.stringify(hotline)} to be rejected`).toBe(false);
         }
     });
     it('rejects an unknown municipality id', () => {
@@ -59,6 +80,11 @@ describe('mdrrmoHotlineSchema', () => {
     it('matches the optional hotline field on municipalityDocSchema', () => {
         expect(mdrrmoHotlineSchema.safeParse('(054) 721-1216').success).toBe(true);
         expect(mdrrmoHotlineSchema.safeParse('not a number').success).toBe(false);
+    });
+    it('requires real digits instead of punctuation-only strings', () => {
+        expect(mdrrmoHotlineSchema.safeParse('(((((((').success).toBe(false);
+        expect(mdrrmoHotlineSchema.safeParse('+------').success).toBe(false);
+        expect(countHotlineDigits('(((((((')).toBe(0);
     });
 });
 describe('municipalityDocSchema contact audit fields', () => {

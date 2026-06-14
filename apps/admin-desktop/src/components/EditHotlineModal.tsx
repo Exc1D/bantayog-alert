@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Phone, RotateCw, X } from 'lucide-react'
 import { doc, getDoc } from 'firebase/firestore'
 import { useAuth } from '@bantayog/shared-ui'
@@ -6,7 +6,12 @@ import { db } from '../app/firebase'
 import { callables } from '../services/callables'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { MUNICIPALITIES, MUNICIPALITY_ID_TO_LABEL } from './declare-alert-options'
-import { canEditHotlines, validateHotlineForm, type HotlineValidationErrors } from './hotline-form'
+import {
+  canEditHotlines,
+  normalizeHotlineForm,
+  validateHotlineForm,
+  type HotlineValidationErrors,
+} from './hotline-form'
 
 interface Props {
   open: boolean
@@ -18,14 +23,27 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error'
 
 const FALLBACK_MUNICIPALITY_ID = MUNICIPALITIES[0]?.id ?? ''
 
-/** Map a callable rejection to operator-safe copy without leaking internals. */
+interface CallableErrorLike {
+  code?: unknown
+}
+
+function getCallableErrorCode(err: unknown): string | null {
+  if (!err || typeof err !== 'object') return null
+  const code = (err as CallableErrorLike).code
+  return typeof code === 'string' ? code : null
+}
+
+/** Map stable callable error codes to operator-safe copy. */
 function describeSubmitError(err: unknown): string {
-  const message = err instanceof Error ? err.message : ''
-  if (/permission|unauthenticated/i.test(message)) {
+  const code = getCallableErrorCode(err)
+  if (code === 'permission-denied' || code === 'unauthenticated') {
     return 'You do not have permission to edit this hotline.'
   }
-  if (/resource-exhausted|rate/i.test(message)) {
+  if (code === 'resource-exhausted') {
     return 'Too many changes in a short time. Wait a minute and try again.'
+  }
+  if (code === 'invalid-argument') {
+    return 'Check the hotline fields and try again.'
   }
   return 'Could not update the hotline. Check your connection and try again.'
 }
@@ -42,6 +60,9 @@ export function EditHotlineModal({ open, onClose }: Props) {
   const [picked, setPicked] = useState(FALLBACK_MUNICIPALITY_ID)
   const selectedMunicipalityId = isSuperadmin ? picked : claimMunicipalityId
   const [reloadNonce, setReloadNonce] = useState(0)
+  const retryHotline = useCallback(() => {
+    setReloadNonce((n) => n + 1)
+  }, [])
 
   const trapRef = useFocusTrap({ isActive: open, onEscape: onClose })
 
@@ -141,9 +162,7 @@ export function EditHotlineModal({ open, onClose }: Props) {
               key={`${selectedMunicipalityId}:${String(reloadNonce)}`}
               municipalityId={selectedMunicipalityId}
               onClose={onClose}
-              onRetry={() => {
-                setReloadNonce((n) => n + 1)
-              }}
+              onRetry={retryHotline}
             />
           </div>
         )}
@@ -158,13 +177,25 @@ interface HotlineEditorProps {
   onRetry: () => void
 }
 
-/**
- * Owns the load + edit lifecycle for a single municipality's hotline. Mounted with a
- * key that includes the municipality id and a retry nonce, so switching municipality
- * or retrying remounts this component with fresh "loading" state instead of resetting
- * several useState values from a parent effect.
- */
-function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps) {
+interface HotlineEditorState {
+  loadState: LoadState
+  label: string
+  hotline: string
+  hadContact: boolean
+  errors: HotlineValidationErrors
+  touched: { mdrrmoLabel?: boolean; mdrrmoHotline?: boolean }
+  submitState: SubmitState
+  submitError: string | null
+  submitting: boolean
+  canSave: boolean
+  setLabel: (value: string) => void
+  setHotline: (value: string) => void
+  handleFieldChange: (setter: (value: string) => void) => (value: string) => void
+  markTouched: (field: 'mdrrmoLabel' | 'mdrrmoHotline') => void
+  handleSubmit: () => Promise<void>
+}
+
+function useHotlineEditorState(municipalityId: string, onRetry: () => void): HotlineEditorState {
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [label, setLabel] = useState('')
   const [hotline, setHotline] = useState('')
@@ -199,14 +230,14 @@ function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps)
     return () => {
       active = false
     }
-  }, [municipalityId])
+  }, [municipalityId, onRetry])
 
-  const errors: HotlineValidationErrors = validateHotlineForm({
-    mdrrmoLabel: label,
-    mdrrmoHotline: hotline,
-  })
+  const normalizedValues = normalizeHotlineForm({ mdrrmoLabel: label, mdrrmoHotline: hotline })
+  const errors: HotlineValidationErrors = validateHotlineForm(normalizedValues)
   const isValid = Object.keys(errors).length === 0
-  const isDirty = label.trim() !== prefill.label.trim() || hotline.trim() !== prefill.hotline.trim()
+  const isDirty =
+    normalizedValues.mdrrmoLabel !== prefill.label.trim() ||
+    normalizedValues.mdrrmoHotline !== prefill.hotline.trim()
   const submitting = submitState === 'submitting'
   const canSave = loadState === 'loaded' && isValid && isDirty && !submitting
 
@@ -218,14 +249,14 @@ function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps)
     }
   }
 
+  const markTouched = (field: 'mdrrmoLabel' | 'mdrrmoHotline') => {
+    setTouched((t) => ({ ...t, [field]: true }))
+  }
+
   async function handleSubmit() {
     setTouched({ mdrrmoLabel: true, mdrrmoHotline: true })
-    const trimmedLabel = label.trim()
-    const trimmedHotline = hotline.trim()
-    if (
-      Object.keys(validateHotlineForm({ mdrrmoLabel: trimmedLabel, mdrrmoHotline: trimmedHotline }))
-        .length > 0
-    ) {
+    const normalized = normalizeHotlineForm({ mdrrmoLabel: label, mdrrmoHotline: hotline })
+    if (Object.keys(validateHotlineForm(normalized)).length > 0) {
       return
     }
     setSubmitState('submitting')
@@ -233,12 +264,12 @@ function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps)
     try {
       await callables.updateMunicipalityContact({
         municipalityId,
-        mdrrmoLabel: trimmedLabel,
-        mdrrmoHotline: trimmedHotline,
+        mdrrmoLabel: normalized.mdrrmoLabel,
+        mdrrmoHotline: normalized.mdrrmoHotline,
       })
-      setLabel(trimmedLabel)
-      setHotline(trimmedHotline)
-      setPrefill({ label: trimmedLabel, hotline: trimmedHotline })
+      setLabel(normalized.mdrrmoLabel)
+      setHotline(normalized.mdrrmoHotline)
+      setPrefill({ label: normalized.mdrrmoLabel, hotline: normalized.mdrrmoHotline })
       setHadContact(true)
       setSubmitState('success')
     } catch (err: unknown) {
@@ -247,8 +278,173 @@ function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps)
     }
   }
 
+  return {
+    loadState,
+    label,
+    hotline,
+    hadContact,
+    errors,
+    touched,
+    submitState,
+    submitError,
+    submitting,
+    canSave,
+    setLabel,
+    setHotline,
+    handleFieldChange,
+    markTouched,
+    handleSubmit,
+  }
+}
+
+interface HotlineFormFieldsProps {
+  label: string
+  hotline: string
+  errors: HotlineValidationErrors
+  touched: { mdrrmoLabel?: boolean; mdrrmoHotline?: boolean }
+  submitting: boolean
+  onLabelBlur: () => void
+  onHotlineBlur: () => void
+  onLabelChange: (value: string) => void
+  onHotlineChange: (value: string) => void
+}
+
+function HotlineFormFields({
+  label,
+  hotline,
+  errors,
+  touched,
+  submitting,
+  onLabelBlur,
+  onHotlineBlur,
+  onLabelChange,
+  onHotlineChange,
+}: HotlineFormFieldsProps) {
   const showLabelError = touched.mdrrmoLabel && errors.mdrrmoLabel
   const showHotlineError = touched.mdrrmoHotline && errors.mdrrmoHotline
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <label
+          htmlFor="hotline-label"
+          className="block text-xs font-medium text-[var(--color-text-secondary)]"
+        >
+          Office name
+        </label>
+        <input
+          id="hotline-label"
+          type="text"
+          value={label}
+          maxLength={80}
+          disabled={submitting}
+          aria-invalid={Boolean(showLabelError)}
+          aria-describedby={showLabelError ? 'hotline-label-error' : undefined}
+          onChange={(e) => {
+            onLabelChange(e.target.value)
+          }}
+          onBlur={() => {
+            onLabelBlur()
+          }}
+          placeholder="Daet MDRRMO"
+          className="w-full rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50"
+        />
+        {showLabelError && (
+          <p id="hotline-label-error" className="text-xs text-[var(--color-danger)]">
+            {errors.mdrrmoLabel}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <label
+          htmlFor="hotline-number"
+          className="block text-xs font-medium text-[var(--color-text-secondary)]"
+        >
+          Hotline number
+        </label>
+        <input
+          id="hotline-number"
+          type="tel"
+          value={hotline}
+          disabled={submitting}
+          aria-invalid={Boolean(showHotlineError)}
+          aria-describedby={showHotlineError ? 'hotline-number-error' : undefined}
+          onChange={(e) => {
+            onHotlineChange(e.target.value)
+          }}
+          onBlur={() => {
+            onHotlineBlur()
+          }}
+          placeholder="(054) 721-1216"
+          className="w-full rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50"
+        />
+        {showHotlineError && (
+          <p id="hotline-number-error" className="text-xs text-[var(--color-danger)]">
+            {errors.mdrrmoHotline}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface HotlineEditorActionsProps {
+  canSave: boolean
+  submitting: boolean
+  onClose: () => void
+}
+
+function HotlineEditorActions({ canSave, submitting, onClose }: HotlineEditorActionsProps) {
+  return (
+    <div className="flex justify-end gap-3 border-t border-white/10 p-6">
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={submitting}
+        className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 disabled:opacity-50"
+      >
+        Close
+      </button>
+      <button
+        type="submit"
+        disabled={!canSave}
+        className="flex items-center gap-2 rounded-md bg-[var(--color-success)] px-4 py-2 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-success)]"
+      >
+        {submitting && (
+          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        )}
+        {submitting ? 'Saving…' : 'Save hotline'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Owns the load + edit lifecycle for a single municipality's hotline. Mounted with a
+ * key that includes the municipality id and a retry nonce, so switching municipality
+ * or retrying remounts this component with fresh "loading" state instead of resetting
+ * several useState values from a parent effect.
+ */
+function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps) {
+  const state = useHotlineEditorState(municipalityId, onRetry)
+  const {
+    loadState,
+    label,
+    hotline,
+    hadContact,
+    errors,
+    touched,
+    submitState,
+    submitError,
+    submitting,
+    canSave,
+    setLabel,
+    setHotline,
+    handleFieldChange,
+    markTouched,
+    handleSubmit,
+  } = state
 
   return (
     <form
@@ -287,66 +483,21 @@ function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps)
               </p>
             )}
 
-            <div className="space-y-1.5">
-              <label
-                htmlFor="hotline-label"
-                className="block text-xs font-medium text-[var(--color-text-secondary)]"
-              >
-                Office name
-              </label>
-              <input
-                id="hotline-label"
-                type="text"
-                value={label}
-                maxLength={80}
-                disabled={submitting}
-                aria-invalid={Boolean(showLabelError)}
-                aria-describedby={showLabelError ? 'hotline-label-error' : undefined}
-                onChange={(e) => {
-                  handleFieldChange(setLabel)(e.target.value)
-                }}
-                onBlur={() => {
-                  setTouched((t) => ({ ...t, mdrrmoLabel: true }))
-                }}
-                placeholder="Daet MDRRMO"
-                className="w-full rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50"
-              />
-              {showLabelError && (
-                <p id="hotline-label-error" className="text-xs text-[var(--color-danger)]">
-                  {errors.mdrrmoLabel}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="hotline-number"
-                className="block text-xs font-medium text-[var(--color-text-secondary)]"
-              >
-                Hotline number
-              </label>
-              <input
-                id="hotline-number"
-                type="tel"
-                value={hotline}
-                disabled={submitting}
-                aria-invalid={Boolean(showHotlineError)}
-                aria-describedby={showHotlineError ? 'hotline-number-error' : undefined}
-                onChange={(e) => {
-                  handleFieldChange(setHotline)(e.target.value)
-                }}
-                onBlur={() => {
-                  setTouched((t) => ({ ...t, mdrrmoHotline: true }))
-                }}
-                placeholder="(054) 721-1216"
-                className="w-full rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50"
-              />
-              {showHotlineError && (
-                <p id="hotline-number-error" className="text-xs text-[var(--color-danger)]">
-                  {errors.mdrrmoHotline}
-                </p>
-              )}
-            </div>
+            <HotlineFormFields
+              label={label}
+              hotline={hotline}
+              errors={errors}
+              touched={touched}
+              submitting={submitting}
+              onLabelBlur={() => {
+                markTouched('mdrrmoLabel')
+              }}
+              onHotlineBlur={() => {
+                markTouched('mdrrmoHotline')
+              }}
+              onLabelChange={handleFieldChange(setLabel)}
+              onHotlineChange={handleFieldChange(setHotline)}
+            />
 
             {submitState === 'success' && (
               <p
@@ -369,26 +520,7 @@ function HotlineEditor({ municipalityId, onClose, onRetry }: HotlineEditorProps)
         )}
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-white/10 p-6">
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={submitting}
-          className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 disabled:opacity-50"
-        >
-          Close
-        </button>
-        <button
-          type="submit"
-          disabled={!canSave}
-          className="flex items-center gap-2 rounded-md bg-[var(--color-success)] px-4 py-2 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-success)]"
-        >
-          {submitting && (
-            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          )}
-          {submitting ? 'Saving…' : 'Save hotline'}
-        </button>
-      </div>
+      <HotlineEditorActions canSave={canSave} submitting={submitting} onClose={onClose} />
     </form>
   )
 }

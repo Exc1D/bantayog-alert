@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const useAuthMock = vi.fn()
@@ -29,6 +29,28 @@ function snapshot(data: Record<string, unknown> | null) {
     exists: () => data !== null,
     data: () => data,
   }
+}
+
+async function fillHotline(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+  hotline: string,
+) {
+  const labelInput = screen.getByLabelText(/office name/i)
+  const hotlineInput = screen.getByLabelText(/hotline number/i)
+  await user.clear(labelInput)
+  await user.type(labelInput, label)
+  await user.clear(hotlineInput)
+  await user.type(hotlineInput, hotline)
+}
+
+async function renderOpenHotlineModal() {
+  useAuthMock.mockReturnValue(MUNICIPAL_ADMIN)
+  render(<EditHotlineModal open onClose={vi.fn()} />)
+
+  await waitFor(() => {
+    expect(screen.getByLabelText(/hotline number/i)).toHaveValue('(054) 721-1216')
+  })
 }
 
 const MUNICIPAL_ADMIN = {
@@ -84,18 +106,31 @@ describe('EditHotlineModal', () => {
 
   it('disables save while the hotline is invalid', async () => {
     const user = userEvent.setup()
-    useAuthMock.mockReturnValue(MUNICIPAL_ADMIN)
-    render(<EditHotlineModal open onClose={vi.fn()} />)
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(/hotline number/i)).toHaveValue('(054) 721-1216')
-    })
+    await renderOpenHotlineModal()
 
     const hotline = screen.getByLabelText(/hotline number/i)
     await user.clear(hotline)
     await user.type(hotline, 'call us maybe')
 
     expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
+  })
+
+  it('keeps save enabled for whitespace-padded valid values', async () => {
+    const user = userEvent.setup()
+    await renderOpenHotlineModal()
+
+    await fillHotline(user, '  Daet DRRMO  ', ' (054) 555-1000 ')
+    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled()
+  })
+
+  it('rejects punctuation-only hotline values before submit', async () => {
+    const user = userEvent.setup()
+    await renderOpenHotlineModal()
+
+    await fillHotline(user, 'Daet DRRMO', '((((((')
+    fireEvent.blur(screen.getByLabelText(/hotline number/i))
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
+    expect(screen.getByText(/valid phone number/i)).toBeInTheDocument()
   })
 
   it('submits the trimmed payload and shows success', async () => {
@@ -113,12 +148,7 @@ describe('EditHotlineModal', () => {
       expect(screen.getByLabelText(/office name/i)).toHaveValue('Daet MDRRMO')
     })
 
-    const label = screen.getByLabelText(/office name/i)
-    const hotline = screen.getByLabelText(/hotline number/i)
-    await user.clear(label)
-    await user.type(label, '  Daet DRRMO  ')
-    await user.clear(hotline)
-    await user.type(hotline, '(054) 555-1000')
+    await fillHotline(user, '  Daet DRRMO  ', '(054) 555-1000')
 
     await user.click(screen.getByRole('button', { name: /save/i }))
 
@@ -136,19 +166,25 @@ describe('EditHotlineModal', () => {
     const user = userEvent.setup()
     useAuthMock.mockReturnValue(MUNICIPAL_ADMIN)
     updateMunicipalityContactMock.mockRejectedValue(new Error('network down'))
-    render(<EditHotlineModal open onClose={vi.fn()} />)
+    await renderOpenHotlineModal()
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/hotline number/i)).toHaveValue('(054) 721-1216')
-    })
-
-    const hotline = screen.getByLabelText(/hotline number/i)
-    await user.clear(hotline)
-    await user.type(hotline, '(054) 555-2000')
+    await fillHotline(user, 'Daet DRRMO', '(054) 555-2000')
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /save/i })).toBeEnabled()
+  })
+
+  it('maps stable callable error codes without reading messages', async () => {
+    const user = userEvent.setup()
+    useAuthMock.mockReturnValue(MUNICIPAL_ADMIN)
+    updateMunicipalityContactMock.mockRejectedValue({ code: 'resource-exhausted' })
+    await renderOpenHotlineModal()
+
+    await fillHotline(user, 'Daet DRRMO', '(054) 555-3000')
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/wait a minute/i)
   })
 
   it('shows a retry path when the prefill read fails', async () => {
