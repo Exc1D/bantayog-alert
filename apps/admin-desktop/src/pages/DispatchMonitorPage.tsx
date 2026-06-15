@@ -152,7 +152,7 @@ export function DispatchMonitorPage() {
     windowType: 'dashboard',
     db,
   })
-  const { metrics: opsMetrics } = useOpsMetrics('24h')
+  const { metrics: opsMetrics, error: metricsError } = useOpsMetrics('24h')
 
   const [selectedDispatchId, setSelectedDispatchId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -181,7 +181,7 @@ export function DispatchMonitorPage() {
     .sort((a, b) => (b.resolvedAt ?? b.dispatchedAt) - (a.resolvedAt ?? a.dispatchedAt))
     .slice(0, RESOLVED_DISPATCH_LIMIT)
   const avgAcceptSeconds = opsMetrics?.avgAcceptSeconds ?? null
-  const fcmSuccessRate = opsMetrics?.fcmSuccessRate ?? 0
+  const fcmSuccessRate = opsMetrics?.fcmSuccessRate ?? null
   const pageError = error ?? assignmentError
   const assignmentReports: AssignmentReport[] = assignmentReportDocs
     .map((doc) => {
@@ -521,6 +521,15 @@ export function DispatchMonitorPage() {
           role="status"
         >
           Data may be stale · last update {staleMinutes}m ago
+        </div>
+      )}
+      {metricsError != null && (
+        <div
+          aria-label="Metrics unavailable"
+          className="flex items-center justify-center gap-2 bg-[var(--color-warning)]/10 px-4 py-1.5 text-xs text-[var(--color-text-secondary)]"
+          role="status"
+        >
+          Metrics unavailable
         </div>
       )}
 
