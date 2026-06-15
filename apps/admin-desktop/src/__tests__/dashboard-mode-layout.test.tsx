@@ -42,6 +42,15 @@ vi.mock('../app/firebase', () => ({
   firebaseApp: {} as never,
 }))
 
+vi.mock('../providers/WindowSyncProvider', () => ({
+  useWindowSyncContext: () => ({
+    sendSync: vi.fn(),
+    subscribe: vi.fn().mockReturnValue((): void => {
+      return
+    }),
+  }),
+}))
+
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return {

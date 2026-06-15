@@ -18,6 +18,7 @@ const mockVerifyReport = vi.hoisted(() =>
     }),
   ),
 )
+const mockSendSync = vi.hoisted(() => vi.fn())
 
 vi.mock('../app/firebase', () => ({
   db: {} as never,
@@ -26,6 +27,15 @@ vi.mock('../app/firebase', () => ({
   functions: {} as never,
   rtdb: {} as never,
   firebaseApp: {} as never,
+}))
+
+vi.mock('../providers/WindowSyncProvider', () => ({
+  useWindowSyncContext: () => ({
+    sendSync: mockSendSync,
+    subscribe: vi.fn().mockReturnValue((): void => {
+      return
+    }),
+  }),
 }))
 
 vi.mock('react-router-dom', async (importOriginal) => {

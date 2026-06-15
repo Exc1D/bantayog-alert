@@ -124,11 +124,10 @@ export default function MapPage() {
         selectReport(msg.reportId)
       }
       if (msg.type === 'select:municipality' && msg.source === 'dashboard') {
-        // Municipality selection on map centers the map;
-        // drill-down data not yet available without a lookup helper
+        selectMunicipality(msg.municipalityId)
       }
     })
-  }, [subscribe, selectReport])
+  }, [subscribe, selectReport, selectMunicipality])
 
   const handlePinClick = useCallback(
     (reportId: string) => {
