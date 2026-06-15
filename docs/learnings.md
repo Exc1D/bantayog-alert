@@ -1,5 +1,11 @@
 # Learnings - Durable Rules
 
+## UX / Dashboard Design
+
+- Dashboard metrics that have not yet been polled must display `—` (em dash), not `0` or `0%`. A `?? 0` default on a metrics hook looks like a real zero to an operator on first paint, falsely signaling a complete outage. Use `?? null` for the display path and guard the render with a null check.
+- The FCM success-rate metric has two separate defaults that must NOT be unified: `getStatusFcmSuccessRate` uses `?? null` (display — "not yet known"), while `getModeFcmSuccessRate` keeps `?? 1.0` (dashboard-mode input — a missing metric must not false-trip the mode into degraded). Never "fix" the mode default to match the display default.
+- A non-visible metrics poll error is as harmful as a fabricated value. Surface it in the always-visible row of the StatusBar (not inside the collapsible expanded section) so operators do not see a silent failure.
+
 ## Reliability / Demo Spine
 
 - `pnpm dev` must start the canonical local stack: emulators, Firebase web env defaults, and seeded demo accounts. Use `pnpm dev:apps` only for deliberate frontend-only work.
