@@ -8,6 +8,16 @@
 - Red-first TDD: added 5 new tests to `DispatchStatsCards.test.tsx` (null→`—`, genuine-0→`0%`, 0.95→`95%`, null has no color class) and 2 tests to `DispatchMonitorPage.test.tsx` (metricsError shows indicator; no error hides it). All targeted failures reproduced before implementation.
 - Verification: `DispatchStatsCards.test.tsx` 16/16; `DispatchMonitorPage.test.tsx` 19/19; `tsc --noEmit` clean; `eslint src` clean; `git diff --check` clean.
 - The `avgAcceptSeconds !== null` null-guard in `DispatchStatsCards` was the template for this slice.
+## 2026-06-15 - Round 3 UX Evaluation: command authority, not decoration (admin-desktop)
+
+- Re-audited `@bantayog/admin-desktop` against the operator's terms (can a tired admin at 2 AM do this from the dashboard in 1 click?) instead of the code's terms (is the function in place to do this).
+- New file: `docs/ux-evaluation-admin-desktop-2026-06-15.md`. Re-baselined the scorecard with two new axes ("Authority over Responder app", "Authority over Citizen PWA") and downgraded the previous rounds' generous numbers.
+- Hard numbers behind the user's complaint: out of 26 callables in `apps/admin-desktop/src/services/callables.ts`, only 9 are invoked from UI code. The other 17 (`suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride`, `resetUserTotp`, `cancelDispatch`, `closeReport`, `reopenReport`, `shareReport`, `mergeDuplicates`, `approveErasureRequest`, `setErasureLegalHold`, `setRetentionExempt`, `toggleMutualAidVisibility`, `suspendUser`, `revokeUser`, `requestAgencyAssistance`, `acceptAgencyAssistance`, `declineAgencyAssistance`) are server-capable but admin-blind.
+- Five built-and-tested components are not mounted anywhere: `ActiveIncidentsTable`, `TrendAnalysisPanel`, `AnomalyAlertPanel`, `ResponderLayer`, `OnboardingTour`. The "inspection-grade widget" feel is decoration.
+- The dashboard's "1-click inspection" is actually "1-click navigation to a different page"; no drawer, no peek, no overlay. Map is half a picture (no `ResponderLayer` mounted, no SLA rings, no clustering, no map on the dashboard at all).
+- The Responder panel shows name + online dot and discards `agencyId`, `municipalityId`, current dispatch, current location, shift, TOTP. There is no responder detail page, no history, no per-responder actions.
+- KPI cards still have no target, no trend, no "is this OK" status chip. Round 2 called this P1; round 3 calls it the symptom of a deeper problem (the dashboard does not know what "good" looks like).
+- The honest verdict: the app is a moderately good read-only monitoring dashboard with partial write surface, not a command surface. The fix is integration (wire the dead components, build 3 drawers, surface the 17 unwired callables, give KPI cards targets/trends, put a 1/3-width map on the dashboard with responder pins and SLA rings), not architecture. ~3-4 weeks of focused work. The two earlier evaluation rounds (2026-05-25, 2026-06-13) were graded on code-in-place, not operator-can-do, and were too generous.
 
 ## 2026-06-14 - Admin Control-Contract Fix Slices (3c-17 → 3c-21, docs only)
 
@@ -65,6 +75,14 @@
 - Updated responder-ops backlog docs to make Gate 3 explicit: no deactivation UI until Auth propagation is verified/fixed.
 - Added an inline comment in `apps/admin-desktop/src/app/firebase.ts` documenting eager SDK initialization and the test mock requirement.
 - Verification: `pnpm format:check`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused admin tests (20/20); focused functions tests (7 passed, 6 skipped when emulator unavailable); shared-validators municipality tests (13/13); `fallow audit --root . --changed-since e958473cc4c2eba04d80b1c475a008a7b187d98a --gate new-only --format human` reports no introduced issues; `git diff --check` passed.
+
+## 2026-06-13 - Round 2 UX & Design Evaluation (admin-desktop)
+
+- Re-evaluated `@bantayog/admin-desktop` against the shipped code (Dashboard, Dispatch, Triage, Map, Feed pages plus `StatusBar` and core hooks) plus the May 25 evaluation as the prior baseline.
+- New file: `docs/ux-evaluation-admin-desktop-2026-06-13.md`. Headline: design health moved from 26/40 → 33/40 (Nielsen). UX completeness moved from 5/8 Partial → 6 Complete/Strong + 1 Partial + 1 still Partial.
+- The May 25 P0 (re-dispatch no-op) is verified fixed. The May 25 P1 list (re-dispatch wired, success feedback, ambiguous unknown placeholders, skip link, dashboard mode rules) is verified fixed. SLA countdown on `/dispatches` and resolved-closure section are new and working.
+- New structural P0s surfaced: (1) dashboard has no spatial/map presence — a wall display without geography is not a COP; (2) KPI cards lack operational meaning (no target / trend / threshold); (3) mobile is still hard-blocked.
+- Recommendation: fix the three P0/P1 items in one polish sprint before pilot; the bones (cross-window sync, error discipline, focus traps, idempotency, stale-data banners, status mode logic) are all present and tested.
 
 ## 2026-06-13 - Phase 3C-12 Dashboard + Responder Operations UX Backlog (docs only)
 
