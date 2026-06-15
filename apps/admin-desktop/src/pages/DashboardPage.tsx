@@ -777,6 +777,7 @@ export default function DashboardPage() {
         isDispatching={isDispatching}
         onAlertError={(msg) => {
           console.error('Alert declaration failed:', msg)
+          setActionError(msg)
         }}
         onCloseAlert={() => {
           setAlertModalOpen(false)

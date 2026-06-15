@@ -1,5 +1,28 @@
 # Progress
 
+## 2026-06-15 - Phase 3C-20 Dashboard Declare-Alert Error Surfacing
+
+- Fixed the silent failure path in `DashboardPage.tsx` where a failed
+  province-wide alert declaration only called `console.error`. The operator had
+  no visible signal the broadcast failed and would incorrectly believe the alert
+  had been sent. The fix is a single `setActionError(msg)` call added to
+  `onAlertError`, mirroring the exact pattern already used by the re-dispatch
+  and verify-report failure handlers (lines 627 and 651).
+- `actionError` is already rendered in the page shell by
+  `<DashboardFeedbackBanners actionError={actionError} ... />` (above the
+  modals), so no new UI, no banner relocation, and no `DeclareAlertModal`
+  changes were needed. Frontend-only; zero backend/rules/schema/deploy changes.
+- **Red-first proof:** wrote
+  `apps/admin-desktop/src/__tests__/DashboardPage.declare-alert-error.test.tsx`
+  with a `DeclareAlertModal` mock that exposes a `force-alert-error` button. The
+  test failed before the fix (`findByText('Alert broadcast failed')` timed out
+  because the handler only logged). After adding `setActionError(msg)` the test
+  passed (1/1).
+- **Verification:** `vitest run` 1/1 ✓; `tsc --noEmit` ✓ (clean); `eslint src`
+  ✓ (clean — fixed one `@typescript-eslint/no-confusing-void-expression` in the
+  test mock); `git diff --check` ✓. Files changed: `DashboardPage.tsx` (+1
+  line), `DashboardPage.declare-alert-error.test.tsx` (new, 103 lines).
+
 ## 2026-06-14 - Admin Control-Contract Fix Slices (3c-17 → 3c-21, docs only)
 
 - Authored the five fix slices for the truth defects surfaced by the end-to-end
