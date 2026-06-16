@@ -5,6 +5,29 @@
 - Dashboard metrics that have not yet been polled must display `—` (em dash), not `0` or `0%`. A `?? 0` default on a metrics hook looks like a real zero to an operator on first paint, falsely signaling a complete outage. Use `?? null` for the display path and guard the render with a null check.
 - The FCM success-rate metric has two separate defaults that must NOT be unified: `getStatusFcmSuccessRate` uses `?? null` (display — "not yet known"), while `getModeFcmSuccessRate` keeps `?? 1.0` (dashboard-mode input — a missing metric must not false-trip the mode into degraded). Never "fix" the mode default to match the display default.
 - A non-visible metrics poll error is as harmful as a fabricated value. Surface it in the always-visible row of the StatusBar (not inside the collapsible expanded section) so operators do not see a silent failure.
+## UX / Metrics Display (additions)
+
+- When widening a numeric stat card prop from `number` to `number | null`, guard derived boolean flags (like `isFcmHigh`) with a strict `!== null` check — a falsy guard `!fcmPercent` would incorrectly treat genuine `0` as unknown. Use `String(value) + '%'` instead of a template literal when the `@typescript-eslint/restrict-template-expressions` rule is active.
+- Test assertions over `getAllByRole('status')` result arrays: use `el.textContent.includes(...)` (direct access, no optional chain, no `??` coalescing) because the ESLint config in this project treats `HTMLElement.textContent` as non-nullable in test code.
+
+## UX / Dashboard Design
+
+- For an operational EOC dashboard, every KPI needs three context layers: target/threshold, temporal comparison, and trend indicator. A bare number ("Active Now: 1") is technically correct and operationally useless. The most common dashboard failure mode in the literature is the "so what?" problem.
+- A wall-mounted command display without a map is not a Common Operating Picture. Geography is non-negotiable for disaster response. Either embed a map on the dashboard or surface a compact municipality heat strip that deep-links to the full map.
+- Operational dashboards (vs. analytical) should pre-attentively encode health at the top of the page. Pulsing mode badge + threshold-based color dots in `StatusCenter` are the right call for dim command rooms with 6-10 ft viewing distance.
+- Mode-driven layout (calm / active / degraded / surge) that hides charts and municipal tables when in surge is correct. An operator under load does not want a less-urgent chart; they want a less-cluttered view.
+- Confirmation modals for destructive actions are non-negotiable (unpublish, reject, re-dispatch, declare alert). The pattern of "show count + reason + note before fire" for bulk reject is best-in-class for an admin workbench.
+- `isRetryableActionError` (separating retryable network errors from non-retryable permission/validation errors) is the right abstraction. Do not let "click again" become a habit on errors that won't fix themselves.
+- Hard mobile blocks are wrong for command-and-control products. Field staff and off-site coordinators need a read-only status fallback. Replace `MobileGate` with a degraded mobile surface before pilot.
+- For the data-freshness heartbeat, use a stable "vs 1h ago" delta or a sparkline, not a per-render trend arrow. The current `DispatchStatsCards` trend arrow flickers as data refreshes and never persists long enough to be useful.
+- A pulsing mode badge looks like a 1990s alert. It is correct. In a dim room with a 6-10 ft viewing distance, peripheral-vision pulse on degraded/surge is the cheapest "this is not calm anymore" signal available.
+- Cross-window `WindowSyncProvider` is the right pattern for multi-monitor command centers. Team SA (shared situational awareness across operators) is the documented design goal; do not collapse the multi-window model into a single SPA.
+- "Command authority" over the other apps is measured by what the admin can do in 1 click from the watch floor, not by what the backend supports. If 17 of 26 callables are unwired, the admin app is not a command tool, it is a moderation tool. Audit `callables.ts` invocations vs definitions before claiming command surface.
+- Dead components (built, tested, never mounted) are the most expensive form of decoration. They signal inspection-grade capability that does not exist, and they bloat the cognitive surface. Either wire them in or delete them.
+- The Responder panel must show more than name + online dot. The hook already returns `agencyId`, `municipalityId`, current dispatch, current location, TOTP status; the panel discards all of it. A name with no jurisdiction context is not a roster.
+- "1-click inspection" must mean a drawer / peek / overlay, not a page navigation. Page navigation breaks flow, loses the dashboard state, and adds 2-3 s of reload. If clicking requires leaving the page, the loop is broken.
+- A 6-10 ft wall display without a map on the dashboard is a wall-mounted KPI sheet, not a Common Operating Picture. Either embed the map or surface a compact geography strip that anchors the room.
+- KPI cards without target / trend / status chip are not KPIs. They are unlabeled numbers. Always pair a value with what good looks like (target), where it is going (trend), and whether to act (status chip).
 
 ## Reliability / Demo Spine
 
