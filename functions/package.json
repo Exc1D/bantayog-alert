@@ -31,7 +31,7 @@
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
     "@google-cloud/bigquery": "^7.9.2",
-    "@google-cloud/logging": "^7.0.0",
+    "@google-cloud/logging": "^11.2.2",
     "@turf/turf": "^7.3.5",
     "@types/geojson": "^7946.0.16",
     "file-type": "^22.0.1",
