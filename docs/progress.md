@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-06-15 - 3c-19b Dispatch FCM Metric Truth-Gate
+
+- Mirrors 3c-19a on the `/dispatches` surface: the FCM success-rate metric no longer fabricates `0%` pre-poll.
+- `DispatchStatsCards.tsx` prop `fcmSuccessRate` widened from `number` to `number | null`. `fcmPercent` is computed with a strict `!== null` guard (mirroring how `avgAcceptSeconds` was already null-guarded in the same file). `isFcmHigh` is `false` when null so the warning amber color is never applied to the dash state. The FCM card renders `—` (gray, no color class) when null and `N%` when measured; a genuine `0` still renders `0%`.
+- `DispatchMonitorPage.tsx` destructures `error: metricsError` from `useOpsMetrics('24h')` (previously discarded entirely). `fcmSuccessRate` default changed from `?? 0` to `?? null`. A non-alarmist `role="status"` / `aria-label="Metrics unavailable"` banner renders when `metricsError != null`, styled to match the existing stale-data banner using `!= null` guard (satisfies `exactOptionalPropertyTypes`).
+- Red-first TDD: added 5 new tests to `DispatchStatsCards.test.tsx` (null→`—`, genuine-0→`0%`, 0.95→`95%`, null has no color class) and 2 tests to `DispatchMonitorPage.test.tsx` (metricsError shows indicator; no error hides it). All targeted failures reproduced before implementation.
+- Verification: `DispatchStatsCards.test.tsx` 16/16; `DispatchMonitorPage.test.tsx` 19/19; `tsc --noEmit` clean; `eslint src` clean; `git diff --check` clean.
+- The `avgAcceptSeconds !== null` null-guard in `DispatchStatsCards` was the template for this slice.
+
 ## 2026-06-15 - Round 3 UX Evaluation: command authority, not decoration (admin-desktop)
 
 - Re-audited `@bantayog/admin-desktop` against the operator's terms (can a tired admin at 2 AM do this from the dashboard in 1 click?) instead of the code's terms (is the function in place to do this).
