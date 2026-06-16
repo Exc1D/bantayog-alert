@@ -8,7 +8,8 @@ interface Props {
   children?: ReactNode
   confirmLabel: string
   confirmVariant?: 'danger' | 'primary'
-  onConfirm: () => void
+  confirmLoading?: boolean
+  onConfirm: () => void | Promise<void>
   onCancel: () => void
 }
 
@@ -19,6 +20,7 @@ export function ConfirmationModal({
   children,
   confirmLabel,
   confirmVariant = 'danger',
+  confirmLoading,
   onConfirm,
   onCancel,
 }: Props) {
@@ -80,15 +82,19 @@ export function ConfirmationModal({
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            disabled={confirmLoading}
+            className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
-            onClick={onConfirm}
-            className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50`}
+            onClick={() => {
+              void onConfirm()
+            }}
+            disabled={confirmLoading}
+            className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            {confirmLabel}
+            {confirmLoading ? 'Processing...' : confirmLabel}
           </button>
         </div>
       </div>

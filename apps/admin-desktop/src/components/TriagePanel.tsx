@@ -17,7 +17,7 @@ interface Props {
   responders?: ResponderEntry[]
   onClose: () => void
   onVerify: (id: string) => void
-  onReject: (id: string) => void
+  onReject: (id: string) => void | Promise<void>
   onDispatch: (id: string, agency: string, responder: string) => void
   onDeclareAlert?: (reportId: string) => void
 }
@@ -35,6 +35,7 @@ export function TriagePanel({
 }: Props) {
   const trapRef = useFocusTrap({ isActive: !!report, onEscape: onClose })
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
   const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [agency, setAgency] = useState('')
   const [responder, setResponder] = useState('')
@@ -278,9 +279,15 @@ export function TriagePanel({
         message="This will permanently remove the report from the queue."
         confirmLabel="Reject"
         confirmVariant="danger"
-        onConfirm={() => {
-          onReject(report.id)
-          setRejectModalOpen(false)
+        confirmLoading={rejecting}
+        onConfirm={async () => {
+          setRejecting(true)
+          try {
+            await onReject(report.id)
+          } finally {
+            setRejecting(false)
+            setRejectModalOpen(false)
+          }
         }}
         onCancel={() => {
           setRejectModalOpen(false)
