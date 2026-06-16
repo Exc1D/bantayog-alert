@@ -8,8 +8,8 @@ const { mockCheckRateLimit, mockUnsubscribeFromTopic } = vi.hoisted(() => ({
         errors: [],
     }),
 }));
-vi.mock('firebase-admin', () => ({
-    messaging: vi.fn(() => ({
+vi.mock('firebase-admin/messaging', () => ({
+    getMessaging: vi.fn(() => ({
         unsubscribeFromTopic: mockUnsubscribeFromTopic,
     })),
 }));

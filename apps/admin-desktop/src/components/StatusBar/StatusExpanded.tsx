@@ -4,7 +4,7 @@ interface StatusExpandedProps {
   resolvedToday: number | undefined
   muniIssues: { resolved: number; total: number } | undefined
   stalledDispatchCount: number
-  fcmSuccessRate: number
+  fcmSuccessRate: number | null
   avgAcceptSeconds: number | null
   isSurge: boolean
 }
@@ -17,8 +17,8 @@ export function StatusExpanded({
   avgAcceptSeconds,
   isSurge,
 }: StatusExpandedProps) {
-  const fcmPercent = Math.round(fcmSuccessRate * 100)
-  const isFcmHigh = fcmSuccessRate >= 0.9
+  const fcmPercent = fcmSuccessRate !== null ? Math.round(fcmSuccessRate * 100) : null
+  const isFcmHigh = fcmSuccessRate !== null && fcmSuccessRate >= 0.9
 
   return (
     <div className="flex justify-around border-t border-white/10 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
@@ -51,9 +51,15 @@ export function StatusExpanded({
         Push Rate:{' '}
         <strong
           data-testid="statusbar-fcm-rate"
-          className={isFcmHigh ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}
+          className={
+            fcmPercent !== null
+              ? isFcmHigh
+                ? 'text-[var(--color-success)]'
+                : 'text-[var(--color-warning)]'
+              : 'text-[var(--color-text-muted)]'
+          }
         >
-          {fcmPercent}%
+          {fcmPercent !== null ? `${String(fcmPercent)}%` : '—'}
         </strong>
       </span>
       <span>

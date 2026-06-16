@@ -67,6 +67,33 @@ describe('DispatchStatsCards', () => {
     expect(card).toHaveClass('text-amber-400')
   })
 
+  it('shows "—" for FCM Rate when null (not yet measured)', () => {
+    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={null} />)
+    const card = screen.getByLabelText('FCM success rate')
+    expect(card).toHaveTextContent('—')
+    expect(card).not.toHaveTextContent('0%')
+  })
+
+  it('shows "0%" for FCM Rate when genuinely measured as zero (not null)', () => {
+    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={0} />)
+    const card = screen.getByLabelText('FCM success rate')
+    expect(card).toHaveTextContent('0%')
+    expect(card).not.toHaveTextContent('—')
+  })
+
+  it('shows "95%" for FCM Rate when value is 0.95', () => {
+    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={0.95} />)
+    const card = screen.getByLabelText('FCM success rate')
+    expect(card).toHaveTextContent('95%')
+  })
+
+  it('does not apply warning color class when FCM is null', () => {
+    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={null} />)
+    const card = screen.getByLabelText('FCM success rate')
+    expect(card).not.toHaveClass('text-green-400')
+    expect(card).not.toHaveClass('text-amber-400')
+  })
+
   it('shows trend arrow when avgAcceptSeconds changes by >10%', () => {
     const { rerender } = render(<DispatchStatsCards {...DEFAULT_PROPS} avgAcceptSeconds={100} />)
     rerender(<DispatchStatsCards {...DEFAULT_PROPS} avgAcceptSeconds={120} />)
