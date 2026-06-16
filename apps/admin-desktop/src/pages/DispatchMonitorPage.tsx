@@ -181,7 +181,14 @@ export function DispatchMonitorPage() {
     .sort((a, b) => (b.resolvedAt ?? b.dispatchedAt) - (a.resolvedAt ?? a.dispatchedAt))
     .slice(0, RESOLVED_DISPATCH_LIMIT)
   const avgAcceptSeconds = opsMetrics?.avgAcceptSeconds ?? null
-  const fcmSuccessRate = opsMetrics?.fcmSuccessRate ?? null
+  const rawFcmSuccessRate = opsMetrics?.fcmSuccessRate
+  const fcmSuccessRate =
+    typeof rawFcmSuccessRate === 'number' &&
+    Number.isFinite(rawFcmSuccessRate) &&
+    rawFcmSuccessRate >= 0 &&
+    rawFcmSuccessRate <= 1
+      ? rawFcmSuccessRate
+      : null
   const pageError = error ?? assignmentError
   const assignmentReports: AssignmentReport[] = assignmentReportDocs
     .map((doc) => {

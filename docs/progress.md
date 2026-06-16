@@ -8,6 +8,7 @@
 - Red-first TDD: added 5 new tests to `DispatchStatsCards.test.tsx` (null→`—`, genuine-0→`0%`, 0.95→`95%`, null has no color class) and 2 tests to `DispatchMonitorPage.test.tsx` (metricsError shows indicator; no error hides it). All targeted failures reproduced before implementation.
 - Verification: `DispatchStatsCards.test.tsx` 16/16; `DispatchMonitorPage.test.tsx` 19/19; `tsc --noEmit` clean; `eslint src` clean; `git diff --check` clean.
 - The `avgAcceptSeconds !== null` null-guard in `DispatchStatsCards` was the template for this slice.
+
 ## 2026-06-15 - Round 3 UX Evaluation: command authority, not decoration (admin-desktop)
 
 - Re-audited `@bantayog/admin-desktop` against the operator's terms (can a tired admin at 2 AM do this from the dashboard in 1 click?) instead of the code's terms (is the function in place to do this).
