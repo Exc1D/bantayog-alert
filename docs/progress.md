@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-06-15 - 3c-18 Map Reject: Confirmation + Real Reason Picker
+
+- Extracted `REJECTION_REASONS` (as-const value array) and `RejectionReason` union type from `TriagePage.tsx` into `constants/report.ts` so the enum is the single source of truth. Both are exported from the `../constants` barrel automatically.
+- Updated `TriagePage.tsx` to import from `../constants/report`; removed the inline copies. Zero behavioral change to Triage.
+- Updated `TriagePanel.tsx` (required 4th source file — the existing internal `ConfirmationModal` in the panel was not in the spec recon): removed the internal `rejectModalOpen` state and `ConfirmationModal`, changed the Reject button to call `onReject(report.id)` directly, removed the `ConfirmationModal` import. The panel now delegates full confirm+reason UX to the page-level modal.
+- Updated `MapPage.tsx`: added `rejectConfirmOpen`, `rejectPendingId`, `rejectReason` (`'insufficient_detail'` default), and `rejectNote` state; added `handleRequestReject`, `handleCancelReject`; changed `handleReject` to accept `(id, reason, note)`, use the **chosen** reason, use a conditional spread for non-blank notes (satisfying `exactOptionalPropertyTypes`), surface errors through `actionErrorMessage`, and close the modal in `finally`; wired `onReject={handleRequestReject}`; rendered a `<ConfirmationModal>` with the reason `<select>` (from `REJECTION_REASONS`) and optional note `<textarea>` as children.
+- Red-first: wrote `src/__tests__/MapPage.reject.test.tsx` first; confirmed 5/5 tests failed on the current code for the right reasons. Implemented; 5/5 pass.
+- Verification: `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/MapPage.reject.test.tsx src/pages/TriagePage.test.tsx` — 2 files, 24/24 tests passed. `pnpm --dir apps/admin-desktop exec tsc --noEmit` — clean. `pnpm --dir apps/admin-desktop exec eslint src` — clean. `git diff --check` — clean. `MapPage.test.tsx` is a pre-existing `auth/invalid-api-key` failure unrelated to this change.
 ## 2026-06-15 - Phase 3C-20 Dashboard Declare-Alert Error Surfacing
 
 - Fixed the silent failure path in `DashboardPage.tsx` where a failed

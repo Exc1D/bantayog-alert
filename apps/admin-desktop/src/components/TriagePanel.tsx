@@ -2,7 +2,6 @@ import { useRef, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { SeverityBadge } from './SeverityBadge'
 import { ReportTypeIcon } from './ReportTypeIcon'
-import { ConfirmationModal } from './ConfirmationModal'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import type { Report } from '../types'
 
@@ -34,7 +33,6 @@ export function TriagePanel({
   onDeclareAlert,
 }: Props) {
   const trapRef = useFocusTrap({ isActive: !!report, onEscape: onClose })
-  const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [agency, setAgency] = useState('')
   const [responder, setResponder] = useState('')
@@ -154,7 +152,7 @@ export function TriagePanel({
             {canReject && (
               <button
                 onClick={() => {
-                  setRejectModalOpen(true)
+                  onReject(report.id)
                 }}
                 className="w-full rounded-md border border-[var(--color-danger)] py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
               >
@@ -271,21 +269,6 @@ export function TriagePanel({
           <p className="text-xs text-[var(--color-text-muted)]">Report #{report.id}</p>
         </div>
       </div>
-
-      <ConfirmationModal
-        open={rejectModalOpen}
-        title="Reject Report"
-        message="This will permanently remove the report from the queue."
-        confirmLabel="Reject"
-        confirmVariant="danger"
-        onConfirm={() => {
-          onReject(report.id)
-          setRejectModalOpen(false)
-        }}
-        onCancel={() => {
-          setRejectModalOpen(false)
-        }}
-      />
     </>
   )
 }
