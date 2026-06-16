@@ -107,6 +107,7 @@ interface DashboardModalsProps {
 interface DashboardStatusBarProps {
   activeCount: number
   lastDataUpdateAt: number
+  metricsError: string | null
   mode: DashboardMode
   municipalData: MunicipalPerformance[]
   opsMetrics: OpsMetricsSnapshot
@@ -207,8 +208,8 @@ function getModeFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number {
   return opsMetrics?.fcmSuccessRate ?? 1.0
 }
 
-function getStatusFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number {
-  return opsMetrics?.fcmSuccessRate ?? 0
+function getStatusFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number | null {
+  return opsMetrics?.fcmSuccessRate ?? null
 }
 
 function getAvgAcceptSeconds(opsMetrics: OpsMetricsSnapshot): number | null {
@@ -340,6 +341,7 @@ function DashboardStaleDataBanner({
 function DashboardStatusBar({
   activeCount,
   lastDataUpdateAt,
+  metricsError,
   mode,
   municipalData,
   opsMetrics,
@@ -360,6 +362,7 @@ function DashboardStatusBar({
       totalResponders={responderCount}
       uncoveredMunicipalities={getUncoveredMunicipalityCount(municipalData)}
       lastDataUpdateAt={lastDataUpdateAt}
+      {...(metricsError != null ? { metricsError } : {})}
     />
   )
 }
@@ -744,6 +747,7 @@ export default function DashboardPage() {
       <DashboardStatusBar
         activeCount={activeCount}
         lastDataUpdateAt={lastDataUpdateAt}
+        metricsError={metricsError}
         mode={mode}
         municipalData={municipalData}
         opsMetrics={opsMetrics}
@@ -783,6 +787,7 @@ export default function DashboardPage() {
         isDispatching={isDispatching}
         onAlertError={(msg) => {
           console.error('Alert declaration failed:', msg)
+          setActionError(msg)
         }}
         onCloseAlert={() => {
           setAlertModalOpen(false)

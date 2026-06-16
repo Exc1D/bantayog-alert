@@ -5,7 +5,7 @@ interface Props {
   activeCount: number
   stalledCount: number
   avgAcceptSeconds: number | null
-  fcmSuccessRate: number
+  fcmSuccessRate: number | null
   mode: DashboardMode
 }
 
@@ -23,8 +23,8 @@ export function DispatchStatsCards({
   mode,
 }: Props) {
   const isSurge = mode === 'surge'
-  const fcmPercent = Math.round(fcmSuccessRate * 100)
-  const isFcmHigh = fcmSuccessRate >= 0.9
+  const fcmPercent = fcmSuccessRate !== null ? Math.round(fcmSuccessRate * 100) : null
+  const isFcmHigh = fcmSuccessRate !== null && fcmSuccessRate >= 0.9
   const prevRef = useRef<number | null>(null)
   const [trend, setTrend] = useState<{ arrow: string; color: string } | null>(null)
 
@@ -99,7 +99,7 @@ export function DispatchStatsCards({
       {!isSurge && (
         <div
           aria-label="FCM success rate"
-          className={`rounded-lg border-t-[3px] p-4 bg-white/[0.03] ${isFcmHigh ? 'border-t-green-400 text-green-400' : 'border-t-amber-400 text-amber-400'}`}
+          className={`rounded-lg border-t-[3px] p-4 bg-white/[0.03] ${fcmPercent !== null ? (isFcmHigh ? 'border-t-green-400 text-green-400' : 'border-t-amber-400 text-amber-400') : 'border-t-gray-400 text-gray-400'}`}
           role="region"
         >
           <div className="text-xs">FCM Rate</div>
@@ -107,7 +107,7 @@ export function DispatchStatsCards({
             className="font-mono text-2xl font-bold"
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
-            {fcmPercent}%
+            {fcmPercent !== null ? String(fcmPercent) + '%' : '—'}
           </div>
         </div>
       )}

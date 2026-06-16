@@ -26,6 +26,7 @@ import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
+import { REJECTION_REASONS, type RejectionReason } from '../constants/report'
 import type { Report, MunicipalPerformance } from '../types'
 
 function responderEntries(responders: [string, unknown][]): {
@@ -95,6 +96,13 @@ export default function MapPage() {
   const reports = (reportDocs as ((typeof reportDocs)[number] & Record<string, unknown>)[])
     .map(mapReportDocToReport)
     .filter((r): r is Report => r !== null)
+
+  // Apply the All / Active Only overlay filter. Keep the full `reports` list
+  // for selectedReport lookup and dispatch handlers so those never lose context.
+  const visibleReports = activeOverlays.has('active_only')
+    ? reports.filter((r) => ACTIVE_REPORT_STATUSES.includes(r.status))
+    : reports
+
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null
   const [actionError, setActionError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -105,6 +113,10 @@ export default function MapPage() {
   const [helpModalOpen, setHelpModalOpen] = useState(false)
   const [verifyConfirmOpen, setVerifyConfirmOpen] = useState(false)
   const [verifyPendingId, setVerifyPendingId] = useState<string | null>(null)
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false)
+  const [rejectPendingId, setRejectPendingId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState<RejectionReason>('insufficient_detail')
+  const [rejectNote, setRejectNote] = useState('')
 
   const navigate = useNavigate()
 
@@ -168,22 +180,38 @@ export default function MapPage() {
     setVerifyConfirmOpen(false)
   }, [])
 
-  const handleReject = useCallback(async (id: string) => {
-    setActionError(null)
-    setSuccessMessage(null)
+  const handleReject = useCallback(async (id: string, reason: RejectionReason, note: string) => {
     try {
+      const trimmedNote = note.trim()
       await withRetry(() =>
         callables.rejectReport({
           reportId: id,
-          reason: 'obviously_false',
+          reason,
+          ...(trimmedNote ? { notes: trimmedNote } : {}),
           idempotencyKey: generateIdempotencyKey(),
         }),
       )
       setSuccessMessage('Report rejected')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Reject failed'
-      setActionError(msg)
+      setActionError(actionErrorMessage(err, 'Reject failed'))
+    } finally {
+      setRejectConfirmOpen(false)
+      setRejectPendingId(null)
     }
+  }, [])
+
+  const handleRequestReject = useCallback((id: string) => {
+    setActionError(null)
+    setSuccessMessage(null)
+    setRejectPendingId(id)
+    setRejectReason('insufficient_detail')
+    setRejectNote('')
+    setRejectConfirmOpen(true)
+  }, [])
+
+  const handleCancelReject = useCallback(() => {
+    setRejectPendingId(null)
+    setRejectConfirmOpen(false)
   }, [])
 
   const handleDispatch = useCallback(
@@ -243,20 +271,20 @@ export default function MapPage() {
     {
       key: 'ArrowUp',
       handler: () => {
-        if (!selectedReportId || reports.length === 0) return
-        const idx = reports.findIndex((r) => r.id === selectedReportId)
-        const nextIdx = idx <= 0 ? reports.length - 1 : idx - 1
-        const nextReport = reports[nextIdx]
+        if (!selectedReportId || visibleReports.length === 0) return
+        const idx = visibleReports.findIndex((r) => r.id === selectedReportId)
+        const nextIdx = idx <= 0 ? visibleReports.length - 1 : idx - 1
+        const nextReport = visibleReports[nextIdx]
         if (nextReport) handlePinClick(nextReport.id)
       },
     },
     {
       key: 'ArrowDown',
       handler: () => {
-        if (!selectedReportId || reports.length === 0) return
-        const idx = reports.findIndex((r) => r.id === selectedReportId)
-        const nextIdx = idx >= reports.length - 1 ? 0 : idx + 1
-        const nextReport = reports[nextIdx]
+        if (!selectedReportId || visibleReports.length === 0) return
+        const idx = visibleReports.findIndex((r) => r.id === selectedReportId)
+        const nextIdx = idx >= visibleReports.length - 1 ? 0 : idx + 1
+        const nextReport = visibleReports[nextIdx]
         if (nextReport) handlePinClick(nextReport.id)
       },
     },
@@ -313,18 +341,18 @@ export default function MapPage() {
       )}
       <div id="main-content" className="relative flex-1">
         <MapKeyboardNav
-          reports={reports}
+          reports={visibleReports}
           selectedReportId={selectedReportId}
           onSelect={handlePinClick}
         />
         <div className="isolate h-full w-full">
           <ProvincialMap
-            reports={reports}
+            reports={visibleReports}
             selectedReportId={selectedReportId}
             onPinClick={handlePinClick}
           />
         </div>
-        {reports.length === 0 && (
+        {visibleReports.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] px-6 py-4 text-center shadow-xl">
               <p className="text-sm font-medium text-[var(--color-text-primary)]">
@@ -348,7 +376,7 @@ export default function MapPage() {
             selectReport(null)
           }}
           onVerify={handleRequestVerify}
-          onReject={(id) => void handleReject(id)}
+          onReject={handleRequestReject}
           onDispatch={(reportId, agency, responderUid) =>
             void handleDispatch(reportId, agency, responderUid)
           }
@@ -412,6 +440,54 @@ export default function MapPage() {
           }}
           onCancel={handleCancelVerify}
         />
+        <ConfirmationModal
+          open={rejectConfirmOpen}
+          title="Reject Report"
+          message="This permanently rejects a citizen's emergency report and cannot be undone."
+          confirmLabel="Reject"
+          confirmVariant="danger"
+          onConfirm={() => {
+            if (rejectPendingId) {
+              void handleReject(rejectPendingId, rejectReason, rejectNote)
+            }
+          }}
+          onCancel={handleCancelReject}
+        >
+          <div className="mt-4 space-y-3">
+            <label
+              htmlFor="map-reject-reason"
+              className="block text-sm font-medium text-[var(--color-text-primary)]"
+            >
+              Rejection reason
+            </label>
+            <select
+              id="map-reject-reason"
+              aria-label="Rejection reason"
+              value={rejectReason}
+              onChange={(e) => {
+                setRejectReason(e.target.value as RejectionReason)
+              }}
+              className="w-full rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              {REJECTION_REASONS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <textarea
+              aria-label="Admin note (optional)"
+              placeholder="Optional note (max 500 characters)"
+              maxLength={500}
+              value={rejectNote}
+              onChange={(e) => {
+                setRejectNote(e.target.value)
+              }}
+              rows={3}
+              className="w-full resize-none rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-white/30"
+            />
+          </div>
+        </ConfirmationModal>
       </div>
     </div>
   )

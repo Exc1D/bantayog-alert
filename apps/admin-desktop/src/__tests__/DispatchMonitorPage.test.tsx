@@ -591,4 +591,29 @@ describe('DispatchMonitorPage', () => {
       ).toBe(false)
     })
   })
+
+  describe('metrics error indicator', () => {
+    it('renders a role="status" metrics unavailable indicator when useOpsMetrics returns an error', () => {
+      mockUseOpsMetrics.mockReturnValue({
+        metrics: null,
+        loading: false,
+        error: 'Failed to fetch metrics',
+      })
+      render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+      const statusEls = screen.getAllByRole('status')
+      const metricsStatus = statusEls.find((el) =>
+        el.textContent.toLowerCase().includes('metrics unavailable'),
+      )
+      expect(metricsStatus).toBeDefined()
+    })
+
+    it('does not render the metrics unavailable indicator when there is no error', () => {
+      render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+      const allStatusEls = screen.queryAllByRole('status')
+      const hasMetricsError = allStatusEls.some((el) =>
+        el.textContent.toLowerCase().includes('metrics unavailable'),
+      )
+      expect(hasMetricsError).toBe(false)
+    })
+  })
 })

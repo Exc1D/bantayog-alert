@@ -128,3 +128,12 @@ export function isValidReportStatus(value: unknown): value is ReportStatus {
 export function normalizeReportStatus(value: unknown): ReportStatus {
   return isValidReportStatus(value) ? value : 'new'
 }
+
+export const REJECTION_REASONS = [
+  { value: 'insufficient_detail', label: 'Insufficient detail' },
+  { value: 'duplicate', label: 'Duplicate' },
+  { value: 'obviously_false', label: 'Obviously false' },
+  { value: 'test_submission', label: 'Test submission' },
+] as const
+
+export type RejectionReason = (typeof REJECTION_REASONS)[number]['value']
