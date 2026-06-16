@@ -1,5 +1,67 @@
 # Progress
 
+## 2026-06-15 - 3c-18 Map Reject: Confirmation + Real Reason Picker
+
+- Extracted `REJECTION_REASONS` (as-const value array) and `RejectionReason` union type from `TriagePage.tsx` into `constants/report.ts` so the enum is the single source of truth. Both are exported from the `../constants` barrel automatically.
+- Updated `TriagePage.tsx` to import from `../constants/report`; removed the inline copies. Zero behavioral change to Triage.
+- Updated `TriagePanel.tsx` (required 4th source file — the existing internal `ConfirmationModal` in the panel was not in the spec recon): removed the internal `rejectModalOpen` state and `ConfirmationModal`, changed the Reject button to call `onReject(report.id)` directly, removed the `ConfirmationModal` import. The panel now delegates full confirm+reason UX to the page-level modal.
+- Updated `MapPage.tsx`: added `rejectConfirmOpen`, `rejectPendingId`, `rejectReason` (`'insufficient_detail'` default), and `rejectNote` state; added `handleRequestReject`, `handleCancelReject`; changed `handleReject` to accept `(id, reason, note)`, use the **chosen** reason, use a conditional spread for non-blank notes (satisfying `exactOptionalPropertyTypes`), surface errors through `actionErrorMessage`, and close the modal in `finally`; wired `onReject={handleRequestReject}`; rendered a `<ConfirmationModal>` with the reason `<select>` (from `REJECTION_REASONS`) and optional note `<textarea>` as children.
+- Red-first: wrote `src/__tests__/MapPage.reject.test.tsx` first; confirmed 5/5 tests failed on the current code for the right reasons. Implemented; 5/5 pass.
+- Verification: `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/MapPage.reject.test.tsx src/pages/TriagePage.test.tsx` — 2 files, 24/24 tests passed. `pnpm --dir apps/admin-desktop exec tsc --noEmit` — clean. `pnpm --dir apps/admin-desktop exec eslint src` — clean. `git diff --check` — clean. `MapPage.test.tsx` is a pre-existing `auth/invalid-api-key` failure unrelated to this change.
+
+## 2026-06-15 - Phase 3C-20 Dashboard Declare-Alert Error Surfacing
+
+- Fixed the silent failure path in `DashboardPage.tsx` where a failed
+  province-wide alert declaration only called `console.error`. The operator had
+  no visible signal the broadcast failed and would incorrectly believe the alert
+  had been sent. The fix is a single `setActionError(msg)` call added to
+  `onAlertError`, mirroring the exact pattern already used by the re-dispatch
+  and verify-report failure handlers (lines 627 and 651).
+- `actionError` is already rendered in the page shell by
+  `<DashboardFeedbackBanners actionError={actionError} ... />` (above the
+  modals), so no new UI, no banner relocation, and no `DeclareAlertModal`
+  changes were needed. Frontend-only; zero backend/rules/schema/deploy changes.
+- **Red-first proof:** wrote
+  `apps/admin-desktop/src/__tests__/DashboardPage.declare-alert-error.test.tsx`
+  with a `DeclareAlertModal` mock that exposes a `force-alert-error` button. The
+  test failed before the fix (`findByText('Alert broadcast failed')` timed out
+  because the handler only logged). After adding `setActionError(msg)` the test
+  passed (1/1).
+- **Verification:** `vitest run` 1/1 ✓; `tsc --noEmit` ✓ (clean); `eslint src`
+  ✓ (clean — fixed one `@typescript-eslint/no-confusing-void-expression` in the
+  test mock); `git diff --check` ✓. Files changed: `DashboardPage.tsx` (+1
+  line), `DashboardPage.declare-alert-error.test.tsx` (new, 103 lines).
+
+## 2026-06-15 - 3c-19a Dashboard FCM Metric Truth-Gate
+
+- Fixed the fabricated `0%` push-rate display on the Admin Dashboard: `getStatusFcmSuccessRate` now returns `?? null` instead of `?? 0`, widened through `StatusBar` and `StatusExpanded` props.
+- **Asymmetry preserved by design:** `getModeFcmSuccessRate` keeps `?? 1.0` — the dashboard mode computation must NOT false-trip into degraded when metrics are simply missing/unpolled. Only the _displayed number_ was lying; the mode default is correct and was left unchanged.
+- `StatusExpanded` null-guards the FCM rate: renders `—` (em dash, muted color) when `null`, renders `N%` with the existing green/amber success split when non-null. A genuine measured `0` still renders `0%` — only `null` shows the dash.
+- `StatusBar` gains an optional `metricsError?: string | null` prop that renders a `role="status"` / `aria-label="Metrics unavailable"` indicator in the always-visible top row (not buried in the collapsible `StatusExpanded`). Uses `!= null` guard so passing `null` suppresses the indicator. Conditional spread `{...(metricsError != null ? { metricsError } : {})}` satisfies `exactOptionalPropertyTypes`.
+- `DashboardStatusBarProps` extended with `metricsError: string | null`; the page's already-destructured `metricsError` from `useOpsMetrics('24h')` is now passed down to `DashboardStatusBar` → `StatusBar`.
+- Red-first TDD: wrote `StatusExpanded.test.tsx` (4 tests) and extended `StatusBar.test.tsx` (3 new tests in a `metrics error indicator` describe block) before implementation. All 3 targeted failures were reproduced for the right reasons, then resolved.
+- Verification: `vitest run` passed 33/33 tests (2 files); `tsc --noEmit` clean; `eslint src` clean; `git diff --check` clean.
+
+## 2026-06-15 - 3c-19b Dispatch FCM Metric Truth-Gate
+
+- Mirrors 3c-19a on the `/dispatches` surface: the FCM success-rate metric no longer fabricates `0%` pre-poll.
+- `DispatchStatsCards.tsx` prop `fcmSuccessRate` widened from `number` to `number | null`. `fcmPercent` is computed with a strict `!== null` guard (mirroring how `avgAcceptSeconds` was already null-guarded in the same file). `isFcmHigh` is `false` when null so the warning amber color is never applied to the dash state. The FCM card renders `—` (gray, no color class) when null and `N%` when measured; a genuine `0` still renders `0%`.
+- `DispatchMonitorPage.tsx` destructures `error: metricsError` from `useOpsMetrics('24h')` (previously discarded entirely). `fcmSuccessRate` default changed from `?? 0` to `?? null`. A non-alarmist `role="status"` / `aria-label="Metrics unavailable"` banner renders when `metricsError != null`, styled to match the existing stale-data banner using `!= null` guard (satisfies `exactOptionalPropertyTypes`).
+- Red-first TDD: added 5 new tests to `DispatchStatsCards.test.tsx` (null→`—`, genuine-0→`0%`, 0.95→`95%`, null has no color class) and 2 tests to `DispatchMonitorPage.test.tsx` (metricsError shows indicator; no error hides it). All targeted failures reproduced before implementation.
+- Verification: `DispatchStatsCards.test.tsx` 16/16; `DispatchMonitorPage.test.tsx` 19/19; `tsc --noEmit` clean; `eslint src` clean; `git diff --check` clean.
+- The `avgAcceptSeconds !== null` null-guard in `DispatchStatsCards` was the template for this slice.
+
+## 2026-06-15 - Round 3 UX Evaluation: command authority, not decoration (admin-desktop)
+
+- Re-audited `@bantayog/admin-desktop` against the operator's terms (can a tired admin at 2 AM do this from the dashboard in 1 click?) instead of the code's terms (is the function in place to do this).
+- New file: `docs/ux-evaluation-admin-desktop-2026-06-15.md`. Re-baselined the scorecard with two new axes ("Authority over Responder app", "Authority over Citizen PWA") and downgraded the previous rounds' generous numbers.
+- Hard numbers behind the user's complaint: out of 26 callables in `apps/admin-desktop/src/services/callables.ts`, only 9 are invoked from UI code. The other 17 (`suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride`, `resetUserTotp`, `cancelDispatch`, `closeReport`, `reopenReport`, `shareReport`, `mergeDuplicates`, `approveErasureRequest`, `setErasureLegalHold`, `setRetentionExempt`, `toggleMutualAidVisibility`, `suspendUser`, `revokeUser`, `requestAgencyAssistance`, `acceptAgencyAssistance`, `declineAgencyAssistance`) are server-capable but admin-blind.
+- Five built-and-tested components are not mounted anywhere: `ActiveIncidentsTable`, `TrendAnalysisPanel`, `AnomalyAlertPanel`, `ResponderLayer`, `OnboardingTour`. The "inspection-grade widget" feel is decoration.
+- The dashboard's "1-click inspection" is actually "1-click navigation to a different page"; no drawer, no peek, no overlay. Map is half a picture (no `ResponderLayer` mounted, no SLA rings, no clustering, no map on the dashboard at all).
+- The Responder panel shows name + online dot and discards `agencyId`, `municipalityId`, current dispatch, current location, shift, TOTP. There is no responder detail page, no history, no per-responder actions.
+- KPI cards still have no target, no trend, no "is this OK" status chip. Round 2 called this P1; round 3 calls it the symptom of a deeper problem (the dashboard does not know what "good" looks like).
+- The honest verdict: the app is a moderately good read-only monitoring dashboard with partial write surface, not a command surface. The fix is integration (wire the dead components, build 3 drawers, surface the 17 unwired callables, give KPI cards targets/trends, put a 1/3-width map on the dashboard with responder pins and SLA rings), not architecture. ~3-4 weeks of focused work. The two earlier evaluation rounds (2026-05-25, 2026-06-13) were graded on code-in-place, not operator-can-do, and were too generous.
+
 ## 2026-06-14 - Admin Control-Contract Fix Slices (3c-17 → 3c-21, docs only)
 
 - Authored the five fix slices for the truth defects surfaced by the end-to-end
@@ -56,6 +118,14 @@
 - Updated responder-ops backlog docs to make Gate 3 explicit: no deactivation UI until Auth propagation is verified/fixed.
 - Added an inline comment in `apps/admin-desktop/src/app/firebase.ts` documenting eager SDK initialization and the test mock requirement.
 - Verification: `pnpm format:check`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused admin tests (20/20); focused functions tests (7 passed, 6 skipped when emulator unavailable); shared-validators municipality tests (13/13); `fallow audit --root . --changed-since e958473cc4c2eba04d80b1c475a008a7b187d98a --gate new-only --format human` reports no introduced issues; `git diff --check` passed.
+
+## 2026-06-13 - Round 2 UX & Design Evaluation (admin-desktop)
+
+- Re-evaluated `@bantayog/admin-desktop` against the shipped code (Dashboard, Dispatch, Triage, Map, Feed pages plus `StatusBar` and core hooks) plus the May 25 evaluation as the prior baseline.
+- New file: `docs/ux-evaluation-admin-desktop-2026-06-13.md`. Headline: design health moved from 26/40 → 33/40 (Nielsen). UX completeness moved from 5/8 Partial → 6 Complete/Strong + 1 Partial + 1 still Partial.
+- The May 25 P0 (re-dispatch no-op) is verified fixed. The May 25 P1 list (re-dispatch wired, success feedback, ambiguous unknown placeholders, skip link, dashboard mode rules) is verified fixed. SLA countdown on `/dispatches` and resolved-closure section are new and working.
+- New structural P0s surfaced: (1) dashboard has no spatial/map presence — a wall display without geography is not a COP; (2) KPI cards lack operational meaning (no target / trend / threshold); (3) mobile is still hard-blocked.
+- Recommendation: fix the three P0/P1 items in one polish sprint before pilot; the bones (cross-window sync, error discipline, focus traps, idempotency, stale-data banners, status mode logic) are all present and tested.
 
 ## 2026-06-13 - Phase 3C-12 Dashboard + Responder Operations UX Backlog (docs only)
 
@@ -706,12 +776,13 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 ## 2026-06-16 - PR #226 Review Follow-up: WindowSyncMessage + Shared Test Utilities
 
-- Addressed two PR #226 review comments:
+- Addressed three PR #226 review/CI findings:
   1. **Extract duplicated `WindowSyncProvider` mocks** into `apps/admin-desktop/src/test-utils.tsx`:
      - Added `WindowSyncContextMock` interface, `createWindowSyncContextMock()`, `createWindowSyncProviderModuleMock()`, and `resetWindowSyncContextMock()`.
      - Provides `WindowSyncMessage` type re-export for tests.
-  2. **Tighten unknown-typed window-sync handlers/messages** to shared `WindowSyncMessage`:
-     - Renamed `SyncMessage` to `WindowSyncMessage` in `commandCenterStore.ts` with a compat `SyncMessage = WindowSyncMessage` alias.
-     - Updated `WindowSyncProvider.tsx`, `useWindowSync.ts` internals to use `WindowSyncMessage`.
+  2. **Harden unknown-typed window-sync ingress** to full `WindowSyncMessage` validation:
+     - `isValidSyncMessage` now checks `id`, `reportId` / `municipalityId`, `source`, and `triage:action` values, not just `type`.
+     - The storage fallback parses `data` and `timestamp` as `unknown`, validates both before dedupe, and only then forwards to subscribers.
+  3. **Resolve merge-format CI** by merging `origin/main` into the PR branch and formatting `docs/learnings.md` plus `docs/progress.md`.
 - Fixed Vitest hoisting conflict: async `vi.mock` factories with dynamic `await import('../test-utils')` avoid `__vi_import_X__ before initialization` errors in four test files. Two assertion-based tests (`MapPage.test.tsx`, `DashboardPage.municipality-drilldown.test.tsx`) use inline `vi.hoisted` raw objects.
-- Verification: `vitest run` on all 8 affected suites passed (37/37 tests). `tsc --noEmit`, `eslint src`, `git diff --check` all passed.
+- Verification: red-first malformed BroadcastChannel and storage fallback tests failed before the validation fix, then focused sync tests passed 6/6. `pnpm exec prettier --check docs/learnings.md docs/progress.md`, `tsc --noEmit`, `eslint src`, and `git diff --check` passed.

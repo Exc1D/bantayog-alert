@@ -17,7 +17,28 @@ const VALID_MESSAGE_TYPES = new Set(['select:report', 'select:municipality', 'tr
 function isValidSyncMessage(data: unknown): data is WindowSyncMessage {
   if (typeof data !== 'object' || data === null) return false
   const msg = data as Record<string, unknown>
-  return typeof msg.type === 'string' && VALID_MESSAGE_TYPES.has(msg.type)
+
+  if (typeof msg.type !== 'string' || !VALID_MESSAGE_TYPES.has(msg.type)) return false
+  if (msg.id !== undefined && typeof msg.id !== 'string') return false
+
+  if (msg.type === 'select:report') {
+    return typeof msg.reportId === 'string' && (msg.source === 'dashboard' || msg.source === 'map')
+  }
+
+  if (msg.type === 'select:municipality') {
+    return (
+      typeof msg.municipalityId === 'string' && (msg.source === 'dashboard' || msg.source === 'map')
+    )
+  }
+
+  if (msg.type === 'triage:action') {
+    return (
+      typeof msg.reportId === 'string' &&
+      (msg.action === 'verified' || msg.action === 'rejected' || msg.action === 'dispatched')
+    )
+  }
+
+  return false
 }
 
 export function WindowSyncProvider({ children }: { children: ReactNode }) {
@@ -60,13 +81,16 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
       if (e.key !== STORAGE_KEY || !e.newValue) return
       try {
         const parsed = JSON.parse(e.newValue) as {
-          data: WindowSyncMessage
-          timestamp: number
+          data: unknown
+          timestamp: unknown
         }
+        const data = parsed.data
+        if (!isValidSyncMessage(data)) return
+        if (typeof parsed.timestamp !== 'number') return
         if (Date.now() - parsed.timestamp > MESSAGE_TTL_MS) return
-        if (isDuplicate(parsed.data)) return
+        if (isDuplicate(data)) return
         listenersRef.current.forEach((fn) => {
-          fn(parsed.data)
+          fn(data)
         })
       } catch {
         /* malformed payload — ignore */
