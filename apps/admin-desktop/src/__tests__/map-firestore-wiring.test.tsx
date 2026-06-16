@@ -4,6 +4,15 @@ import { MemoryRouter } from 'react-router-dom'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 
+vi.mock('../app/firebase', () => ({
+  db: {} as never,
+  getFirestoreInstance: () => ({}) as never,
+  auth: {} as never,
+  functions: {} as never,
+  rtdb: {} as never,
+  firebaseApp: {} as never,
+}))
+
 const mockVerifyReport = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 const mockDispatchResponder = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ dispatchId: 'd1', status: 'ASSIGNED', reportId: 'r1' }),
@@ -17,19 +26,10 @@ vi.mock('../services/callables', () => ({
   },
 }))
 
-const mockSendSync = vi.hoisted(() => vi.fn())
-const mockSubscribe = vi.hoisted(() =>
-  vi.fn().mockReturnValue(() => {
-    /* noop */
-  }),
-)
-
-vi.mock('../providers/WindowSyncProvider', () => ({
-  useWindowSyncContext: () => ({
-    sendSync: mockSendSync,
-    subscribe: mockSubscribe,
-  }),
-}))
+vi.mock('../providers/WindowSyncProvider', async () => {
+  const { createWindowSyncProviderModuleMock } = await import('../test-utils')
+  return createWindowSyncProviderModuleMock()
+})
 
 const mockUseFirestoreListeners = vi.hoisted(() =>
   vi.fn().mockReturnValue({

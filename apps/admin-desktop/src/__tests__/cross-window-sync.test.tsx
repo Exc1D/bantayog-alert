@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { WindowSyncProvider, useWindowSyncContext } from '../providers/WindowSyncProvider'
+import type { WindowSyncMessage } from '../test-utils'
 
 describe('Cross-window sync', () => {
   beforeEach(() => {
@@ -64,11 +65,11 @@ describe('Cross-window sync', () => {
   })
 
   it('receives select:municipality and updates store', async () => {
-    const listeners = new Set<(msg: unknown) => void>()
+    const listeners = new Set<(msg: WindowSyncMessage) => void>()
     function MockBroadcastChannel() {
       return {
         postMessage: vi.fn(),
-        set onmessage(handler: (ev: { data: unknown }) => void) {
+        set onmessage(handler: (ev: { data: WindowSyncMessage }) => void) {
           listeners.add((msg) => {
             handler({ data: msg })
           })

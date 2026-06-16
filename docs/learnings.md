@@ -219,3 +219,8 @@
 - Function tests import `@bantayog/shared-validators` through package exports (`lib/index.js`), not live `src`; after adding validator exports, rebuild the package before running emulator tests or the new schema can be `undefined` at runtime.
 - A focused emulator run can still report success while executing zero tests if a legacy file uses collection-time `itif(available)`. Convert those files to runtime `skip(...)` before trusting red/green results.
 - Callable retry wrappers must generate idempotency keys before entering `withRetry`; generating inside the retry closure gives each attempt a fresh key and can defeat idempotency.
+
+## Vitest / Module Mocking
+
+- `vi.mock` factories are hoisted and cannot reference imported functions at the top level. Use an async factory with dynamic `await import(…)` inside to call shared helpers: `vi.mock('../providers/WindowSyncProvider', async () => { const { createWindowSyncProviderModuleMock } = await import('../test-utils'); return createWindowSyncProviderModuleMock() })`. This avoids `ReferenceError: Cannot access '__vi_import_X__' before initialization`.
+- For tests that need to assert on mock methods (e.g., `sendSync.toHaveBeenCalledWith`), use `vi.hoisted(() => ({ sendSync: vi.fn<…>(), subscribe: vi.fn<…>() }))` directly in the test file. The hoisted context cannot call imported helpers either, so define the mock object inline.

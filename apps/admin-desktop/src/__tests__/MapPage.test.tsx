@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
+import { resetWindowSyncContextMock, type WindowSyncMessage } from '../test-utils'
 
 vi.mock('../app/firebase', () => ({
   db: {} as never,
@@ -25,24 +26,35 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
 }))
 
 const syncCtl = vi.hoisted(() => ({
-  handler: null as ((msg: unknown) => void) | null,
+  handler: null as ((msg: WindowSyncMessage) => void) | null,
+}))
+
+const mockWindowSyncContext = vi.hoisted(() => ({
+  sendSync: vi.fn<(msg: WindowSyncMessage) => void>(),
+  subscribe: vi
+    .fn<(handler: (msg: WindowSyncMessage) => void) => () => void>()
+    .mockReturnValue(() => undefined),
 }))
 
 vi.mock('../providers/WindowSyncProvider', () => ({
-  useWindowSyncContext: () => ({
-    sendSync: vi.fn(),
-    subscribe: (h: (msg: unknown) => void) => {
-      syncCtl.handler = h
-      return (): void => {
-        return
-      }
-    },
-  }),
+  useWindowSyncContext: () => mockWindowSyncContext,
 }))
 
+function captureWindowSyncHandler() {
+  mockWindowSyncContext.subscribe.mockImplementation((handler) => {
+    syncCtl.handler = handler
+    return () => undefined
+  })
+}
+
 describe('MapPage', () => {
+  beforeEach(() => {
+    captureWindowSyncHandler()
+  })
+
   afterEach(() => {
     syncCtl.handler = null
+    resetWindowSyncContextMock(mockWindowSyncContext)
     useCommandCenterStore.setState({ selectedMunicipalityId: null, selectedReportId: null })
   })
 

@@ -4,6 +4,15 @@ import { MemoryRouter } from 'react-router-dom'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 
+vi.mock('../app/firebase', () => ({
+  db: {} as never,
+  getFirestoreInstance: () => ({}) as never,
+  auth: {} as never,
+  functions: {} as never,
+  rtdb: {} as never,
+  firebaseApp: {} as never,
+}))
+
 const mockVerifyReport = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 const mockRejectReport = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 const mockDispatchResponder = vi.hoisted(() => vi.fn().mockResolvedValue({}))
@@ -33,14 +42,10 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: mockUseFirestoreListeners,
 }))
 
-vi.mock('../providers/WindowSyncProvider', () => ({
-  useWindowSyncContext: () => ({
-    sendSync: vi.fn(),
-    subscribe: vi.fn().mockReturnValue(() => {
-      /* unsubscribe */
-    }),
-  }),
-}))
+vi.mock('../providers/WindowSyncProvider', async () => {
+  const { createWindowSyncProviderModuleMock } = await import('../test-utils')
+  return createWindowSyncProviderModuleMock()
+})
 
 function listenerResult(reports: Record<string, unknown>[]) {
   return {

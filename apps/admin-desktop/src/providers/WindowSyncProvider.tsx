@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useCallback, type ReactNode } from 'react'
-import type { SyncMessage } from '../stores/commandCenterStore'
+import type { WindowSyncMessage } from '../stores/commandCenterStore'
 
 interface WindowSyncContextValue {
-  sendSync: (msg: SyncMessage) => void
-  subscribe: (fn: (msg: SyncMessage) => void) => () => void
+  sendSync: (msg: WindowSyncMessage) => void
+  subscribe: (fn: (msg: WindowSyncMessage) => void) => () => void
 }
 
 const WindowSyncContext = createContext<WindowSyncContextValue | null>(null)
@@ -14,7 +14,7 @@ const MESSAGE_TTL_MS = 5000
 
 const VALID_MESSAGE_TYPES = new Set(['select:report', 'select:municipality', 'triage:action'])
 
-function isValidSyncMessage(data: unknown): data is SyncMessage {
+function isValidSyncMessage(data: unknown): data is WindowSyncMessage {
   if (typeof data !== 'object' || data === null) return false
   const msg = data as Record<string, unknown>
   return typeof msg.type === 'string' && VALID_MESSAGE_TYPES.has(msg.type)
@@ -22,10 +22,10 @@ function isValidSyncMessage(data: unknown): data is SyncMessage {
 
 export function WindowSyncProvider({ children }: { children: ReactNode }) {
   const bcRef = useRef<BroadcastChannel | null>(null)
-  const listenersRef = useRef<Set<(msg: SyncMessage) => void>>(new Set())
+  const listenersRef = useRef<Set<(msg: WindowSyncMessage) => void>>(new Set())
   const seenIdsRef = useRef<Map<string, number>>(new Map())
 
-  const isDuplicate = useCallback((msg: SyncMessage): boolean => {
+  const isDuplicate = useCallback((msg: WindowSyncMessage): boolean => {
     if (msg.id === undefined) return false
     const now = Date.now()
     // Prune expired entries first so the map cannot grow unbounded.
@@ -60,7 +60,7 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
       if (e.key !== STORAGE_KEY || !e.newValue) return
       try {
         const parsed = JSON.parse(e.newValue) as {
-          data: SyncMessage
+          data: WindowSyncMessage
           timestamp: number
         }
         if (Date.now() - parsed.timestamp > MESSAGE_TTL_MS) return
@@ -81,8 +81,9 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
   }, [isDuplicate])
 
   const sendSync = useCallback(
-    (msg: SyncMessage) => {
-      const withId: SyncMessage = msg.id !== undefined ? msg : { ...msg, id: crypto.randomUUID() }
+    (msg: WindowSyncMessage) => {
+      const withId: WindowSyncMessage =
+        msg.id !== undefined ? msg : { ...msg, id: crypto.randomUUID() }
       // Record locally so an echo back from BC/storage is ignored.
       isDuplicate(withId)
       if (bcRef.current) {
@@ -99,7 +100,7 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
     [isDuplicate],
   )
 
-  const subscribe = useCallback((fn: (msg: SyncMessage) => void) => {
+  const subscribe = useCallback((fn: (msg: WindowSyncMessage) => void) => {
     listenersRef.current.add(fn)
     return () => {
       listenersRef.current.delete(fn)

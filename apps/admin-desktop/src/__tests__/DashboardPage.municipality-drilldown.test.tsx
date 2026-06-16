@@ -6,11 +6,22 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import DashboardPage from '../pages/DashboardPage'
-import { renderWithMemoryRouter, defaultResponders, defaultMetrics, makeRow } from '../test-utils'
+import {
+  renderWithMemoryRouter,
+  defaultResponders,
+  defaultMetrics,
+  makeRow,
+  resetWindowSyncContextMock,
+  type WindowSyncMessage,
+} from '../test-utils'
 
 const mockNavigate = vi.fn()
-// Hoisted so the WindowSyncProvider mock factory can reference it
-const mockSendSync = vi.hoisted(() => vi.fn())
+const mockWindowSyncContext = vi.hoisted(() => ({
+  sendSync: vi.fn<(msg: WindowSyncMessage) => void>(),
+  subscribe: vi
+    .fn<(handler: (msg: WindowSyncMessage) => void) => () => void>()
+    .mockReturnValue(() => undefined),
+}))
 
 // Required: DashboardPage → CommandHeader → EditHotlineModal → db (eager SDK init)
 vi.mock('../app/firebase', () => ({
@@ -23,12 +34,7 @@ vi.mock('../app/firebase', () => ({
 }))
 
 vi.mock('../providers/WindowSyncProvider', () => ({
-  useWindowSyncContext: () => ({
-    sendSync: mockSendSync,
-    subscribe: vi.fn().mockReturnValue((): void => {
-      return
-    }),
-  }),
+  useWindowSyncContext: () => mockWindowSyncContext,
 }))
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -107,7 +113,7 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
 describe('DashboardPage municipality drill-down (3c-21)', () => {
   beforeEach(() => {
     mockNavigate.mockClear()
-    mockSendSync.mockClear()
+    resetWindowSyncContextMock(mockWindowSyncContext)
   })
 
   it('N7: municipality row click navigates with ?municipalityId= (not ?municipality=)', () => {
@@ -126,10 +132,10 @@ describe('DashboardPage municipality drill-down (3c-21)', () => {
     const daetCells = screen.getAllByText('Daet').filter((el) => el.tagName.toLowerCase() === 'td')
     expect(daetCells.length).toBeGreaterThan(0)
     fireEvent.click(daetCells[0]!)
-    expect(mockSendSync).toHaveBeenCalledWith({
+    expect(mockWindowSyncContext.sendSync).toHaveBeenCalledWith({
       type: 'select:municipality',
       municipalityId: 'Daet',
       source: 'dashboard',
-    })
+    } satisfies WindowSyncMessage)
   })
 })

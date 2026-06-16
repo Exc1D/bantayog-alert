@@ -2,11 +2,45 @@
 // Centralises repeated mock factories, render wrappers, and store reset helpers
 // used across __tests__/*.test.tsx to reduce duplication.
 
+import { vi, type Mock } from 'vitest'
 import { render, type RenderResult } from '@testing-library/react'
 import { MemoryRouter, BrowserRouter } from 'react-router-dom'
 import type { ReactElement, ReactNode } from 'react'
 import type { DispatchLifecycleRow } from './hooks/useDispatchLifecycle'
 import type { ResponderFleetMember } from './hooks/useResponderFleet'
+import type { WindowSyncMessage } from './stores/commandCenterStore'
+
+export type { WindowSyncMessage } from './stores/commandCenterStore'
+
+export interface WindowSyncContextMock {
+  sendSync: Mock<(msg: WindowSyncMessage) => void>
+  subscribe: Mock<(handler: (msg: WindowSyncMessage) => void) => () => void>
+}
+
+export function createWindowSyncContextMock(overrides: Partial<WindowSyncContextMock> = {}) {
+  return {
+    sendSync: overrides.sendSync ?? vi.fn<(msg: WindowSyncMessage) => void>(),
+    subscribe:
+      overrides.subscribe ??
+      vi
+        .fn<(handler: (msg: WindowSyncMessage) => void) => () => void>()
+        .mockReturnValue(() => undefined),
+    ...overrides,
+  }
+}
+
+export function createWindowSyncProviderModuleMock(overrides: Partial<WindowSyncContextMock> = {}) {
+  const context = createWindowSyncContextMock(overrides)
+  return {
+    useWindowSyncContext: () => context,
+  }
+}
+
+export function resetWindowSyncContextMock(context: WindowSyncContextMock) {
+  context.sendSync.mockReset()
+  context.subscribe.mockReset()
+  context.subscribe.mockReturnValue(() => undefined)
+}
 
 /* ------------------------------------------------------------------ */
 //  Render wrappers

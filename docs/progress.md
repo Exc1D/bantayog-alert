@@ -703,3 +703,15 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added the 3D-02 Profile page off-duty/unavailable/on-break advisory derived from the same UI availability state as the segmented control. The notice uses `role="status"` and disappears when the responder is available.
 - Kept the slice UI-only: no backend semantics changes, no new listeners, no deploy, and no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 - Verification: red-first `ProfilePage.test.tsx` failed on the missing `role="status"` warning, then passed 15/15 after implementation. `pnpm --dir apps/responder-app exec tsc --noEmit`, `pnpm --dir apps/responder-app exec eslint src`, and `git diff --check` passed.
+
+## 2026-06-16 - PR #226 Review Follow-up: WindowSyncMessage + Shared Test Utilities
+
+- Addressed two PR #226 review comments:
+  1. **Extract duplicated `WindowSyncProvider` mocks** into `apps/admin-desktop/src/test-utils.tsx`:
+     - Added `WindowSyncContextMock` interface, `createWindowSyncContextMock()`, `createWindowSyncProviderModuleMock()`, and `resetWindowSyncContextMock()`.
+     - Provides `WindowSyncMessage` type re-export for tests.
+  2. **Tighten unknown-typed window-sync handlers/messages** to shared `WindowSyncMessage`:
+     - Renamed `SyncMessage` to `WindowSyncMessage` in `commandCenterStore.ts` with a compat `SyncMessage = WindowSyncMessage` alias.
+     - Updated `WindowSyncProvider.tsx`, `useWindowSync.ts` internals to use `WindowSyncMessage`.
+- Fixed Vitest hoisting conflict: async `vi.mock` factories with dynamic `await import('../test-utils')` avoid `__vi_import_X__ before initialization` errors in four test files. Two assertion-based tests (`MapPage.test.tsx`, `DashboardPage.municipality-drilldown.test.tsx`) use inline `vi.hoisted` raw objects.
+- Verification: `vitest run` on all 8 affected suites passed (37/37 tests). `tsc --noEmit`, `eslint src`, `git diff --check` all passed.
