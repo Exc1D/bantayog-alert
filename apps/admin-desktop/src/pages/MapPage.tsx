@@ -96,6 +96,13 @@ export default function MapPage() {
   const reports = (reportDocs as ((typeof reportDocs)[number] & Record<string, unknown>)[])
     .map(mapReportDocToReport)
     .filter((r): r is Report => r !== null)
+
+  // Apply the All / Active Only overlay filter. Keep the full `reports` list
+  // for selectedReport lookup and dispatch handlers so those never lose context.
+  const visibleReports = activeOverlays.has('active_only')
+    ? reports.filter((r) => ACTIVE_REPORT_STATUSES.includes(r.status))
+    : reports
+
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null
   const [actionError, setActionError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -265,20 +272,20 @@ export default function MapPage() {
     {
       key: 'ArrowUp',
       handler: () => {
-        if (!selectedReportId || reports.length === 0) return
-        const idx = reports.findIndex((r) => r.id === selectedReportId)
-        const nextIdx = idx <= 0 ? reports.length - 1 : idx - 1
-        const nextReport = reports[nextIdx]
+        if (!selectedReportId || visibleReports.length === 0) return
+        const idx = visibleReports.findIndex((r) => r.id === selectedReportId)
+        const nextIdx = idx <= 0 ? visibleReports.length - 1 : idx - 1
+        const nextReport = visibleReports[nextIdx]
         if (nextReport) handlePinClick(nextReport.id)
       },
     },
     {
       key: 'ArrowDown',
       handler: () => {
-        if (!selectedReportId || reports.length === 0) return
-        const idx = reports.findIndex((r) => r.id === selectedReportId)
-        const nextIdx = idx >= reports.length - 1 ? 0 : idx + 1
-        const nextReport = reports[nextIdx]
+        if (!selectedReportId || visibleReports.length === 0) return
+        const idx = visibleReports.findIndex((r) => r.id === selectedReportId)
+        const nextIdx = idx >= visibleReports.length - 1 ? 0 : idx + 1
+        const nextReport = visibleReports[nextIdx]
         if (nextReport) handlePinClick(nextReport.id)
       },
     },
@@ -335,18 +342,18 @@ export default function MapPage() {
       )}
       <div id="main-content" className="relative flex-1">
         <MapKeyboardNav
-          reports={reports}
+          reports={visibleReports}
           selectedReportId={selectedReportId}
           onSelect={handlePinClick}
         />
         <div className="isolate h-full w-full">
           <ProvincialMap
-            reports={reports}
+            reports={visibleReports}
             selectedReportId={selectedReportId}
             onPinClick={handlePinClick}
           />
         </div>
-        {reports.length === 0 && (
+        {visibleReports.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="rounded-lg border border-white/10 bg-[var(--color-surface-elevated)] px-6 py-4 text-center shadow-xl">
               <p className="text-sm font-medium text-[var(--color-text-primary)]">
