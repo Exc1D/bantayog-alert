@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 import { z } from 'zod';
 import { withIdempotency } from '../../idempotency/guard.js';
 import { adminDb } from '../../admin-init.js';
@@ -39,10 +40,7 @@ export async function subscribeToAlertsCore(db, deps) {
         payload: { token },
         now: () => now.toMillis(),
     }, async () => {
-        // Import messaging dynamically to avoid loading unless needed
-        const { messaging } = await import('firebase-admin');
-        // Subscribe to the alerts topic
-        await messaging().subscribeToTopic([token], 'alerts');
+        await getMessaging().subscribeToTopic([token], 'alerts');
         return { success: true };
     });
     return result;

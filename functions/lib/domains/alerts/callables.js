@@ -1,5 +1,6 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth, requireMfaAuth } from '../shared/https-error.js';
@@ -103,8 +104,7 @@ export async function declareAlertCore(db, input, actor) {
     if (process.env.FUNCTIONS_EMULATOR !== 'true') {
         // Best-effort FCM push — don't fail alert creation if push fails
         try {
-            const { messaging } = await import('firebase-admin');
-            await messaging().send({
+            await getMessaging().send({
                 topic: 'alerts',
                 notification: {
                     title: 'Alert Issued',
