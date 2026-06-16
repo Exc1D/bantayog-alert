@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-06-15 - 3c-19a Dashboard FCM Metric Truth-Gate
+
+- Fixed the fabricated `0%` push-rate display on the Admin Dashboard: `getStatusFcmSuccessRate` now returns `?? null` instead of `?? 0`, widened through `StatusBar` and `StatusExpanded` props.
+- **Asymmetry preserved by design:** `getModeFcmSuccessRate` keeps `?? 1.0` — the dashboard mode computation must NOT false-trip into degraded when metrics are simply missing/unpolled. Only the _displayed number_ was lying; the mode default is correct and was left unchanged.
+- `StatusExpanded` null-guards the FCM rate: renders `—` (em dash, muted color) when `null`, renders `N%` with the existing green/amber success split when non-null. A genuine measured `0` still renders `0%` — only `null` shows the dash.
+- `StatusBar` gains an optional `metricsError?: string | null` prop that renders a `role="status"` / `aria-label="Metrics unavailable"` indicator in the always-visible top row (not buried in the collapsible `StatusExpanded`). Uses `!= null` guard so passing `null` suppresses the indicator. Conditional spread `{...(metricsError != null ? { metricsError } : {})}` satisfies `exactOptionalPropertyTypes`.
+- `DashboardStatusBarProps` extended with `metricsError: string | null`; the page's already-destructured `metricsError` from `useOpsMetrics('24h')` is now passed down to `DashboardStatusBar` → `StatusBar`.
+- Red-first TDD: wrote `StatusExpanded.test.tsx` (4 tests) and extended `StatusBar.test.tsx` (3 new tests in a `metrics error indicator` describe block) before implementation. All 3 targeted failures were reproduced for the right reasons, then resolved.
+- Verification: `vitest run` passed 33/33 tests (2 files); `tsc --noEmit` clean; `eslint src` clean; `git diff --check` clean.
 ## 2026-06-15 - 3c-19b Dispatch FCM Metric Truth-Gate
 
 - Mirrors 3c-19a on the `/dispatches` surface: the FCM success-rate metric no longer fabricates `0%` pre-poll.

@@ -1,5 +1,10 @@
 # Learnings - Durable Rules
 
+## UX / Dashboard Design
+
+- Dashboard metrics that have not yet been polled must display `—` (em dash), not `0` or `0%`. A `?? 0` default on a metrics hook looks like a real zero to an operator on first paint, falsely signaling a complete outage. Use `?? null` for the display path and guard the render with a null check.
+- The FCM success-rate metric has two separate defaults that must NOT be unified: `getStatusFcmSuccessRate` uses `?? null` (display — "not yet known"), while `getModeFcmSuccessRate` keeps `?? 1.0` (dashboard-mode input — a missing metric must not false-trip the mode into degraded). Never "fix" the mode default to match the display default.
+- A non-visible metrics poll error is as harmful as a fabricated value. Surface it in the always-visible row of the StatusBar (not inside the collapsible expanded section) so operators do not see a silent failure.
 ## UX / Metrics Display (additions)
 
 - When widening a numeric stat card prop from `number` to `number | null`, guard derived boolean flags (like `isFcmHigh`) with a strict `!== null` check — a falsy guard `!fcmPercent` would incorrectly treat genuine `0` as unknown. Use `String(value) + '%'` instead of a template literal when the `@typescript-eslint/restrict-template-expressions` rule is active.

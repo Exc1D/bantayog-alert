@@ -12,7 +12,7 @@ function renderStatusBar(props: {
   activeIncidents: number
   avgResponseTime: number
   avgAcceptSeconds?: number | null
-  fcmSuccessRate?: number
+  fcmSuccessRate?: number | null
   pendingTriage: number
   resolvedToday?: number
   muniIssues?: { resolved: number; total: number }
@@ -22,14 +22,16 @@ function renderStatusBar(props: {
   totalResponders?: number
   uncoveredMunicipalities?: number
   lastDataUpdateAt?: number
+  metricsError?: string | null
 }) {
   const resolvedToday = props.resolvedToday
   const muniIssues = props.muniIssues
+  const metricsError = props.metricsError
   const statusBarProps = {
     activeIncidents: props.activeIncidents,
     avgResponseTime: props.avgResponseTime,
     avgAcceptSeconds: props.avgAcceptSeconds ?? null,
-    fcmSuccessRate: props.fcmSuccessRate ?? 0.95,
+    fcmSuccessRate: props.fcmSuccessRate !== undefined ? props.fcmSuccessRate : 0.95,
     pendingTriage: props.pendingTriage,
     mode: props.mode ?? 'calm',
     affectedMunicipalities: props.affectedMunicipalities ?? [],
@@ -39,6 +41,7 @@ function renderStatusBar(props: {
     lastDataUpdateAt: props.lastDataUpdateAt ?? Date.now(),
     ...(resolvedToday !== undefined ? { resolvedToday } : {}),
     ...(muniIssues !== undefined ? { muniIssues } : {}),
+    ...(metricsError !== undefined ? { metricsError } : {}),
   } satisfies React.ComponentProps<typeof StatusBar>
 
   return renderWithRouter(<StatusBar {...statusBarProps} />)
@@ -332,6 +335,38 @@ describe('StatusBar', () => {
       expect(screen.getByText('active')).toBeInTheDocument()
       expect(screen.getByText('avg response')).toBeInTheDocument()
       expect(screen.getByText('pending')).toBeInTheDocument()
+    })
+  })
+
+  describe('metrics error indicator', () => {
+    it('renders a metrics-unavailable indicator when metricsError is set', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        metricsError: 'boom',
+      })
+      const indicator = screen.getByRole('status', { name: /metrics unavailable/i })
+      expect(indicator).toBeInTheDocument()
+    })
+
+    it('does not render a metrics-unavailable indicator when metricsError is null', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+        metricsError: null,
+      })
+      expect(screen.queryByRole('status', { name: /metrics unavailable/i })).not.toBeInTheDocument()
+    })
+
+    it('does not render a metrics-unavailable indicator when metricsError is omitted', () => {
+      renderStatusBar({
+        activeIncidents: 1,
+        avgResponseTime: 5,
+        pendingTriage: 1,
+      })
+      expect(screen.queryByRole('status', { name: /metrics unavailable/i })).not.toBeInTheDocument()
     })
   })
 })
