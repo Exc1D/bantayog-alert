@@ -59,7 +59,6 @@ describe('DashboardPage re-dispatch', () => {
       activeOverlays: new Set(['all_incidents']),
       triagePanelOpen: false,
       lastSyncMessage: null,
-      suppressNextBroadcast: false,
     })
     mockUseDispatchLifecycle.mockReturnValue({
       rows: [makeRow({ status: 'needs_admin' })],
