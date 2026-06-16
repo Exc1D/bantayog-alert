@@ -85,5 +85,17 @@ const distPkg = {
 writeFileSync(resolve(DIST, 'package.json'), JSON.stringify(distPkg, null, 2) + '\n')
 
 // Install published deps so Firebase CLI can analyze the bundle
-run('npm', ['install', '--prefer-offline', '--no-audit', '--no-fund', '--ignore-scripts'], DIST)
+// Use --legacy-peer-deps to allow firebase-admin@14 with firebase-functions@7.2.5
+run(
+  'npm',
+  [
+    'install',
+    '--prefer-offline',
+    '--no-audit',
+    '--no-fund',
+    '--ignore-scripts',
+    '--legacy-peer-deps',
+  ],
+  DIST,
+)
 console.log('functions-dist/ ready for Firebase deploy')

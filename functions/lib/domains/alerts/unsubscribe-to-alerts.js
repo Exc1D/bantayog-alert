@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 import { z } from 'zod';
 import { adminDb } from '../../admin-init.js';
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js';
@@ -32,8 +33,7 @@ export async function unsubscribeFromAlertsCore(db, deps) {
         });
     }
     await verifyTokenOwnership(db, deps.actor.uid, deps.token);
-    const { messaging } = await import('firebase-admin');
-    const response = await messaging().unsubscribeFromTopic([deps.token], 'alerts');
+    const response = await getMessaging().unsubscribeFromTopic([deps.token], 'alerts');
     if (response.failureCount > 0 && response.errors.length > 0) {
         const errors = response.errors
             .map((e) => (typeof e.error === 'string' ? e.error : JSON.stringify(e.error)))
