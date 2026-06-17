@@ -26,7 +26,11 @@ import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
-import { REJECTION_REASONS, type RejectionReason } from '../constants/report'
+import {
+  REJECTION_REASONS,
+  type RejectionReason,
+  isValidRejectionReason,
+} from '../constants/report'
 import type { Report, MunicipalPerformance } from '../types'
 
 function responderEntries(responders: [string, unknown][]): {
@@ -465,7 +469,10 @@ export default function MapPage() {
               aria-label="Rejection reason"
               value={rejectReason}
               onChange={(e) => {
-                setRejectReason(e.target.value as RejectionReason)
+                const value = e.target.value
+                if (isValidRejectionReason(value)) {
+                  setRejectReason(value)
+                }
               }}
               className="w-full rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-white/30"
             >

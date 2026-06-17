@@ -86,8 +86,9 @@ export function WindowSyncProvider({ children }: { children: ReactNode }) {
         }
         const data = parsed.data
         if (!isValidSyncMessage(data)) return
-        if (typeof parsed.timestamp !== 'number') return
-        if (Date.now() - parsed.timestamp > MESSAGE_TTL_MS) return
+        const timestamp = parsed.timestamp
+        if (typeof timestamp !== 'number' || !Number.isFinite(timestamp)) return
+        if (Date.now() - timestamp > MESSAGE_TTL_MS) return
         if (isDuplicate(data)) return
         listenersRef.current.forEach((fn) => {
           fn(data)

@@ -11,8 +11,6 @@
 - When widening a numeric stat card prop from `number` to `number | null`, guard derived boolean flags (like `isFcmHigh`) with a strict `!== null` check — a falsy guard `!fcmPercent` would incorrectly treat genuine `0` as unknown. Use `String(value) + '%'` instead of a template literal when the `@typescript-eslint/restrict-template-expressions` rule is active.
 - Test assertions over `getAllByRole('status')` result arrays: use `el.textContent.includes(...)` (direct access, no optional chain, no `??` coalescing) because the ESLint config in this project treats `HTMLElement.textContent` as non-nullable in test code.
 
-## UX / Dashboard Design
-
 - For an operational EOC dashboard, every KPI needs three context layers: target/threshold, temporal comparison, and trend indicator. A bare number ("Active Now: 1") is technically correct and operationally useless. The most common dashboard failure mode in the literature is the "so what?" problem.
 - A wall-mounted command display without a map is not a Common Operating Picture. Geography is non-negotiable for disaster response. Either embed a map on the dashboard or surface a compact municipality heat strip that deep-links to the full map.
 - Operational dashboards (vs. analytical) should pre-attentively encode health at the top of the page. Pulsing mode badge + threshold-based color dots in `StatusCenter` are the right call for dim command rooms with 6-10 ft viewing distance.
