@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-06-18 - PR #228 Conflict Resolution + Review Follow-up
+
+- Merged current `origin/main` into `feat/3c-19b-dispatch-fcm-truthgate` and resolved the remaining conflicts in `TriagePanel.tsx`, `docs/progress.md`, `functions/src/domains/alerts/subscribe-to-alerts.ts`, and generated `functions/lib/domains/alerts/subscribe-to-alerts.js`.
+- Re-verified all three CodeRabbit threads against the post-merge tree. `ConfirmationModal` and responder MFA claim validation were still valid. The exact `TriagePanel` modal `onConfirm` path no longer exists after the 3c-18 mainline merge, but the direct `onReject` boundary still accepted promises, so the surviving boundary risk was fixed there instead of restoring the stale modal.
+- `ConfirmationModal` now routes backdrop, Escape, top-right Close, and footer Cancel through the same loading-aware cancel guard; Close is disabled while `confirmLoading` is true.
+- `TriagePanel` now catches and logs async `onReject` failures at the panel boundary.
+- `buildResponderStatusClaims` now treats Firestore `mfaEnrolled` as external input and only forwards boolean values into Auth custom claims; malformed values fall back to `false`. Rebuilt `functions/lib`.
+- Verification: red-first failures reproduced for modal dismiss lock, async reject handling, and malformed `mfaEnrolled`; focused admin tests passed 19/19; focused responder roster test passed 2/2; admin and functions typechecks passed; targeted admin/functions eslint passed; `pnpm --dir functions build` passed with the existing Node 22 engine warning under local Node 20.20.2. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
 ## 2026-06-18 - PR #227 Conflict Resolution
 
 - Merged current `origin/main` into `chore/remove-dead-suppress-broadcast` to resolve PR #227's conflicts without a force push.
