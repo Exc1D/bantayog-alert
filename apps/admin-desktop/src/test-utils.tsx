@@ -72,6 +72,10 @@ export function createStorageSyncEvent(data: unknown, timestamp = Date.now()) {
   return event
 }
 
+function isRenderableReportId(reportId: unknown): reportId is string | number {
+  return typeof reportId === 'string' || typeof reportId === 'number'
+}
+
 /* ------------------------------------------------------------------ */
 //  Render wrappers
 /* ------------------------------------------------------------------ */
@@ -93,8 +97,17 @@ export function renderSelectedMapReport(
   mockUseFirestoreListeners: Mock,
   report: Record<string, unknown>,
 ): RenderResult {
+  const reportId = report.id
+  if (
+    reportId === '' ||
+    reportId === null ||
+    reportId === undefined ||
+    !isRenderableReportId(reportId)
+  ) {
+    throw new Error('renderSelectedMapReport requires a non-empty report.id')
+  }
   mockUseFirestoreListeners.mockReturnValue(createMapFirestoreListeners([report]))
-  useCommandCenterStore.setState({ selectedReportId: String(report.id) })
+  useCommandCenterStore.setState({ selectedReportId: String(reportId) })
   return renderWithMemoryRouter(ui)
 }
 

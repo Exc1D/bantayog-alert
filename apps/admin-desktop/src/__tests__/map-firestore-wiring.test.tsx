@@ -121,6 +121,25 @@ describe('MapPage Firestore wiring', () => {
     })
   })
 
+  it('throws when renderSelectedMapReport receives a report without an id', () => {
+    expect(() =>
+      renderSelectedMapReport(<MapPage />, mockUseFirestoreListeners, {
+        type: 'flood',
+        severity: 'high',
+        municipality: 'Daet',
+        barangay: 'Camambugan',
+        createdAt: '14:02',
+        status: 'new',
+        description: 'Water rising',
+        reporterName: 'Juan',
+        reporterPhone: '0917xxx',
+        latitude: 14.1,
+        longitude: 122.9,
+        updatedAt: '',
+      }),
+    ).toThrow('renderSelectedMapReport requires a non-empty report.id')
+  })
+
   it('renders map with reports from Firestore', () => {
     renderWithMemoryRouter(<MapPage />)
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
