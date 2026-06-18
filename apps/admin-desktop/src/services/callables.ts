@@ -74,27 +74,10 @@ export const callables = {
     { reportId: string; idempotencyKey: IdempotencyKey; closureSummary?: string },
     { status: ReportStatus; reportId: string }
   >('closeReport'),
-  shareReport: callable<
-    {
-      reportId: string
-      targetMunicipalityId: string
-      reason?: string
-      idempotencyKey: IdempotencyKey
-    },
-    { status: 'shared' }
-  >('shareReport'),
   mergeDuplicates: callable<
     { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
     { success: true; mergedCount: number } | { success: false; errorCode: string }
   >('mergeDuplicates'),
-  acceptAgencyAssistance: callable<
-    { requestId: string; idempotencyKey: IdempotencyKey },
-    { status: 'accepted' }
-  >('acceptAgencyAssistance'),
-  declineAgencyAssistance: callable<
-    { requestId: string; reason: string; idempotencyKey: IdempotencyKey },
-    { status: 'declined' }
-  >('declineAgencyAssistance'),
   suspendResponder: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
@@ -138,9 +121,6 @@ export const callables = {
     { erasureRequestId: string; approved: boolean; reason?: string },
     unknown
   >('approveErasureRequest'),
-  toggleMutualAidVisibility: callable<{ agencyId: string; visible: boolean }, unknown>(
-    'toggleMutualAidVisibility',
-  ),
   suspendUser: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
@@ -153,17 +133,6 @@ export const callables = {
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; reset: true }
   >('resetUserTotp'),
-  requestAgencyAssistance: callable<
-    {
-      reportId: string
-      agencyId: string
-      requestType: string
-      priority: 'routine' | 'urgent' | 'emergency'
-      message: string
-      idempotencyKey: string
-    },
-    { requestId: string }
-  >('requestAgencyAssistance'),
   createUser: callable<
     {
       displayName: string

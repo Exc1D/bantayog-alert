@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-06-18 - RF-01 Retire mutual-aid callable batch 1
+
+- Retired the first approved Bucket A batch (`shareReport`, `requestAgencyAssistance`, `acceptAgencyAssistance`, `declineAgencyAssistance`, `toggleMutualAidVisibility`) from the Admin callable surface, Functions exports, source modules, direct tests, and tracked `functions/lib` outputs. `listScopedOperationsMap` remains for a separate RF-01 branch because the task caps retire batches at five wrappers.
+- Kept Firestore rules/indexes untouched: `report_sharing` and `command_channel_threads` are still used by `borderAutoShareTrigger`, and `agency_assistance_requests` is still swept by `adminOperationsSweep`, so removing shared collection rules would be unsafe without a separate approved rules diff.
+- Red-first proof: added the five names to the retired-wrapper Admin service test before implementation. It first failed 5/18 because the wrappers still existed, then passed 18/18 after removal. The test now mocks `../app/firebase` so this pure wrapper test does not initialize real Firebase Auth.
+- Verification: `pnpm install --frozen-lockfile` completed with the known local Node 20 vs Functions Node 22 engine warning; `pnpm --dir apps/admin-desktop exec vitest run src/services/callables.test.ts`, Functions/Admin `tsc --noEmit`, Functions/Admin `eslint src`, and `pnpm --dir functions build` passed. Full Functions emulator suite reached 93 passed files / 713 passed tests, 15 skipped files / 86 skipped tests, then failed on one unrelated `cancel-dispatch.test.ts` timeout; rerunning `cancel-dispatch.test.ts` in isolation with the coordination-adjacent files passed the dispatch file (12 tests) while those two existing files skip-registered. Production/non-test grep for the five retired names across `apps/`, `functions/`, and `packages/` is empty. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+- CI follow-up: fixed the PR #229 `pnpm format:check` failure by adding the missing blank line before the PR #228 merge-follow-up section, then pushed the one-line docs-only fix.
+
+## 2026-06-18 - PR #228 Conflict Resolution + Review Follow-up
+
+- Merged current `origin/main` into `feat/3c-19b-dispatch-fcm-truthgate` and resolved the remaining conflicts in `TriagePanel.tsx`, `docs/progress.md`, `functions/src/domains/alerts/subscribe-to-alerts.ts`, and generated `functions/lib/domains/alerts/subscribe-to-alerts.js`.
+- Re-verified all three CodeRabbit threads against the post-merge tree. `ConfirmationModal` and responder MFA claim validation were still valid. The exact `TriagePanel` modal `onConfirm` path no longer exists after the 3c-18 mainline merge, but the direct `onReject` boundary still accepted promises, so the surviving boundary risk was fixed there instead of restoring the stale modal.
+- `ConfirmationModal` now routes backdrop, Escape, top-right Close, and footer Cancel through the same loading-aware cancel guard; Close is disabled while `confirmLoading` is true.
+- `TriagePanel` now catches and logs async `onReject` failures at the panel boundary.
+- `buildResponderStatusClaims` now treats Firestore `mfaEnrolled` as external input and only forwards boolean values into Auth custom claims; malformed values fall back to `false`. Rebuilt `functions/lib`.
+- Verification: red-first failures reproduced for modal dismiss lock, async reject handling, and malformed `mfaEnrolled`; focused admin tests passed 19/19; focused responder roster test passed 2/2; admin and functions typechecks passed; targeted admin/functions eslint passed; `pnpm --dir functions build` passed with the existing Node 22 engine warning under local Node 20.20.2. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
 ## 2026-06-18 - RF-01 Retire scoped operations map callable
 
 - Retired the remaining Bucket A wrapper `listScopedOperationsMap` in its own branch: removed the Admin callable wrapper, the unused no-payload wrapper helper, the Functions scoped-operations source/test, and tracked stale `functions/lib` outputs. No `functions/src/index.ts` export existed on `main`.

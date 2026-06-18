@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConfirmationModal } from '../components/ConfirmationModal'
 
@@ -61,5 +61,28 @@ describe('ConfirmationModal', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Reject' }))
     expect(onConfirm).toHaveBeenCalled()
+  })
+
+  it('does not dismiss through non-footer paths while confirm is loading', async () => {
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+    render(
+      <ConfirmationModal
+        open
+        title="Reject?"
+        message="Are you sure?"
+        confirmLabel="Reject"
+        confirmLoading
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(dialog.parentElement!)
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(onCancel).not.toHaveBeenCalled()
   })
 })

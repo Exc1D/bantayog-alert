@@ -76,12 +76,6 @@ describe('callables backend/frontend coverage', () => {
       hold: true,
       reason: 'Pending counsel review',
     },
-    shareReport: {
-      reportId: 'report-1',
-      targetMunicipalityId: 'labo',
-      reason: 'Border incident',
-      idempotencyKey: 'a1b2c3d4-0000-4000-8000-000000000003',
-    },
   } as const
 
   it.each(Object.entries(coveredBackendOnlyCallables))(
@@ -110,6 +104,11 @@ describe('retired admin callable wrappers', () => {
     'upsertProvincialResource',
     'archiveProvincialResource',
     'listScopedOperationsMap',
+    'shareReport',
+    'requestAgencyAssistance',
+    'acceptAgencyAssistance',
+    'declineAgencyAssistance',
+    'toggleMutualAidVisibility',
   ] as const
 
   it.each(retiredCallableNames)('does not expose %s', (name) => {
