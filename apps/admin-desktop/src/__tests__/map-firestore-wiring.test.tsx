@@ -117,7 +117,6 @@ describe('MapPage Firestore wiring', () => {
       activeOverlays: new Set(['all_incidents']),
       triagePanelOpen: false,
       lastSyncMessage: null,
-      suppressNextBroadcast: false,
     })
   })
 

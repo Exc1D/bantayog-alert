@@ -1,5 +1,20 @@
 # Progress
 
+## 2026-06-18 - PR #227 Conflict Resolution
+
+- Merged current `origin/main` into `chore/remove-dead-suppress-broadcast` to resolve PR #227's conflicts without a force push.
+- Resolved `apps/admin-desktop/src/stores/commandCenterStore.ts` by keeping the new `WindowSyncMessage` export/alias contract from PR #226 while preserving PR #227's removal of the dead `suppressNextBroadcast` state and setter.
+- Removed the now-present stale `setSuppressNextBroadcast(true)` call from `DashboardPage.handleSelectMunicipality` and the obsolete `MapPage.reject.test.tsx` store mock field after PR #226 landed on `main`.
+- Verification: rebuilt ignored shared-validator source maps locally to avoid Vite source-map warning noise, then focused admin tests passed 4 files / 15 tests. `pnpm --dir apps/admin-desktop run typecheck`, `pnpm --dir apps/admin-desktop run lint`, scoped Prettier check, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-16 - Remove dead `suppressNextBroadcast` cross-window flag (admin-desktop)
+
+- Resolved the set-but-never-read `suppressNextBroadcast` flag in `apps/admin-desktop/src/stores/commandCenterStore.ts`. `grep -rn` confirmed it was only ever **set** (no reader in production), and `WindowSyncProvider` already prevents self-echoes via UUID dedup (`sendSync` records the message id before posting) while `BroadcastChannel.postMessage` never delivers to the same window. No genuine echo-loop a reader would prevent → chose **option 2 (remove)** over wiring a phantom reader (YAGNI). A stale `true` would have wrongly suppressed a future legitimate broadcast.
+- Removed the interface field, the `setSuppressNextBroadcast` setter signature, its initial value, and the setter impl from the store; removed the single production call site (`handlePinClick` in `pages/MapPage.tsx`, including the `useCallback` dep). Deleted the now-invalid `suppressNextBroadcast: false,` literal from 6 `setState` test fixtures so `tsc` stays green (excess-property check).
+- **Branch scope note:** on this branch only `MapPage.tsx` carries the setter call. The 3c-21 `DashboardPage.handleSelectMunicipality` sender referenced in the task lives on the unmerged `feat/3c-21-municipality-drilldown` branch and is **not present here** — it needs the same one-line removal when/if it merges (no store field will exist for it to set).
+- Frontend-only: 2 source files + 6 test fixtures, 1 insertion / 15 deletions. No backend, rules, indexes, schema, or deploy.
+- Verification: `grep` = 0 references; `tsc --noEmit` clean; `eslint` clean; broadcast regression guards `cross-window-sync.test.tsx` + `dashboard-mode-layout.test.tsx` = 6/6 passed (BroadcastChannel send + localStorage fallback + receive paths intact). No red-first behavioral test was warranted because the flag was never read — removing it changes zero runtime behavior; `tsc` + the existing cross-window suite are the regression guards. The 4 firebase-importing admin tests (`dashboard-firestore-wiring`, `dashboard-redispatch`, `map-firestore-wiring`, `MapPage.ux-completeness`) fail identically with and without the change — a stash baseline at HEAD reproduced the documented pre-existing `auth/invalid-api-key` crash at `app/firebase.ts:52` ("no tests" collected at module import, before any store code runs).
+
 ## 2026-06-15 - 3c-18 Map Reject: Confirmation + Real Reason Picker
 
 - Extracted `REJECTION_REASONS` (as-const value array) and `RejectionReason` union type from `TriagePage.tsx` into `constants/report.ts` so the enum is the single source of truth. Both are exported from the `../constants` barrel automatically.

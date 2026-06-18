@@ -68,7 +68,6 @@ vi.mock('../stores/commandCenterStore', () => {
       selectMunicipality: vi.fn(),
       activeOverlays: new Set<string>(),
       toggleOverlay: vi.fn(),
-      setSuppressNextBroadcast: vi.fn(),
     }),
   }
 })

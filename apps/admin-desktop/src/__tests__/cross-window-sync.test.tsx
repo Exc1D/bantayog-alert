@@ -19,7 +19,6 @@ describe('Cross-window sync', () => {
       activeOverlays: new Set(['all_incidents']),
       triagePanelOpen: false,
       lastSyncMessage: null,
-      suppressNextBroadcast: false,
     })
   })
 

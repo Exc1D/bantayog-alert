@@ -65,7 +65,6 @@ export default function MapPage() {
     selectMunicipality,
     activeOverlays,
     toggleOverlay,
-    setSuppressNextBroadcast,
   } = useCommandCenterStore()
 
   useUrlSync({
@@ -150,10 +149,9 @@ export default function MapPage() {
   const handlePinClick = useCallback(
     (reportId: string) => {
       selectReport(reportId)
-      setSuppressNextBroadcast(true)
       sendSync({ type: 'select:report', reportId, source: 'map' })
     },
-    [selectReport, sendSync, setSuppressNextBroadcast],
+    [selectReport, sendSync],
   )
 
   const clearActionError = useCallback(() => {

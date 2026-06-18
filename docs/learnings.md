@@ -191,6 +191,7 @@
 - `backdrop-blur` is banned by PRODUCT.md.
 - Use a resize-aware hook for viewport state; module-level `window.innerWidth` goes stale.
 - Window-sync dedup needs `crypto.randomUUID()` plus an in-memory TTL map.
+- `WindowSyncProvider` already drops self-echoes via UUID dedup (`sendSync` records the message id before posting), and `BroadcastChannel.postMessage` never delivers to the same window. So a `suppressNextBroadcast`-style "don't echo my own broadcast" flag is dead scaffolding: senders set it but no reader can ever consume it, and a stale `true` would wrongly suppress a future legitimate broadcast. Remove set-but-never-read sync flags (YAGNI) rather than wiring a phantom reader. For excess-property store fields, `tsc --noEmit` is the authoritative gate — Vitest runs through esbuild (types stripped), so a removed Zustand field only fails the build under `tsc`, which also forces the matching `setState` test-literal edits.
 
 ## Build / Monorepo / Infra
 

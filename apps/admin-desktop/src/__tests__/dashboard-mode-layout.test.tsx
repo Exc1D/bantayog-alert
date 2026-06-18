@@ -67,7 +67,6 @@ describe('DashboardPage mode derivation and layout', () => {
       activeOverlays: new Set(['all_incidents']),
       triagePanelOpen: false,
       lastSyncMessage: null,
-      suppressNextBroadcast: false,
     })
     mockUseDispatchLifecycle.mockReturnValue({ rows: activeRows, loading: false, error: null })
     mockUseResponderFleet.mockReturnValue({

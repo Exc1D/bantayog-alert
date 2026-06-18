@@ -66,7 +66,6 @@ describe('MapPage UX completeness', () => {
       activeOverlays: new Set(['all_incidents']),
       triagePanelOpen: false,
       lastSyncMessage: null,
-      suppressNextBroadcast: false,
     })
   })
 
