@@ -1,13 +1,7 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import DashboardPage from '../pages/DashboardPage'
-import {
-  renderWithMemoryRouter,
-  makeRow,
-  defaultRows,
-  defaultResponders,
-  defaultMetrics,
-} from '../test-utils'
+import { renderWithMemoryRouter, makeRow, defaultRows } from '../test-utils'
 
 const mockNavigate = vi.fn()
 const mockVerifyReport = vi.hoisted(() =>
@@ -19,19 +13,13 @@ const mockVerifyReport = vi.hoisted(() =>
   ),
 )
 
-vi.mock('../app/firebase', () => ({
-  db: {} as never,
-  getFirestoreInstance: () => ({}) as never,
-  auth: {} as never,
-  functions: {} as never,
-  rtdb: {} as never,
-  firebaseApp: {} as never,
-}))
+vi.mock('../app/firebase', async () =>
+  (await import('../test-utils')).createAdminFirebaseModuleMock(),
+)
 
-vi.mock('../providers/WindowSyncProvider', async () => {
-  const { createWindowSyncProviderModuleMock } = await import('../test-utils')
-  return createWindowSyncProviderModuleMock()
-})
+vi.mock('../providers/WindowSyncProvider', async () =>
+  (await import('../test-utils')).createWindowSyncProviderModuleMock(),
+)
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
@@ -41,13 +29,9 @@ vi.mock('react-router-dom', async (importOriginal) => {
   }
 })
 
-vi.mock('@bantayog/shared-ui', () => ({
-  useAuth: () => ({
-    signOut: vi.fn(),
-    loading: false,
-    claims: { role: 'provincial_superadmin' },
-  }),
-}))
+vi.mock('@bantayog/shared-ui', async () =>
+  (await import('../test-utils')).createProvincialSuperadminAuthModuleMock(),
+)
 
 vi.mock('../services/callables', () => ({
   callables: {
@@ -71,17 +55,13 @@ vi.mock('../hooks/useDispatchLifecycle', () => ({
   }),
 }))
 
-vi.mock('../hooks/useResponderFleet', () => ({
-  useResponderFleet: () => ({
-    responders: defaultResponders,
-    loading: false,
-    error: null,
-  }),
-}))
+vi.mock('../hooks/useResponderFleet', async () =>
+  (await import('../test-utils')).createResponderFleetHookModuleMock(),
+)
 
-vi.mock('../hooks/useOpsMetrics', () => ({
-  useOpsMetrics: () => defaultMetrics,
-}))
+vi.mock('../hooks/useOpsMetrics', async () =>
+  (await import('../test-utils')).createOpsMetricsHookModuleMock(),
+)
 
 vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: () => ({

@@ -1,28 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { act, fireEvent, screen } from '@testing-library/react'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
-import { resetWindowSyncContextMock, type WindowSyncMessage } from '../test-utils'
+import {
+  renderWithMemoryRouter,
+  resetWindowSyncContextMock,
+  type WindowSyncMessage,
+} from '../test-utils'
 
-vi.mock('../app/firebase', () => ({
-  db: {} as never,
-  getFirestoreInstance: () => ({}) as never,
-  auth: {} as never,
-  functions: {} as never,
-  rtdb: {} as never,
-  firebaseApp: {} as never,
-}))
+vi.mock('../app/firebase', async () =>
+  (await import('../test-utils')).createAdminFirebaseModuleMock(),
+)
 
-vi.mock('../hooks/useFirestoreListeners', () => ({
-  useFirestoreListeners: () => ({
-    loading: false,
-    error: null,
-    reports: [],
-    reportOps: [],
-    alerts: [],
-    responders: [],
-  }),
+vi.mock('../hooks/useFirestoreListeners', async () => {
+  const { createMapFirestoreListeners } = await import('../test-utils')
+  return { useFirestoreListeners: () => createMapFirestoreListeners([], []) }
+})
+
+vi.mock('../hooks/useUrlSync', () => ({
+  useUrlSync: vi.fn(),
 }))
 
 const syncCtl = vi.hoisted(() => ({
@@ -47,6 +43,13 @@ function captureWindowSyncHandler() {
   })
 }
 
+async function renderMapPage() {
+  await act(async () => {
+    renderWithMemoryRouter(<MapPage />)
+    await Promise.resolve()
+  })
+}
+
 describe('MapPage', () => {
   beforeEach(() => {
     captureWindowSyncHandler()
@@ -55,35 +58,25 @@ describe('MapPage', () => {
   afterEach(() => {
     syncCtl.handler = null
     resetWindowSyncContextMock(mockWindowSyncContext)
-    useCommandCenterStore.setState({ selectedMunicipalityId: null, selectedReportId: null })
+    act(() => {
+      useCommandCenterStore.setState({ selectedMunicipalityId: null, selectedReportId: null })
+    })
   })
 
-  it('renders header and map', () => {
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+  it('renders header and map', async () => {
+    await renderMapPage()
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
   })
 
-  it('opens alert declaration from the map header', () => {
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+  it('opens alert declaration from the map header', async () => {
+    await renderMapPage()
     fireEvent.click(screen.getByRole('button', { name: /declare alert/i }))
     expect(screen.getByRole('dialog', { name: /declare alert/i })).toBeInTheDocument()
   })
 
-  it('N6 receiver: cross-window select:municipality message selects municipality in store', () => {
+  it('N6 receiver: cross-window select:municipality message selects municipality in store', async () => {
     useCommandCenterStore.setState({ selectedMunicipalityId: null })
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    await renderMapPage()
     act(() => {
       syncCtl.handler?.({
         type: 'select:municipality',

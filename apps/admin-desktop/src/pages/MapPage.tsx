@@ -33,6 +33,8 @@ import {
 } from '../constants/report'
 import type { Report, MunicipalPerformance } from '../types'
 
+const REJECT_NOTE_MAX_LENGTH = 500
+
 function responderEntries(responders: [string, unknown][]): {
   uid: string
   displayName?: string
@@ -187,6 +189,10 @@ export default function MapPage() {
   const handleReject = useCallback(async (id: string, reason: RejectionReason, note: string) => {
     try {
       const trimmedNote = note.trim()
+      if (trimmedNote.length > REJECT_NOTE_MAX_LENGTH) {
+        setActionError('Admin note must be 500 characters or fewer')
+        return
+      }
       await withRetry(() =>
         callables.rejectReport({
           reportId: id,
@@ -485,7 +491,7 @@ export default function MapPage() {
             <textarea
               aria-label="Admin note (optional)"
               placeholder="Optional note (max 500 characters)"
-              maxLength={500}
+              maxLength={REJECT_NOTE_MAX_LENGTH}
               value={rejectNote}
               onChange={(e) => {
                 setRejectNote(e.target.value)

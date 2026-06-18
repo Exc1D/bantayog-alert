@@ -13,32 +13,56 @@ const STORAGE_KEY = 'bantayog-sync-fallback'
 const MESSAGE_TTL_MS = 5000
 
 const VALID_MESSAGE_TYPES = new Set(['select:report', 'select:municipality', 'triage:action'])
+const VALID_SYNC_SOURCES = new Set(['dashboard', 'map'])
+const VALID_TRIAGE_ACTIONS = new Set(['verified', 'rejected', 'dispatched'])
+
+type SyncMessageRecord = Record<string, unknown>
+
+function isRecord(data: unknown): data is SyncMessageRecord {
+  return typeof data === 'object' && data !== null
+}
+
+function hasOptionalStringId(msg: SyncMessageRecord): boolean {
+  return msg.id === undefined || typeof msg.id === 'string'
+}
+
+function hasValidSource(msg: SyncMessageRecord): boolean {
+  return typeof msg.source === 'string' && VALID_SYNC_SOURCES.has(msg.source)
+}
+
+function isSelectReportMessage(msg: SyncMessageRecord): boolean {
+  return typeof msg.reportId === 'string' && hasValidSource(msg)
+}
+
+function isSelectMunicipalityMessage(msg: SyncMessageRecord): boolean {
+  return typeof msg.municipalityId === 'string' && hasValidSource(msg)
+}
+
+function isTriageActionMessage(msg: SyncMessageRecord): boolean {
+  return (
+    typeof msg.reportId === 'string' &&
+    typeof msg.action === 'string' &&
+    VALID_TRIAGE_ACTIONS.has(msg.action)
+  )
+}
 
 function isValidSyncMessage(data: unknown): data is WindowSyncMessage {
-  if (typeof data !== 'object' || data === null) return false
-  const msg = data as Record<string, unknown>
+  if (!isRecord(data)) return false
 
-  if (typeof msg.type !== 'string' || !VALID_MESSAGE_TYPES.has(msg.type)) return false
-  if (msg.id !== undefined && typeof msg.id !== 'string') return false
+  const type = data.type
+  if (typeof type !== 'string' || !VALID_MESSAGE_TYPES.has(type)) return false
+  if (!hasOptionalStringId(data)) return false
 
-  if (msg.type === 'select:report') {
-    return typeof msg.reportId === 'string' && (msg.source === 'dashboard' || msg.source === 'map')
+  switch (type) {
+    case 'select:report':
+      return isSelectReportMessage(data)
+    case 'select:municipality':
+      return isSelectMunicipalityMessage(data)
+    case 'triage:action':
+      return isTriageActionMessage(data)
+    default:
+      return false
   }
-
-  if (msg.type === 'select:municipality') {
-    return (
-      typeof msg.municipalityId === 'string' && (msg.source === 'dashboard' || msg.source === 'map')
-    )
-  }
-
-  if (msg.type === 'triage:action') {
-    return (
-      typeof msg.reportId === 'string' &&
-      (msg.action === 'verified' || msg.action === 'rejected' || msg.action === 'dispatched')
-    )
-  }
-
-  return false
 }
 
 export function WindowSyncProvider({ children }: { children: ReactNode }) {

@@ -8,7 +8,7 @@ import { MemoryRouter, BrowserRouter } from 'react-router-dom'
 import type { ReactElement, ReactNode } from 'react'
 import type { DispatchLifecycleRow } from './hooks/useDispatchLifecycle'
 import type { ResponderFleetMember } from './hooks/useResponderFleet'
-import type { WindowSyncMessage } from './stores/commandCenterStore'
+import { useCommandCenterStore, type WindowSyncMessage } from './stores/commandCenterStore'
 
 export type { WindowSyncMessage } from './stores/commandCenterStore'
 
@@ -42,6 +42,36 @@ export function resetWindowSyncContextMock(context: WindowSyncContextMock) {
   context.subscribe.mockReturnValue(() => undefined)
 }
 
+export function createAdminFirebaseModuleMock() {
+  return {
+    db: {} as never,
+    getFirestoreInstance: () => ({}) as never,
+    auth: {} as never,
+    functions: {} as never,
+    rtdb: {} as never,
+    firebaseApp: {} as never,
+  }
+}
+
+export function createProvincialSuperadminAuthModuleMock() {
+  return {
+    useAuth: () => ({
+      signOut: () => undefined,
+      loading: false,
+      claims: { role: 'provincial_superadmin' },
+    }),
+  }
+}
+
+export function createStorageSyncEvent(data: unknown, timestamp = Date.now()) {
+  const event = new Event('storage')
+  Object.defineProperty(event, 'key', { value: 'bantayog-sync-fallback' })
+  Object.defineProperty(event, 'newValue', {
+    value: JSON.stringify({ data, timestamp }),
+  })
+  return event
+}
+
 /* ------------------------------------------------------------------ */
 //  Render wrappers
 /* ------------------------------------------------------------------ */
@@ -56,6 +86,16 @@ export function MemoryRouterWrapper({ children }: { children: ReactNode }) {
 
 export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
   return <BrowserRouter>{children}</BrowserRouter>
+}
+
+export function renderSelectedMapReport(
+  ui: ReactElement,
+  mockUseFirestoreListeners: Mock,
+  report: Record<string, unknown>,
+): RenderResult {
+  mockUseFirestoreListeners.mockReturnValue(createMapFirestoreListeners([report]))
+  useCommandCenterStore.setState({ selectedReportId: String(report.id) })
+  return renderWithMemoryRouter(ui)
 }
 
 /* ------------------------------------------------------------------ */
@@ -153,6 +193,24 @@ export const defaultFirestoreListeners: FirestoreListenersFixture = {
   alerts: [],
 }
 
+export const defaultMapResponders: [string, { displayName: string; agency: string }][] = [
+  ['uid1', { displayName: 'Responder A', agency: 'BFP' }],
+]
+
+export function createMapFirestoreListeners(
+  reports: Record<string, unknown>[] = [],
+  responders: [string, { displayName: string; agency: string }][] = defaultMapResponders,
+) {
+  return {
+    loading: false,
+    error: null,
+    reports,
+    reportOps: [],
+    alerts: [],
+    responders,
+  }
+}
+
 /* ------------------------------------------------------------------ */
 //  Mock-return helpers — so tests don't repeat object literals
 /* ------------------------------------------------------------------ */
@@ -173,4 +231,32 @@ export function createMockedFirestoreListeners(
   listeners: FirestoreListenersFixture = defaultFirestoreListeners,
 ) {
   return listeners
+}
+
+export function createDispatchLifecycleHookModuleMock(rows: DispatchLifecycleRow[] = defaultRows) {
+  return {
+    useDispatchLifecycle: () => createMockedDispatchLifecycle(rows),
+  }
+}
+
+export function createResponderFleetHookModuleMock(
+  responders: ResponderFleetMember[] = defaultResponders,
+) {
+  return {
+    useResponderFleet: () => createMockedResponderFleet(responders),
+  }
+}
+
+export function createOpsMetricsHookModuleMock(metrics: OpsMetricsFixture = defaultMetrics) {
+  return {
+    useOpsMetrics: () => createMockedOpsMetrics(metrics),
+  }
+}
+
+export function createFirestoreListenersHookModuleMock(
+  listeners: FirestoreListenersFixture = defaultFirestoreListeners,
+) {
+  return {
+    useFirestoreListeners: () => createMockedFirestoreListeners(listeners),
+  }
 }

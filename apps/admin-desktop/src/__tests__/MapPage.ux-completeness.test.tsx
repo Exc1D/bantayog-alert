@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { act, fireEvent, screen } from '@testing-library/react'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
+import {
+  createMapFirestoreListeners,
+  renderSelectedMapReport,
+  renderWithMemoryRouter,
+} from '../test-utils'
 
-vi.mock('../app/firebase', () => ({
-  db: {} as never,
-  getFirestoreInstance: () => ({}) as never,
-  auth: {} as never,
-  functions: {} as never,
-  rtdb: {} as never,
-  firebaseApp: {} as never,
-}))
+vi.mock('../app/firebase', async () =>
+  (await import('../test-utils')).createAdminFirebaseModuleMock(),
+)
 
 const mockVerifyReport = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 const mockRejectReport = vi.hoisted(() => vi.fn().mockResolvedValue({}))
@@ -42,31 +41,9 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: mockUseFirestoreListeners,
 }))
 
-vi.mock('../providers/WindowSyncProvider', async () => {
-  const { createWindowSyncProviderModuleMock } = await import('../test-utils')
-  return createWindowSyncProviderModuleMock()
-})
-
-function listenerResult(reports: Record<string, unknown>[]) {
-  return {
-    loading: false,
-    error: null,
-    reports,
-    reportOps: [],
-    alerts: [],
-    responders: [['uid1', { displayName: 'Responder A', agency: 'BFP' }]],
-  }
-}
-
-function renderSelectedReport(report: Record<string, unknown>) {
-  mockUseFirestoreListeners.mockReturnValue(listenerResult([report]))
-  useCommandCenterStore.setState({ selectedReportId: String(report.id) })
-  render(
-    <MemoryRouter>
-      <MapPage />
-    </MemoryRouter>,
-  )
-}
+vi.mock('../providers/WindowSyncProvider', async () =>
+  (await import('../test-utils')).createWindowSyncProviderModuleMock(),
+)
 
 async function flushPromises() {
   await act(async () => {
@@ -77,14 +54,7 @@ async function flushPromises() {
 describe('MapPage UX completeness', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseFirestoreListeners.mockReturnValue({
-      loading: false,
-      error: null,
-      reports: [],
-      reportOps: [],
-      alerts: [],
-      responders: [],
-    })
+    mockUseFirestoreListeners.mockReturnValue(createMapFirestoreListeners([], []))
     useCommandCenterStore.setState({
       selectedMunicipalityId: null,
       selectedReportId: null,
@@ -101,35 +71,23 @@ describe('MapPage UX completeness', () => {
   })
 
   it('renders header and map', () => {
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
   })
 
   it('shows empty state when no reports exist', () => {
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
     expect(screen.getByText('No active incidents')).toBeInTheDocument()
   })
 
   it('opens alert declaration from the map header', () => {
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
     fireEvent.click(screen.getByRole('button', { name: /declare alert/i }))
     expect(screen.getByRole('dialog', { name: /declare alert/i })).toBeInTheDocument()
   })
 
   it('shows success banner after verifying a report', async () => {
-    renderSelectedReport({
+    renderSelectedMapReport(<MapPage />, mockUseFirestoreListeners, {
       id: 'r-awaiting',
       type: 'flood',
       severity: 'high',
@@ -157,7 +115,7 @@ describe('MapPage UX completeness', () => {
   })
 
   it('shows success banner after rejecting a report', async () => {
-    renderSelectedReport({
+    renderSelectedMapReport(<MapPage />, mockUseFirestoreListeners, {
       id: 'r-awaiting',
       type: 'flood',
       severity: 'high',
@@ -183,9 +141,38 @@ describe('MapPage UX completeness', () => {
     expect(screen.getByText('Report rejected')).toBeInTheDocument()
   })
 
+  it('blocks rejection notes over 500 characters before calling rejectReport', async () => {
+    renderSelectedMapReport(<MapPage />, mockUseFirestoreListeners, {
+      id: 'r-awaiting',
+      type: 'flood',
+      severity: 'high',
+      municipality: 'Daet',
+      barangay: 'Camambugan',
+      createdAt: '14:02',
+      status: 'awaiting_verify',
+      description: 'Needs verification',
+      latitude: 14.1,
+      longitude: 122.9,
+      updatedAt: '',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
+    fireEvent.change(screen.getByLabelText('Admin note (optional)'), {
+      target: { value: 'x'.repeat(501) },
+    })
+    const rejectButtons = screen.getAllByRole('button', { name: 'Reject' })
+    fireEvent.click(rejectButtons[1]!)
+    await flushPromises()
+
+    expect(mockRejectReport).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Admin note must be 500 characters or fewer',
+    )
+  })
+
   it('renders keyboard-navigable incident list when reports exist', () => {
     mockUseFirestoreListeners.mockReturnValue(
-      listenerResult([
+      createMapFirestoreListeners([
         {
           id: 'r1',
           type: 'flood',
@@ -202,11 +189,7 @@ describe('MapPage UX completeness', () => {
       ]),
     )
 
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
 
     const list = screen.getByLabelText(/keyboard-navigable incident list/i)
     expect(list).toBeInTheDocument()
@@ -217,7 +200,7 @@ describe('MapPage UX completeness', () => {
 
   it('selects report via keyboard list button', () => {
     mockUseFirestoreListeners.mockReturnValue(
-      listenerResult([
+      createMapFirestoreListeners([
         {
           id: 'r1',
           type: 'flood',
@@ -234,11 +217,7 @@ describe('MapPage UX completeness', () => {
       ]),
     )
 
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
 
     fireEvent.click(
       screen.getByRole('button', { name: /flood incident, severity high, at Daet, Camambugan/i }),

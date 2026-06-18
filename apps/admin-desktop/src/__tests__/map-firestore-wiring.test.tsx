@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { act, fireEvent, screen } from '@testing-library/react'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
+import {
+  createMapFirestoreListeners,
+  renderSelectedMapReport,
+  renderWithMemoryRouter,
+} from '../test-utils'
 
-vi.mock('../app/firebase', () => ({
-  db: {} as never,
-  getFirestoreInstance: () => ({}) as never,
-  auth: {} as never,
-  functions: {} as never,
-  rtdb: {} as never,
-  firebaseApp: {} as never,
-}))
+vi.mock('../app/firebase', async () =>
+  (await import('../test-utils')).createAdminFirebaseModuleMock(),
+)
 
 const mockVerifyReport = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 const mockDispatchResponder = vi.hoisted(() =>
@@ -26,10 +25,9 @@ vi.mock('../services/callables', () => ({
   },
 }))
 
-vi.mock('../providers/WindowSyncProvider', async () => {
-  const { createWindowSyncProviderModuleMock } = await import('../test-utils')
-  return createWindowSyncProviderModuleMock()
-})
+vi.mock('../providers/WindowSyncProvider', async () =>
+  (await import('../test-utils')).createWindowSyncProviderModuleMock(),
+)
 
 const mockUseFirestoreListeners = vi.hoisted(() =>
   vi.fn().mockReturnValue({
@@ -62,25 +60,8 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: mockUseFirestoreListeners,
 }))
 
-function listenerResult(reports: Record<string, unknown>[]) {
-  return {
-    loading: false,
-    error: null,
-    reports,
-    reportOps: [],
-    alerts: [],
-    responders: [['uid1', { displayName: 'Responder A', agency: 'BFP' }]],
-  }
-}
-
 function renderSelectedReport(report: Record<string, unknown>) {
-  mockUseFirestoreListeners.mockReturnValue(listenerResult([report]))
-  useCommandCenterStore.setState({ selectedReportId: String(report.id) })
-  render(
-    <MemoryRouter>
-      <MapPage />
-    </MemoryRouter>,
-  )
+  renderSelectedMapReport(<MapPage />, mockUseFirestoreListeners, report)
 }
 
 async function flushPromises() {
@@ -107,7 +88,7 @@ describe('MapPage Firestore wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseFirestoreListeners.mockReturnValue(
-      listenerResult([
+      createMapFirestoreListeners([
         {
           id: 'r1',
           type: 'flood',
@@ -141,11 +122,7 @@ describe('MapPage Firestore wiring', () => {
   })
 
   it('renders map with reports from Firestore', () => {
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
     expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
     // Confirm useFirestoreListeners is invoked and wired to the page
     expect(mockUseFirestoreListeners).toHaveBeenCalledWith(
@@ -155,21 +132,13 @@ describe('MapPage Firestore wiring', () => {
 
   it('shows TriagePanel when report selected', () => {
     useCommandCenterStore.setState({ selectedReportId: 'r1' })
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('does not show reject or dispatch controls for a newly submitted report', () => {
     useCommandCenterStore.setState({ selectedReportId: 'r1' })
-    render(
-      <MemoryRouter>
-        <MapPage />
-      </MemoryRouter>,
-    )
+    renderWithMemoryRouter(<MapPage />)
 
     expect(screen.getByRole('dialog')).toHaveTextContent('Water rising')
     expect(screen.getByRole('button', { name: 'Advance to review' })).toBeInTheDocument()
@@ -253,7 +222,7 @@ describe('MapPage Firestore wiring', () => {
     vi.useFakeTimers()
     try {
       mockUseFirestoreListeners.mockReturnValue(
-        listenerResult([
+        createMapFirestoreListeners([
           {
             id: 'r-verified',
             type: 'fire',
@@ -283,11 +252,7 @@ describe('MapPage Firestore wiring', () => {
         ]),
       )
       useCommandCenterStore.setState({ selectedReportId: 'r-verified' })
-      render(
-        <MemoryRouter>
-          <MapPage />
-        </MemoryRouter>,
-      )
+      renderWithMemoryRouter(<MapPage />)
 
       await submitDispatchAttempt()
 

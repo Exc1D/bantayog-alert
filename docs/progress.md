@@ -786,3 +786,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
   3. **Resolve merge-format CI** by merging `origin/main` into the PR branch and formatting `docs/learnings.md` plus `docs/progress.md`.
 - Fixed Vitest hoisting conflict: async `vi.mock` factories with dynamic `await import('../test-utils')` avoid `__vi_import_X__ before initialization` errors in four test files. Two assertion-based tests (`MapPage.test.tsx`, `DashboardPage.municipality-drilldown.test.tsx`) use inline `vi.hoisted` raw objects.
 - Verification: red-first malformed BroadcastChannel and storage fallback tests failed before the validation fix, then focused sync tests passed 6/6. `pnpm exec prettier --check docs/learnings.md docs/progress.md`, `tsc --noEmit`, `eslint src`, and `git diff --check` passed.
+
+## 2026-06-18 - PR #226 CI and Review Follow-up
+
+- Added runtime rejection-note length enforcement in Admin Desktop `MapPage`: trimmed admin notes over 500 characters now stop locally before `rejectReport`, matching the textarea limit instead of relying on UI-only validation.
+- Reduced the PR's Fallow fail findings by simplifying `WindowSyncProvider` sync-message validation helpers and moving repeated test scaffolding into `apps/admin-desktop/src/test-utils.tsx`; the local changed-code audit now reports `verdict: warn` instead of the CI-blocking `fail`.
+- Left remaining Fallow duplication warnings alone because they are warning-tier or inherited after the gate moved out of fail, and fixing them would widen the PR beyond the still-valid CI blocker and review comment.
+- Verification: red-first focused note-length test failed before the guard, then passed. Changed admin-desktop tests passed 8/8 files and 40/40 tests. `pnpm --dir apps/admin-desktop run typecheck`, `pnpm --dir apps/admin-desktop run lint`, scoped Prettier check, and `fallow audit --format json --quiet --base origin/main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.

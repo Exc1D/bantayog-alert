@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { WindowSyncProvider, useWindowSyncContext } from '../providers/WindowSyncProvider'
-import type { WindowSyncMessage } from '../test-utils'
+import { createStorageSyncEvent, type WindowSyncMessage } from '../test-utils'
 
 describe('Cross-window sync', () => {
   beforeEach(() => {
@@ -192,17 +192,7 @@ describe('Cross-window sync', () => {
 
     act(() => {
       window.dispatchEvent(
-        (() => {
-          const e = new Event('storage')
-          Object.defineProperty(e, 'key', { value: 'bantayog-sync-fallback' })
-          Object.defineProperty(e, 'newValue', {
-            value: JSON.stringify({
-              data: { type: 'select:municipality', source: 'dashboard' },
-              timestamp: Date.now(),
-            }),
-          })
-          return e
-        })(),
+        createStorageSyncEvent({ type: 'select:municipality', source: 'dashboard' }),
       )
     })
 

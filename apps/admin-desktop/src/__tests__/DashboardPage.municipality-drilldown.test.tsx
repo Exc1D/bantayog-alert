@@ -8,9 +8,6 @@ import { screen, fireEvent } from '@testing-library/react'
 import DashboardPage from '../pages/DashboardPage'
 import {
   renderWithMemoryRouter,
-  defaultResponders,
-  defaultMetrics,
-  makeRow,
   resetWindowSyncContextMock,
   type WindowSyncMessage,
 } from '../test-utils'
@@ -23,15 +20,9 @@ const mockWindowSyncContext = vi.hoisted(() => ({
     .mockReturnValue(() => undefined),
 }))
 
-// Required: DashboardPage → CommandHeader → EditHotlineModal → db (eager SDK init)
-vi.mock('../app/firebase', () => ({
-  db: {} as never,
-  getFirestoreInstance: () => ({}) as never,
-  auth: {} as never,
-  functions: {} as never,
-  rtdb: {} as never,
-  firebaseApp: {} as never,
-}))
+vi.mock('../app/firebase', async () =>
+  (await import('../test-utils')).createAdminFirebaseModuleMock(),
+)
 
 vi.mock('../providers/WindowSyncProvider', () => ({
   useWindowSyncContext: () => mockWindowSyncContext,
@@ -45,13 +36,9 @@ vi.mock('react-router-dom', async (importOriginal) => {
   }
 })
 
-vi.mock('@bantayog/shared-ui', () => ({
-  useAuth: () => ({
-    signOut: vi.fn(),
-    loading: false,
-    claims: { role: 'provincial_superadmin' },
-  }),
-}))
+vi.mock('@bantayog/shared-ui', async () =>
+  (await import('../test-utils')).createProvincialSuperadminAuthModuleMock(),
+)
 
 vi.mock('../services/callables', () => ({
   callables: { verifyReport: vi.fn() },
@@ -59,29 +46,25 @@ vi.mock('../services/callables', () => ({
 
 // Use ONE pending dispatch (no needs_admin) → activeCount=1, stalledCount=0 → mode='active'
 // This ensures MunicipalPerformanceTable is rendered (mode !== 'calm' && mode !== 'surge')
-vi.mock('../hooks/useDispatchLifecycle', () => ({
-  useDispatchLifecycle: () => ({
-    rows: [makeRow({ dispatchId: 'd1', reportId: 'r1', status: 'pending' })],
-    loading: false,
-    error: null,
-  }),
-}))
+vi.mock('../hooks/useDispatchLifecycle', async () => {
+  const { createDispatchLifecycleHookModuleMock, makeRow } = await import('../test-utils')
+  return createDispatchLifecycleHookModuleMock([
+    makeRow({ dispatchId: 'd1', reportId: 'r1', status: 'pending' }),
+  ])
+})
 
-vi.mock('../hooks/useResponderFleet', () => ({
-  useResponderFleet: () => ({
-    responders: defaultResponders,
-    loading: false,
-    error: null,
-  }),
-}))
+vi.mock('../hooks/useResponderFleet', async () =>
+  (await import('../test-utils')).createResponderFleetHookModuleMock(),
+)
 
-vi.mock('../hooks/useOpsMetrics', () => ({
-  useOpsMetrics: () => defaultMetrics,
-}))
+vi.mock('../hooks/useOpsMetrics', async () =>
+  (await import('../test-utils')).createOpsMetricsHookModuleMock(),
+)
 
 // Reports with two municipalities so the performance table has real rows
-vi.mock('../hooks/useFirestoreListeners', () => ({
-  useFirestoreListeners: () => ({
+vi.mock('../hooks/useFirestoreListeners', async () => {
+  const { createFirestoreListenersHookModuleMock } = await import('../test-utils')
+  return createFirestoreListenersHookModuleMock({
     reports: [
       {
         id: 'r-active',
@@ -107,8 +90,14 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
     loading: false,
     error: null,
     alerts: [],
-  }),
-}))
+  })
+})
+
+function clickDaetMunicipalityRow() {
+  const daetCells = screen.getAllByText('Daet').filter((el) => el.tagName.toLowerCase() === 'td')
+  expect(daetCells.length).toBeGreaterThan(0)
+  fireEvent.click(daetCells[0]!)
+}
 
 describe('DashboardPage municipality drill-down (3c-21)', () => {
   beforeEach(() => {
@@ -118,20 +107,14 @@ describe('DashboardPage municipality drill-down (3c-21)', () => {
 
   it('N7: municipality row click navigates with ?municipalityId= (not ?municipality=)', () => {
     renderWithMemoryRouter(<DashboardPage />)
-    // MunicipalPerformanceTable renders the municipality name as plain text inside <td>
-    // Filter to <td> elements to avoid matching "Daet" in the report command queue's <p> nodes
-    const daetCells = screen.getAllByText('Daet').filter((el) => el.tagName.toLowerCase() === 'td')
-    expect(daetCells.length).toBeGreaterThan(0)
-    fireEvent.click(daetCells[0]!)
+    clickDaetMunicipalityRow()
     expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('municipalityId=Daet'))
     expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringContaining('?municipality=Daet'))
   })
 
   it('N6 sender: municipality row click broadcasts select:municipality to other windows', () => {
     renderWithMemoryRouter(<DashboardPage />)
-    const daetCells = screen.getAllByText('Daet').filter((el) => el.tagName.toLowerCase() === 'td')
-    expect(daetCells.length).toBeGreaterThan(0)
-    fireEvent.click(daetCells[0]!)
+    clickDaetMunicipalityRow()
     expect(mockWindowSyncContext.sendSync).toHaveBeenCalledWith({
       type: 'select:municipality',
       municipalityId: 'Daet',

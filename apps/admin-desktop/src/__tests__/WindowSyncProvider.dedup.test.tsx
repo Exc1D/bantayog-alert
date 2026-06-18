@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act } from '@testing-library/react'
 import { useEffect } from 'react'
 import { WindowSyncProvider, useWindowSyncContext } from '../providers/WindowSyncProvider'
+import { createStorageSyncEvent } from '../test-utils'
 import type { WindowSyncMessage } from '../stores/commandCenterStore'
 
 function Consumer({ onMsg }: { onMsg: (m: WindowSyncMessage) => void }) {
@@ -39,26 +40,8 @@ describe('WindowSyncProvider dedup', () => {
       id: 'dedup-1',
     }
     act(() => {
-      window.dispatchEvent(
-        (() => {
-          const e = new Event('storage')
-          Object.defineProperty(e, 'key', { value: 'bantayog-sync-fallback' })
-          Object.defineProperty(e, 'newValue', {
-            value: JSON.stringify({ data: msg, timestamp: Date.now() }),
-          })
-          return e
-        })(),
-      )
-      window.dispatchEvent(
-        (() => {
-          const e = new Event('storage')
-          Object.defineProperty(e, 'key', { value: 'bantayog-sync-fallback' })
-          Object.defineProperty(e, 'newValue', {
-            value: JSON.stringify({ data: msg, timestamp: Date.now() }),
-          })
-          return e
-        })(),
-      )
+      window.dispatchEvent(createStorageSyncEvent(msg))
+      window.dispatchEvent(createStorageSyncEvent(msg))
     })
 
     expect(seen).toHaveBeenCalledTimes(1)
